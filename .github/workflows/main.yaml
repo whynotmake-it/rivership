@@ -1,0 +1,76 @@
+name: Continuous Integration
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  semantic_pull_request:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
+
+  flutter-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: write
+      checks: write
+      pull-requests: write
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@v1.6.5
+        with:
+          sdk: "stable"
+
+      - name: Ⓜ️ Set up Melos
+        uses: bluefireteam/melos-action@5a8367ec4b9942d712528c398ff3f996e03bc230
+
+      - name: 🧪 Run Analyze
+        run: melos run analyze
+
+      - name: 📝 Run Test
+        run: melos run coverage
+
+      - name: 📢 Ensure Publishable
+        run: melos publish --yes --dry-run
+
+      - name: 📊 Generate Coverage
+        id: coverage-report
+        uses: whynotmake-it/dart-coverage-assistant@v1
+        with:
+          lower_threshold: 50
+          upper_threshold: 75
+          generate_badges: pr
+
+  check_generation:
+    name: Check Code Generation
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@v1.6.5
+        with:
+          sdk: "stable"
+
+      - name: Ⓜ️ Set up Melos
+        uses: bluefireteam/melos-action@5a8367ec4b9942d712528c398ff3f996e03bc230
+
+      - name: 🔨 Generate
+        run: melos run generate
+
+      - name: 🔎 Check there are no uncommitted changes
+        run: git diff --exit-code
+

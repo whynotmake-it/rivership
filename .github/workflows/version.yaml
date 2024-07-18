@@ -1,0 +1,39 @@
+name: Version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify_release:
+    name: Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@v1.6.5
+        with:
+          sdk: "stable"
+
+      - name: Ⓜ️ Set up Melos
+        run: dart pub global activate melos
+              
+      - name: 🪪 Set git credentials
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: 📦 Version
+        run: melos version --yes
+
+      - name: 🎋 Create Pull Request
+        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
+        with:
+          title: "chore(release): Version packages"
+          body: "Prepared all packages to be released to pub.dev"
+          branch: chore/release
+          delete-branch: true

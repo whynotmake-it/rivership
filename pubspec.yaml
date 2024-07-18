@@ -1,0 +1,14 @@
+name: infra
+description: Infrastructure used by whynotmake.it for maximum velocity
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  
+dev_dependencies:
+  lintervention: ^0.1.1
+  melos: ^6.0.0

@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "bootstrap",
+            "command": "melos bs",
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+            ],
+            "presentation": {
+                "reveal": "silent"
+            },
+            "group": "build"
+        }
+    ]
+}
