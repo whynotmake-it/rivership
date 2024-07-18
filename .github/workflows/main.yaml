@@ -27,10 +27,11 @@ jobs:
       - name: 📚 Checkout
         uses: actions/checkout@v4
 
-      - name: 🎯 Setup Dart
-        uses: dart-lang/setup-dart@v1.6.5
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          sdk: "stable"
+          channel: 'stable'
+          cache: true
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@5a8367ec4b9942d712528c398ff3f996e03bc230
@@ -60,10 +61,11 @@ jobs:
       - name: 📚 Checkout
         uses: actions/checkout@v4
 
-      - name: 🎯 Setup Dart
-        uses: dart-lang/setup-dart@v1.6.5
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          sdk: "stable"
+          channel: 'stable'
+          cache: true
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@5a8367ec4b9942d712528c398ff3f996e03bc230

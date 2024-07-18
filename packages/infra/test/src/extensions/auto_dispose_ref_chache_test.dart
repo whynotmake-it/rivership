@@ -1,4 +1,3 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:infra/src/extensions/auto_dispose_ref_chache.dart';
 import 'package:infra_test/infra_test.dart';
@@ -10,12 +9,6 @@ final _state = StateProvider.autoDispose((ref) => 0);
 final _cached = Provider.autoDispose((ref) {
   final state = ref.watch(_state);
   ref.cacheFor(_duration);
-  return state;
-});
-
-final _disposeDelayed = Provider.autoDispose((ref) {
-  final state = ref.watch(_state);
-  ref.disposeDelay(_duration);
   return state;
 });
 
