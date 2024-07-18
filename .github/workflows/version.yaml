@@ -31,7 +31,7 @@ jobs:
         run: melos version --yes
 
       - name: 🎋 Create Pull Request
-        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
         with:
           title: "chore(release): Version packages"
           body: "Prepared all packages to be released to pub.dev"
