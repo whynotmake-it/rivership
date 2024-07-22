@@ -5,7 +5,7 @@ import 'package:rivership/rivership.dart';
 void main() {
   group('AsyncValueTools', () {
     const loading = AsyncLoading<int>();
-    const data = const AsyncData(42);
+    const data = AsyncData(42);
     final error = AsyncError<int>(Exception(), StackTrace.empty);
 
     group('isLoadingInitial', () {
