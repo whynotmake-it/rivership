@@ -24,13 +24,16 @@ T useDelayed<T extends Object>({
     keys,
   );
 
-  useEffect(() {
-    timeUp.value = false;
-    final timer = Timer(delay, () {
-      timeUp.value = true;
-    });
-    return timer.cancel;
-  }, [delay, before, after, ...?keys]);
+  useEffect(
+    () {
+      timeUp.value = false;
+      final timer = Timer(delay, () {
+        timeUp.value = true;
+      });
+      return timer.cancel;
+    },
+    [delay, before, after, ...?keys],
+  );
 
   if (startDone && changes.value <= 1 || delay == Duration.zero) {
     return after;
