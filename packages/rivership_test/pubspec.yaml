@@ -1,6 +1,6 @@
 name: rivership_test
 description: A package containing testing utilites to accompany the rivership package.
-version: 0.1.0
+version: 0.1.0+1
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/rivership_test
 homepage: https://whynotmake.it
 

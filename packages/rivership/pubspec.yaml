@@ -1,6 +1,6 @@
 name: rivership
 description: An opinionated infrastructure package for use with hooks_riverpod.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/rivership
 homepage: https://whynotmake.it
 
@@ -21,4 +21,4 @@ dev_dependencies:
     sdk: flutter
   lintervention: ^0.1.1
   mocktail: ^1.0.3
-  rivership_test: ^0.1.0
+  rivership_test: ^0.1.0+1
