@@ -105,6 +105,28 @@ Widget build(BuildContext context, WidgetRef ref) {
 > Similar to hooks like `useAnimation`, this hook will trigger a rebuild on every frame while the page is being dragged or animating.
 > Make sure to call this from a widget that is cheap to rebuild, ideally a leaf of your widget tree.
 
+### Design Utilities
+Rivership includes a few helper tools for working with Colors and other UI properties.
+
+#### `SimpleWidgetStates`
+A subclass of `WidgetStateProperty` that purposefully doesn't trades flexibility for simplicity.
+Simply define states like this:
+
+```dart
+return TextButton(
+    style: TextButton.styleFrom(
+        color: SimpleWidgetStates.from(
+            normal: Colors.blue,
+            pressed: Colors.blue[800],
+            disabled: Colors.grey,
+        ),
+    ),
+    child: Text("Button"),
+    onPressed: () {},
+);
+```
+
+The values you don't pass will fall back to those you did pass, so you can define only the states you need.
 
 ---
 
