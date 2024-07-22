@@ -1,6 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:infra/src/extensions/auto_dispose_ref_chache.dart';
-import 'package:infra_test/infra_test.dart';
+import 'package:rivership/rivership.dart';
+
+import 'package:rivership_test/rivership_test.dart';
 
 const _duration = Duration(seconds: 1);
 

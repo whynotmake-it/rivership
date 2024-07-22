@@ -1,4 +1,4 @@
-# Infra
+# Rivership
 
 [![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
@@ -8,19 +8,19 @@ Infrastructure used by whynotmake.it for maximum velocity
 
 ## Installation 💻
 
-**❗ In order to start using Infra you must have the [Dart SDK][dart_install_link] installed on your machine.**
+**❗ In order to start using Rivership you must have the [Dart SDK][dart_install_link] installed on your machine.**
 
 Install via `dart pub add`:
 
 ```sh
-dart pub add infra
+dart pub add rivership
 ```
 
 ---
 
 ## Continuous Integration 🤖
 
-Infra comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
+Rivership comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
 
 
 ---

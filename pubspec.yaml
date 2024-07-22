@@ -1,4 +1,4 @@
-name: infra
+name: rivership_workspace
 description: Infrastructure used by whynotmake.it for maximum velocity
 version: 0.1.0
 publish_to: none

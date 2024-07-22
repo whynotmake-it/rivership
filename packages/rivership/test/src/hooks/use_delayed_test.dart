@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:infra/src/hooks/use_delayed.dart';
-import 'package:infra_test/infra_test.dart';
+import 'package:rivership/rivership.dart';
+import 'package:rivership_test/rivership_test.dart';
 
 void main() {
   group('useDelayed', () {

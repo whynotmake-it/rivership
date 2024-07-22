@@ -1,5 +1,5 @@
-name: infra_test
-description: A package containing testing utilites to accompany the infra package.
+name: rivership_test
+description: A package containing testing utilites to accompany the rivership package.
 version: 0.1.0
 
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:infra/src/extensions/date_time_tools.dart';
-import 'package:infra_test/infra_test.dart';
+import 'package:rivership/rivership.dart';
+import 'package:rivership_test/rivership_test.dart';
 
 void main() {
   group('DateTimeTools', () {

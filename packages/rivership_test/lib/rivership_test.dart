@@ -1,5 +1,5 @@
-/// A package containing testing utilites to accompany the infra package.
-library infra_test;
+/// A package containing testing utilites to accompany the rivership package.
+library rivership_test;
 
 // Export common test utilities for convenience.
 export 'package:clock/clock.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:infra/src/hooks/use_tween_animation.dart';
-import 'package:infra_test/infra_test.dart';
+import 'package:rivership/rivership.dart';
+import 'package:rivership_test/rivership_test.dart';
 
 class _MockWidget extends HookConsumerWidget {
   const _MockWidget({

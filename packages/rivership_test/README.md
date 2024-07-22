@@ -1,26 +1,26 @@
-# Infra
+# Rivership Test
 
 [![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
 
 
-An opinionated infrastructure package for use with hooks_riverpod.
+A package containing testing utilites to accompany the rivership package.
 
 ## Installation 💻
 
-**❗ In order to start using Infra you must have the [Dart SDK][dart_install_link] installed on your machine.**
+**❗ In order to start using Rivership Test you must have the [Dart SDK][dart_install_link] installed on your machine.**
 
 Install via `dart pub add`:
 
 ```sh
-dart pub add infra
+dart pub add rivership_test
 ```
 
 ---
 
 ## Continuous Integration 🤖
 
-Infra comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
+Rivership Test comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
 
 
 ---
