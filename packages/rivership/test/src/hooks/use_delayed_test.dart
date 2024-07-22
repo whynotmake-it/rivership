@@ -173,5 +173,18 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       expect(find.byKey(const ValueKey(true)), findsOneWidget);
     });
+
+    testWidgets('unmounts gracefully', (tester) async {
+      await tester.pumpWidget(
+        build(
+          hookCall: () => useDelayed(
+            delay: const Duration(seconds: 1),
+            before: false,
+            after: true,
+          ),
+        ),
+      );
+      // this will throw when timers are still pending
+    });
   });
 }
