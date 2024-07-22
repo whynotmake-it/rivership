@@ -4,18 +4,110 @@
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
 
 
-An opinionated infrastructure package for use with hooks_riverpod.
+
+Rivership is a set of opinionated tools that will get you shipping your Flutter app in no time if you are using [`riverpod`](https://pub.dev/packages/hooks_riverpod) and [`flutter_hooks`](https://pub.dev/packages/flutter_hooks).
 
 ## Installation 💻
 
-**❗ In order to start using Rivership you must have the [Dart SDK][dart_install_link] installed on your machine.**
-
-Install via `dart pub add`:
+Install via `dart pub add` or `flutter pub add`:
 
 ```sh
 dart pub add rivership
 ```
 
+## What's included 📦
+Rivership includes a diverse set of hooks, type extensions, and utilities that will help you build your app faster and more efficiently. Everything is documented extensively, but here's a quick overview over the highlights:
+
+### Hooks
+
+#### `useTweenAnimation`
+A super helpful hook that lets you use the power of `TweenAnimationBuilder` without any nesting.
+
+```dart
+final bool isActive;
+
+Widget build(BuildContext context, WidgetRef ref) {
+    // This will start at 0 and animate to 1 when isActive is true.
+    // It will also keep animating each transition after that.
+    final scale = useTweenAnimation<double>(
+        Tween(begin: 0.0, end: isActive ? 1.0 : 0.0),
+    );
+    return Transform.scale(
+        scale: scale,
+        child: const Text('Hello World'),
+    );
+}
+
+```
+
+For even terser code, you can use the `useTweenedValue` convenience hook, that will initialize the `Tween` for you:
+
+```dart
+final bool isActive;
+
+Widget build(BuildContext context, WidgetRef ref) {
+    // This will automatically animate each transition when changing isActive.
+    final scale = useTweenedValue<double>(isActive ? 1.0 : 0.0);
+    return Transform.scale(
+        scale: scale,
+        child: const Text('Hello World'),
+    );
+}    
+```
+
+#### `useDelayed`
+A hook that will help you model delayed UI changes in a declarative way.
+This can be super helpful for all kinds of animations, popovers, toasts, etc.
+
+Let's say for example that we want to color a counter text red for 1 second every time its value changes.
+
+```dart
+final int value;
+
+Widget build(BuildContext context, WidgetRef ref) {
+    // This will restart with true every time value changes.
+    final isRed = useDelayed(
+        delay: const Duration(seconds: 1),
+        before: true,
+        after: false,
+        keys: [value],
+    );
+    return Text(
+        'Value: $value', 
+        style: TextStyle(color: isRed ? Colors.red : Colors.black),
+    );
+}
+```
+
+If you don't want the text to start red, but instead only color it when `value` changes for the first time, you can set `startDone` to `true`:
+
+```dart
+final isRed = useDelayed(
+    delay: const Duration(seconds: 1),
+    before: true,
+    after: false,
+    startDone: true,
+    keys: [value],
+);
+```
+
+
+#### ´usePage´
+A hook that will return the current page from a given `PageController` which can help you achieve complex animations and transitions in `PageView`s.
+
+```dart
+Widget build(BuildContext context, WidgetRef ref) {
+    final pageController = usePageController();
+    final page = usePage(pageController);
+    return Text('Current page: $page');
+}
+```
+
+> [!WARNING] Be mindful of rebuilds
+> Similar to hooks like `useAnimation`, this hook will trigger a rebuild on every frame while the page is being dragged or animating.
+> Make sure to call this from a widget that is cheap to rebuild, ideally a leaf of your widget tree.
+
+#### `useListenableListener`
 ---
 
 ## Continuous Integration 🤖

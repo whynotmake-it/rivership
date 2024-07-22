@@ -1,26 +1,20 @@
-# Rivership
+# Rivership Workspace
 
 [![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
 
+Rivership is a set of opinionated tools that will get you shipping your Flutter app in no time if you are using [`riverpod`](https://pub.dev/packages/hooks_riverpod) and [`flutter_hooks`](https://pub.dev/packages/flutter_hooks).
 
-Infrastructure used by whynotmake.it for maximum velocity
 
-## Installation 💻
+This monorepo contains Rivership, and all its associated packages. Check out the `packages/` directory to explore them, or jump straight to the [Rivership README](./packages/rivership/README.md).
 
-**❗ In order to start using Rivership you must have the [Dart SDK][dart_install_link] installed on your machine.**
 
-Install via `dart pub add`:
-
-```sh
-dart pub add rivership
-```
-
----
-
-## Continuous Integration 🤖
-
-Rivership comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
+## Package overview
+| Package                                     | Description                                                        |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| [rivership](./packages/rivership)           | An opinionated infrastructure package for use with hooks_riverpod. |
+| [rivership_test](./packages/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
+| ---                                         | ---                                                                |
 
 
 ---
