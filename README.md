@@ -10,11 +10,10 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 
 
 ## Package overview
-| Package                                     | Description                                                        |
-| ------------------------------------------- | ------------------------------------------------------------------ |
-| [rivership](./packages/rivership)           | An opinionated infrastructure package for use with hooks_riverpod. |
-| [rivership_test](./packages/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
-| ---                                         | ---                                                                |
+| Package                                     | pub.dev                                                     | Description                                                        |
+| ------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
+| [rivership](./packages/rivership)           | ![Pub Version](https://img.shields.io/pub/v/rivership)      | An opinionated infrastructure package for use with hooks_riverpod. |
+| [rivership_test](./packages/rivership_test) | ![Pub Version](https://img.shields.io/pub/v/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
 
 
 ---
