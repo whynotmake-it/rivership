@@ -5,8 +5,6 @@ import 'package:rivership_test/rivership_test.dart';
 
 void main() {
   group('useDelayed', () {
-    setUp(() {});
-
     Widget build({required bool Function() hookCall}) {
       return HookBuilder(
         builder: (context) {
@@ -15,6 +13,10 @@ void main() {
         },
       );
     }
+
+    test('is exported by package', () async {
+      expect(useDelayed, isA<Function>());
+    });
 
     testWidgets('returns before until delay has passed', (tester) async {
       await tester.pumpWidget(
