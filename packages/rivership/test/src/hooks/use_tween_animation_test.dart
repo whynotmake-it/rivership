@@ -24,6 +24,10 @@ class _MockWidget extends HookConsumerWidget {
 
 void main() {
   group('useTweenAnimation', () {
+    test('is exported by package', () async {
+      expect(useTweenAnimation, isA<Function>());
+    });
+
     testWidgets(
       'animates from start to target value with default duration',
       (tester) async {

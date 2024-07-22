@@ -47,3 +47,9 @@ extension HctTools on Color {
   /// Converts this color to its HCT representation.
   Hct toHct() => Hct.fromInt(value);
 }
+
+/// Tools for working with HCT colors.
+extension HctToolsHct on Hct {
+  /// Converts this [Hct] to a [Color].
+  Color toColor() => Color(toInt());
+}

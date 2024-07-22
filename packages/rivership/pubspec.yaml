@@ -1,6 +1,8 @@
 name: rivership
 description: An opinionated infrastructure package for use with hooks_riverpod.
 version: 0.1.0
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/rivership
+homepage: https://whynotmake.it
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

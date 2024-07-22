@@ -1,6 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rivership/rivership.dart';
-
 import 'package:rivership_test/rivership_test.dart';
 
 const _duration = Duration(seconds: 1);

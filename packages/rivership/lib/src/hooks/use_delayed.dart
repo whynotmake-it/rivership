@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
 /// Returns [before], waits until [delay] has passed, then returns [after].
@@ -15,6 +14,7 @@ T useDelayed<T extends Object>({
   List<Object?>? keys,
 }) {
   final changes = useState(0);
+  final timeUp = useState(false);
 
   useEffect(
     () {
@@ -24,17 +24,19 @@ T useDelayed<T extends Object>({
     keys,
   );
 
-  final future = useMemoized(
-    () => switch (delay) {
-      Duration.zero => Future<void>.value(),
-      _ => Future<void>.delayed(delay),
+  useEffect(
+    () {
+      timeUp.value = false;
+      final timer = Timer(delay, () {
+        timeUp.value = true;
+      });
+      return timer.cancel;
     },
     [delay, before, after, ...?keys],
   );
-  final value = useFuture(future);
 
   if (startDone && changes.value <= 1 || delay == Duration.zero) {
     return after;
   }
-  return value.connectionState == ConnectionState.done ? after : before;
+  return timeUp.value ? after : before;
 }

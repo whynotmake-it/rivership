@@ -39,6 +39,10 @@ void main() {
       );
     }
 
+    test('is exported by package', () async {
+      expect(usePage, isA<Function>());
+    });
+
     testWidgets('returns initial page if no clients', (tester) async {
       await tester.pumpWidget(build(showPageView: false));
       expect(find.byKey(const ValueKey(0.0)), findsOneWidget);
