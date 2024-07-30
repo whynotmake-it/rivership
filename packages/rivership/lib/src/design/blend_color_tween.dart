@@ -1,6 +1,6 @@
-import 'package:flutter/widgets.dart';
-import 'package:material_color_utilities/hct/hct.dart';
-import 'package:rivership/rivership.dart';
+import 'package:flutter/widgets.dart' show Color, ColorTween;
+import 'package:material_color_utilities/hct/hct.dart' show Hct;
+import 'package:rivership/src/extensions/hct_tools.dart';
 
 /// A [ColorTween] that blends in [Hct] colorspace.
 class BlendColorTween extends ColorTween {

@@ -1,9 +1,7 @@
 # Rivership
 
-[![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
-[![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
-
-
+![Pub Version](https://img.shields.io/pub/v/rivership)
+[![Coverage](./coverage.svg)](./test/)
 
 Rivership is a set of opinionated tools that will get you shipping your Flutter app in no time if you are using [`riverpod`](https://pub.dev/packages/hooks_riverpod) and [`flutter_hooks`](https://pub.dev/packages/flutter_hooks).
 
@@ -92,7 +90,7 @@ final isRed = useDelayed(
 ```
 
 
-#### ´usePage´
+#### `usePage`
 A hook that will return the current page from a given `PageController` which can help you achieve complex animations and transitions in `PageView`s.
 
 ```dart
@@ -107,13 +105,28 @@ Widget build(BuildContext context, WidgetRef ref) {
 > Similar to hooks like `useAnimation`, this hook will trigger a rebuild on every frame while the page is being dragged or animating.
 > Make sure to call this from a widget that is cheap to rebuild, ideally a leaf of your widget tree.
 
-#### `useListenableListener`
----
+### Design Utilities
+Rivership includes a few helper tools for working with Colors and other UI properties.
 
-## Continuous Integration 🤖
+#### `SimpleWidgetStates`
+A subclass of `WidgetStateProperty` that purposefully doesn't trades flexibility for simplicity.
+Simply define states like this:
 
-Infra comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
+```dart
+return TextButton(
+    style: TextButton.styleFrom(
+        color: SimpleWidgetStates.from(
+            normal: Colors.blue,
+            pressed: Colors.blue[800],
+            disabled: Colors.grey,
+        ),
+    ),
+    child: Text("Button"),
+    onPressed: () {},
+);
+```
 
+The values you don't pass will fall back to those you did pass, so you can define only the states you need.
 
 ---
 

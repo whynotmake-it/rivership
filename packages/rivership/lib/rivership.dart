@@ -2,6 +2,7 @@
 library rivership;
 
 export 'src/design/blend_color_tween.dart';
+export 'src/design/simple_widget_states.dart';
 
 export 'src/extensions/async_value_tools.dart';
 export 'src/extensions/auto_dispose_ref_chache.dart';
