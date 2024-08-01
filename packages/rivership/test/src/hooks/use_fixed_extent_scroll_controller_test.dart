@@ -7,10 +7,12 @@ import 'package:rivership_test/rivership_test.dart';
 void main() {
   testWidgets('debugFillProperties', (tester) async {
     await tester.pumpWidget(
-      HookBuilder(builder: (context) {
-        useFixedExtentScrollController();
-        return const SizedBox();
-      }),
+      HookBuilder(
+        builder: (context) {
+          useFixedExtentScrollController();
+          return const SizedBox();
+        },
+      ),
     );
 
     final element = tester.element(find.byType(HookBuilder));
@@ -34,11 +36,13 @@ void main() {
       late FixedExtentScrollController controller2;
 
       await tester.pumpWidget(
-        HookBuilder(builder: (context) {
-          controller2 = FixedExtentScrollController();
-          controller = useFixedExtentScrollController();
-          return Container();
-        }),
+        HookBuilder(
+          builder: (context) {
+            controller2 = FixedExtentScrollController();
+            controller = useFixedExtentScrollController();
+            return Container();
+          },
+        ),
       );
 
       expect(controller.debugLabel, controller2.debugLabel);
@@ -52,19 +56,23 @@ void main() {
       late FixedExtentScrollController controller2;
 
       await tester.pumpWidget(
-        HookBuilder(builder: (context) {
-          controller2 = FixedExtentScrollController();
-          controller = useFixedExtentScrollController();
-          return Container();
-        }),
+        HookBuilder(
+          builder: (context) {
+            controller2 = FixedExtentScrollController();
+            controller = useFixedExtentScrollController();
+            return Container();
+          },
+        ),
       );
       expect(controller, isA<FixedExtentScrollController>());
 
       await tester.pumpWidget(
-        HookBuilder(builder: (context) {
-          controller2 = useFixedExtentScrollController();
-          return Container();
-        }),
+        HookBuilder(
+          builder: (context) {
+            controller2 = useFixedExtentScrollController();
+            return Container();
+          },
+        ),
       );
 
       expect(identical(controller, controller2), isTrue);
