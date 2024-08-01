@@ -37,7 +37,7 @@ extension IterableTools<T> on Iterable<T> {
     }
   }
 
-  /// Puts [element] between every element in [list] and at the bounds of [list].
+  /// Puts [element] between every element and at the bounds of this Iterable.
   ///
   /// Example:
   ///

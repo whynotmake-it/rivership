@@ -1,4 +1,4 @@
-import 'package:rivership/src/extensions/iterable_tools.dart';
+import 'package:rivership/rivership.dart';
 import 'package:rivership_test/rivership_test.dart';
 
 void main() {
@@ -31,11 +31,14 @@ void main() {
     test('chunked splits list into chunks of given size', () {
       final list = [1, 2, 3, 4, 5];
       final result = list.chunked(2).toList();
-      expect(result, [
-        [1, 2],
-        [3, 4],
-        [5]
-      ]);
+      expect(
+        result,
+        [
+          [1, 2],
+          [3, 4],
+          [5]
+        ],
+      );
     });
 
     test('chunked throws error for non-positive size', () {
