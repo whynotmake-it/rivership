@@ -6,6 +6,7 @@ export 'src/design/simple_widget_states.dart';
 
 export 'src/extensions/async_value_tools.dart';
 export 'src/extensions/auto_dispose_ref_chache.dart';
+export 'src/extensions/brightness_tools.dart';
 export 'src/extensions/date_time_tools.dart';
 export 'src/extensions/duration_formatting.dart';
 export 'src/extensions/hct_tools.dart';
