@@ -1,3 +1,4 @@
+/// Extension methods for the `Iterable` class.
 extension IterableTools<T> on Iterable<T> {
   /// Attempts to get the element at [index].
   ///
