@@ -11,6 +11,7 @@ export 'src/extensions/duration_formatting.dart';
 export 'src/extensions/hct_tools.dart';
 export 'src/extensions/iterable_tools.dart';
 export 'src/extensions/object_try_as.dart';
+export 'src/extensions/string_if_not_empty.dart';
 
 export 'src/hooks/use_date_format.dart';
 export 'src/hooks/use_delayed.dart';
