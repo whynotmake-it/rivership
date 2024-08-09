@@ -20,3 +20,9 @@ export 'src/hooks/use_fixed_extent_scroll_controller.dart';
 export 'src/hooks/use_listenable_listener.dart';
 export 'src/hooks/use_page.dart';
 export 'src/hooks/use_tween_animation.dart';
+
+export 'src/widgets/animated_size_switcher.dart';
+export 'src/widgets/fade_shuttle.dart';
+
+export 'src/widgets/animated_size_switcher.dart';
+export 'src/widgets/fade_shuttle.dart';
