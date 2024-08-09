@@ -23,6 +23,3 @@ export 'src/hooks/use_tween_animation.dart';
 
 export 'src/widgets/animated_size_switcher.dart';
 export 'src/widgets/fade_shuttle.dart';
-
-export 'src/widgets/animated_size_switcher.dart';
-export 'src/widgets/fade_shuttle.dart';
