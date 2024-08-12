@@ -19,7 +19,7 @@ class AnimatedText extends StatelessWidget {
     this.textAlign,
     this.maxLines,
     this.softWrap,
-    this.textOverflow,
+    this.overflow,
   });
 
   /// The text to display.
@@ -39,11 +39,37 @@ class AnimatedText extends StatelessWidget {
   ///
   /// Defaults to `DefaultTextStyle.of(context)`
   final TextStyle? style;
-  final TextAlign? textAlign;
-  final int? maxLines;
-  final bool? softWrap;
-  final TextOverflow? textOverflow;
 
+  /// How the text should be aligned horizontally.
+  final TextAlign? textAlign;
+
+  /// An optional maximum number of lines for the text to span, wrapping if
+  /// necessary.
+  /// If the text exceeds the given number of lines, it will be truncated
+  /// according to [overflow].
+  ///
+  /// If this is 1, text will not wrap. Otherwise, text will be wrapped at the
+  /// edge of the box.
+  ///
+  /// If this is null, but there is an ambient [DefaultTextStyle] that specifies
+  /// an explicit number for its [DefaultTextStyle.maxLines], then the
+  /// [DefaultTextStyle] value will take precedence. You can use a [RichText]
+  /// widget directly to entirely override the [DefaultTextStyle].
+  final int? maxLines;
+
+  /// How visual overflow should be handled.
+  ///
+  /// If this is null [TextStyle.overflow] will be used, otherwise the value
+  /// from the nearest [DefaultTextStyle] ancestor will be used.
+  final bool? softWrap;
+
+  /// How visual overflow should be handled.
+  ///
+  /// If this is null [TextStyle.overflow] will be used, otherwise the value
+  /// from the nearest [DefaultTextStyle] ancestor will be used.
+  final TextOverflow? overflow;
+
+  /// How to transition changes to [text].
   final AnimatedSwitcherTransitionBuilder? transitionBuilder;
 
   @override
@@ -51,6 +77,8 @@ class AnimatedText extends StatelessWidget {
     return AnimatedDefaultTextStyle(
       duration: duration,
       style: style ?? DefaultTextStyle.of(context).style,
+      textAlign: textAlign,
+      maxLines: maxLines,
       child: AnimatedSize(
         duration: duration,
         curve: curve,
@@ -72,11 +100,8 @@ class AnimatedText extends StatelessWidget {
           child: Text(
             text,
             key: ValueKey(text),
-            style: style,
-            textAlign: textAlign,
-            maxLines: maxLines,
             softWrap: softWrap,
-            overflow: textOverflow,
+            overflow: overflow,
           ),
         ),
       ),
