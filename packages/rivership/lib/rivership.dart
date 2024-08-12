@@ -2,6 +2,7 @@
 library rivership;
 
 export 'src/design/blend_color_tween.dart';
+export 'src/design/simple_spring.dart';
 export 'src/design/simple_widget_states.dart';
 
 export 'src/extensions/async_value_tools.dart';
@@ -17,9 +18,11 @@ export 'src/extensions/string_if_not_empty.dart';
 export 'src/hooks/use_date_format.dart';
 export 'src/hooks/use_delayed.dart';
 export 'src/hooks/use_fixed_extent_scroll_controller.dart';
-export 'src/hooks/use_listenable_listener.dart';
+export 'src/hooks/use_keyed_state.dart';
 export 'src/hooks/use_page.dart';
+export 'src/hooks/use_spring_animation.dart';
 export 'src/hooks/use_tween_animation.dart';
 
 export 'src/widgets/animated_size_switcher.dart';
+export 'src/widgets/animated_text.dart';
 export 'src/widgets/fade_shuttle.dart';

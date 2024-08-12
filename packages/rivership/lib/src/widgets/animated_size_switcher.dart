@@ -96,10 +96,7 @@ class AnimatedSizeSwitcher extends StatelessWidget {
           children: <Widget>[
             for (final child in previousChildren)
               Positioned.fill(
-                child: Align(
-                  alignment: alignment,
-                  child: child,
-                ),
+                child: child,
               ),
             AnimatedSize(
               alignment: alignment,
