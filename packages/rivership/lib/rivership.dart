@@ -17,7 +17,7 @@ export 'src/extensions/string_if_not_empty.dart';
 export 'src/hooks/use_date_format.dart';
 export 'src/hooks/use_delayed.dart';
 export 'src/hooks/use_fixed_extent_scroll_controller.dart';
-export 'src/hooks/use_listenable_listener.dart';
+export 'src/hooks/use_keyed_state.dart';
 export 'src/hooks/use_page.dart';
 export 'src/hooks/use_tween_animation.dart';
 
