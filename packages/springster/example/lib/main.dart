@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
 void main() async {
+  final colorScheme = ColorScheme.fromSeed(seedColor: Colors.blue);
   runApp(MaterialApp(
+    theme: ThemeData.from(
+      colorScheme: colorScheme,
+    ),
     home: SpringsterExample(),
   ));
 }
@@ -13,7 +17,6 @@ class SpringsterExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.inverseSurface,
       body: Center(
         child: DraggableLogo(),
       ),
@@ -36,50 +39,86 @@ class _DraggableLogoState extends State<DraggableLogo> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onPanStart: (details) {
-        setState(() {
-          isDragging = true;
-        });
-      },
-      onPanEnd: (details) {
-        setState(() {
-          x = 0;
-          y = 0;
-          isDragging = false;
-        });
-      },
-      onPanUpdate: (details) {
-        setState(() {
-          x += details.delta.dx;
-          y += details.delta.dy;
-        });
-      },
-      child: Stack(
-        children: [
-          Card(
-            child: SizedBox.square(dimension: 100),
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(.2),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        DraggableCard(icon: Icons.favorite),
+        const Target(),
+        DraggableCard(icon: Icons.cabin),
+      ],
+    );
+  }
+}
+
+class DraggableCard extends StatelessWidget {
+  const DraggableCard({super.key, required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return SpringDraggable(
+      data: icon,
+      spring: SimpleSpring.bouncy,
+      child: Card(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        elevation: 0,
+        shape: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Icon(
+            icon,
+            size: 80,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
           ),
-          SpringBuilder2D<double>(
-            value: (x, y),
-            spring: SimpleSpring.bouncy.extraBounce(.1),
-            simulate: !isDragging,
-            builder: (context, offset, child) => Transform.translate(
-              offset: Offset(offset.$1, offset.$2),
-              child: child,
-            ),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: FlutterLogo(
-                  size: 80,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+class Target extends StatefulWidget {
+  const Target({super.key});
+
+  @override
+  State<Target> createState() => _TargetState();
+}
+
+class _TargetState extends State<Target> {
+  IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<IconData>(
+      builder: (context, candidateData, rejectedData) {
+        final color = candidateData.isNotEmpty
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerHighest;
+        return AnimatedContainer(
+          duration: Durations.medium4,
+          curve: Easing.standard,
+          padding: const EdgeInsets.all(48),
+          decoration: ShapeDecoration(
+            shape: const CircleBorder(),
+            color: color,
+          ),
+          child: AnimatedOpacity(
+            opacity: candidateData.isEmpty ? 1.0 : 0.0,
+            duration: Durations.medium4,
+            curve: Easing.standard,
+            child: Icon(
+              icon,
+              size: 80,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        );
+      },
+      onAcceptWithDetails: (details) {
+        setState(() {
+          icon = details.data;
+        });
+      },
     );
   }
 }
