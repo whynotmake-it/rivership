@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -35,6 +36,7 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
     this.rootOverlay = false,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter,
+    this.forceFeedbackSize = false,
     super.key,
   });
 
@@ -227,6 +229,11 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   /// Defaults to [SimpleSpring.interactive].
   final SpringDescription spring;
 
+  /// Whether the feedback widget should be resized to the size of the draggable.
+  ///
+  /// Defaults to false.
+  final bool forceFeedbackSize;
+
   @override
   State<SpringDraggable> createState() => _SpringDraggableState();
 }
@@ -235,23 +242,78 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     with TickerProviderStateMixin {
   bool isReturning = false;
 
-  late final AnimationController _xController =
-      AnimationController.unbounded(vsync: this);
+  late final AnimationController xController;
 
-  late final AnimationController _yController =
-      AnimationController.unbounded(vsync: this);
+  late final AnimationController yController;
 
   OverlayEntry? currentEntry;
 
-  Widget get feedback => widget.feedback ?? widget.child;
+  Widget get feedbackChild => widget.feedback ?? widget.child;
+
+  BoxConstraints? constraints;
+
+  @override
+  void initState() {
+    xController = AnimationController.unbounded(vsync: this);
+    yController = AnimationController.unbounded(vsync: this);
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final childWhenDragging = widget.childWhenDragging ??
+        Visibility.maintain(
+          visible: false,
+          child: widget.child,
+        );
+
+    if (widget.forceFeedbackSize) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          this.constraints = constraints;
+          return Draggable(
+            childWhenDragging: childWhenDragging,
+            affinity: widget.affinity,
+            axis: widget.axis,
+            allowedButtonsFilter: widget.allowedButtonsFilter,
+            feedbackOffset: widget.feedbackOffset,
+            dragAnchorStrategy: widget.dragAnchorStrategy,
+            ignoringFeedbackSemantics: widget.ignoringFeedbackSemantics,
+            ignoringFeedbackPointer: widget.ignoringFeedbackPointer,
+            maxSimultaneousDrags: widget.maxSimultaneousDrags,
+            onDragStarted: () {
+              widget.onDragStarted?.call();
+              _cancelReturn();
+            },
+            onDragUpdate: widget.onDragUpdate,
+            onDraggableCanceled: (v, o) {
+              if (widget.onlyReturnWhenCanceled) {
+                _onDragEnd(v, o);
+              }
+              widget.onDraggableCanceled?.call(v, o);
+            },
+            onDragEnd: (details) {
+              if (!widget.onlyReturnWhenCanceled || !details.wasAccepted) {
+                _onDragEnd(details.velocity, details.offset);
+              }
+              widget.onDragEnd?.call(details);
+            },
+            feedback: ConstrainedBox(
+              constraints: constraints,
+              child: feedbackChild,
+            ),
+            data: widget.data,
+            child: Visibility.maintain(
+              visible: !isReturning,
+              child: widget.child,
+            ),
+          );
+        },
+      );
+    }
+
     return Draggable(
-      childWhenDragging: Visibility.maintain(
-        visible: false,
-        child: widget.child,
-      ),
+      childWhenDragging: childWhenDragging,
       affinity: widget.affinity,
       axis: widget.axis,
       allowedButtonsFilter: widget.allowedButtonsFilter,
@@ -277,7 +339,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
         }
         widget.onDragEnd?.call(details);
       },
-      feedback: feedback,
+      feedback: feedbackChild,
       data: widget.data,
       child: Visibility.maintain(
         visible: !isReturning,
@@ -288,8 +350,8 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
   @override
   void dispose() {
-    _xController.dispose();
-    _yController.dispose();
+    xController.dispose();
+    yController.dispose();
     super.dispose();
   }
 
@@ -297,8 +359,8 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     if (currentEntry?.mounted ?? false) {
       currentEntry?.remove();
     }
-    _xController.stop();
-    _yController.stop();
+    xController.stop();
+    yController.stop();
     isReturning = false;
   }
 
@@ -319,8 +381,8 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       final xTween = Tween<double>(begin: offset.dx, end: targetPosition.dx);
       final yTween = Tween<double>(begin: offset.dy, end: targetPosition.dy);
 
-      final xAnimation = _xController.drive(xTween);
-      final yAnimation = _yController.drive(yTween);
+      final xAnimation = xController.drive(xTween);
+      final yAnimation = yController.drive(yTween);
 
       currentEntry = OverlayEntry(
         builder: (context) => Stack(
@@ -331,7 +393,12 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
                 left: xAnimation.value,
                 top: yAnimation.value,
                 child: IgnorePointer(
-                  child: feedback,
+                  child: widget.forceFeedbackSize
+                      ? ConstrainedBox(
+                          constraints: this.constraints!,
+                          child: feedbackChild,
+                        )
+                      : feedbackChild,
                 ),
               ),
             ),
@@ -343,10 +410,10 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       final v = _getVelocity(offset, targetPosition, velocity);
 
       final animations = Future.wait([
-        _xController.animateWith(
+        xController.animateWith(
           SpringSimulation(widget.spring, 0, 1, v.dx),
         ),
-        _yController.animateWith(
+        yController.animateWith(
           SpringSimulation(widget.spring, 0, 1, v.dy),
         ),
       ]);
