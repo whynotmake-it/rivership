@@ -69,7 +69,7 @@ class SimpleSpring extends SpringDescription {
   /// - [SimpleSpring.withDamping]
   double get dampingFraction => 1 - bounce;
 
-  /// An effectively instant duration.
+  /// An effectively instant spring.
   static const instant = SimpleSpring(duration: 0);
 
   /// A smooth spring with no bounce.

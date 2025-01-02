@@ -2,16 +2,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:rivership/src/design/simple_spring.dart';
+
+import 'package:springster/src/simple_spring.dart';
 
 /// Continuously animates [value] using a Spring simulation using a given
 /// [SpringDescription].
+///
+/// If [simulate] is false, the animation will be immediately set to the target
+/// value.
 ///
 /// See also:
 ///   * [SimpleSpring]
 T useSpringAnimation<T>({
   required T value,
   SpringDescription spring = SimpleSpring.smooth,
+  bool simulate = true,
 }) {
   final ticker = useSingleTickerProvider();
   final animation = use(
@@ -19,10 +24,32 @@ T useSpringAnimation<T>({
       tickerProvider: ticker,
       value: value,
       spring: spring,
+      simulate: simulate,
     ),
   );
 
   return useAnimation(animation);
+}
+
+/// Continuously animates a 2D value using a Spring simulation using a given
+/// [SpringDescription].
+///
+/// If [simulate] is false, the animation will be immediately set to the target
+/// value.
+///
+/// See also:
+///   * [useSpringAnimation]
+(T x, T y) use2DSpringAnimation<T>({
+  required (T x, T y) value,
+  SpringDescription spring = SimpleSpring.smooth,
+  bool simulate = true,
+}) {
+  final x =
+      useSpringAnimation(value: value.$1, spring: spring, simulate: simulate);
+  final y =
+      useSpringAnimation(value: value.$2, spring: spring, simulate: simulate);
+
+  return (x, y);
 }
 
 class _UseSpringAnimation<T> extends Hook<Animation<T>> {
@@ -30,16 +57,10 @@ class _UseSpringAnimation<T> extends Hook<Animation<T>> {
     required this.value,
     required this.tickerProvider,
     required this.spring,
-    this.upperBound,
-    this.lowerBound,
     this.onDone,
+    this.simulate = true,
     super.keys,
-  }) : assert(
-          (upperBound != null && lowerBound != null) ||
-              (upperBound == null && lowerBound == null),
-          'upperBound and lowerBound have to be set for a bound animation. '
-          'For an unbound animation both have to be null',
-        );
+  });
 
   /// The target value for the transition.
   ///
@@ -52,21 +73,16 @@ class _UseSpringAnimation<T> extends Hook<Animation<T>> {
   /// Modify this for bounciness and duration.
   final SpringDescription spring;
 
-  /// The value at which this animation is deemed to be completed.
-  ///
-  /// Can be used to clamp the spring to a maximal value.
-  final double? upperBound;
-
-  /// The value at which this animation is deemed to be dismissed.
-  ///
-  /// Can be used to clamp the spring to a minimal value.
-  final double? lowerBound;
-
   /// Called approximately when the spring animation ends.
   final VoidCallback? onDone;
 
   /// The [TickerProvider] for the animation.
   final TickerProvider tickerProvider;
+
+  /// Whether to simulate the spring animation.
+  ///
+  /// If false, the animation will be immediately set to the target value.
+  final bool simulate;
 
   @override
   _SpringAnimationState<T> createState() => _SpringAnimationState();
@@ -77,8 +93,6 @@ class _UseSpringAnimation<T> extends Hook<Animation<T>> {
 
     properties
       ..add(DiagnosticsProperty<T>('value', value))
-      ..add(DoubleProperty('upperBound', upperBound, ifNull: 'infinite'))
-      ..add(DoubleProperty('lowerBound', lowerBound, ifNull: 'infinite'))
       ..add(DiagnosticsProperty<SpringDescription>('spring', spring));
   }
 }
@@ -89,6 +103,10 @@ class _SpringAnimationState<T>
 
   late Animation<T> _animation;
 
+  DateTime? _lastUpdate;
+
+  double _velocity = 0;
+
   @override
   void initHook() {
     super.initHook();
@@ -98,15 +116,7 @@ class _SpringAnimationState<T>
   }
 
   void _initController() {
-    if (hook.upperBound == null && hook.lowerBound == null) {
-      _controller = AnimationController.unbounded(vsync: hook.tickerProvider);
-    } else {
-      _controller = AnimationController(
-        vsync: hook.tickerProvider,
-        upperBound: hook.upperBound!,
-        lowerBound: hook.lowerBound!,
-      );
-    }
+    _controller = AnimationController.unbounded(vsync: hook.tickerProvider);
   }
 
   @override
@@ -117,20 +127,52 @@ class _SpringAnimationState<T>
 
     final spring = hook.spring;
 
-    if (oldValue != newValue) {
-      Tween<T>(begin: _animation.value, end: newValue);
-      _animation = _controller.drive(
-        Tween<T>(begin: _animation.value, end: newValue),
-      );
-
-      final simulation = SpringSimulation(spring, 0, 1, -_controller.velocity);
-
-      _controller.animateWith(simulation).then((value) {
-        hook.onDone?.call();
-      });
+    if (oldValue != newValue || oldHook.spring != spring) {
+      if (hook.simulate) {
+        final tween = Tween<T>(begin: _animation.value, end: newValue);
+        _animation = _controller.drive(tween);
+        final simulation = SpringSimulation(spring, 0, 1, _velocity);
+        _controller.animateWith(simulation).then((value) {
+          hook.onDone?.call();
+        });
+      } else {
+        _velocity = _calculateVelocity(
+          oldTarget: oldValue,
+          newTarget: newValue,
+          currentValue: _animation.value,
+          lastUpdate: _lastUpdate,
+        );
+        _animation = AlwaysStoppedAnimation(newValue);
+        _controller.stop();
+      }
     }
 
     super.didUpdateHook(oldHook);
+  }
+
+  double _calculateVelocity({
+    required T oldTarget,
+    required T newTarget,
+    required T currentValue,
+    required DateTime? lastUpdate,
+  }) {
+    if (oldTarget is num &&
+        newTarget is num &&
+        currentValue is num &&
+        lastUpdate != null) {
+      final absolute = newTarget - oldTarget;
+
+      final now = DateTime.now();
+      final time =
+          now.millisecondsSinceEpoch - lastUpdate.millisecondsSinceEpoch;
+
+      _lastUpdate = now;
+
+      return absolute / time;
+    }
+
+    _lastUpdate = DateTime.now();
+    return 0;
   }
 
   @override
