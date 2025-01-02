@@ -17,6 +17,7 @@ class SpringBuilder<T> extends HookWidget {
     required this.spring,
     required this.value,
     this.simulate = true,
+    this.child,
     super.key,
   });
 
@@ -30,7 +31,7 @@ class SpringBuilder<T> extends HookWidget {
   ///
   /// The [builder] function is passed the interpolated value from the spring
   /// animation.
-  final Widget Function(BuildContext context, T value) builder;
+  final ValueWidgetBuilder<T> builder;
 
   /// The spring behavior of the transition.
   ///
@@ -42,6 +43,9 @@ class SpringBuilder<T> extends HookWidget {
   /// If false, the animation will be immediately set to the target value.
   final bool simulate;
 
+  /// The child widget to animate.
+  final Widget? child;
+
   @override
   Widget build(BuildContext context) {
     final value = useSpringAnimation(
@@ -49,7 +53,7 @@ class SpringBuilder<T> extends HookWidget {
       spring: spring,
       simulate: simulate,
     );
-    return builder(context, value);
+    return builder(context, value, child);
   }
 }
 
@@ -68,6 +72,7 @@ class SpringBuilder2D<T> extends HookWidget {
     required this.spring,
     required this.value,
     this.simulate = true,
+    this.child,
     super.key,
   });
 
@@ -81,7 +86,7 @@ class SpringBuilder2D<T> extends HookWidget {
   ///
   /// The [builder] function is passed the interpolated (x,y) values from the
   /// spring animation.
-  final Widget Function(BuildContext context, (T x, T y) value) builder;
+  final ValueWidgetBuilder<(T x, T y)> builder;
 
   /// The spring behavior of the transition.
   ///
@@ -93,6 +98,9 @@ class SpringBuilder2D<T> extends HookWidget {
   /// If false, the animation will be immediately set to the target value.
   final bool simulate;
 
+  /// The child widget to animate.
+  final Widget? child;
+
   @override
   Widget build(BuildContext context) {
     final value = use2DSpringAnimation(
@@ -100,6 +108,6 @@ class SpringBuilder2D<T> extends HookWidget {
       spring: spring,
       simulate: simulate,
     );
-    return builder(context, value);
+    return builder(context, value, child);
   }
 }

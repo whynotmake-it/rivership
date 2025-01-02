@@ -128,6 +128,11 @@ class _SpringAnimationState<T>
     final spring = hook.spring;
 
     if (oldValue != newValue || oldHook.spring != spring) {
+      _absoluteVelocity = _calculateAbsoluteVelocity(
+        oldTarget: oldValue,
+        newTarget: newValue,
+        lastUpdate: _lastUpdate,
+      );
       if (hook.simulate) {
         final tween = Tween<T>(begin: _animation.value, end: newValue);
         _animation = _controller.drive(tween);
@@ -137,17 +142,13 @@ class _SpringAnimationState<T>
           currentValue: _animation.value,
           absoluteVelocity: _absoluteVelocity,
         );
+
+        print('relativeVelocity: $relativeVelocity');
         final simulation = SpringSimulation(spring, 0, 1, relativeVelocity);
         _controller.animateWith(simulation).then((value) {
           hook.onDone?.call();
         });
       } else {
-        _absoluteVelocity = _calculateAbsoluteVelocity(
-          oldTarget: oldValue,
-          newTarget: newValue,
-          currentValue: _animation.value,
-          lastUpdate: _lastUpdate,
-        );
         _animation = AlwaysStoppedAnimation(newValue);
         _controller.stop();
       }
@@ -159,22 +160,16 @@ class _SpringAnimationState<T>
   double _calculateAbsoluteVelocity({
     required T oldTarget,
     required T newTarget,
-    required T currentValue,
     required DateTime? lastUpdate,
   }) {
-    if (oldTarget is num &&
-        newTarget is num &&
-        currentValue is num &&
-        lastUpdate != null) {
+    if (oldTarget is num && newTarget is num && lastUpdate != null) {
       final absolute = newTarget - oldTarget;
 
       final now = DateTime.now();
-      final time =
-          now.millisecondsSinceEpoch - lastUpdate.millisecondsSinceEpoch;
-
+      final time = now.difference(lastUpdate).inMilliseconds;
       _lastUpdate = now;
 
-      return absolute / time;
+      return absolute.toDouble() / time;
     }
 
     _lastUpdate = DateTime.now();
@@ -187,7 +182,7 @@ class _SpringAnimationState<T>
     required double absoluteVelocity,
   }) {
     if (target is num && currentValue is num) {
-      final direction = target < currentValue ? -1 : 1;
+      final direction = target < currentValue ? 1 : -1;
       return absoluteVelocity * direction;
     }
 

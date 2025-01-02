@@ -56,14 +56,18 @@ class _DraggableLogoState extends State<DraggableLogo> {
       },
       child: SpringBuilder2D<double>(
         value: (x, y),
-        spring: SimpleSpring.defaultIOS,
-        simulate: !isDragging,
-        builder: (context, value) => Transform.translate(
-          offset: Offset(value.$1, value.$2),
-          child: Container(
-            width: 100,
-            height: 100,
-            color: Colors.blue,
+        spring: SimpleSpring.bouncy,
+        simulate: true,
+        builder: (context, offset, child) => Transform.translate(
+          offset: Offset(offset.$1, offset.$2),
+          child: child,
+        ),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FlutterLogo(
+              size: 100,
+            ),
           ),
         ),
       ),
