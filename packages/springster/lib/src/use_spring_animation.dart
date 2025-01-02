@@ -103,9 +103,10 @@ class _SpringAnimationState<T>
 
   late Animation<T> _animation;
 
-  DateTime? _lastUpdate;
-
   double _absoluteVelocity = 0;
+
+  DateTime? _lastUpdate;
+  late T _lastValue = hook.value;
 
   @override
   void initHook() {
@@ -117,6 +118,15 @@ class _SpringAnimationState<T>
 
   void _initController() {
     _controller = AnimationController.unbounded(vsync: hook.tickerProvider);
+    _controller.addListener(() {
+      _absoluteVelocity = _calculateAbsoluteVelocity(
+        oldTarget: _lastValue,
+        newTarget: _animation.value,
+        lastUpdate: _lastUpdate,
+      );
+
+      _lastValue = _animation.value;
+    });
   }
 
   @override
@@ -128,11 +138,6 @@ class _SpringAnimationState<T>
     final spring = hook.spring;
 
     if (oldValue != newValue || oldHook.spring != spring) {
-      _absoluteVelocity = _calculateAbsoluteVelocity(
-        oldTarget: oldValue,
-        newTarget: newValue,
-        lastUpdate: _lastUpdate,
-      );
       if (hook.simulate) {
         final tween = Tween<T>(begin: _animation.value, end: newValue);
         _animation = _controller.drive(tween);
@@ -143,14 +148,15 @@ class _SpringAnimationState<T>
           absoluteVelocity: _absoluteVelocity,
         );
 
-        print('relativeVelocity: $relativeVelocity');
         final simulation = SpringSimulation(spring, 0, 1, relativeVelocity);
         _controller.animateWith(simulation).then((value) {
           hook.onDone?.call();
         });
       } else {
         _animation = AlwaysStoppedAnimation(newValue);
-        _controller.stop();
+        _controller
+          ..stop()
+          ..value = 0;
       }
     }
 
@@ -182,8 +188,10 @@ class _SpringAnimationState<T>
     required double absoluteVelocity,
   }) {
     if (target is num && currentValue is num) {
-      final direction = target < currentValue ? 1 : -1;
-      return absoluteVelocity * direction;
+      return switch (target > currentValue) {
+        true => absoluteVelocity,
+        false => -absoluteVelocity,
+      };
     }
 
     return 0;

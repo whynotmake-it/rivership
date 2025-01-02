@@ -13,6 +13,7 @@ class SpringsterExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.inverseSurface,
       body: Center(
         child: DraggableLogo(),
       ),
@@ -54,22 +55,30 @@ class _DraggableLogoState extends State<DraggableLogo> {
           y += details.delta.dy;
         });
       },
-      child: SpringBuilder2D<double>(
-        value: (x, y),
-        spring: SimpleSpring.bouncy,
-        simulate: true,
-        builder: (context, offset, child) => Transform.translate(
-          offset: Offset(offset.$1, offset.$2),
-          child: child,
-        ),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: FlutterLogo(
-              size: 100,
+      child: Stack(
+        children: [
+          Card(
+            child: SizedBox.square(dimension: 100),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(.2),
+          ),
+          SpringBuilder2D<double>(
+            value: (x, y),
+            spring: SimpleSpring.bouncy.extraBounce(.1),
+            simulate: !isDragging,
+            builder: (context, offset, child) => Transform.translate(
+              offset: Offset(offset.$1, offset.$2),
+              child: child,
+            ),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: FlutterLogo(
+                  size: 80,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
