@@ -105,7 +105,7 @@ class _SpringAnimationState<T>
 
   DateTime? _lastUpdate;
 
-  double _velocity = 0;
+  double _absoluteVelocity = 0;
 
   @override
   void initHook() {
@@ -131,12 +131,18 @@ class _SpringAnimationState<T>
       if (hook.simulate) {
         final tween = Tween<T>(begin: _animation.value, end: newValue);
         _animation = _controller.drive(tween);
-        final simulation = SpringSimulation(spring, 0, 1, _velocity);
+
+        final relativeVelocity = _calculateRelativeVelocity(
+          target: newValue,
+          currentValue: _animation.value,
+          absoluteVelocity: _absoluteVelocity,
+        );
+        final simulation = SpringSimulation(spring, 0, 1, relativeVelocity);
         _controller.animateWith(simulation).then((value) {
           hook.onDone?.call();
         });
       } else {
-        _velocity = _calculateVelocity(
+        _absoluteVelocity = _calculateAbsoluteVelocity(
           oldTarget: oldValue,
           newTarget: newValue,
           currentValue: _animation.value,
@@ -150,7 +156,7 @@ class _SpringAnimationState<T>
     super.didUpdateHook(oldHook);
   }
 
-  double _calculateVelocity({
+  double _calculateAbsoluteVelocity({
     required T oldTarget,
     required T newTarget,
     required T currentValue,
@@ -172,6 +178,19 @@ class _SpringAnimationState<T>
     }
 
     _lastUpdate = DateTime.now();
+    return 0;
+  }
+
+  double _calculateRelativeVelocity({
+    required T target,
+    required T currentValue,
+    required double absoluteVelocity,
+  }) {
+    if (target is num && currentValue is num) {
+      final direction = target < currentValue ? -1 : 1;
+      return absoluteVelocity * direction;
+    }
+
     return 0;
   }
 
