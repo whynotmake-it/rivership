@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:springster/springster.dart';
 
@@ -36,7 +35,7 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
     this.rootOverlay = false,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter,
-    this.forceFeedbackSize = false,
+    this.feedbackMatchesConstraints = false,
     super.key,
   });
 
@@ -71,7 +70,8 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
-  /// The widget to display instead of [child] when one or more drags are under way.
+  /// The widget to display instead of [child] when one or more drags are under
+  /// way.
   ///
   /// If this is null, then this widget will always display [child] (and so the
   /// drag source representation will not change while a drag is under
@@ -108,8 +108,8 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   ///  * [childDragAnchorStrategy], which displays the feedback anchored at the
   ///    position of the original child.
   ///
-  ///  * [pointerDragAnchorStrategy], which displays the feedback anchored at the
-  ///    position of the touch that started the drag.
+  ///  * [pointerDragAnchorStrategy], which displays the feedback anchored at
+  ///    the position of the touch that started the drag.
   ///
   /// Defaults to [childDragAnchorStrategy].
   final DragAnchorStrategy dragAnchorStrategy;
@@ -168,10 +168,12 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   /// Called when the draggable is dragged.
   ///
   /// This function will only be called while this widget is still mounted to
-  /// the tree (i.e. [State.mounted] is true), and if this widget has actually moved.
+  /// the tree (i.e. [State.mounted] is true), and if this widget has actually
+  /// moved.
   final DragUpdateCallback? onDragUpdate;
 
-  /// Called when the draggable is dropped without being accepted by a [DragTarget].
+  /// Called when the draggable is dropped without being accepted by a
+  /// [DragTarget].
   ///
   /// This function might be called after this widget has been removed from the
   /// tree. For example, if a drag was in progress when this widget was removed
@@ -229,10 +231,14 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   /// Defaults to [SimpleSpring.interactive].
   final SpringDescription spring;
 
-  /// Whether the feedback widget should be resized to the size of the draggable.
+  /// Whether the feedback widget should be built with the same constraints as
+  /// [child].
+  ///
+  /// This inserts a [LayoutBuilder] in the tree, which can have performance
+  /// implications.
   ///
   /// Defaults to false.
-  final bool forceFeedbackSize;
+  final bool feedbackMatchesConstraints;
 
   @override
   State<SpringDraggable> createState() => _SpringDraggableState();
@@ -267,7 +273,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
           child: widget.child,
         );
 
-    if (widget.forceFeedbackSize) {
+    if (widget.feedbackMatchesConstraints) {
       return LayoutBuilder(
         builder: (context, constraints) {
           this.constraints = constraints;
@@ -393,7 +399,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
                 left: xAnimation.value,
                 top: yAnimation.value,
                 child: IgnorePointer(
-                  child: widget.forceFeedbackSize
+                  child: widget.feedbackMatchesConstraints
                       ? ConstrainedBox(
                           constraints: this.constraints!,
                           child: feedbackChild,

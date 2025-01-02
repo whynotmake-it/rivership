@@ -57,8 +57,8 @@ class SpringBuilder<T> extends HookWidget {
   }
 }
 
-/// Builds a widget that continuously animates two values using a Spring simulation
-/// with a given [SpringDescription].
+/// Builds a widget that continuously animates two values using a Spring
+/// simulation with a given [SpringDescription].
 ///
 /// See also:
 ///   * [use2DSpringAnimation], which provides the underlying animation hook

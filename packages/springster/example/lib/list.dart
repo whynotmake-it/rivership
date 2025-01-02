@@ -91,7 +91,7 @@ class _ListItemState extends State<ListItem> {
           ],
         ),
       ),
-      forceFeedbackSize: true,
+      feedbackMatchesConstraints: true,
       feedback: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1),
         duration: Durations.short4,
