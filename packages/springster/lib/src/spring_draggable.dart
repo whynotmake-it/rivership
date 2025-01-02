@@ -241,6 +241,10 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
   late final AnimationController _yController =
       AnimationController.unbounded(vsync: this);
 
+  OverlayEntry? currentEntry;
+
+  Widget get feedback => widget.feedback ?? widget.child;
+
   @override
   Widget build(BuildContext context) {
     return Draggable(
@@ -256,7 +260,10 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       ignoringFeedbackSemantics: widget.ignoringFeedbackSemantics,
       ignoringFeedbackPointer: widget.ignoringFeedbackPointer,
       maxSimultaneousDrags: widget.maxSimultaneousDrags,
-      onDragStarted: widget.onDragStarted,
+      onDragStarted: () {
+        widget.onDragStarted?.call();
+        _cancelReturn();
+      },
       onDragUpdate: widget.onDragUpdate,
       onDraggableCanceled: (v, o) {
         if (widget.onlyReturnWhenCanceled) {
@@ -270,7 +277,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
         }
         widget.onDragEnd?.call(details);
       },
-      feedback: widget.feedback ?? widget.child,
+      feedback: feedback,
       data: widget.data,
       child: Visibility.maintain(
         visible: !isReturning,
@@ -279,8 +286,27 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     );
   }
 
+  @override
+  void dispose() {
+    _xController.dispose();
+    _yController.dispose();
+    super.dispose();
+  }
+
+  void _cancelReturn() {
+    if (currentEntry?.mounted ?? false) {
+      currentEntry?.remove();
+    }
+    _xController.stop();
+    _yController.stop();
+    isReturning = false;
+  }
+
   void _onDragEnd(Velocity velocity, Offset offset) {
-    if (isReturning) return;
+    if (isReturning) {
+      setState(_cancelReturn);
+    }
+
     if (context.findRenderObject() case final RenderBox box) {
       setState(() {
         isReturning = true;
@@ -296,7 +322,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       final xAnimation = _xController.drive(xTween);
       final yAnimation = _yController.drive(yTween);
 
-      final entry = OverlayEntry(
+      currentEntry = OverlayEntry(
         builder: (context) => Stack(
           children: [
             ListenableBuilder(
@@ -304,33 +330,44 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
               builder: (context, child) => Positioned(
                 left: xAnimation.value,
                 top: yAnimation.value,
-                child: widget.child,
+                child: IgnorePointer(
+                  child: feedback,
+                ),
               ),
             ),
           ],
         ),
       );
 
-      overlay.insert(entry);
+      overlay.insert(currentEntry!);
+      final v = _getVelocity(offset, targetPosition, velocity);
 
       final animations = Future.wait([
         _xController.animateWith(
-          SpringSimulation(
-              widget.spring, 0, 1, velocity.pixelsPerSecond.dx / 1000),
+          SpringSimulation(widget.spring, 0, 1, v.dx),
         ),
         _yController.animateWith(
-          SpringSimulation(
-              widget.spring, 0, 1, velocity.pixelsPerSecond.dy / 1000),
+          SpringSimulation(widget.spring, 0, 1, v.dy),
         ),
       ]);
 
       // ignore: cascade_invocations
       animations.then((value) {
-        entry.remove();
-        setState(() {
-          isReturning = false;
-        });
+        setState(_cancelReturn);
       });
     }
+  }
+
+  Offset _getVelocity(
+    Offset position,
+    Offset targetPosition,
+    Velocity velocity,
+  ) {
+    final adjusted = velocity.pixelsPerSecond / 1000;
+
+    return Offset(
+      targetPosition.dx > position.dx ? adjusted.dx : -adjusted.dx,
+      targetPosition.dy > position.dy ? adjusted.dy : -adjusted.dy,
+    );
   }
 }
