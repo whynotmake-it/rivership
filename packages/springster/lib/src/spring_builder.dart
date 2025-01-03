@@ -8,14 +8,14 @@ import 'package:springster/springster.dart';
 /// See also:
 ///   * [useSpringAnimation], which provides the underlying animation hook
 ///   * [SpringBuilder2D], which animates two values simultaneously
-class SpringBuilder<T> extends HookWidget {
+class SpringBuilder extends StatefulWidget {
   /// Creates a widget that animates a single value using spring physics.
   ///
   /// The [builder], [spring], and [value] arguments must not be null.
   const SpringBuilder({
-    required this.builder,
-    required this.spring,
     required this.value,
+    required this.spring,
+    required this.builder,
     this.simulate = true,
     this.child,
     super.key,
@@ -25,13 +25,13 @@ class SpringBuilder<T> extends HookWidget {
   ///
   /// Whenever this value changes, the widget smoothly animates from
   /// the previous value to the new one.
-  final T value;
+  final double value;
 
   /// Called to build the child widget.
   ///
   /// The [builder] function is passed the interpolated value from the spring
   /// animation.
-  final ValueWidgetBuilder<T> builder;
+  final ValueWidgetBuilder<double> builder;
 
   /// The spring behavior of the transition.
   ///
@@ -47,13 +47,61 @@ class SpringBuilder<T> extends HookWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context) {
-    final value = useSpringAnimation(
-      value: this.value,
-      spring: spring,
-      simulate: simulate,
+  State<SpringBuilder> createState() => _SpringBuilderState();
+}
+
+class _SpringBuilderState extends State<SpringBuilder>
+    with SingleTickerProviderStateMixin {
+  late SpringSimulationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = SpringSimulationController(
+      spring: widget.spring,
+      vsync: this,
+      initialValue: widget.value,
     );
-    return builder(context, value, child);
+  }
+
+  @override
+  void didUpdateWidget(covariant SpringBuilder oldWidget) {
+    if (widget.spring != oldWidget.spring) {
+      controller.spring = widget.spring;
+    }
+    if (!widget.simulate) {
+      controller
+        ..stop()
+        ..value = widget.value;
+    }
+
+    if (widget.value != oldWidget.value) {
+      if (widget.simulate) {
+        print('animateTo ${widget.value}');
+        controller.animateTo(widget.value);
+      } else {
+        controller.value = widget.value;
+      }
+    }
+
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        return widget.builder(context, controller.value, child);
+      },
+      child: widget.child,
+    );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 }
 
