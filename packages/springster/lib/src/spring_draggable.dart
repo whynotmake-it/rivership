@@ -408,7 +408,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
       overlay.insert(currentEntry!);
 
-      final adjustedVelocity = velocity.pixelsPerSecond / 1000;
+      final adjustedVelocity = velocity.pixelsPerSecond;
 
       controller.animateTo(
         (targetPosition.dx, targetPosition.dy),

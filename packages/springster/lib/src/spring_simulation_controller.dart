@@ -24,33 +24,37 @@ class SpringSimulationController extends Animation<double>
     required TickerProvider vsync,
     this.lowerBound = double.negativeInfinity,
     this.upperBound = double.infinity,
-    double initialValue = 0,
+    double? initialValue,
   })  : _spring = spring,
-        _controller = AnimationController.unbounded(vsync: vsync),
-        _animation = AlwaysStoppedAnimation(initialValue),
-        _tween = Tween<double>(begin: initialValue, end: initialValue) {
+        _controller = AnimationController(
+          value: initialValue,
+          vsync: vsync,
+          lowerBound: lowerBound,
+          upperBound: upperBound,
+        ) {
     _controller.addListener(_onAnimationUpdate);
   }
 
   @override
-  double get value => _animation.value;
+  double get value => _controller.value;
 
   set value(double value) {
-    _animation = AlwaysStoppedAnimation(value);
     _controller.value = 0;
   }
 
   @override
   AnimationStatus get status => _controller.status;
 
-  Tween<double> _tween;
-
-  Animation<double> _animation;
-
   final AnimationController _controller;
+
   SpringDescription _spring;
 
   double _absoluteVelocity = 0;
+
+  double _target = 0;
+
+  double _lastValue = 0;
+
   DateTime? _lastUpdate;
 
   /// The lower bound of the animation value.
@@ -82,26 +86,19 @@ class SpringSimulationController extends Animation<double>
     double? from,
     double? withVelocity,
   }) {
-    final clamped = target.clamp(lowerBound, upperBound);
+    _target = target.clamp(lowerBound, upperBound);
 
     final fromValue = from ?? value;
 
-    if (clamped == fromValue) return TickerFuture.complete();
-
-    _tween = Tween<double>(begin: fromValue, end: clamped);
-    _animation = _controller.drive(_tween);
+    if (_target == fromValue) return TickerFuture.complete();
 
     final absoluteVelocity = withVelocity ?? _absoluteVelocity;
 
     final simulation = SpringSimulation(
       _spring,
-      0,
-      1,
-      _getRelativeVelocity(
-        from: fromValue,
-        to: clamped,
-        absoluteVelocity: absoluteVelocity,
-      ),
+      fromValue,
+      _target,
+      absoluteVelocity,
     );
 
     return _controller.animateWith(simulation);
@@ -111,32 +108,24 @@ class SpringSimulationController extends Animation<double>
     notifyListeners();
     if (_lastUpdate != null) {
       final now = DateTime.now();
-      final timeDelta = now.difference(_lastUpdate!).inMilliseconds;
-      final valueDelta = _animation.value - value;
+      final timeDelta = now.difference(_lastUpdate!).inMilliseconds * 1000;
+      final valueDelta = _lastValue - value;
       _absoluteVelocity = valueDelta / timeDelta;
     }
     _lastUpdate = DateTime.now();
+    _lastValue = value;
   }
 
   void _redirectSimulation() {
     if (!_controller.isAnimating) return;
 
-    final target = _animation.value;
-    final relativeVelocity = _getRelativeVelocity(
-      from: _tween.begin!,
-      to: target,
-      absoluteVelocity: _absoluteVelocity,
+    final simulation = SpringSimulation(
+      _spring,
+      value,
+      _target,
+      _absoluteVelocity,
     );
-    final simulation = SpringSimulation(_spring, 0, 1, relativeVelocity);
     _controller.animateWith(simulation);
-  }
-
-  double _getRelativeVelocity({
-    required double from,
-    required double to,
-    required double absoluteVelocity,
-  }) {
-    return to > from ? absoluteVelocity : -absoluteVelocity;
   }
 
   /// Stops the animation.
