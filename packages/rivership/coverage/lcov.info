@@ -136,12 +136,11 @@ DA:29,0
 DA:30,0
 DA:31,0
 DA:34,0
-DA:35,0
+DA:41,0
 DA:43,0
-DA:44,0
 DA:48,3
 DA:54,3
-LF:15
+LF:14
 LH:2
 end_of_record
 SF:lib/src/extensions/iterable_tools.dart

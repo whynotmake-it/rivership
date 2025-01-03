@@ -15,10 +15,15 @@ void main() {
         expect(hct.toColor(), black);
       });
 
-      test('Looses opacity information', () async {
-        final semiTransparent = black.withOpacity(0.5);
+      test('keeps opacity information', () async {
+        final semiTransparent = black.withValues(alpha: 0.5);
         final hct = semiTransparent.toHct();
-        expect(hct.toColor(), semiTransparent);
+        final color = hct.toColor();
+        const tolerance = 0.002;
+        expect(color.a, closeTo(semiTransparent.a, tolerance));
+        expect(color.r, closeTo(semiTransparent.r, tolerance));
+        expect(color.g, closeTo(semiTransparent.g, tolerance));
+        expect(color.b, closeTo(semiTransparent.b, tolerance));
       });
     });
   });

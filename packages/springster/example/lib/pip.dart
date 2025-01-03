@@ -155,7 +155,7 @@ class _TargetState extends State<_Target> {
               color: Theme.of(context)
                   .colorScheme
                   .surfaceContainerHighest
-                  .withOpacity(candidateData.isNotEmpty ? 1 : 0),
+                  .withValues(alpha: candidateData.isNotEmpty ? 1 : 0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
