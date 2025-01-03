@@ -15,6 +15,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dart-lang/setup-dart@v1.6.5
-      - uses: bluefireteam/melos-action@c7dcb921b23cc520cace360b95d02b37bf09cdaa
+      - uses: bluefireteam/melos-action@be64ed744ff5651ee3e5355041cf2f1495eae87c
         with:
           tag: true
