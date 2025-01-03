@@ -19,3 +19,4 @@ dev_dependencies:
     sdk: flutter
   lintervention: ^0.1.1
   mocktail: ^1.0.3
+  spot: ^0.16.0
