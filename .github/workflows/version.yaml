@@ -2,38 +2,30 @@ name: Version
 
 on:
   workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Version as prerelease'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  verify_release:
-    name: Version
-    runs-on: ubuntu-latest
+  prepare-release:
+    name: Prepare release
     permissions:
       contents: write
       pull-requests: write
+    runs-on: ubuntu-latest
     steps:
-      - name: 📚 Checkout
-        uses: actions/checkout@v4
-
-      - name: 🎯 Setup Dart
-        uses: dart-lang/setup-dart@v1.6.5
+      - uses: actions/checkout@v4
         with:
-          sdk: "stable"
-
-      - name: Ⓜ️ Set up Melos
-        run: dart pub global activate melos
-              
-      - name: 🪪 Set git credentials
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-
-      - name: 📦 Version
-        run: melos version --yes
-
-      - name: 🎋 Create Pull Request
-        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e
+          fetch-depth: 0
+      - uses: dart-lang/setup-dart@v1.6.5
+      - uses: bluefireteam/melos-action@c7dcb921b23cc520cace360b95d02b37bf09cdaa
         with:
-          title: "chore(release): Version packages"
-          body: "Prepared all packages to be released to pub.dev"
-          branch: chore/release
-          delete-branch: true
+          run-versioning: ${{ inputs.prerelease == false }}
+          run-versioning-prerelease: ${{ inputs.prerelease == true }}
+          publish-dry-run: true
+          create-pr: true
+          git-email: github-actions[bot]@users.noreply.github.com
+          git-name: github-actions[bot]
