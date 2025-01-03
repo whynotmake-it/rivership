@@ -248,9 +248,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     with TickerProviderStateMixin {
   bool isReturning = false;
 
-  late final AnimationController xController;
-
-  late final AnimationController yController;
+  late final SpringSimulationController2D controller;
 
   OverlayEntry? currentEntry;
 
@@ -260,8 +258,10 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
   @override
   void initState() {
-    xController = AnimationController.unbounded(vsync: this);
-    yController = AnimationController.unbounded(vsync: this);
+    controller = SpringSimulationController2D(
+      spring: widget.spring,
+      vsync: this,
+    );
     super.initState();
   }
 
@@ -356,8 +356,9 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
   @override
   void dispose() {
-    xController.dispose();
-    yController.dispose();
+    _cancelReturn();
+    currentEntry?.dispose();
+    controller.dispose();
     super.dispose();
   }
 
@@ -365,8 +366,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     if (currentEntry?.mounted ?? false) {
       currentEntry?.remove();
     }
-    xController.stop();
-    yController.stop();
+    controller.stop();
     isReturning = false;
   }
 
@@ -384,20 +384,14 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
       final targetPosition = box.localToGlobal(Offset.zero);
 
-      final xTween = Tween<double>(begin: offset.dx, end: targetPosition.dx);
-      final yTween = Tween<double>(begin: offset.dy, end: targetPosition.dy);
-
-      final xAnimation = xController.drive(xTween);
-      final yAnimation = yController.drive(yTween);
-
       currentEntry = OverlayEntry(
         builder: (context) => Stack(
           children: [
             ListenableBuilder(
-              listenable: Listenable.merge([xAnimation, yAnimation]),
+              listenable: controller,
               builder: (context, child) => Positioned(
-                left: xAnimation.value,
-                top: yAnimation.value,
+                left: controller.value.x,
+                top: controller.value.y,
                 child: IgnorePointer(
                   child: widget.feedbackMatchesConstraints
                       ? ConstrainedBox(
@@ -413,34 +407,28 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       );
 
       overlay.insert(currentEntry!);
-      final v = _getVelocity(offset, targetPosition, velocity);
 
-      final animations = Future.wait([
-        xController.animateWith(
-          SpringSimulation(widget.spring, 0, 1, v.dx),
-        ),
-        yController.animateWith(
-          SpringSimulation(widget.spring, 0, 1, v.dy),
-        ),
-      ]);
+      final adjustedVelocity = velocity.pixelsPerSecond / 1000;
 
-      // ignore: cascade_invocations
-      animations.then((value) {
+      controller.animateTo(
+        (targetPosition.dx, targetPosition.dy),
+        from: (offset.dx, offset.dy),
+        withVelocity: (adjustedVelocity.dx, adjustedVelocity.dy),
+      ).then((value) {
         setState(_cancelReturn);
       });
     }
   }
 
-  Offset _getVelocity(
-    Offset position,
-    Offset targetPosition,
-    Velocity velocity,
-  ) {
-    final adjusted = velocity.pixelsPerSecond / 1000;
+  void _redirectReturn() {
+    if (!isReturning || currentEntry?.mounted == false) {
+      return;
+    }
 
-    return Offset(
-      targetPosition.dx > position.dx ? adjusted.dx : -adjusted.dx,
-      targetPosition.dy > position.dy ? adjusted.dy : -adjusted.dy,
-    );
+    if (context.findRenderObject() case final RenderBox box) {
+      final targetPosition = box.localToGlobal(Offset.zero);
+
+      controller.animateTo((targetPosition.dx, targetPosition.dy));
+    }
   }
 }

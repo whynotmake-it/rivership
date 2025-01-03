@@ -17,8 +17,9 @@ class SpringsterExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: DraggableLogo(),
+      body: ListView.builder(
+        itemBuilder: (context, index) => DraggableLogo(),
+        itemCount: 100,
       ),
     );
   }
