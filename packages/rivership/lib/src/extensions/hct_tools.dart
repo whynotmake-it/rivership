@@ -16,10 +16,10 @@ extension HctTools on Color {
       if (b == null) {
         return null;
       }
-      return b.withOpacity(1.0 - t);
+      return b.withValues(alpha: 1.0 - t);
     }
     if (b == null) {
-      return a.withOpacity(t);
+      return a.withValues(alpha: t);
     }
 
     final aHct = a.toHct();
@@ -31,20 +31,20 @@ extension HctTools on Color {
       lerpDouble(aHct.tone, bHct.tone, t)!,
     );
 
-    return Color(result.toInt()).withOpacity(
-      lerpDouble(a.opacity, b.opacity, t)!,
-    );
+    return Color(result.toInt()).withValues(alpha: lerpDouble(a.a, b.a, t));
   }
 
   /// Shifts the hue of this color towards [other] in a way that is still
   /// recognizable but matches the original color more closely.
   ///
-  /// Keeps [opacity] the same.
+  /// Keeps [a] the same.
   Color harmonizeWith(Color other) {
-    return Color(Blend.harmonize(value, other.value)).withOpacity(opacity);
+    // ignore: deprecated_member_use
+    return Color(Blend.harmonize(value, other.value)).withValues(alpha: a);
   }
 
   /// Converts this color to its HCT representation.
+  // ignore: deprecated_member_use
   Hct toHct() => Hct.fromInt(value);
 }
 

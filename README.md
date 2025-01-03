@@ -14,6 +14,7 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 | ------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
 | [rivership](./packages/rivership)           | ![Pub Version](https://img.shields.io/pub/v/rivership)      | An opinionated infrastructure package for use with hooks_riverpod. |
 | [rivership_test](./packages/rivership_test) | ![Pub Version](https://img.shields.io/pub/v/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
+| [springster](./packages/springster)         | ![Pub Version](https://img.shields.io/pub/v/springster)      | A set of utilities for creating spring animations.                |
 
 
 ---
