@@ -1,6 +1,6 @@
 # Springster
 
-![Pub Version](https://img.shields.io/pub/v/rivership)
+![Pub Version](https://img.shields.io/pub/v/springster)
 [![Coverage](./coverage.svg)](./test/)
 
 Spring animations and simulations, simplified.
