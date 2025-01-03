@@ -1,6 +1,6 @@
 # Rivership
 
-![Pub Version](https://img.shields.io/pub/v/rivership)
+[![Pub Version](https://img.shields.io/pub/v/rivership)](https://pub.dev/packages/rivership)
 [![Coverage](./coverage.svg)](./test/)
 
 Rivership is a set of opinionated tools that will get you shipping your Flutter app in no time if you are using [`riverpod`](https://pub.dev/packages/hooks_riverpod) and [`flutter_hooks`](https://pub.dev/packages/flutter_hooks).

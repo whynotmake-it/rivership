@@ -1,6 +1,6 @@
 # Rivership Test
 
-![Pub Version](https://img.shields.io/pub/v/rivership_test)
+[![Pub Version](https://img.shields.io/pub/v/rivership_test)](https://pub.dev/packages/rivership_test)
 
 A package containing testing utilites to accompany the rivership package.
 
