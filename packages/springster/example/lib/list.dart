@@ -24,6 +24,9 @@ class _ListExampleState extends State<ListExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('List'),
+      ),
       body: ListView.builder(
         itemCount: items.length,
         itemBuilder: (context, index) {

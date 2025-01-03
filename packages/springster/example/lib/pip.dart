@@ -24,6 +24,9 @@ class _PipExampleState extends State<PipExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Picture in Picture'),
+      ),
       body: Stack(
         children: [
           Padding(
@@ -36,66 +39,27 @@ class _PipExampleState extends State<PipExample> {
                 child: Card(
                   elevation: 4,
                   color: Theme.of(context).colorScheme.primary,
-                  child: const SizedBox(width: 320, height: 180),
+                  child: SizedBox(
+                    width: 320,
+                    height: 180,
+                    child: Center(
+                      child: Text(
+                        'Drag me to a corner!',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
           Positioned.fill(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: Target(
-                        alignment: Alignment.topLeft,
-                        onAccept: () {
-                          setState(() {
-                            alignment = Alignment.topLeft;
-                          });
-                        },
-                      )),
-                      Expanded(
-                        child: Target(
-                          alignment: Alignment.topRight,
-                          onAccept: () {
-                            setState(() {
-                              alignment = Alignment.topRight;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Target(
-                          alignment: Alignment.bottomLeft,
-                          onAccept: () {
-                            setState(() {
-                              alignment = Alignment.bottomLeft;
-                            });
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: Target(
-                          alignment: Alignment.bottomRight,
-                          onAccept: () {
-                            setState(() {
-                              alignment = Alignment.bottomRight;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: Recognizer(
+              onChanged: (alignment) =>
+                  setState(() => this.alignment = alignment),
             ),
           ),
         ],
@@ -104,24 +68,102 @@ class _PipExampleState extends State<PipExample> {
   }
 }
 
-class Target extends StatelessWidget {
-  const Target({
+class Recognizer extends StatelessWidget {
+  const Recognizer({
     super.key,
-    required this.alignment,
-    required this.onAccept,
+    required this.onChanged,
   });
 
-  final Alignment alignment;
-  final VoidCallback onAccept;
+  final ValueChanged<Alignment> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: _Target(
+                  alignment: Alignment.topLeft,
+                  onOver: (alignment) => onChanged(alignment),
+                ),
+              ),
+              Expanded(
+                child: _Target(
+                  alignment: Alignment.bottomLeft,
+                  onOver: (alignment) => onChanged(alignment),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: _Target(
+                  alignment: Alignment.topRight,
+                  onOver: (alignment) => onChanged(alignment),
+                ),
+              ),
+              Expanded(
+                child: _Target(
+                  alignment: Alignment.bottomRight,
+                  onOver: (alignment) => onChanged(alignment),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Target extends StatefulWidget {
+  const _Target({
+    super.key,
+    required this.alignment,
+    required this.onOver,
+  });
+
+  final Alignment alignment;
+  final ValueChanged<Alignment> onOver;
+
+  @override
+  State<_Target> createState() => _TargetState();
+}
+
+class _TargetState extends State<_Target> {
+  @override
+  Widget build(BuildContext context) {
     return DragTarget<bool>(
-      builder: (context, candidateData, rejectedData) => Container(),
       onWillAcceptWithDetails: (details) {
-        onAccept();
+        widget.onOver(widget.alignment);
         return true;
       },
+      builder: (context, candidateData, rejectedData) => IgnorePointer(
+        child: Align(
+          alignment: widget.alignment,
+          child: AnimatedContainer(
+            duration: Durations.short4,
+            curve: Easing.standard,
+            margin: EdgeInsets.all(32),
+            width: 320,
+            height: 180,
+            decoration: ShapeDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withOpacity(candidateData.isNotEmpty ? 1 : 0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

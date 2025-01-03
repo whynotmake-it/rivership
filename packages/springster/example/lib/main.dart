@@ -1,5 +1,9 @@
+import 'package:example/2d_redirection.dart';
+import 'package:example/draggable_icons.dart';
+import 'package:example/list.dart';
+import 'package:example/one_dimension.dart';
+import 'package:example/pip.dart';
 import 'package:flutter/material.dart';
-import 'package:springster/springster.dart';
 
 void main() async {
   final colorScheme = ColorScheme.fromSeed(seedColor: Colors.blue);
@@ -17,109 +21,63 @@ class SpringsterExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView.builder(
-        itemBuilder: (context, index) => DraggableLogo(),
-        itemCount: 100,
+      appBar: AppBar(
+        title: const Text('Springster Examples'),
       ),
-    );
-  }
-}
-
-class DraggableLogo extends StatefulWidget {
-  const DraggableLogo({super.key});
-
-  @override
-  State<DraggableLogo> createState() => _DraggableLogoState();
-}
-
-class _DraggableLogoState extends State<DraggableLogo> {
-  bool isDragging = false;
-
-  double x = 0;
-  double y = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        DraggableCard(icon: Icons.favorite),
-        const Target(),
-        DraggableCard(icon: Icons.cabin),
-      ],
-    );
-  }
-}
-
-class DraggableCard extends StatelessWidget {
-  const DraggableCard({super.key, required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SpringDraggable(
-      data: icon,
-      spring: SimpleSpring.bouncy,
-      child: Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Icon(
-            icon,
-            size: 80,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class Target extends StatefulWidget {
-  const Target({super.key});
-
-  @override
-  State<Target> createState() => _TargetState();
-}
-
-class _TargetState extends State<Target> {
-  IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<IconData>(
-      builder: (context, candidateData, rejectedData) {
-        final color = candidateData.isNotEmpty
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.surfaceContainerHighest;
-        return AnimatedContainer(
-          duration: Durations.medium4,
-          curve: Easing.standard,
-          padding: const EdgeInsets.all(48),
-          decoration: ShapeDecoration(
-            shape: const CircleBorder(),
-            color: color,
-          ),
-          child: AnimatedOpacity(
-            opacity: candidateData.isEmpty ? 1.0 : 0.0,
-            duration: Durations.medium4,
-            curve: Easing.standard,
-            child: Icon(
-              icon,
-              size: 80,
-              color: Theme.of(context).colorScheme.onSurface,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          FilledButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OneDimensionExample(),
+              ),
             ),
+            child: const Text('One Dimension'),
           ),
-        );
-      },
-      onAcceptWithDetails: (details) {
-        setState(() {
-          icon = details.data;
-        });
-      },
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TwoDimensionRedirectionExample(),
+              ),
+            ),
+            child: const Text('Two Dimension Redirection'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DraggableIconsExample(),
+              ),
+            ),
+            child: const Text('Draggable Icons'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PipExample(),
+              ),
+            ),
+            child: const Text('Picture in Picture'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ListExample(),
+              ),
+            ),
+            child: const Text('List'),
+          ),
+        ],
+      ),
     );
   }
 }

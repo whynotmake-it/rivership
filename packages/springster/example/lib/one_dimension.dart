@@ -18,43 +18,44 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
   bool hovered = false;
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      child: Scaffold(
-        body: Center(
-          child: SpringBuilder(
-            spring: SimpleSpring.bouncy,
-            value: hovered ? 1.8 : 1,
-            builder: (context, value, child) {
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (event) {
-                  setState(() {
-                    hovered = true;
-                  });
-                },
-                onExit: (event) {
-                  setState(() {
-                    hovered = false;
-                  });
-                },
-                child: Material(
-                  color: Theme.of(context).colorScheme.primary,
-                  shape: StadiumBorder(),
-                  child: SizedBox.square(
-                    dimension: 200 * value,
-                    child: Center(
-                      child: Text(
-                        'Hover me',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontSize: 18 * value,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                      ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('One Dimension'),
+      ),
+      body: Center(
+        child: SpringBuilder(
+          spring: SimpleSpring.bouncy,
+          value: hovered ? .5 : 1,
+          builder: (context, value, child) => MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (event) {
+              setState(() {
+                hovered = true;
+              });
+            },
+            onExit: (event) {
+              setState(() {
+                hovered = false;
+              });
+            },
+            child: Transform.scale(
+              scale: value,
+              child: Material(
+                color: Theme.of(context).colorScheme.primary,
+                shape: StadiumBorder(),
+                child: SizedBox.square(
+                  dimension: 200,
+                  child: Center(
+                    child: Text(
+                      'Hover me',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),

@@ -1,12 +1,10 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:springster/springster.dart';
 
 /// Builds a widget that continuously animates a value using a Spring simulation
 /// with a given [SpringDescription].
 ///
 /// See also:
-///   * [useSpringAnimation], which provides the underlying animation hook
 ///   * [SpringBuilder2D], which animates two values simultaneously
 class SpringBuilder extends StatefulWidget {
   /// Creates a widget that animates a single value using spring physics.
@@ -77,7 +75,6 @@ class _SpringBuilderState extends State<SpringBuilder>
 
     if (widget.value != oldWidget.value) {
       if (widget.simulate) {
-        print('animateTo ${widget.value}');
         controller.animateTo(widget.value);
       } else {
         controller.value = widget.value;
@@ -109,16 +106,15 @@ class _SpringBuilderState extends State<SpringBuilder>
 /// simulation with a given [SpringDescription].
 ///
 /// See also:
-///   * [use2DSpringAnimation], which provides the underlying animation hook
 ///   * [SpringBuilder], which animates a single value
-class SpringBuilder2D<T> extends HookWidget {
+class SpringBuilder2D extends StatefulWidget {
   /// Creates a widget that animates two values using spring physics.
   ///
   /// The [builder], [spring], and [value] arguments must not be null.
   const SpringBuilder2D({
-    required this.builder,
-    required this.spring,
     required this.value,
+    required this.spring,
+    required this.builder,
     this.simulate = true,
     this.child,
     super.key,
@@ -128,13 +124,13 @@ class SpringBuilder2D<T> extends HookWidget {
   ///
   /// Whenever these values change, the widget smoothly animates from
   /// the previous values to the new ones.
-  final (T x, T y) value;
+  final Value2D value;
 
   /// Called to build the child widget.
   ///
   /// The [builder] function is passed the interpolated (x,y) values from the
   /// spring animation.
-  final ValueWidgetBuilder<(T x, T y)> builder;
+  final ValueWidgetBuilder<Value2D> builder;
 
   /// The spring behavior of the transition.
   ///
@@ -150,12 +146,59 @@ class SpringBuilder2D<T> extends HookWidget {
   final Widget? child;
 
   @override
-  Widget build(BuildContext context) {
-    final value = use2DSpringAnimation(
-      value: this.value,
-      spring: spring,
-      simulate: simulate,
+  State<SpringBuilder2D> createState() => _SpringBuilder2DState();
+}
+
+class _SpringBuilder2DState extends State<SpringBuilder2D>
+    with TickerProviderStateMixin {
+  late SpringSimulationController2D controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = SpringSimulationController2D(
+      spring: widget.spring,
+      vsync: this,
+      initialValue: widget.value,
     );
-    return builder(context, value, child);
+  }
+
+  @override
+  void didUpdateWidget(covariant SpringBuilder2D oldWidget) {
+    if (widget.spring != oldWidget.spring) {
+      controller.spring = widget.spring;
+    }
+    if (!widget.simulate) {
+      controller
+        ..stop()
+        ..value = widget.value;
+    }
+
+    if (widget.value != oldWidget.value) {
+      if (widget.simulate) {
+        controller.animateTo(widget.value);
+      } else {
+        controller.value = widget.value;
+      }
+    }
+
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        return widget.builder(context, controller.value, child);
+      },
+      child: widget.child,
+    );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 }
