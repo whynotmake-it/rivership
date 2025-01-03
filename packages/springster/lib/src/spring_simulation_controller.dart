@@ -15,8 +15,9 @@ class SpringSimulationController extends Animation<double>
         AnimationEagerListenerMixin {
   /// Creates a [SpringSimulationController] with the given parameters.
   ///
-  /// The [spring] parameter defines the characteristics of the spring animation.
-  /// The [vsync] parameter is required to drive the animation.
+  /// The [spring] parameter defines the characteristics of the spring animation
+  /// and the [vsync] parameter is required to drive the animation.
+  ///
   /// The [lowerBound] and [upperBound] parameters are optional and can be used
   /// to constrain the animation value.
   SpringSimulationController({

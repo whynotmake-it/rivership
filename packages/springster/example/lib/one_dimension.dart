@@ -25,21 +25,21 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
       body: Center(
         child: SpringBuilder(
           spring: SimpleSpring.bouncy,
-          value: hovered ? .5 : 1,
-          builder: (context, value, child) => MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onEnter: (event) {
-              setState(() {
-                hovered = true;
-              });
-            },
-            onExit: (event) {
-              setState(() {
-                hovered = false;
-              });
-            },
-            child: Transform.scale(
-              scale: value,
+          value: hovered ? 1.5 : 1,
+          builder: (context, value, child) => Transform.scale(
+            scale: value,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (event) {
+                setState(() {
+                  hovered = true;
+                });
+              },
+              onExit: (event) {
+                setState(() {
+                  hovered = false;
+                });
+              },
               child: Material(
                 color: Theme.of(context).colorScheme.primary,
                 shape: StadiumBorder(),

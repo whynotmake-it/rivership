@@ -123,7 +123,6 @@ class Recognizer extends StatelessWidget {
 
 class _Target extends StatefulWidget {
   const _Target({
-    super.key,
     required this.alignment,
     required this.onOver,
   });

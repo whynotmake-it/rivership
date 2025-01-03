@@ -20,9 +20,12 @@ class DraggableIconsExample extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Draggable Icons'),
       ),
-      body: ListView.builder(
-        itemBuilder: (context, index) => DraggableIcons(),
-        itemCount: 100,
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Drag the icons to the target'),
+          Expanded(child: DraggableIcons()),
+        ],
       ),
     );
   }
@@ -64,16 +67,19 @@ class DraggableCard extends StatelessWidget {
     return SpringDraggable(
       data: icon,
       spring: SimpleSpring.bouncy,
-      child: Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Icon(
-            icon,
-            size: 80,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.grab,
+        child: Card(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          elevation: 0,
+          shape: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Icon(
+              icon,
+              size: 80,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
           ),
         ),
       ),

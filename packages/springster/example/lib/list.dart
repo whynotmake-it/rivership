@@ -70,7 +70,6 @@ class _ListItemState extends State<ListItem> {
       axis: Axis.vertical,
       data: widget.data,
       childWhenDragging: SizedBox.shrink(),
-      onlyReturnWhenCanceled: true,
       child: DragTarget<int>(
         onAcceptWithDetails: (details) {
           widget.onInsert(details.data);

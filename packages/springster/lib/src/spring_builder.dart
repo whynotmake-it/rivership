@@ -124,13 +124,13 @@ class SpringBuilder2D extends StatefulWidget {
   ///
   /// Whenever these values change, the widget smoothly animates from
   /// the previous values to the new ones.
-  final Value2D value;
+  final Double2D value;
 
   /// Called to build the child widget.
   ///
   /// The [builder] function is passed the interpolated (x,y) values from the
   /// spring animation.
-  final ValueWidgetBuilder<Value2D> builder;
+  final ValueWidgetBuilder<Double2D> builder;
 
   /// The spring behavior of the transition.
   ///

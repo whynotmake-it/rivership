@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/spring_simulation_controller.dart';
 
-typedef Value2D = (double x, double y);
+/// A simple 2d record type.
+typedef Double2D = (double x, double y);
 
 /// A controller that manages a 2D spring simulation.
 ///
@@ -10,7 +11,7 @@ typedef Value2D = (double x, double y);
 ///
 /// The controller extends [ValueNotifier] to notify listeners of value changes,
 /// and provides access to the current velocity of the simulation.
-class SpringSimulationController2D extends Animation<Value2D>
+class SpringSimulationController2D extends Animation<Double2D>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
@@ -25,12 +26,12 @@ class SpringSimulationController2D extends Animation<Value2D>
   SpringSimulationController2D({
     required SpringDescription spring,
     required TickerProvider vsync,
-    Value2D lowerBound = const (
+    Double2D lowerBound = const (
       double.negativeInfinity,
       double.negativeInfinity,
     ),
-    Value2D upperBound = const (double.infinity, double.infinity),
-    Value2D initialValue = const (0, 0),
+    Double2D upperBound = const (double.infinity, double.infinity),
+    Double2D initialValue = const (0, 0),
   })  : _spring = spring,
         _lowerBound = lowerBound,
         _upperBound = upperBound,
@@ -53,12 +54,12 @@ class SpringSimulationController2D extends Animation<Value2D>
   }
 
   @override
-  Value2D get value => (
+  Double2D get value => (
         _xController.value,
         _yController.value,
       );
 
-  set value(Value2D newValue) {
+  set value(Double2D newValue) {
     _xController.value = newValue.x;
     _yController.value = newValue.y;
   }
@@ -69,11 +70,11 @@ class SpringSimulationController2D extends Animation<Value2D>
   final SpringSimulationController _xController;
   final SpringSimulationController _yController;
   SpringDescription _spring;
-  final Value2D _lowerBound;
-  final Value2D _upperBound;
+  final Double2D _lowerBound;
+  final Double2D _upperBound;
 
   /// The current velocity of the animation.
-  Value2D get velocity => (
+  Double2D get velocity => (
         _xController.velocity,
         _yController.velocity,
       );
@@ -83,8 +84,8 @@ class SpringSimulationController2D extends Animation<Value2D>
 
   /// Updates the spring description.
   ///
-  /// This will create a new simulation with the current velocity if an animation
-  /// is in progress.
+  /// This will create a new simulation with the current velocity if an
+  /// animation is in progress.
   set spring(SpringDescription newSpring) {
     if (_spring == newSpring) return;
     _spring = newSpring;
@@ -95,9 +96,9 @@ class SpringSimulationController2D extends Animation<Value2D>
   /// Updates the target value and creates a new simulation with the current
   /// velocity.
   Future<void> animateTo(
-    Value2D target, {
-    Value2D? from,
-    Value2D? withVelocity,
+    Double2D target, {
+    Double2D? from,
+    Double2D? withVelocity,
   }) {
     final clamped = (
       target.x.clamp(_lowerBound.x, _upperBound.x),
@@ -137,11 +138,14 @@ class SpringSimulationController2D extends Animation<Value2D>
   }
 }
 
-/// Extension methods for [Value2D].
-extension Value2DGetters on Value2D {
+/// Extension methods for [Double2D].
+extension Value2DGetters on Double2D {
   /// The x value of the 2D value.
   double get x => this.$1;
 
   /// The y value of the 2D value.
   double get y => this.$2;
+
+  /// Converts the 2D value to an [Offset].
+  Offset toOffset() => Offset(x, y);
 }

@@ -1,6 +1,5 @@
 import 'package:example/2d_redirection.dart';
 import 'package:example/draggable_icons.dart';
-import 'package:example/list.dart';
 import 'package:example/one_dimension.dart';
 import 'package:example/pip.dart';
 import 'package:flutter/material.dart';
@@ -67,15 +66,6 @@ class SpringsterExample extends StatelessWidget {
             child: const Text('Picture in Picture'),
           ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ListExample(),
-              ),
-            ),
-            child: const Text('List'),
-          ),
         ],
       ),
     );
