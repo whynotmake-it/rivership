@@ -1,3 +1,7 @@
+## 0.1.1+1
+
+ - **FIX**: update README to reflect correct Pub version for Springster.
+
 ## 0.1.1
 
  - **FIX**: velocity calculation.
