@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:springster/springster.dart';
 
@@ -262,7 +261,16 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
       spring: widget.spring,
       vsync: this,
     );
+    controller.addListener(_redirectReturn);
     super.initState();
+  }
+
+  @override
+  void didUpdateWidget(covariant SpringDraggable<T> oldWidget) {
+    if (widget.spring != oldWidget.spring) {
+      controller.spring = widget.spring;
+    }
+    super.didUpdateWidget(oldWidget);
   }
 
   @override
@@ -428,7 +436,10 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
     if (context.findRenderObject() case final RenderBox box) {
       final targetPosition = box.localToGlobal(Offset.zero);
 
-      controller.animateTo((targetPosition.dx, targetPosition.dy));
+      controller
+          .animateTo((targetPosition.dx, targetPosition.dy)).then((value) {
+        setState(_cancelReturn);
+      });
     }
   }
 }

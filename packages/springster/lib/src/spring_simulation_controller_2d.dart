@@ -48,8 +48,8 @@ class SpringSimulationController2D extends Animation<Value2D>
           upperBound: upperBound.y,
           initialValue: initialValue.y,
         ) {
+    // We use the x controller as the base for everything.
     _xController.addListener(_onControllerUpdate);
-    _yController.addListener(_onControllerUpdate);
   }
 
   @override
@@ -94,7 +94,7 @@ class SpringSimulationController2D extends Animation<Value2D>
 
   /// Updates the target value and creates a new simulation with the current
   /// velocity.
-  TickerFuture animateTo(
+  Future<void> animateTo(
     Value2D target, {
     Value2D? from,
     Value2D? withVelocity,
@@ -104,18 +104,19 @@ class SpringSimulationController2D extends Animation<Value2D>
       target.y.clamp(_lowerBound.y, _upperBound.y),
     );
 
-    final xFuture = _xController.animateTo(
-      clamped.x,
-      from: from?.x,
-      withVelocity: withVelocity?.x,
-    );
     _yController.animateTo(
       clamped.y,
       from: from?.y,
       withVelocity: withVelocity?.y,
     );
 
-    return xFuture;
+    // Start both animations but only return the future from one, since the
+    // x controller is the base for everything.
+    return _xController.animateTo(
+      clamped.x,
+      from: from?.x,
+      withVelocity: withVelocity?.x,
+    );
   }
 
   void _onControllerUpdate() {

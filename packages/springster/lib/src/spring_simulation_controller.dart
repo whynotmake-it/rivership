@@ -32,14 +32,14 @@ class SpringSimulationController extends Animation<double>
           lowerBound: lowerBound,
           upperBound: upperBound,
         ) {
-    _controller.addListener(_onAnimationUpdate);
+    _controller.addListener(notifyListeners);
   }
 
   @override
   double get value => _controller.value;
 
   set value(double value) {
-    _controller.value = 0;
+    _controller.value = value;
   }
 
   @override
@@ -49,13 +49,7 @@ class SpringSimulationController extends Animation<double>
 
   SpringDescription _spring;
 
-  double _absoluteVelocity = 0;
-
-  double _target = 0;
-
-  double _lastValue = 0;
-
-  DateTime? _lastUpdate;
+  double? _target;
 
   /// The lower bound of the animation value.
   final double lowerBound;
@@ -64,7 +58,7 @@ class SpringSimulationController extends Animation<double>
   final double upperBound;
 
   /// The current velocity of the animation.
-  double get velocity => _absoluteVelocity;
+  double get velocity => _controller.velocity;
 
   /// The spring description that defines the animation characteristics.
   SpringDescription get spring => _spring;
@@ -89,41 +83,31 @@ class SpringSimulationController extends Animation<double>
     _target = target.clamp(lowerBound, upperBound);
 
     final fromValue = from ?? value;
-
-    if (_target == fromValue) return TickerFuture.complete();
-
-    final absoluteVelocity = withVelocity ?? _absoluteVelocity;
+    final velocity = withVelocity ?? this.velocity;
 
     final simulation = SpringSimulation(
       _spring,
       fromValue,
-      _target,
-      absoluteVelocity,
+      _target!,
+      velocity,
     );
+
+    if ((_target! - fromValue).abs() < simulation.tolerance.distance) {
+      _controller.stop();
+      return TickerFuture.complete();
+    }
 
     return _controller.animateWith(simulation);
   }
 
-  void _onAnimationUpdate() {
-    notifyListeners();
-    if (_lastUpdate != null) {
-      final now = DateTime.now();
-      final timeDelta = now.difference(_lastUpdate!).inMilliseconds * 1000;
-      final valueDelta = _lastValue - value;
-      _absoluteVelocity = valueDelta / timeDelta;
-    }
-    _lastUpdate = DateTime.now();
-    _lastValue = value;
-  }
-
   void _redirectSimulation() {
-    if (!_controller.isAnimating) return;
+    if (!_controller.isAnimating || _target == null) return;
 
     final simulation = SpringSimulation(
       _spring,
       value,
-      _target,
-      _absoluteVelocity,
+      _target!,
+      velocity,
     );
     _controller.animateWith(simulation);
   }
