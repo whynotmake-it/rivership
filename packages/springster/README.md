@@ -5,14 +5,13 @@
 
 Spring animations and simulations, simplified.
 
-Mostly adapted and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations).
+> Partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations).
 
 ## Features 🎯
 
 - 🎨 Simple spring-based animations with customizable bounce and duration
 - 🔄 Spring-based draggable widgets with smooth return animations
-- 🎯 Spring curve for use with standard Flutter animations
-- 🪝 Flutter Hooks support for spring animations
+- 🎯 Spring curves for use with standard Flutter animations
 - 📱 2D spring animations for complex movements
 
 ## Installation 💻
@@ -38,6 +37,8 @@ dart pub add springster
 
 Use `SpringBuilder` for basic spring animations:
 
+![1D Hover example gif](./doc/1d_hover.gif)
+
 ```dart
 SpringBuilder(
   spring: SimpleSpring.bouncy,
@@ -52,56 +53,59 @@ SpringBuilder(
 )
 ```
 
-### Spring Draggable
+If you want a simple two-dimensional spring animation, you can use `SpringBuilder2D`:
 
-Create draggable widgets with spring return animations:
+![2D Redirection example gif](./doc/2d_redirect.gif)
 
 ```dart
-SpringDraggable(
-  spring: SimpleSpring.interactive,
+SpringBuilder2D(
+  spring: SimpleSpring.bouncy,
+  value: (100, 100), // Changes trigger smooth spring animation and redirect dynamically
+  builder: (context, value, child) {
+    return Transform.translate(
+      offset: Offset(value.x, value.y),
+      child: child,
+    );
+  },
   child: Container(
     width: 100,
     height: 100,
     color: Colors.blue,
   ),
-  feedback: Container(
+)
+```
+
+### Spring Draggable
+
+`springster` comes with a `SpringDraggable` widget that allows you to drag a widget around the screen with a spring return animation.
+It works just like the `Draggable` widget in Flutter and supports native Flutter `DragTarget`s, however it comes with a few sensible defaults and extra features.
+
+![Spring Draggable example gif](./doc/spring_draggable.gif)
+
+```dart
+SpringDraggable(
+  spring: SimpleSpring.bouncy,
+  child: Container(
     width: 100,
     height: 100,
-    color: Colors.blue.withOpacity(0.5),
+    color: Colors.blue,
   ),
   data: 'my-draggable-data',
 )
 ```
 
-### Spring Curve
+### Low-level Spring Simulation
 
-Use spring physics in standard Flutter animations:
-
-```dart
-AnimatedContainer(
-  duration: const Duration(milliseconds: 500),
-  curve: SpringCurve(spring: SimpleSpring.bouncy),
-  width: targetWidth,
-  height: targetHeight,
-)
-```
-
-### Hook Usage
-
-For more control using Flutter Hooks:
+If you need more control over the spring simulation, you can use the `SpringSimulationController` and `SpringSimulationController2D` classes.
 
 ```dart
-final animatedValue = useSpringAnimation(
-  value: targetValue,
-  spring: SimpleSpring.smooth,
-);
-
-// For 2D animations
-final (x, y) = use2DSpringAnimation(
-  value: (targetX, targetY),
+final controller = SpringSimulationController(
   spring: SimpleSpring.bouncy,
+  vsync: this,
 );
 ```
+
+They work similarly to the `AnimationController` class in Flutter and allow you to drive the spring simulation with a target value, while maintaining velocity between target changes.
 
 ## Predefined Springs 🎯
 
@@ -129,11 +133,7 @@ const mySpring = SimpleSpring.withDamping(
 );
 ```
 
-## Additional Information 📚
 
-- This package is built with [Mason][mason_link]
-- Maintained with [Melos][melos_link]
-- Licensed under MIT
 
 [dart_install_link]: https://dart.dev/get-dart
 [mason_link]: https://github.com/felangel/mason
