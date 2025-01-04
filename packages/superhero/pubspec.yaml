@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  springster: ^0.1.1+1
+  springster: ^0.2.0
 
 dev_dependencies:
   flutter_test:

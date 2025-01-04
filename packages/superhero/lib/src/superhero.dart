@@ -400,8 +400,8 @@ class _HeroFlightManifest {
     BuildContext context,
     BuildContext? ancestorContext,
   ) {
-    assert(ancestorContext != null);
     final box = context.findRenderObject()! as RenderBox;
+
     assert(box.hasSize && box.size.isFinite);
     return MatrixUtils.transformRect(
       box.getTransformTo(ancestorContext?.findRenderObject()),
@@ -421,6 +421,12 @@ class _HeroFlightManifest {
   /// [_SuperheroFlight.divert].
   late final Rect toHeroLocation =
       _boundingBoxFor(toHero.context, toRoute.subtreeContext);
+
+  late final Rect absoluteToHeroLocation =
+      _boundingBoxFor(toHero.context, null);
+
+  late final Rect absoluteFromHeroLocation =
+      _boundingBoxFor(fromHero.context, null);
 
   /// Whether this [_HeroFlightManifest] is valid and can be used to start or
   /// divert a [_SuperheroFlight].
@@ -458,7 +464,6 @@ class _SuperheroFlight {
 
   final _OnFlightEnded onFlightEnded;
 
-  Animation<double> _heroOpacity = kAlwaysCompleteAnimation;
   // The manifest will be available once `start` is called, throughout the
   // flight's lifecycle.
   _HeroFlightManifest? _manifest;
@@ -474,23 +479,24 @@ class _SuperheroFlight {
   // The OverlayEntry WidgetBuilder callback for the hero's overlay.
   Widget _buildOverlay(BuildContext context) {
     return SpringBuilder2D(
+      onAnimationStatusChanged: _onStatusChanged,
       spring: manifest.spring,
       value: (
-        manifest.toHeroLocation.center.dx,
-        manifest.toHeroLocation.center.dy,
+        manifest.absoluteToHeroLocation.center.dx,
+        manifest.absoluteToHeroLocation.center.dy,
       ),
       from: (
-        manifest.fromHeroLocation.center.dx,
-        manifest.fromHeroLocation.center.dy,
+        manifest.absoluteFromHeroLocation.center.dx,
+        manifest.absoluteFromHeroLocation.center.dy,
       ),
       builder: (context, center, child) => SpringBuilder2D(
         value: (
-          manifest.toHeroLocation.size.width,
-          manifest.toHeroLocation.size.height,
+          manifest.absoluteToHeroLocation.size.width,
+          manifest.absoluteToHeroLocation.size.height,
         ),
         from: (
-          manifest.fromHeroLocation.size.width,
-          manifest.fromHeroLocation.size.height,
+          manifest.absoluteFromHeroLocation.size.width,
+          manifest.absoluteFromHeroLocation.size.height,
         ),
         spring: manifest.spring,
         builder: (context, size, child) {
@@ -503,36 +509,39 @@ class _SuperheroFlight {
             left: offsets.left,
             child: IgnorePointer(
               child: FadeTransition(
-                opacity: _heroOpacity,
-                child: manifest.shuttleBuilder(
-                  context,
-                  // TODO
-                  const AlwaysStoppedAnimation(1),
-                  manifest.type,
-                  manifest.fromHero.context,
-                  manifest.toHero.context,
-                ),
+                opacity: AlwaysStoppedAnimation(1),
+                child: child,
               ),
             ),
           );
         },
+        child: child,
+      ),
+      child: manifest.shuttleBuilder(
+        context,
+        const AlwaysStoppedAnimation(1),
+        manifest.type,
+        manifest.fromHero.context,
+        manifest.toHero.context,
       ),
     );
   }
 
-  void _onFlightEnded(AnimationStatus status) {
-    assert(overlayEntry != null);
-    overlayEntry!.remove();
-    overlayEntry!.dispose();
-    overlayEntry = null;
-    // We want to keep the hero underneath the current page hidden. If
-    // [AnimationStatus.completed], toHero will be the one on top and we keep
-    // fromHero hidden. If [AnimationStatus.dismissed], the animation is
-    // triggered but canceled before it finishes. In this case, we keep toHero
-    // hidden instead.
-    manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
-    manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
-    onFlightEnded(this);
+  void _onStatusChanged(AnimationStatus status) {
+    if (!status.isAnimating) {
+      assert(overlayEntry != null);
+      overlayEntry!.remove();
+      overlayEntry!.dispose();
+      overlayEntry = null;
+      // We want to keep the hero underneath the current page hidden. If
+      // [AnimationStatus.completed], toHero will be the one on top and we keep
+      // fromHero hidden. If [AnimationStatus.dismissed], the animation is
+      // triggered but canceled before it finishes. In this case, we keep toHero
+      // hidden instead.
+      manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
+      manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
+      onFlightEnded(this);
+    }
   }
 
   /// Releases resources.
@@ -698,7 +707,7 @@ class SuperheroController extends NavigatorObserver {
     // Treat these invalidated flights as dismissed. Calling
     // _handleAnimationUpdate will also remove the flight from _flights.
     for (final flight in invalidFlights) {
-      flight._onFlightEnded(AnimationStatus.dismissed);
+      flight._onStatusChanged(AnimationStatus.dismissed);
     }
   }
 
@@ -872,7 +881,7 @@ class SuperheroController extends NavigatorObserver {
           _flights[tag] = _SuperheroFlight(_handleFlightEnded)..start(manifest);
         }
       } else {
-        existingFlight?._onFlightEnded(AnimationStatus.dismissed);
+        existingFlight?._onStatusChanged(AnimationStatus.dismissed);
       }
     }
 
