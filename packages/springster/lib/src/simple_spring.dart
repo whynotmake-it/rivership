@@ -12,6 +12,9 @@ const _defaultDurationSeconds = 0.5;
 /// [`fluid_animations`](https://pub.dev/packages/fluid_animations).
 class SimpleSpring extends SpringDescription {
   /// Creates a spring with the specified duration and bounce.
+  ///
+  /// A smooth spring with a response duration and no bounce is created by
+  /// default.
   const SimpleSpring({
     this.durationSeconds = _defaultDurationSeconds,
     this.bounce = 0,
@@ -36,6 +39,9 @@ class SimpleSpring extends SpringDescription {
   /// animated, as a fraction of an estimate of amount needed to produce
   /// critical damping.
   /// It is effectively the inverse of the bounce amount.
+  ///
+  /// A smooth spring with a response duration and no bounce is created by
+  /// default.
   const SimpleSpring.withDamping({
     double dampingFraction = 1.0,
     this.durationSeconds = _defaultDurationSeconds,
@@ -68,6 +74,8 @@ class SimpleSpring extends SpringDescription {
   /// The amount of drag applied to the value being
   /// animated, as a fraction of an estimate of amount needed to produce
   /// critical damping.
+  ///
+  /// It is effectively the inverse of the bounce amount.
   ///
   /// See also:
   /// - [SimpleSpring.withDamping]
