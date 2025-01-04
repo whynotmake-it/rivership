@@ -130,14 +130,15 @@ class SpringSimulationController2D extends Animation<Double2D>
         return TickerFuture.complete();
       case (true, false):
         _xController.addListener(notifyListeners);
-
         return animateX();
       case (false, true):
         _yController.addListener(notifyListeners);
         return animateY();
       case (true, true):
+        // When both changed, we only use the x controller as the base for
+        // the TickerFuture and listeners. Otherwise everything would happen
+        // twice.
         _xController.addListener(notifyListeners);
-        _yController.addListener(notifyListeners);
         animateY();
         return animateX();
     }
