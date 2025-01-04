@@ -21,6 +21,7 @@ class SpringBuilder extends StatefulWidget {
     this.from,
     this.simulate = true,
     this.child,
+    this.onAnimationStatusChanged,
     super.key,
   });
 
@@ -64,6 +65,11 @@ class SpringBuilder extends StatefulWidget {
   /// {@endtemplate}
   final bool simulate;
 
+  /// {@template springster.on_animation_status_changed}
+  /// Called when the animation status changes.
+  /// {@endtemplate}
+  final ValueChanged<AnimationStatus>? onAnimationStatusChanged;
+
   /// {@template springster.child}
   /// The child widget to animate.
   /// {@endtemplate}
@@ -85,6 +91,9 @@ class _SpringBuilderState extends State<SpringBuilder>
       vsync: this,
       initialValue: widget.from ?? widget.value,
     );
+    if (widget.onAnimationStatusChanged != null) {
+      controller.addStatusListener(widget.onAnimationStatusChanged!);
+    }
     if (widget.simulate && widget.from != null) {
       controller.animateTo(widget.value);
     }
@@ -106,6 +115,15 @@ class _SpringBuilderState extends State<SpringBuilder>
         controller.animateTo(widget.value);
       } else {
         controller.value = widget.value;
+      }
+    }
+
+    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
+      if (oldWidget.onAnimationStatusChanged != null) {
+        controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
+      }
+      if (widget.onAnimationStatusChanged != null) {
+        controller.addStatusListener(widget.onAnimationStatusChanged!);
       }
     }
 
@@ -150,6 +168,7 @@ class SpringBuilder2D extends StatefulWidget {
     this.from,
     this.simulate = true,
     this.child,
+    this.onAnimationStatusChanged,
     super.key,
   });
 
@@ -167,6 +186,9 @@ class SpringBuilder2D extends StatefulWidget {
 
   /// {@macro springster.simulate}
   final bool simulate;
+
+  /// {@macro springster.on_animation_status_changed}
+  final ValueChanged<AnimationStatus>? onAnimationStatusChanged;
 
   /// {@macro springster.child}
   final Widget? child;
@@ -187,6 +209,9 @@ class _SpringBuilder2DState extends State<SpringBuilder2D>
       vsync: this,
       initialValue: widget.from ?? widget.value,
     );
+    if (widget.onAnimationStatusChanged != null) {
+      controller.addStatusListener(widget.onAnimationStatusChanged!);
+    }
     if (widget.simulate && widget.from != null) {
       controller.animateTo(widget.value);
     }
@@ -208,6 +233,15 @@ class _SpringBuilder2DState extends State<SpringBuilder2D>
         controller.animateTo(widget.value);
       } else {
         controller.value = widget.value;
+      }
+    }
+
+    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
+      if (oldWidget.onAnimationStatusChanged != null) {
+        controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
+      }
+      if (widget.onAnimationStatusChanged != null) {
+        controller.addStatusListener(widget.onAnimationStatusChanged!);
       }
     }
 
