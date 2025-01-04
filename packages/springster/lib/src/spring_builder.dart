@@ -14,6 +14,7 @@ class SpringBuilder extends StatefulWidget {
     required this.value,
     required this.spring,
     required this.builder,
+    this.from,
     this.simulate = true,
     this.child,
     super.key,
@@ -24,6 +25,14 @@ class SpringBuilder extends StatefulWidget {
   /// Whenever this value changes, the widget smoothly animates from
   /// the previous value to the new one.
   final double value;
+
+  /// The starting value for the initial animation.
+  ///
+  /// If this value is null, the widget will start out at [value].
+  ///
+  /// This is only considered for the first animation, any subsequent changes
+  /// during the lifecycle of this widget will be ignored.
+  final double? from;
 
   /// Called to build the child widget.
   ///
@@ -58,8 +67,11 @@ class _SpringBuilderState extends State<SpringBuilder>
     controller = SpringSimulationController(
       spring: widget.spring,
       vsync: this,
-      initialValue: widget.value,
+      initialValue: widget.from ?? widget.value,
     );
+    if (widget.simulate && widget.from != null) {
+      controller.animateTo(widget.value);
+    }
   }
 
   @override
@@ -115,6 +127,7 @@ class SpringBuilder2D extends StatefulWidget {
     required this.value,
     required this.spring,
     required this.builder,
+    this.from,
     this.simulate = true,
     this.child,
     super.key,
@@ -125,6 +138,14 @@ class SpringBuilder2D extends StatefulWidget {
   /// Whenever these values change, the widget smoothly animates from
   /// the previous values to the new ones.
   final Double2D value;
+
+  /// The starting value for the initial animation.
+  ///
+  /// If this value is null, the widget will start out at [value].
+  ///
+  /// This is only considered for the first animation, any subsequent changes
+  /// during the lifecycle of this widget will be ignored.
+  final Double2D? from;
 
   /// Called to build the child widget.
   ///
@@ -159,8 +180,11 @@ class _SpringBuilder2DState extends State<SpringBuilder2D>
     controller = SpringSimulationController2D(
       spring: widget.spring,
       vsync: this,
-      initialValue: widget.value,
+      initialValue: widget.from ?? widget.value,
     );
+    if (widget.simulate && widget.from != null) {
+      controller.animateTo(widget.value);
+    }
   }
 
   @override
