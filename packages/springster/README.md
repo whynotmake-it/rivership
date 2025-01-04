@@ -111,10 +111,10 @@ They work similarly to the `AnimationController` class in Flutter and allow you 
 
 Springster comes with several predefined spring configurations:
 
+- `const SimpleSpring()` - Smooth spring with no bounce
 - `SimpleSpring.instant` - An effectively instant spring
 - `SimpleSpring.defaultIOS` - iOS-style smooth spring with no bounce
 - `SimpleSpring.bouncy` - Spring with higher bounce
-- `SimpleSpring.smooth` - Smooth spring with no bounce
 - `SimpleSpring.snappy` - Snappy spring with small bounce
 - `SimpleSpring.interactive` - Lower response spring for interactive animations
 
