@@ -64,6 +64,9 @@ class SpringSimulationController extends Animation<double>
   /// The spring description that defines the animation characteristics.
   SpringDescription get spring => _spring;
 
+  /// The tolerance of the spring.
+  Tolerance get tolerance => Tolerance.defaultTolerance;
+
   /// Updates the spring description.
   ///
   /// This will create a new simulation with the current velocity if an
@@ -91,6 +94,7 @@ class SpringSimulationController extends Animation<double>
       fromValue,
       _target!,
       velocity,
+      tolerance: tolerance,
     );
 
     if ((_target! - fromValue).abs() < simulation.tolerance.distance) {
@@ -109,6 +113,7 @@ class SpringSimulationController extends Animation<double>
       value,
       _target!,
       velocity,
+      tolerance: tolerance,
     );
     _controller.animateWith(simulation);
   }

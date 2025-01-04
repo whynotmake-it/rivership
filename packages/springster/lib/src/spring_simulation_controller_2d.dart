@@ -48,10 +48,7 @@ class SpringSimulationController2D extends Animation<Double2D>
           lowerBound: lowerBound.y,
           upperBound: upperBound.y,
           initialValue: initialValue.y,
-        ) {
-    // We use the x controller as the base for everything.
-    _xController.addListener(_onControllerUpdate);
-  }
+        );
 
   @override
   Double2D get value => (
@@ -95,33 +92,55 @@ class SpringSimulationController2D extends Animation<Double2D>
 
   /// Updates the target value and creates a new simulation with the current
   /// velocity.
-  Future<void> animateTo(
+  TickerFuture animateTo(
     Double2D target, {
     Double2D? from,
     Double2D? withVelocity,
   }) {
+    _xController.removeListener(notifyListeners);
+    _yController.removeListener(notifyListeners);
+
     final clamped = (
       target.x.clamp(_lowerBound.x, _upperBound.x),
       target.y.clamp(_lowerBound.y, _upperBound.y),
     );
 
-    _yController.animateTo(
-      clamped.y,
-      from: from?.y,
-      withVelocity: withVelocity?.y,
-    );
+    final xChanged = _xController.tolerance.distance <
+        (clamped.x - _xController.value).abs();
 
-    // Start both animations but only return the future from one, since the
-    // x controller is the base for everything.
-    return _xController.animateTo(
-      clamped.x,
-      from: from?.x,
-      withVelocity: withVelocity?.x,
-    );
-  }
+    final yChanged = _yController.tolerance.distance <
+        (clamped.y - _yController.value).abs();
 
-  void _onControllerUpdate() {
-    notifyListeners();
+    TickerFuture animateX() => _xController.animateTo(
+          clamped.x,
+          from: from?.x,
+          withVelocity: withVelocity?.x,
+        );
+
+    TickerFuture animateY() => _yController.animateTo(
+          clamped.y,
+          from: from?.y,
+          withVelocity: withVelocity?.y,
+        );
+
+    switch ((xChanged, yChanged)) {
+      case (false, false):
+        _xController.stop();
+        _yController.stop();
+        return TickerFuture.complete();
+      case (true, false):
+        _xController.addListener(notifyListeners);
+
+        return animateX();
+      case (false, true):
+        _yController.addListener(notifyListeners);
+        return animateY();
+      case (true, true):
+        _xController.addListener(notifyListeners);
+        _yController.addListener(notifyListeners);
+        animateY();
+        return animateX();
+    }
   }
 
   /// Stops the animation.

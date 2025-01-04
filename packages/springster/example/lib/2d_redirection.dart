@@ -44,6 +44,7 @@ class _TwoDimensionRedirectionExampleState
             child: SpringBuilder2D(
               spring: SimpleSpring.bouncy,
               value: (offset.dx, offset.dy),
+              from: (0, 200),
               builder: (context, value, child) => Transform.translate(
                 offset: value.toOffset(),
                 child: child,

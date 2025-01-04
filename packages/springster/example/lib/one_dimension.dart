@@ -26,6 +26,7 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
         child: SpringBuilder(
           spring: SimpleSpring.bouncy,
           value: hovered ? 1.5 : 1,
+          from: 0,
           builder: (context, value, child) => Transform.scale(
             scale: value,
             child: MouseRegion(

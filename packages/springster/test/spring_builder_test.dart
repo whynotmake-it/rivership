@@ -190,6 +190,28 @@ void main() {
       expect(capturedValue?.$2, closeTo(200.0, 0.001));
     });
 
+    testWidgets('animates 1d from in y direction', (tester) async {
+      (double x, double y)? capturedValue;
+      await tester.pumpWidget(
+        SpringBuilder2D(
+          value: (0.0, 0.0),
+          from: (0.0, 100.0),
+          spring: const SimpleSpring(),
+          builder: (context, value, child) {
+            capturedValue = value;
+            return const SizedBox();
+          },
+        ),
+      );
+
+      expect(capturedValue?.$1, equals(0.0));
+      expect(capturedValue?.$2, equals(100.0));
+
+      await tester.pumpAndSettle();
+      expect(capturedValue?.$1, equals(0.0));
+      expect(capturedValue?.$2, closeTo(0.0, 0.001));
+    });
+
     testWidgets('stays at from value if simulate is false', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
