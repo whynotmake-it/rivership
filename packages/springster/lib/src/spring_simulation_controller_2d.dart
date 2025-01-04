@@ -1,4 +1,3 @@
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/spring_simulation_controller.dart';
 
@@ -49,7 +48,7 @@ class SpringSimulationController2D extends Animation<Double2D>
           lowerBound: lowerBound.y,
           upperBound: upperBound.y,
           initialValue: initialValue.y,
-        ) {}
+        );
 
   @override
   Double2D get value => (
