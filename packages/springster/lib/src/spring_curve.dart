@@ -13,7 +13,7 @@ import 'package:flutter/physics.dart';
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
-///   curve: SpringCurve(spring: FluidSpring.bouncy),
+///   curve: SpringCurve(spring: SimpleSpring.bouncy, velocity: .3),
 ///   height: size,
 ///   width: size,
 ///   color: Colors.blue,
@@ -24,8 +24,10 @@ class SpringCurve extends Curve {
   /// Creates a [SpringCurve] out of [spring].
   ///
   /// {@macro spring_curve}
-  SpringCurve({required this.spring, double velocity = 0})
-      : _simulation = SpringSimulation(spring, 0, 1, velocity);
+  SpringCurve({
+    required this.spring,
+    double velocity = 0,
+  }) : _simulation = SpringSimulation(spring, 0, 1, velocity);
 
   /// The spring the curve is based on.
   final SpringDescription spring;
