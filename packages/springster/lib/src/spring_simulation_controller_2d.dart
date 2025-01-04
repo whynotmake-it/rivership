@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/spring_simulation_controller.dart';
 
@@ -48,7 +49,7 @@ class SpringSimulationController2D extends Animation<Double2D>
           lowerBound: lowerBound.y,
           upperBound: upperBound.y,
           initialValue: initialValue.y,
-        );
+        ) {}
 
   @override
   Double2D get value => (
@@ -90,6 +91,19 @@ class SpringSimulationController2D extends Animation<Double2D>
     _yController.spring = newSpring;
   }
 
+  bool? _listeningToY;
+  void _setListeningToY(bool value) {
+    if (value == _listeningToY) return;
+    _listeningToY = value;
+    if (value) {
+      _xController.removeListener(notifyListeners);
+      _yController.addListener(notifyListeners);
+    } else {
+      _yController.removeListener(notifyListeners);
+      _xController.addListener(notifyListeners);
+    }
+  }
+
   /// Updates the target value and creates a new simulation with the current
   /// velocity.
   TickerFuture animateTo(
@@ -97,51 +111,45 @@ class SpringSimulationController2D extends Animation<Double2D>
     Double2D? from,
     Double2D? withVelocity,
   }) {
-    _xController.removeListener(notifyListeners);
-    _yController.removeListener(notifyListeners);
-
     final clamped = (
       target.x.clamp(_lowerBound.x, _upperBound.x),
       target.y.clamp(_lowerBound.y, _upperBound.y),
     );
 
-    final xChanged = _xController.tolerance.distance <
-        (clamped.x - _xController.value).abs();
+    final fromValue = from ?? value;
 
-    final yChanged = _yController.tolerance.distance <
-        (clamped.y - _yController.value).abs();
+    final xChanged =
+        _xController.tolerance.distance < (clamped.x - fromValue.x).abs();
 
-    TickerFuture animateX() => _xController.animateTo(
-          clamped.x,
-          from: from?.x,
-          withVelocity: withVelocity?.x,
-        );
+    final yChanged =
+        _yController.tolerance.distance < (clamped.y - fromValue.y).abs();
 
-    TickerFuture animateY() => _yController.animateTo(
+    TickerFuture y() => _yController.animateTo(
           clamped.y,
-          from: from?.y,
+          from: fromValue.y,
           withVelocity: withVelocity?.y,
         );
 
-    switch ((xChanged, yChanged)) {
-      case (false, false):
-        _xController.stop();
-        _yController.stop();
-        return TickerFuture.complete();
-      case (true, false):
-        _xController.addListener(notifyListeners);
-        return animateX();
-      case (false, true):
-        _yController.addListener(notifyListeners);
-        return animateY();
-      case (true, true):
-        // When both changed, we only use the x controller as the base for
-        // the TickerFuture and listeners. Otherwise everything would happen
-        // twice.
-        _xController.addListener(notifyListeners);
-        animateY();
-        return animateX();
+    // Start both animations but only return the future from one, since the
+    // x controller is the base for everything.
+    TickerFuture x() => _xController.animateTo(
+          clamped.x,
+          from: fromValue.x,
+          withVelocity: withVelocity?.x,
+        );
+
+    if (xChanged) {
+      _setListeningToY(false);
+      y();
+      return x();
     }
+
+    if (yChanged) {
+      _setListeningToY(true);
+      return y();
+    }
+
+    return TickerFuture.complete();
   }
 
   /// Stops the animation.

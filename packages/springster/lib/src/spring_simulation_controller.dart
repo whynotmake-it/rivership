@@ -33,7 +33,9 @@ class SpringSimulationController extends Animation<double>
           lowerBound: lowerBound,
           upperBound: upperBound,
         ) {
-    _controller.addListener(notifyListeners);
+    _controller
+      ..addListener(notifyListeners)
+      ..addStatusListener(notifyStatusListeners);
   }
 
   @override
