@@ -390,9 +390,8 @@ class _HeroFlightManifest {
       ? toRoute.transitionDuration
       : fromRoute.transitionDuration;
 
-  SimpleSpring get spring => SimpleSpring.bouncy.extraBounce(
-        0,
-        duration.inMilliseconds / 1000,
+  SimpleSpring get spring => SimpleSpring.bouncy.copyWith(
+        durationSeconds: duration.inMilliseconds / 1000,
       );
 
   // The bounding box for `context`'s render object,  in `ancestorContext`'s
@@ -455,14 +454,11 @@ class _SuperheroFlight {
         object: this,
       );
     }
-    _proxyAnimation = ProxyAnimation()
-      ..addStatusListener(_handleAnimationUpdate);
   }
 
   final _OnFlightEnded onFlightEnded;
 
   Animation<double> _heroOpacity = kAlwaysCompleteAnimation;
-  late ProxyAnimation _proxyAnimation;
   // The manifest will be available once `start` is called, throughout the
   // flight's lifecycle.
   _HeroFlightManifest? _manifest;
@@ -474,90 +470,69 @@ class _SuperheroFlight {
   }
 
   OverlayEntry? overlayEntry;
-  bool _aborted = false;
-
-  static final Animatable<double> _reverseTween =
-      Tween<double>(begin: 1, end: 0);
 
   // The OverlayEntry WidgetBuilder callback for the hero's overlay.
   Widget _buildOverlay(BuildContext context) {
     return SpringBuilder2D(
       spring: manifest.spring,
       value: (
-        _centerController!.value.x,
-        _centerController!.value.y,
+        manifest.toHeroLocation.center.dx,
+        manifest.toHeroLocation.center.dy,
       ),
-      builder: (context, value, child) {
-        final rect = heroRectTween.evaluate(_proxyAnimation)!;
-        final offsets = RelativeRect.fromSize(rect, manifest.navigatorSize);
-        return Positioned(
-          top: offsets.top,
-          right: offsets.right,
-          bottom: offsets.bottom,
-          left: offsets.left,
-          child: IgnorePointer(
-            child: FadeTransition(
-              opacity: _heroOpacity,
-              child: child,
+      from: (
+        manifest.fromHeroLocation.center.dx,
+        manifest.fromHeroLocation.center.dy,
+      ),
+      builder: (context, center, child) => SpringBuilder2D(
+        value: (
+          manifest.toHeroLocation.size.width,
+          manifest.toHeroLocation.size.height,
+        ),
+        from: (
+          manifest.fromHeroLocation.size.width,
+          manifest.fromHeroLocation.size.height,
+        ),
+        spring: manifest.spring,
+        builder: (context, size, child) {
+          final rect = center.toOffset() & Size(size.x, size.y);
+          final offsets = RelativeRect.fromSize(rect, manifest.navigatorSize);
+          return Positioned(
+            top: offsets.top,
+            right: offsets.right,
+            bottom: offsets.bottom,
+            left: offsets.left,
+            child: IgnorePointer(
+              child: FadeTransition(
+                opacity: _heroOpacity,
+                child: manifest.shuttleBuilder(
+                  context,
+                  // TODO
+                  const AlwaysStoppedAnimation(1),
+                  manifest.type,
+                  manifest.fromHero.context,
+                  manifest.toHero.context,
+                ),
+              ),
             ),
-          ),
-        );
-      },
-      child: shuttle,
+          );
+        },
+      ),
     );
   }
 
-  void _performAnimationUpdate(AnimationStatus status) {
-    if (!status.isAnimating) {
-      _proxyAnimation.parent = null;
-
-      assert(overlayEntry != null);
-      overlayEntry!.remove();
-      overlayEntry!.dispose();
-      overlayEntry = null;
-      // We want to keep the hero underneath the current page hidden. If
-      // [AnimationStatus.completed], toHero will be the one on top and we keep
-      // fromHero hidden. If [AnimationStatus.dismissed], the animation is
-      // triggered but canceled before it finishes. In this case, we keep toHero
-      // hidden instead.
-      manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
-      manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
-      onFlightEnded(this);
-      _proxyAnimation.removeListener(onTick);
-    }
-  }
-
-  bool _scheduledPerformAnimationUpdate = false;
-  void _handleAnimationUpdate(AnimationStatus status) {
-    // The animation will not finish until the user lifts their finger, so we
-    // should suppress the status update if the gesture is in progress, and
-    // delay it until the finger is lifted.
-    if (manifest.fromRoute.navigator?.userGestureInProgress != true) {
-      _performAnimationUpdate(status);
-      return;
-    }
-
-    if (_scheduledPerformAnimationUpdate) {
-      return;
-    }
-
-    // The `navigator` must be non-null here, or the first if clause above would
-    // have returned from this method.
-    final navigator = manifest.fromRoute.navigator!;
-
-    void delayedPerformAnimationUpdate() {
-      assert(!navigator.userGestureInProgress);
-      assert(_scheduledPerformAnimationUpdate);
-      _scheduledPerformAnimationUpdate = false;
-      navigator.userGestureInProgressNotifier
-          .removeListener(delayedPerformAnimationUpdate);
-      _performAnimationUpdate(_proxyAnimation.status);
-    }
-
-    assert(navigator.userGestureInProgress);
-    _scheduledPerformAnimationUpdate = true;
-    navigator.userGestureInProgressNotifier
-        .addListener(delayedPerformAnimationUpdate);
+  void _onFlightEnded(AnimationStatus status) {
+    assert(overlayEntry != null);
+    overlayEntry!.remove();
+    overlayEntry!.dispose();
+    overlayEntry = null;
+    // We want to keep the hero underneath the current page hidden. If
+    // [AnimationStatus.completed], toHero will be the one on top and we keep
+    // fromHero hidden. If [AnimationStatus.dismissed], the animation is
+    // triggered but canceled before it finishes. In this case, we keep toHero
+    // hidden instead.
+    manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
+    manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
+    onFlightEnded(this);
   }
 
   /// Releases resources.
@@ -570,78 +545,19 @@ class _SuperheroFlight {
       overlayEntry!.remove();
       overlayEntry!.dispose();
       overlayEntry = null;
-      _proxyAnimation.parent = null;
-      _proxyAnimation.removeListener(onTick);
-      _proxyAnimation.removeStatusListener(_handleAnimationUpdate);
     }
     _manifest?.dispose();
   }
 
-  void onTick() {
-    final toHeroBox = (!_aborted && manifest.toHero.mounted)
-        ? manifest.toHero.context.findRenderObject() as RenderBox?
-        : null;
-    // Try to find the new origin of the toHero, if the flight isn't aborted.
-    final toHeroOrigin =
-        toHeroBox != null && toHeroBox.attached && toHeroBox.hasSize
-            ? toHeroBox.localToGlobal(
-                Offset.zero,
-                ancestor: manifest.toRoute.subtreeContext?.findRenderObject()
-                    as RenderBox?,
-              )
-            : null;
-
-    if (toHeroOrigin != null && toHeroOrigin.isFinite) {
-      // If the new origin of toHero is available and also paintable, try to
-      // update heroRectTween with it.
-      if (toHeroOrigin != heroRectTween.end!.topLeft) {
-        final heroRectEnd = toHeroOrigin & heroRectTween.end!.size;
-        heroRectTween = manifest.createHeroRectTween(
-          begin: heroRectTween.begin,
-          end: heroRectEnd,
-        );
-      }
-    } else if (_heroOpacity.isCompleted) {
-      // The toHero no longer exists or it's no longer the flight's destination.
-      // Continue flying while fading out.
-      _heroOpacity = _proxyAnimation.drive(
-        _reverseTween
-            .chain(CurveTween(curve: Interval(_proxyAnimation.value, 1))),
-      );
-    }
-    // Update _aborted for the next animation tick.
-    _aborted = toHeroOrigin == null || !toHeroOrigin.isFinite;
-  }
-
   // The simple case: we're either starting a push or a pop animation.
   void start(_HeroFlightManifest initialManifest) {
-    assert(!_aborted);
-    assert(() {
-      final initial = initialManifest.animation;
-      final type = initialManifest.type;
-      switch (type) {
-        case HeroFlightDirection.pop:
-          return initial.value == 1.0 && initialManifest.isUserGestureTransition
-              // During user gesture transitions, the animation controller isn't
-              // driving the reverse transition, but should still be in a previously
-              // completed stage with the initial value at 1.0.
-              ? initial.status == AnimationStatus.completed
-              : initial.status == AnimationStatus.reverse;
-        case HeroFlightDirection.push:
-          return initial.value == 0.0 &&
-              initial.status == AnimationStatus.forward;
-      }
-    }());
-
     manifest = initialManifest;
 
     final bool shouldIncludeChildInPlaceholder;
     switch (manifest.type) {
       case HeroFlightDirection.pop:
-        _proxyAnimation.parent = ReverseAnimation(manifest.animation);
         shouldIncludeChildInPlaceholder = false;
       case HeroFlightDirection.push:
-        _proxyAnimation.parent = manifest.animation;
         shouldIncludeChildInPlaceholder = true;
     }
 
@@ -651,7 +567,6 @@ class _SuperheroFlight {
     manifest.toHero.startFlight();
     manifest.overlay
         .insert(overlayEntry = OverlayEntry(builder: _buildOverlay));
-    _proxyAnimation.addListener(onTick);
   }
 
   // While this flight's hero was in transition a push or a pop occurred for
@@ -660,33 +575,15 @@ class _SuperheroFlight {
     assert(manifest.tag == newManifest.tag);
     if (manifest.type == HeroFlightDirection.push &&
         newManifest.type == HeroFlightDirection.pop) {
-      // A push flight was interrupted by a pop.
-      assert(newManifest.animation.status == AnimationStatus.reverse);
       assert(manifest.fromHero == newManifest.toHero);
       assert(manifest.toHero == newManifest.fromHero);
       assert(manifest.fromRoute == newManifest.toRoute);
       assert(manifest.toRoute == newManifest.fromRoute);
-
-      // The same heroRect tween is used in reverse, rather than creating
-      // a new heroRect with _doCreateRectTween(heroRect.end, heroRect.begin).
-      // That's because tweens like MaterialRectArcTween may create a different
-      // path for swapped begin and end parameters. We want the pop flight
-      // path to be the same (in reverse) as the push flight path.
-      _proxyAnimation.parent = ReverseAnimation(newManifest.animation);
-      heroRectTween = ReverseTween<Rect?>(heroRectTween);
     } else if (manifest.type == HeroFlightDirection.pop &&
         newManifest.type == HeroFlightDirection.push) {
-      // A pop flight was interrupted by a push.
-      assert(newManifest.animation.status == AnimationStatus.forward);
       assert(manifest.toHero == newManifest.fromHero);
       assert(manifest.toRoute == newManifest.fromRoute);
 
-      _proxyAnimation.parent = newManifest.animation.drive(
-        Tween<double>(
-          begin: manifest.animation.value,
-          end: 1,
-        ),
-      );
       if (manifest.fromHero != newManifest.toHero) {
         manifest.fromHero.endFlight(keepPlaceholder: true);
         newManifest.toHero.startFlight();
@@ -697,14 +594,6 @@ class _SuperheroFlight {
       // manifest.type == _HeroFlightType.pop && newManifest.type == _HeroFlightType.pop
       assert(manifest.fromHero != newManifest.fromHero);
       assert(manifest.toHero != newManifest.toHero);
-
-      shuttle = null;
-
-      if (newManifest.type == HeroFlightDirection.pop) {
-        _proxyAnimation.parent = ReverseAnimation(newManifest.animation);
-      } else {
-        _proxyAnimation.parent = newManifest.animation;
-      }
 
       manifest.fromHero.endFlight(keepPlaceholder: true);
       manifest.toHero.endFlight(keepPlaceholder: true);
@@ -724,16 +613,12 @@ class _SuperheroFlight {
     manifest = newManifest;
   }
 
-  void abort() {
-    _aborted = true;
-  }
-
   @override
   String toString() {
     final from = manifest.fromRoute.settings;
     final to = manifest.toRoute.settings;
     final tag = manifest.tag;
-    return 'HeroFlight(for: $tag, from: $from, to: $to ${_proxyAnimation.parent})';
+    return 'HeroFlight(for: $tag, from: $from, to: $to)';
   }
 }
 
@@ -804,7 +689,7 @@ class SuperheroController extends NavigatorObserver {
     bool isInvalidFlight(_SuperheroFlight flight) {
       return flight.manifest.isUserGestureTransition &&
           flight.manifest.type == HeroFlightDirection.pop &&
-          flight._proxyAnimation.isDismissed;
+          flight.overlayEntry == null;
     }
 
     final invalidFlights =
@@ -813,7 +698,7 @@ class SuperheroController extends NavigatorObserver {
     // Treat these invalidated flights as dismissed. Calling
     // _handleAnimationUpdate will also remove the flight from _flights.
     for (final flight in invalidFlights) {
-      flight._handleAnimationUpdate(AnimationStatus.dismissed);
+      flight._onFlightEnded(AnimationStatus.dismissed);
     }
   }
 
@@ -987,7 +872,7 @@ class SuperheroController extends NavigatorObserver {
           _flights[tag] = _SuperheroFlight(_handleFlightEnded)..start(manifest);
         }
       } else {
-        existingFlight?.abort();
+        existingFlight?._onFlightEnded(AnimationStatus.dismissed);
       }
     }
 
