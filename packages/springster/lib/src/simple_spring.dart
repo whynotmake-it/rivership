@@ -112,6 +112,16 @@ class SimpleSpring extends SpringDescription {
         durationSeconds: durationSeconds ?? this.durationSeconds,
       );
 
+  /// Creates a new [SimpleSpring] with the specified properties.
+  SimpleSpring copyWithDamping({
+    double? dampingFraction,
+    double? durationSeconds,
+  }) =>
+      SimpleSpring.withDamping(
+        dampingFraction: dampingFraction ?? this.dampingFraction,
+        durationSeconds: durationSeconds ?? this.durationSeconds,
+      );
+
   @override
   String toString() {
     // ignore: lines_longer_than_80_chars
