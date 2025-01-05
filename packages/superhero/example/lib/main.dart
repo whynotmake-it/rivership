@@ -35,7 +35,7 @@ class SuperheroExample extends StatelessWidget {
                 (context, index) => Superhero(
                   transitionOnUserGestures: true,
                   tag: index,
-                  spring: SimpleSpring.bouncy,
+                  spring: SimpleSpring.snappy,
                   child: Cover(
                     index: index,
                     onPressed: () => Navigator.push(

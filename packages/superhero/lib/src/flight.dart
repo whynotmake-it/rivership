@@ -28,7 +28,7 @@ class _SuperheroFlight {
         .addStatusListener(_onProgressAnimationStatusChanged);
 
     _centerController
-      ..addStatusListener(_onFlightAnimationStatusChanged)
+      ..spring = _manifest.spring
       ..animateTo(
         (
           _manifest.toHeroLocation.center.dx,
@@ -36,12 +36,14 @@ class _SuperheroFlight {
         ),
       );
 
-    _sizeController.animateTo(
-      (
-        _manifest.toHeroLocation.size.width,
-        _manifest.toHeroLocation.size.height,
-      ),
-    );
+    _sizeController
+      ..spring = _manifest.spring
+      ..animateTo(
+        (
+          _manifest.toHeroLocation.size.width,
+          _manifest.toHeroLocation.size.height,
+        ),
+      );
   }
 
   void divert(_FlightManifest manifest) {
@@ -135,7 +137,7 @@ class _SuperheroFlight {
         _manifest.fromHeroLocation.center.dx,
         _manifest.fromHeroLocation.center.dy,
       ),
-    );
+    )..addStatusListener(_onFlightAnimationStatusChanged);
 
     _sizeController = SpringSimulationController2D(
       vsync: _manifest.overlay,
