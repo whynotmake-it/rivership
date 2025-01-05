@@ -6,103 +6,8 @@ import 'package:springster/springster.dart';
 
 typedef _OnFlightEnded = void Function(_SuperheroFlight flight);
 
-/// A widget that marks its child as being a candidate for
-/// [hero animations](https://docs.flutter.dev/ui/animations/hero-animations).
-///
-/// When a [PageRoute] is pushed or popped with the [Navigator], the entire
-/// screen's content is replaced. An old route disappears and a new route
-/// appears. If there's a common visual feature on both routes then it can
-/// be helpful for orienting the user for the feature to physically move from
-/// one page to the other during the routes' transition. Such an animation
-/// is called a *hero animation*. The hero widgets "fly" in the Navigator's
-/// overlay during the transition and while they're in-flight they're, by
-/// default, not shown in their original locations in the old and new routes.
-///
-/// To label a widget as such a feature, wrap it in a [Superhero] widget. When
-/// navigation happens, the [Superhero] widgets on each route are identified
-/// by the [SuperheroController]. For each pair of [Superhero] widgets that have the
-/// same tag, a hero animation is triggered.
-///
-/// If a [Superhero] is already in flight when navigation occurs, its
-/// flight animation will be redirected to its new destination. The
-/// widget shown in-flight during the transition is, by default, the
-/// destination route's [Superhero]'s child.
-///
-/// For a Hero animation to trigger, the Hero has to exist on the very first
-/// frame of the new page's animation.
-///
-/// Routes must not contain more than one [Superhero] for each [tag].
-///
-/// {@youtube 560 315 https://www.youtube.com/watch?v=Be9UH1kXFDw}
-///
-/// {@tool dartpad}
-/// This sample shows a [Superhero] used within a [ListTile].
-///
-/// Tapping on the Hero-wrapped rectangle triggers a hero
-/// animation as a new [MaterialPageRoute] is pushed. Both the size
-/// and location of the rectangle animates.
-///
-/// Both widgets use the same [Superhero.tag].
-///
-/// The Hero widget uses the matching tags to identify and execute this
-/// animation.
-///
-/// ** See code in examples/api/lib/widgets/heroes/hero.0.dart **
-/// {@end-tool}
-///
-/// {@tool dartpad}
-/// This sample shows [Superhero] flight animations using default tween
-/// and custom rect tween.
-///
-/// ** See code in examples/api/lib/widgets/heroes/hero.1.dart **
-/// {@end-tool}
-///
-/// ## Discussion
-///
-/// Heroes and the [Navigator]'s [Overlay] [Stack] must be axis-aligned for
-/// all this to work. The top left and bottom right coordinates of each animated
-/// Hero will be converted to global coordinates and then from there converted
-/// to that [Stack]'s coordinate space, and the entire Hero subtree will, for
-/// the duration of the animation, be lifted out of its original place, and
-/// positioned on that stack. If the [Superhero] isn't axis aligned, this is going to
-/// fail in a rather ugly fashion. Don't rotate your heroes!
-///
-/// To make the animations look good, it's critical that the widget tree for the
-/// hero in both locations be essentially identical. The widget of the *target*
-/// is, by default, used to do the transition: when going from route A to route
-/// B, route B's hero's widget is placed over route A's hero's widget. Additionally,
-/// if the [Superhero] subtree changes appearance based on an [InheritedWidget] (such
-/// as [MediaQuery] or [Theme]), then the hero animation may have discontinuity
-/// at the start or the end of the animation because route A and route B provides
-/// different such [InheritedWidget]s. Consider providing a custom [flightShuttleBuilder]
-/// to ensure smooth transitions. The default [flightShuttleBuilder] interpolates
-/// [MediaQuery]'s paddings. If your [Superhero] widget uses custom [InheritedWidget]s
-/// and displays a discontinuity in the animation, try to provide custom in-flight
-/// transition using [flightShuttleBuilder].
-///
-/// By default, both route A and route B's heroes are hidden while the
-/// transitioning widget is animating in-flight above the 2 routes.
-/// [placeholderBuilder] can be used to show a custom widget in their place
-/// instead once the transition has taken flight.
-///
-/// During the transition, the transition widget is animated to route B's hero's
-/// position, and then the widget is inserted into route B. When going back from
-/// B to A, route A's hero's widget is, by default, placed over where route B's
-/// hero's widget was, and then the animation goes the other way.
-///
-/// ### Nested Navigators
-///
-/// If either or both routes contain nested [Navigator]s, only [Superhero]es
-/// contained in the top-most routes (as defined by [Route.isCurrent]) *of those
-/// nested [Navigator]s* are considered for animation. Just like in the
-/// non-nested case the top-most routes containing these [Superhero]es in the nested
-/// [Navigator]s have to be [PageRoute]s.
-///
-/// ## Parts of a Hero Transition
-///
-/// ![Diagrams with parts of the Hero transition.](https://flutter.github.io/assets-for-api-docs/assets/interaction/heroes.png)
 class Superhero extends StatefulWidget {
-  /// Create a hero.
+  /// Create a superhero.
   ///
   /// The [child] parameter and all of the its descendants must not be
   /// [Superhero]es.
@@ -394,6 +299,35 @@ class _HeroFlightManifest {
         durationSeconds: duration.inMilliseconds / 1000,
       );
 
+  CurvedAnimation? _routeAnimation;
+
+  Animation<double> get routeAnimation {
+    return _routeAnimation ??= CurvedAnimation(
+      parent: (type == HeroFlightDirection.push)
+          ? toRoute.animation!
+          : fromRoute.animation!,
+      curve: Curves.fastOutSlowIn,
+      reverseCurve: isDiverted ? null : Curves.fastOutSlowIn.flipped,
+    );
+  }
+
+  RectTween get tween {
+    return switch (type) {
+      HeroFlightDirection.push => RectTween(
+          begin: fromHeroLocation,
+          end: toHeroLocation,
+        ),
+      HeroFlightDirection.pop => RectTween(
+          begin: toHeroLocation,
+          end: fromHeroLocation,
+        ),
+    };
+  }
+
+  Rect get targetRect => isUserGestureTransition
+      ? tween.evaluate(routeAnimation)!
+      : toHeroLocation;
+
   // The bounding box for `context`'s render object,  in `ancestorContext`'s
   // render object's coordinate space.
   static Rect _boundingBoxFor(
@@ -439,7 +373,9 @@ class _HeroFlightManifest {
   }
 
   @mustCallSuper
-  void dispose() {}
+  void dispose() {
+    _routeAnimation?.dispose();
+  }
 }
 
 // Builds the in-flight hero widget.
@@ -462,9 +398,9 @@ class _SuperheroFlight {
   // flight's lifecycle.
   _HeroFlightManifest? _manifest;
   _HeroFlightManifest get manifest => _manifest!;
+
   set manifest(_HeroFlightManifest value) {
     _manifest?.dispose();
-
     _manifest = value;
   }
 
@@ -472,70 +408,77 @@ class _SuperheroFlight {
 
   // The OverlayEntry WidgetBuilder callback for the hero's overlay.
   Widget _buildOverlay(BuildContext context) {
-    return SpringBuilder2D(
-      onAnimationStatusChanged: _onStatusChanged,
-      spring: manifest.spring,
-      value: (
-        manifest.toHeroLocation.topLeft.dx,
-        manifest.toHeroLocation.topLeft.dy,
-      ),
-      from: (
-        manifest.fromHeroLocation.topLeft.dx,
-        manifest.fromHeroLocation.topLeft.dy,
-      ),
-      builder: (context, center, child) => SpringBuilder2D(
+    return AnimatedBuilder(
+      animation: manifest.routeAnimation,
+      builder: (context, child) => SpringBuilder2D(
+        onAnimationStatusChanged: _onSpringStatusChanged,
+        spring: manifest.spring,
         value: (
-          manifest.toHeroLocation.size.width,
-          manifest.toHeroLocation.size.height,
+          manifest.targetRect.topLeft.dx,
+          manifest.targetRect.topLeft.dy,
         ),
         from: (
-          manifest.fromHeroLocation.size.width,
-          manifest.fromHeroLocation.size.height,
+          manifest.fromHeroLocation.topLeft.dx,
+          manifest.fromHeroLocation.topLeft.dy,
         ),
-        spring: manifest.spring,
-        builder: (context, size, child) {
-          final rect = center.toOffset() & Size(size.x, size.y);
-          final offsets = RelativeRect.fromSize(rect, manifest.navigatorSize);
-          return Positioned(
-            top: offsets.top,
-            right: offsets.right,
-            bottom: offsets.bottom,
-            left: offsets.left,
-            child: IgnorePointer(
-              child: FadeTransition(
-                opacity: AlwaysStoppedAnimation(1),
-                child: child,
+        builder: (context, center, child) => SpringBuilder2D(
+          simulate: manifest.isUserGestureTransition == false,
+          value: (
+            manifest.targetRect.size.width,
+            manifest.targetRect.size.height,
+          ),
+          from: (
+            manifest.fromHeroLocation.size.width,
+            manifest.fromHeroLocation.size.height,
+          ),
+          spring: manifest.spring,
+          builder: (context, size, child) {
+            final rect = center.toOffset() & Size(size.x, size.y);
+            final offsets = RelativeRect.fromSize(rect, manifest.navigatorSize);
+            return Positioned(
+              top: offsets.top,
+              right: offsets.right,
+              bottom: offsets.bottom,
+              left: offsets.left,
+              child: IgnorePointer(
+                child: FadeTransition(
+                  opacity: AlwaysStoppedAnimation(1),
+                  child: child,
+                ),
               ),
-            ),
-          );
-        },
-        child: child,
-      ),
-      child: manifest.shuttleBuilder(
-        context,
-        AlwaysStoppedAnimation(1),
-        manifest.type,
-        manifest.fromHero.context,
-        manifest.toHero.context,
+            );
+          },
+          child: child,
+        ),
+        child: manifest.shuttleBuilder(
+          context,
+          manifest.routeAnimation,
+          manifest.type,
+          manifest.fromHero.context,
+          manifest.toHero.context,
+        ),
       ),
     );
   }
 
-  void _onStatusChanged(AnimationStatus status) {
-    if (!status.isAnimating) {
-      assert(overlayEntry != null);
-      overlayEntry!.remove();
-      overlayEntry!.dispose();
-      overlayEntry = null;
-      // We want to keep the hero underneath the current page hidden. If
-      // [AnimationStatus.completed], toHero will be the one on top and we keep
-      // fromHero hidden. If [AnimationStatus.dismissed], the animation is
-      // triggered but canceled before it finishes. In this case, we keep toHero
-      // hidden instead.
-      manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
-      manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
-      onFlightEnded(this);
+  void _onSpringStatusChanged(AnimationStatus status) {
+    if (status.isAnimating || manifest.routeAnimation.isAnimating) {
+      return;
     }
+
+    assert(overlayEntry != null);
+    assert(overlayEntry != null);
+    overlayEntry!.remove();
+    overlayEntry!.dispose();
+    overlayEntry = null;
+    // We want to keep the hero underneath the current page hidden. If
+    // [AnimationStatus.completed], toHero will be the one on top and we keep
+    // fromHero hidden. If [AnimationStatus.dismissed], the animation is
+    // triggered but canceled before it finishes. In this case, we keep toHero
+    // hidden instead.
+    manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
+    manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
+    onFlightEnded(this);
   }
 
   /// Releases resources.
@@ -549,6 +492,7 @@ class _SuperheroFlight {
       overlayEntry!.dispose();
       overlayEntry = null;
     }
+
     _manifest?.dispose();
   }
 
@@ -692,7 +636,7 @@ class SuperheroController extends NavigatorObserver {
     bool isInvalidFlight(_SuperheroFlight flight) {
       return flight.manifest.isUserGestureTransition &&
           flight.manifest.type == HeroFlightDirection.pop &&
-          flight.overlayEntry == null;
+          ReverseAnimation(flight.manifest.routeAnimation).isDismissed;
     }
 
     final invalidFlights =
@@ -701,7 +645,7 @@ class SuperheroController extends NavigatorObserver {
     // Treat these invalidated flights as dismissed. Calling
     // _handleAnimationUpdate will also remove the flight from _flights.
     for (final flight in invalidFlights) {
-      flight._onStatusChanged(AnimationStatus.dismissed);
+      flight._onSpringStatusChanged(AnimationStatus.dismissed);
     }
   }
 
@@ -875,7 +819,7 @@ class SuperheroController extends NavigatorObserver {
           _flights[tag] = _SuperheroFlight(_handleFlightEnded)..start(manifest);
         }
       } else {
-        existingFlight?._onStatusChanged(AnimationStatus.dismissed);
+        existingFlight?._onSpringStatusChanged(AnimationStatus.dismissed);
       }
     }
 

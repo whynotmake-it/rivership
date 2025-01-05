@@ -24,6 +24,7 @@ class SuperheroExample extends StatelessWidget {
       body: Center(
         child: Superhero(
           tag: 'hero',
+          transitionOnUserGestures: true,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               fixedSize: const Size(200, 200),
@@ -54,6 +55,7 @@ class Page2 extends StatelessWidget {
       body: Align(
         alignment: Alignment.topLeft,
         child: Superhero(
+          transitionOnUserGestures: true,
           tag: 'hero',
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
