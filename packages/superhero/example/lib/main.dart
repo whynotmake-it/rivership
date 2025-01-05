@@ -52,7 +52,7 @@ class Page2 extends StatelessWidget {
         title: const Text('Page 2'),
       ),
       body: Align(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.topLeft,
         child: Superhero(
           tag: 'hero',
           child: ElevatedButton(

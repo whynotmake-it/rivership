@@ -422,12 +422,6 @@ class _HeroFlightManifest {
   late final Rect toHeroLocation =
       _boundingBoxFor(toHero.context, toRoute.subtreeContext);
 
-  late final Rect absoluteToHeroLocation =
-      _boundingBoxFor(toHero.context, null);
-
-  late final Rect absoluteFromHeroLocation =
-      _boundingBoxFor(fromHero.context, null);
-
   /// Whether this [_HeroFlightManifest] is valid and can be used to start or
   /// divert a [_SuperheroFlight].
   ///
@@ -482,21 +476,21 @@ class _SuperheroFlight {
       onAnimationStatusChanged: _onStatusChanged,
       spring: manifest.spring,
       value: (
-        manifest.absoluteToHeroLocation.center.dx,
-        manifest.absoluteToHeroLocation.center.dy,
+        manifest.toHeroLocation.topLeft.dx,
+        manifest.toHeroLocation.topLeft.dy,
       ),
       from: (
-        manifest.absoluteFromHeroLocation.center.dx,
-        manifest.absoluteFromHeroLocation.center.dy,
+        manifest.fromHeroLocation.topLeft.dx,
+        manifest.fromHeroLocation.topLeft.dy,
       ),
       builder: (context, center, child) => SpringBuilder2D(
         value: (
-          manifest.absoluteToHeroLocation.size.width,
-          manifest.absoluteToHeroLocation.size.height,
+          manifest.toHeroLocation.size.width,
+          manifest.toHeroLocation.size.height,
         ),
         from: (
-          manifest.absoluteFromHeroLocation.size.width,
-          manifest.absoluteFromHeroLocation.size.height,
+          manifest.fromHeroLocation.size.width,
+          manifest.fromHeroLocation.size.height,
         ),
         spring: manifest.spring,
         builder: (context, size, child) {
@@ -519,7 +513,7 @@ class _SuperheroFlight {
       ),
       child: manifest.shuttleBuilder(
         context,
-        const AlwaysStoppedAnimation(1),
+        AlwaysStoppedAnimation(1),
         manifest.type,
         manifest.fromHero.context,
         manifest.toHero.context,
