@@ -35,7 +35,7 @@ class SuperheroExample extends StatelessWidget {
                 (context, index) => Superhero(
                   transitionOnUserGestures: true,
                   tag: index,
-                  spring: SimpleSpring.snappy,
+                  spring: SimpleSpring.bouncy,
                   child: Cover(
                     index: index,
                     onPressed: () => Navigator.push(
@@ -116,7 +116,7 @@ class Page2 extends StatelessWidget {
               height: MediaQuery.sizeOf(context).height * .5,
               child: Center(
                 child: Superhero(
-                  spring: SimpleSpring.interactive,
+                  spring: SimpleSpring.bouncy,
                   transitionOnUserGestures: true,
                   flightShuttleBuilder: (flightContext, animation,
                       flightDirection, fromHeroContext, toHeroContext) {

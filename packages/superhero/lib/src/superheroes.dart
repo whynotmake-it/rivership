@@ -16,6 +16,7 @@ class Superhero extends StatefulWidget {
     this.placeholderBuilder,
     this.flightShuttleBuilder,
     this.transitionOnUserGestures = true,
+    this.adjustToRouteTransitionDuration = false,
   });
 
   final Object tag;
@@ -29,6 +30,10 @@ class Superhero extends StatefulWidget {
   final HeroFlightShuttleBuilder? flightShuttleBuilder;
 
   final bool transitionOnUserGestures;
+
+  /// If true, [spring] will be adjusted to the duration of the route
+  /// transition.
+  final bool adjustToRouteTransitionDuration;
 
   @override
   State<Superhero> createState() => SuperheroState();
@@ -357,6 +362,8 @@ class SuperheroController extends NavigatorObserver {
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               spring: toHero.widget.spring,
+              adjustToRouteTransitionDuration:
+                  toHero.widget.adjustToRouteTransitionDuration,
             );
 
       // Only proceed with a valid manifest. Otherwise abort the existing
