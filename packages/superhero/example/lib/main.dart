@@ -1,18 +1,31 @@
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:example/src/settings_menus.dart';
 import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lorem_gen/lorem_gen.dart';
-import 'package:pull_down_button/pull_down_button.dart';
+import 'package:springster/springster.dart';
 import 'package:superhero/superhero.dart';
+
+final springNotifier = ValueNotifier(SimpleSpring.bouncy);
+final flightShuttleNotifier =
+    ValueNotifier<SuperheroShuttleBuilder>(const FlipShuttleBuilder());
+final adjustSpringTimingToRoute = ValueNotifier(false);
+final detailsPageAspectRatio = ValueNotifier(1.0);
 
 void main() async {
   runApp(
     ListenableBuilder(
-      listenable: springNotifier,
+      listenable: Listenable.merge(
+        [
+          springNotifier,
+          flightShuttleNotifier,
+          adjustSpringTimingToRoute,
+          detailsPageAspectRatio,
+        ],
+      ),
       builder: (context, child) => CupertinoApp(
         debugShowCheckedModeBanner: false,
         onGenerateRoute: (settings) => MyCustomRoute(
@@ -24,8 +37,6 @@ void main() async {
     ),
   );
 }
-
-final springNotifier = ValueNotifier(SimpleSpring.snappy);
 
 class SuperheroExample extends StatelessWidget {
   const SuperheroExample({super.key});
@@ -52,31 +63,7 @@ class SuperheroExample extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             CupertinoSliverNavigationBar(
-              trailing: PullDownButton(
-                itemBuilder: (context) => [
-                  PullDownMenuTitle(title: Text('Select Spring')),
-                  PullDownMenuItem.selectable(
-                    onTap: () => springNotifier.value = SimpleSpring.snappy,
-                    title: 'Snappy',
-                    selected: springNotifier.value == SimpleSpring.snappy,
-                  ),
-                  PullDownMenuItem.selectable(
-                    onTap: () => springNotifier.value = SimpleSpring.bouncy,
-                    title: 'Bouncy',
-                    selected: springNotifier.value == SimpleSpring.bouncy,
-                  ),
-                  PullDownMenuItem.selectable(
-                    onTap: () => springNotifier.value = SimpleSpring.defaultIOS,
-                    title: 'Default iOS',
-                    selected: springNotifier.value == SimpleSpring.defaultIOS,
-                  ),
-                ],
-                buttonBuilder: (context, showMenu) => CupertinoButton(
-                  onPressed: showMenu,
-                  padding: EdgeInsets.zero,
-                  child: const Icon(CupertinoIcons.settings),
-                ),
-              ),
+              trailing: MainSettingsButton(),
             ),
             SliverPadding(
               padding: const EdgeInsets.all(32),
@@ -90,16 +77,20 @@ class SuperheroExample extends StatelessWidget {
                   (context, index) => Superhero(
                     tag: index,
                     spring: springNotifier.value,
+                    adjustToRouteTransitionDuration:
+                        adjustSpringTimingToRoute.value,
                     child: Cover(
                       index: index,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MyCustomRoute(
-                          fullscreenDialog: true,
-                          title: 'Details',
-                          builder: (context) => DetailsPage(index: index),
-                        ),
-                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MyCustomRoute(
+                            fullscreenDialog: true,
+                            title: 'Details',
+                            builder: (context) => DetailsPage(index: index),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   childCount: 100,
@@ -133,58 +124,55 @@ class Cover extends StatelessWidget {
         cornerSmoothing: .6,
       ),
     );
-    return AspectRatio(
-      aspectRatio: 1,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          splashFactory: NoSplash.splashFactory,
-          padding: EdgeInsets.all(32),
-          shape: shape,
-          backgroundColor:
-              !isFlipped ? Colors.transparent : CupertinoColors.systemGrey4,
-          foregroundColor:
-              !isFlipped ? CupertinoColors.white : CupertinoColors.black,
-          shadowColor: Colors.brown.withValues(alpha: .3),
-          elevation: isFlipped ? 24 : 8,
-          backgroundBuilder: (context, states, child) => DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: shape,
-              gradient: LinearGradient(
-                colors: [
-                  CupertinoColors.systemGrey5.withValues(blue: .88),
-                  CupertinoColors.systemGrey3.withValues(blue: .75),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              image: isFlipped
-                  ? null
-                  : DecorationImage(
-                      image: CachedNetworkImageProvider(
-                        'https://picsum.photos/800/800?random=$index',
-                      ),
-                      fit: BoxFit.cover,
-                    ),
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        splashFactory: NoSplash.splashFactory,
+        padding: EdgeInsets.all(32),
+        shape: shape,
+        backgroundColor:
+            !isFlipped ? Colors.transparent : CupertinoColors.systemGrey4,
+        foregroundColor:
+            !isFlipped ? CupertinoColors.white : CupertinoColors.black,
+        shadowColor: Colors.brown.withValues(alpha: .3),
+        elevation: isFlipped ? 24 : 8,
+        backgroundBuilder: (context, states, child) => DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: shape,
+            gradient: LinearGradient(
+              colors: [
+                CupertinoColors.systemGrey5.withValues(blue: .88),
+                CupertinoColors.systemGrey3.withValues(blue: .75),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            child: child,
+            image: isFlipped
+                ? null
+                : DecorationImage(
+                    image: CachedNetworkImageProvider(
+                      'https://picsum.photos/800/800?random=$index',
+                    ),
+                    fit: BoxFit.cover,
+                  ),
           ),
+          child: child,
         ),
-        child: isFlipped
-            ? Align(
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  'Image #$index',
-                  style: CupertinoTheme.of(context)
-                      .textTheme
-                      .navLargeTitleTextStyle
-                      .copyWith(
-                        color: CupertinoColors.inactiveGray,
-                      ),
-                ),
-              )
-            : const SizedBox.shrink(),
-        onPressed: onPressed,
       ),
+      child: isFlipped
+          ? Align(
+              alignment: Alignment.bottomLeft,
+              child: Text(
+                'Image #$index',
+                style: CupertinoTheme.of(context)
+                    .textTheme
+                    .navLargeTitleTextStyle
+                    .copyWith(
+                      color: CupertinoColors.inactiveGray,
+                    ),
+              ),
+            )
+          : const SizedBox.shrink(),
+      onPressed: onPressed,
     );
   }
 }
@@ -196,11 +184,10 @@ class DetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: SuperheroPageRoute.maybeOf(context)?.dismissProgress ??
-          ValueNotifier(0.0),
-      builder: (context, value, child) {
-        final opacity = 1 - value;
+    return ReactToSuperheroDismiss(
+      builder: (context, progress, offset, child) {
+        final opacity = 1 - progress;
+
         return ClipRect(
           child: BackdropFilter(
             filter:
@@ -209,119 +196,113 @@ class DetailsPage extends StatelessWidget {
               backgroundColor: CupertinoTheme.of(context)
                   .scaffoldBackgroundColor
                   .withValues(alpha: opacity),
-              child: CustomScrollView(
-                slivers: [
-                  SliverOpacity(
-                    opacity: opacity,
-                    sliver: CupertinoSliverNavigationBar(
-                      largeTitle: SizedBox(),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 16,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: MediaQuery.sizeOf(context).height * .5,
-                      child: Center(
-                        child: DragDismissable(
-                          onDismiss: () => Navigator.pop(context),
-                          child: Superhero(
-                            spring: springNotifier.value,
-                            flightShuttleBuilder: (flightContext,
-                                animation,
-                                flightDirection,
-                                fromHeroContext,
-                                toHeroContext) {
-                              return AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, child) {
-                                  final realValue = flightDirection ==
-                                          HeroFlightDirection.push
-                                      ? animation.value
-                                      : 1 - animation.value;
-
-                                  final angle = realValue * pi;
-
-                                  final perspective = Matrix4.identity()
-                                    ..setEntry(3, 2, 0.001)
-                                    ..rotateY(-angle);
-
-                                  return Transform(
-                                    alignment: FractionalOffset.center,
-                                    filterQuality: FilterQuality.none,
-                                    transform: perspective,
-                                    child: realValue > 0.5
-                                        ? Transform.flip(
-                                            flipX: true,
-                                            child: toHeroContext.widget,
-                                          )
-                                        : fromHeroContext.widget,
-                                  );
-                                },
-                              );
-                            },
-                            tag: index,
-                            child: Cover(
-                              index: index,
-                              isFlipped: true,
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 48,
-                    ),
-                  ),
-                  SliverOpacity(
-                    opacity: opacity,
-                    sliver: SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: 600),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Details',
-                                  style: CupertinoTheme.of(context)
-                                      .textTheme
-                                      .textStyle
-                                      .copyWith(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            CupertinoColors.darkBackgroundGray,
-                                      ),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  lorem,
-                                  style: CupertinoTheme.of(context)
-                                      .textTheme
-                                      .textStyle,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                ],
-              ),
+              child: child!,
             ),
           ),
         );
       },
+      child: CustomScrollView(
+        slivers: [
+          ReactToSuperheroDismiss(
+            builder: (context, progress, offset, child) {
+              final opacity = 1 - progress;
+              return SliverOpacity(
+                opacity: opacity,
+                sliver: child!,
+              );
+            },
+            child: CupertinoSliverNavigationBar(
+              largeTitle: SizedBox(),
+              trailing: DetailsPageSettingsButton(),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 16,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Container(
+              height: MediaQuery.sizeOf(context).height * .5,
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Center(
+                child: SpringBuilder(
+                  value: detailsPageAspectRatio.value,
+                  spring: SimpleSpring.bouncy,
+                  builder: (context, value, child) => AspectRatio(
+                    aspectRatio: value,
+                    child: DragDismissable(
+                      onDismiss: () => Navigator.pop(context),
+                      child: child!,
+                    ),
+                  ),
+                  child: Superhero(
+                    tag: index,
+                    adjustToRouteTransitionDuration:
+                        adjustSpringTimingToRoute.value,
+                    spring: springNotifier.value,
+                    flightShuttleBuilder: flightShuttleNotifier.value,
+                    child: Cover(
+                      index: index,
+                      isFlipped: true,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 48,
+            ),
+          ),
+          ReactToSuperheroDismiss(
+            builder: (context, progress, offset, child) {
+              final opacity = 1 - progress;
+              return SliverOpacity(
+                opacity: opacity,
+                sliver: child!,
+              );
+            },
+            child: SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Details',
+                          style: CupertinoTheme.of(context)
+                              .textTheme
+                              .textStyle
+                              .copyWith(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: CupertinoTheme.of(context)
+                                    .textTheme
+                                    .textStyle
+                                    .color
+                                    ?.withValues(alpha: .8),
+                              ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          lorem,
+                          style: CupertinoTheme.of(context).textTheme.textStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 }

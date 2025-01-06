@@ -1,12 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
+import 'package:superhero/src/superhero_shuttle_builders.dart';
 import 'package:superhero/src/superhero_velocity.dart';
 
 part 'flight.dart';
 part 'manifest.dart';
 
+/// An equivalent of [Hero] that is animated across routes using spring
+/// simulations.
+///
+/// This widget is mostly a drop-in replacement for [Hero], so you can expect
+/// most things to work the same way.
 class Superhero extends StatefulWidget {
+  /// Creates a new [Superhero] widget.
   const Superhero({
     required this.child,
     required this.tag,
@@ -17,37 +24,70 @@ class Superhero extends StatefulWidget {
     this.adjustToRouteTransitionDuration = false,
   });
 
+  /// The identifier for this particular hero. If the tag of this hero matches
+  /// the tag of a hero on a [PageRoute] that we're navigating to or from, then
+  /// a hero animation will be triggered.
+  ///
+  /// Make sure that the tags on both heroes are equal using `==`.
   final Object tag;
 
+  /// The widget subtree that will "fly" from one route to another during a
+  /// [Navigator] push or pop transition.
+  ///
+  /// The appearance of this subtree should be similar to the appearance of
+  /// the subtrees of any other heroes in the application with the same [tag].
+  /// Changes in scale and aspect ratio work well in superhero animations.
+  ///
+  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
+  /// The spring simulation to use for transitions towards this hero.
+  ///
+  /// Defaults to [SimpleSpring], which is a smooth default without bounce.
   final SimpleSpring spring;
 
+  ///
   final HeroPlaceholderBuilder? placeholderBuilder;
 
+  /// The shuttle builder to use for this hero.
+  ///
+  /// If not given, [FadeShuttleBuilder] will be used as default, which
+  /// fades the hero widget between each other smoothly.
+  ///
+  /// ## Limitations
+  ///
+  /// If a widget built by [flightShuttleBuilder] takes part in a [Navigator]
+  /// push transition, that widget or its descendants must not have any
+  /// [GlobalKey] that is used in the source Hero's descendant widgets. That is
+  /// because both subtrees will be included in the widget tree during the Hero
+  /// flight animation, and [GlobalKey]s must be unique across the entire widget
+  /// tree.
+  ///
+  /// If the said [GlobalKey] is essential to your application, consider
+  /// providing a custom [placeholderBuilder] for the source Hero, to avoid the
+  /// [GlobalKey] collision, such as a builder that builds an empty [SizedBox],
+  /// keeping the Hero [child]'s original size.
+  ///
+  /// See also:
+  ///
+  /// * [SuperheroShuttleBuilder]
   final HeroFlightShuttleBuilder? flightShuttleBuilder;
-
-  final bool transitionOnUserGestures = true;
 
   /// If true, [spring] will be adjusted to the duration of the route
   /// transition.
   final bool adjustToRouteTransitionDuration;
 
   @override
-  State<Superhero> createState() => SuperheroState();
+  State<Superhero> createState() => _SuperheroState();
 }
 
-class SuperheroState extends State<Superhero> with TickerProviderStateMixin {
+class _SuperheroState extends State<Superhero> with TickerProviderStateMixin {
   final _key = GlobalKey();
 
   _FlightManifest? _manifest;
   Size? _placeholderSize;
 
   _SleightOfHand? _sleightOfHand;
-
-  static SuperheroState? maybeOf(BuildContext context) {
-    return context.findAncestorStateOfType<SuperheroState>();
-  }
 
   bool _showsEmptyPlaceholderForFlight(_FlightManifest flight) {
     return flight.direction == HeroFlightDirection.pop &&
@@ -157,6 +197,29 @@ extension on _SleightOfHand {
   double get scaleY => (sizeController.value.y) / (targetSize.y);
 }
 
+/// The controller for [Superhero] transitions.
+///
+/// Add this as a [NavigatorObserver] to your [Navigator] to enable
+/// superhero transitions across your app.
+///
+/// Example:
+///
+/// ```dart
+/// class MyApp extends StatelessWidget {
+///   @override
+///   Widget build(BuildContext context) {
+///     return MaterialApp(
+///       navigatorObservers: [SuperheroController()],
+///       ...
+///     );
+///   }
+/// }
+/// ```
+///
+/// **Note:**
+///
+/// In some cases with nested navigation, you need to make sure to add a
+/// [SuperheroController] to all of the navigators in your app.
 class SuperheroController extends NavigatorObserver {
   /// Creates a superhero controller.
   SuperheroController() {
@@ -175,8 +238,14 @@ class SuperheroController extends NavigatorObserver {
 
   @override
   void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
-    assert(topRoute.isCurrent);
-    assert(navigator != null);
+    assert(
+      topRoute.isCurrent,
+      'Top route $topRoute is not current in superhero transition.',
+    );
+    assert(
+      navigator != null,
+      'Navigator is null in superhero transition.',
+    );
     if (previousTopRoute == null) {
       return;
     }
@@ -194,7 +263,10 @@ class SuperheroController extends NavigatorObserver {
     Route<dynamic> route,
     Route<dynamic>? previousRoute,
   ) {
-    assert(navigator != null);
+    assert(
+      navigator != null,
+      'Navigator is null. Aborting superhero transition.',
+    );
     _maybeStartHeroTransition(
       fromRoute: route,
       toRoute: previousRoute,
@@ -318,11 +390,14 @@ class SuperheroController extends NavigatorObserver {
       assert(
         false,
         'Navigator $navigator has an invalid RenderObject type '
-        '${navigatorRenderObject.runtimeType}.',
+        '${navigatorRenderObject.runtimeType}. Aborting superhero transition.',
       );
       return;
     }
-    assert(navigatorRenderObject.hasSize);
+    assert(
+      navigatorRenderObject.hasSize,
+      'Navigator $navigator does not have a size.',
+    );
 
     // At this point, the toHeroes may have been built and laid out for the
     // first time.
@@ -333,17 +408,17 @@ class SuperheroController extends NavigatorObserver {
     final fromSubtreeContext = from.subtreeContext;
     final fromHeroes = fromSubtreeContext != null
         ? fromSubtreeContext.allHeroesFor(
-            isUserGestureTransition,
             navigator,
+            isUserGestureTransition: isUserGestureTransition,
           )
-        : const <Object, SuperheroState>{};
+        : const <Object, _SuperheroState>{};
     final toSubtreeContext = to.subtreeContext;
     final toHeroes = toSubtreeContext != null
         ? toSubtreeContext.allHeroesFor(
-            isUserGestureTransition,
             navigator,
+            isUserGestureTransition: isUserGestureTransition,
           )
-        : const <Object, SuperheroState>{};
+        : const <Object, _SuperheroState>{};
 
     for (final fromHeroEntry in fromHeroes.entries) {
       final tag = fromHeroEntry.key;
@@ -362,7 +437,7 @@ class SuperheroController extends NavigatorObserver {
               toHero: toHero,
               shuttleBuilder: toHero.widget.flightShuttleBuilder ??
                   fromHero.widget.flightShuttleBuilder ??
-                  _defaultHeroFlightShuttleBuilder,
+                  const FadeShuttleBuilder().call,
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               spring: toHero.widget.spring,
@@ -392,8 +467,9 @@ class SuperheroController extends NavigatorObserver {
     // new flight (for not having a valid manifest).
     //
     // This can happen in a route pop transition when a fromHero is no longer
-    // mounted, or kept alive by the [KeepAlive] mechanism but no longer visible.
-    // TODO(LongCatIsLooong): resume aborted flights: https://github.com/flutter/flutter/issues/72947
+    // mounted, or kept alive by the [KeepAlive] mechanism but no longer
+    // visible.
+    // TODO(timcreatedit): resume aborted flights: https://github.com/flutter/flutter/issues/72947
     for (final toHero in toHeroes.values) {
       toHero._endFlight();
     }
@@ -403,51 +479,9 @@ class SuperheroController extends NavigatorObserver {
     _flights.remove(manifest.tag)?.dispose();
   }
 
-  Widget _defaultHeroFlightShuttleBuilder(
-    BuildContext flightContext,
-    Animation<double> animation,
-    HeroFlightDirection flightDirection,
-    BuildContext fromHeroContext,
-    BuildContext toHeroContext,
-  ) {
-    final toHero = toHeroContext.widget as Superhero;
-
-    final toMediaQueryData = MediaQuery.maybeOf(toHeroContext);
-    final fromMediaQueryData = MediaQuery.maybeOf(fromHeroContext);
-
-    if (toMediaQueryData == null || fromMediaQueryData == null) {
-      return toHero.child;
-    }
-
-    final fromHeroPadding = fromMediaQueryData.padding;
-    final toHeroPadding = toMediaQueryData.padding;
-
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (BuildContext context, Widget? child) {
-        return MediaQuery(
-          data: toMediaQueryData.copyWith(
-            padding: (flightDirection == HeroFlightDirection.push)
-                ? EdgeInsetsTween(
-                    begin: fromHeroPadding,
-                    end: toHeroPadding,
-                  ).evaluate(animation)
-                : EdgeInsetsTween(
-                    begin: toHeroPadding,
-                    end: fromHeroPadding,
-                  ).evaluate(animation),
-          ),
-          child: toHero.child,
-        );
-      },
-    );
-  }
-
   /// Releases resources.
   @mustCallSuper
   void dispose() {
-    // TODO(polina-c): stop duplicating code across disposables
-    // https://github.com/flutter/flutter/issues/137435
     if (kFlutterMemoryAllocationsEnabled) {
       FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
     }
@@ -462,23 +496,26 @@ extension on BuildContext {
   // Returns a map of all of the heroes in `context` indexed by hero tag that
 // should be considered for animation when `navigator` transitions from one
 // PageRoute to another.
-  Map<Object, SuperheroState> allHeroesFor(
-    bool isUserGestureTransition,
-    NavigatorState navigator,
-  ) {
-    final result = <Object, SuperheroState>{};
+  Map<Object, _SuperheroState> allHeroesFor(
+    NavigatorState navigator, {
+    required bool isUserGestureTransition,
+  }) {
+    final result = <Object, _SuperheroState>{};
 
     void inviteHero(StatefulElement hero, Object tag) {
+      // ignore: prefer_asserts_with_message
       assert(() {
         if (result.containsKey(tag)) {
           throw FlutterError.fromParts(<DiagnosticsNode>[
             ErrorSummary(
-              'There are multiple heroes that share the same tag within a subtree.',
+              'There are multiple superheroes that share the same tag within a '
+              'subtree.',
             ),
             ErrorDescription(
-              'Within each subtree for which heroes are to be animated (i.e. a PageRoute subtree), '
-              'each Hero must have a unique non-null tag.\n'
-              'In this case, multiple heroes had the following tag: $tag',
+              'Within each subtree for which heroes are to be animated (i.e. a '
+              'PageRoute subtree), each Superhero must have a unique non-null '
+              'tag.\n'
+              'In this case, multiple superheroes had the following tag: $tag',
             ),
             DiagnosticsProperty<StatefulElement>(
               'Here is the subtree for one of the offending heroes',
@@ -490,15 +527,20 @@ extension on BuildContext {
         }
         return true;
       }());
-      final heroWidget = hero.widget as Superhero;
-      final heroState = hero.state as SuperheroState;
-      if (!isUserGestureTransition || heroWidget.transitionOnUserGestures) {
-        result[tag] = heroState;
-      } else {
-        // If transition is not allowed, we need to make sure hero is not hidden.
-        // A hero can be hidden previously due to hero transition.
-        heroState._endFlight();
-      }
+
+      // TODO(timcreatedit): we ignore transitionOnUserGestures for now, they're
+      // handled differently
+
+      // final heroWidget = hero.widget as Superhero;
+      final heroState = hero.state as _SuperheroState;
+      // if (!isUserGestureTransition || heroWidget._transitionOnUserGestures) {
+      result[tag] = heroState;
+      // } else {
+      //   // If transition is not allowed, we need to make sure hero is not
+      //   // hidden.
+      //   // A hero can be hidden previously due to hero transition.
+      //   heroState._endFlight();
+      // }
     }
 
     void visitor(Element element) {

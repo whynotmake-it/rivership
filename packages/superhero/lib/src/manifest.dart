@@ -24,8 +24,8 @@ class _FlightManifest {
   final Size navigatorSize;
   final PageRoute<dynamic> fromRoute;
   final PageRoute<dynamic> toRoute;
-  final SuperheroState fromHero;
-  final SuperheroState toHero;
+  final _SuperheroState fromHero;
+  final _SuperheroState toHero;
   final HeroFlightShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;
@@ -38,11 +38,9 @@ class _FlightManifest {
       ? toRoute.transitionDuration
       : fromRoute.transitionDuration;
 
-  SimpleSpring get adjustedSpring => isUserGestureTransition
-      ? SimpleSpring.interactive
-      : adjustToRouteTransitionDuration
-          ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
-          : spring;
+  SimpleSpring get adjustedSpring => adjustToRouteTransitionDuration
+      ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
+      : spring;
 
   CurvedAnimation? _routeAnimation;
 
@@ -66,7 +64,10 @@ class _FlightManifest {
   ) {
     final box = context.findRenderObject()! as RenderBox;
 
-    assert(box.hasSize && box.size.isFinite);
+    assert(
+      box.hasSize && box.size.isFinite,
+      'RenderObject must have a finite size to be used as a hero',
+    );
     return MatrixUtils.transformRect(
       box.getTransformTo(ancestorContext?.findRenderObject()),
       Offset.zero & box.size,
@@ -74,24 +75,20 @@ class _FlightManifest {
   }
 
   /// The bounding box of [fromHero], in [fromRoute]'s coordinate space.
-  ///
-  /// This property should only be accessed in [_SuperheroFlight.start].
+
   late final Rect fromHeroLocation =
       _boundingBoxFor(fromHero.context, fromRoute.subtreeContext);
 
   /// The bounding box of [toHero], in [toRoute]'s coordinate space.
-  ///
-  /// This property should only be accessed in [_SuperheroFlight.start] or
-  /// [_SuperheroFlight.divert].
   late final Rect toHeroLocation =
       _boundingBoxFor(toHero.context, toRoute.subtreeContext);
 
-  /// Whether this [_HeroFlightManifest] is valid and can be used to start or
+  /// Whether this [_FlightManifest] is valid and can be used to start or
   /// divert a [_SuperheroFlight].
   ///
   /// When starting or diverting a [_SuperheroFlight] with a brand new
-  /// [_HeroFlightManifest], this flag must be checked to ensure the [RectTween]
-  /// the [_HeroFlightManifest] produces does not contain coordinates that have
+  /// [_FlightManifest], this flag must be checked to ensure the [RectTween]
+  /// the [_FlightManifest] produces does not contain coordinates that have
   /// [double.infinity] or [double.nan].
   late final bool isValid =
       toHeroLocation.isFinite && (isDiverted || fromHeroLocation.isFinite);

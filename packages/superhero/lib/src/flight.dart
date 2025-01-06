@@ -62,12 +62,12 @@ class _SuperheroFlight {
     if (_manifest.isUserGestureTransition &&
         !manifest.isUserGestureTransition) {
       _centerController.value = (
-        _manifest.fromHeroLocation.center.dx,
-        _manifest.fromHeroLocation.center.dy,
+        manifest.fromHeroLocation.center.dx,
+        manifest.fromHeroLocation.center.dy,
       );
       _sizeController.value = (
-        _manifest.fromHeroLocation.size.width,
-        _manifest.fromHeroLocation.size.height,
+        manifest.fromHeroLocation.size.width,
+        manifest.fromHeroLocation.size.height,
       );
     }
 
@@ -81,7 +81,6 @@ class _SuperheroFlight {
   }
 
   void handoverFlight() {
-    print('handoverFlight');
     _removeOverlay();
 
     _manifest.toHero._performSleightOfHand(
@@ -134,7 +133,7 @@ class _SuperheroFlight {
         child: child!,
       ),
       child: IgnorePointer(
-        ignoring: true,
+        // TODO(timcreatedit): allow configuring this
         child: shuttle,
       ),
     );

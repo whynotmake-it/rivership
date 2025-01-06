@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:superhero/src/drag_dismissable.dart';
+import 'package:superhero/src/superheroes.dart';
 
+/// An inherited widget that can be used to provide a velocity to the next
+/// [Superhero] below this widget.
+///
+/// When a [Superhero] transition starts, the simulation will look for a
+/// [SuperheroVelocity] widget above it and use its velocity to animate the
+/// transition.
+///
+/// If you don't insert one, the velocity will be treated as zero, which is fine
+/// in most cases, unless you animate the transition from a gesture.
+///
+/// See the implementation of [DragDismissable] for an example of how to use
+/// this.
 class SuperheroVelocity extends InheritedWidget {
+  /// Creates a new [SuperheroVelocity] widget.
   const SuperheroVelocity({
-    this.velocity = Velocity.zero,
     required super.child,
+    this.velocity = Velocity.zero,
     super.key,
   });
 
