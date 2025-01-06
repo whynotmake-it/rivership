@@ -15,15 +15,20 @@ class _SuperheroFlight {
   late SpringSimulationController2D _sizeController;
 
   void startFlight() {
-    print('startFlight');
-    _manifest.fromHero._startFlight(_manifest);
     _manifest.toHero._startFlight(_manifest);
 
+    if (_manifest.isUserGestureTransition) {
+      return;
+    }
+
+    _manifest.fromHero._startFlight(_manifest);
     if (_overlayEntry == null) {
       _manifest.overlay.insert(
         _overlayEntry = OverlayEntry(builder: _buildOverlay),
       );
     }
+
+    final fromHeroVelocity = SuperheroVelocity.of(_manifest.fromHero.context);
     _manifest.routeAnimation
         .addStatusListener(_onProgressAnimationStatusChanged);
 
@@ -33,6 +38,10 @@ class _SuperheroFlight {
         (
           _manifest.toHeroLocation.center.dx,
           _manifest.toHeroLocation.center.dy,
+        ),
+        withVelocity: (
+          fromHeroVelocity?.pixelsPerSecond.dx ?? 0,
+          fromHeroVelocity?.pixelsPerSecond.dy ?? 0,
         ),
       );
 
@@ -47,7 +56,20 @@ class _SuperheroFlight {
   }
 
   void divert(_FlightManifest manifest) {
-    print('divert');
+    // If we are diverting a user gesture transition to a non-user gesture
+    // transition, we need to set the initial values of the controllers to
+    // the values of the from hero to make sure the animation is smooth.
+    if (_manifest.isUserGestureTransition &&
+        !manifest.isUserGestureTransition) {
+      _centerController.value = (
+        _manifest.fromHeroLocation.center.dx,
+        _manifest.fromHeroLocation.center.dy,
+      );
+      _sizeController.value = (
+        _manifest.fromHeroLocation.size.width,
+        _manifest.fromHeroLocation.size.height,
+      );
+    }
 
     _manifest.dispose();
     _manifest.routeAnimation
@@ -77,19 +99,21 @@ class _SuperheroFlight {
   }
 
   void _onProgressAnimationStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.completed ||
-        status == AnimationStatus.dismissed) {
-      _manifest.routeAnimation
-          .removeStatusListener(_onProgressAnimationStatusChanged);
-      handoverFlight();
-    }
+    if (_manifest.isUserGestureTransition) return;
+
+    if (status.isAnimating) return;
+
+    _manifest.routeAnimation
+        .removeStatusListener(_onProgressAnimationStatusChanged);
+    handoverFlight();
   }
 
   void _onFlightAnimationStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.completed ||
-        status == AnimationStatus.dismissed) {
-      onEnd();
-    }
+    if (_manifest.isUserGestureTransition) return;
+
+    if (status.isAnimating) return;
+
+    onEnd();
   }
 
   Widget _buildOverlay(BuildContext context) {
@@ -117,7 +141,7 @@ class _SuperheroFlight {
   }
 
   void dispose() {
-    _manifest.fromHero._endFlight();
+    //_manifest.fromHero._endFlight();
     _manifest.toHero._endFlight();
 
     _manifest.dispose();

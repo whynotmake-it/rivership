@@ -1,58 +1,113 @@
 import 'dart:math';
+import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:lorem_gen/lorem_gen.dart';
+import 'package:pull_down_button/pull_down_button.dart';
 import 'package:superhero/superhero.dart';
 
 void main() async {
-  runApp(CupertinoApp(
-    onGenerateRoute: (settings) => CupertinoPageRoute(
-      builder: (context) => SuperheroExample(),
-      title: 'Superhero Example',
+  runApp(
+    ListenableBuilder(
+      listenable: springNotifier,
+      builder: (context, child) => CupertinoApp(
+        debugShowCheckedModeBanner: false,
+        onGenerateRoute: (settings) => MyCustomRoute(
+          builder: (context) => SuperheroExample(),
+          title: 'Superhero Example',
+        ),
+        navigatorObservers: [SuperheroController()],
+      ),
     ),
-    navigatorObservers: [SuperheroController()],
-  ));
+  );
 }
+
+final springNotifier = ValueNotifier(SimpleSpring.snappy);
 
 class SuperheroExample extends StatelessWidget {
   const SuperheroExample({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(),
-          SliverPadding(
-            padding: const EdgeInsets.all(32),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 32,
-                crossAxisSpacing: 32,
+    return ValueListenableBuilder<double>(
+      valueListenable: ModalRoute.of(context)?.secondaryAnimation ??
+          AlwaysStoppedAnimation(0),
+      builder: (context, value, child) {
+        final easedValue = Easing.standard.flipped.transform(value);
+
+        return ColorFiltered(
+          colorFilter: ColorFilter.mode(
+            CupertinoTheme.of(context)
+                .barBackgroundColor
+                .withValues(alpha: .5 * easedValue),
+            BlendMode.srcOver,
+          ),
+          child: child!,
+        );
+      },
+      child: CupertinoPageScaffold(
+        child: CustomScrollView(
+          slivers: [
+            CupertinoSliverNavigationBar(
+              trailing: PullDownButton(
+                itemBuilder: (context) => [
+                  PullDownMenuTitle(title: Text('Select Spring')),
+                  PullDownMenuItem.selectable(
+                    onTap: () => springNotifier.value = SimpleSpring.snappy,
+                    title: 'Snappy',
+                    selected: springNotifier.value == SimpleSpring.snappy,
+                  ),
+                  PullDownMenuItem.selectable(
+                    onTap: () => springNotifier.value = SimpleSpring.bouncy,
+                    title: 'Bouncy',
+                    selected: springNotifier.value == SimpleSpring.bouncy,
+                  ),
+                  PullDownMenuItem.selectable(
+                    onTap: () => springNotifier.value = SimpleSpring.defaultIOS,
+                    title: 'Default iOS',
+                    selected: springNotifier.value == SimpleSpring.defaultIOS,
+                  ),
+                ],
+                buttonBuilder: (context, showMenu) => CupertinoButton(
+                  onPressed: showMenu,
+                  padding: EdgeInsets.zero,
+                  child: const Icon(CupertinoIcons.settings),
+                ),
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => Superhero(
-                  transitionOnUserGestures: true,
-                  tag: index,
-                  spring: SimpleSpring.snappy,
-                  child: Cover(
-                    index: index,
-                    onPressed: () => Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        fullscreenDialog: true,
-                        title: 'Page 2',
-                        builder: (context) => Page2(index: index),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(32),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 400,
+                  mainAxisSpacing: 32,
+                  crossAxisSpacing: 32,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => Superhero(
+                    tag: index,
+                    spring: springNotifier.value,
+                    child: Cover(
+                      index: index,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MyCustomRoute(
+                          fullscreenDialog: true,
+                          title: 'Details',
+                          builder: (context) => DetailsPage(index: index),
+                        ),
                       ),
                     ),
                   ),
+                  childCount: 100,
                 ),
-                childCount: 100,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -72,94 +127,245 @@ class Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shape = SmoothRectangleBorder(
+      borderRadius: SmoothBorderRadius(
+        cornerRadius: 32,
+        cornerSmoothing: .6,
+      ),
+    );
     return AspectRatio(
       aspectRatio: 1,
       child: FilledButton(
         style: FilledButton.styleFrom(
           splashFactory: NoSplash.splashFactory,
-          shape: ContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(48),
-          ),
-          backgroundColor: !isFlipped
-              ? CupertinoColors.systemPink
-              : CupertinoColors.systemGrey4,
+          padding: EdgeInsets.all(32),
+          shape: shape,
+          backgroundColor:
+              !isFlipped ? Colors.transparent : CupertinoColors.systemGrey4,
           foregroundColor:
               !isFlipped ? CupertinoColors.white : CupertinoColors.black,
-          elevation: 8,
-          shadowColor: CupertinoColors.systemPink.withValues(alpha: .2),
+          shadowColor: Colors.brown.withValues(alpha: .3),
+          elevation: isFlipped ? 24 : 8,
+          backgroundBuilder: (context, states, child) => DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: shape,
+              gradient: LinearGradient(
+                colors: [
+                  CupertinoColors.systemGrey5.withValues(blue: .88),
+                  CupertinoColors.systemGrey3.withValues(blue: .75),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              image: isFlipped
+                  ? null
+                  : DecorationImage(
+                      image: CachedNetworkImageProvider(
+                        'https://picsum.photos/800/800?random=$index',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            child: child,
+          ),
         ),
-        child: Text(isFlipped ? 'Button $index details' : 'Button $index'),
+        child: isFlipped
+            ? Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  'Image #$index',
+                  style: CupertinoTheme.of(context)
+                      .textTheme
+                      .navLargeTitleTextStyle
+                      .copyWith(
+                        color: CupertinoColors.inactiveGray,
+                      ),
+                ),
+              )
+            : const SizedBox.shrink(),
         onPressed: onPressed,
       ),
     );
   }
 }
 
-class Page2 extends StatelessWidget {
-  const Page2({super.key, required this.index});
+class DetailsPage extends StatelessWidget {
+  const DetailsPage({super.key, required this.index});
 
   final int index;
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 16,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(context).height * .5,
-              child: Center(
-                child: Superhero(
-                  spring: SimpleSpring.bouncy,
-                  transitionOnUserGestures: true,
-                  flightShuttleBuilder: (flightContext, animation,
-                      flightDirection, fromHeroContext, toHeroContext) {
-                    return AnimatedBuilder(
-                      animation: animation,
-                      builder: (context, child) {
-                        final realValue =
-                            flightDirection == HeroFlightDirection.push
-                                ? animation.value
-                                : 1 - animation.value;
-
-                        final angle = realValue * pi;
-
-                        final perspective = Matrix4.identity()
-                          ..setEntry(3, 2, 0.001)
-                          ..rotateY(-angle);
-
-                        return Transform(
-                          alignment: FractionalOffset.center,
-                          filterQuality: FilterQuality.none,
-                          transform: perspective,
-                          child: realValue > 0.5
-                              ? Transform.flip(
-                                  flipX: true,
-                                  child: toHeroContext.widget,
-                                )
-                              : fromHeroContext.widget,
-                        );
-                      },
-                    );
-                  },
-                  tag: index,
-                  child: Cover(
-                    index: index,
-                    isFlipped: true,
-                    onPressed: () => Navigator.pop(context),
+    return ValueListenableBuilder(
+      valueListenable: SuperheroPageRoute.maybeOf(context)?.dismissProgress ??
+          ValueNotifier(0.0),
+      builder: (context, value, child) {
+        final opacity = 1 - value;
+        return ClipRect(
+          child: BackdropFilter(
+            filter:
+                ImageFilter.blur(sigmaX: opacity * 20, sigmaY: opacity * 20),
+            child: CupertinoPageScaffold(
+              backgroundColor: CupertinoTheme.of(context)
+                  .scaffoldBackgroundColor
+                  .withValues(alpha: opacity),
+              child: CustomScrollView(
+                slivers: [
+                  SliverOpacity(
+                    opacity: opacity,
+                    sliver: CupertinoSliverNavigationBar(
+                      largeTitle: SizedBox(),
+                    ),
                   ),
-                ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 16,
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.sizeOf(context).height * .5,
+                      child: Center(
+                        child: DragDismissable(
+                          onDismiss: () => Navigator.pop(context),
+                          child: Superhero(
+                            spring: springNotifier.value,
+                            flightShuttleBuilder: (flightContext,
+                                animation,
+                                flightDirection,
+                                fromHeroContext,
+                                toHeroContext) {
+                              return AnimatedBuilder(
+                                animation: animation,
+                                builder: (context, child) {
+                                  final realValue = flightDirection ==
+                                          HeroFlightDirection.push
+                                      ? animation.value
+                                      : 1 - animation.value;
+
+                                  final angle = realValue * pi;
+
+                                  final perspective = Matrix4.identity()
+                                    ..setEntry(3, 2, 0.001)
+                                    ..rotateY(-angle);
+
+                                  return Transform(
+                                    alignment: FractionalOffset.center,
+                                    filterQuality: FilterQuality.none,
+                                    transform: perspective,
+                                    child: realValue > 0.5
+                                        ? Transform.flip(
+                                            flipX: true,
+                                            child: toHeroContext.widget,
+                                          )
+                                        : fromHeroContext.widget,
+                                  );
+                                },
+                              );
+                            },
+                            tag: index,
+                            child: Cover(
+                              index: index,
+                              isFlipped: true,
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 48,
+                    ),
+                  ),
+                  SliverOpacity(
+                    opacity: opacity,
+                    sliver: SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: 600),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Details',
+                                  style: CupertinoTheme.of(context)
+                                      .textTheme
+                                      .textStyle
+                                      .copyWith(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            CupertinoColors.darkBackgroundGray,
+                                      ),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  lorem,
+                                  style: CupertinoTheme.of(context)
+                                      .textTheme
+                                      .textStyle,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
+
+class MyCustomRoute<T> extends PageRoute<T>
+    with CupertinoRouteTransitionMixin, SuperheroPageRouteMixin {
+  MyCustomRoute({
+    required this.title,
+    required this.builder,
+    this.fullscreenDialog = false,
+  });
+
+  final String title;
+
+  final Widget Function(BuildContext context) builder;
+
+  final bool fullscreenDialog;
+
+  @override
+  bool get maintainState => false;
+
+  @override
+  bool get opaque => false;
+
+  @override
+  Widget buildContent(BuildContext context) => builder(context);
+
+  @override
+  bool canTransitionTo(TransitionRoute nextRoute) {
+    return super.canTransitionTo(nextRoute) ||
+        nextRoute is MyCustomRoute && nextRoute.fullscreenDialog;
+  }
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    return CupertinoRouteTransitionMixin.buildPageTransitions(
+      this,
+      context,
+      animation,
+      AlwaysStoppedAnimation(0),
+      child,
+    );
+  }
+}
+
+final lorem = Lorem.paragraph(numParagraphs: 10);

@@ -41,9 +41,7 @@ class _FlightManifest {
   SimpleSpring get adjustedSpring => isUserGestureTransition
       ? SimpleSpring.interactive
       : adjustToRouteTransitionDuration
-          ? spring.copyWith(
-              durationSeconds: duration.inMilliseconds / 1000 * 1.5,
-            )
+          ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
           : spring;
 
   CurvedAnimation? _routeAnimation;

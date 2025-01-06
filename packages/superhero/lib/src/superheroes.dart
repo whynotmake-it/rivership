@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:springster/springster.dart';
-import 'package:superhero/superhero.dart';
+import 'package:superhero/src/superhero_velocity.dart';
 
 part 'flight.dart';
 part 'manifest.dart';
@@ -15,7 +14,6 @@ class Superhero extends StatefulWidget {
     this.spring = const SimpleSpring(),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
-    this.transitionOnUserGestures = true,
     this.adjustToRouteTransitionDuration = false,
   });
 
@@ -29,7 +27,7 @@ class Superhero extends StatefulWidget {
 
   final HeroFlightShuttleBuilder? flightShuttleBuilder;
 
-  final bool transitionOnUserGestures;
+  final bool transitionOnUserGestures = true;
 
   /// If true, [spring] will be adjusted to the duration of the route
   /// transition.
@@ -46,6 +44,10 @@ class SuperheroState extends State<Superhero> with TickerProviderStateMixin {
   Size? _placeholderSize;
 
   _SleightOfHand? _sleightOfHand;
+
+  static SuperheroState? maybeOf(BuildContext context) {
+    return context.findAncestorStateOfType<SuperheroState>();
+  }
 
   bool _showsEmptyPlaceholderForFlight(_FlightManifest flight) {
     return flight.direction == HeroFlightDirection.pop &&
@@ -82,9 +84,13 @@ class SuperheroState extends State<Superhero> with TickerProviderStateMixin {
             enabled: _manifest == null || _sleightOfHand != null,
             child: KeyedSubtree(
               key: _key,
-              child: Transform.translate(
-                offset: _sleightOfHand?.offset ?? Offset.zero,
-                child: child,
+              child: Transform.scale(
+                scaleX: _sleightOfHand?.scaleX ?? 1,
+                scaleY: _sleightOfHand?.scaleY ?? 1,
+                child: Transform.translate(
+                  offset: _sleightOfHand?.offset ?? Offset.zero,
+                  child: child,
+                ),
               ),
             ),
           ),
@@ -146,9 +152,9 @@ extension on _SleightOfHand {
         centerController.value.y - targetCenter.y,
       );
 
-  double get scaleX => (targetSize.x) / (sizeController.value.x);
+  double get scaleX => (sizeController.value.x) / (targetSize.x);
 
-  double get scaleY => (targetSize.y) / (sizeController.value.y);
+  double get scaleY => (sizeController.value.y) / (targetSize.y);
 }
 
 class SuperheroController extends NavigatorObserver {
@@ -176,13 +182,11 @@ class SuperheroController extends NavigatorObserver {
     }
     // Don't trigger another flight when a pop is committed as a user gesture
     // back swipe is snapped.
-    if (!navigator!.userGestureInProgress) {
-      _maybeStartHeroTransition(
-        fromRoute: previousTopRoute,
-        toRoute: topRoute,
-        isUserGestureTransition: false,
-      );
-    }
+    _maybeStartHeroTransition(
+      fromRoute: previousTopRoute,
+      toRoute: topRoute,
+      isUserGestureTransition: false,
+    );
   }
 
   @override

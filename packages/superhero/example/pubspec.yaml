@@ -10,8 +10,13 @@ environment:
   sdk: ^3.5.4
 
 dependencies:
+  cached_network_image: ^3.4.1
+  cupertino_icons: ^1.0.8
+  figma_squircle_updated: ^1.0.1
   flutter:
     sdk: flutter
+  lorem_gen: ^2.0.1
+  pull_down_button: ^0.10.2
   superhero: 
     path: ../
 
