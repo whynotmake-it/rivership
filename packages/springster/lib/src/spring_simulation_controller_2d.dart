@@ -62,7 +62,8 @@ class SpringSimulationController2D extends Animation<Double2D>
   }
 
   @override
-  AnimationStatus get status => _xController.status;
+  AnimationStatus get status =>
+      (_listeningToY ?? false) ? _yController.status : _xController.status;
 
   final SpringSimulationController _xController;
   final SpringSimulationController _yController;
@@ -95,11 +96,19 @@ class SpringSimulationController2D extends Animation<Double2D>
     if (value == _listeningToY) return;
     _listeningToY = value;
     if (value) {
-      _xController.removeListener(notifyListeners);
-      _yController.addListener(notifyListeners);
+      _xController
+        ..removeListener(notifyListeners)
+        ..removeStatusListener(notifyStatusListeners);
+      _yController
+        ..addListener(notifyListeners)
+        ..addStatusListener(notifyStatusListeners);
     } else {
-      _yController.removeListener(notifyListeners);
-      _xController.addListener(notifyListeners);
+      _yController
+        ..removeListener(notifyListeners)
+        ..removeStatusListener(notifyStatusListeners);
+      _xController
+        ..addListener(notifyListeners)
+        ..addStatusListener(notifyStatusListeners);
     }
   }
 

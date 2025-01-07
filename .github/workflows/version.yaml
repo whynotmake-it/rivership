@@ -21,14 +21,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
+
       - name: Ⓜ️ Set up Melos
-        uses: bluefireteam/melos-action@be64ed744ff5651ee3e5355041cf2f1495eae87c
+        uses: bluefireteam/melos-action@v3
         with:
           run-versioning: ${{ inputs.prerelease == false }}
           run-versioning-prerelease: ${{ inputs.prerelease == true }}
           publish-dry-run: true
-          create-pr: true
-          git-email: github-actions[bot]@users.noreply.github.com
-          git-name: github-actions[bot]
+
+      - name: 🎋 Create Pull Request
+        uses: peter-evans/create-pull-request@v7.0.6
+        with:
+          title: "chore(release): Publish packages"
+          body: "Prepared all packages to be released to pub.dev"
+          branch: chore/release
+          delete-branch: true
+          

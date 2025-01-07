@@ -2,6 +2,7 @@
 library rivership;
 
 export 'package:springster/springster.dart';
+export 'package:superhero/superhero.dart';
 
 export 'src/design/blend_color_tween.dart';
 export 'src/design/simple_widget_states.dart';
@@ -22,4 +23,3 @@ export 'src/hooks/use_page.dart';
 export 'src/hooks/use_tween_animation.dart';
 export 'src/widgets/animated_size_switcher.dart';
 export 'src/widgets/animated_text.dart';
-export 'src/widgets/fade_shuttle.dart';
