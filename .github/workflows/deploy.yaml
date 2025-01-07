@@ -36,7 +36,6 @@ jobs:
       - name: 🏗️ Build WASM
         run: |
           cd apps/example
-          flutter create . --platforms web
           flutter build web --release --wasm --base-href /rivership/
 
       - name: Setup Pages
