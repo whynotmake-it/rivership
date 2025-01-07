@@ -39,6 +39,7 @@ jobs:
       - name: 🏗️ Build WASM
         run: |
           cd packages/${{ matrix.package }}/example
+          flutter create . --platforms web
           flutter build web --release --wasm --base-href /${{ matrix.package }}/
 
       - name: Update COOP and COEP headers
