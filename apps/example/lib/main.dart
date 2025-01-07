@@ -23,7 +23,6 @@ void main() async {
 
   runApp(
     MaterialApp.router(
-      color: Colors.blue,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
     ),
