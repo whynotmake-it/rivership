@@ -14,7 +14,7 @@ Spring animations and simulations, simplified.
 - 📱 2D spring animations for complex movements
 
 ## Try it out
-[Open Example](https://whynotmake.it/rivership/springster)
+[Open Example](https://whynotmake-it.github.io/rivership/#/springster)
 
 ## Installation 💻
 

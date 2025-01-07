@@ -8,7 +8,7 @@ An evolution on Heroes in Flutter, supporting Spring-based animations as well as
 
 ## Try it out
 
-[Open Example](https://whynotmake.it/rivership/superhero)
+[Open Example](https://whynotmake-it.github.io/rivership/#/superhero)
 
 ## Installation 💻
 
