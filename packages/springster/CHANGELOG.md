@@ -1,3 +1,11 @@
+## 0.2.1-dev.0
+
+ - **FIX**: status listener on 2D controller.
+ - **FEAT**: integrate go_router for improved navigation and update README files with example links.
+ - **FEAT**: added unified example to monorepo.
+ - **FEAT**: add onAnimationStatusChanged callback to SpringBuilder and SpringBuilder2D.
+ - **DOCS**: fixed example links.
+
 ## 0.2.0
 
 > Note: This release has breaking changes.

@@ -1,6 +1,6 @@
 name: superhero
 description: An evolution on Heroes in Flutter, supporting Spring-based animations as well as cleaner route transitions.
-version: 0.1.0
+version: 0.1.1-dev.0
 
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/superhero
 homepage: https://whynotmake.it
@@ -15,7 +15,7 @@ dependencies:
   equatable: ^2.0.7
   flutter:
     sdk: flutter
-  springster: ^0.2.0
+  springster: ^0.2.1-dev.0
 
 dev_dependencies:
   flutter_test:
