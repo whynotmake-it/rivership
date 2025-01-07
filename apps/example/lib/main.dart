@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:springster_example/main.dart';
-import 'package:superhero/superhero.dart';
 import 'package:superhero_example/main.dart';
 
 void main() async {
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const Home(),
+      ),
+      GoRoute(
+        path: '/superhero',
+        builder: (context, state) => const SuperheroExampleApp(),
+      ),
+      GoRoute(
+        path: '/springster',
+        builder: (context, state) => const SpringsterExampleApp(),
+      ),
+    ],
+  );
+
   runApp(
-    MaterialApp(
+    MaterialApp.router(
       color: Colors.blue,
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const Home(),
-        '/superhero': (context) => const SuperheroExampleApp(),
-        '/springster': (context) => const SpringsterExampleApp(),
-      },
-      navigatorObservers: [SuperheroController()],
+      routerConfig: router,
     ),
   );
 }
@@ -36,11 +47,11 @@ class Home extends StatelessWidget {
           mainAxisSpacing: 16,
           children: [
             FilledButton.tonal(
-              onPressed: () => Navigator.pushNamed(context, '/superhero'),
+              onPressed: () => context.go('/superhero'),
               child: const Text('Superhero'),
             ),
             FilledButton.tonal(
-              onPressed: () => Navigator.pushNamed(context, '/springster'),
+              onPressed: () => context.go('/springster'),
               child: const Text('Springster'),
             ),
           ],

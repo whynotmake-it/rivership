@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:superhero_example/src/settings_menus.dart';
 import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
@@ -158,6 +159,7 @@ class Cover extends StatelessWidget {
                 : DecorationImage(
                     image: CachedNetworkImageProvider(
                       'https://picsum.photos/800/800?random=$index',
+                      imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                     ),
                     fit: BoxFit.cover,
                   ),
