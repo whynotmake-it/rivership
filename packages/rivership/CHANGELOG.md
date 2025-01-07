@@ -2,7 +2,7 @@
 
 > Note: This release has breaking changes.
 
- - **FEAT**: add export `superhero` package.
+ - **FEAT**: add export `heroine` package.
  - **BREAKING** **FEAT**: remove `fadeShuttle`. Use `FadeShuttleBuilder` instead.
 
 ## 0.1.3+2
