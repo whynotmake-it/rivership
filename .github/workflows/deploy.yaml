@@ -42,28 +42,6 @@ jobs:
           flutter create . --platforms web
           flutter build web --release --wasm --base-href /${{ matrix.package }}/
 
-      - name: Update COOP and COEP headers
-        run: |
-          echo '
-          {
-            "headers": [
-              {
-                "source": "**/*",
-                "headers": [
-                  {
-                    "key": "Cross-Origin-Embedder-Policy",
-                    "value": "credentialless"
-                  },
-                  {
-                    "key": "Cross-Origin-Opener-Policy",
-                    "value": "same-origin"
-                  }
-                ]
-              }
-            ]
-          }
-          ' > example/build/web/_headers
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
