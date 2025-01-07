@@ -40,7 +40,7 @@ jobs:
         run: |
           cd packages/${{ matrix.package }}/example
           flutter create . --platforms web
-          flutter build web --release --wasm --base-href /${{ matrix.package }}/
+          flutter build web --release --wasm --base-href /rivership/${{ matrix.package }}/
 
       - name: Update COOP and COEP headers
         run: |
@@ -75,3 +75,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        
+          
