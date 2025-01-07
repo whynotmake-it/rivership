@@ -1,7 +1,7 @@
-part of 'superheroes.dart';
+part of 'heroines.dart';
 
-class _SuperheroFlight {
-  _SuperheroFlight(this._manifest, this.onEnd) {
+class _HeroineFlight {
+  _HeroineFlight(this._manifest, this.onEnd) {
     _initSpringControllers();
   }
 
@@ -28,7 +28,7 @@ class _SuperheroFlight {
       );
     }
 
-    final fromHeroVelocity = SuperheroVelocity.of(_manifest.fromHero.context);
+    final fromHeroVelocity = HeroineVelocity.of(_manifest.fromHero.context);
     _manifest.routeAnimation
         .addStatusListener(_onProgressAnimationStatusChanged);
 

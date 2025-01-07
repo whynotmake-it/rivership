@@ -1,23 +1,23 @@
-# Superhero
+# Heroine
 
 [![Code Coverage](./coverage.svg)](./test/)
 [![Powered by Mason][mason_badge]][mason_link]
 [![lints by lintervention][lintervention_badge]][lintervention_link]
 
-An evolution on Heroes in Flutter, supporting Spring-based animations as well as cleaner route transitions.
+The queen of hero transitions. Flutter's most addictive interactions.
 
 ## Try it out
 
-[Open Example](https://whynotmake-it.github.io/rivership/#/superhero)
+[Open Example](https://whynotmake-it.github.io/rivership/#/heroine)
 
 ## Installation 💻
 
-**❗ In order to start using Superhero you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
+**❗ In order to start using Heroine you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
 
 Install via `flutter pub add`:
 
 ```sh
-flutter pub add superhero
+flutter pub add heroine
 ```
 
 

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:heroine/heroine.dart';
+import 'package:heroine/src/heroine_velocity.dart';
 import 'package:springster/springster.dart';
-import 'package:superhero/src/superhero_velocity.dart';
-import 'package:superhero/superhero.dart';
 
-/// Allows a [Superhero] (or any other widget for that matter) to be dragged to
+/// Allows a [Heroine] (or any other widget for that matter) to be dragged to
 /// dismiss it.
 ///
-/// If this is wrapped around a [Superhero], this will automatically take care
-/// of updating a [SuperheroVelocity], so that when the transition starts, the
+/// If this is wrapped around a [Heroine], this will automatically take care
+/// of updating a [HeroineVelocity], so that when the transition starts, the
 /// current velocity of the gesture will be taken as the initial velocity of the
-/// [Superhero]'s spring simulation.
+/// [Heroine]'s spring simulation.
 class DragDismissable extends StatefulWidget {
   /// Creates a new [DragDismissable] widget.
   const DragDismissable({
@@ -152,7 +152,7 @@ class _DragDismissableState extends State<DragDismissable> {
             child: child,
           );
         },
-        child: SuperheroVelocity(
+        child: HeroineVelocity(
           velocity: _velocity,
           child: widget.child,
         ),
@@ -162,7 +162,7 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _start(DragStartDetails details) {
     Navigator.of(context).didStartUserGesture();
-    SuperheroPageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
+    HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
     setState(() {
       _dragStartOffset = details.globalPosition;
     });
@@ -178,7 +178,7 @@ class _DragDismissableState extends State<DragDismissable> {
         case (Axis.vertical, true):
           _offset = Offset(0, details.globalPosition.dy - startOffset.dy);
       }
-      SuperheroPageRoute.maybeOf<dynamic>(context)?.updateDismiss(
+      HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(
         progress,
         _offset,
       );
@@ -188,7 +188,7 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _cancel() {
-    SuperheroPageRoute.maybeOf<dynamic>(context)?.cancelDismiss();
+    HeroinePageRoute.maybeOf<dynamic>(context)?.cancelDismiss();
     setState(() {
       _dragStartOffset = null;
       _offset = Offset.zero;

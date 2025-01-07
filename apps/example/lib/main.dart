@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:springster_example/main.dart';
-import 'package:superhero_example/main.dart';
+import 'package:heroine_example/main.dart';
 
 void main() async {
   final router = GoRouter(
@@ -11,8 +11,8 @@ void main() async {
         builder: (context, state) => const Home(),
       ),
       GoRoute(
-        path: '/superhero',
-        builder: (context, state) => const SuperheroExampleApp(),
+        path: '/heroine',
+        builder: (context, state) => const HeroineExampleApp(),
       ),
       GoRoute(
         path: '/springster',
@@ -47,8 +47,8 @@ class Home extends StatelessWidget {
           mainAxisSpacing: 16,
           children: [
             FilledButton.tonal(
-              onPressed: () => context.go('/superhero'),
-              child: const Text('Superhero'),
+              onPressed: () => context.go('/heroine'),
+              child: const Text('Heroine'),
             ),
             FilledButton.tonal(
               onPressed: () => context.go('/springster'),

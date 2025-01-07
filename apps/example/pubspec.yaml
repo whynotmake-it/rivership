@@ -14,13 +14,13 @@ dependencies:
   figma_squircle_updated: ^1.0.1
   flutter:
     sdk: flutter
-  superhero_example:
-    path: ../../packages/superhero/example
+  heroine_example:
+    path: ../../packages/heroine/example
   springster_example:
     path: ../../packages/springster/example
 
 
-  rivership: ^0.1.3+2
+  rivership: ^0.2.0-dev.0
   go_router: ^14.6.3
 
   

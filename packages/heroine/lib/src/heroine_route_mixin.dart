@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:superhero/src/superheroes.dart';
+import 'package:heroine/heroine.dart';
 
-/// A [PageRoute] that supports keeping track of a [Superhero] dismiss gesture.
+/// A [PageRoute] that supports keeping track of a [Heroine] dismiss gesture.
 ///
 /// Can be used to rebuild any widgets it contains to respond to the dismiss
 /// gesture.
@@ -12,9 +12,9 @@ import 'package:superhero/src/superheroes.dart';
 /// You might want to make sure the route you apply this to is not [opaque], so
 /// that the route below is visible during the dismiss gesture.
 ///
-/// See [ReactToSuperheroDismiss] for a widget that can be used to react to
+/// See [ReactToHeroineDismiss] for a widget that can be used to react to
 /// the dismiss gesture.
-abstract class SuperheroPageRoute<T> extends PageRoute<T> {
+abstract class HeroinePageRoute<T> extends PageRoute<T> {
   /// A [ValueListenable] that emits the progress of the dismiss gesture.
   ValueListenable<double> get dismissProgress;
 
@@ -27,15 +27,15 @@ abstract class SuperheroPageRoute<T> extends PageRoute<T> {
   /// Informs this route that the dismiss gesture has been cancelled.
   void cancelDismiss();
 
-  /// Returns the [SuperheroPageRoute] of the given context, if any.
-  static SuperheroPageRoute<T>? maybeOf<T>(BuildContext context) =>
+  /// Returns the [HeroinePageRoute] of the given context, if any.
+  static HeroinePageRoute<T>? maybeOf<T>(BuildContext context) =>
       switch (ModalRoute.of(context)) {
-        final SuperheroPageRoute<T> route => route,
+        final HeroinePageRoute<T> route => route,
         _ => null,
       };
 }
 
-/// A mixin that can turn any [PageRoute] into a [SuperheroPageRoute].
+/// A mixin that can turn any [PageRoute] into a [HeroinePageRoute].
 ///
 /// This will not automatically rebuild the page when the dismiss progress
 /// changes.
@@ -48,8 +48,7 @@ abstract class SuperheroPageRoute<T> extends PageRoute<T> {
 ///
 /// Check out this package's example to see how you can build a custom
 /// [CupertinoPageRoute] that supports this mixin.
-mixin SuperheroPageRouteMixin<T> on PageRoute<T>
-    implements SuperheroPageRoute<T> {
+mixin HeroinePageRouteMixin<T> on PageRoute<T> implements HeroinePageRoute<T> {
   final _dismissProgress = ValueNotifier<double>(0);
   final _dismissOffset = ValueNotifier<Offset>(Offset.zero);
 
@@ -75,17 +74,17 @@ mixin SuperheroPageRouteMixin<T> on PageRoute<T>
   }
 }
 
-/// A widget that can be used to react to a [SuperheroPageRoute] dismiss
+/// A widget that can be used to react to a [HeroinePageRoute] dismiss
 /// gesture.
 ///
 /// This widget will rebuild when the dismiss gesture progresses.
 ///
-/// If the route this widget is in is not a [SuperheroPageRoute], it will not
+/// If the route this widget is in is not a [HeroinePageRoute], it will not
 /// rebuild and build with `dismissProgress` and `dismissOffset` set to 0 and
 /// `Offset.zero` respectively.
-class ReactToSuperheroDismiss extends StatelessWidget {
-  /// Creates a new [ReactToSuperheroDismiss].
-  const ReactToSuperheroDismiss({
+class ReactToHeroineDismiss extends StatelessWidget {
+  /// Creates a new [ReactToHeroineDismiss].
+  const ReactToHeroineDismiss({
     required this.builder,
     this.child,
     super.key,
@@ -107,9 +106,9 @@ class ReactToSuperheroDismiss extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dismissProgress =
-        SuperheroPageRoute.maybeOf<dynamic>(context)?.dismissProgress;
+        HeroinePageRoute.maybeOf<dynamic>(context)?.dismissProgress;
     final dismissOffset =
-        SuperheroPageRoute.maybeOf<dynamic>(context)?.dismissOffset;
+        HeroinePageRoute.maybeOf<dynamic>(context)?.dismissOffset;
 
     return ListenableBuilder(
       listenable: Listenable.merge([

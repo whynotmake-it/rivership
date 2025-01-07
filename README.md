@@ -15,7 +15,7 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 | [rivership](./packages/rivership)           | ![Pub Version](https://img.shields.io/pub/v/rivership)      | An opinionated infrastructure package for use with hooks_riverpod. |
 | [rivership_test](./packages/rivership_test) | ![Pub Version](https://img.shields.io/pub/v/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
 | [springster](./packages/springster)         | ![Pub Version](https://img.shields.io/pub/v/springster)      | A set of utilities for creating spring animations.                |
-| [superhero](./packages/superhero)           | ![Pub Version](https://img.shields.io/pub/v/superhero)      | An evolution on Heroes in Flutter, supporting Spring-based animations as well as cleaner route transitions.                |
+| [heroine](./packages/heroine)           | ![Pub Version](https://img.shields.io/pub/v/heroine)      | The queen of hero transitions. Flutter's most addictive interactions.              |
 
 
 ---

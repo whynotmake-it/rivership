@@ -1,3 +1,10 @@
+## 0.2.0-dev.0
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: add export `heroine` package.
+ - **BREAKING** **FEAT**: remove `fadeShuttle`. Use `FadeShuttleBuilder` instead.
+
 ## 0.1.3+2
 
  - Update a dependency to the latest release.

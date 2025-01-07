@@ -1,4 +1,4 @@
-name: superhero_example
+name: heroine_example
 description: "A new Flutter project."
 
 # Prevent accidental publishing to pub.dev.
@@ -18,7 +18,7 @@ dependencies:
   lorem_gen: ^2.0.1
   pull_down_button: ^0.10.2
   springster: ^0.2.0
-  superhero: 
+  heroine: 
     path: ../
 
 dev_dependencies:
