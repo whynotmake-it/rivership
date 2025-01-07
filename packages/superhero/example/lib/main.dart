@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:example/src/settings_menus.dart';
+import 'package:superhero_example/src/settings_menus.dart';
 import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +16,15 @@ final adjustSpringTimingToRoute = ValueNotifier(false);
 final detailsPageAspectRatio = ValueNotifier(1.0);
 
 void main() async {
-  runApp(
-    ListenableBuilder(
+  runApp(SuperheroExampleApp());
+}
+
+class SuperheroExampleApp extends StatelessWidget {
+  const SuperheroExampleApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
       listenable: Listenable.merge(
         [
           springNotifier,
@@ -34,8 +41,8 @@ void main() async {
         ),
         navigatorObservers: [SuperheroController()],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class SuperheroExample extends StatelessWidget {

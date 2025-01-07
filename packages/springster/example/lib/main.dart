@@ -1,17 +1,25 @@
-import 'package:example/2d_redirection.dart';
-import 'package:example/draggable_icons.dart';
-import 'package:example/one_dimension.dart';
-import 'package:example/pip.dart';
+import 'package:springster_example/2d_redirection.dart';
+import 'package:springster_example/draggable_icons.dart';
+import 'package:springster_example/one_dimension.dart';
+import 'package:springster_example/pip.dart';
 import 'package:flutter/material.dart';
 
 void main() async {
-  final colorScheme = ColorScheme.fromSeed(seedColor: Colors.blue);
-  runApp(MaterialApp(
-    theme: ThemeData.from(
-      colorScheme: colorScheme,
-    ),
-    home: SpringsterExample(),
-  ));
+  runApp(SpringsterExampleApp());
+}
+
+class SpringsterExampleApp extends StatelessWidget {
+  const SpringsterExampleApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData.from(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
+      home: SpringsterExample(),
+    );
+  }
 }
 
 class SpringsterExample extends StatelessWidget {
