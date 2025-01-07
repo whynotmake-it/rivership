@@ -1,3 +1,7 @@
+## 0.1.1-dev.1
+
+ - **DOCS**: added animation to README.
+
 ## 0.1.1-dev.0
 
  - **FEAT**: update README files with example links.
