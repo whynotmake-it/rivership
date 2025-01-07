@@ -77,7 +77,7 @@ class SuperheroExample extends StatelessWidget {
               padding: const EdgeInsets.all(32),
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 400,
+                  maxCrossAxisExtent: 250,
                   mainAxisSpacing: 32,
                   crossAxisSpacing: 32,
                 ),
