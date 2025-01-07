@@ -21,6 +21,7 @@ dependencies:
 
 
   rivership: ^0.1.3+2
+  go_router: ^14.6.3
 
   
 

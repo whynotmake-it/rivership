@@ -6,6 +6,10 @@
 
 An evolution on Heroes in Flutter, supporting Spring-based animations as well as cleaner route transitions.
 
+## Try it out
+
+[Open Example](https://whynotmake.it/rivership/superhero)
+
 ## Installation 💻
 
 **❗ In order to start using Superhero you must have the [Flutter SDK][flutter_install_link] installed on your machine.**

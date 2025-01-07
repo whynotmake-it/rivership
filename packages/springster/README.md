@@ -5,7 +5,6 @@
 
 Spring animations and simulations, simplified.
 
-> Partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations).
 
 ## Features 🎯
 
@@ -13,6 +12,9 @@ Spring animations and simulations, simplified.
 - 🔄 Spring-based draggable widgets with smooth return animations
 - 🎯 Spring curves for use with standard Flutter animations
 - 📱 2D spring animations for complex movements
+
+## Try it out
+[Open Example](https://whynotmake.it/rivership/springster)
 
 ## Installation 💻
 
@@ -133,7 +135,11 @@ const mySpring = SimpleSpring.withDamping(
 );
 ```
 
+---
 
+## Acknowledgements
+
+Springster was partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations).
 
 [dart_install_link]: https://dart.dev/get-dart
 [mason_link]: https://github.com/felangel/mason
