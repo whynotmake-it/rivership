@@ -1,6 +1,7 @@
 name: rivership_workspace
 
 packages:
+  - apps/*
   - packages/*
 
 command:
