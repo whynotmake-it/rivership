@@ -7,9 +7,9 @@ import 'package:flutter/widgets.dart';
 ///
 /// Basically a callable class that matches the signature of
 /// [HeroFlightShuttleBuilder] and offers a convenience method.
-abstract class SuperheroShuttleBuilder {
-  /// Creates a new [SuperheroShuttleBuilder].
-  const SuperheroShuttleBuilder();
+abstract class HeroineShuttleBuilder {
+  /// Creates a new [HeroineShuttleBuilder].
+  const HeroineShuttleBuilder();
 
   /// Builds the hero in flight.
   ///
@@ -90,7 +90,7 @@ abstract class SuperheroShuttleBuilder {
 }
 
 /// A shuttle builder that fades the heroes between each other smoothly.
-class FadeShuttleBuilder extends SuperheroShuttleBuilder {
+class FadeShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [FadeShuttleBuilder].
   const FadeShuttleBuilder();
 
@@ -122,7 +122,7 @@ class FadeShuttleBuilder extends SuperheroShuttleBuilder {
 /// A shuttle builder that shows either only the from hero or the to hero.
 ///
 /// With [useFromHero] == false, this matches the default Flutter Hero behavior.
-class SingleShuttleBuilder extends SuperheroShuttleBuilder {
+class SingleShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [SingleShuttleBuilder].
   const SingleShuttleBuilder({
     this.useFromHero = false,
@@ -145,7 +145,7 @@ class SingleShuttleBuilder extends SuperheroShuttleBuilder {
 }
 
 /// A shuttle builder that flips the hero widget horizontally or vertically.
-class FlipShuttleBuilder extends SuperheroShuttleBuilder {
+class FlipShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [FlipShuttleBuilder].
   const FlipShuttleBuilder({
     this.axis = Axis.vertical,

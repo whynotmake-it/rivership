@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:heroine/src/heroine_velocity.dart';
+import 'package:heroine/src/shuttle_builders.dart';
 import 'package:springster/springster.dart';
-import 'package:superhero/src/superhero_shuttle_builders.dart';
-import 'package:superhero/src/superhero_velocity.dart';
 
 part 'flight.dart';
 part 'manifest.dart';
@@ -12,9 +12,9 @@ part 'manifest.dart';
 ///
 /// This widget is mostly a drop-in replacement for [Hero], so you can expect
 /// most things to work the same way.
-class Superhero extends StatefulWidget {
-  /// Creates a new [Superhero] widget.
-  const Superhero({
+class Heroine extends StatefulWidget {
+  /// Creates a new [Heroine] widget.
+  const Heroine({
     required this.child,
     required this.tag,
     super.key,
@@ -36,7 +36,7 @@ class Superhero extends StatefulWidget {
   ///
   /// The appearance of this subtree should be similar to the appearance of
   /// the subtrees of any other heroes in the application with the same [tag].
-  /// Changes in scale and aspect ratio work well in superhero animations.
+  /// Changes in scale and aspect ratio work well in [Heroine] animations.
   ///
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
@@ -70,7 +70,7 @@ class Superhero extends StatefulWidget {
   ///
   /// See also:
   ///
-  /// * [SuperheroShuttleBuilder]
+  /// * [HeroineShuttleBuilder]
   final HeroFlightShuttleBuilder? flightShuttleBuilder;
 
   /// If true, [spring] will be adjusted to the duration of the route
@@ -78,10 +78,10 @@ class Superhero extends StatefulWidget {
   final bool adjustToRouteTransitionDuration;
 
   @override
-  State<Superhero> createState() => _SuperheroState();
+  State<Heroine> createState() => _HeroineState();
 }
 
-class _SuperheroState extends State<Superhero> with TickerProviderStateMixin {
+class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   final _key = GlobalKey();
 
   _FlightManifest? _manifest;
@@ -197,10 +197,10 @@ extension on _SleightOfHand {
   double get scaleY => (sizeController.value.y) / (targetSize.y);
 }
 
-/// The controller for [Superhero] transitions.
+/// The controller for [Heroine] transitions.
 ///
 /// Add this as a [NavigatorObserver] to your [Navigator] to enable
-/// superhero transitions across your app.
+/// heroine transitions across your app.
 ///
 /// Example:
 ///
@@ -209,7 +209,7 @@ extension on _SleightOfHand {
 ///   @override
 ///   Widget build(BuildContext context) {
 ///     return MaterialApp(
-///       navigatorObservers: [SuperheroController()],
+///       navigatorObservers: [HeroineController()],
 ///       ...
 ///     );
 ///   }
@@ -219,14 +219,14 @@ extension on _SleightOfHand {
 /// **Note:**
 ///
 /// In some cases with nested navigation, you need to make sure to add a
-/// [SuperheroController] to all of the navigators in your app.
-class SuperheroController extends NavigatorObserver {
-  /// Creates a superhero controller.
-  SuperheroController() {
+/// [HeroineController] to all of the navigators in your app.
+class HeroineController extends NavigatorObserver {
+  /// Creates a heroine controller.
+  HeroineController() {
     if (kFlutterMemoryAllocationsEnabled) {
       FlutterMemoryAllocations.instance.dispatchObjectCreated(
-        library: 'package:superhero/superhero.dart',
-        className: '$SuperheroController',
+        library: 'package:heroine/heroine.dart',
+        className: '$HeroineController',
         object: this,
       );
     }
@@ -234,17 +234,17 @@ class SuperheroController extends NavigatorObserver {
 
   // All of the heroes that are currently in the overlay and in motion.
   // Indexed by the hero tag.
-  final Map<Object, _SuperheroFlight> _flights = <Object, _SuperheroFlight>{};
+  final Map<Object, _HeroineFlight> _flights = <Object, _HeroineFlight>{};
 
   @override
   void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
     assert(
       topRoute.isCurrent,
-      'Top route $topRoute is not current in superhero transition.',
+      'Top route $topRoute is not current in heroine transition.',
     );
     assert(
       navigator != null,
-      'Navigator is null in superhero transition.',
+      'Navigator is null in heroine transition.',
     );
     if (previousTopRoute == null) {
       return;
@@ -265,7 +265,7 @@ class SuperheroController extends NavigatorObserver {
   ) {
     assert(
       navigator != null,
-      'Navigator is null. Aborting superhero transition.',
+      'Navigator is null. Aborting heroine transition.',
     );
     _maybeStartHeroTransition(
       fromRoute: route,
@@ -390,7 +390,7 @@ class SuperheroController extends NavigatorObserver {
       assert(
         false,
         'Navigator $navigator has an invalid RenderObject type '
-        '${navigatorRenderObject.runtimeType}. Aborting superhero transition.',
+        '${navigatorRenderObject.runtimeType}. Aborting heroine transition.',
       );
       return;
     }
@@ -411,14 +411,14 @@ class SuperheroController extends NavigatorObserver {
             navigator,
             isUserGestureTransition: isUserGestureTransition,
           )
-        : const <Object, _SuperheroState>{};
+        : const <Object, _HeroineState>{};
     final toSubtreeContext = to.subtreeContext;
     final toHeroes = toSubtreeContext != null
         ? toSubtreeContext.allHeroesFor(
             navigator,
             isUserGestureTransition: isUserGestureTransition,
           )
-        : const <Object, _SuperheroState>{};
+        : const <Object, _HeroineState>{};
 
     for (final fromHeroEntry in fromHeroes.entries) {
       final tag = fromHeroEntry.key;
@@ -452,7 +452,7 @@ class SuperheroController extends NavigatorObserver {
         if (existingFlight != null) {
           existingFlight.divert(manifest);
         } else {
-          _flights[tag] = _SuperheroFlight(
+          _flights[tag] = _HeroineFlight(
             manifest,
             () => _handleFlightEnded(manifest),
           )..startFlight();
@@ -496,11 +496,11 @@ extension on BuildContext {
   // Returns a map of all of the heroes in `context` indexed by hero tag that
 // should be considered for animation when `navigator` transitions from one
 // PageRoute to another.
-  Map<Object, _SuperheroState> allHeroesFor(
+  Map<Object, _HeroineState> allHeroesFor(
     NavigatorState navigator, {
     required bool isUserGestureTransition,
   }) {
-    final result = <Object, _SuperheroState>{};
+    final result = <Object, _HeroineState>{};
 
     void inviteHero(StatefulElement hero, Object tag) {
       // ignore: prefer_asserts_with_message
@@ -508,14 +508,14 @@ extension on BuildContext {
         if (result.containsKey(tag)) {
           throw FlutterError.fromParts(<DiagnosticsNode>[
             ErrorSummary(
-              'There are multiple superheroes that share the same tag within a '
+              'There are multiple heroines that share the same tag within a '
               'subtree.',
             ),
             ErrorDescription(
               'Within each subtree for which heroes are to be animated (i.e. a '
-              'PageRoute subtree), each Superhero must have a unique non-null '
+              'PageRoute subtree), each Heroine must have a unique non-null '
               'tag.\n'
-              'In this case, multiple superheroes had the following tag: $tag',
+              'In this case, multiple heroines had the following tag: $tag',
             ),
             DiagnosticsProperty<StatefulElement>(
               'Here is the subtree for one of the offending heroes',
@@ -531,8 +531,8 @@ extension on BuildContext {
       // TODO(timcreatedit): we ignore transitionOnUserGestures for now, they're
       // handled differently
 
-      // final heroWidget = hero.widget as Superhero;
-      final heroState = hero.state as _SuperheroState;
+      // final heroWidget = hero.widget as Heroine;
+      final heroState = hero.state as _HeroineState;
       // if (!isUserGestureTransition || heroWidget._transitionOnUserGestures) {
       result[tag] = heroState;
       // } else {
@@ -545,7 +545,7 @@ extension on BuildContext {
 
     void visitor(Element element) {
       final widget = element.widget;
-      if (widget is Superhero) {
+      if (widget is Heroine) {
         final hero = element as StatefulElement;
         final tag = widget.tag;
         if (Navigator.of(hero) == navigator) {

@@ -1,4 +1,4 @@
-part of 'superheroes.dart';
+part of 'heroines.dart';
 
 class _FlightManifest {
   _FlightManifest({
@@ -24,8 +24,8 @@ class _FlightManifest {
   final Size navigatorSize;
   final PageRoute<dynamic> fromRoute;
   final PageRoute<dynamic> toRoute;
-  final _SuperheroState fromHero;
-  final _SuperheroState toHero;
+  final _HeroineState fromHero;
+  final _HeroineState toHero;
   final HeroFlightShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;
@@ -84,9 +84,9 @@ class _FlightManifest {
       _boundingBoxFor(toHero.context, toRoute.subtreeContext);
 
   /// Whether this [_FlightManifest] is valid and can be used to start or
-  /// divert a [_SuperheroFlight].
+  /// divert a [_HeroineFlight].
   ///
-  /// When starting or diverting a [_SuperheroFlight] with a brand new
+  /// When starting or diverting a [_HeroineFlight] with a brand new
   /// [_FlightManifest], this flag must be checked to ensure the [RectTween]
   /// the [_FlightManifest] produces does not contain coordinates that have
   /// [double.infinity] or [double.nan].

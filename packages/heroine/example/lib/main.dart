@@ -2,26 +2,26 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
-import 'package:superhero_example/src/settings_menus.dart';
+import 'package:heroine_example/src/settings_menus.dart';
 import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lorem_gen/lorem_gen.dart';
 import 'package:springster/springster.dart';
-import 'package:superhero/superhero.dart';
+import 'package:heroine/heroine.dart';
 
 final springNotifier = ValueNotifier(SimpleSpring.bouncy);
 final flightShuttleNotifier =
-    ValueNotifier<SuperheroShuttleBuilder>(const FlipShuttleBuilder());
+    ValueNotifier<HeroineShuttleBuilder>(const FlipShuttleBuilder());
 final adjustSpringTimingToRoute = ValueNotifier(false);
 final detailsPageAspectRatio = ValueNotifier(1.0);
 
 void main() async {
-  runApp(SuperheroExampleApp());
+  runApp(HeroineExampleApp());
 }
 
-class SuperheroExampleApp extends StatelessWidget {
-  const SuperheroExampleApp({super.key});
+class HeroineExampleApp extends StatelessWidget {
+  const HeroineExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,17 +37,17 @@ class SuperheroExampleApp extends StatelessWidget {
       builder: (context, child) => CupertinoApp(
         debugShowCheckedModeBanner: false,
         onGenerateRoute: (settings) => MyCustomRoute(
-          builder: (context) => SuperheroExample(),
-          title: 'Superhero Example',
+          builder: (context) => HeroineExample(),
+          title: 'Heroine Example',
         ),
-        navigatorObservers: [SuperheroController()],
+        navigatorObservers: [HeroineController()],
       ),
     );
   }
 }
 
-class SuperheroExample extends StatelessWidget {
-  const SuperheroExample({super.key});
+class HeroineExample extends StatelessWidget {
+  const HeroineExample({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class SuperheroExample extends StatelessWidget {
                   crossAxisSpacing: 32,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => Superhero(
+                  (context, index) => Heroine(
                     tag: index,
                     spring: springNotifier.value,
                     adjustToRouteTransitionDuration:
@@ -193,7 +193,7 @@ class DetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReactToSuperheroDismiss(
+    return ReactToHeroineDismiss(
       builder: (context, progress, offset, child) {
         final opacity = 1 - progress;
 
@@ -212,7 +212,7 @@ class DetailsPage extends StatelessWidget {
       },
       child: CustomScrollView(
         slivers: [
-          ReactToSuperheroDismiss(
+          ReactToHeroineDismiss(
             builder: (context, progress, offset, child) {
               final opacity = 1 - progress;
               return SliverOpacity(
@@ -245,7 +245,7 @@ class DetailsPage extends StatelessWidget {
                       child: child!,
                     ),
                   ),
-                  child: Superhero(
+                  child: Heroine(
                     tag: index,
                     adjustToRouteTransitionDuration:
                         adjustSpringTimingToRoute.value,
@@ -266,7 +266,7 @@ class DetailsPage extends StatelessWidget {
               height: 48,
             ),
           ),
-          ReactToSuperheroDismiss(
+          ReactToHeroineDismiss(
             builder: (context, progress, offset, child) {
               final opacity = 1 - progress;
               return SliverOpacity(
@@ -317,7 +317,7 @@ class DetailsPage extends StatelessWidget {
 }
 
 class MyCustomRoute<T> extends PageRoute<T>
-    with CupertinoRouteTransitionMixin, SuperheroPageRouteMixin {
+    with CupertinoRouteTransitionMixin, HeroinePageRouteMixin {
   MyCustomRoute({
     required this.title,
     required this.builder,
