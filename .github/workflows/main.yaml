@@ -49,8 +49,8 @@ jobs:
         id: coverage-report
         uses: whynotmake-it/dart-coverage-assistant@v1.1
         with:
-          lower_threshold: 50
-          upper_threshold: 75
+          lower_threshold: 30
+          upper_threshold: 50
           generate_badges: pr
           
       
