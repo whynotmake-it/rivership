@@ -1,0 +1,27 @@
+name: Continuous Integration
+description: Changes to the CI configuration files and scripts
+title: "ci: "
+labels: ["ci"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package's CI configuration needs to be modified?
+      options:
+        - rivership
+        - heroine
+        - springster
+        - rivership_test
+        - multiple or all
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe what changes need to be done to the ci/cd system and why.
+    validations:
+      required: true
+

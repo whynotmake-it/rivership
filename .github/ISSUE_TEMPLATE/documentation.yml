@@ -1,0 +1,26 @@
+name: Documentation
+description: Improve the documentation so all collaborators have a common understanding
+title: "docs: "
+labels: ["documentation"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package's documentation needs to be improved?
+      options:
+        - rivership
+        - heroine
+        - springster
+        - rivership_test
+        - all
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe what documentation you are looking to add or improve.
+    validations:
+      required: true

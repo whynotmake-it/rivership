@@ -1,0 +1,21 @@
+name: Revert Commit
+description: Reverts a previous commit
+title: "revert: "
+labels: ["revert"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a link to a PR/Commit that you are looking to revert and why.
+    validations:
+      required: true
+
+  - type: input
+    id: commit_link
+    attributes:
+      label: Commit/PR Link
+      description: Link to the commit or pull request that needs to be reverted
+      placeholder: "https://github.com/riverpod-community/rivership/commit/..."
+    validations:
+      required: true

@@ -1,0 +1,37 @@
+name: Performance Update
+description: A code change that improves performance
+title: "perf: "
+labels: ["performance"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package needs performance improvements?
+      options:
+        - rivership
+        - heroine
+        - springster
+        - rivership_test
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe what code needs to be changed and what the performance impact is going to be. Bonus points if you can tie this directly to user experience.
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: What metrics will be improved by this change?
+      placeholder: |
+        - Current performance metrics
+        - Expected improvements
+        - How it will be measured
+    validations:
+      required: false
