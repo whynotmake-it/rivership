@@ -1,4 +1,4 @@
-## 0.2.1-dev.0
+## 0.2.1
 
  - **FIX**: status listener on 2D controller.
  - **FEAT**: update README files with example links.
