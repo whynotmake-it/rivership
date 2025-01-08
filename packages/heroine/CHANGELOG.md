@@ -1,3 +1,7 @@
+## 0.1.1-dev.2
+
+ - **DOCS**: added quote to README.
+
 ## 0.1.1-dev.1
 
  - **DOCS**: added animation to README.
