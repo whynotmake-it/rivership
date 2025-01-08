@@ -33,7 +33,7 @@ body:
         - [ ] Requirement 1
         - [ ] Requirement 2
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: additional
