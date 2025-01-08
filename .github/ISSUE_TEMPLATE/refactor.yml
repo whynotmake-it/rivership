@@ -1,0 +1,25 @@
+name: Refactor
+description: A code change that neither fixes a bug nor adds a feature
+title: "refactor: "
+labels: ["refactor"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package needs to be refactored?
+      options:
+        - rivership
+        - heroine
+        - springster
+        - rivership_test
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe what needs to be refactored and why. Please provide links to related issues (bugs or upcoming features) in order to help prioritize.
+    validations:
+      required: true
