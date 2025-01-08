@@ -9,9 +9,9 @@ The queen of hero transitions. Flutter's most addictive interactions.
 ![Showcase GIF](doc/main.gif)
 
 
-> "this will be such an addictive #FlutterDev interaction"
+> "this will be such an addictive #FlutterDev interaction!"
 >
-> ~ [@RydMike](https://x.com/RydMike/status/1876323718194184657)
+> ~ [Mike Rydstrom](https://x.com/RydMike/status/1876323718194184657)
 
 ## Features 🎯
 
