@@ -25,8 +25,8 @@ class SpringSimulationController extends Animation<double>
   SpringSimulationController({
     required SpringDescription spring,
     required TickerProvider vsync,
-    this.lowerBound = double.negativeInfinity,
-    this.upperBound = double.infinity,
+    this.lowerBound = 0,
+    this.upperBound = 1,
     double? initialValue,
   })  : _spring = spring,
         _controller = AnimationController(
