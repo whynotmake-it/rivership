@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/spring_simulation_controller.dart';
+import 'package:springster/src/spring_simulation_controller_base.dart';
 
 /// A simple 2d record type.
 typedef Double2D = (double x, double y);
@@ -15,7 +16,8 @@ class SpringSimulationController2D extends Animation<Double2D>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
-        AnimationEagerListenerMixin {
+        AnimationEagerListenerMixin
+    implements SpringSimulationControllerBase<Double2D> {
   /// Creates a [SpringSimulationController2D] with the given parameters.
   ///
   /// The [spring] parameter defines the characteristics of the spring
@@ -71,24 +73,36 @@ class SpringSimulationController2D extends Animation<Double2D>
   final Double2D _lowerBound;
   final Double2D _upperBound;
 
-  /// The current velocity of the animation.
+  @override
+  Double2D get lowerBound => _lowerBound;
+
+  @override
+  Double2D get upperBound => _upperBound;
+
+  @override
   Double2D get velocity => (
         _xController.velocity,
         _yController.velocity,
       );
 
-  /// The spring description that defines the animation characteristics.
+  @override
   SpringDescription get spring => _spring;
 
-  /// Updates the spring description.
-  ///
-  /// This will create a new simulation with the current velocity if an
-  /// animation is in progress.
+  @override
   set spring(SpringDescription newSpring) {
     if (_spring == newSpring) return;
     _spring = newSpring;
     _xController.spring = newSpring;
     _yController.spring = newSpring;
+  }
+
+  @override
+  Tolerance get tolerance => _xController.tolerance;
+
+  @override
+  void resync(TickerProvider ticker) {
+    _xController.resync(ticker);
+    _yController.resync(ticker);
   }
 
   bool? _listeningToY;
@@ -112,8 +126,7 @@ class SpringSimulationController2D extends Animation<Double2D>
     }
   }
 
-  /// Updates the target value and creates a new simulation with the current
-  /// velocity.
+  @override
   TickerFuture animateTo(
     Double2D target, {
     Double2D? from,
@@ -160,7 +173,7 @@ class SpringSimulationController2D extends Animation<Double2D>
     return TickerFuture.complete();
   }
 
-  /// Stops the animation.
+  @override
   void stop() {
     _xController.stop();
     _yController.stop();

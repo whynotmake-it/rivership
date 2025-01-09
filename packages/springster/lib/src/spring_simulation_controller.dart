@@ -1,5 +1,6 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:springster/src/spring_simulation_controller_base.dart';
 
 /// A controller that manages a spring simulation.
 ///
@@ -12,7 +13,8 @@ class SpringSimulationController extends Animation<double>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
-        AnimationEagerListenerMixin {
+        AnimationEagerListenerMixin
+    implements SpringSimulationControllerBase<double> {
   /// Creates a [SpringSimulationController] with the given parameters.
   ///
   /// The [spring] parameter defines the characteristics of the spring animation
@@ -54,33 +56,32 @@ class SpringSimulationController extends Animation<double>
 
   double? _target;
 
-  /// The lower bound of the animation value.
+  @override
   final double lowerBound;
 
-  /// The upper bound of the animation value.
+  @override
   final double upperBound;
 
-  /// The current velocity of the animation.
+  @override
   double get velocity => _controller.velocity;
 
-  /// The spring description that defines the animation characteristics.
+  @override
   SpringDescription get spring => _spring;
 
-  /// The tolerance of the spring.
-  Tolerance get tolerance => Tolerance.defaultTolerance;
-
-  /// Updates the spring description.
-  ///
-  /// This will create a new simulation with the current velocity if an
-  /// animation is in progress.
+  @override
   set spring(SpringDescription newSpring) {
     if (_spring == newSpring) return;
     _spring = newSpring;
     _redirectSimulation();
   }
 
-  /// Updates the target value and creates a new simulation with the current
-  /// velocity.
+  @override
+  Tolerance get tolerance => Tolerance.defaultTolerance;
+
+  @override
+  void resync(TickerProvider ticker) => _controller.resync(ticker);
+
+  @override
   TickerFuture animateTo(
     double target, {
     double? from,
@@ -120,7 +121,7 @@ class SpringSimulationController extends Animation<double>
     _controller.animateWith(simulation);
   }
 
-  /// Stops the animation.
+  @override
   void stop() {
     _controller.stop();
   }
