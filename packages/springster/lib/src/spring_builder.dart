@@ -86,7 +86,7 @@ class _SpringBuilderState extends State<SpringBuilder>
   @override
   void initState() {
     super.initState();
-    controller = SpringSimulationController(
+    controller = SpringSimulationController.unbounded(
       spring: widget.spring,
       vsync: this,
       initialValue: widget.from ?? widget.value,
@@ -204,7 +204,7 @@ class _SpringBuilder2DState extends State<SpringBuilder2D>
   @override
   void initState() {
     super.initState();
-    controller = SpringSimulationController2D(
+    controller = SpringSimulationController2D.unbounded(
       spring: widget.spring,
       vsync: this,
       initialValue: widget.from ?? widget.value,

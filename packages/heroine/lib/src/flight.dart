@@ -153,7 +153,7 @@ class _HeroineFlight {
   }
 
   void _initSpringControllers() {
-    _centerController = SpringSimulationController2D(
+    _centerController = SpringSimulationController2D.unbounded(
       vsync: _manifest.overlay,
       spring: _manifest.adjustedSpring,
       initialValue: (
@@ -162,7 +162,7 @@ class _HeroineFlight {
       ),
     )..addStatusListener(_onFlightAnimationStatusChanged);
 
-    _sizeController = SpringSimulationController2D(
+    _sizeController = SpringSimulationController2D.unbounded(
       vsync: _manifest.overlay,
       spring: _manifest.adjustedSpring,
       initialValue: (

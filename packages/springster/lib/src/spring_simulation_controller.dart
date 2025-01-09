@@ -9,12 +9,11 @@ import 'package:springster/src/spring_simulation_controller_base.dart';
 ///
 /// The controller extends [ValueNotifier] to notify listeners of value changes,
 /// and provides access to the current velocity of the simulation.
-class SpringSimulationController extends Animation<double>
+class SpringSimulationController extends SpringSimulationControllerBase<double>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
-        AnimationEagerListenerMixin
-    implements SpringSimulationControllerBase<double> {
+        AnimationEagerListenerMixin {
   /// Creates a [SpringSimulationController] with the given parameters.
   ///
   /// The [spring] parameter defines the characteristics of the spring animation
@@ -27,22 +26,53 @@ class SpringSimulationController extends Animation<double>
     required TickerProvider vsync,
     this.lowerBound = 0,
     this.upperBound = 1,
-    double? initialValue,
+    AnimationBehavior behavior = AnimationBehavior.normal,
+    double initialValue = 0,
   })  : _spring = spring,
         _controller = AnimationController(
           value: initialValue,
           vsync: vsync,
           lowerBound: lowerBound,
           upperBound: upperBound,
+          animationBehavior: behavior,
         ) {
     _controller
       ..addListener(notifyListeners)
       ..addStatusListener(notifyStatusListeners);
   }
 
+  /// Creates an unbounded [SpringSimulationController].
+  ///
+  /// This controller will not have a lower or upper bound, and will use the
+  /// [AnimationBehavior.preserve] behavior.
+  SpringSimulationController.unbounded({
+    required SpringDescription spring,
+    required TickerProvider vsync,
+    AnimationBehavior behavior = AnimationBehavior.preserve,
+    double? initialValue,
+  }) : this(
+          spring: spring,
+          vsync: vsync,
+          lowerBound: double.negativeInfinity,
+          upperBound: double.infinity,
+          behavior: behavior,
+          initialValue: initialValue ?? 0,
+        );
+
+  @override
+  final double lowerBound;
+
+  @override
+  final double upperBound;
+
+  @override
+  bool get isBounded =>
+      lowerBound != double.infinity && upperBound != double.infinity;
+
   @override
   double get value => _controller.value;
 
+  @override
   set value(double value) {
     _controller.value = value;
   }
@@ -55,12 +85,6 @@ class SpringSimulationController extends Animation<double>
   SpringDescription _spring;
 
   double? _target;
-
-  @override
-  final double lowerBound;
-
-  @override
-  final double upperBound;
 
   @override
   double get velocity => _controller.velocity;
@@ -77,6 +101,9 @@ class SpringSimulationController extends Animation<double>
 
   @override
   Tolerance get tolerance => Tolerance.defaultTolerance;
+
+  @override
+  AnimationBehavior get animationBehavior => _controller.animationBehavior;
 
   @override
   void resync(TickerProvider ticker) => _controller.resync(ticker);

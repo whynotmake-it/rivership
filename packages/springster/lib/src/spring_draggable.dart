@@ -257,7 +257,7 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
 
   @override
   void initState() {
-    controller = SpringSimulationController2D(
+    controller = SpringSimulationController2D.unbounded(
       spring: widget.spring,
       vsync: this,
     );
