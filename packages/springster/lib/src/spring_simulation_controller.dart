@@ -29,11 +29,9 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
     AnimationBehavior behavior = AnimationBehavior.normal,
     double initialValue = 0,
   })  : _spring = spring,
-        _controller = AnimationController(
+        _controller = AnimationController.unbounded(
           value: initialValue,
           vsync: vsync,
-          lowerBound: lowerBound,
-          upperBound: upperBound,
           animationBehavior: behavior,
         ) {
     _controller
@@ -74,7 +72,7 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
 
   @override
   set value(double value) {
-    _controller.value = value;
+    _controller.value = value.clamp(lowerBound, upperBound);
   }
 
   @override
