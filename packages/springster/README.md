@@ -2,6 +2,8 @@
 
 [![Pub Version](https://img.shields.io/pub/v/springster)](https://pub.dev/packages/springster)
 [![Coverage](./coverage.svg)](./test/)
+[![lintervention_badge]]([lintervention_link])
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 Spring animations and simulations, simplified.
 
@@ -144,3 +146,5 @@ Springster was partially adapted from and heavily inspired by [fluid_animations]
 [dart_install_link]: https://dart.dev/get-dart
 [mason_link]: https://github.com/felangel/mason
 [melos_link]: https://github.com/invertase/melos
+[lintervention_link]: https://github.com/whynotmake-it/lintervention
+[lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40

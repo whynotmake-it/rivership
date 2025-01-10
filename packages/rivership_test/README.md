@@ -1,6 +1,8 @@
 # Rivership Test
 
 [![Pub Version](https://img.shields.io/pub/v/rivership_test)](https://pub.dev/packages/rivership_test)
+[![lintervention_badge]]([lintervention_link])
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 A package containing testing utilites to accompany the rivership package.
 
@@ -30,3 +32,6 @@ Rivership Test comes with a built-in [GitHub Actions workflow][github_actions_li
 [license_link]: https://opensource.org/licenses/MIT
 [mason_link]: https://github.com/felangel/mason
 [very_good_ventures_link]: https://verygood.ventures
+
+[lintervention_link]: https://github.com/whynotmake-it/lintervention
+[lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40
