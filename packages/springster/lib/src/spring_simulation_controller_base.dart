@@ -42,6 +42,16 @@ abstract class SpringSimulationControllerBase<T extends Object>
   @override
   AnimationStatus get status;
 
+  /// Whether this animation is currently animating in either the forward or
+  /// reverse direction.
+  ///
+  /// If the animation was stopped (e.g. with [stop] or by setting a new
+  /// [value]),
+  /// [isAnimating] will return `false` but the [status] will not change,
+  /// so the value of [AnimationStatus.isAnimating] might still be `true`.
+  @override
+  bool get isAnimating;
+
   /// Updates the spring description.
   ///
   /// This will create a new simulation with the current velocity if an
@@ -121,7 +131,7 @@ abstract class SpringSimulationControllerBase<T extends Object>
   });
 
   /// Stops the current simulation.
-  void stop();
+  void stop({bool canceled = true});
 
   /// Frees any resources used by this object.
   void dispose();

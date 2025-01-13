@@ -89,6 +89,9 @@ class SpringSimulationController2D
   AnimationStatus get status =>
       (_listeningToY ?? false) ? _yController.status : _xController.status;
 
+  @override
+  bool get isAnimating => _xController.isAnimating || _yController.isAnimating;
+
   final SpringSimulationController _xController;
   final SpringSimulationController _yController;
   SpringDescription _spring;
@@ -219,9 +222,9 @@ class SpringSimulationController2D
   }
 
   @override
-  void stop() {
-    _xController.stop();
-    _yController.stop();
+  void stop({bool canceled = true}) {
+    _xController.stop(canceled: canceled);
+    _yController.stop(canceled: canceled);
   }
 
   @override

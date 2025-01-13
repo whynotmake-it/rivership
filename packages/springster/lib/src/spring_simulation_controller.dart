@@ -78,6 +78,9 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
   @override
   AnimationStatus get status => _controller.status;
 
+  @override
+  bool get isAnimating => _controller.isAnimating;
+
   final AnimationController _controller;
 
   SpringDescription _spring;
@@ -147,8 +150,8 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
   }
 
   @override
-  void stop() {
-    _controller.stop();
+  void stop({bool canceled = true}) {
+    _controller.stop(canceled: canceled);
   }
 
   @override
