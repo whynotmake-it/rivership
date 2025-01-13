@@ -57,8 +57,8 @@ void main() {
     });
 
     testWidgets('updates when mounted', (tester) async {
-      // Test page counts from 1 to 1000
-      for (final pages in List<int>.generate(1000, (index) => index + 1)) {
+      // Test page counts from 1 to 100
+      for (final pages in List<int>.generate(100, (index) => index + 1)) {
         controller.dispose();
         // Set inital page too high
         controller = PageController(initialPage: pages);

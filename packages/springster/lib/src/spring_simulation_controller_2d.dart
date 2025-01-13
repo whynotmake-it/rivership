@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/spring_simulation_controller.dart';
+import 'package:springster/src/spring_simulation_controller_base.dart';
 
 /// A simple 2d record type.
 typedef Double2D = (double x, double y);
@@ -11,7 +12,8 @@ typedef Double2D = (double x, double y);
 ///
 /// The controller extends [ValueNotifier] to notify listeners of value changes,
 /// and provides access to the current velocity of the simulation.
-class SpringSimulationController2D extends Animation<Double2D>
+class SpringSimulationController2D
+    extends SpringSimulationControllerBase<Double2D>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
@@ -26,12 +28,10 @@ class SpringSimulationController2D extends Animation<Double2D>
   SpringSimulationController2D({
     required SpringDescription spring,
     required TickerProvider vsync,
-    Double2D lowerBound = const (
-      double.negativeInfinity,
-      double.negativeInfinity,
-    ),
-    Double2D upperBound = const (double.infinity, double.infinity),
+    Double2D lowerBound = const (0, 0),
+    Double2D upperBound = const (1, 1),
     Double2D initialValue = const (0, 0),
+    AnimationBehavior behavior = AnimationBehavior.normal,
   })  : _spring = spring,
         _lowerBound = lowerBound,
         _upperBound = upperBound,
@@ -41,6 +41,7 @@ class SpringSimulationController2D extends Animation<Double2D>
           lowerBound: lowerBound.x,
           upperBound: upperBound.x,
           initialValue: initialValue.x,
+          behavior: behavior,
         ),
         _yController = SpringSimulationController(
           spring: spring,
@@ -48,7 +49,29 @@ class SpringSimulationController2D extends Animation<Double2D>
           lowerBound: lowerBound.y,
           upperBound: upperBound.y,
           initialValue: initialValue.y,
+          behavior: behavior,
         );
+
+  /// Creates an unbounded [SpringSimulationController2D].
+  ///
+  /// This controller will not have a lower or upper bound, and will use the
+  /// [AnimationBehavior.preserve] behavior.
+  SpringSimulationController2D.unbounded({
+    required SpringDescription spring,
+    required TickerProvider vsync,
+    Double2D initialValue = const (0, 0),
+    AnimationBehavior behavior = AnimationBehavior.preserve,
+  }) : this(
+          spring: spring,
+          vsync: vsync,
+          lowerBound: (double.negativeInfinity, double.negativeInfinity),
+          upperBound: (double.infinity, double.infinity),
+          initialValue: initialValue,
+          behavior: behavior,
+        );
+
+  @override
+  bool get isBounded => _xController.isBounded && _yController.isBounded;
 
   @override
   Double2D get value => (
@@ -56,6 +79,7 @@ class SpringSimulationController2D extends Animation<Double2D>
         _yController.value,
       );
 
+  @override
   set value(Double2D newValue) {
     _xController.value = newValue.x;
     _yController.value = newValue.y;
@@ -65,30 +89,48 @@ class SpringSimulationController2D extends Animation<Double2D>
   AnimationStatus get status =>
       (_listeningToY ?? false) ? _yController.status : _xController.status;
 
+  @override
+  bool get isAnimating => _xController.isAnimating || _yController.isAnimating;
+
   final SpringSimulationController _xController;
   final SpringSimulationController _yController;
   SpringDescription _spring;
   final Double2D _lowerBound;
   final Double2D _upperBound;
 
-  /// The current velocity of the animation.
+  @override
+  Double2D get lowerBound => _lowerBound;
+
+  @override
+  Double2D get upperBound => _upperBound;
+
+  @override
   Double2D get velocity => (
         _xController.velocity,
         _yController.velocity,
       );
 
-  /// The spring description that defines the animation characteristics.
+  @override
   SpringDescription get spring => _spring;
 
-  /// Updates the spring description.
-  ///
-  /// This will create a new simulation with the current velocity if an
-  /// animation is in progress.
+  @override
   set spring(SpringDescription newSpring) {
     if (_spring == newSpring) return;
     _spring = newSpring;
     _xController.spring = newSpring;
     _yController.spring = newSpring;
+  }
+
+  @override
+  Tolerance get tolerance => _xController.tolerance;
+
+  @override
+  AnimationBehavior get animationBehavior => _xController.animationBehavior;
+
+  @override
+  void resync(TickerProvider ticker) {
+    _xController.resync(ticker);
+    _yController.resync(ticker);
   }
 
   bool? _listeningToY;
@@ -112,8 +154,27 @@ class SpringSimulationController2D extends Animation<Double2D>
     }
   }
 
-  /// Updates the target value and creates a new simulation with the current
-  /// velocity.
+  @override
+  TickerFuture forward({Double2D? from, Double2D? withVelocity}) {
+    assert(isBounded, 'Cannot animate forward on an unbounded controller');
+    return animateTo(
+      upperBound,
+      from: from,
+      withVelocity: withVelocity,
+    );
+  }
+
+  @override
+  TickerFuture reverse({Double2D? from, Double2D? withVelocity}) {
+    assert(isBounded, 'Cannot animate reverse on an unbounded controller');
+    return animateTo(
+      lowerBound,
+      from: from,
+      withVelocity: withVelocity,
+    );
+  }
+
+  @override
   TickerFuture animateTo(
     Double2D target, {
     Double2D? from,
@@ -160,10 +221,10 @@ class SpringSimulationController2D extends Animation<Double2D>
     return TickerFuture.complete();
   }
 
-  /// Stops the animation.
-  void stop() {
-    _xController.stop();
-    _yController.stop();
+  @override
+  void stop({bool canceled = true}) {
+    _xController.stop(canceled: canceled);
+    _yController.stop(canceled: canceled);
   }
 
   @override

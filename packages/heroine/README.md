@@ -3,6 +3,7 @@
 [![Code Coverage](./coverage.svg)](./test/)
 [![Powered by Mason][mason_badge]][mason_link]
 [![lints by lintervention][lintervention_badge]][lintervention_link]
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 The queen of hero transitions. Flutter's most addictive interactions.
 
