@@ -3,6 +3,8 @@ name: rivership_workspace
 packages:
   - apps/*
   - packages/*
+  - packages/springster/example
+  - packages/heroine/example
 
 command:
   version:
