@@ -1,3 +1,7 @@
+## 0.1.0+4
+
+ - **FIX**: fixed example dependencies (#62).
+
 ## 0.1.0+3
 
  - **DOCS**: add Bluesky badge to README files across packages.
