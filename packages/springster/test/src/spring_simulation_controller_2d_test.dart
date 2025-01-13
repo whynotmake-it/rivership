@@ -34,10 +34,14 @@ void main() {
         spring: spring,
         vsync: tester,
       );
-      expect(controller.lowerBound,
-          equals(const (double.negativeInfinity, double.negativeInfinity)));
-      expect(controller.upperBound,
-          equals(const (double.infinity, double.infinity)));
+      expect(
+        controller.lowerBound,
+        equals(const (double.negativeInfinity, double.negativeInfinity)),
+      );
+      expect(
+        controller.upperBound,
+        equals(const (double.infinity, double.infinity)),
+      );
       expect(controller.isBounded, isFalse);
     });
 
@@ -238,10 +242,12 @@ void main() {
           initialValue: const (0.5, 0.5),
         );
 
-        controller.animateTo((
-          0.5 + controller.tolerance.distance / 2,
-          0.5 + controller.tolerance.distance / 2,
-        ));
+        controller.animateTo(
+          (
+            0.5 + controller.tolerance.distance / 2,
+            0.5 + controller.tolerance.distance / 2,
+          ),
+        );
         final pumps = await tester.pumpAndSettle();
 
         expect(pumps, 1);
