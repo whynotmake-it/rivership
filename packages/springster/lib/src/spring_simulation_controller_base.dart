@@ -130,8 +130,15 @@ abstract class SpringSimulationControllerBase<T extends Object>
     T? withVelocity,
   });
 
-  /// Stops the current simulation.
-  void stop({bool canceled = true});
+  /// Stops the current simulation, and depending on the value of [canceled],
+  /// either settles the simulation at the current value, or interrupts the
+  /// simulation immediately
+  ///
+  /// Unlike [AnimationController.stop], [canceled] defaults to false.
+  /// If you set it to true, the simulation will be stopped immediately.
+  /// Otherwise, the simulation will redirect to settle at the current value,
+  /// to retain the physical characteristic of the simulation.
+  TickerFuture stop({bool canceled = false});
 
   /// Frees any resources used by this object.
   void dispose();
