@@ -1,3 +1,12 @@
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: implement SpringSimulationControllerBase interface for spring controllers.
+ - **DOCS**: add Bluesky badge to README files across packages.
+ - **BREAKING** **REFACTOR**: unified `SpringSimulationController` interface to match `AnimationController` more closely.
+ - **BREAKING** **FEAT**: `.stop()` will now settle the spring simulation instead of interrupting it by default (#60).
+
 ## 0.3.0
 
 > Note: This release has breaking changes.

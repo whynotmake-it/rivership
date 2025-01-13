@@ -1,3 +1,11 @@
+## 0.3.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: fixed example dependencies (#62).
+ - **DOCS**: add Bluesky badge to README files across packages.
+ - **BREAKING** **REFACTOR**: unified `SpringSimulationController` interface to match `AnimationController` more closely.
+
 ## 0.2.0
 
 > Note: This release has breaking changes.
