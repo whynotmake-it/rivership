@@ -1,3 +1,7 @@
+## 0.2.0+2
+
+ - **DOCS**: add Bluesky badge to README files across packages.
+
 ## 0.2.0+1
 
  - **FIX**: updated to `hooks_riverpod` 2.6.1 and removed references to `AutoDisposeRef`.
