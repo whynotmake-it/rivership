@@ -128,7 +128,8 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
       tolerance: tolerance,
     );
 
-    if ((_target! - fromValue).abs() < simulation.tolerance.distance) {
+    if ((_target! - fromValue).abs() < simulation.tolerance.distance &&
+        velocity.abs() < simulation.tolerance.velocity) {
       _controller.stop();
       return TickerFuture.complete();
     }
@@ -150,8 +151,14 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
   }
 
   @override
-  void stop({bool canceled = true}) {
-    _controller.stop(canceled: canceled);
+  TickerFuture stop({bool canceled = false}) {
+    if (canceled) {
+      _controller.stop();
+      return TickerFuture.complete();
+    } else {
+      _controller.stop();
+      return animateTo(value);
+    }
   }
 
   @override

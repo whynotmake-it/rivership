@@ -188,10 +188,12 @@ class SpringSimulationController2D
     final fromValue = from ?? value;
 
     final xChanged =
-        _xController.tolerance.distance < (clamped.x - fromValue.x).abs();
+        _xController.tolerance.distance < (clamped.x - fromValue.x).abs() ||
+            velocity.x > _xController.tolerance.velocity;
 
     final yChanged =
-        _yController.tolerance.distance < (clamped.y - fromValue.y).abs();
+        _yController.tolerance.distance < (clamped.y - fromValue.y).abs() ||
+            velocity.y > _yController.tolerance.velocity;
 
     TickerFuture y() => _yController.animateTo(
           clamped.y,
@@ -218,13 +220,20 @@ class SpringSimulationController2D
       return y();
     }
 
+    _xController.stop();
+    _yController.stop();
     return TickerFuture.complete();
   }
 
   @override
-  void stop({bool canceled = true}) {
-    _xController.stop(canceled: canceled);
-    _yController.stop(canceled: canceled);
+  TickerFuture stop({bool canceled = false}) {
+    if (canceled) {
+      _xController.stop(canceled: canceled);
+      _yController.stop(canceled: canceled);
+      return TickerFuture.complete();
+    } else {
+      return animateTo(value);
+    }
   }
 
   @override

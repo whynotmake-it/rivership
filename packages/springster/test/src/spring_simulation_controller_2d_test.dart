@@ -282,7 +282,32 @@ void main() {
     });
 
     group('stop and control', () {
-      testWidgets('stops animation', (tester) async {
+      testWidgets('stop settles animation by default', (tester) async {
+        controller = SpringSimulationController2D(
+          spring: spring,
+          vsync: tester,
+        )..forward();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(controller.isAnimating, isTrue);
+
+        controller.stop();
+        final valueAfterStop = controller.value;
+        expect(controller.isAnimating, isTrue);
+
+        final pumps = await tester.pumpAndSettle();
+        expect(controller.isAnimating, isFalse);
+        expect(pumps, 10);
+        expect(
+          controller.value.x,
+          moreOrLessEquals(valueAfterStop.x, epsilon: error),
+        );
+        expect(
+          controller.value.y,
+          moreOrLessEquals(valueAfterStop.y, epsilon: error),
+        );
+      });
+      testWidgets('stops animation if canceled is true', (tester) async {
         controller = SpringSimulationController2D(
           spring: spring,
           vsync: tester,
@@ -290,7 +315,7 @@ void main() {
         await tester.pump();
         expect(controller.isAnimating, isTrue);
 
-        controller.stop();
+        controller.stop(canceled: true);
         expect(controller.isAnimating, isFalse);
         final valueAfterStop = controller.value;
 
