@@ -16,7 +16,7 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
     required this.data,
     required this.child,
     this.feedback,
-    this.spring = SimpleSpring.interactive,
+    this.spring = Spring.interactive,
     this.onlyReturnWhenCanceled = false,
     this.axis,
     this.childWhenDragging,
@@ -227,7 +227,7 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
 
   /// The spring to use for the return animation.
   ///
-  /// Defaults to [SimpleSpring.interactive].
+  /// Defaults to [Spring.interactive].
   final SpringDescription spring;
 
   /// Whether the feedback widget should be built with the same constraints as

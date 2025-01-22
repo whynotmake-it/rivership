@@ -78,7 +78,7 @@ class _ListItemState extends State<ListItem> {
           children: [
             SpringBuilder(
               value: candidateData.isNotEmpty ? 1.0 : 0.0,
-              spring: SimpleSpring.interactive,
+              spring: Spring.interactive,
               builder: (context, value, child) => SizedBox.fromSize(
                 size: Size.fromHeight(value.clamp(0, 1) * 64),
                 child: child,

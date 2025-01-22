@@ -18,7 +18,7 @@ class Heroine extends StatefulWidget {
     required this.child,
     required this.tag,
     super.key,
-    this.spring = const SimpleSpring(),
+    this.spring = const Spring(),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
     this.adjustToRouteTransitionDuration = false,
@@ -43,8 +43,8 @@ class Heroine extends StatefulWidget {
 
   /// The spring simulation to use for transitions towards this hero.
   ///
-  /// Defaults to [SimpleSpring], which is a smooth default without bounce.
-  final SimpleSpring spring;
+  /// Defaults to [Spring], which is a smooth default without bounce.
+  final Spring spring;
 
   ///
   final HeroPlaceholderBuilder? placeholderBuilder;

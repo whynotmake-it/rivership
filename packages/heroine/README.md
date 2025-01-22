@@ -87,7 +87,7 @@ Heroine(
     axis: Axis.vertical,
     halfFlips: 1,
   ),
-  spring: SimpleSpring.bouncy, // Customize your springs!
+  spring: Spring.bouncy, // Customize your springs!
   child: MyWidget(),
 )
 ```
@@ -141,13 +141,13 @@ If you look closely at the example GIF, you will see that the details page fades
 Heroine uses [Springster](https://pub.dev/packages/springster) for spring animations. You can customize the spring behavior:
 
 ```dart
-const mySpring = SimpleSpring(
+const mySpring = Spring(
   durationSeconds: 0.5, // Settling duration
   bounce: 0.2,   // Bounce amount (-1 to 1)
 );
 
 // Or using damping fraction
-const mySpring = SimpleSpring.withDamping(
+const mySpring = Spring.withDamping(
   dampingFraction: 0.7,
   durationSeconds: 0.5,
 );
@@ -183,7 +183,7 @@ Heroine(
 )
 ```
 
-For full control however, just pass in a custom `SimpleSpring` to the `Heroine` widget with whatever duration you want.
+For full control however, just pass in a custom `Spring` to the `Heroine` widget with whatever duration you want.
 
 ## Best Practices 📝
 

@@ -13,7 +13,7 @@ import 'package:flutter/physics.dart';
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
-///   curve: SpringCurve(spring: SimpleSpring.bouncy, velocity: .3),
+///   curve: SpringCurve(spring: Spring.bouncy, velocity: .3),
 ///   height: size,
 ///   width: size,
 ///   color: Colors.blue,

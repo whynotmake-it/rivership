@@ -150,7 +150,7 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: SpringDraggable<String>(
-              spring: const SimpleSpring(),
+              spring: const Spring(),
               data: 'test',
               feedback: buildFeedback(),
               child: buildChild(),
