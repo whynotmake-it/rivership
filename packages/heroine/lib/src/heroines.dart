@@ -92,14 +92,8 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   SpringSimulationController2D? _centerController;
   SpringSimulationController2D? _sizeController;
 
-  void _disposeSpringControllers() {
-    _centerController?.dispose();
-    _sizeController?.dispose();
-    _unlinkSpringControllers();
-  }
-
   /// Should be called on the toHero's state.
-  void _initSpringControllersWithFromHero(
+  void _initSpringControllers(
     _FlightManifest manifest,
     AnimationStatusListener onFlightAnimationStatusChanged,
   ) {
@@ -123,7 +117,13 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     );
   }
 
-  void _initRedirectedSpringControllers(
+  void _disposeSpringControllers() {
+    _centerController?.dispose();
+    _sizeController?.dispose();
+    _unlinkSpringControllers();
+  }
+
+  void _linkRedirectedSpringControllers(
     SpringSimulationController2D centerController,
     SpringSimulationController2D sizeController,
   ) {
@@ -132,6 +132,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   }
 
   void _unlinkSpringControllers() {
+    if (_centerController == null && _sizeController == null) return;
     _centerController = null;
     _sizeController = null;
   }

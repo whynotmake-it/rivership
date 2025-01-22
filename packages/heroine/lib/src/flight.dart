@@ -1,48 +1,48 @@
 part of 'heroines.dart';
 
 class _HeroineFlight {
-  _HeroineFlight(this._manifest, this.onEnd) {
-    _manifest.toHero._initSpringControllersWithFromHero(
-      _manifest,
+  _HeroineFlight(this.manifest, this.onEnd) {
+    manifest.controllingHero._initSpringControllers(
+      manifest,
       _onFlightAnimationStatusChanged,
     );
   }
 
-  _FlightManifest _manifest;
+  _FlightManifest manifest;
 
   final VoidCallback onEnd;
 
-  OverlayEntry? _overlayEntry;
+  OverlayEntry? overlayEntry;
 
-  SpringSimulationController2D get _centerController =>
-      _manifest.toHero._centerController!;
-  SpringSimulationController2D get _sizeController =>
-      _manifest.toHero._sizeController!;
+  SpringSimulationController2D get centerController =>
+      manifest.controllingHero._centerController!;
+  SpringSimulationController2D get sizeController =>
+      manifest.controllingHero._sizeController!;
 
   void startFlight() {
-    _manifest.toHero._startFlight(_manifest);
+    manifest.toHero._startFlight(manifest);
 
-    if (_manifest.isUserGestureTransition) {
+    if (manifest.isUserGestureTransition) {
       return;
     }
 
-    _manifest.fromHero._startFlight(_manifest);
-    if (_overlayEntry == null) {
-      _manifest.overlay.insert(
-        _overlayEntry = OverlayEntry(builder: _buildOverlay),
+    manifest.fromHero._startFlight(manifest);
+    if (overlayEntry == null) {
+      manifest.overlay.insert(
+        overlayEntry = OverlayEntry(builder: _buildOverlay),
       );
     }
 
-    final fromHeroVelocity = HeroineVelocity.of(_manifest.fromHero.context);
-    _manifest.routeAnimation
+    final fromHeroVelocity = HeroineVelocity.of(manifest.fromHero.context);
+    manifest.routeAnimation
         .addStatusListener(_onProgressAnimationStatusChanged);
 
-    _centerController
-      ..spring = _manifest.spring
+    centerController
+      ..spring = manifest.spring
       ..animateTo(
         (
-          _manifest.toHeroLocation.center.dx,
-          _manifest.toHeroLocation.center.dy,
+          manifest.toHeroLocation.center.dx,
+          manifest.toHeroLocation.center.dy,
         ),
         withVelocity: (
           fromHeroVelocity?.pixelsPerSecond.dx ?? 0,
@@ -50,77 +50,87 @@ class _HeroineFlight {
         ),
       );
 
-    _sizeController
-      ..spring = _manifest.spring
+    sizeController
+      ..spring = manifest.spring
       ..animateTo(
         (
-          _manifest.toHeroLocation.size.width,
-          _manifest.toHeroLocation.size.height,
+          manifest.toHeroLocation.size.width,
+          manifest.toHeroLocation.size.height,
         ),
       );
   }
 
-  void divert(_FlightManifest manifest) {
+  void divert(_FlightManifest newManifest) {
     // If we are diverting a user gesture transition to a non-user gesture
     // transition, we need to set the initial values of the controllers to
     // the values of the from hero to make sure the animation is smooth.
-    if (_manifest.isUserGestureTransition &&
-        !manifest.isUserGestureTransition) {
-      _centerController.value = (
-        manifest.fromHeroLocation.center.dx,
-        manifest.fromHeroLocation.center.dy,
+    if (manifest.isUserGestureTransition &&
+        !newManifest.isUserGestureTransition) {
+      centerController.value = (
+        newManifest.fromHeroLocation.center.dx,
+        newManifest.fromHeroLocation.center.dy,
       );
-      _sizeController.value = (
-        manifest.fromHeroLocation.size.width,
-        manifest.fromHeroLocation.size.height,
+      sizeController.value = (
+        newManifest.fromHeroLocation.size.width,
+        newManifest.fromHeroLocation.size.height,
       );
     }
 
-    _manifest.dispose();
-    _manifest.routeAnimation
+    manifest.dispose();
+    manifest.routeAnimation
         .removeStatusListener(_onProgressAnimationStatusChanged);
 
-    manifest.toHero._initRedirectedSpringControllers(
-      _centerController,
-      _sizeController,
+    _transferSpringControllers(
+      from: manifest.controllingHero,
+      to: newManifest.controllingHero,
     );
-    _manifest.toHero._unlinkSpringControllers();
-    _manifest.toHero._startFlight(manifest);
 
-    _manifest = manifest;
+    manifest = newManifest;
 
     startFlight();
+  }
+
+  void _transferSpringControllers({
+    required _HeroineState from,
+    required _HeroineState to,
+  }) {
+    if (from == to) return;
+    to._linkRedirectedSpringControllers(
+      from._centerController!,
+      from._sizeController!,
+    );
+    from._unlinkSpringControllers();
   }
 
   void handoverFlight() {
     _removeOverlay();
 
-    _manifest.toHero._performSleightOfHand(
-      centerController: _centerController,
+    manifest.toHero._performSleightOfHand(
+      centerController: centerController,
       targetCenter: (
-        _manifest.toHeroLocation.center.dx,
-        _manifest.toHeroLocation.center.dy,
+        manifest.toHeroLocation.center.dx,
+        manifest.toHeroLocation.center.dy,
       ),
-      sizeController: _sizeController,
+      sizeController: sizeController,
       targetSize: (
-        _manifest.toHeroLocation.size.width,
-        _manifest.toHeroLocation.size.height,
+        manifest.toHeroLocation.size.width,
+        manifest.toHeroLocation.size.height,
       ),
     );
   }
 
   void _onProgressAnimationStatusChanged(AnimationStatus status) {
-    if (_manifest.isUserGestureTransition) return;
+    if (manifest.isUserGestureTransition) return;
 
     if (status.isAnimating) return;
 
-    _manifest.routeAnimation
+    manifest.routeAnimation
         .removeStatusListener(_onProgressAnimationStatusChanged);
     handoverFlight();
   }
 
   void _onFlightAnimationStatusChanged(AnimationStatus status) {
-    if (_manifest.isUserGestureTransition) return;
+    if (manifest.isUserGestureTransition) return;
 
     if (status.isAnimating) return;
 
@@ -128,20 +138,20 @@ class _HeroineFlight {
   }
 
   Widget _buildOverlay(BuildContext context) {
-    final shuttle = _manifest.shuttleBuilder(
+    final shuttle = manifest.shuttleBuilder(
       context,
-      _manifest.routeAnimation,
-      _manifest.direction,
-      _manifest.fromHero.context,
-      _manifest.toHero.context,
+      manifest.routeAnimation,
+      manifest.direction,
+      manifest.fromHero.context,
+      manifest.toHero.context,
     );
     return AnimatedBuilder(
-      animation: _manifest.routeAnimation,
+      animation: manifest.routeAnimation,
       builder: (context, child) => Positioned(
-        top: _centerController.value.y - _sizeController.value.y / 2,
-        left: _centerController.value.x - _sizeController.value.x / 2,
-        width: _sizeController.value.x,
-        height: _sizeController.value.y,
+        top: centerController.value.y - sizeController.value.y / 2,
+        left: centerController.value.x - sizeController.value.x / 2,
+        width: sizeController.value.x,
+        height: sizeController.value.y,
         child: child!,
       ),
       child: IgnorePointer(
@@ -152,18 +162,19 @@ class _HeroineFlight {
   }
 
   void dispose() {
-    _manifest.toHero._endFlight();
+    manifest.toHero._endFlight();
+    manifest.controllingHero._disposeSpringControllers();
 
-    _manifest.dispose();
+    manifest.dispose();
 
-    if (_overlayEntry != null) {
+    if (overlayEntry != null) {
       _removeOverlay();
     }
   }
 
   void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry?.dispose();
-    _overlayEntry = null;
+    overlayEntry?.remove();
+    overlayEntry?.dispose();
+    overlayEntry = null;
   }
 }
