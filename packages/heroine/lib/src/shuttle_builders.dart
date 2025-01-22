@@ -235,7 +235,7 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
 class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [FadeThroughShuttleBuilder].
   const FadeThroughShuttleBuilder({
-    this.fadeColor = const Color.fromARGB(1, 0, 0, 0),
+    this.fadeColor = const Color.from(alpha: 1, red: 1, blue: 1, green: 1),
   });
 
   /// The color to fade through.

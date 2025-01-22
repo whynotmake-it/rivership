@@ -15,7 +15,15 @@ void main() {
     const padding = 10.0;
     const heroSize = 100.0;
 
-    const frameSize = Size(400, padding + heroSize + padding);
+    const frameSize = Size(800, padding + heroSize + padding);
+
+    const pumpDuration = Duration(milliseconds: 700);
+
+    late AnimationSheetBuilder animationSheet;
+
+    setUp(() {
+      animationSheet = AnimationSheetBuilder(frameSize: frameSize);
+    });
 
     Widget build({bool isHeroine = true}) {
       final child = Container(color: Colors.red);
@@ -23,6 +31,7 @@ void main() {
         debugShowCheckedModeBanner: false,
         navigatorObservers: [HeroineController()],
         home: Scaffold(
+          backgroundColor: Colors.black,
           body: Padding(
             padding: const EdgeInsets.all(padding),
             child: Align(
@@ -44,10 +53,12 @@ void main() {
 
     Widget buildPage2({
       bool isHeroine = true,
+      HeroineShuttleBuilder? shuttleBuilder,
       Spring? spring,
     }) {
       final child = Container(color: Colors.green);
       return Scaffold(
+        backgroundColor: Colors.black,
         body: Padding(
           padding: const EdgeInsets.all(padding),
           child: Align(
@@ -58,6 +69,8 @@ void main() {
                   ? Heroine(
                       tag: tag,
                       spring: spring ?? const Spring(),
+                      flightShuttleBuilder:
+                          (shuttleBuilder ?? const FadeShuttleBuilder()).call,
                       child: child,
                     )
                   : child,
@@ -87,27 +100,14 @@ void main() {
     });
 
     testWidgets('default animation matches golden', (tester) async {
-      final animationSheet = AnimationSheetBuilder(
-        frameSize: frameSize,
-      );
-
       final widget = animationSheet.record(build());
 
       await tester.pumpWidget(widget);
+
       // push page 2
-      final navigator = Navigator.of(tester.element(find.byType(Container)));
+      tester.push(buildPage2(spring: Spring.bouncy)).ignore();
 
-      expect(navigator.canPop(), isFalse);
-
-      navigator
-          .push(
-            MaterialPageRoute<bool>(
-              builder: (context) => buildPage2(spring: Spring.bouncy),
-            ),
-          )
-          .ignore();
-
-      await tester.pumpFrames(widget, const Duration(milliseconds: 700));
+      await tester.pumpFrames(widget, pumpDuration);
 
       await expectLater(
         animationSheet.collate(1),
@@ -116,36 +116,77 @@ void main() {
     });
 
     testWidgets('redirected animation matches golden', (tester) async {
-      final animationSheet = AnimationSheetBuilder(
-        frameSize: frameSize,
-      );
-
       final widget = animationSheet.record(build());
 
       await tester.pumpWidget(widget);
       // push page 2
-      final navigator = Navigator.of(tester.element(find.byType(Container)));
+      tester.push(buildPage2(spring: Spring.bouncy)).ignore();
 
-      expect(navigator.canPop(), isFalse);
+      await tester.pumpFrames(widget, pumpDuration * 0.2);
 
-      navigator
-          .push(
-            MaterialPageRoute<bool>(
-              builder: (context) => buildPage2(spring: Spring.bouncy),
-            ),
-          )
-          .ignore();
+      tester.pop();
 
-      await tester.pumpFrames(widget, const Duration(milliseconds: 150));
-
-      navigator.pop();
-
-      await tester.pumpFrames(widget, const Duration(milliseconds: 200));
+      await tester.pumpFrames(widget, pumpDuration * 0.8);
 
       await expectLater(
         animationSheet.collate(1),
         matchesGoldenFile('golden/heroine_redirected_animation.png'),
       );
     });
+
+    testWidgets('flip animation matches golden', (tester) async {
+      final widget = animationSheet.record(build());
+
+      await tester.pumpWidget(widget);
+
+      tester
+          .push(buildPage2(shuttleBuilder: const FlipShuttleBuilder()))
+          .ignore();
+
+      await tester.pumpFrames(widget, pumpDuration);
+
+      await expectLater(
+        animationSheet.collate(1),
+        matchesGoldenFile('golden/heroine_flip_animation.png'),
+      );
+    });
+
+    testWidgets('flip + fade animation matches golden', (tester) async {
+      final shuttle =
+          const FlipShuttleBuilder().chain(const FadeThroughShuttleBuilder());
+
+      final widget = animationSheet.record(build());
+
+      await tester.pumpWidget(widget);
+
+      tester.push(buildPage2(shuttleBuilder: shuttle)).ignore();
+
+      await tester.pumpFrames(widget, pumpDuration * .5);
+
+      tester.pop();
+
+      await tester.pumpFrames(widget, pumpDuration * .5);
+
+      await expectLater(
+        animationSheet.collate(1),
+        matchesGoldenFile('golden/heroine_flip_and_fade_through.png'),
+      );
+    });
   });
+}
+
+extension WidgetTesterX on WidgetTester {
+  Future<void> push(Widget widget) async {
+    final navigator = state<NavigatorState>(find.byType(Navigator));
+
+    await navigator.push(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) => widget,
+      ),
+    );
+  }
+
+  void pop() {
+    state<NavigatorState>(find.byType(Navigator)).pop();
+  }
 }
