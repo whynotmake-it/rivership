@@ -3,6 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:heroine/heroine.dart';
 
+const _fadeFlipShuttle = ChainedShuttleBuilder(builders: [
+  FlipShuttleBuilder(),
+  FadeShuttleBuilder(),
+]);
+
 class MainSettingsButton extends StatelessWidget {
   const MainSettingsButton({super.key});
 
@@ -48,6 +53,11 @@ class MainSettingsButton extends StatelessWidget {
           onTap: () => flightShuttleNotifier.value = const FadeShuttleBuilder(),
           title: 'Fade',
           selected: flightShuttleNotifier.value == const FadeShuttleBuilder(),
+        ),
+        PullDownMenuItem.selectable(
+          onTap: () => flightShuttleNotifier.value = _fadeFlipShuttle,
+          title: 'Flip + Fade',
+          selected: flightShuttleNotifier.value == _fadeFlipShuttle,
         ),
         PullDownMenuItem.selectable(
           onTap: () =>
