@@ -12,9 +12,10 @@ class MainSettingsButton extends StatelessWidget {
       fadeColor: CupertinoColors.extraLightBackgroundGray,
     );
 
-    final fadeFlip = ChainedShuttleBuilder(builders: [
+    final chained = ChainedShuttleBuilder(builders: [
       FlipShuttleBuilder(),
       fadeThroughShuttle,
+      FadeShuttleBuilder(),
     ]);
     return PullDownButton(
       itemBuilder: (context) => [
@@ -63,9 +64,9 @@ class MainSettingsButton extends StatelessWidget {
           selected: flightShuttleNotifier.value == fadeThroughShuttle,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = fadeFlip,
-          title: 'Flip + Fade through',
-          selected: flightShuttleNotifier.value == fadeFlip,
+          onTap: () => flightShuttleNotifier.value = chained,
+          title: 'Flip + Fade through + Fade',
+          selected: flightShuttleNotifier.value == chained,
         ),
         PullDownMenuItem.selectable(
           onTap: () =>
