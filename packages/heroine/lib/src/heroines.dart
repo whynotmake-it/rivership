@@ -179,9 +179,9 @@ extension on _SleightOfHand {
         centerController.value.y - targetCenter.y,
       );
 
-  double get scaleX => (sizeController.value.x) / (targetSize.x);
+  double get sizeX => sizeController.value.x;
 
-  double get scaleY => (sizeController.value.y) / (targetSize.y);
+  double get sizeY => sizeController.value.y;
 }
 
 class _SleightOfHandBuilder extends StatelessWidget {
@@ -205,31 +205,41 @@ class _SleightOfHandBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation:
-          sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
-      builder: (context, child) => SizedBox.fromSize(
-        size: placeholderSize,
-        child: Offstage(
-          offstage: manifest != null && sleightOfHand == null,
-          child: TickerMode(
-            enabled: manifest == null || sleightOfHand != null,
-            child: KeyedSubtree(
-              key: globalKey,
-              child: Transform.scale(
-                scaleX: sleightOfHand?.scaleX ?? 1,
-                scaleY: sleightOfHand?.scaleY ?? 1,
-                child: Transform.translate(
-                  offset: sleightOfHand?.offset ?? Offset.zero,
-                  child: child,
+    if (placeholderSize case final size?) {
+      return AnimatedBuilder(
+        animation:
+            sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
+        builder: (context, child) {
+          return Transform.translate(
+            offset: sleightOfHand?.offset ?? Offset.zero,
+            child: OverflowBox(
+              maxHeight: double.infinity,
+              maxWidth: double.infinity,
+              child: Center(
+                child: SizedBox.fromSize(
+                  size: Size(
+                    sleightOfHand?.sizeX ?? size.width,
+                    sleightOfHand?.sizeY ?? size.height,
+                  ),
+                  child: Offstage(
+                    offstage: manifest != null && sleightOfHand == null,
+                    child: TickerMode(
+                      enabled: manifest == null || sleightOfHand != null,
+                      child: KeyedSubtree(
+                        key: globalKey,
+                        child: child!,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-      child: child,
-    );
+          );
+        },
+        child: child,
+      );
+    }
+    return child;
   }
 }
 
