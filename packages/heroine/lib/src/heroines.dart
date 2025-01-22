@@ -96,6 +96,11 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      context.findAncestorWidgetOfExactType<Heroine>() == null,
+      'A Heroine widget cannot be the descendant of another Heroine widget.',
+    );
+
     final flight = _manifest;
     if (flight != null &&
         widget.placeholderBuilder != null &&
@@ -113,29 +118,11 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       );
     }
 
-    return AnimatedBuilder(
-      animation:
-          _sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
-      builder: (context, child) => SizedBox.fromSize(
-        size: _placeholderSize,
-        child: Offstage(
-          offstage: _manifest != null && _sleightOfHand == null,
-          child: TickerMode(
-            enabled: _manifest == null || _sleightOfHand != null,
-            child: KeyedSubtree(
-              key: _key,
-              child: Transform.scale(
-                scaleX: _sleightOfHand?.scaleX ?? 1,
-                scaleY: _sleightOfHand?.scaleY ?? 1,
-                child: Transform.translate(
-                  offset: _sleightOfHand?.offset ?? Offset.zero,
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _SleightOfHandBuilder(
+      globalKey: _key,
+      placeholderSize: _placeholderSize,
+      sleightOfHand: _sleightOfHand,
+      manifest: _manifest,
       child: widget.child,
     );
   }
@@ -195,6 +182,55 @@ extension on _SleightOfHand {
   double get scaleX => (sizeController.value.x) / (targetSize.x);
 
   double get scaleY => (sizeController.value.y) / (targetSize.y);
+}
+
+class _SleightOfHandBuilder extends StatelessWidget {
+  const _SleightOfHandBuilder({
+    required this.globalKey,
+    required this.placeholderSize,
+    required this.sleightOfHand,
+    required this.manifest,
+    required this.child,
+  });
+
+  final GlobalKey globalKey;
+
+  final Size? placeholderSize;
+
+  final _SleightOfHand? sleightOfHand;
+
+  final _FlightManifest? manifest;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation:
+          sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
+      builder: (context, child) => SizedBox.fromSize(
+        size: placeholderSize,
+        child: Offstage(
+          offstage: manifest != null && sleightOfHand == null,
+          child: TickerMode(
+            enabled: manifest == null || sleightOfHand != null,
+            child: KeyedSubtree(
+              key: globalKey,
+              child: Transform.scale(
+                scaleX: sleightOfHand?.scaleX ?? 1,
+                scaleY: sleightOfHand?.scaleY ?? 1,
+                child: Transform.translate(
+                  offset: sleightOfHand?.offset ?? Offset.zero,
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
 }
 
 /// The controller for [Heroine] transitions.
