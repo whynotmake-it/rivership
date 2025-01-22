@@ -10,6 +10,7 @@ const _defaultDurationSeconds = 0.5;
 ///
 /// Mostly adapted from
 /// [`fluid_animations`](https://pub.dev/packages/fluid_animations).
+@immutable
 class Spring extends SpringDescription {
   /// Creates a spring with the specified duration and bounce.
   ///
@@ -39,6 +40,7 @@ class Spring extends SpringDescription {
   /// animated, as a fraction of an estimate of amount needed to produce
   /// critical damping.
   /// It is effectively the inverse of the bounce amount.
+  ///
   ///
   /// A smooth spring with a response duration and no bounce is created by
   /// default.
@@ -135,4 +137,13 @@ class Spring extends SpringDescription {
     // ignore: lines_longer_than_80_chars
     return '${objectRuntimeType(this, 'Spring')}(bounce: $bounce, duration: $durationSeconds)';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is Spring &&
+      other.durationSeconds == durationSeconds &&
+      other.bounce == bounce;
+
+  @override
+  int get hashCode => Object.hash(durationSeconds, bounce);
 }
