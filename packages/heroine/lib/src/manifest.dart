@@ -34,6 +34,10 @@ class _FlightManifest {
 
   Object? get tag => fromHero.widget.tag;
 
+  /// The hero that is controlling the flight animation.
+  _HeroineState get controllingHero =>
+      isUserGestureTransition ? fromHero : toHero;
+
   Duration get duration => direction == HeroFlightDirection.push
       ? toRoute.transitionDuration
       : fromRoute.transitionDuration;

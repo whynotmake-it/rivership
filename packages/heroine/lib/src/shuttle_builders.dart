@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 
 /// A convenience class that can be extended to create your own shuttle
@@ -7,7 +8,7 @@ import 'package:flutter/widgets.dart';
 ///
 /// Basically a callable class that matches the signature of
 /// [HeroFlightShuttleBuilder] and offers a convenience method.
-abstract class HeroineShuttleBuilder {
+abstract class HeroineShuttleBuilder with EquatableMixin {
   /// Creates a new [HeroineShuttleBuilder].
   const HeroineShuttleBuilder();
 
@@ -15,14 +16,14 @@ abstract class HeroineShuttleBuilder {
   ///
   /// This will be called each frame of the transition with a [valueFromTo] that
   /// ranges from 0 to 1.
-  /// If that value is at 0, we are still at the [fromHeroContext] and if it
-  /// is at 1, we are at the [toHeroContext].
+  /// If that value is at 0, we are still at the [fromHero] and if it
+  /// is at 1, we are at the [toHero].
   ///
-  /// Access the widgets using [fromHeroContext] and [toHeroContext].
+  /// Access the widgets using [fromHero] and [toHero].
   Widget buildHero({
     required BuildContext flightContext,
-    required BuildContext fromHeroContext,
-    required BuildContext toHeroContext,
+    required Widget fromHero,
+    required Widget toHero,
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   });
@@ -52,8 +53,8 @@ abstract class HeroineShuttleBuilder {
         animation: animation,
         builder: (BuildContext context, Widget? _) => buildHero(
           flightContext: flightContext,
-          fromHeroContext: fromHeroContext,
-          toHeroContext: toHeroContext,
+          fromHero: fromHeroContext.widget,
+          toHero: toHeroContext.widget,
           valueFromTo: remapValue(),
           flightDirection: flightDirection,
         ),
@@ -79,8 +80,8 @@ abstract class HeroineShuttleBuilder {
         ),
         child: buildHero(
           flightContext: flightContext,
-          fromHeroContext: fromHeroContext,
-          toHeroContext: toHeroContext,
+          fromHero: fromHeroContext.widget,
+          toHero: toHeroContext.widget,
           valueFromTo: remapValue(),
           flightDirection: flightDirection,
         ),
@@ -97,8 +98,8 @@ class FadeShuttleBuilder extends HeroineShuttleBuilder {
   @override
   Widget buildHero({
     required BuildContext flightContext,
-    required BuildContext fromHeroContext,
-    required BuildContext toHeroContext,
+    required Widget fromHero,
+    required Widget toHero,
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   }) =>
@@ -108,15 +109,18 @@ class FadeShuttleBuilder extends HeroineShuttleBuilder {
           if (valueFromTo < 1)
             Opacity(
               opacity: 1 - valueFromTo.clamp(0, 1),
-              child: fromHeroContext.widget,
+              child: fromHero,
             ),
           if (valueFromTo > 0)
             Opacity(
               opacity: valueFromTo.clamp(0, 1),
-              child: toHeroContext.widget,
+              child: toHero,
             ),
         ],
       );
+
+  @override
+  List<Object?> get props => [];
 }
 
 /// A shuttle builder that shows either only the from hero or the to hero.
@@ -136,12 +140,15 @@ class SingleShuttleBuilder extends HeroineShuttleBuilder {
   @override
   Widget buildHero({
     required BuildContext flightContext,
-    required BuildContext fromHeroContext,
-    required BuildContext toHeroContext,
+    required Widget fromHero,
+    required Widget toHero,
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   }) =>
-      useFromHero ? fromHeroContext.widget : toHeroContext.widget;
+      useFromHero ? fromHero : toHero;
+
+  @override
+  List<Object?> get props => [useFromHero];
 }
 
 /// A shuttle builder that flips the hero widget horizontally or vertically.
@@ -179,8 +186,8 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
   @override
   Widget buildHero({
     required BuildContext flightContext,
-    required BuildContext fromHeroContext,
-    required BuildContext toHeroContext,
+    required Widget fromHero,
+    required Widget toHero,
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   }) {
@@ -214,9 +221,148 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
           ? Transform.flip(
               flipX: doesFlip && axis == Axis.vertical,
               flipY: doesFlip && axis == Axis.horizontal,
-              child: toHeroContext.widget,
+              child: toHero,
             )
-          : fromHeroContext.widget,
+          : fromHero,
     );
   }
+
+  @override
+  List<Object?> get props => [axis, flipForward, invertFlipOnReturn, halfFlips];
+}
+
+/// A shuttle builder that fades through a given color.
+class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
+  /// Creates a new [FadeThroughShuttleBuilder].
+  const FadeThroughShuttleBuilder({
+    this.fadeColor = const Color.from(alpha: 1, red: 1, blue: 1, green: 1),
+  });
+
+  /// The color to fade through.
+  final Color fadeColor;
+
+  @override
+  Widget buildHero({
+    required BuildContext flightContext,
+    required Widget fromHero,
+    required Widget toHero,
+    required double valueFromTo,
+    required HeroFlightDirection flightDirection,
+  }) {
+    final alphaFactor = (0.5 - (valueFromTo - 0.5).abs()) * 2;
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        fadeColor.withValues(
+          alpha: fadeColor.a * alphaFactor,
+        ),
+        BlendMode.srcATop,
+      ),
+      child: valueFromTo > 0.5 ? toHero : fromHero,
+    );
+  }
+
+  @override
+  List<Object?> get props => [fadeColor];
+}
+
+/// A shuttle builder that combines multiple [HeroineShuttleBuilder]s into a
+/// single chain.
+///
+/// The builders are applied in order, with each builder's output being used as
+/// both the `fromHero` and `toHero` for the previous builder in the chain.
+/// The last builder in the chain receives the actual hero widgets.
+///
+/// This allows for complex transitions by combining multiple effects.
+///
+/// For example:
+///
+/// ```dart
+/// ChainedShuttleBuilder(
+///   builders: [
+///     FlipShuttleBuilder(),
+///     FadeShuttleBuilder(),
+///   ],
+/// )
+/// ```
+///
+/// In this example, the fade effect will be applied first, and then the result
+/// will be flipped. This creates a combined effect where the hero both fades
+/// and flips during the transition.
+class ChainedShuttleBuilder extends HeroineShuttleBuilder {
+  /// Creates a new [ChainedShuttleBuilder] with the given list of builders.
+  ///
+  /// The [builders] are applied in order, with each builder's output being used
+  /// as input for the previous builder. If [builders] is empty, the builder
+  /// will simply return the destination hero widget.
+  const ChainedShuttleBuilder({
+    required List<HeroineShuttleBuilder> builders,
+  }) : _builders = builders;
+
+  /// The list of [HeroineShuttleBuilder]s to chain together.
+  ///
+  /// The builders are applied in order, with the last builder getting the
+  /// actual hero widgets as input.
+  final List<HeroineShuttleBuilder> _builders;
+
+  @override
+  Widget buildHero({
+    required BuildContext flightContext,
+    required Widget fromHero,
+    required Widget toHero,
+    required double valueFromTo,
+    required HeroFlightDirection flightDirection,
+  }) {
+    if (_builders.isEmpty) {
+      return toHero;
+    }
+
+    Widget buildChain(int index) {
+      // If we're at the last builder, use the actual hero widgets
+      if (index == _builders.length - 1) {
+        return _builders[index].buildHero(
+          flightContext: flightContext,
+          fromHero: fromHero,
+          toHero: toHero,
+          valueFromTo: valueFromTo,
+          flightDirection: flightDirection,
+        );
+      }
+
+      // For other builders, use the next builder's result as both from and to
+      // heroes
+      final nextResult = buildChain(index + 1);
+      return _builders[index].buildHero(
+        flightContext: flightContext,
+        fromHero: nextResult,
+        toHero: nextResult,
+        valueFromTo: valueFromTo,
+        flightDirection: flightDirection,
+      );
+    }
+
+    return buildChain(0);
+  }
+
+  @override
+  List<Object?> get props => [..._builders];
+}
+
+/// Provides the [chain] extension method for easy chaining of
+/// [HeroineShuttleBuilder]s.
+extension Chain on HeroineShuttleBuilder {
+  /// Chains this builder with another builder.
+  ///
+  /// This allows for a more fluent API when combining multiple shuttle
+  /// builders.
+  ///
+  /// ```dart
+  /// FlipShuttleBuilder()
+  ///   .chain(FadeShuttleBuilder())
+  ///   .chain(AnotherShuttleBuilder());
+  /// ```
+  HeroineShuttleBuilder chain(HeroineShuttleBuilder builder) => switch (this) {
+        ChainedShuttleBuilder(_builders: final builders) =>
+          ChainedShuttleBuilder(builders: [...builders, builder]),
+        _ => ChainedShuttleBuilder(builders: [this, builder]),
+      };
 }

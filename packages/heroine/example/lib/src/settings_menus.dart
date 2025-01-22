@@ -8,6 +8,15 @@ class MainSettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fadeThroughShuttle = FadeThroughShuttleBuilder(
+      fadeColor: CupertinoColors.extraLightBackgroundGray,
+    );
+
+    final chained = ChainedShuttleBuilder(builders: [
+      FlipShuttleBuilder(),
+      fadeThroughShuttle,
+      FadeShuttleBuilder(),
+    ]);
     return PullDownButton(
       itemBuilder: (context) => [
         PullDownMenuTitle(title: Text('Select Spring')),
@@ -48,6 +57,16 @@ class MainSettingsButton extends StatelessWidget {
           onTap: () => flightShuttleNotifier.value = const FadeShuttleBuilder(),
           title: 'Fade',
           selected: flightShuttleNotifier.value == const FadeShuttleBuilder(),
+        ),
+        PullDownMenuItem.selectable(
+          onTap: () => flightShuttleNotifier.value = fadeThroughShuttle,
+          title: 'Fade through',
+          selected: flightShuttleNotifier.value == fadeThroughShuttle,
+        ),
+        PullDownMenuItem.selectable(
+          onTap: () => flightShuttleNotifier.value = chained,
+          title: 'Flip + Fade through + Fade',
+          selected: flightShuttleNotifier.value == chained,
         ),
         PullDownMenuItem.selectable(
           onTap: () =>

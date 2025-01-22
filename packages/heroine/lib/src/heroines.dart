@@ -89,6 +89,54 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   _SleightOfHand? _sleightOfHand;
 
+  SpringSimulationController2D? _centerController;
+  SpringSimulationController2D? _sizeController;
+
+  /// Should be called on the toHero's state.
+  void _initSpringControllers(
+    _FlightManifest manifest,
+    AnimationStatusListener onFlightAnimationStatusChanged,
+  ) {
+    _disposeSpringControllers();
+    _centerController = SpringSimulationController2D.unbounded(
+      vsync: this,
+      spring: manifest.adjustedSpring,
+      initialValue: (
+        manifest.fromHeroLocation.center.dx,
+        manifest.fromHeroLocation.center.dy,
+      ),
+    )..addStatusListener(onFlightAnimationStatusChanged);
+
+    _sizeController = SpringSimulationController2D.unbounded(
+      vsync: this,
+      spring: manifest.adjustedSpring,
+      initialValue: (
+        manifest.fromHeroLocation.size.width,
+        manifest.fromHeroLocation.size.height,
+      ),
+    );
+  }
+
+  void _disposeSpringControllers() {
+    _centerController?.dispose();
+    _sizeController?.dispose();
+    _unlinkSpringControllers();
+  }
+
+  void _linkRedirectedSpringControllers(
+    SpringSimulationController2D centerController,
+    SpringSimulationController2D sizeController,
+  ) {
+    _centerController = centerController..resync(this);
+    _sizeController = sizeController..resync(this);
+  }
+
+  void _unlinkSpringControllers() {
+    if (_centerController == null && _sizeController == null) return;
+    _centerController = null;
+    _sizeController = null;
+  }
+
   bool _showsEmptyPlaceholderForFlight(_FlightManifest flight) {
     return flight.direction == HeroFlightDirection.pop &&
         flight.fromHero == this;
@@ -96,6 +144,11 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      context.findAncestorWidgetOfExactType<Heroine>() == null,
+      'A Heroine widget cannot be the descendant of another Heroine widget.',
+    );
+
     final flight = _manifest;
     if (flight != null &&
         widget.placeholderBuilder != null &&
@@ -113,29 +166,11 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       );
     }
 
-    return AnimatedBuilder(
-      animation:
-          _sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
-      builder: (context, child) => SizedBox.fromSize(
-        size: _placeholderSize,
-        child: Offstage(
-          offstage: _manifest != null && _sleightOfHand == null,
-          child: TickerMode(
-            enabled: _manifest == null || _sleightOfHand != null,
-            child: KeyedSubtree(
-              key: _key,
-              child: Transform.scale(
-                scaleX: _sleightOfHand?.scaleX ?? 1,
-                scaleY: _sleightOfHand?.scaleY ?? 1,
-                child: Transform.translate(
-                  offset: _sleightOfHand?.offset ?? Offset.zero,
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _SleightOfHandBuilder(
+      globalKey: _key,
+      placeholderSize: _placeholderSize,
+      sleightOfHand: _sleightOfHand,
+      manifest: _manifest,
       child: widget.child,
     );
   }
@@ -177,6 +212,12 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       _sleightOfHand = null;
     });
   }
+
+  @override
+  void dispose() {
+    _disposeSpringControllers();
+    super.dispose();
+  }
 }
 
 typedef _SleightOfHand = ({
@@ -192,9 +233,71 @@ extension on _SleightOfHand {
         centerController.value.y - targetCenter.y,
       );
 
-  double get scaleX => (sizeController.value.x) / (targetSize.x);
+  double get sizeX => sizeController.value.x;
 
-  double get scaleY => (sizeController.value.y) / (targetSize.y);
+  double get sizeY => sizeController.value.y;
+}
+
+class _SleightOfHandBuilder extends StatelessWidget {
+  const _SleightOfHandBuilder({
+    required this.globalKey,
+    required this.placeholderSize,
+    required this.sleightOfHand,
+    required this.manifest,
+    required this.child,
+  });
+
+  final GlobalKey globalKey;
+
+  final Size? placeholderSize;
+
+  final _SleightOfHand? sleightOfHand;
+
+  final _FlightManifest? manifest;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (placeholderSize case final size?) {
+      return AnimatedBuilder(
+        animation:
+            sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
+        builder: (context, child) {
+          return Transform.translate(
+            offset: sleightOfHand?.offset ?? Offset.zero,
+            child: SizedBox.fromSize(
+              size: size,
+              child: OverflowBox(
+                maxHeight: double.infinity,
+                maxWidth: double.infinity,
+                child: Center(
+                  child: SizedBox.fromSize(
+                    size: Size(
+                      sleightOfHand?.sizeX ?? size.width,
+                      sleightOfHand?.sizeY ?? size.height,
+                    ),
+                    child: Offstage(
+                      offstage: manifest != null && sleightOfHand == null,
+                      child: TickerMode(
+                        enabled: manifest == null || sleightOfHand != null,
+                        child: KeyedSubtree(
+                          key: globalKey,
+                          child: child!,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: child,
+      );
+    }
+    return child;
+  }
 }
 
 /// The controller for [Heroine] transitions.
