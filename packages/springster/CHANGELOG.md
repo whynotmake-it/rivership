@@ -1,3 +1,10 @@
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **REFACTOR**: rename `SimpleSpring` to `Spring`.
+ - **BREAKING** **FEAT**: `Spring` now supports value equality.
+
 ## 0.3.0
 
 > Note: This release has breaking changes.

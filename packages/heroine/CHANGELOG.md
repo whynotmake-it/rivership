@@ -1,3 +1,13 @@
+## 0.3.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: `Heroine`s now correctly dispose any Tickers they created.
+ - **FEAT**: Add `FadeThroughShuttleBuilder` that fades through a given color. Try to chain it with `FlipShuttleBuilder` for cool effects.
+ - **FEAT**: got rid of sleight visual jank that sometimes occured when a heroine arrived at her destination.
+ - **BREAKING** **REFACTOR**: rename `SimpleSpring` to `Spring`.
+ - **BREAKING** **FEAT**: support chaining `HeroineShuttleBuilder`s for more complex animations.
+
 ## 0.2.0+1
 
  - **FIX**: fixed example dependencies (#62).
