@@ -212,22 +212,25 @@ class _SleightOfHandBuilder extends StatelessWidget {
         builder: (context, child) {
           return Transform.translate(
             offset: sleightOfHand?.offset ?? Offset.zero,
-            child: OverflowBox(
-              maxHeight: double.infinity,
-              maxWidth: double.infinity,
-              child: Center(
-                child: SizedBox.fromSize(
-                  size: Size(
-                    sleightOfHand?.sizeX ?? size.width,
-                    sleightOfHand?.sizeY ?? size.height,
-                  ),
-                  child: Offstage(
-                    offstage: manifest != null && sleightOfHand == null,
-                    child: TickerMode(
-                      enabled: manifest == null || sleightOfHand != null,
-                      child: KeyedSubtree(
-                        key: globalKey,
-                        child: child!,
+            child: SizedBox.fromSize(
+              size: size,
+              child: OverflowBox(
+                maxHeight: double.infinity,
+                maxWidth: double.infinity,
+                child: Center(
+                  child: SizedBox.fromSize(
+                    size: Size(
+                      sleightOfHand?.sizeX ?? size.width,
+                      sleightOfHand?.sizeY ?? size.height,
+                    ),
+                    child: Offstage(
+                      offstage: manifest != null && sleightOfHand == null,
+                      child: TickerMode(
+                        enabled: manifest == null || sleightOfHand != null,
+                        child: KeyedSubtree(
+                          key: globalKey,
+                          child: child!,
+                        ),
                       ),
                     ),
                   ),
