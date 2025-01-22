@@ -231,6 +231,41 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
   List<Object?> get props => [axis, flipForward, invertFlipOnReturn, halfFlips];
 }
 
+/// A shuttle builder that fades through a given color.
+class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
+  /// Creates a new [FadeThroughShuttleBuilder].
+  const FadeThroughShuttleBuilder({
+    this.fadeColor = const Color.fromARGB(1, 0, 0, 0),
+  });
+
+  /// The color to fade through.
+  final Color fadeColor;
+
+  @override
+  Widget buildHero({
+    required BuildContext flightContext,
+    required Widget fromHero,
+    required Widget toHero,
+    required double valueFromTo,
+    required HeroFlightDirection flightDirection,
+  }) {
+    print("BUILD SHUTTLE");
+    final alphaFactor = (0.5 - (valueFromTo - 0.5).abs()) * 2;
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        fadeColor.withValues(
+          alpha: fadeColor.a * alphaFactor,
+        ),
+        BlendMode.srcATop,
+      ),
+      child: valueFromTo > 0.5 ? toHero : fromHero,
+    );
+  }
+
+  @override
+  List<Object?> get props => [fadeColor];
+}
+
 /// A shuttle builder that combines multiple [HeroineShuttleBuilder]s into a
 /// single chain.
 ///

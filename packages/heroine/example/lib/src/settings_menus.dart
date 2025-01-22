@@ -3,16 +3,19 @@ import 'package:flutter/cupertino.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:heroine/heroine.dart';
 
-const _fadeFlipShuttle = ChainedShuttleBuilder(builders: [
-  FlipShuttleBuilder(),
-  FadeShuttleBuilder(),
-]);
-
 class MainSettingsButton extends StatelessWidget {
   const MainSettingsButton({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final fadeThroughShuttle = FadeThroughShuttleBuilder(
+      fadeColor: CupertinoColors.extraLightBackgroundGray,
+    );
+
+    final fadeFlip = ChainedShuttleBuilder(builders: [
+      FlipShuttleBuilder(),
+      fadeThroughShuttle,
+    ]);
     return PullDownButton(
       itemBuilder: (context) => [
         PullDownMenuTitle(title: Text('Select Spring')),
@@ -55,9 +58,14 @@ class MainSettingsButton extends StatelessWidget {
           selected: flightShuttleNotifier.value == const FadeShuttleBuilder(),
         ),
         PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = _fadeFlipShuttle,
-          title: 'Flip + Fade',
-          selected: flightShuttleNotifier.value == _fadeFlipShuttle,
+          onTap: () => flightShuttleNotifier.value = fadeThroughShuttle,
+          title: 'Fade through',
+          selected: flightShuttleNotifier.value == fadeThroughShuttle,
+        ),
+        PullDownMenuItem.selectable(
+          onTap: () => flightShuttleNotifier.value = fadeFlip,
+          title: 'Flip + Fade through',
+          selected: flightShuttleNotifier.value == fadeFlip,
         ),
         PullDownMenuItem.selectable(
           onTap: () =>
