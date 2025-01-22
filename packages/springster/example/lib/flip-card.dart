@@ -68,7 +68,7 @@ class _FlipCardWithSpringState extends State<_FlipCardWithSpring> {
   @override
   Widget build(BuildContext context) {
     return SpringBuilder(
-      spring: SimpleSpring.bouncy.copyWith(durationSeconds: .7, bounce: 0.4),
+      spring: Spring.bouncy.copyWith(durationSeconds: .7, bounce: 0.4),
       value: _isFlipped ? 1 : 0,
       builder: (context, value, child) => _FlipCard(animationValue: value),
     );

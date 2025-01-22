@@ -30,7 +30,7 @@ class _FlightManifest {
   final bool isUserGestureTransition;
   final bool isDiverted;
   final bool adjustToRouteTransitionDuration;
-  final SimpleSpring spring;
+  final Spring spring;
 
   Object? get tag => fromHero.widget.tag;
 
@@ -38,7 +38,7 @@ class _FlightManifest {
       ? toRoute.transitionDuration
       : fromRoute.transitionDuration;
 
-  SimpleSpring get adjustedSpring => adjustToRouteTransitionDuration
+  Spring get adjustedSpring => adjustToRouteTransitionDuration
       ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
       : spring;
 

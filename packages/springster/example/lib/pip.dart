@@ -35,7 +35,7 @@ class _PipExampleState extends State<PipExample> {
               alignment: alignment,
               child: SpringDraggable<bool>(
                 data: true,
-                spring: SimpleSpring.bouncy,
+                spring: Spring.bouncy,
                 child: Card(
                   elevation: 4,
                   color: Theme.of(context).colorScheme.primary,

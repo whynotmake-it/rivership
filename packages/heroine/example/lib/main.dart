@@ -10,7 +10,7 @@ import 'package:lorem_gen/lorem_gen.dart';
 import 'package:springster/springster.dart';
 import 'package:heroine/heroine.dart';
 
-final springNotifier = ValueNotifier(SimpleSpring.bouncy);
+final springNotifier = ValueNotifier(Spring.bouncy);
 final flightShuttleNotifier =
     ValueNotifier<HeroineShuttleBuilder>(const FlipShuttleBuilder());
 final adjustSpringTimingToRoute = ValueNotifier(false);
@@ -237,7 +237,7 @@ class DetailsPage extends StatelessWidget {
               child: Center(
                 child: SpringBuilder(
                   value: detailsPageAspectRatio.value,
-                  spring: SimpleSpring.bouncy,
+                  spring: Spring.bouncy,
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(

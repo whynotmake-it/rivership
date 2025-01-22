@@ -145,7 +145,7 @@ class _DragDismissableState extends State<DragDismissable> {
       child: SpringBuilder2D(
         simulate: _dragStartOffset == null,
         value: (_offset.dx, _offset.dy),
-        spring: SimpleSpring.interactive,
+        spring: Spring.interactive,
         builder: (context, value, child) {
           return Transform.translate(
             offset: Offset(value.x, value.y),

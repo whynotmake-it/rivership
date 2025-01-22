@@ -12,31 +12,31 @@ class MainSettingsButton extends StatelessWidget {
       itemBuilder: (context) => [
         PullDownMenuTitle(title: Text('Select Spring')),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = SimpleSpring.bouncy,
+          onTap: () => springNotifier.value = Spring.bouncy,
           title: 'Bouncy',
-          selected: springNotifier.value == SimpleSpring.bouncy,
+          selected: springNotifier.value == Spring.bouncy,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = SimpleSpring.snappy,
+          onTap: () => springNotifier.value = Spring.snappy,
           title: 'Snappy',
-          selected: springNotifier.value == SimpleSpring.snappy,
+          selected: springNotifier.value == Spring.snappy,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = SimpleSpring.defaultIOS,
+          onTap: () => springNotifier.value = Spring.defaultIOS,
           title: 'Default iOS',
-          selected: springNotifier.value == SimpleSpring.defaultIOS,
+          selected: springNotifier.value == Spring.defaultIOS,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = const SimpleSpring(),
+          onTap: () => springNotifier.value = const Spring(),
           title: 'Smooth',
-          selected: springNotifier.value == const SimpleSpring(),
+          selected: springNotifier.value == const Spring(),
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = SimpleSpring.interactive,
+          onTap: () => springNotifier.value = Spring.interactive,
           title: 'Interactive',
           subtitle: 'Too fast - janky',
           icon: CupertinoIcons.exclamationmark_triangle,
-          selected: springNotifier.value == SimpleSpring.interactive,
+          selected: springNotifier.value == Spring.interactive,
         ),
         PullDownMenuTitle(title: Text('Flight Shuttle Animation')),
         PullDownMenuItem.selectable(

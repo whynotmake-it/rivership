@@ -10,12 +10,12 @@ const _defaultDurationSeconds = 0.5;
 ///
 /// Mostly adapted from
 /// [`fluid_animations`](https://pub.dev/packages/fluid_animations).
-class SimpleSpring extends SpringDescription {
+class Spring extends SpringDescription {
   /// Creates a spring with the specified duration and bounce.
   ///
   /// A smooth spring with a response duration and no bounce is created by
   /// default.
-  const SimpleSpring({
+  const Spring({
     this.durationSeconds = _defaultDurationSeconds,
     this.bounce = 0,
   })  : assert(
@@ -42,7 +42,7 @@ class SimpleSpring extends SpringDescription {
   ///
   /// A smooth spring with a response duration and no bounce is created by
   /// default.
-  const SimpleSpring.withDamping({
+  const Spring.withDamping({
     double dampingFraction = 1.0,
     this.durationSeconds = _defaultDurationSeconds,
   })  : bounce = 1 - dampingFraction,
@@ -78,31 +78,31 @@ class SimpleSpring extends SpringDescription {
   /// It is effectively the inverse of the bounce amount.
   ///
   /// See also:
-  /// - [SimpleSpring.withDamping]
+  /// - [Spring.withDamping]
   double get dampingFraction => 1 - bounce;
 
   /// An effectively instant spring.
-  static const instant = SimpleSpring(durationSeconds: 0);
+  static const instant = Spring(durationSeconds: 0);
 
   /// A smooth spring with no bounce.
   ///
   /// This uses the [default values for iOS](https://developer.apple.com/documentation/swiftui/animation/default).
-  static const defaultIOS = SimpleSpring.withDamping(
+  static const defaultIOS = Spring.withDamping(
     durationSeconds: 0.55,
   );
 
   /// A spring with a predefined duration and higher amount of bounce.
-  static const bouncy = SimpleSpring.withDamping(
+  static const bouncy = Spring.withDamping(
     dampingFraction: 0.7,
   );
 
   /// A spring with a predefined response and small amount of bounce
   /// that feels more snappy.
-  static const snappy = SimpleSpring.withDamping(dampingFraction: 0.85);
+  static const snappy = Spring.withDamping(dampingFraction: 0.85);
 
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
-  static const interactive = SimpleSpring.withDamping(
+  static const interactive = Spring.withDamping(
     dampingFraction: 0.86,
     durationSeconds: 0.15,
   );
@@ -110,22 +110,22 @@ class SimpleSpring extends SpringDescription {
   static const _instantStiffness = 10e15;
   static const _instantDamping = 10e3;
 
-  /// Creates a new [SimpleSpring] with the specified properties.
-  SimpleSpring copyWith({
+  /// Creates a new [Spring] with the specified properties.
+  Spring copyWith({
     double? bounce,
     double? durationSeconds,
   }) =>
-      SimpleSpring(
+      Spring(
         bounce: bounce ?? this.bounce,
         durationSeconds: durationSeconds ?? this.durationSeconds,
       );
 
-  /// Creates a new [SimpleSpring] with the specified properties.
-  SimpleSpring copyWithDamping({
+  /// Creates a new [Spring] with the specified properties.
+  Spring copyWithDamping({
     double? dampingFraction,
     double? durationSeconds,
   }) =>
-      SimpleSpring.withDamping(
+      Spring.withDamping(
         dampingFraction: dampingFraction ?? this.dampingFraction,
         durationSeconds: durationSeconds ?? this.durationSeconds,
       );
@@ -133,6 +133,6 @@ class SimpleSpring extends SpringDescription {
   @override
   String toString() {
     // ignore: lines_longer_than_80_chars
-    return '${objectRuntimeType(this, 'SimpleSpring')}(bounce: $bounce, duration: $durationSeconds)';
+    return '${objectRuntimeType(this, 'Spring')}(bounce: $bounce, duration: $durationSeconds)';
   }
 }

@@ -42,7 +42,7 @@ class _TwoDimensionRedirectionExampleState
           ),
           Center(
             child: SpringBuilder2D(
-              spring: SimpleSpring.bouncy,
+              spring: Spring.bouncy,
               value: (offset.dx, offset.dy),
               from: (0, 200),
               builder: (context, value, child) => Transform.translate(

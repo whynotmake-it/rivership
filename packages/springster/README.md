@@ -45,7 +45,7 @@ Use `SpringBuilder` for basic spring animations:
 
 ```dart
 SpringBuilder(
-  spring: SimpleSpring.bouncy,
+  spring: Spring.bouncy,
   value: targetValue, // Changes trigger smooth spring animation
   builder: (context, value, child) {
     return Container(
@@ -63,7 +63,7 @@ If you want a simple two-dimensional spring animation, you can use `SpringBuilde
 
 ```dart
 SpringBuilder2D(
-  spring: SimpleSpring.bouncy,
+  spring: Spring.bouncy,
   value: (100, 100), // Changes trigger smooth spring animation and redirect dynamically
   builder: (context, value, child) {
     return Transform.translate(
@@ -88,7 +88,7 @@ It works just like the `Draggable` widget in Flutter and supports native Flutter
 
 ```dart
 SpringDraggable(
-  spring: SimpleSpring.bouncy,
+  spring: Spring.bouncy,
   child: Container(
     width: 100,
     height: 100,
@@ -104,7 +104,7 @@ If you need more control over the spring simulation, you can use the `SpringSimu
 
 ```dart
 final controller = SpringSimulationController(
-  spring: SimpleSpring.bouncy,
+  spring: Spring.bouncy,
   vsync: this,
 );
 ```
@@ -115,23 +115,23 @@ They work similarly to the `AnimationController` class in Flutter and allow you 
 
 Springster comes with several predefined spring configurations:
 
-- `const SimpleSpring()` - Smooth spring with no bounce
-- `SimpleSpring.instant` - An effectively instant spring
-- `SimpleSpring.defaultIOS` - iOS-style smooth spring with no bounce
-- `SimpleSpring.bouncy` - Spring with higher bounce
-- `SimpleSpring.snappy` - Snappy spring with small bounce
-- `SimpleSpring.interactive` - Lower response spring for interactive animations
+- `const Spring()` - Smooth spring with no bounce
+- `Spring.instant` - An effectively instant spring
+- `Spring.defaultIOS` - iOS-style smooth spring with no bounce
+- `Spring.bouncy` - Spring with higher bounce
+- `Spring.snappy` - Snappy spring with small bounce
+- `Spring.interactive` - Lower response spring for interactive animations
 
 You can also create custom springs:
 
 ```dart
-const mySpring = SimpleSpring(
+const mySpring = Spring(
   duration: 0.5, // Settling duration
   bounce: 0.2,   // Bounce amount (-1 to 1)
 );
 
 // Or using damping fraction
-const mySpring = SimpleSpring.withDamping(
+const mySpring = Spring.withDamping(
   dampingFraction: 0.7,
   duration: 0.5,
 );

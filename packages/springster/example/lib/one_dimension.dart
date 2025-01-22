@@ -24,7 +24,7 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
       ),
       body: Center(
         child: SpringBuilder(
-          spring: SimpleSpring.bouncy,
+          spring: Spring.bouncy,
           value: hovered ? 1.5 : 1,
           from: 0,
           builder: (context, value, child) => Transform.scale(

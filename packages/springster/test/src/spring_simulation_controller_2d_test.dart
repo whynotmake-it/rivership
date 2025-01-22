@@ -12,7 +12,7 @@ void main() {
 
     late SpringSimulationController2D controller;
 
-    const spring = SimpleSpring();
+    const spring = Spring();
 
     tearDown(() {
       controller.dispose();
@@ -50,7 +50,7 @@ void main() {
         spring: spring,
         vsync: tester,
       );
-      const newSpring = SimpleSpring(durationSeconds: 0.1);
+      const newSpring = Spring(durationSeconds: 0.1);
       controller.spring = newSpring;
       expect(controller.spring, equals(newSpring));
     });
@@ -96,7 +96,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController2D(
-          spring: SimpleSpring.bouncy,
+          spring: Spring.bouncy,
           vsync: tester,
         );
 
@@ -161,7 +161,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController2D(
-          spring: SimpleSpring.bouncy,
+          spring: Spring.bouncy,
           vsync: tester,
           initialValue: const (1, 1),
         );
@@ -330,7 +330,7 @@ void main() {
         )..forward();
         await tester.pump();
 
-        const newSpring = SimpleSpring(durationSeconds: 0.1);
+        const newSpring = Spring(durationSeconds: 0.1);
         controller.spring = newSpring;
 
         expect(controller.spring, equals(newSpring));
