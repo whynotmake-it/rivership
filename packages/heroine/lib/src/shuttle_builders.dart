@@ -249,7 +249,6 @@ class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   }) {
-    print("BUILD SHUTTLE");
     final alphaFactor = (0.5 - (valueFromTo - 0.5).abs()) * 2;
     return ColorFiltered(
       colorFilter: ColorFilter.mode(
