@@ -2,7 +2,10 @@ part of 'heroines.dart';
 
 class _HeroineFlight {
   _HeroineFlight(this._manifest, this.onEnd) {
-    _initSpringControllers();
+    _manifest.toHero._initSpringControllersWithFromHero(
+      _manifest,
+      _onFlightAnimationStatusChanged,
+    );
   }
 
   _FlightManifest _manifest;
@@ -11,8 +14,10 @@ class _HeroineFlight {
 
   OverlayEntry? _overlayEntry;
 
-  late SpringSimulationController2D _centerController;
-  late SpringSimulationController2D _sizeController;
+  SpringSimulationController2D get _centerController =>
+      _manifest.toHero._centerController!;
+  SpringSimulationController2D get _sizeController =>
+      _manifest.toHero._sizeController!;
 
   void startFlight() {
     _manifest.toHero._startFlight(_manifest);
@@ -74,6 +79,13 @@ class _HeroineFlight {
     _manifest.dispose();
     _manifest.routeAnimation
         .removeStatusListener(_onProgressAnimationStatusChanged);
+
+    manifest.toHero._initRedirectedSpringControllers(
+      _centerController,
+      _sizeController,
+    );
+    _manifest.toHero._unlinkSpringControllers();
+    _manifest.toHero._startFlight(manifest);
 
     _manifest = manifest;
 
@@ -140,36 +152,13 @@ class _HeroineFlight {
   }
 
   void dispose() {
-    //_manifest.fromHero._endFlight();
     _manifest.toHero._endFlight();
 
     _manifest.dispose();
-    _centerController.dispose();
-    _sizeController.dispose();
 
     if (_overlayEntry != null) {
       _removeOverlay();
     }
-  }
-
-  void _initSpringControllers() {
-    _centerController = SpringSimulationController2D.unbounded(
-      vsync: _manifest.overlay,
-      spring: _manifest.adjustedSpring,
-      initialValue: (
-        _manifest.fromHeroLocation.center.dx,
-        _manifest.fromHeroLocation.center.dy,
-      ),
-    )..addStatusListener(_onFlightAnimationStatusChanged);
-
-    _sizeController = SpringSimulationController2D.unbounded(
-      vsync: _manifest.overlay,
-      spring: _manifest.adjustedSpring,
-      initialValue: (
-        _manifest.fromHeroLocation.size.width,
-        _manifest.fromHeroLocation.size.height,
-      ),
-    );
   }
 
   void _removeOverlay() {

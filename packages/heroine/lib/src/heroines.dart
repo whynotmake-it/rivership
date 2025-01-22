@@ -89,6 +89,53 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   _SleightOfHand? _sleightOfHand;
 
+  SpringSimulationController2D? _centerController;
+  SpringSimulationController2D? _sizeController;
+
+  void _disposeSpringControllers() {
+    _centerController?.dispose();
+    _sizeController?.dispose();
+    _unlinkSpringControllers();
+  }
+
+  /// Should be called on the toHero's state.
+  void _initSpringControllersWithFromHero(
+    _FlightManifest manifest,
+    AnimationStatusListener onFlightAnimationStatusChanged,
+  ) {
+    _disposeSpringControllers();
+    _centerController = SpringSimulationController2D.unbounded(
+      vsync: this,
+      spring: manifest.adjustedSpring,
+      initialValue: (
+        manifest.fromHeroLocation.center.dx,
+        manifest.fromHeroLocation.center.dy,
+      ),
+    )..addStatusListener(onFlightAnimationStatusChanged);
+
+    _sizeController = SpringSimulationController2D.unbounded(
+      vsync: this,
+      spring: manifest.adjustedSpring,
+      initialValue: (
+        manifest.fromHeroLocation.size.width,
+        manifest.fromHeroLocation.size.height,
+      ),
+    );
+  }
+
+  void _initRedirectedSpringControllers(
+    SpringSimulationController2D centerController,
+    SpringSimulationController2D sizeController,
+  ) {
+    _centerController = centerController..resync(this);
+    _sizeController = sizeController..resync(this);
+  }
+
+  void _unlinkSpringControllers() {
+    _centerController = null;
+    _sizeController = null;
+  }
+
   bool _showsEmptyPlaceholderForFlight(_FlightManifest flight) {
     return flight.direction == HeroFlightDirection.pop &&
         flight.fromHero == this;
@@ -163,6 +210,12 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       _manifest = null;
       _sleightOfHand = null;
     });
+  }
+
+  @override
+  void dispose() {
+    _disposeSpringControllers();
+    super.dispose();
   }
 }
 
