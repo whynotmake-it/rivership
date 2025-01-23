@@ -214,17 +214,20 @@ class DetailsPage extends StatelessWidget {
       },
       child: CustomScrollView(
         slivers: [
-          ReactToHeroineDismiss(
-            builder: (context, progress, offset, child) {
-              final opacity = 1 - progress;
-              return SliverOpacity(
-                opacity: opacity,
-                sliver: child!,
-              );
-            },
-            child: CupertinoSliverNavigationBar(
-              largeTitle: SizedBox(),
-              trailing: DetailsPageSettingsButton(),
+          PopScope(
+            canPop: false,
+            child: ReactToHeroineDismiss(
+              builder: (context, progress, offset, child) {
+                final opacity = 1 - progress;
+                return SliverOpacity(
+                  opacity: opacity,
+                  sliver: child!,
+                );
+              },
+              child: CupertinoSliverNavigationBar(
+                largeTitle: SizedBox(),
+                trailing: DetailsPageSettingsButton(),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -243,7 +246,6 @@ class DetailsPage extends StatelessWidget {
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(
-                      onDismiss: () => Navigator.pop(context),
                       child: child!,
                     ),
                   ),
