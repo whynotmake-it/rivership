@@ -49,29 +49,32 @@ class Heroine extends StatefulWidget {
   ///
   final HeroPlaceholderBuilder? placeholderBuilder;
 
-  /// The shuttle builder to use for this hero.
+  /// The shuttle builder to use for this heroine.
   ///
   /// If not given, [FadeShuttleBuilder] will be used as default, which
   /// fades the hero widget between each other smoothly.
+  ///
+  /// To use your existing [HeroFlightShuttleBuilder] implementations with
+  /// Heroine, use [HeroineShuttleBuilder.fromHero].
   ///
   /// ## Limitations
   ///
   /// If a widget built by [flightShuttleBuilder] takes part in a [Navigator]
   /// push transition, that widget or its descendants must not have any
-  /// [GlobalKey] that is used in the source Hero's descendant widgets. That is
-  /// because both subtrees will be included in the widget tree during the Hero
-  /// flight animation, and [GlobalKey]s must be unique across the entire widget
-  /// tree.
+  /// [GlobalKey] that is used in the source Heroine's descendant widgets. That
+  /// is because both subtrees will be included in the widget tree during the
+  /// Heroine flight animation, and [GlobalKey]s must be unique across the
+  /// entire widget tree.
   ///
   /// If the said [GlobalKey] is essential to your application, consider
-  /// providing a custom [placeholderBuilder] for the source Hero, to avoid the
-  /// [GlobalKey] collision, such as a builder that builds an empty [SizedBox],
-  /// keeping the Hero [child]'s original size.
+  /// providing a custom [placeholderBuilder] for the source Heroine, to avoid
+  /// the [GlobalKey] collision, such as a builder that builds an empty
+  /// [SizedBox], keeping the Heroine [child]'s original size.
   ///
   /// See also:
   ///
   /// * [HeroineShuttleBuilder]
-  final HeroFlightShuttleBuilder? flightShuttleBuilder;
+  final HeroineShuttleBuilder? flightShuttleBuilder;
 
   /// If true, [spring] will be adjusted to the duration of the route
   /// transition.
@@ -540,7 +543,7 @@ class HeroineController extends NavigatorObserver {
               toHero: toHero,
               shuttleBuilder: toHero.widget.flightShuttleBuilder ??
                   fromHero.widget.flightShuttleBuilder ??
-                  const FadeShuttleBuilder().call,
+                  const FadeShuttleBuilder(),
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               spring: toHero.widget.spring,

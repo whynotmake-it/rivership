@@ -26,7 +26,7 @@ class _FlightManifest {
   final PageRoute<dynamic> toRoute;
   final _HeroineState fromHero;
   final _HeroineState toHero;
-  final HeroFlightShuttleBuilder shuttleBuilder;
+  final HeroineShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;
   final bool adjustToRouteTransitionDuration;

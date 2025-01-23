@@ -12,6 +12,12 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
   /// Creates a new [HeroineShuttleBuilder].
   const HeroineShuttleBuilder();
 
+  /// Can be used to use your existing [HeroFlightShuttleBuilder]
+  /// implementations with Heroine.
+  const factory HeroineShuttleBuilder.fromHero({
+    required HeroFlightShuttleBuilder flightShuttleBuilder,
+  }) = _FromHeroFlightShuttleBuilder;
+
   /// Builds the hero in flight.
   ///
   /// This will be called each frame of the transition with a [valueFromTo] that
@@ -88,6 +94,43 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
       ),
     );
   }
+}
+
+class _FromHeroFlightShuttleBuilder extends HeroineShuttleBuilder {
+  const _FromHeroFlightShuttleBuilder({
+    required this.flightShuttleBuilder,
+  });
+
+  final HeroFlightShuttleBuilder flightShuttleBuilder;
+
+  @override
+  Widget call(
+    BuildContext flightContext,
+    Animation<double> animation,
+    HeroFlightDirection flightDirection,
+    BuildContext fromHeroContext,
+    BuildContext toHeroContext,
+  ) =>
+      flightShuttleBuilder(
+        flightContext,
+        animation,
+        flightDirection,
+        fromHeroContext,
+        toHeroContext,
+      );
+
+  @override
+  Widget buildHero({
+    required BuildContext flightContext,
+    required Widget fromHero,
+    required Widget toHero,
+    required double valueFromTo,
+    required HeroFlightDirection flightDirection,
+  }) =>
+      const SizedBox.shrink();
+
+  @override
+  List<Object?> get props => [flightShuttleBuilder];
 }
 
 /// A shuttle builder that fades the heroes between each other smoothly.
