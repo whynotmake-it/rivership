@@ -10,13 +10,20 @@ import 'package:flutter/widgets.dart';
 /// [HeroFlightShuttleBuilder] and offers a convenience method.
 abstract class HeroineShuttleBuilder with EquatableMixin {
   /// Creates a new [HeroineShuttleBuilder].
-  const HeroineShuttleBuilder();
+  const HeroineShuttleBuilder({
+    this.curve = Curves.fastOutSlowIn,
+  });
 
   /// Can be used to use your existing [HeroFlightShuttleBuilder]
   /// implementations with Heroine.
   const factory HeroineShuttleBuilder.fromHero({
     required HeroFlightShuttleBuilder flightShuttleBuilder,
   }) = _FromHeroFlightShuttleBuilder;
+
+  /// The curve to use for the shuttle transition.
+  ///
+  /// Defaults to [Curves.fastOutSlowIn].
+  final Curve curve;
 
   /// Builds the hero in flight.
   ///
@@ -136,7 +143,9 @@ class _FromHeroFlightShuttleBuilder extends HeroineShuttleBuilder {
 /// A shuttle builder that fades the heroes between each other smoothly.
 class FadeShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [FadeShuttleBuilder].
-  const FadeShuttleBuilder();
+  const FadeShuttleBuilder({
+    super.curve = Curves.fastOutSlowIn,
+  });
 
   @override
   Widget buildHero({
@@ -202,6 +211,7 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
     this.flipForward = true,
     this.invertFlipOnReturn = false,
     this.halfFlips = 1,
+    super.curve = Curves.fastOutSlowIn,
   });
 
   /// Determines the axis of the flip.
@@ -279,6 +289,7 @@ class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
   /// Creates a new [FadeThroughShuttleBuilder].
   const FadeThroughShuttleBuilder({
     this.fadeColor = const Color.from(alpha: 1, red: 1, blue: 1, green: 1),
+    super.curve = Curves.fastOutSlowIn,
   });
 
   /// The color to fade through.
