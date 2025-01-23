@@ -26,7 +26,7 @@ class _FlightManifest {
   final PageRoute<dynamic> toRoute;
   final _HeroineState fromHero;
   final _HeroineState toHero;
-  final HeroFlightShuttleBuilder shuttleBuilder;
+  final HeroineShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;
   final bool adjustToRouteTransitionDuration;
@@ -46,6 +46,8 @@ class _FlightManifest {
       ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
       : spring;
 
+  Curve get curve => shuttleBuilder.curve;
+
   CurvedAnimation? _routeAnimation;
 
   Animation<double> get routeAnimation {
@@ -53,10 +55,8 @@ class _FlightManifest {
       parent: (direction == HeroFlightDirection.push)
           ? toRoute.animation!
           : fromRoute.animation!,
-      curve: (direction == HeroFlightDirection.push)
-          ? Curves.fastOutSlowIn
-          : Curves.fastOutSlowIn.flipped,
-      reverseCurve: isDiverted ? null : Curves.fastOutSlowIn.flipped,
+      curve: (direction == HeroFlightDirection.push) ? curve : curve.flipped,
+      reverseCurve: isDiverted ? null : curve.flipped,
     );
   }
 

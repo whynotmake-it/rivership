@@ -11,29 +11,39 @@ import 'package:springster/springster.dart';
 /// current velocity of the gesture will be taken as the initial velocity of the
 /// [Heroine]'s spring simulation.
 class DragDismissable extends StatefulWidget {
-  /// Creates a new [DragDismissable] widget.
+  /// Creates a new [DragDismissable] widget that will pop the current route
+  /// when dismissed and respects the current route's `popDisposition` property.
   const DragDismissable({
     required this.child,
     super.key,
-    this.onDismiss,
     this.threshold = defaultDismissThreshold,
+    this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
-  }) : _popAsDismiss = false;
-
-  /// Creates a new [DragDismissable] widget that will pop the current route
-  /// when dismissed.
-  const DragDismissable.pop({
-    required this.child,
-    super.key,
-    this.threshold = defaultDismissThreshold,
-    this.axisAffinity,
-    this.constrainToAxis = true,
+    this.spring = Spring.interactive,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
-  /// The default threshold for dismissing the widget.
+  /// Creates a new [DragDismissable] with a custom [onDismiss] callback.
+  ///
+  /// This will not respect the current route's `popDisposition` property, even
+  /// if you pop the route in the [onDismiss] callback.
+  const DragDismissable.custom({
+    required this.child,
+    required this.onDismiss,
+    super.key,
+    this.threshold = defaultDismissThreshold,
+    this.velocityThreshold = defaultVelocityThreshold,
+    this.axisAffinity,
+    this.constrainToAxis = true,
+    this.spring = Spring.interactive,
+  }) : _popAsDismiss = false;
+
+  /// The default for [threshold].
   static const defaultDismissThreshold = 140.0;
+
+  /// The default for [velocityThreshold].
+  static const defaultVelocityThreshold = 1000.0;
 
   /// The callback that will be called when the widget is dismissed.
   ///
@@ -45,6 +55,12 @@ class DragDismissable extends StatefulWidget {
   /// If the user lets go before this distance is reached, the widget will
   /// cancel the dismiss.
   final double threshold;
+
+  /// The velocity threshold for dismissing the widget.
+  ///
+  /// If the velocity of the gesture is greater than this threshold, the widget
+  /// will be dismissed.
+  final double velocityThreshold;
 
   /// The axis that the drag gesture will be detected on.
   ///
@@ -64,6 +80,12 @@ class DragDismissable extends StatefulWidget {
   /// This has no effect if [axisAffinity] is null.
   final bool constrainToAxis;
 
+  /// The spring to use for when the dismissable is not dismissed and returns
+  /// to its original position.
+  ///
+  /// Defaults to [Spring.interactive].
+  final Spring spring;
+
   /// The child of the widget.
   final Widget child;
 
@@ -82,7 +104,7 @@ class _DragDismissableState extends State<DragDismissable> {
 
   VoidCallback? get onDismiss =>
       widget.onDismiss ??
-      (widget._popAsDismiss ? () => Navigator.pop(context) : null);
+      (widget._popAsDismiss ? () => Navigator.maybePop(context) : null);
 
   double get progress =>
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
@@ -91,6 +113,13 @@ class _DragDismissableState extends State<DragDismissable> {
         (Axis.vertical, true) => _offset.dy.abs() / widget.threshold,
       }
           .clamp(0, 1);
+
+  double dismissVelocity(Velocity velocity) =>
+      switch ((widget.axisAffinity, widget.constrainToAxis)) {
+        (null, _) || (_, false) => velocity.pixelsPerSecond.distance,
+        (Axis.horizontal, true) => velocity.pixelsPerSecond.dx.abs(),
+        (Axis.vertical, true) => velocity.pixelsPerSecond.dy.abs(),
+      };
 
   @override
   void didUpdateWidget(covariant DragDismissable oldWidget) {
@@ -145,7 +174,7 @@ class _DragDismissableState extends State<DragDismissable> {
       child: SpringBuilder2D(
         simulate: _dragStartOffset == null,
         value: (_offset.dx, _offset.dy),
-        spring: Spring.interactive,
+        spring: widget.spring,
         builder: (context, value, child) {
           return Transform.translate(
             offset: Offset(value.x, value.y),
@@ -197,7 +226,16 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _end(DragEndDetails details) {
     Navigator.of(context).didStopUserGesture();
-    if (progress >= 1) {
+
+    if (ModalRoute.of(context)?.popDisposition ==
+            RoutePopDisposition.doNotPop &&
+        widget._popAsDismiss) {
+      _cancel();
+      return;
+    }
+
+    final dismissVelocity = this.dismissVelocity(details.velocity);
+    if (progress >= 1 || dismissVelocity > widget.velocityThreshold) {
       setState(() {
         _velocity = details.velocity;
         _dragStartOffset = null;

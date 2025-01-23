@@ -146,14 +146,16 @@ class Cover extends StatelessWidget {
         backgroundBuilder: (context, states, child) => DecoratedBox(
           decoration: ShapeDecoration(
             shape: shape,
-            gradient: LinearGradient(
-              colors: [
-                CupertinoColors.systemGrey5.withValues(blue: .88),
-                CupertinoColors.systemGrey3.withValues(blue: .75),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            gradient: isFlipped
+                ? LinearGradient(
+                    colors: [
+                      CupertinoColors.systemGrey5.withValues(blue: .88),
+                      CupertinoColors.systemGrey3.withValues(blue: .75),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  )
+                : null,
             image: isFlipped
                 ? null
                 : DecorationImage(
@@ -241,7 +243,6 @@ class DetailsPage extends StatelessWidget {
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(
-                      onDismiss: () => Navigator.pop(context),
                       child: child!,
                     ),
                   ),

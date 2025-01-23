@@ -70,7 +70,7 @@ void main() {
                       tag: tag,
                       spring: spring ?? const Spring(),
                       flightShuttleBuilder:
-                          (shuttleBuilder ?? const FadeShuttleBuilder()).call,
+                          shuttleBuilder ?? const FadeShuttleBuilder(),
                       child: child,
                     )
                   : child,
