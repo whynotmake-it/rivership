@@ -82,7 +82,7 @@ class _DragDismissableState extends State<DragDismissable> {
 
   VoidCallback? get onDismiss =>
       widget.onDismiss ??
-      (widget._popAsDismiss ? () => Navigator.pop(context) : null);
+      (widget._popAsDismiss ? () => Navigator.maybePop(context) : null);
 
   double get progress =>
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
