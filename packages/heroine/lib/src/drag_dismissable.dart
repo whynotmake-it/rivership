@@ -17,6 +17,7 @@ class DragDismissable extends StatefulWidget {
     super.key,
     this.onDismiss,
     this.threshold = defaultDismissThreshold,
+    this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
   }) : _popAsDismiss = false;
@@ -27,13 +28,17 @@ class DragDismissable extends StatefulWidget {
     required this.child,
     super.key,
     this.threshold = defaultDismissThreshold,
+    this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
-  /// The default threshold for dismissing the widget.
+  /// The default for [threshold].
   static const defaultDismissThreshold = 140.0;
+
+  /// The default for [velocityThreshold].
+  static const defaultVelocityThreshold = 1000.0;
 
   /// The callback that will be called when the widget is dismissed.
   ///
@@ -45,6 +50,12 @@ class DragDismissable extends StatefulWidget {
   /// If the user lets go before this distance is reached, the widget will
   /// cancel the dismiss.
   final double threshold;
+
+  /// The velocity threshold for dismissing the widget.
+  ///
+  /// If the velocity of the gesture is greater than this threshold, the widget
+  /// will be dismissed.
+  final double velocityThreshold;
 
   /// The axis that the drag gesture will be detected on.
   ///
@@ -91,6 +102,13 @@ class _DragDismissableState extends State<DragDismissable> {
         (Axis.vertical, true) => _offset.dy.abs() / widget.threshold,
       }
           .clamp(0, 1);
+
+  double dismissVelocity(Velocity velocity) =>
+      switch ((widget.axisAffinity, widget.constrainToAxis)) {
+        (null, _) || (_, false) => velocity.pixelsPerSecond.distance,
+        (Axis.horizontal, true) => velocity.pixelsPerSecond.dx.abs(),
+        (Axis.vertical, true) => velocity.pixelsPerSecond.dy.abs(),
+      };
 
   @override
   void didUpdateWidget(covariant DragDismissable oldWidget) {
@@ -197,7 +215,9 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _end(DragEndDetails details) {
     Navigator.of(context).didStopUserGesture();
-    if (progress >= 1) {
+
+    final dismissVelocity = this.dismissVelocity(details.velocity);
+    if (progress >= 1 || dismissVelocity > widget.velocityThreshold) {
       setState(() {
         _velocity = details.velocity;
         _dragStartOffset = null;
