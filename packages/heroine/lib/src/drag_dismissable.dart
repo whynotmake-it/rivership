@@ -25,6 +25,9 @@ class DragDismissable extends StatefulWidget {
         onDismiss = null;
 
   /// Creates a new [DragDismissable] with a custom [onDismiss] callback.
+  ///
+  /// This will not respect the current route's `popDisposition` property, even
+  /// if you pop the route in the [onDismiss] callback.
   const DragDismissable.custom({
     required this.child,
     required this.onDismiss,

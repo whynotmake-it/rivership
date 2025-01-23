@@ -214,20 +214,17 @@ class DetailsPage extends StatelessWidget {
       },
       child: CustomScrollView(
         slivers: [
-          PopScope(
-            canPop: false,
-            child: ReactToHeroineDismiss(
-              builder: (context, progress, offset, child) {
-                final opacity = 1 - progress;
-                return SliverOpacity(
-                  opacity: opacity,
-                  sliver: child!,
-                );
-              },
-              child: CupertinoSliverNavigationBar(
-                largeTitle: SizedBox(),
-                trailing: DetailsPageSettingsButton(),
-              ),
+          ReactToHeroineDismiss(
+            builder: (context, progress, offset, child) {
+              final opacity = 1 - progress;
+              return SliverOpacity(
+                opacity: opacity,
+                sliver: child!,
+              );
+            },
+            child: CupertinoSliverNavigationBar(
+              largeTitle: SizedBox(),
+              trailing: DetailsPageSettingsButton(),
             ),
           ),
           SliverToBoxAdapter(
