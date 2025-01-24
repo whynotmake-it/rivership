@@ -14,10 +14,10 @@ class _HeroineFlight {
 
   OverlayEntry? overlayEntry;
 
-  SpringSimulationController2D get centerController =>
-      manifest.controllingHero._centerController!;
-  SpringSimulationController2D get sizeController =>
-      manifest.controllingHero._sizeController!;
+  SpringSimulationController2D? get centerController =>
+      manifest.controllingHero._centerController;
+  SpringSimulationController2D? get sizeController =>
+      manifest.controllingHero._sizeController;
 
   void startFlight() {
     manifest.toHero._startFlight(manifest);
@@ -38,7 +38,7 @@ class _HeroineFlight {
         .addStatusListener(_onProgressAnimationStatusChanged);
 
     centerController
-      ..spring = manifest.spring
+      ?..spring = manifest.spring
       ..animateTo(
         (
           manifest.toHeroLocation.center.dx,
@@ -51,7 +51,7 @@ class _HeroineFlight {
       );
 
     sizeController
-      ..spring = manifest.spring
+      ?..spring = manifest.spring
       ..animateTo(
         (
           manifest.toHeroLocation.size.width,
@@ -66,14 +66,18 @@ class _HeroineFlight {
     // the values of the from hero to make sure the animation is smooth.
     if (manifest.isUserGestureTransition &&
         !newManifest.isUserGestureTransition) {
-      centerController.value = (
-        newManifest.fromHeroLocation.center.dx,
-        newManifest.fromHeroLocation.center.dy,
-      );
-      sizeController.value = (
-        newManifest.fromHeroLocation.size.width,
-        newManifest.fromHeroLocation.size.height,
-      );
+      centerController
+        ?..value = (
+          newManifest.fromHeroLocation.center.dx,
+          newManifest.fromHeroLocation.center.dy,
+        )
+        ..spring = manifest.spring;
+      sizeController
+        ?..value = (
+          newManifest.fromHeroLocation.size.width,
+          newManifest.fromHeroLocation.size.height,
+        )
+        ..spring = manifest.spring;
     }
 
     manifest.dispose();
@@ -104,6 +108,11 @@ class _HeroineFlight {
 
   void handoverFlight() {
     _removeOverlay();
+
+    final centerController = this.centerController;
+    final sizeController = this.sizeController;
+
+    if (centerController == null || sizeController == null) return;
 
     manifest.toHero._performSleightOfHand(
       centerController: centerController,
@@ -145,6 +154,12 @@ class _HeroineFlight {
       manifest.fromHero.context,
       manifest.toHero.context,
     );
+
+    final centerController = this.centerController;
+    final sizeController = this.sizeController;
+
+    if (centerController == null || sizeController == null) return shuttle;
+
     return AnimatedBuilder(
       animation: manifest.routeAnimation,
       builder: (context, child) => Positioned(
