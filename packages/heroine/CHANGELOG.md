@@ -1,3 +1,14 @@
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: null check error when interacting really quickly (#71).
+ - **FIX**: `DragDismissable.pop` calls `maybePop` to better respect the routes wishes.
+ - **FEAT**: `DragDismissable` now also dismisses when drag velocity exceeds a threshold.
+ - **FEAT**: `HeroineShuttleBuilder` can now be passed a `Curve` to better customize its animation.
+ - **BREAKING** **REFACTOR**: Removed `DragDismissble.pop` and the default constructor of `DragDismissible` now pops the page. Use `DragDismissible.custom` if you want to pass a custom callback.
+ - **BREAKING** **REFACTOR**: `Heroine` doesn't accept `HeroFlightShuttleBuilder` functions directly anymore. Use `HeroineShuttleBuilder.fromHero` to keep using your existing functions.
+
 ## 0.3.0
 
 > Note: This release has breaking changes.
