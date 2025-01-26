@@ -195,123 +195,113 @@ class DetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReactToHeroineDismiss(
-      builder: (context, progress, offset, child) {
-        final opacity = 1 - progress;
-
-        return ClipRect(
-          child: BackdropFilter(
-            filter:
-                ImageFilter.blur(sigmaX: opacity * 20, sigmaY: opacity * 20),
-            child: CupertinoPageScaffold(
-              backgroundColor: CupertinoTheme.of(context)
-                  .scaffoldBackgroundColor
-                  .withValues(alpha: opacity),
+    return DragDismissable(
+      child: Heroine(
+        tag: index,
+        adjustToRouteTransitionDuration: adjustSpringTimingToRoute.value,
+        spring: springNotifier.value,
+        flightShuttleBuilder: flightShuttleNotifier.value,
+        child: ReactToHeroineDismiss(
+          builder: (context, progress, offset, child) {
+            return Material(
+              animationDuration: Duration.zero,
+              elevation: 24,
+              clipBehavior: Clip.hardEdge,
+              shape: SmoothRectangleBorder(
+                borderRadius: SmoothBorderRadius(cornerRadius: 32 * progress),
+              ),
               child: child!,
-            ),
-          ),
-        );
-      },
-      child: CustomScrollView(
-        slivers: [
-          ReactToHeroineDismiss(
-            builder: (context, progress, offset, child) {
-              final opacity = 1 - progress;
-              return SliverOpacity(
-                opacity: opacity,
-                sliver: child!,
-              );
-            },
-            child: CupertinoSliverNavigationBar(
-              largeTitle: SizedBox(),
-              trailing: DetailsPageSettingsButton(),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 16,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Container(
-              height: MediaQuery.sizeOf(context).height * .5,
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Center(
-                child: SpringBuilder(
-                  value: detailsPageAspectRatio.value,
-                  spring: Spring.bouncy,
-                  builder: (context, value, child) => AspectRatio(
-                    aspectRatio: value,
-                    child: DragDismissable(
-                      child: child!,
-                    ),
+            );
+          },
+          child: CupertinoPageScaffold(
+            child: CustomScrollView(
+              slivers: [
+                CupertinoSliverNavigationBar(
+                  leading: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      Navigator.maybePop(context);
+                    },
+                    child: const Text('Close'),
                   ),
-                  child: Heroine(
-                    tag: index,
-                    adjustToRouteTransitionDuration:
-                        adjustSpringTimingToRoute.value,
-                    spring: springNotifier.value,
-                    flightShuttleBuilder: flightShuttleNotifier.value,
-                    child: Cover(
-                      index: index,
-                      isFlipped: true,
-                      onPressed: () => Navigator.pop(context),
+                  largeTitle: SizedBox(),
+                  trailing: DetailsPageSettingsButton(),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 16,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: MediaQuery.sizeOf(context).height * .5,
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: SpringBuilder(
+                        value: detailsPageAspectRatio.value,
+                        spring: Spring.bouncy,
+                        builder: (context, value, child) => AspectRatio(
+                          aspectRatio: value,
+                          child: child!,
+                        ),
+                        child: HeroineAnchor(
+                          child: Cover(
+                            index: index,
+                            isFlipped: false,
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 48,
-            ),
-          ),
-          ReactToHeroineDismiss(
-            builder: (context, progress, offset, child) {
-              final opacity = 1 - progress;
-              return SliverOpacity(
-                opacity: opacity,
-                sliver: child!,
-              );
-            },
-            child: SliverToBoxAdapter(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Details',
-                          style: CupertinoTheme.of(context)
-                              .textTheme
-                              .textStyle
-                              .copyWith(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: CupertinoTheme.of(context)
-                                    .textTheme
-                                    .textStyle
-                                    .color
-                                    ?.withValues(alpha: .8),
-                              ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          lorem,
-                          style: CupertinoTheme.of(context).textTheme.textStyle,
-                        ),
-                      ],
-                    ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 48,
                   ),
                 ),
-              ),
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: 600),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Details',
+                              style: CupertinoTheme.of(context)
+                                  .textTheme
+                                  .textStyle
+                                  .copyWith(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: CupertinoTheme.of(context)
+                                        .textTheme
+                                        .textStyle
+                                        .color
+                                        ?.withValues(alpha: .8),
+                                  ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              lorem,
+                              style: CupertinoTheme.of(context)
+                                  .textTheme
+                                  .textStyle,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              ],
             ),
-          )
-        ],
+          ),
+        ),
       ),
     );
   }

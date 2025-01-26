@@ -86,12 +86,16 @@ class _FlightManifest {
 
   /// The bounding box of [fromHero], in [fromRoute]'s coordinate space.
 
-  late final Rect fromHeroLocation =
-      _boundingBoxFor(fromHero.context, fromRoute.subtreeContext);
+  late final Rect fromHeroLocation = _boundingBoxFor(
+    fromHero.context,
+    fromRoute.subtreeContext,
+  );
 
   /// The bounding box of [toHero], in [toRoute]'s coordinate space.
-  late final Rect toHeroLocation =
-      _boundingBoxFor(toHero.context, toRoute.subtreeContext);
+  late final Rect toHeroLocation = _boundingBoxFor(
+    toHero.context,
+    toRoute.subtreeContext,
+  );
 
   /// Whether this [_FlightManifest] is valid and can be used to start or
   /// divert a [_HeroineFlight].
