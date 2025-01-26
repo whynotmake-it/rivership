@@ -8,7 +8,9 @@ class _FlightManifest {
     required this.fromRoute,
     required this.toRoute,
     required this.fromHero,
+    required this.fromAnchor,
     required this.toHero,
+    required this.toAnchor,
     required this.shuttleBuilder,
     required this.isUserGestureTransition,
     required this.isDiverted,
@@ -25,7 +27,11 @@ class _FlightManifest {
   final PageRoute<dynamic> fromRoute;
   final PageRoute<dynamic> toRoute;
   final _HeroineState fromHero;
+  final _HeroineAnchorState? fromAnchor;
+
   final _HeroineState toHero;
+  final _HeroineAnchorState? toAnchor;
+
   final HeroineShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;

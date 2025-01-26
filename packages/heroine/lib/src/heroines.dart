@@ -4,6 +4,7 @@ import 'package:heroine/src/heroine_velocity.dart';
 import 'package:heroine/src/shuttle_builders.dart';
 import 'package:springster/springster.dart';
 
+part 'anchor.dart';
 part 'flight.dart';
 part 'manifest.dart';
 
@@ -214,6 +215,24 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       _manifest = null;
       _sleightOfHand = null;
     });
+  }
+
+  /// Walks the subtree to find the first [HeroineAnchor] widget.
+  ///
+  /// If no [HeroineAnchor] widget exists in the subtree, returns null.
+  _HeroineAnchorState? _getAnchorState() {
+    _HeroineAnchorState? result;
+    void visitor(Element element) {
+      if (element.widget is HeroineAnchor) {
+        result = (element as StatefulElement).state as _HeroineAnchorState;
+        return;
+      }
+
+      element.visitChildren(visitor);
+    }
+
+    context.visitChildElements(visitor);
+    return result;
   }
 
   @override
@@ -540,7 +559,9 @@ class HeroineController extends NavigatorObserver {
               fromRoute: from,
               toRoute: to,
               fromHero: fromHero,
+              fromAnchor: fromHero._getAnchorState(),
               toHero: toHero,
+              toAnchor: toHero._getAnchorState(),
               shuttleBuilder: toHero.widget.flightShuttleBuilder ??
                   fromHero.widget.flightShuttleBuilder ??
                   const FadeShuttleBuilder(),
@@ -679,3 +700,8 @@ extension on BuildContext {
     return result;
   }
 }
+
+/// Type alias [HeroMode] to make it more discoverable.
+///
+/// Use [HeroMode] to enable/disable all [Heroine]s in a subtree.
+typedef HeroineMode = HeroMode;
