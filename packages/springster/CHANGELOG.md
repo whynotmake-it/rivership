@@ -1,3 +1,7 @@
+## 0.4.0+1
+
+ - **FIX**: `SpringSimulationController` doesn't update values if `from:` and `to:` are the same.
+
 ## 0.4.0
 
 > Note: This release has breaking changes.
