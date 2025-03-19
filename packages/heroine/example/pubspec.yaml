@@ -17,7 +17,7 @@ dependencies:
     sdk: flutter
   lorem_gen: ^2.0.1
   pull_down_button: ^0.10.2
-  springster: ^0.4.0
+  springster: ^0.4.0+1
   heroine: 
     path: ../
 
