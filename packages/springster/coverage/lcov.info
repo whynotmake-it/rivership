@@ -403,9 +403,9 @@ DA:213,1
 DA:214,2
 DA:215,1
 DA:217,12
-DA:218,0
-DA:219,0
-DA:220,0
+DA:218,1
+DA:219,2
+DA:220,1
 DA:224,3
 DA:225,3
 DA:226,3
@@ -425,7 +425,7 @@ DA:258,3
 DA:261,3
 DA:264,4
 LF:109
-LH:99
+LH:102
 end_of_record
 SF:lib/src/spring_simulation_controller_base.dart
 DA:83,1

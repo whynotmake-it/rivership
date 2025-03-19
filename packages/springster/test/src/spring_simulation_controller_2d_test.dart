@@ -280,6 +280,7 @@ void main() {
         expect(controller.value.$2, moreOrLessEquals(0.8, epsilon: error));
       });
 
+      // regression: https://github.com/whynotmake-it/rivership/issues/76
       testWidgets(
           'animates with from parameter correctly when x values are identical',
           (tester) async {
@@ -327,37 +328,52 @@ void main() {
         }
       });
 
+      // regression: https://github.com/whynotmake-it/rivership/issues/76
       testWidgets(
           'animates with from parameter correctly when y values are identical',
           (tester) async {
         controller = SpringSimulationController2D.unbounded(
           spring: spring,
           vsync: tester,
-          initialValue: const (50, 50),
-        )..value = const (100, 100);
-
-        expect(controller.value, equals(const (100, 100)));
-
-        // Animate with identical y values in from and to
-        controller.animateTo(
-          const (400, 100), // Same y as from value
-          from: const (100, 100),
         );
+
+        // Track actual values during animation to debug
+        final values = <Double2D>[];
+        controller
+          ..addListener(() {
+            values.add(controller.value);
+          })
+
+          // Use the exact values from the bug report
+          ..animateTo(
+            const (400, 100), // Same x as from value
+            from: const (100, 100),
+          );
 
         await tester.pump();
 
-        // The y value should remain 100, not be reset to 0
+        // Check first value after animation starts
+        expect(values.isNotEmpty, isTrue);
+        expect(values.first.x, equals(100));
+        expect(values.first.y, equals(100));
+
+        // Check intermediate values
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value.x, inExclusiveRange(100, 400));
         expect(controller.value.y, equals(100));
 
-        // The x value should start animating from 100 toward 400
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value.y, moreOrLessEquals(100, epsilon: error));
-        expect(controller.value.x, greaterThan(100));
-        expect(controller.value.x, lessThan(400));
-
         await tester.pumpAndSettle();
-        expect(controller.value.y, moreOrLessEquals(100, epsilon: error));
         expect(controller.value.x, moreOrLessEquals(400, epsilon: error));
+        expect(controller.value.y, equals(100));
+
+        // Check all recorded values to ensure y stayed at 100
+        for (final recordedValue in values) {
+          expect(
+            recordedValue.y,
+            equals(100),
+            reason: 'x changed from 100 during animation',
+          );
+        }
       });
     });
 
