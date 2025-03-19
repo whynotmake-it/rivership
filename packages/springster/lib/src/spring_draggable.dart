@@ -429,7 +429,9 @@ class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
   }
 
   void _redirectReturn() {
-    if (!isReturning || currentEntry?.mounted == false) {
+    if (!isReturning ||
+        currentEntry?.mounted == false ||
+        context.mounted == false) {
       return;
     }
 
