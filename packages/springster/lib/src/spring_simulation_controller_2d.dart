@@ -195,7 +195,7 @@ class SpringSimulationController2D
         _yController.tolerance.distance < (clamped.y - fromValue.y).abs() ||
             velocity.y > _yController.tolerance.velocity;
 
-    TickerFuture y() => _yController.animateTo(
+    TickerFuture animateY() => _yController.animateTo(
           clamped.y,
           from: fromValue.y,
           withVelocity: withVelocity?.y,
@@ -203,25 +203,33 @@ class SpringSimulationController2D
 
     // Start both animations but only return the future from one, since the
     // x controller is the base for everything.
-    TickerFuture x() => _xController.animateTo(
+    TickerFuture animateX() => _xController.animateTo(
           clamped.x,
           from: fromValue.x,
           withVelocity: withVelocity?.x,
         );
 
+    if (!xChanged && _xController.value != fromValue.x) {
+      _xController
+        ..value = fromValue.x
+        ..stop();
+    }
+    if (!yChanged && _yController.value != fromValue.y) {
+      _yController
+        ..value = fromValue.y
+        ..stop();
+    }
+
     if (xChanged) {
       _setListeningToY(false);
-      y();
-      return x();
+      animateY();
+      return animateX();
     }
 
     if (yChanged) {
       _setListeningToY(true);
-      return y();
+      return animateY();
     }
-
-    _xController.stop();
-    _yController.stop();
     return TickerFuture.complete();
   }
 

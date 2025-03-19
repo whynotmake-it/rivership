@@ -279,6 +279,86 @@ void main() {
         expect(controller.value.$1, moreOrLessEquals(0.8, epsilon: error));
         expect(controller.value.$2, moreOrLessEquals(0.8, epsilon: error));
       });
+
+      testWidgets(
+          'animates with from parameter correctly when x values are identical',
+          (tester) async {
+        controller = SpringSimulationController2D.unbounded(
+          spring: spring,
+          vsync: tester,
+        );
+
+        // Track actual values during animation to debug
+        final values = <Double2D>[];
+        controller
+          ..addListener(() {
+            values.add(controller.value);
+          })
+
+          // Use the exact values from the bug report
+          ..animateTo(
+            const (100, 400), // Same x as from value
+            from: const (100, 100),
+          );
+
+        await tester.pump();
+
+        // Check first value after animation starts
+        expect(values.isNotEmpty, isTrue);
+        expect(values.first.x, equals(100));
+        expect(values.first.y, equals(100));
+
+        // Check intermediate values
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value.x, equals(100));
+        expect(controller.value.y, inExclusiveRange(100, 400));
+
+        await tester.pumpAndSettle();
+        expect(controller.value.x, equals(100));
+        expect(controller.value.y, moreOrLessEquals(400, epsilon: error));
+
+        // Check all recorded values to ensure x stayed at 100
+        for (final recordedValue in values) {
+          expect(
+            recordedValue.x,
+            equals(100),
+            reason: 'x changed from 100 during animation',
+          );
+        }
+      });
+
+      testWidgets(
+          'animates with from parameter correctly when y values are identical',
+          (tester) async {
+        controller = SpringSimulationController2D.unbounded(
+          spring: spring,
+          vsync: tester,
+          initialValue: const (50, 50),
+        )..value = const (100, 100);
+
+        expect(controller.value, equals(const (100, 100)));
+
+        // Animate with identical y values in from and to
+        controller.animateTo(
+          const (400, 100), // Same y as from value
+          from: const (100, 100),
+        );
+
+        await tester.pump();
+
+        // The y value should remain 100, not be reset to 0
+        expect(controller.value.y, equals(100));
+
+        // The x value should start animating from 100 toward 400
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value.y, moreOrLessEquals(100, epsilon: error));
+        expect(controller.value.x, greaterThan(100));
+        expect(controller.value.x, lessThan(400));
+
+        await tester.pumpAndSettle();
+        expect(controller.value.y, moreOrLessEquals(100, epsilon: error));
+        expect(controller.value.x, moreOrLessEquals(400, epsilon: error));
+      });
     });
 
     group('stop and control', () {
@@ -307,6 +387,7 @@ void main() {
           moreOrLessEquals(valueAfterStop.y, epsilon: error),
         );
       });
+
       testWidgets('stops animation if canceled is true', (tester) async {
         controller = SpringSimulationController2D(
           spring: spring,
