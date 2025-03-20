@@ -1,3 +1,12 @@
+## 0.5.0-dev.0
+
+> Note: This release has breaking changes.
+
+ - **DOCS**: update README and add migration guide.
+ - **BREAKING** **FEAT**: deprecate Spring-based APIs and use the new APIs internally.
+ - **BREAKING** **FEAT**: add `MotionConverter` API to simplify the usage of controllers.
+ - **BREAKING** **FEAT**: replace direct Spring-based APIs with new Motion type.
+
 ## 0.4.0+1
 
  - **FIX**: `SpringSimulationController` doesn't update values if `from:` and `to:` are the same.
