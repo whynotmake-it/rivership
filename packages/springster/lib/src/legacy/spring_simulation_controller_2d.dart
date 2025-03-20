@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:springster/src/controllers/motion_controller.dart';
-import 'package:springster/src/motion_converter.dart';
-import 'package:springster/src/motion.dart';
 import 'package:springster/src/legacy/spring_simulation_controller_base.dart';
+import 'package:springster/src/motion.dart';
+import 'package:springster/src/motion_converter.dart';
 
 /// A simple 2d record type.
 typedef Double2D = (double x, double y);
@@ -42,6 +42,7 @@ class SpringSimulationController2D extends BoundedMotionController<Double2D>
   ///
   /// This controller will not have a lower or upper bound, and will use the
   /// [AnimationBehavior.preserve] behavior.
+  @Deprecated('Use MotionController and its derived classes instead')
   SpringSimulationController2D.unbounded({
     required SpringDescription spring,
     required TickerProvider vsync,

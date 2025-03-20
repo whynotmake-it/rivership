@@ -145,6 +145,10 @@ abstract class SpringSimulationControllerBase<T extends Object>
   /// Frees any resources used by this object.
   void dispose();
 
+  /// Asserts that the controller is bounded.
+  ///
+  /// If the controller is not bounded, it will stop the simulation and return
+  /// false.
   @internal
   static bool assertBounded(
     SpringSimulationControllerBase c, {

@@ -1,7 +1,7 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:springster/src/motion_converter.dart';
 import 'package:springster/src/motion.dart';
+import 'package:springster/src/motion_converter.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.

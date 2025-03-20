@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:springster/src/controllers/motion_controller.dart';
-import 'package:springster/src/motion_converter.dart';
 import 'package:springster/src/motion.dart';
+import 'package:springster/src/motion_converter.dart';
 
 /// A controller that manages a single-dimensional motion.
 ///

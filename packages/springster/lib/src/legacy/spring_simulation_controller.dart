@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:springster/src/motion.dart';
 import 'package:springster/src/controllers/single_motion_controller.dart';
 import 'package:springster/src/legacy/spring_simulation_controller_base.dart';
+import 'package:springster/src/motion.dart';
 
 /// A controller that manages a spring simulation.
 ///

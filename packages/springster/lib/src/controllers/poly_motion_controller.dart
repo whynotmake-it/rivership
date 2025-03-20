@@ -25,7 +25,7 @@ class PolyMotionController extends MotionController<List<double>> {
 ///
 /// {@macro springster.MotionController.boundedExplainer}
 ///
-/// The [lowerBound], [upperBound], and [initialValue] parameters must have
+/// The [lowerBound], [upperBound], and `initialValue` parameters must have
 /// the same length.
 class PolyMotionControllerBounded extends BoundedMotionController<List<double>>
     implements PolyMotionController {

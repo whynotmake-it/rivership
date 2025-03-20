@@ -1,8 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:springster/springster.dart';
-import 'package:springster/src/widgets/motion_builder.dart';
-import 'package:springster/src/motion_converter.dart';
-import 'package:springster/src/motion.dart';
 
 /// {@template springster.spring_builder}
 /// Builds a widget that continuously animates a value using a Spring simulation
