@@ -1,6 +1,8 @@
 import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:meta/meta.dart';
 
 /// A base class for a controller that manages a spring simulation.
 abstract class SpringSimulationControllerBase<T extends Object>
@@ -142,4 +144,23 @@ abstract class SpringSimulationControllerBase<T extends Object>
 
   /// Frees any resources used by this object.
   void dispose();
+
+  @internal
+  static bool assertBounded(
+    SpringSimulationControllerBase c, {
+    required bool forward,
+  }) {
+    if (!c.isBounded) {
+      assert(
+        false,
+        'Cannot ${forward ? 'forward' : 'reverse'} an unbounded '
+        '${objectRuntimeType(c, 'SpringSimulationController')}',
+      );
+
+      c.stop(canceled: true);
+      return false;
+    }
+
+    return true;
+  }
 }

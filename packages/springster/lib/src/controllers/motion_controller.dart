@@ -1,39 +1,31 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:springster/src/motion/motion_style.dart';
+import 'package:springster/src/motion_converter.dart';
+import 'package:springster/src/motion.dart';
 
-/// A base class for motion controllers that manages animations based on a
-/// [Motion]
-abstract class MotionControllerBase<T extends Object> extends Animation<T>
+/// A base [MotionController] that can manage a [Motion] of any value that you
+/// can pass a [MotionConverter] for.
+class MotionController<T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
-  /// Creates a [MotionControllerBase] with the given parameters.
+  /// Creates a [MotionController] with the given parameters.
   ///
   /// The [motion] parameter defines the characteristics of the motion
   /// and the [vsync] parameter is required to drive the animation.
-  /// The [normalize] and [denormalize] callbacks allow conversion between
-  /// type [T] and List<double> for internal animation handling.
-  MotionControllerBase({
+  MotionController({
     required Motion motion,
     required TickerProvider vsync,
-    required this.normalize,
-    required this.denormalize,
-    required T lowerBound,
-    required T upperBound,
+    required this.converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
   })  : _motion = motion,
-        _lowerBound = normalize(lowerBound),
-        _upperBound = normalize(upperBound),
         assert(
-          normalize(lowerBound).isNotEmpty &&
-              normalize(upperBound).isNotEmpty &&
-              normalize(initialValue).isNotEmpty,
+          converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ) {
-    final normalized = normalize(initialValue);
+    final normalized = converter.normalize(initialValue);
     _controllers = [
       for (final value in normalized)
         AnimationController.unbounded(
@@ -47,23 +39,30 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
     _setListeningTo(0, initial: true);
   }
 
-  /// Converts the value of type T to a List<double> for internal processing.
-  final List<double> Function(T value) normalize;
+  /// Creates a [MotionController] that is bounded.
+  ///
+  /// {@macro springster.MotionController.boundedExplainer}
+  ///
+  /// See also:
+  ///   * [BoundedMotionController]
+  factory MotionController.bounded({
+    required Motion motion,
+    required TickerProvider vsync,
+    required T initialValue,
+    required MotionConverter<T> converter,
+    required T lowerBound,
+    required T upperBound,
+    AnimationBehavior behavior,
+  }) = BoundedMotionController;
 
-  /// Converts the internal List<double> representation back to type T.
-  final T Function(List<double> values) denormalize;
+  /// Converts the value of type T to a List<double> for internal processing.
+  final MotionConverter<T> converter;
 
   /// The internal list of animation controllers, one for each dimension.
   late final List<AnimationController> _controllers;
 
   /// The motion style controlling the animation characteristics.
   Motion _motion;
-
-  /// The lower bounds for each dimension.
-  final List<double> _lowerBound;
-
-  /// The upper bounds for each dimension.
-  final List<double> _upperBound;
 
   /// The index of the controller we're currently listening to for status
   /// changes.
@@ -72,21 +71,16 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
   /// The target values for each dimension when animating.
   List<double>? _target;
 
-  /// Whether the controller is bounded, meaning neither [lowerBound] nor
-  /// [upperBound] are infinite.
-  bool get isBounded =>
-      _lowerBound.every((l) => l != double.negativeInfinity) &&
-      _upperBound.every((u) => u != double.infinity);
-
   /// The current value of this animation.
   @override
-  T get value => denormalize(_controllers.map((e) => e.value).toList());
+  T get value =>
+      converter.denormalize(_controllers.map((e) => e.value).toList());
 
   /// Sets the current value of the animation.
   set value(T newValue) {
-    final normalized = normalize(newValue);
+    final normalized = converter.normalize(newValue);
     for (final (i, c) in _controllers.indexed) {
-      c.value = normalized[i].clamp(_lowerBound[i], _upperBound[i]);
+      c.value = normalized[i];
     }
   }
 
@@ -109,21 +103,7 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
       _controllers.map((e) => e.velocity).toList();
 
   /// The type-specific velocity representation.
-  T get velocity => denormalize(velocityValues);
-
-  /// The lower bound of the animation value.
-  ///
-  /// {@template springster.spring_simulation.bounds_overshoot_warning}
-  /// **Note:** since springs can, and often will, overshoot, [value] is not
-  /// guaranteed to be within [lowerBound] and [upperBound]. Make sure to clamp
-  /// [value] upon consumption if necessary.
-  /// {@endtemplate}
-  T get lowerBound => denormalize(_lowerBound);
-
-  /// The upper bound of the animation value.
-  ///
-  /// {@macro springster.spring_simulation.bounds_overshoot_warning}
-  T get upperBound => denormalize(_upperBound);
+  T get velocity => converter.denormalize(velocityValues);
 
   /// {@template MotionController.motionStyle}
   /// The current motion style
@@ -172,40 +152,9 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
     }
   }
 
-  /// Animates towards [upperBound].
-  ///
-  /// Only valid if [isBounded] is true, otherwise an [AssertionError] will be
-  /// thrown, since unbounded controllers do not have a direction.
-  TickerFuture forward({
-    T? from,
-    T? withVelocity,
-  }) {
-    return animateTo(upperBound, from: from, withVelocity: withVelocity);
-  }
-
-  /// Animates towards [lowerBound].
-  ///
-  /// Only valid if [isBounded] is true, otherwise an [AssertionError] will be
-  /// thrown, since unbounded controllers do not have a direction.
-  ///
-  /// **Note**: [status] will still return [AnimationStatus.forward] when
-  /// this is called. See [status] for more information.
-  TickerFuture reverse({
-    T? from,
-    T? withVelocity,
-  }) {
-    if (!isBounded && from != null) {
-      value = from;
-    }
-    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
-  }
-
   /// Animates towards [target], while ensuring that any current velocity is
   /// maintained.
-  ///
-  /// If this controller [isBounded], the [target] will be clamped to be within
-  /// [lowerBound] and [upperBound].
-  ///
+
   /// If [from] is provided, the animation will start from there instead of from
   /// the current [value].
   ///
@@ -215,23 +164,28 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
     T target, {
     T? from,
     T? withVelocity,
+  }) =>
+      _animateToInternal(
+        target: converter.normalize(target),
+        from: from != null ? converter.normalize(from) : null,
+        velocity:
+            withVelocity != null ? converter.normalize(withVelocity) : null,
+      );
+
+  TickerFuture _animateToInternal({
+    required List<double> target,
+    List<double>? from,
+    List<double>? velocity,
   }) {
-    final normalizedTarget = normalize(target);
-    final clamped = [
-      for (final (i, v) in normalizedTarget.indexed)
-        v.clamp(_lowerBound[i], _upperBound[i]),
-    ];
+    _target = target;
 
-    _target = clamped;
-
-    final fromValue = from != null ? normalize(from) : normalize(value);
-    final velocityValue =
-        withVelocity != null ? normalize(withVelocity) : velocityValues;
+    final fromValue = from ?? converter.normalize(value);
+    final velocityValue = velocity ?? velocityValues;
 
     final changed = [
       for (var i = 0; i < _controllers.length; i++)
-        motion.tolerance.distance < (clamped[i] - fromValue[i]).abs() ||
-            velocityValues[i] > motion.tolerance.velocity,
+        motion.tolerance.distance < (target[i] - fromValue[i]).abs() ||
+            velocityValue[i] > motion.tolerance.velocity,
     ];
 
     final listeningTo = switch (changed.indexOf(true)) {
@@ -250,23 +204,25 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
       c.stop();
     }
 
-    // Start all animations but only return the future from one that changed
-    final futures = <TickerFuture>[];
+    TickerFuture animate(int i) {
+      final simulation = _motion.createSimulation(
+        start: fromValue[i],
+        end: target[i],
+        velocity: velocityValue[i],
+      );
 
-    for (var i = 0; i < _controllers.length; i++) {
-      if (changed[i]) {
-        final simulation = _motion.createSimulation(
-          start: fromValue[i],
-          end: clamped[i],
-          velocity: velocityValue[i],
-        );
-
-        futures.add(_controllers[i].animateWith(simulation));
-      }
+      return _controllers[i].animateWith(simulation);
     }
 
-    if (futures.isEmpty) return TickerFuture.complete();
-    return futures.first;
+    for (var i = 0; i < _controllers.length; i++) {
+      if (i == listeningTo || !changed[i]) {
+        continue;
+      }
+
+      animate(i);
+    }
+
+    return animate(listeningTo);
   }
 
   /// Redirect a motion when the [motion] changes.
@@ -274,7 +230,7 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
     if (!_controllers.any((e) => e.isAnimating)) return;
 
     if (_target case final target?) {
-      animateTo(denormalize(target));
+      animateTo(converter.denormalize(target));
     }
   }
 
@@ -304,5 +260,94 @@ abstract class MotionControllerBase<T extends Object> extends Animation<T>
       c.dispose();
     }
     super.dispose();
+  }
+}
+
+/// A [MotionController] that is bounded.
+///
+/// {@template springster.MotionController.boundedExplainer}
+/// This adds a [lowerBound] and [upperBound] to the controller, and will
+/// automatically clamp the [value] to be within the bounds when setting
+/// (although) it can still overshoot as part of the [motion].
+///
+/// This also adds [forward] and [reverse] methods that will animate towards
+/// the [lowerBound] and [upperBound] respectively.
+/// {@endtemplate}
+class BoundedMotionController<T extends Object> extends MotionController<T> {
+  /// Creates a [BoundedMotionController].
+  BoundedMotionController({
+    required super.motion,
+    required super.vsync,
+    required super.converter,
+    required super.initialValue,
+    required T lowerBound,
+    required T upperBound,
+    super.behavior,
+  })  : _lowerBound = converter.normalize(lowerBound),
+        _upperBound = converter.normalize(upperBound);
+
+  /// The lower bounds for each dimension.
+  final List<double> _lowerBound;
+
+  /// The upper bounds for each dimension.
+  final List<double> _upperBound;
+
+  /// The lower bound of the animation value.
+  /// The lower bound of the animation value.
+  ///
+  /// {@template springster.spring_simulation.bounds_overshoot_warning}
+  /// **Note:** since springs can, and often will, overshoot, [value] is not
+  /// guaranteed to be within [lowerBound] and [upperBound]. Make sure to clamp
+  /// [value] upon consumption if necessary.
+  /// {@endtemplate}
+  T get lowerBound => converter.denormalize(_lowerBound);
+
+  /// The upper bound of the animation value.
+  ///
+  /// {@macro springster.spring_simulation.bounds_overshoot_warning}
+  T get upperBound => converter.denormalize(_upperBound);
+
+  /// Sets the current value of the animation.
+  ///
+  /// This will clamp the value to be within the bounds.
+  @override
+  set value(T newValue) {
+    final normalized = converter.normalize(newValue);
+    for (final (i, c) in _controllers.indexed) {
+      c.value = normalized[i].clamp(_lowerBound[i], _upperBound[i]);
+    }
+  }
+
+  /// Animates towards [upperBound].
+  TickerFuture forward({
+    T? from,
+    T? withVelocity,
+  }) {
+    return animateTo(upperBound, from: from, withVelocity: withVelocity);
+  }
+
+  /// Animates towards [lowerBound].
+  ///
+  /// **Note**: [status] will still return [AnimationStatus.forward] when
+  /// this is called. See [status] for more information.
+  TickerFuture reverse({
+    T? from,
+    T? withVelocity,
+  }) {
+    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
+  }
+
+  @override
+  TickerFuture animateTo(T target, {T? from, T? withVelocity}) {
+    final normalizedTarget = converter.normalize(target);
+    final clamped = [
+      for (final (i, v) in normalizedTarget.indexed)
+        v.clamp(_lowerBound[i], _upperBound[i]),
+    ];
+    return _animateToInternal(
+      target: clamped,
+      from: from != null ? converter.normalize(from) : null,
+      velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
+    );
   }
 }

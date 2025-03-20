@@ -1,10 +1,10 @@
-// ignore_for_file: unawaited_futures
+// ignore_for_file: unawaited_futures, deprecated_member_use_from_same_package
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:springster/springster.dart';
 
-import 'util.dart';
+import '../util.dart';
 
 void main() {
   group('SpringSimulationController2D', () {
