@@ -92,8 +92,8 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   _SleightOfHand? _sleightOfHand;
 
-  SpringSimulationController2D? _centerController;
-  SpringSimulationController2D? _sizeController;
+  MotionController<Offset>? _centerController;
+  MotionController<Size>? _sizeController;
 
   /// Should be called on the toHero's state.
   void _initSpringControllers(
@@ -101,22 +101,18 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     AnimationStatusListener onFlightAnimationStatusChanged,
   ) {
     _disposeSpringControllers();
-    _centerController = SpringSimulationController2D.unbounded(
+    _centerController = MotionController(
       vsync: this,
-      spring: manifest.adjustedSpring,
-      initialValue: (
-        manifest.fromHeroLocation.center.dx,
-        manifest.fromHeroLocation.center.dy,
-      ),
+      motion: SpringMotion(manifest.adjustedSpring),
+      initialValue: manifest.fromHeroLocation.center,
+      converter: const OffsetMotionConverter(),
     )..addStatusListener(onFlightAnimationStatusChanged);
 
-    _sizeController = SpringSimulationController2D.unbounded(
+    _sizeController = MotionController(
       vsync: this,
-      spring: manifest.adjustedSpring,
-      initialValue: (
-        manifest.fromHeroLocation.size.width,
-        manifest.fromHeroLocation.size.height,
-      ),
+      motion: SpringMotion(manifest.adjustedSpring),
+      initialValue: manifest.fromHeroLocation.size,
+      converter: const SizeMotionConverter(),
     );
   }
 
@@ -127,8 +123,8 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   }
 
   void _linkRedirectedSpringControllers(
-    SpringSimulationController2D centerController,
-    SpringSimulationController2D sizeController,
+    MotionController<Offset> centerController,
+    MotionController<Size> sizeController,
   ) {
     _centerController = centerController..resync(this);
     _sizeController = sizeController..resync(this);
@@ -191,10 +187,10 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   }
 
   void _performSleightOfHand({
-    required SpringSimulationController2D centerController,
-    required Double2D targetCenter,
-    required SpringSimulationController2D sizeController,
-    required Double2D targetSize,
+    required MotionController<Offset> centerController,
+    required Offset targetCenter,
+    required MotionController<Size> sizeController,
+    required Size targetSize,
   }) {
     if (!mounted) return;
     setState(() {
@@ -224,21 +220,18 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 }
 
 typedef _SleightOfHand = ({
-  SpringSimulationController2D centerController,
-  Double2D targetCenter,
-  SpringSimulationController2D sizeController,
-  Double2D targetSize,
+  MotionController<Offset> centerController,
+  Offset targetCenter,
+  MotionController<Size> sizeController,
+  Size targetSize,
 });
 
 extension on _SleightOfHand {
-  Offset get offset => Offset(
-        centerController.value.x - targetCenter.x,
-        centerController.value.y - targetCenter.y,
-      );
+  Offset get offset => centerController.value - targetCenter;
 
-  double get sizeX => sizeController.value.x;
+  double get sizeX => sizeController.value.width;
 
-  double get sizeY => sizeController.value.y;
+  double get sizeY => sizeController.value.height;
 }
 
 class _SleightOfHandBuilder extends StatelessWidget {

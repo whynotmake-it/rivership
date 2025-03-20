@@ -66,7 +66,7 @@ class _ListItemState extends State<ListItem> {
   @override
   Widget build(BuildContext context) {
     final tile = ListTile(title: Text('Item ${widget.data}'));
-    return SpringDraggable(
+    return MotionDraggable(
       axis: Axis.vertical,
       data: widget.data,
       childWhenDragging: SizedBox.shrink(),

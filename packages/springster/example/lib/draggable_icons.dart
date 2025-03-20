@@ -64,9 +64,9 @@ class DraggableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SpringDraggable(
+    return MotionDraggable(
       data: icon,
-      spring: Spring.bouncy,
+      motion: const SpringMotion(Spring.bouncy),
       child: MouseRegion(
         cursor: SystemMouseCursors.grab,
         child: Card(

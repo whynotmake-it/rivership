@@ -1,10 +1,10 @@
-// ignore_for_file: unawaited_futures
+// ignore_for_file: unawaited_futures, deprecated_member_use_from_same_package
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:springster/springster.dart';
 
-import 'util.dart';
+import '../util.dart';
 
 void main() {
   group('SpringSimulationController', () {
@@ -229,7 +229,8 @@ void main() {
     });
 
     group('stop and control', () {
-      testWidgets('stops animation', (tester) async {
+      testWidgets('does not stop animation immediately if canceled is false',
+          (tester) async {
         controller = SpringSimulationController(
           spring: spring,
           vsync: tester,
@@ -238,7 +239,7 @@ void main() {
         expect(controller.isAnimating, isTrue);
 
         controller.stop();
-        expect(controller.isAnimating, isFalse);
+        expect(controller.isAnimating, isTrue);
         final valueAfterStop = controller.value;
 
         await tester.pump(const Duration(milliseconds: 100));

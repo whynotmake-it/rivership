@@ -137,6 +137,8 @@ class _FlipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const size = Size(200, 300);
+
     final angle = pi * animationValue;
     Widget cardFace;
     if (angle <= pi / 2) {
@@ -145,18 +147,28 @@ class _FlipCard extends StatelessWidget {
           Colors.white.withValues(alpha: (animationValue * 1.5).clamp(0, 1)),
           BlendMode.lighten,
         ),
-        child: Image.network(
-          'https://i.imgur.com/g5q6h7V.png',
-          fit: BoxFit.cover,
+        child: SizedBox.fromSize(
+          size: size,
+          child: Card(
+            color: Colors.white,
+            child: const Center(
+              child: Text('Front'),
+            ),
+          ),
         ),
       );
     } else {
       cardFace = Transform(
         alignment: Alignment.center,
         transform: Matrix4.rotationX(pi),
-        child: Image.network(
-          'https://i.imgur.com/3bTXwhT.png',
-          fit: BoxFit.cover,
+        child: SizedBox.fromSize(
+          size: size,
+          child: Card(
+            color: Colors.red,
+            child: const Center(
+              child: FlutterLogo(size: 100),
+            ),
+          ),
         ),
       );
     }

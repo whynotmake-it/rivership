@@ -33,9 +33,9 @@ class _PipExampleState extends State<PipExample> {
             padding: const EdgeInsets.all(32.0),
             child: Align(
               alignment: alignment,
-              child: SpringDraggable<bool>(
+              child: MotionDraggable<bool>(
                 data: true,
-                spring: Spring.bouncy,
+                motion: const SpringMotion(Spring.bouncy),
                 child: Card(
                   elevation: 4,
                   color: Theme.of(context).colorScheme.primary,
