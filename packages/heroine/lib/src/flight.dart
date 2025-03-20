@@ -14,9 +14,9 @@ class _HeroineFlight {
 
   OverlayEntry? overlayEntry;
 
-  SpringSimulationController2D? get centerController =>
+  MotionController<Offset>? get centerController =>
       manifest.controllingHero._centerController;
-  SpringSimulationController2D? get sizeController =>
+  MotionController<Size>? get sizeController =>
       manifest.controllingHero._sizeController;
 
   void startFlight() {
@@ -38,25 +38,16 @@ class _HeroineFlight {
         .addStatusListener(_onProgressAnimationStatusChanged);
 
     centerController
-      ?..spring = manifest.spring
+      ?..motion = SpringMotion(manifest.spring)
       ..animateTo(
-        (
-          manifest.toHeroLocation.center.dx,
-          manifest.toHeroLocation.center.dy,
-        ),
-        withVelocity: (
-          fromHeroVelocity?.pixelsPerSecond.dx ?? 0,
-          fromHeroVelocity?.pixelsPerSecond.dy ?? 0,
-        ),
+        manifest.toHeroLocation.center,
+        withVelocity: fromHeroVelocity?.pixelsPerSecond,
       );
 
     sizeController
-      ?..spring = manifest.spring
+      ?..motion = SpringMotion(manifest.spring)
       ..animateTo(
-        (
-          manifest.toHeroLocation.size.width,
-          manifest.toHeroLocation.size.height,
-        ),
+        manifest.toHeroLocation.size,
       );
   }
 
@@ -67,17 +58,11 @@ class _HeroineFlight {
     if (manifest.isUserGestureTransition &&
         !newManifest.isUserGestureTransition) {
       centerController
-        ?..value = (
-          newManifest.fromHeroLocation.center.dx,
-          newManifest.fromHeroLocation.center.dy,
-        )
-        ..spring = manifest.spring;
+        ?..value = newManifest.fromHeroLocation.center
+        ..motion = SpringMotion(manifest.spring);
       sizeController
-        ?..value = (
-          newManifest.fromHeroLocation.size.width,
-          newManifest.fromHeroLocation.size.height,
-        )
-        ..spring = manifest.spring;
+        ?..value = newManifest.fromHeroLocation.size
+        ..motion = SpringMotion(manifest.spring);
     }
 
     manifest.dispose();
@@ -116,15 +101,9 @@ class _HeroineFlight {
 
     manifest.toHero._performSleightOfHand(
       centerController: centerController,
-      targetCenter: (
-        manifest.toHeroLocation.center.dx,
-        manifest.toHeroLocation.center.dy,
-      ),
+      targetCenter: manifest.toHeroLocation.center,
       sizeController: sizeController,
-      targetSize: (
-        manifest.toHeroLocation.size.width,
-        manifest.toHeroLocation.size.height,
-      ),
+      targetSize: manifest.toHeroLocation.size,
     );
   }
 
@@ -163,10 +142,10 @@ class _HeroineFlight {
     return AnimatedBuilder(
       animation: manifest.routeAnimation,
       builder: (context, child) => Positioned(
-        top: centerController.value.y - sizeController.value.y / 2,
-        left: centerController.value.x - sizeController.value.x / 2,
-        width: sizeController.value.x,
-        height: sizeController.value.y,
+        top: centerController.value.dy - sizeController.value.height / 2,
+        left: centerController.value.dx - sizeController.value.width / 2,
+        width: sizeController.value.width,
+        height: sizeController.value.height,
         child: child!,
       ),
       child: IgnorePointer(
