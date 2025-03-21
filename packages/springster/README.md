@@ -49,9 +49,7 @@ final withCurve = Motion.durationAndCurve(
   curve: Curves.easeInOut,
 );
 
-final spring = Motion.spring(
-  spring: Spring.bouncy,
-);
+final spring = Motion.spring(Spring.bouncy);
 ```
 
 At the moment, two types of motions are supported out of the box, but you can create your own custom motions by implementing the `Motion` interface.
@@ -67,7 +65,7 @@ Use `SingleMotionBuilder` for basic, one-dimensional animations:
 
 ```dart
 SingleMotionBuilder(
-  motion: Motion.spring(spring: Spring.bouncy),
+  motion: Motion.spring(Spring.bouncy),
   value: targetValue, // Changes trigger smooth spring animation
   builder: (context, value, child) {
     return Container(
@@ -85,7 +83,7 @@ If you want to animate more complex types, such as `Offset`, `Size`, or `Rect`, 
 
 ```dart
 MotionBuilder(
-  motion: Motion.spring(spring: Spring.bouncy),
+  motion: Motion.spring(Spring.bouncy),
   value: const Offset(100, 100),
   from: Offset.zero,
   converter: OffsetMotionConverter(),
@@ -164,7 +162,7 @@ It works just like the `Draggable` widget in Flutter and supports native Flutter
 
 ```dart
 MotionDraggable(
-  motion: Motion.spring(spring: Spring.bouncy),
+  motion: Motion.spring(Spring.bouncy),
   child: Container(
     width: 100,
     height: 100,
