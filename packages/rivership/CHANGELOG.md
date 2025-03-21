@@ -1,3 +1,9 @@
+## 0.3.0-dev.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: replace direct Spring-based APIs with new Motion type.
+
 ## 0.2.0+6
 
  - Update a dependency to the latest release.

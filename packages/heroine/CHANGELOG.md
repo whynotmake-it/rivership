@@ -1,3 +1,10 @@
+## 0.5.0-dev.0
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: use new `Motion` based APIs from springster internally.
+ - **BREAKING** **FEAT**: add `MotionConverter` API to simplify the usage of controllers.
+
 ## 0.4.0+1
 
  - Update a dependency to the latest release.
