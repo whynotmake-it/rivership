@@ -28,7 +28,7 @@ abstract class Motion {
   ///   * [DurationAndCurve]
   const factory Motion.durationAndCurve({
     required Duration duration,
-    required Curve curve,
+    Curve curve,
   }) = DurationAndCurve;
 
   /// Creates a motion with spring physics.
