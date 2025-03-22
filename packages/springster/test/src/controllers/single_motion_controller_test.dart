@@ -84,6 +84,7 @@ void main() {
 
         await tester.pump();
         expect(controller.isAnimating, isTrue);
+        expect(controller.value, greaterThan(0));
 
         controller.stop();
         expect(controller.isAnimating, isTrue);

@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:springster/src/motion.dart';
@@ -68,46 +69,77 @@ class MotionController<T extends Object> extends Animation<T>
         ) {
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
-    _controllers = [
-      for (final value in normalized)
-        AnimationController.unbounded(
-          value: value,
-          vsync: vsync,
-          animationBehavior: behavior,
-        ),
-    ];
+    _dimensions = normalized.length;
 
-    // Listen to the first controller by default
-    _setListeningTo(0, initial: true);
+    // Initialize the values and velocities
+    _currentValues = List.of(normalized);
+    _velocityValues = List.filled(_dimensions, 0);
+
+    // Create the ticker
+    _ticker = vsync.createTicker(_tick);
+
+    // Initialize status based on its position relative to bounds
+    _animationBehavior = behavior;
+
+    // Initialize with a dismissed status by default
+    _status = AnimationStatus.dismissed;
+    _lastReportedStatus = AnimationStatus.dismissed;
   }
 
   /// Converts the value of type T to a List<double> for internal processing.
   final MotionConverter<T> converter;
 
-  /// The internal list of animation controllers, one for each dimension.
-  late final List<AnimationController> _controllers;
+  /// Number of dimensions being animated
+  late final int _dimensions;
 
   /// The motion style controlling the animation characteristics.
   late List<Motion> _motionPerDimension;
 
-  /// The index of the controller we're currently listening to for status
-  /// changes.
-  int _listeningTo = 0;
+  /// The current values for each dimension
+  late List<double> _currentValues;
+
+  /// The current velocities for each dimension
+  late List<double> _velocityValues;
+
+  /// The ticker that drives the animation
+  Ticker? _ticker;
 
   /// The target values for each dimension when animating.
   List<double>? _target;
 
+  /// List of simulations, one for each dimension
+  List<Simulation?> _simulations = [];
+
+  /// The current status of the animation
+  late AnimationStatus _status;
+
+  /// The last reported status used for notifying status listeners
+  late AnimationStatus _lastReportedStatus;
+
+  /// The animation behavior
+  late final AnimationBehavior _animationBehavior;
+
   /// The current value of this animation.
   @override
-  T get value =>
-      converter.denormalize(_controllers.map((e) => e.value).toList());
+  T get value => converter.denormalize(_currentValues);
 
   /// Sets the current value of the animation.
   set value(T newValue) {
     final normalized = converter.normalize(newValue);
-    for (final (i, c) in _controllers.indexed) {
-      c.value = normalized[i];
-    }
+    _internalSetValue(normalized);
+    notifyListeners();
+    _checkStatusChanged();
+  }
+
+  /// Updates the internal values array
+  void _internalSetValue(List<double> newValues) {
+    assert(
+      newValues.length == _dimensions,
+      'New values must have the same number of dimensions as the controller',
+    );
+
+    _currentValues = List.of(newValues);
+    stop();
   }
 
   /// The current status of this [Animation].
@@ -116,16 +148,16 @@ class MotionController<T extends Object> extends Animation<T>
   /// especially in higher dimensions.
   /// Thus, this will never return [AnimationStatus.reverse].
   @override
-  AnimationStatus get status => _controllers[_listeningTo].status;
+  AnimationStatus get status => _status;
 
   /// Whether this animation is currently animating in either the forward or
   /// reverse direction.
   @override
-  bool get isAnimating => _controllers.any((e) => e.isAnimating);
+  bool get isAnimating => _ticker != null && _ticker!.isActive;
 
   /// The current velocity of the simulation in units per second for each
   /// dimension.
-  List<double> get velocities => _controllers.map((e) => e.velocity).toList();
+  List<double> get velocities => List.unmodifiable(_velocityValues);
 
   /// The type-specific velocity representation.
   T get velocity => converter.denormalize(velocities);
@@ -146,6 +178,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// Sets the default motion to use for each dimension.
   set motion(Motion value) {
     _motionPerDimension = List.filled(_motionPerDimension.length, value);
+    _redirectSimulation();
   }
 
   /// {@template MotionController.motionStyle}
@@ -173,32 +206,13 @@ class MotionController<T extends Object> extends Animation<T>
   ///
   /// Defaults to [AnimationBehavior.normal] for bounded, and
   /// [AnimationBehavior.preserve] for unbounded controllers.
-  AnimationBehavior get animationBehavior =>
-      _controllers.first.animationBehavior;
-
-  /// Sets the controller to listen to for status changes.
-  void _setListeningTo(int index, {bool initial = false}) {
-    if (index == _listeningTo && !initial) return;
-
-    if (!initial) {
-      // Remove listeners from the previous controller
-      _controllers[_listeningTo]
-        ..removeListener(notifyListeners)
-        ..removeStatusListener(notifyStatusListeners);
-    }
-
-    _listeningTo = index;
-
-    _controllers[_listeningTo]
-      ..addListener(notifyListeners)
-      ..addStatusListener(notifyStatusListeners);
-  }
+  AnimationBehavior get animationBehavior => _animationBehavior;
 
   /// Recreates the [Ticker] with the new [TickerProvider].
-  void resync(TickerProvider ticker) {
-    for (final c in _controllers) {
-      c.resync(ticker);
-    }
+  void resync(TickerProvider vsync) {
+    final oldTicker = _ticker!;
+    _ticker = vsync.createTicker(_tick);
+    _ticker!.absorbTicker(oldTicker);
   }
 
   /// Animates towards [target], while ensuring that any current velocity is
@@ -226,58 +240,98 @@ class MotionController<T extends Object> extends Animation<T>
     List<double>? from,
     List<double>? velocity,
   }) {
+    assert(
+      target.length == _dimensions,
+      'Target must have the same number of dimensions as the controller',
+    );
+
     _target = target;
 
-    final fromValue = from ?? converter.normalize(value);
-    final velocities = velocity ?? this.velocities;
+    final fromValue = from ?? List.of(_currentValues);
+    final velocityValue = velocity ?? velocities;
+
+    assert(
+      fromValue.length == _dimensions,
+      'From value must have the same number of dimensions as the controller',
+    );
+    assert(
+      velocityValue.length == _dimensions,
+      'Velocity must have the same number of dimensions as the controller',
+    );
 
     final changed = [
-      for (var i = 0; i < _controllers.length; i++)
-        motionPerDimension[i].tolerance.distance <
+      for (var i = 0; i < _dimensions; i++)
+        _motionPerDimension[i].tolerance.distance <
                 (target[i] - fromValue[i]).abs() ||
-            velocities[i] > motionPerDimension[i].tolerance.velocity,
+            velocityValue[i] > _motionPerDimension[i].tolerance.velocity,
     ];
 
-    final listeningTo = switch (changed.indexOf(true)) {
-      -1 => 0,
-      final v => v,
-    };
-
-    _setListeningTo(listeningTo);
-
-    // Stop all animations and set the value to the from value if it hasn't
-    // changed
-    for (final (i, c) in _controllers.indexed) {
-      if (!changed[i] && c.value != fromValue[i]) {
-        c.value = fromValue[i];
-      }
-      c.stop();
-    }
-
-    TickerFuture animate(int i) {
-      final simulation = motionPerDimension[i].createSimulation(
-        start: fromValue[i],
-        end: target[i],
-        velocity: velocities[i],
-      );
-
-      return _controllers[i].animateWith(simulation);
-    }
-
-    for (var i = 0; i < _controllers.length; i++) {
-      if (i == listeningTo || !changed[i]) {
-        continue;
+    // If nothing changed beyond tolerance, complete immediately
+    if (!changed.contains(true)) {
+      if (from != null) {
+        _internalSetValue(fromValue);
       }
 
-      animate(i);
+      _status = AnimationStatus.completed;
+
+      _checkStatusChanged();
+
+      return TickerFuture.complete();
     }
 
-    return animate(listeningTo);
+    // Stop any existing animations
+    stop(canceled: true);
+
+    // Update values if from is provided
+    if (from != null) {
+      _internalSetValue(fromValue);
+    }
+
+    _simulations = [
+      for (var i = 0; i < _dimensions; i++)
+        _motionPerDimension[i].createSimulation(
+          start: fromValue[i],
+          end: target[i],
+          velocity: velocityValue[i],
+        )
+    ];
+
+    _status = AnimationStatus.completed;
+    _checkStatusChanged();
+
+    return _ticker!.start();
+  }
+
+  /// Tick function called by the ticker
+  void _tick(Duration elapsed) {
+    final t =
+        elapsed.inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
+
+    // Update the current values based on the simulations
+    var allDone = true;
+    for (var i = 0; i < _dimensions; i++) {
+      final simulation = _simulations[i];
+      if (simulation == null) continue;
+
+      _currentValues[i] = simulation.x(t);
+      _velocityValues[i] = simulation.dx(t);
+      allDone = allDone && simulation.isDone(t);
+    }
+
+    notifyListeners();
+
+    // Check if all simulations are done
+    if (allDone) {
+      // Set the status based on direction and target
+      _status = AnimationStatus.completed;
+      _checkStatusChanged();
+      stop(canceled: true);
+    }
   }
 
   /// Redirect a motion when the [motionPerDimension] changes.
   void _redirectSimulation() {
-    if (!_controllers.any((e) => e.isAnimating)) return;
+    if (!isAnimating) return;
 
     if (_target case final target?) {
       animateTo(converter.denormalize(target));
@@ -293,22 +347,46 @@ class MotionController<T extends Object> extends Animation<T>
   /// Otherwise, the simulation will redirect to settle at the current value, if
   /// [Motion.needsSettle] is true for any [motionPerDimension].
   TickerFuture stop({bool canceled = false}) {
+    if (!isAnimating) {
+      return TickerFuture.complete();
+    }
+
     if (canceled || motionPerDimension.every((e) => !e.needsSettle)) {
-      for (final c in _controllers) {
-        c.stop(canceled: canceled);
+      _simulations.clear();
+      _velocityValues = List.filled(_dimensions, 0);
+      _ticker?.stop(canceled: canceled);
+
+      // Make sure to update the status when stopping
+      if (canceled) {
+        // Don't change status when canceling
+      } else if (_target != null) {
+        // If we have a target, set status based on whether we're at the target
+        final targetValue = converter.denormalize(_target!);
+        if (value == targetValue) {
+          _status = AnimationStatus.completed;
+          _checkStatusChanged();
+        }
       }
+
       return TickerFuture.complete();
     } else {
       return animateTo(value);
     }
   }
 
+  /// Check if the status has changed and notify listeners if needed
+  void _checkStatusChanged() {
+    if (_lastReportedStatus != _status) {
+      _lastReportedStatus = _status;
+      notifyStatusListeners(_status);
+    }
+  }
+
   /// Frees any resources used by this object.
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    _ticker?.dispose();
+    _ticker = null;
     super.dispose();
   }
 }
@@ -377,9 +455,13 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   @override
   set value(T newValue) {
     final normalized = converter.normalize(newValue);
-    for (final (i, c) in _controllers.indexed) {
-      c.value = normalized[i].clamp(_lowerBound[i], _upperBound[i]);
-    }
+    final clamped = [
+      for (final (i, v) in normalized.indexed)
+        v.clamp(_lowerBound[i], _upperBound[i]),
+    ];
+    _internalSetValue(clamped);
+    notifyListeners();
+    _checkStatusChanged();
   }
 
   /// Animates towards [upperBound].
