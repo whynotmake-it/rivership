@@ -81,6 +81,8 @@ void main() {
           motion: spring,
           vsync: tester,
         )..animateTo(1);
+        await tester.pump();
+        expect(controller.value, equals(0));
 
         await tester.pump(const Duration(milliseconds: 100));
         expect(controller.isAnimating, isTrue);
@@ -90,8 +92,14 @@ void main() {
         expect(controller.isAnimating, isTrue);
         final valueAfterStop = controller.value;
 
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value, equals(valueAfterStop));
+        await tester.pumpAndSettle();
+        expect(
+          controller.value,
+          closeTo(
+            valueAfterStop,
+            spring.tolerance.distance,
+          ),
+        );
       });
 
       testWidgets('updates spring redirects simulation', (tester) async {

@@ -256,12 +256,7 @@ class MotionController<T extends Object> extends Animation<T>
     final velocityValue = velocity ?? velocities;
 
     // Stop any existing animations
-    _ticker?.stop();
-
-    // Update values if from is provided
-    if (from != null) {
-      _internalSetValue(fromValue);
-    }
+    _stopTicker(canceled: true);
 
     _simulations = [
       for (var i = 0; i < _dimensions; i++)
@@ -272,6 +267,7 @@ class MotionController<T extends Object> extends Animation<T>
         )
     ];
 
+    _internalSetValue(_simulations.map((e) => e.x(0)).toList());
     _lastElapsedDuration = Duration.zero;
     final result = _ticker!.start();
     _status = AnimationStatus.forward;
@@ -285,6 +281,7 @@ class MotionController<T extends Object> extends Animation<T>
 
     final elapsedInSeconds =
         elapsed.inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
+
     assert(elapsedInSeconds >= 0, 'elapsed must be non-negative');
 
     _currentValues = [
@@ -293,10 +290,8 @@ class MotionController<T extends Object> extends Animation<T>
 
     // Check if all simulations are done
     if (_simulations.every((e) => e.isDone(elapsedInSeconds))) {
-      notifyListeners();
       _status = AnimationStatus.completed;
-      _checkStatusChanged();
-      _ticker?.stop();
+      _stopTicker();
     }
 
     notifyListeners();
@@ -330,11 +325,17 @@ class MotionController<T extends Object> extends Animation<T>
   /// [Motion.needsSettle] is true for any [motionPerDimension].
   TickerFuture stop({bool canceled = false}) {
     if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
-      _lastElapsedDuration = null;
-      _ticker?.stop(canceled: canceled);
+      _stopTicker(canceled: canceled);
       return TickerFuture.complete();
     } else {
       return animateTo(value);
+    }
+  }
+
+  void _stopTicker({bool canceled = false}) {
+    _lastElapsedDuration = null;
+    if (isAnimating) {
+      _ticker?.stop(canceled: canceled);
     }
   }
 
