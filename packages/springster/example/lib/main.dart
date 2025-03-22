@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:springster_example/2d_redirection.dart';
 import 'package:springster_example/draggable_icons.dart';
@@ -45,11 +46,8 @@ class SpringsterExampleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return CupertinoApp.router(
       routerConfig: router,
-      theme: ThemeData.from(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
     );
   }
 }
@@ -59,38 +57,43 @@ class SpringsterExample extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Springster Examples'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          FilledButton(
-            onPressed: () => context.go('/one-dimension'),
-            child: const Text('One Dimension'),
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('Springster Examples'),
           ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => context.go('/two-dimension-redirection'),
-            child: const Text('Two Dimension Redirection'),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => context.go('/draggable-icons'),
-            child: const Text('Draggable Icons'),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => context.go('/pip'),
-            child: const Text('Picture in Picture'),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => context.go('/flip-card'),
-            child: const Text('Flip Card'),
-          ),
-          const SizedBox(height: 16),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 16,
+                children: [
+                  CupertinoButton.filled(
+                    onPressed: () => context.go('/one-dimension'),
+                    child: const Text('One Dimension'),
+                  ),
+                  CupertinoButton.filled(
+                    onPressed: () => context.go('/two-dimension-redirection'),
+                    child: const Text('Two Dimension Redirection'),
+                  ),
+                  CupertinoButton.filled(
+                    onPressed: () => context.go('/draggable-icons'),
+                    child: const Text('Draggable Icons'),
+                  ),
+                  CupertinoButton.filled(
+                    onPressed: () => context.go('/pip'),
+                    child: const Text('Picture in Picture'),
+                  ),
+                  CupertinoButton.filled(
+                    onPressed: () => context.go('/flip-card'),
+                    child: const Text('Flip Card'),
+                  ),
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );

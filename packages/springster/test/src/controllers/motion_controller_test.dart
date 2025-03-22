@@ -1,10 +1,21 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:springster/springster.dart';
 
 import '../util.dart';
+
+class _MockTickerProvider extends Mock implements TickerProvider {}
+
+class _MockTicker extends Mock implements Ticker {
+  @override
+  String toString({bool debugIncludeStack = false}) {
+    return 'MockTicker';
+  }
+}
 
 void main() {
   group('MotionController', () {
@@ -41,6 +52,22 @@ void main() {
       controller.motion = const SpringMotion(newSpring);
       expect(controller.motion, isA<SpringMotion>());
       expect((controller.motion as SpringMotion).spring, equals(newSpring));
+    });
+
+    testWidgets('creates a single ticker', (tester) async {
+      final mockTickerProvider = _MockTickerProvider();
+      final mockTicker = _MockTicker();
+      when(() => mockTickerProvider.createTicker(any())).thenAnswer((_) {
+        return mockTicker;
+      });
+      controller = MotionController<Offset>(
+        motion: motion,
+        vsync: mockTickerProvider,
+        converter: converter,
+        initialValue: Offset.zero,
+      );
+
+      verify(() => mockTickerProvider.createTicker(any())).called(1);
     });
 
     group('.animateTo', () {

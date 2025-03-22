@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:pull_down_button/pull_down_button.dart';
 import 'package:springster/springster.dart';
 
 void main() {
@@ -35,35 +37,26 @@ class _TwoDimensionRedirectionExampleState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('2D with Dynamic Redirection'),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('2D with Dynamic Redirection'),
       ),
-      body: Column(
-        children: [
-          Wrap(
-            spacing: 16,
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              MotionDropdown(motion: xMotion, label: const Text('X Motion:')),
-              MotionDropdown(motion: yMotion, label: const Text('Y Motion:')),
-            ],
-          ),
-          Expanded(
-            child: ColoredBox(
-              color: Theme.of(context).colorScheme.surfaceContainer,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Wrap(
+              spacing: 16,
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                MotionDropdown(motion: xMotion, label: const Text('X Motion:')),
+                MotionDropdown(motion: yMotion, label: const Text('Y Motion:')),
+              ],
+            ),
+            Expanded(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Align(
-                    alignment: Alignment(0, -.5),
-                    child: AnimatedOpacity(
-                      opacity: offset == Offset.zero ? 1 : 0,
-                      duration: const Duration(milliseconds: 500),
-                      child: const Text('Click or drag anywhere'),
-                    ),
-                  ),
                   Transform.translate(
                     offset: offset,
                     child: const Icon(Icons.adjust_rounded),
@@ -112,8 +105,12 @@ class _TwoDimensionRedirectionExampleState
                 ],
               ),
             ),
-          ),
-        ],
+            const Text('Click or drag anywhere'),
+            const SizedBox(
+              height: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -149,19 +146,23 @@ class MotionDropdown extends StatelessWidget {
         ),
         ValueListenableBuilder(
           valueListenable: motion,
-          builder: (context, value, child) => DropdownButton<Motion>(
-            value: value,
-            items: motionOptions.entries
+          builder: (context, value, child) => PullDownButton(
+            buttonBuilder: (context, pressed) => CupertinoButton.tinted(
+              onPressed: pressed,
+              child: Text(
+                motionOptions.entries.firstWhere((e) => e.value == value).key,
+              ),
+            ),
+            itemBuilder: (context) => motionOptions.entries
                 .map(
-                  (e) => DropdownMenuItem(
-                    value: e.value,
-                    child: Text(e.key),
+                  (e) => PullDownMenuItem.selectable(
+                    onTap: () => motion.value = e.value,
+                    title: e.key,
+                    selected: motion.value == e.value,
+                    subtitle: e.value.needsSettle ? 'Physics' : 'Traditional',
                   ),
                 )
                 .toList(),
-            onChanged: (Motion? value) {
-              motion.value = value!;
-            },
           ),
         ),
       ],
