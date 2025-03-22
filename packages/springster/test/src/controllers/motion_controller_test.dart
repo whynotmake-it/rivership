@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:springster/springster.dart';
@@ -115,7 +114,7 @@ void main() {
         expect(controller.value, equals(const (0.5, 0.5)));
 
         // Only animate x
-        controller.animateTo(const (0.8, 0.5));
+        unawaited(controller.animateTo(const (0.8, 0.5)));
         await tester.pump();
         expect(controller.value.$1, equals(0.5));
         expect(controller.value.$2, equals(0.5));
@@ -124,7 +123,7 @@ void main() {
         expect(controller.value.$2, moreOrLessEquals(0.5, epsilon: error));
 
         // Only animate y
-        controller.animateTo(const (0.8, 0.8));
+        unawaited(controller.animateTo(const (0.8, 0.8)));
         await tester.pump();
         expect(controller.value.$1, moreOrLessEquals(0.8, epsilon: error));
         expect(controller.value.$2, equals(0.5));
@@ -210,7 +209,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
         final midwayVelocity = controller.velocity;
 
-        controller.animateTo(const (0.5, 0.5));
+        unawaited(controller.animateTo(const (0.5, 0.5)));
+
         await tester.pump();
         expect(
           controller.velocity.$1,
