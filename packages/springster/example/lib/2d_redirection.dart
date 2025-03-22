@@ -7,10 +7,11 @@ void main() {
   ));
 }
 
-final xMotion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
-final yMotion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
+final xMotion = ValueNotifier<Motion>(SpringMotion(Spring()));
+final yMotion = ValueNotifier<Motion>(SpringMotion(Spring()));
 
 const motionOptions = {
+  "Smooth Spring": SpringMotion(Spring()),
   "Bouncy Spring": SpringMotion(Spring.bouncy),
   "Snappy Spring": SpringMotion(Spring.snappy),
   "Interactive Spring": SpringMotion(Spring.interactive),
