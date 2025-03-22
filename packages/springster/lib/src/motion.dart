@@ -69,6 +69,12 @@ abstract class Motion {
     double end = 1,
     double velocity = 0,
   });
+
+  @override
+  bool operator ==(Object other);
+
+  @override
+  int get hashCode;
 }
 
 /// A motion based on a fixed duration and curve.

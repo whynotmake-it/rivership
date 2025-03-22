@@ -33,6 +33,7 @@ void main() {
           motion: spring,
           vsync: tester,
         );
+
         final future = controller.animateTo(0.5);
 
         await tester.pump();

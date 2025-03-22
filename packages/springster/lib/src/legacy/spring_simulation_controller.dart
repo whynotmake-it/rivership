@@ -60,7 +60,7 @@ class SpringSimulationController extends SingleMotionControllerBounded
       super.upperBound != double.infinity;
 
   @override
-  Tolerance get tolerance => motion.tolerance;
+  Tolerance get tolerance => super.motion.tolerance;
 
   @override
   TickerFuture forward({double? from, double? withVelocity}) {

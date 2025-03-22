@@ -1,31 +1,73 @@
+import 'dart:collection';
+
 import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:meta/meta.dart';
 import 'package:springster/src/motion.dart';
 import 'package:springster/src/motion_converter.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
+///
+/// See also:
+///   * [BoundedMotionController] for a version that adds bounds, as well as
+///     `forward` and `reverse` methods to the controller.
 class MotionController<T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
-  /// Creates a [MotionController] with the given parameters.
+  /// Creates a [MotionController] with the given parameters and a single motion
+  /// that is used for all dimensions.
   ///
   /// The [motion] parameter defines the characteristics of the motion
   /// and the [vsync] parameter is required to drive the animation.
   MotionController({
     required Motion motion,
     required TickerProvider vsync,
+    required MotionConverter<T> converter,
+    required T initialValue,
+    AnimationBehavior behavior = AnimationBehavior.normal,
+  }) : this._(
+          motionPerDimension: List.filled(
+            converter.normalize(initialValue).length,
+            motion,
+          ),
+          vsync: vsync,
+          converter: converter,
+          initialValue: initialValue,
+          behavior: behavior,
+        );
+
+  /// Creates a [MotionController] with the given parameters and a list of
+  /// motions for each dimension.
+  MotionController.motionPerDimension({
+    required List<Motion> motionPerDimension,
+    required TickerProvider vsync,
+    required MotionConverter<T> converter,
+    required T initialValue,
+    AnimationBehavior behavior = AnimationBehavior.normal,
+  }) : this._(
+          motionPerDimension: motionPerDimension,
+          vsync: vsync,
+          converter: converter,
+          initialValue: initialValue,
+          behavior: behavior,
+        );
+
+  MotionController._({
+    required List<Motion> motionPerDimension,
+    required TickerProvider vsync,
     required this.converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
-  })  : _motion = motion,
-        assert(
+  }) : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ) {
     final normalized = converter.normalize(initialValue);
+    _motionPerDimension = motionPerDimension;
     _controllers = [
       for (final value in normalized)
         AnimationController.unbounded(
@@ -39,22 +81,6 @@ class MotionController<T extends Object> extends Animation<T>
     _setListeningTo(0, initial: true);
   }
 
-  /// Creates a [MotionController] that is bounded.
-  ///
-  /// {@macro springster.MotionController.boundedExplainer}
-  ///
-  /// See also:
-  ///   * [BoundedMotionController]
-  factory MotionController.bounded({
-    required Motion motion,
-    required TickerProvider vsync,
-    required T initialValue,
-    required MotionConverter<T> converter,
-    required T lowerBound,
-    required T upperBound,
-    AnimationBehavior behavior,
-  }) = BoundedMotionController;
-
   /// Converts the value of type T to a List<double> for internal processing.
   final MotionConverter<T> converter;
 
@@ -62,7 +88,7 @@ class MotionController<T extends Object> extends Animation<T>
   late final List<AnimationController> _controllers;
 
   /// The motion style controlling the animation characteristics.
-  Motion _motion;
+  late List<Motion> _motionPerDimension;
 
   /// The index of the controller we're currently listening to for status
   /// changes.
@@ -99,11 +125,28 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// The current velocity of the simulation in units per second for each
   /// dimension.
-  List<double> get velocityValues =>
-      _controllers.map((e) => e.velocity).toList();
+  List<double> get velocities => _controllers.map((e) => e.velocity).toList();
 
   /// The type-specific velocity representation.
-  T get velocity => converter.denormalize(velocityValues);
+  T get velocity => converter.denormalize(velocities);
+
+  /// The single motion that is used for all dimensions.
+  ///
+  /// This assumes that all motions in [motionPerDimension] are the same.
+  Motion get motion {
+    assert(
+      motionPerDimension.every((e) => e == motionPerDimension.first),
+      'tried to access a single motion in a '
+      '${objectRuntimeType(this, 'MotionController')}, but not all motions '
+      'per dimension are the same',
+    );
+    return motionPerDimension.first;
+  }
+
+  /// Sets the default motion to use for each dimension.
+  set motion(Motion value) {
+    _motionPerDimension = List.filled(_motionPerDimension.length, value);
+  }
 
   /// {@template MotionController.motionStyle}
   /// The current motion style
@@ -111,12 +154,18 @@ class MotionController<T extends Object> extends Animation<T>
   /// When set, this will create a new simulation with the current velocity if
   /// an animation is in progress.
   /// {@endtemplate}
-  Motion get motion => _motion;
+  UnmodifiableListView<Motion> get motionPerDimension =>
+      UnmodifiableListView(_motionPerDimension);
 
   /// {@macro MotionController.motionStyle}
-  set motion(Motion value) {
-    if (_motion == value) return;
-    _motion = value;
+  set motionPerDimension(Iterable<Motion> value) {
+    assert(
+      value.length == _motionPerDimension.length,
+      'the number of motions must match the number of dimensions',
+    );
+    if (motionsEqual(_motionPerDimension, value)) return;
+
+    _motionPerDimension = value.toList();
     _redirectSimulation();
   }
 
@@ -180,12 +229,13 @@ class MotionController<T extends Object> extends Animation<T>
     _target = target;
 
     final fromValue = from ?? converter.normalize(value);
-    final velocityValue = velocity ?? velocityValues;
+    final velocities = velocity ?? this.velocities;
 
     final changed = [
       for (var i = 0; i < _controllers.length; i++)
-        motion.tolerance.distance < (target[i] - fromValue[i]).abs() ||
-            velocityValue[i] > motion.tolerance.velocity,
+        motionPerDimension[i].tolerance.distance <
+                (target[i] - fromValue[i]).abs() ||
+            velocities[i] > motionPerDimension[i].tolerance.velocity,
     ];
 
     final listeningTo = switch (changed.indexOf(true)) {
@@ -205,10 +255,10 @@ class MotionController<T extends Object> extends Animation<T>
     }
 
     TickerFuture animate(int i) {
-      final simulation = _motion.createSimulation(
+      final simulation = motionPerDimension[i].createSimulation(
         start: fromValue[i],
         end: target[i],
-        velocity: velocityValue[i],
+        velocity: velocities[i],
       );
 
       return _controllers[i].animateWith(simulation);
@@ -225,7 +275,7 @@ class MotionController<T extends Object> extends Animation<T>
     return animate(listeningTo);
   }
 
-  /// Redirect a motion when the [motion] changes.
+  /// Redirect a motion when the [motionPerDimension] changes.
   void _redirectSimulation() {
     if (!_controllers.any((e) => e.isAnimating)) return;
 
@@ -241,9 +291,9 @@ class MotionController<T extends Object> extends Animation<T>
   /// Unlike [AnimationController.stop], [canceled] defaults to false.
   /// If you set it to true, the simulation will be stopped immediately.
   /// Otherwise, the simulation will redirect to settle at the current value, if
-  /// [Motion.needsSettle] is true for the current [motion].
+  /// [Motion.needsSettle] is true for any [motionPerDimension].
   TickerFuture stop({bool canceled = false}) {
-    if (canceled || !motion.needsSettle) {
+    if (canceled || motionPerDimension.every((e) => !e.needsSettle)) {
       for (final c in _controllers) {
         c.stop(canceled: canceled);
       }
@@ -268,7 +318,7 @@ class MotionController<T extends Object> extends Animation<T>
 /// {@template springster.MotionController.boundedExplainer}
 /// This adds a [lowerBound] and [upperBound] to the controller, and will
 /// automatically clamp the [value] to be within the bounds when setting
-/// (although) it can still overshoot as part of the [motion].
+/// (although) it can still overshoot as part of the [motion]s that are used.
 ///
 /// This also adds [forward] and [reverse] methods that will animate towards
 /// the [lowerBound] and [upperBound] respectively.
@@ -285,6 +335,20 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     super.behavior,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
+
+  /// Creates a [BoundedMotionController] with the given parameters and a list
+  /// of motions for each dimension.
+  BoundedMotionController.motionPerDimension({
+    required super.motionPerDimension,
+    required super.vsync,
+    required super.converter,
+    required super.initialValue,
+    required T lowerBound,
+    required T upperBound,
+    super.behavior,
+  })  : _lowerBound = converter.normalize(lowerBound),
+        _upperBound = converter.normalize(upperBound),
+        super.motionPerDimension();
 
   /// The lower bounds for each dimension.
   final List<double> _lowerBound;
@@ -350,4 +414,13 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
     );
   }
+}
+
+@internal
+bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+
+  return a.length == b.length &&
+      [for (final (i, m) in a.indexed) m == b.elementAt(i)].every((e) => e);
 }

@@ -1,7 +1,8 @@
 /// Spring animations and simulations, simplified.
 library springster;
 
-export 'src/controllers/motion_controller.dart';
+export 'src/controllers/motion_controller.dart'
+    show BoundedMotionController, MotionController;
 export 'src/controllers/single_motion_controller.dart';
 export 'src/legacy/spring_builder.dart';
 export 'src/legacy/spring_draggable.dart';
