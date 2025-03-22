@@ -82,7 +82,7 @@ void main() {
           vsync: tester,
         )..animateTo(1);
 
-        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
         expect(controller.isAnimating, isTrue);
         expect(controller.value, greaterThan(0));
 
