@@ -9,8 +9,7 @@ void main() {
   ));
 }
 
-final xMotion = ValueNotifier<Motion>(SpringMotion(Spring()));
-final yMotion = ValueNotifier<Motion>(SpringMotion(Spring()));
+final motion = ValueNotifier<Motion>(SpringMotion(Spring()));
 
 const motionOptions = {
   "Smooth Spring": SpringMotion(Spring()),
@@ -49,8 +48,7 @@ class _TwoDimensionRedirectionExampleState
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                MotionDropdown(motion: xMotion, label: const Text('X Motion:')),
-                MotionDropdown(motion: yMotion, label: const Text('Y Motion:')),
+                MotionDropdown(motion: motion, label: const Text('Motion:')),
               ],
             ),
             Expanded(
@@ -63,13 +61,9 @@ class _TwoDimensionRedirectionExampleState
                   ),
                   Center(
                     child: ListenableBuilder(
-                      listenable: Listenable.merge([xMotion, yMotion]),
-                      builder: (context, child) =>
-                          MotionBuilder.motionPerDimension(
-                        motionPerDimension: [
-                          xMotion.value,
-                          yMotion.value,
-                        ],
+                      listenable: motion,
+                      builder: (context, child) => MotionBuilder(
+                        motion: motion.value,
                         converter: const OffsetMotionConverter(),
                         value: offset,
                         from: Offset(0, 200),
