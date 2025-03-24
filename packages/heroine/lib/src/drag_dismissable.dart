@@ -171,13 +171,14 @@ class _DragDismissableState extends State<DragDismissable> {
           widget.axisAffinity == Axis.horizontal && !widget._disabled
               ? _end
               : null,
-      child: SpringBuilder2D(
-        simulate: _dragStartOffset == null,
-        value: (_offset.dx, _offset.dy),
-        spring: widget.spring,
+      child: MotionBuilder(
+        active: _dragStartOffset == null,
+        motion: SpringMotion(widget.spring),
+        converter: const OffsetMotionConverter(),
+        value: _offset,
         builder: (context, value, child) {
           return Transform.translate(
-            offset: Offset(value.x, value.y),
+            offset: value,
             child: child,
           );
         },

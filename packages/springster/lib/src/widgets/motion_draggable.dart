@@ -6,9 +6,34 @@ import 'package:springster/springster.dart';
 /// A widget that works like [Draggable] but with a [Motion]-based animation
 /// upon return.
 ///
+/// This widget extends the functionality of [Draggable] by adding smooth
+/// animations when the draggable returns to its original position. It uses the
+/// provided [Motion] to create natural-feeling animations that respect physics
+/// and velocity.
+///
+/// Key features:
+/// * Smooth return animations using [Motion] when drag is canceled or rejected
+/// * Configurable return behavior with [onlyReturnWhenCanceled]
+/// * Automatic handling of feedback widget constraints with
+/// [feedbackMatchesConstraints]
+/// * Smart defaults for [feedback] and [childWhenDragging] that maintain layout
+/// * Support for velocity-based animations during return
+/// * Automatic handling of widget position changes during return animation
+///
+/// The widget provides sensible defaults:
+/// * If [feedback] is not provided, it uses the [child] widget
+/// * If [childWhenDragging] is not provided, it shows an invisible version of
+/// [child]
+/// * The return animation automatically adjusts if the widget's position
+/// changes
+///
+/// See also:
+///
 /// * [Draggable]
 /// * [DragTarget]
 /// * [LongPressDraggable]
+/// * [Motion]
+/// * [SpringMotion]
 class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Creates a widget that can be dragged to a [DragTarget].
   ///
