@@ -1,3 +1,11 @@
+## 1.0.0-dev.1
+
+ - **REFACTOR**: `MotionController` now uses a single `Ticker`, which should also improve performance.
+ - **FIX**: broken return animation in `Motion|SpringDraggable`.
+ - **FEAT**: update example fidelity.
+ - **FEAT**: support separate motion per dimension.
+ - **DOCS**: fixed `SpringMotion` constructor in README.
+
 ## 1.0.0-dev.0
 
 > Note: This release has breaking changes.
