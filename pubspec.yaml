@@ -9,4 +9,4 @@ environment:
   
 dev_dependencies:
   lintervention: ^0.1.1
-  melos: ^6.0.0
+  melos: ^6.3.2
