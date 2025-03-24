@@ -276,56 +276,36 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
 
   @override
   Widget build(BuildContext context) {
-    final childWhenDragging = widget.childWhenDragging ??
-        Visibility.maintain(
-          visible: false,
-          child: widget.child,
-        );
-
     if (widget.feedbackMatchesConstraints) {
       return LayoutBuilder(
         builder: (context, constraints) {
           this.constraints = constraints;
-          return Draggable(
-            childWhenDragging: childWhenDragging,
-            affinity: widget.affinity,
-            axis: widget.axis,
-            allowedButtonsFilter: widget.allowedButtonsFilter,
-            feedbackOffset: widget.feedbackOffset,
-            dragAnchorStrategy: widget.dragAnchorStrategy,
-            ignoringFeedbackSemantics: widget.ignoringFeedbackSemantics,
-            ignoringFeedbackPointer: widget.ignoringFeedbackPointer,
-            maxSimultaneousDrags: widget.maxSimultaneousDrags,
-            onDragStarted: () {
-              widget.onDragStarted?.call();
-              _cancelReturn();
-            },
-            onDragUpdate: widget.onDragUpdate,
-            onDraggableCanceled: (v, o) {
-              if (widget.onlyReturnWhenCanceled) {
-                _onDragEnd(v, o);
-              }
-              widget.onDraggableCanceled?.call(v, o);
-            },
-            onDragEnd: (details) {
-              if (!widget.onlyReturnWhenCanceled || !details.wasAccepted) {
-                _onDragEnd(details.velocity, details.offset);
-              }
-              widget.onDragEnd?.call(details);
-            },
+          return _buildDraggable(
+            context,
             feedback: ConstrainedBox(
               constraints: constraints,
               child: feedbackChild,
-            ),
-            data: widget.data,
-            child: Visibility.maintain(
-              visible: !isReturning,
-              child: widget.child,
             ),
           );
         },
       );
     }
+
+    return _buildDraggable(
+      context,
+      feedback: feedbackChild,
+    );
+  }
+
+  Widget _buildDraggable(
+    BuildContext context, {
+    required Widget feedback,
+  }) {
+    final childWhenDragging = widget.childWhenDragging ??
+        Visibility.maintain(
+          visible: false,
+          child: widget.child,
+        );
 
     return Draggable(
       childWhenDragging: childWhenDragging,
@@ -354,7 +334,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
         }
         widget.onDragEnd?.call(details);
       },
-      feedback: feedbackChild,
+      feedback: feedback,
       data: widget.data,
       child: Visibility.maintain(
         visible: !isReturning,
