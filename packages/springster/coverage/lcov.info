@@ -27,8 +27,8 @@ DA:132,1
 DA:136,6
 DA:138,24
 DA:142,12
-DA:150,0
-DA:151,0
+DA:150,1
+DA:151,1
 DA:155,6
 DA:156,6
 DA:158,6
@@ -52,10 +52,10 @@ DA:208,0
 DA:210,0
 DA:211,0
 DA:218,0
-DA:221,0
-DA:222,0
-DA:223,0
-DA:224,0
+DA:221,1
+DA:222,1
+DA:223,3
+DA:224,2
 DA:235,4
 DA:240,4
 DA:241,8
@@ -142,7 +142,7 @@ DA:461,0
 DA:462,0
 DA:466,20
 LF:142
-LH:120
+LH:126
 end_of_record
 SF:lib/src/controllers/single_motion_controller.dart
 DA:11,1

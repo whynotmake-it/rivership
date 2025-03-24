@@ -78,9 +78,12 @@ void main() {
           converter: converter,
           initialValue: Offset.zero,
         );
+        expect(controller.status, equals(AnimationStatus.dismissed));
         final future = controller.animateTo(const Offset(0.5, 0.5));
 
         await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+
         expect(future, isA<TickerFuture>());
         expect(controller.value, equals(Offset.zero));
 
@@ -91,6 +94,9 @@ void main() {
         expect(controller.value.dy, lessThan(0.5));
 
         await tester.pumpAndSettle();
+
+        expect(controller.status, equals(AnimationStatus.completed));
+
         expect(controller.value.dx, moreOrLessEquals(0.5, epsilon: error));
         expect(controller.value.dy, moreOrLessEquals(0.5, epsilon: error));
       });
@@ -155,9 +161,53 @@ void main() {
         expect(controller.value.dx, moreOrLessEquals(0.8, epsilon: error));
         expect(controller.value.dy, moreOrLessEquals(0.8, epsilon: error));
       });
+
+      testWidgets('maintains velocity between animations', (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        )..animateTo(const Offset(1, 1));
+        await tester.pump(const Duration(milliseconds: 50));
+        final midwayVelocity = controller.velocity;
+
+        unawaited(controller.animateTo(const Offset(0.5, 0.5)));
+
+        await tester.pump();
+        expect(
+          controller.velocity.dx,
+          moreOrLessEquals(midwayVelocity.dx, epsilon: error),
+        );
+        expect(
+          controller.velocity.dy,
+          moreOrLessEquals(midwayVelocity.dy, epsilon: error),
+        );
+        await tester.pumpAndSettle();
+      });
     });
 
-    group('stop and control', () {
+    group('.motion', () {
+      testWidgets('redirects simulation', (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        )..animateTo(const Offset(1, 1));
+        await tester.pump();
+
+        const newSpring = Spring(durationSeconds: 0.1);
+        controller.motion = const SpringMotion(newSpring);
+
+        expect(controller.motion, isA<SpringMotion>());
+        expect((controller.motion as SpringMotion).spring, equals(newSpring));
+        expect(controller.isAnimating, isTrue);
+        await tester.pumpAndSettle();
+      });
+    });
+
+    group('.stop', () {
       testWidgets('stop settles animation by default', (tester) async {
         controller = MotionController<Offset>(
           motion: motion,
@@ -204,47 +254,29 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         expect(controller.value, equals(valueAfterStop));
       });
+    });
 
-      testWidgets('updates motion redirects simulation', (tester) async {
+    group('.resync', () {
+      testWidgets('resyncs the controller', (tester) async {
+        final mockTickerProvider = _MockTickerProvider();
+        final mockTicker = _MockTicker();
+
+        when(() => mockTickerProvider.createTicker(any())).thenAnswer(
+          (_) => mockTicker,
+        );
+
         controller = MotionController<Offset>(
           motion: motion,
-          vsync: tester,
+          vsync: mockTickerProvider,
           converter: converter,
           initialValue: Offset.zero,
-        )..animateTo(const Offset(1, 1));
-        await tester.pump();
-
-        const newSpring = Spring(durationSeconds: 0.1);
-        controller.motion = const SpringMotion(newSpring);
-
-        expect(controller.motion, isA<SpringMotion>());
-        expect((controller.motion as SpringMotion).spring, equals(newSpring));
-        expect(controller.isAnimating, isTrue);
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets('maintains velocity between animations', (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-        )..animateTo(const Offset(1, 1));
-        await tester.pump(const Duration(milliseconds: 50));
-        final midwayVelocity = controller.velocity;
-
-        unawaited(controller.animateTo(const Offset(0.5, 0.5)));
-
-        await tester.pump();
-        expect(
-          controller.velocity.dx,
-          moreOrLessEquals(midwayVelocity.dx, epsilon: error),
         );
-        expect(
-          controller.velocity.dy,
-          moreOrLessEquals(midwayVelocity.dy, epsilon: error),
-        );
-        await tester.pumpAndSettle();
+
+        verify(() => mockTickerProvider.createTicker(any()));
+
+        controller.resync(mockTickerProvider);
+        verify(() => mockTickerProvider.createTicker(any()));
+        verify(() => mockTicker.absorbTicker(mockTicker));
       });
     });
   });
