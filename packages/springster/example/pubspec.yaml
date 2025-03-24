@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   go_router: ^14.6.3
+  pull_down_button: ^0.10.2
   springster:
     path: ../
 

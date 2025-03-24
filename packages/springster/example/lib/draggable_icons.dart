@@ -1,12 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
 void main() async {
-  final colorScheme = ColorScheme.fromSeed(seedColor: Colors.blue);
-  runApp(MaterialApp(
-    theme: ThemeData.from(
-      colorScheme: colorScheme,
-    ),
+  runApp(CupertinoApp(
     home: DraggableIconsExample(),
   ));
 }
@@ -16,11 +13,11 @@ class DraggableIconsExample extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Draggable Icons'),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Draggable Icons'),
       ),
-      body: Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('Drag the icons to the target'),
@@ -65,6 +62,7 @@ class DraggableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MotionDraggable(
+      onlyReturnWhenCanceled: true,
       data: icon,
       motion: const SpringMotion(Spring.bouncy),
       child: MouseRegion(

@@ -25,10 +25,10 @@ import 'package:springster/src/motion_converter.dart';
 /// See also:
 /// * [SingleMotionBuilder] for a motion builder that animates a single value.
 class MotionBuilder<T extends Object> extends StatefulWidget {
-  /// Creates a [MotionBuilder].
+  /// Creates a [MotionBuilder] with a single [motion].
   const MotionBuilder({
     required this.value,
-    required this.motion,
+    required Motion this.motion,
     required this.converter,
     required this.builder,
     this.active = true,
@@ -36,7 +36,20 @@ class MotionBuilder<T extends Object> extends StatefulWidget {
     this.from,
     this.child,
     super.key,
-  });
+  }) : motionPerDimension = null;
+
+  /// Creates a [MotionBuilder] with a separate [motion] for each dimension.
+  const MotionBuilder.motionPerDimension({
+    required this.value,
+    required List<Motion> this.motionPerDimension,
+    required this.converter,
+    required this.builder,
+    this.active = true,
+    this.onAnimationStatusChanged,
+    this.from,
+    this.child,
+    super.key,
+  }) : motion = null;
 
   /// {@template springster.MotionBuilder.value}
   /// The target value for the transition.
@@ -67,7 +80,12 @@ class MotionBuilder<T extends Object> extends StatefulWidget {
   /// {@template springster.MotionBuilder.motion}
   /// The motion to use for the animation.
   /// {@endtemplate}
-  final Motion motion;
+  final Motion? motion;
+
+  /// {@template springster.MotionBuilder.motionPerDimension}
+  /// The motion to use for each dimension of the animation.
+  /// {@endtemplate}
+  final List<Motion>? motionPerDimension;
 
   /// {@template springster.MotionBuilder.converter}
   /// The converter to use to convert [T] into its normalized form of values.
@@ -108,14 +126,24 @@ class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
   late MotionController<T> controller;
 
   @override
+  @override
   void initState() {
     super.initState();
-    controller = MotionController<T>(
-      motion: widget.motion,
-      vsync: this,
-      initialValue: widget.from ?? widget.value,
-      converter: widget.converter,
-    );
+    controller = switch (widget.motion) {
+      final motion? => MotionController(
+          motion: motion,
+          vsync: this,
+          initialValue: widget.from ?? widget.value,
+          converter: widget.converter,
+        ),
+      null => MotionController.motionPerDimension(
+          motionPerDimension: widget.motionPerDimension!,
+          vsync: this,
+          initialValue: widget.from ?? widget.value,
+          converter: widget.converter,
+        ),
+    };
+
     if (widget.onAnimationStatusChanged != null) {
       controller.addStatusListener(widget.onAnimationStatusChanged!);
     }
@@ -126,8 +154,17 @@ class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
 
   @override
   void didUpdateWidget(covariant MotionBuilder<T> oldWidget) {
-    if (widget.motion != oldWidget.motion) {
-      controller.motion = widget.motion;
+    if (widget.motion != oldWidget.motion ||
+        !motionsEqual(
+          widget.motionPerDimension,
+          oldWidget.motionPerDimension,
+        )) {
+      switch (widget.motion) {
+        case final motion?:
+          controller.motion = motion;
+        case null:
+          controller.motionPerDimension = widget.motionPerDimension!;
+      }
     }
     if (!widget.active) {
       controller
@@ -187,7 +224,5 @@ class SingleMotionBuilder extends MotionBuilder<double> {
     super.from,
     super.child,
     super.key,
-  }) : super(
-          converter: const SingleMotionConverter(),
-        );
+  }) : super(converter: const SingleMotionConverter());
 }
