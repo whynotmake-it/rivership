@@ -6,12 +6,13 @@ import 'package:springster/src/motion.dart';
 /// A controller that manages a spring simulation.
 ///
 /// This class has been deprecated in favor of [SingleMotionController] and
-/// [SingleMotionControllerBounded], which support different types of [Motion]s
+/// [BoundedSingleMotionController], which support different types of [Motion]s
 /// beyond springs and are more efficient and performant.
 ///
 /// It also uses a [SingleMotionController] internally.
-@Deprecated('Use SingleMotionController and its derived classes instead')
-class SpringSimulationController extends SingleMotionControllerBounded
+@Deprecated('Use SingleMotionController and its derived classes with a '
+    'SpringMotion instead')
+class SpringSimulationController extends BoundedSingleMotionController
     implements SpringSimulationControllerBase<double> {
   /// Creates a [SpringSimulationController] with the given parameters.
   ///
@@ -20,7 +21,7 @@ class SpringSimulationController extends SingleMotionControllerBounded
   ///
   /// The [lowerBound] and [upperBound] parameters are optional and can be used
   /// to constrain the animation value.
-  @Deprecated('Use SingleMotionControllerBounded instead')
+  @Deprecated('Use BoundedSingleMotionController with a SpringMotion instead')
   SpringSimulationController({
     required SpringDescription spring,
     required super.vsync,
@@ -34,7 +35,7 @@ class SpringSimulationController extends SingleMotionControllerBounded
   ///
   /// This controller will not have a lower or upper bound, and will use the
   /// [AnimationBehavior.preserve] behavior.
-  @Deprecated('Use SingleMotionController instead')
+  @Deprecated('Use SingleMotionController with a SpringMotion instead')
   SpringSimulationController.unbounded({
     required SpringDescription spring,
     required super.vsync,

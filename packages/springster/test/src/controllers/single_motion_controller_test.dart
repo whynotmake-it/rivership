@@ -136,10 +136,10 @@ void main() {
     });
   });
 
-  group('SingleMotionControllerBounded', () {
+  group('BoundedSingleMotionController', () {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
-    late SingleMotionControllerBounded controller;
+    late BoundedSingleMotionController controller;
 
     const spring = SpringMotion(Spring());
 
@@ -148,7 +148,7 @@ void main() {
     });
 
     testWidgets('creates with default bounds', (tester) async {
-      controller = SingleMotionControllerBounded(
+      controller = BoundedSingleMotionController(
         motion: spring,
         vsync: tester,
       );
@@ -160,7 +160,7 @@ void main() {
     });
 
     testWidgets('updates spring description', (tester) async {
-      controller = SingleMotionControllerBounded(
+      controller = BoundedSingleMotionController(
         motion: spring,
         vsync: tester,
       );
@@ -170,7 +170,7 @@ void main() {
     });
 
     testWidgets('clamps value within bounds', (tester) async {
-      controller = SingleMotionControllerBounded(
+      controller = BoundedSingleMotionController(
         motion: spring,
         vsync: tester,
       );
@@ -184,7 +184,7 @@ void main() {
 
     group('.forward', () {
       testWidgets('animates to upper bound', (tester) async {
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: spring,
           vsync: tester,
         );
@@ -206,7 +206,7 @@ void main() {
 
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: const SpringMotion(Spring.bouncy),
           vsync: tester,
         );
@@ -241,7 +241,7 @@ void main() {
         );
         addTearDown(animationController.dispose);
 
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: const DurationAndCurve(duration: duration),
           vsync: tester,
         );
@@ -264,7 +264,7 @@ void main() {
 
     group('.reverse', () {
       testWidgets('animates to lower bound', (tester) async {
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: spring,
           vsync: tester,
           initialValue: 1,
@@ -287,7 +287,7 @@ void main() {
 
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: const SpringMotion(Spring.bouncy),
           vsync: tester,
           initialValue: 1,
@@ -313,7 +313,7 @@ void main() {
 
     group('.animateTo', () {
       testWidgets('clamps target within bounds', (tester) async {
-        controller = SingleMotionControllerBounded(
+        controller = BoundedSingleMotionController(
           motion: spring,
           vsync: tester,
         )..animateTo(2);

@@ -17,7 +17,7 @@ class SingleMotionController extends MotionController<double> {
           converter: const SingleMotionConverter(),
         );
 
-  /// Creates a [SingleMotionControllerBounded].
+  /// Creates a [BoundedSingleMotionController].
   factory SingleMotionController.bounded({
     required SpringMotion motion,
     required TickerProvider vsync,
@@ -25,16 +25,16 @@ class SingleMotionController extends MotionController<double> {
     double lowerBound,
     double upperBound,
     AnimationBehavior behavior,
-  }) = SingleMotionControllerBounded;
+  }) = BoundedSingleMotionController;
 }
 
 /// A [SingleMotionController] that is bounded.
 ///
 /// {@macro springster.MotionController.boundedExplainer}
-class SingleMotionControllerBounded extends BoundedMotionController<double>
+class BoundedSingleMotionController extends BoundedMotionController<double>
     implements SingleMotionController {
-  /// Creates a [SingleMotionControllerBounded].
-  SingleMotionControllerBounded({
+  /// Creates a [BoundedSingleMotionController].
+  BoundedSingleMotionController({
     required super.motion,
     required super.vsync,
     super.initialValue = 0,

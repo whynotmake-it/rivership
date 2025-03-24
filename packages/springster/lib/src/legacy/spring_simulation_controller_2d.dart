@@ -15,7 +15,8 @@ typedef Double2D = (double x, double y);
 /// beyond springs, different value types via [MotionConverter]s, and
 /// are more efficient and performant. It also uses a [MotionController]
 /// internally.
-@Deprecated('Use MotionController and its derived classes instead')
+@Deprecated('Use MotionController and its derived classes with a '
+    'SpringMotion instead')
 class SpringSimulationController2D extends BoundedMotionController<Double2D>
     implements SpringSimulationControllerBase<Double2D> {
   /// Creates a [SpringSimulationController2D] with the given parameters.
@@ -25,7 +26,8 @@ class SpringSimulationController2D extends BoundedMotionController<Double2D>
   /// The [vsync] parameter is required to drive the animation.
   /// The [lowerBound] and [upperBound] parameters are optional and can be used
   /// to constrain the animation value.
-  @Deprecated('Use BoundedMotionController and its derived classes instead')
+  @Deprecated('Use BoundedMotionController and its derived classes with a '
+      'SpringMotion instead')
   SpringSimulationController2D({
     required SpringDescription spring,
     required super.vsync,
