@@ -237,9 +237,9 @@ class DetailsPage extends StatelessWidget {
               height: MediaQuery.sizeOf(context).height * .5,
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Center(
-                child: SpringBuilder(
+                child: SingleMotionBuilder(
                   value: detailsPageAspectRatio.value,
-                  spring: Spring.bouncy,
+                  motion: SpringMotion(Spring.bouncy),
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(
