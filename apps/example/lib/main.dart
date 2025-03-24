@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:springster_example/main.dart';
 import 'package:heroine_example/main.dart';
@@ -16,13 +16,14 @@ void main() async {
       ),
       GoRoute(
         path: '/springster',
-        builder: (context, state) => const SpringsterExampleApp(),
+        routes: springsterRoutes,
+        builder: (context, state) => const SpringsterExample(),
       ),
     ],
   );
 
   runApp(
-    MaterialApp.router(
+    CupertinoApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router,
     ),
@@ -34,22 +35,22 @@ class Home extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('whynotmake.it Examples'),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('whynotmake.it Examples'),
       ),
-      body: Padding(
+      child: Padding(
         padding: const EdgeInsets.all(32),
         child: GridView.count(
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           children: [
-            FilledButton.tonal(
+            CupertinoButton.filled(
               onPressed: () => context.go('/heroine'),
               child: const Text('Heroine'),
             ),
-            FilledButton.tonal(
+            CupertinoButton.filled(
               onPressed: () => context.go('/springster'),
               child: const Text('Springster'),
             ),

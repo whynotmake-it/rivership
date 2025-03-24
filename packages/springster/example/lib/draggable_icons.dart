@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
+import 'package:springster_example/motion_dropdown.dart';
 
 void main() async {
   runApp(CupertinoApp(
     home: DraggableIconsExample(),
   ));
 }
+
+final motion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
 
 class DraggableIconsExample extends StatelessWidget {
   const DraggableIconsExample({super.key});
@@ -17,12 +20,16 @@ class DraggableIconsExample extends StatelessWidget {
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Draggable Icons'),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Drag the icons to the target'),
-          Expanded(child: DraggableIcons()),
-        ],
+      child: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            MotionDropdown(motion: motion, label: const Text('Motion:')),
+            Expanded(child: DraggableIcons()),
+            const Text('Drag the icons to the target'),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -61,22 +68,24 @@ class DraggableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MotionDraggable(
-      onlyReturnWhenCanceled: true,
-      data: icon,
-      motion: const SpringMotion(Spring.bouncy),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.grab,
-        child: Card(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Icon(
-              icon,
-              size: 80,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
+    return ListenableBuilder(
+      listenable: motion,
+      builder: (context, child) => MotionDraggable(
+        data: icon,
+        motion: motion.value,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: Card(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            elevation: 0,
+            shape: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                icon,
+                size: 80,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
             ),
           ),
         ),

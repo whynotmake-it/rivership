@@ -7,49 +7,50 @@ import 'package:springster_example/one_dimension.dart';
 import 'package:springster_example/pip.dart';
 
 void main() async {
-  runApp(SpringsterExampleApp());
+  runApp(
+    CupertinoApp.router(
+      routerConfig: router,
+    ),
+  );
 }
+
+final springsterRoutes = [
+  GoRoute(
+    name: 'one-dimension',
+    path: 'one-dimension',
+    builder: (context, state) => OneDimensionExample(),
+  ),
+  GoRoute(
+    name: 'two-dimension-redirection',
+    path: 'two-dimension-redirection',
+    builder: (context, state) => TwoDimensionRedirectionExample(),
+  ),
+  GoRoute(
+    name: 'draggable-icons',
+    path: 'draggable-icons',
+    builder: (context, state) => DraggableIconsExample(),
+  ),
+  GoRoute(
+    name: 'pip',
+    path: 'pip',
+    builder: (context, state) => PipExample(),
+  ),
+  GoRoute(
+    name: 'flip-card',
+    path: 'flip-card',
+    builder: (context, state) => FlipCardExample(),
+  ),
+];
 
 final router = GoRouter(
   routes: [
     GoRoute(
       path: '/',
       builder: (context, state) => SpringsterExample(),
-      routes: [
-        GoRoute(
-            path: 'one-dimension',
-            builder: (context, state) => OneDimensionExample()),
-        GoRoute(
-          path: 'two-dimension-redirection',
-          builder: (context, state) => TwoDimensionRedirectionExample(),
-        ),
-        GoRoute(
-          path: 'draggable-icons',
-          builder: (context, state) => DraggableIconsExample(),
-        ),
-        GoRoute(
-          path: 'pip',
-          builder: (context, state) => PipExample(),
-        ),
-        GoRoute(
-          path: 'flip-card',
-          builder: (context, state) => FlipCardExample(),
-        ),
-      ],
+      routes: springsterRoutes,
     ),
   ],
 );
-
-class SpringsterExampleApp extends StatelessWidget {
-  const SpringsterExampleApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoApp.router(
-      routerConfig: router,
-    );
-  }
-}
 
 class SpringsterExample extends StatelessWidget {
   const SpringsterExample({super.key});
@@ -70,23 +71,24 @@ class SpringsterExample extends StatelessWidget {
                 spacing: 16,
                 children: [
                   CupertinoButton.filled(
-                    onPressed: () => context.go('/one-dimension'),
+                    onPressed: () => context.goNamed('one-dimension'),
                     child: const Text('One Dimension'),
                   ),
                   CupertinoButton.filled(
-                    onPressed: () => context.go('/two-dimension-redirection'),
+                    onPressed: () =>
+                        context.goNamed('two-dimension-redirection'),
                     child: const Text('Two Dimension Redirection'),
                   ),
                   CupertinoButton.filled(
-                    onPressed: () => context.go('/draggable-icons'),
+                    onPressed: () => context.goNamed('draggable-icons'),
                     child: const Text('Draggable Icons'),
                   ),
                   CupertinoButton.filled(
-                    onPressed: () => context.go('/pip'),
+                    onPressed: () => context.goNamed('pip'),
                     child: const Text('Picture in Picture'),
                   ),
                   CupertinoButton.filled(
-                    onPressed: () => context.go('/flip-card'),
+                    onPressed: () => context.goNamed('flip-card'),
                     child: const Text('Flip Card'),
                   ),
                 ],
