@@ -1,3 +1,8 @@
+## 0.5.0-dev.1
+
+ - **REFACTOR**: `MotionController` now uses a single `Ticker`, which should also improve performance.
+ - **FEAT**: support separate motion per dimension.
+
 ## 0.5.0-dev.0
 
 > Note: This release has breaking changes.
