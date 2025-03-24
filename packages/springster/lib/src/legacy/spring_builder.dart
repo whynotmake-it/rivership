@@ -6,14 +6,16 @@ import 'package:springster/springster.dart';
 /// with a given [SpringDescription].
 /// {@endtemplate}
 ///
-/// See also:
-///   * [SpringBuilder2D], which animates two values simultaneously
+/// This widget has been deprecated in favor of [SingleMotionBuilder], which
+/// supports different types of [Motion]s, not just springs.
+@Deprecated('Use SingleMotionBuilder instead')
 class SpringBuilder extends StatelessWidget {
   /// {@template springster.spring_builder.constructor}
   /// Creates a widget that animates a single value using spring physics.
   ///
   /// The [builder], [spring], and [value] arguments must not be null.
   /// {@endtemplate}
+  @Deprecated('Use SingleMotionBuilder instead')
   const SpringBuilder({
     required this.value,
     required this.spring,
@@ -94,14 +96,17 @@ class SpringBuilder extends StatelessWidget {
 /// simulation with a given [SpringDescription].
 /// {@endtemplate}
 ///
-/// See also:
-///   * [SpringBuilder], which animates a single value
+/// This widget has been deprecated in favor of [MotionBuilder], which can
+/// handle your desired types such as [Offset], [Size], [Rect], etc. using
+/// a [MotionConverter], and supports different types of [Motion]s.
+@Deprecated('Use MotionBuilder with a sensible converter instead')
 class SpringBuilder2D extends StatelessWidget {
   /// {@template springster.spring_builder_2d.constructor}
   /// Creates a widget that animates two values using spring physics.
   ///
   /// The [builder], [spring], and [value] arguments must not be null.
   /// {@endtemplate}
+  @Deprecated('Use MotionBuilder with a sensible converter instead')
   const SpringBuilder2D({
     required this.value,
     required this.spring,

@@ -5,11 +5,11 @@ import 'package:springster/src/motion.dart';
 
 /// A controller that manages a spring simulation.
 ///
-/// This controller can be used to drive spring animations with a target value,
-/// while maintaining velocity between target changes.
+/// This class has been deprecated in favor of [SingleMotionController] and
+/// [SingleMotionControllerBounded], which support different types of [Motion]s
+/// beyond springs and are more efficient and performant.
 ///
-/// The controller extends [ValueNotifier] to notify listeners of value changes,
-/// and provides access to the current velocity of the simulation.
+/// It also uses a [SingleMotionController] internally.
 @Deprecated('Use SingleMotionController and its derived classes instead')
 class SpringSimulationController extends SingleMotionControllerBounded
     implements SpringSimulationControllerBase<double> {

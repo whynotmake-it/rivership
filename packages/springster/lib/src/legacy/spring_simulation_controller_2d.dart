@@ -10,11 +10,11 @@ typedef Double2D = (double x, double y);
 
 /// A controller that manages a 2D spring simulation.
 ///
-/// This controller can be used to drive spring animations with a target value
-/// in two dimensions, while maintaining velocity between target changes.
-///
-/// The controller extends [ValueNotifier] to notify listeners of value changes,
-/// and provides access to the current velocity of the simulation.
+/// This class has been deprecated in favor of [MotionController] and
+/// [BoundedMotionController], which support different types of [Motion]s
+/// beyond springs, different value types via [MotionConverter]s, and
+/// are more efficient and performant. It also uses a [MotionController]
+/// internally.
 @Deprecated('Use MotionController and its derived classes instead')
 class SpringSimulationController2D extends BoundedMotionController<Double2D>
     implements SpringSimulationControllerBase<Double2D> {

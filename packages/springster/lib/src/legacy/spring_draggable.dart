@@ -5,6 +5,10 @@ import 'package:springster/springster.dart';
 
 /// A widget that works like [Draggable] but with a spring animation on return.
 ///
+/// This widget has been deprecated in favor of [MotionDraggable], which
+/// supports different types of [Motion]s, not just springs.
+///
+/// See also:
 /// * [Draggable]
 /// * [DragTarget]
 /// * [LongPressDraggable]
