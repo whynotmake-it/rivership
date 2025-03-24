@@ -342,15 +342,15 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
         _cancelReturn();
       },
       onDragUpdate: widget.onDragUpdate,
-      onDraggableCanceled: (v, o) {
-        if (widget.onlyReturnWhenCanceled) {
-          _onDragEnd(v, o);
-        }
-        widget.onDraggableCanceled?.call(v, o);
-      },
+      onDraggableCanceled: widget.onDraggableCanceled,
       onDragEnd: (details) {
-        if (!widget.onlyReturnWhenCanceled || !details.wasAccepted) {
+        final shouldReturn =
+            !details.wasAccepted || !widget.onlyReturnWhenCanceled;
+
+        if (shouldReturn) {
           _onDragEnd(details.velocity, details.offset);
+        } else {
+          setState(_cancelReturn);
         }
         widget.onDragEnd?.call(details);
       },

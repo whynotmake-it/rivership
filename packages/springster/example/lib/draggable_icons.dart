@@ -62,6 +62,7 @@ class DraggableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MotionDraggable(
+      onlyReturnWhenCanceled: true,
       data: icon,
       motion: const SpringMotion(Spring.bouncy),
       child: MouseRegion(

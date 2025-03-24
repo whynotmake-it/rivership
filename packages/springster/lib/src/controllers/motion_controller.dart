@@ -2,7 +2,6 @@ import 'dart:collection';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:springster/src/motion.dart';
@@ -264,7 +263,7 @@ class MotionController<T extends Object> extends Animation<T>
           start: fromValue[i],
           end: target[i],
           velocity: velocityValue[i],
-        )
+        ),
     ];
 
     _internalSetValue(_simulations.map((e) => e.x(0)).toList());
