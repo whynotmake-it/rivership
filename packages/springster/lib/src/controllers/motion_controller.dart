@@ -4,15 +4,37 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
+import 'package:springster/src/controllers/single_motion_controller.dart';
 import 'package:springster/src/motion.dart';
 import 'package:springster/src/motion_converter.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
 ///
+/// In a lot of ways, this class works like [AnimationController], but a few key
+/// differences have been made to make it generalize easier for different types
+/// of motion.
+///
+/// 1. [status] works differently for unbounded controllers:
+///   - It will always return [AnimationStatus.forward] if the controller is
+///     running.
+///   - It will return [AnimationStatus.dismissed] if the controller is stopped
+///     and at its initial value.
+///   - It will return [AnimationStatus.completed] if the controller is stopped
+///     and not at its initial value.
+///   - Note: [BoundedMotionController]s restore a concept of directionality,
+///     and will return [AnimationStatus.reverse] in certain cases.
+/// 2. [stop] will not stop the animation right away, unless `canceled` is true.
+///   Instead, it will wait until the simulation is done, and then settle at
+///   the current value. This allows for a more graceful stop, for example, a
+///   bouncy spring will perform its overshoot.
+///
 /// See also:
 ///   * [BoundedMotionController] for a version that adds bounds, as well as
 ///     `forward` and `reverse` methods to the controller.
+///   * [SingleMotionController] and [BoundedSingleMotionController] for a one-
+///     dimensional version of this class. These are most closely related to
+///     [AnimationController]s.
 class MotionController<T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
@@ -66,6 +88,7 @@ class MotionController<T extends Object> extends Animation<T>
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ) {
+    _initialValue = initialValue;
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
     _dimensions = normalized.length;
@@ -82,6 +105,8 @@ class MotionController<T extends Object> extends Animation<T>
     // Initialize with a dismissed status by default
     _status = AnimationStatus.dismissed;
   }
+
+  late final T _initialValue;
 
   /// Converts the value of type T to a List<double> for internal processing.
   final MotionConverter<T> converter;
@@ -124,7 +149,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// Sets the current value of the animation.
   set value(T newValue) {
     _ticker?.stop();
-    _status = AnimationStatus.dismissed;
+    _status = _getStatusWhenDone();
 
     final normalized = converter.normalize(newValue);
     _internalSetValue(normalized);
@@ -248,6 +273,7 @@ class MotionController<T extends Object> extends Animation<T>
     required List<double> target,
     List<double>? from,
     List<double>? velocity,
+    bool forward = true,
   }) {
     _target = target;
 
@@ -269,10 +295,15 @@ class MotionController<T extends Object> extends Animation<T>
     _internalSetValue(_simulations.map((e) => e.x(0)).toList());
     _lastElapsedDuration = Duration.zero;
     final result = _ticker!.start();
-    _status = AnimationStatus.forward;
+    _status = forward ? AnimationStatus.forward : AnimationStatus.reverse;
     _checkStatusChanged();
     return result;
   }
+
+  /// Evaluates the current status when we're at the end of the animation.
+  AnimationStatus _getStatusWhenDone() => value == _initialValue
+      ? AnimationStatus.dismissed
+      : AnimationStatus.completed;
 
   /// Tick function called by the ticker
   void _tick(Duration elapsed) {
@@ -289,7 +320,7 @@ class MotionController<T extends Object> extends Animation<T>
 
     // Check if all simulations are done
     if (_simulations.every((e) => e.isDone(elapsedInSeconds))) {
-      _status = AnimationStatus.completed;
+      _status = _getStatusWhenDone();
       _stopTicker();
     }
 
@@ -349,6 +380,8 @@ class MotionController<T extends Object> extends Animation<T>
 
 /// A [MotionController] that is bounded.
 ///
+/// See [MotionController] for more information.
+///
 /// {@template springster.MotionController.boundedExplainer}
 /// This adds a [lowerBound] and [upperBound] to the controller, and will
 /// automatically clamp the [value] to be within the bounds when setting
@@ -356,6 +389,15 @@ class MotionController<T extends Object> extends Animation<T>
 ///
 /// This also adds [forward] and [reverse] methods that will animate towards
 /// the [lowerBound] and [upperBound] respectively.
+///
+/// Furthermore, [status] behaves differently for bounded controllers:
+///   - It will return [AnimationStatus.reverse] when animating towards the
+///     [lowerBound], and [AnimationStatus.forward] when animating towards the
+///     [upperBound].
+///   - [status] will return [AnimationStatus.dismissed] if the controller is
+///     stopped and at its lower bound.
+///   - [status] will return the last reported direction if the controller is
+///     stopped and not at its lower or upper bound.
 /// {@endtemplate}
 class BoundedMotionController<T extends Object> extends MotionController<T> {
   /// Creates a [BoundedMotionController].
@@ -411,6 +453,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   @override
   set value(T newValue) {
     final normalized = converter.normalize(newValue);
+    _status = _getStatusWhenDone();
     final clamped = [
       for (final (i, v) in normalized.indexed)
         v.clamp(_lowerBound[i], _upperBound[i]),
@@ -419,12 +462,27 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     notifyListeners();
   }
 
+  bool _forward = true;
+
+  /// Evaluates the current status when we're at the end of the animation.
+  @override
+  AnimationStatus _getStatusWhenDone() => switch (value) {
+        final v when v == lowerBound => AnimationStatus.dismissed,
+        final v when v == upperBound => AnimationStatus.completed,
+        _ when !_forward => AnimationStatus.reverse,
+        _ => AnimationStatus.forward,
+      };
+
   /// Animates towards [upperBound].
   TickerFuture forward({
     T? from,
     T? withVelocity,
   }) {
-    return animateTo(upperBound, from: from, withVelocity: withVelocity);
+    return animateTo(
+      upperBound,
+      from: from,
+      withVelocity: withVelocity,
+    );
   }
 
   /// Animates towards [lowerBound].
@@ -435,11 +493,22 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     T? from,
     T? withVelocity,
   }) {
-    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
+    return animateTo(
+      lowerBound,
+      from: from,
+      withVelocity: withVelocity,
+      forward: false,
+    );
   }
 
   @override
-  TickerFuture animateTo(T target, {T? from, T? withVelocity}) {
+  TickerFuture animateTo(
+    T target, {
+    T? from,
+    T? withVelocity,
+    bool forward = true,
+  }) {
+    _forward = forward;
     final normalizedTarget = converter.normalize(target);
     final clamped = [
       for (final (i, v) in normalizedTarget.indexed)
@@ -449,7 +518,18 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       target: clamped,
       from: from != null ? converter.normalize(from) : null,
       velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
+      forward: forward,
     );
+  }
+
+  @override
+  TickerFuture stop({bool canceled = false}) {
+    if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
+      _stopTicker(canceled: canceled);
+      return TickerFuture.complete();
+    } else {
+      return animateTo(value, forward: _forward);
+    }
   }
 }
 
