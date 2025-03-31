@@ -176,13 +176,19 @@ class SpringMotion extends Motion {
   /// Creates a motion with spring physics.
   ///
   /// Parameter [spring] defines the physical characteristics of the spring.
-  const SpringMotion(this.spring);
+  const SpringMotion(this.spring, {this.snapToEnd = true});
 
   /// The physical description of the spring.
   ///
   /// Contains parameters like mass, stiffness, and damping that define
   /// how the spring behaves.
   final SpringDescription spring;
+
+  /// Whether to snap to the end of the spring.
+  ///
+  /// If true, the spring will snap to the end of the motion when the simulation
+  /// is done.
+  final bool snapToEnd;
 
   /// Whether this motion needs to settle.
   ///
@@ -220,6 +226,7 @@ class SpringMotion extends Motion {
         end,
         velocity,
         tolerance: tolerance,
+        snapToEnd: snapToEnd,
       );
 
   /// Equality operator for [SpringMotion].

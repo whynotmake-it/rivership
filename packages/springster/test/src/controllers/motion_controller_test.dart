@@ -279,6 +279,70 @@ void main() {
         verify(() => mockTicker.absorbTicker(mockTicker));
       });
     });
+
+    group('.status', () {
+      testWidgets('is .dismissed initially', (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets('is forward when animating to larger values', (tester) async {
+        controller = MotionController(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        unawaited(controller.animateTo(const Offset(1, 1)));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+      });
+
+      testWidgets('is forward when animating to smaller values',
+          (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: const Offset(1, 1),
+        );
+
+        unawaited(controller.animateTo(Offset.zero));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+      });
+
+      testWidgets('is dismissed when back at initial value', (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        unawaited(controller.animateTo(const Offset(1, 1)));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(Offset.zero));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+    });
   });
 
   group('BoundedMotionController', () {
@@ -430,6 +494,88 @@ void main() {
         expect(overshot, isTrue);
         expect(controller.value.dx, closeTo(0, motion.tolerance.distance));
         expect(controller.value.dy, closeTo(0, motion.tolerance.distance));
+      });
+    });
+
+    group('.status', () {
+      testWidgets('is .dismissed initially', (tester) async {
+        controller = BoundedMotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          lowerBound: Offset.zero,
+          upperBound: const Offset(1, 1),
+        );
+        expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets('is forward when animating forward', (tester) async {
+        controller = BoundedMotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          lowerBound: Offset.zero,
+          upperBound: const Offset(1, 1),
+        );
+
+        unawaited(controller.forward());
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+      });
+
+      testWidgets('is reverse when animating to smaller values',
+          (tester) async {
+        controller = BoundedMotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: const Offset(1, 1),
+          lowerBound: Offset.zero,
+          upperBound: const Offset(1, 1),
+        );
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets('returns last direction when stopped', (tester) async {
+        controller = BoundedMotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          lowerBound: Offset.zero,
+          upperBound: const Offset(1, 1),
+        );
+
+        unawaited(controller.forward());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(controller.status, equals(AnimationStatus.forward));
+        unawaited(controller.stop());
+        await tester.pumpAndSettle();
+
+        expect(controller.status, equals(AnimationStatus.forward));
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        unawaited(controller.stop());
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.reverse));
+
+        unawaited(controller.reverse());
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
       });
     });
   });
