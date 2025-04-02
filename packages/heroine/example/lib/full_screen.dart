@@ -166,7 +166,7 @@ class DetailsPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: Text('Go To Second Details Page'),
+                        child: Text('Go even Deeper'),
                         onPressed: () => Navigator.push(
                           context,
                           MyCustomRoute(
@@ -194,10 +194,12 @@ class SecondDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return FullscreenHeroine(
       tag: 'detail',
-      child: const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(),
+      child: CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: Text('How deep'),
+        ),
         child: Center(
-          child: Text('Second Details Page'),
+          child: Text('This is the end.'),
         ),
       ),
     );
