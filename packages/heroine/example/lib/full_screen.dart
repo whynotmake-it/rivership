@@ -1,6 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
-import 'package:figma_squircle_updated/figma_squircle.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
@@ -85,8 +82,13 @@ class FullscreenHeroineExample extends StatelessWidget {
                     spring: springNotifier.value,
                     adjustToRouteTransitionDuration:
                         adjustSpringTimingToRoute.value,
-                    child: Cover(
-                      index: index,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text('Go To Details $index'),
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -106,83 +108,6 @@ class FullscreenHeroineExample extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class Cover extends StatelessWidget {
-  const Cover({
-    super.key,
-    required this.index,
-    this.onPressed,
-    this.isFlipped = false,
-  });
-
-  final int index;
-  final bool isFlipped;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final shape = SmoothRectangleBorder(
-      borderRadius: SmoothBorderRadius(
-        cornerRadius: 32,
-        cornerSmoothing: .6,
-      ),
-    );
-    return FilledButton(
-      style: FilledButton.styleFrom(
-        splashFactory: NoSplash.splashFactory,
-        padding: EdgeInsets.all(32),
-        shape: shape,
-        backgroundColor:
-            !isFlipped ? Colors.transparent : CupertinoColors.systemGrey4,
-        foregroundColor:
-            !isFlipped ? CupertinoColors.white : CupertinoColors.black,
-        shadowColor: Colors.brown.withValues(alpha: .3),
-        elevation: isFlipped ? 24 : 8,
-        backgroundBuilder: (context, states, child) => DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: shape,
-            gradient: isFlipped
-                ? LinearGradient(
-                    colors: [
-                      CupertinoColors.systemGrey5.withValues(blue: .88),
-                      CupertinoColors.systemGrey3.withValues(blue: .75),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  )
-                : null,
-            image: isFlipped
-                ? null
-                : DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      'https://picsum.photos/800/800?random=$index',
-                      imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-          ),
-          child: child,
-        ),
-      ),
-      child: Align(
-        alignment: isFlipped ? Alignment.bottomLeft : Alignment.center,
-        child: Heroine(
-          tag: 'detail $index',
-          child: Text(
-            'Image #$index',
-            style: CupertinoTheme.of(context)
-                .textTheme
-                .navLargeTitleTextStyle
-                .copyWith(
-                  color: CupertinoColors.inactiveGray,
-                ),
-          ),
-        ),
-      ),
-      onPressed: onPressed,
     );
   }
 }
@@ -235,9 +160,13 @@ class DetailsPage extends StatelessWidget {
                           adjustSpringTimingToRoute.value,
                       spring: springNotifier.value,
                       flightShuttleBuilder: flightShuttleNotifier.value,
-                      child: Cover(
-                        index: index,
-                        isFlipped: true,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text('Go To Second Details Page'),
                         onPressed: () => Navigator.push(
                           context,
                           MyCustomRoute(
@@ -251,42 +180,6 @@ class DetailsPage extends StatelessWidget {
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: SizedBox(height: 48)),
-            SliverToBoxAdapter(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Details',
-                          style: CupertinoTheme.of(context)
-                              .textTheme
-                              .textStyle
-                              .copyWith(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: CupertinoTheme.of(context)
-                                    .textTheme
-                                    .textStyle
-                                    .color
-                                    ?.withValues(alpha: .8),
-                              ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          lorem,
-                          style: CupertinoTheme.of(context).textTheme.textStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            )
           ],
         ),
       ),
