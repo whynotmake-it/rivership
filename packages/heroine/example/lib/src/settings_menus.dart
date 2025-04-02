@@ -1,4 +1,4 @@
-import 'package:heroine_example/main.dart';
+import 'package:heroine_example/full_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:heroine/heroine.dart';

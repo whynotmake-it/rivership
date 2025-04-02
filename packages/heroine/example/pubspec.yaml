@@ -20,6 +20,7 @@ dependencies:
   springster: ^1.0.0-dev.1
   heroine: 
     path: ../
+  auto_route: ^10.0.1
 
 dev_dependencies:
   flutter_test:

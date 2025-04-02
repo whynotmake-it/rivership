@@ -61,13 +61,29 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
         ? animation.value
         : 1 - animation.value;
 
+    var fromHeroWidget =
+        fromHeroContext.mounted ? fromHeroContext.widget : null;
+    var toHeroWidget = toHeroContext.mounted ? toHeroContext.widget : null;
+
+    // If both widgets are null, we can't really show anything
+    if (fromHeroWidget == null && toHeroWidget == null) {
+      assert(
+        false,
+        'fromHeroWidget and toHeroWidget are both null in heroine transition',
+      );
+      return const SizedBox.shrink();
+    } else {
+      fromHeroWidget ??= toHeroWidget;
+      toHeroWidget ??= fromHeroWidget;
+    }
+
     if (toMediaQueryData == null || fromMediaQueryData == null) {
       return AnimatedBuilder(
         animation: animation,
         builder: (BuildContext context, Widget? _) => buildHero(
           flightContext: flightContext,
-          fromHero: fromHeroContext.widget,
-          toHero: toHeroContext.widget,
+          fromHero: fromHeroWidget!,
+          toHero: toHeroWidget!,
           valueFromTo: remapValue(),
           flightDirection: flightDirection,
         ),
@@ -93,8 +109,8 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
         ),
         child: buildHero(
           flightContext: flightContext,
-          fromHero: fromHeroContext.widget,
-          toHero: toHeroContext.widget,
+          fromHero: fromHeroWidget!,
+          toHero: toHeroWidget!,
           valueFromTo: remapValue(),
           flightDirection: flightDirection,
         ),
