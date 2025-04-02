@@ -20,7 +20,7 @@ dependencies:
     path: ../../packages/springster/example
 
 
-  rivership: ^0.3.0-dev.1
+  rivership: ^0.3.0-dev.2
   go_router: ^14.6.3
 
   

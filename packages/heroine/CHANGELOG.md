@@ -1,3 +1,10 @@
+## 0.5.0-dev.2
+
+ - **FEAT**: support nested heroines if they are not part of the same transition.
+ - **FEAT**: update examples to use new springster motion APIs.
+ - **DOCS**: added fullscreen gif.
+ - **DOCS**: add mention to nested heroines in README.
+
 ## 0.5.0-dev.1
 
  - **REFACTOR**: `MotionController` now uses a single `Ticker`, which should also improve performance.
