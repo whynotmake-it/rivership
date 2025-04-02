@@ -136,6 +136,15 @@ This will fade out `MyWidget` progressively, as the user dismisses the heroine.
 
 If you look closely at the example GIF, you will see that the details page fades out as the user drags the heroine away.
 
+### Nested Heroine
+
+Like with Flutter's default hero transition, heroine does not support nested transitions.
+
+Unlike Flutter however, it will allow you to nest heroines, as long as they are not part of the same transition.
+This allows you to have fullscreen transitions, in multiple, nested routes like in the fullscreen example.
+
+**Warning:** While Heroine throws an assertion error if it detects that you are trying to fly two nested heroines at the same time, it can't check for this in release builds, since it needs to walk the widget tree. If you miss an occurrence of this, it will break your heroine transitions.
+
 ## Spring Configuration 🎯
 
 Heroine uses [Springster](https://pub.dev/packages/springster) for spring animations. You can customize the spring behavior:

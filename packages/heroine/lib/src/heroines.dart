@@ -287,7 +287,10 @@ class _SleightOfHandBuilder extends StatelessWidget {
         child: child,
       );
     }
-    return child;
+    return KeyedSubtree(
+      key: globalKey,
+      child: child,
+    );
   }
 }
 

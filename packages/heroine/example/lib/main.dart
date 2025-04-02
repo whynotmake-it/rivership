@@ -29,8 +29,8 @@ final router = RootStackRouter.build(
           builder: (context, _) => HeroineExamplePicker(),
         ),
         NamedRouteDef(
-          name: 'Classic',
-          path: 'picker',
+          name: 'Image Transition',
+          path: 'classic',
           type: RouteType.cupertino(),
           builder: (context, _) => HeroineExample(),
         ),

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/main.dart';
 import 'package:heroine_example/src/settings_menus.dart';
-import 'package:springster/springster.dart';
 
 final springNotifier = ValueNotifier(Spring());
 final flightShuttleNotifier =
@@ -120,6 +119,7 @@ class DetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FullscreenHeroine(
+      flightShuttleBuilder: flightShuttleNotifier.value,
       tag: index,
       child: CupertinoPageScaffold(
         child: CustomScrollView(
@@ -132,10 +132,7 @@ class DetailsPage extends StatelessWidget {
                   sliver: child!,
                 );
               },
-              child: CupertinoSliverNavigationBar(
-                largeTitle: SizedBox(),
-                trailing: DetailsPageSettingsButton(),
-              ),
+              child: CupertinoSliverNavigationBar(largeTitle: SizedBox()),
             ),
             SliverToBoxAdapter(
               child: SizedBox(
@@ -143,36 +140,31 @@ class DetailsPage extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(
-              child: Container(
-                height: MediaQuery.sizeOf(context).height * .5,
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Center(
-                  child: SingleMotionBuilder(
-                    value: detailsPageAspectRatio.value,
-                    motion: SpringMotion(Spring.bouncy),
-                    builder: (context, value, child) => AspectRatio(
-                      aspectRatio: value,
-                      child: child!,
-                    ),
-                    child: Heroine(
-                      tag: 'detail',
-                      adjustToRouteTransitionDuration:
-                          adjustSpringTimingToRoute.value,
-                      spring: springNotifier.value,
-                      flightShuttleBuilder: flightShuttleNotifier.value,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+              child: Center(
+                child: Heroine(
+                  tag: 'detail',
+                  adjustToRouteTransitionDuration:
+                      adjustSpringTimingToRoute.value,
+                  spring: springNotifier.value,
+                  flightShuttleBuilder: FadeShuttleBuilder(),
+                  child: SizedBox(
+                    width: 400,
+                    height: 200,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: CupertinoColors.systemYellow,
+                        foregroundColor: CupertinoColors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text('Go even Deeper'),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MyCustomRoute(
-                            title: 'Second Details Page',
-                            builder: (context) => const SecondDetailsPage(),
-                          ),
+                      ),
+                      child: Text('Go even Deeper'),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MyCustomRoute(
+                          fullscreenDialog: true,
+                          title: 'Second Details Page',
+                          builder: (context) => const SecondDetailsPage(),
                         ),
                       ),
                     ),
@@ -193,10 +185,12 @@ class SecondDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FullscreenHeroine(
+      flightShuttleBuilder: FadeShuttleBuilder(),
       tag: 'detail',
       child: CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.systemYellow,
         navigationBar: CupertinoNavigationBar(
-          middle: Text('How deep'),
+          middle: Text('The deepest'),
         ),
         child: Center(
           child: Text('This is the end.'),
@@ -209,11 +203,13 @@ class SecondDetailsPage extends StatelessWidget {
 class FullscreenHeroine extends StatelessWidget {
   const FullscreenHeroine({
     super.key,
-    required this.child,
     required this.tag,
+    required this.flightShuttleBuilder,
+    required this.child,
   });
 
   final Object tag;
+  final HeroineShuttleBuilder flightShuttleBuilder;
   final Widget child;
 
   @override
@@ -226,7 +222,7 @@ class FullscreenHeroine extends StatelessWidget {
             tag: tag,
             adjustToRouteTransitionDuration: adjustSpringTimingToRoute.value,
             spring: springNotifier.value,
-            flightShuttleBuilder: flightShuttleNotifier.value,
+            flightShuttleBuilder: flightShuttleBuilder,
             child: Card(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.hardEdge,
