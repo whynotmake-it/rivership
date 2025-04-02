@@ -143,11 +143,6 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    assert(
-      context.findAncestorWidgetOfExactType<Heroine>() == null,
-      'A Heroine widget cannot be the descendant of another Heroine widget.',
-    );
-
     final flight = _manifest;
     if (flight != null &&
         widget.placeholderBuilder != null &&
@@ -292,7 +287,10 @@ class _SleightOfHandBuilder extends StatelessWidget {
         child: child,
       );
     }
-    return child;
+    return KeyedSubtree(
+      key: globalKey,
+      child: child,
+    );
   }
 }
 
@@ -519,10 +517,26 @@ class HeroineController extends NavigatorObserver {
           )
         : const <Object, _HeroineState>{};
 
+    final allFromTags = fromHeroes.keys.toList();
+    final allToTags = toHeroes.keys.toList();
+
     for (final fromHeroEntry in fromHeroes.entries) {
       final tag = fromHeroEntry.key;
       final fromHero = fromHeroEntry.value;
       final toHero = toHeroes[tag];
+
+      assert(
+        !_hasFlyingAncestor(fromHero, allToTags),
+        'Heroine ${fromHero.widget.tag} (flying from a page to another) has a '
+        'heroine ancestor that will be flying too. This is not supported',
+      );
+
+      assert(
+        !_hasFlyingAncestor(toHero, allFromTags),
+        'Heroine ${toHero?.widget.tag} (flying to a page from another) has a '
+        'heroine ancestor that will be flying too. This is not supported',
+      );
+
       final existingFlight = _flights[tag];
       final manifest = toHero == null
           ? null
@@ -574,6 +588,20 @@ class HeroineController extends NavigatorObserver {
     }
   }
 
+  bool _hasFlyingAncestor(
+    _HeroineState? heroine,
+    Iterable<Object> otherRouteHeroes,
+  ) {
+    final ownTag = heroine?.widget.tag;
+    final parentTag =
+        heroine?.context.findAncestorWidgetOfExactType<Heroine>()?.tag;
+    if (parentTag == null || ownTag == null) return false;
+
+    // If both the parent and the child are flying, then we don't support it.
+    return otherRouteHeroes.contains(parentTag) &&
+        otherRouteHeroes.contains(ownTag);
+  }
+
   void _handleFlightEnded(_FlightManifest manifest) {
     _flights.remove(manifest.tag)?.dispose();
   }
@@ -593,8 +621,8 @@ class HeroineController extends NavigatorObserver {
 
 extension on BuildContext {
   // Returns a map of all of the heroes in `context` indexed by hero tag that
-// should be considered for animation when `navigator` transitions from one
-// PageRoute to another.
+  // should be considered for animation when `navigator` transitions from one
+  // PageRoute to another.
   Map<Object, _HeroineState> allHeroesFor(
     NavigatorState navigator, {
     required bool isUserGestureTransition,

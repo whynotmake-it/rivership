@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heroine/heroine.dart';
@@ -11,6 +13,7 @@ void main() {
 
   group('Heroine', () {
     const tag = true;
+    const nestedTag = 'nested';
 
     const padding = 10.0;
     const heroSize = 100.0;
@@ -25,8 +28,18 @@ void main() {
       animationSheet = AnimationSheetBuilder(frameSize: frameSize);
     });
 
-    Widget build({bool isHeroine = true}) {
-      final child = Container(color: Colors.red);
+    Widget build({
+      bool isHeroine = true,
+      bool hasNestedHeroine = false,
+    }) {
+      final nestedChild = Container(color: Colors.red);
+      final child = hasNestedHeroine
+          ? Heroine(
+              tag: nestedTag,
+              child: nestedChild,
+            )
+          : nestedChild;
+
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         navigatorObservers: [HeroineController()],
@@ -55,8 +68,15 @@ void main() {
       bool isHeroine = true,
       HeroineShuttleBuilder? shuttleBuilder,
       Spring? spring,
+      bool hasNestedHeroine = false,
     }) {
-      final child = Container(color: Colors.green);
+      final nestedChild = Container(color: Colors.green);
+      final child = hasNestedHeroine
+          ? Heroine(
+              tag: nestedTag,
+              child: nestedChild,
+            )
+          : nestedChild;
       return Scaffold(
         backgroundColor: Colors.black,
         body: Padding(
@@ -172,6 +192,54 @@ void main() {
         matchesGoldenFile('golden/heroine_flip_and_fade_through.png'),
       );
     });
+
+    group('nested heroines', () {
+      testWidgets(
+        'are allowed if the nested child doesn not fly',
+        (tester) async {
+          await tester.pumpWidget(build(hasNestedHeroine: true));
+
+          expect(find.heroineWithTag(tag), findsOneWidget);
+          expect(find.heroineWithTag(nestedTag), findsOneWidget);
+
+          await tester.pumpAndSettle();
+
+          tester.push(buildPage2()).ignore();
+
+          await tester.pumpAndSettle();
+
+          expect(find.heroineWithTag(tag), findsOneWidget);
+          expect(find.heroineWithTag(nestedTag), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'throws assertion error if nested heroine wants to fly',
+        (tester) async {
+          await TestAsyncUtils.guard(() async {
+            await tester.pumpWidget(build(hasNestedHeroine: true));
+
+            expect(find.heroineWithTag(tag), findsOneWidget);
+            expect(find.heroineWithTag(nestedTag), findsOneWidget);
+
+            await tester.pumpAndSettle();
+
+            tester.push(buildPage2(hasNestedHeroine: true)).ignore();
+
+            await tester.pumpAndSettle();
+
+            expect(
+              tester.takeException(),
+              isA<AssertionError>().having(
+                (e) => e.message,
+                'message',
+                contains('nested'),
+              ),
+            );
+          });
+        },
+      );
+    });
   });
 }
 
@@ -188,5 +256,17 @@ extension WidgetTesterX on WidgetTester {
 
   void pop() {
     state<NavigatorState>(find.byType(Navigator)).pop();
+  }
+}
+
+extension FindersX on CommonFinders {
+  Finder heroineWithTag(Object tag) {
+    return byWidgetPredicate((w) {
+      if (w is Heroine) {
+        return w.tag == tag;
+      }
+
+      return false;
+    });
   }
 }
