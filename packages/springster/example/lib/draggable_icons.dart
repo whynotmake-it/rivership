@@ -14,6 +14,9 @@ final motion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
 class DraggableIconsExample extends StatelessWidget {
   const DraggableIconsExample({super.key});
 
+  static const name = 'Draggable Icons';
+  static const path = 'draggable-icons';
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(

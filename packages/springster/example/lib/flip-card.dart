@@ -12,6 +12,9 @@ final ValueNotifier<bool> isFlipped = ValueNotifier(false);
 class FlipCardExample extends StatefulWidget {
   const FlipCardExample({super.key});
 
+  static const name = 'Flip Card';
+  static const path = 'flip-card';
+
   @override
   State<FlipCardExample> createState() => _FlipCardExampleState();
 }

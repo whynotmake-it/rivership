@@ -11,6 +11,9 @@ void main() async {
 class PipExample extends StatefulWidget {
   const PipExample({super.key});
 
+  static const name = 'Picture in Picture';
+  static const path = 'pip';
+
   @override
   State<PipExample> createState() => _PipExampleState();
 }

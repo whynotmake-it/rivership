@@ -11,8 +11,11 @@ import 'package:springster/springster.dart';
 
 import 'main.dart';
 
-class HeroineExample extends StatelessWidget {
-  const HeroineExample({super.key});
+class ImageGridExample extends StatelessWidget {
+  const ImageGridExample({super.key});
+
+  static const name = 'Image Grid';
+  static const path = 'image-grid';
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +61,7 @@ class HeroineExample extends StatelessWidget {
                         Navigator.push(
                           context,
                           MyCustomRoute(
+                            settings: RouteSettings(name: 'Details'),
                             fullscreenDialog: true,
                             title: 'Details',
                             builder: (context) => DetailsPage(index: index),

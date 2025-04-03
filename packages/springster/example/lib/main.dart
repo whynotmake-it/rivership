@@ -1,5 +1,5 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 import 'package:springster_example/2d_redirection.dart';
 import 'package:springster_example/draggable_icons.dart';
 import 'package:springster_example/flip-card.dart';
@@ -9,45 +9,57 @@ import 'package:springster_example/pip.dart';
 void main() async {
   runApp(
     CupertinoApp.router(
-      routerConfig: router,
+      routerConfig: router.config(),
     ),
   );
 }
 
 final springsterRoutes = [
-  GoRoute(
-    name: 'one-dimension',
-    path: 'one-dimension',
+  NamedRouteDef(
+    name: 'Springster Examples',
+    path: '',
+    type: RouteType.cupertino(),
+    builder: (context, state) => const SpringsterExample(),
+  ),
+  NamedRouteDef(
+    name: OneDimensionExample.name,
+    path: OneDimensionExample.path,
+    type: RouteType.cupertino(),
     builder: (context, state) => OneDimensionExample(),
   ),
-  GoRoute(
-    name: 'two-dimension-redirection',
-    path: 'two-dimension-redirection',
+  NamedRouteDef(
+    name: TwoDimensionRedirectionExample.name,
+    path: TwoDimensionRedirectionExample.path,
+    type: RouteType.cupertino(),
     builder: (context, state) => TwoDimensionRedirectionExample(),
   ),
-  GoRoute(
-    name: 'draggable-icons',
-    path: 'draggable-icons',
+  NamedRouteDef(
+    name: DraggableIconsExample.name,
+    path: DraggableIconsExample.path,
+    type: RouteType.cupertino(),
     builder: (context, state) => DraggableIconsExample(),
   ),
-  GoRoute(
-    name: 'pip',
-    path: 'pip',
+  NamedRouteDef(
+    name: PipExample.name,
+    path: PipExample.path,
+    type: RouteType.cupertino(),
     builder: (context, state) => PipExample(),
   ),
-  GoRoute(
-    name: 'flip-card',
-    path: 'flip-card',
+  NamedRouteDef(
+    name: FlipCardExample.name,
+    path: FlipCardExample.path,
+    type: RouteType.cupertino(),
     builder: (context, state) => FlipCardExample(),
   ),
 ];
 
-final router = GoRouter(
+final router = RootStackRouter.build(
   routes: [
-    GoRoute(
+    NamedRouteDef.shell(
+      name: 'Home',
       path: '/',
-      builder: (context, state) => SpringsterExample(),
-      routes: springsterRoutes,
+      type: RouteType.cupertino(),
+      children: springsterRoutes,
     ),
   ],
 );
@@ -60,9 +72,7 @@ class SpringsterExample extends StatelessWidget {
     return CupertinoPageScaffold(
       child: CustomScrollView(
         slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: const Text('Springster Examples'),
-          ),
+          CupertinoSliverNavigationBar(),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverToBoxAdapter(
@@ -70,26 +80,25 @@ class SpringsterExample extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 16,
                 children: [
-                  CupertinoButton.filled(
-                    onPressed: () => context.goNamed('one-dimension'),
-                    child: const Text('One Dimension'),
+                  buildDestinationButton(
+                    context,
+                    OneDimensionExample.name,
                   ),
-                  CupertinoButton.filled(
-                    onPressed: () =>
-                        context.goNamed('two-dimension-redirection'),
-                    child: const Text('Two Dimension Redirection'),
+                  buildDestinationButton(
+                    context,
+                    TwoDimensionRedirectionExample.name,
                   ),
-                  CupertinoButton.filled(
-                    onPressed: () => context.goNamed('draggable-icons'),
-                    child: const Text('Draggable Icons'),
+                  buildDestinationButton(
+                    context,
+                    DraggableIconsExample.name,
                   ),
-                  CupertinoButton.filled(
-                    onPressed: () => context.goNamed('pip'),
-                    child: const Text('Picture in Picture'),
+                  buildDestinationButton(
+                    context,
+                    PipExample.name,
                   ),
-                  CupertinoButton.filled(
-                    onPressed: () => context.goNamed('flip-card'),
-                    child: const Text('Flip Card'),
+                  buildDestinationButton(
+                    context,
+                    FlipCardExample.name,
                   ),
                 ],
               ),
@@ -97,6 +106,13 @@ class SpringsterExample extends StatelessWidget {
           )
         ],
       ),
+    );
+  }
+
+  Widget buildDestinationButton(BuildContext context, String name) {
+    return CupertinoButton.filled(
+      onPressed: () => context.navigateTo(NamedRoute(name)),
+      child: Text(name),
     );
   }
 }
