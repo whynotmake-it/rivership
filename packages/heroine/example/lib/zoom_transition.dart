@@ -263,7 +263,7 @@ class HeroineZoomRoute<T> extends PageRoute<T>
               child: Heroine(
                 tag: tag,
                 motion: SpringMotion(springNotifier.value),
-                flightShuttleBuilder: FadeThroughShuttleBuilder(),
+                flightShuttleBuilder: FadeShuttleBuilder(),
                 child: Card(
                   margin: EdgeInsets.zero,
                   clipBehavior: Clip.hardEdge,

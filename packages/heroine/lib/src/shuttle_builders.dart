@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
+import 'package:heroine/src/fade_between.dart';
 
 /// A convenience class that can be extended to create your own shuttle
 /// builders more easily.
@@ -155,20 +156,12 @@ class FadeShuttleBuilder extends HeroineShuttleBuilder {
     required double valueFromTo,
     required HeroFlightDirection flightDirection,
   }) =>
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          if (valueFromTo < 1)
-            Opacity(
-              opacity: 1 - valueFromTo.clamp(0, 1),
-              child: fromHero,
-            ),
-          if (valueFromTo > 0)
-            Opacity(
-              opacity: valueFromTo.clamp(0, 1),
-              child: toHero,
-            ),
-        ],
+      SizedBox.expand(
+        child: FadeBetween(
+          progress: valueFromTo.clamp(0, 1),
+          childAtZero: valueFromTo < 1 ? fromHero : null,
+          childAtOne: valueFromTo > 0 ? toHero : null,
+        ),
       );
 
   @override
