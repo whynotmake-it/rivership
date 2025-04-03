@@ -159,8 +159,8 @@ class FadeShuttleBuilder extends HeroineShuttleBuilder {
       SizedBox.expand(
         child: FadeBetween(
           progress: valueFromTo.clamp(0, 1),
-          childAtZero: valueFromTo < 1 ? fromHero : null,
-          childAtOne: valueFromTo > 0 ? toHero : null,
+          childAtZero: fromHero,
+          childAtOne: toHero,
         ),
       );
 

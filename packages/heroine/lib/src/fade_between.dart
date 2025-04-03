@@ -95,11 +95,17 @@ class _FadeBetweenRenderObject extends RenderProxyBox
     if (childAtZero != null) {
       final opacity = 1.0 - progress;
       if (opacity > 0.0) {
-        context.pushOpacity(
-          offset,
-          (opacity * 255).toInt(),
-          (context, offset) => context.paintChild(childAtZero!, offset),
+        context.canvas.saveLayer(
+          offset & size,
+          Paint()
+            ..color = Color.from(
+              alpha: opacity,
+              red: 1,
+              green: 1,
+              blue: 1,
+            ),
         );
+        context.paintChild(childAtZero!, offset);
       }
     }
 
@@ -107,13 +113,22 @@ class _FadeBetweenRenderObject extends RenderProxyBox
     if (childAtOne != null) {
       final opacity = progress;
       if (opacity > 0.0) {
-        context.pushOpacity(
-          offset,
-          (opacity * 255).toInt(),
-          (context, offset) => context.paintChild(childAtOne!, offset),
+        context.canvas.saveLayer(
+          offset & size,
+          Paint()
+            ..color = Color.from(
+              alpha: opacity,
+              red: 1,
+              green: 1,
+              blue: 1,
+            ),
         );
+        context.paintChild(childAtOne!, offset);
       }
     }
+
+    if (progress < 1) context.canvas.restore();
+    if (progress > 0) context.canvas.restore();
 
     // Restore the original layer
     context.canvas.restore();
