@@ -102,6 +102,10 @@ class _DragDismissableState extends State<DragDismissable> {
   Offset _offset = Offset.zero;
   Velocity _velocity = Velocity.zero;
 
+  /// Whether we are waiting to stop the user gesture once the simulation
+  /// completes.
+  bool _waitingToStopUserGesture = false;
+
   VoidCallback? get onDismiss =>
       widget.onDismiss ??
       (widget._popAsDismiss ? () => Navigator.maybePop(context) : null);
@@ -176,6 +180,11 @@ class _DragDismissableState extends State<DragDismissable> {
         motion: SpringMotion(widget.spring),
         converter: const OffsetMotionConverter(),
         value: _offset,
+        onAnimationStatusChanged: (value) {
+          if (!value.isAnimating && _waitingToStopUserGesture) {
+            _stopUserGesturePostFrame();
+          }
+        },
         builder: (context, value, child) {
           return Transform.translate(
             offset: value,
@@ -219,6 +228,8 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _cancel() {
     HeroinePageRoute.maybeOf<dynamic>(context)?.cancelDismiss();
+    _waitingToStopUserGesture = true;
+
     setState(() {
       _dragStartOffset = null;
       _offset = Offset.zero;
@@ -226,12 +237,11 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _end(DragEndDetails details) {
-    Navigator.of(context).didStopUserGesture();
-
     if (ModalRoute.of(context)?.popDisposition ==
             RoutePopDisposition.doNotPop &&
         widget._popAsDismiss) {
       _cancel();
+
       return;
     }
 
@@ -242,8 +252,18 @@ class _DragDismissableState extends State<DragDismissable> {
         _dragStartOffset = null;
         onDismiss?.call();
       });
+      _stopUserGesturePostFrame();
     } else {
       _cancel();
     }
+  }
+
+  void _stopUserGesturePostFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Navigator.of(context).userGestureInProgress) {
+        Navigator.of(context).didStopUserGesture();
+      }
+      _waitingToStopUserGesture = false;
+    });
   }
 }

@@ -209,7 +209,7 @@ class SecondDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: CupertinoColors.systemYellow,
       navigationBar: CupertinoNavigationBar(
         middle: Text('The deepest'),
       ),
@@ -250,27 +250,32 @@ class HeroineZoomRoute<T> extends PageRoute<T>
   bool get opaque => false;
 
   @override
-  Widget buildContent(BuildContext context) => DragDismissable(
-        child: ReactToHeroineDismiss(
-          builder: (context, progress, offset, child) => Transform.scale(
-            scale: 1 - progress * 0.2,
-            child: Heroine(
-              tag: tag,
-              adjustToRouteTransitionDuration: adjustSpringTimingToRoute.value,
-              spring: springNotifier.value,
-              flightShuttleBuilder: FadeThroughShuttleBuilder(),
-              child: Card(
-                margin: EdgeInsets.zero,
-                clipBehavior: Clip.hardEdge,
-                elevation: progress > 0 ? 24 : 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(progress > 0 ? 32 : 0),
+  Widget buildContent(BuildContext context) => HeroMode(
+        // Flutter heroes begone
+        enabled: false,
+        child: DragDismissable(
+          child: ReactToHeroineDismiss(
+            builder: (context, progress, offset, child) => Transform.scale(
+              scale: 1 - progress * 0.2,
+              child: Heroine(
+                tag: tag,
+                adjustToRouteTransitionDuration:
+                    adjustSpringTimingToRoute.value,
+                spring: springNotifier.value,
+                flightShuttleBuilder: FadeThroughShuttleBuilder(),
+                child: Card(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.hardEdge,
+                  elevation: progress > 0 ? 24 : 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(progress > 0 ? 32 : 0),
+                  ),
+                  child: child,
                 ),
-                child: child,
               ),
             ),
+            child: builder(context),
           ),
-          child: builder(context),
         ),
       );
 
@@ -288,7 +293,7 @@ class HeroineZoomRoute<T> extends PageRoute<T>
           Brightness.dark => CupertinoColors.white,
         };
         return ValueListenableBuilder<double>(
-          valueListenable: secondaryAnimation,
+          valueListenable: this.animation!,
           builder: (context, value, child) => ColorFiltered(
             colorFilter: ColorFilter.mode(
               overlayColor.withValues(alpha: value * .0),
