@@ -1,3 +1,9 @@
+## 1.0.0-dev.2
+
+ - **FEAT**: add directionality to bounded motion controllers.
+ - **FEAT**: update examples to use new springster motion APIs.
+ - **DOCS**: better deprecation documentation.
+
 ## 1.0.0-dev.1
 
  - **REFACTOR**: `MotionController` now uses a single `Ticker`, which should also improve performance.
