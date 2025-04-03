@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heroine/heroine.dart';
+import 'package:springster/springster.dart';
 
 void main() {
   group('HeroineController', () {
@@ -67,7 +68,7 @@ void main() {
     Widget buildPage2({
       bool isHeroine = true,
       HeroineShuttleBuilder? shuttleBuilder,
-      Spring? spring,
+      Motion? motion,
       bool hasNestedHeroine = false,
     }) {
       final nestedChild = Container(color: Colors.green);
@@ -88,7 +89,7 @@ void main() {
               child: isHeroine
                   ? Heroine(
                       tag: tag,
-                      spring: spring ?? const Spring(),
+                      motion: motion ?? const SpringMotion(Spring()),
                       flightShuttleBuilder:
                           shuttleBuilder ?? const FadeShuttleBuilder(),
                       child: child,
@@ -125,7 +126,9 @@ void main() {
       await tester.pumpWidget(widget);
 
       // push page 2
-      tester.push(buildPage2(spring: Spring.bouncy)).ignore();
+      tester
+          .push(buildPage2(motion: const SpringMotion(Spring.bouncy)))
+          .ignore();
 
       await tester.pumpFrames(widget, pumpDuration);
 
@@ -140,7 +143,9 @@ void main() {
 
       await tester.pumpWidget(widget);
       // push page 2
-      tester.push(buildPage2(spring: Spring.bouncy)).ignore();
+      tester
+          .push(buildPage2(motion: const SpringMotion(Spring.bouncy)))
+          .ignore();
 
       await tester.pumpFrames(widget, pumpDuration * 0.2);
 

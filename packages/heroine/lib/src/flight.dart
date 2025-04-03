@@ -38,14 +38,14 @@ class _HeroineFlight {
         .addStatusListener(_onProgressAnimationStatusChanged);
 
     centerController
-      ?..motion = SpringMotion(manifest.spring)
+      ?..motion = manifest.motion
       ..animateTo(
         manifest.toHeroLocation.center,
         withVelocity: fromHeroVelocity?.pixelsPerSecond,
       );
 
     sizeController
-      ?..motion = SpringMotion(manifest.spring)
+      ?..motion = manifest.motion
       ..animateTo(
         manifest.toHeroLocation.size,
       );
@@ -59,10 +59,10 @@ class _HeroineFlight {
         !newManifest.isUserGestureTransition) {
       centerController
         ?..value = newManifest.fromHeroLocation.center
-        ..motion = SpringMotion(manifest.spring);
+        ..motion = manifest.motion;
       sizeController
         ?..value = newManifest.fromHeroLocation.size
-        ..motion = SpringMotion(manifest.spring);
+        ..motion = manifest.motion;
     }
 
     manifest.dispose();

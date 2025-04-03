@@ -52,9 +52,7 @@ class ImageGridExample extends StatelessWidget {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => Heroine(
                     tag: index,
-                    spring: springNotifier.value,
-                    adjustToRouteTransitionDuration:
-                        adjustSpringTimingToRoute.value,
+                    motion: SpringMotion(springNotifier.value),
                     child: Cover(
                       index: index,
                       onPressed: () {
@@ -217,9 +215,7 @@ class DetailsPage extends StatelessWidget {
                   ),
                   child: Heroine(
                     tag: index,
-                    adjustToRouteTransitionDuration:
-                        adjustSpringTimingToRoute.value,
-                    spring: springNotifier.value,
+                    motion: SpringMotion(springNotifier.value),
                     flightShuttleBuilder: flightShuttleNotifier.value,
                     child: Cover(
                       index: index,
