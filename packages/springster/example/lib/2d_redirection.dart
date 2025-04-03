@@ -14,6 +14,9 @@ final motion = ValueNotifier<Motion>(SpringMotion(Spring()));
 class TwoDimensionRedirectionExample extends StatefulWidget {
   const TwoDimensionRedirectionExample({super.key});
 
+  static const name = 'Two Dimension Redirection';
+  static const path = 'two-dimension-redirection';
+
   @override
   State<TwoDimensionRedirectionExample> createState() =>
       _TwoDimensionRedirectionExampleState();
@@ -26,9 +29,7 @@ class _TwoDimensionRedirectionExampleState
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('2D with Dynamic Redirection'),
-      ),
+      navigationBar: CupertinoNavigationBar(),
       child: SafeArea(
         child: Column(
           children: [

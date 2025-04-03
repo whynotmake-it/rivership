@@ -14,6 +14,9 @@ final motion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
 class OneDimensionExample extends StatefulWidget {
   const OneDimensionExample({super.key});
 
+  static const name = 'One Dimension';
+  static const path = 'one-dimension';
+
   @override
   State<OneDimensionExample> createState() => _OneDimensionExampleState();
 }
@@ -24,9 +27,7 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('One Dimension'),
-      ),
+      navigationBar: CupertinoNavigationBar(),
       child: SafeArea(
         child: Column(
           children: [
