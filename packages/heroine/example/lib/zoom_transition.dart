@@ -3,11 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/settings_menus.dart';
+import 'package:springster/springster.dart';
 
 final springNotifier = ValueNotifier(Spring());
 final flightShuttleNotifier =
     ValueNotifier<HeroineShuttleBuilder>(const FadeThroughShuttleBuilder());
-final adjustSpringTimingToRoute = ValueNotifier(false);
 final detailsPageAspectRatio = ValueNotifier(1.0);
 
 final zoomTransitionRoutes = [
@@ -66,7 +66,6 @@ class ZoomTransitionExample extends StatelessWidget {
       listenable: Listenable.merge([
         springNotifier,
         flightShuttleNotifier,
-        adjustSpringTimingToRoute,
         detailsPageAspectRatio,
       ]),
       builder: (context, child) => ValueListenableBuilder<double>(
@@ -102,9 +101,7 @@ class ZoomTransitionExample extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => Heroine(
                       tag: index,
-                      spring: springNotifier.value,
-                      adjustToRouteTransitionDuration:
-                          adjustSpringTimingToRoute.value,
+                      motion: SpringMotion(springNotifier.value),
                       child: FilledButton(
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(
@@ -158,6 +155,7 @@ class DetailsPage extends StatelessWidget {
               );
             },
             child: CupertinoSliverNavigationBar(
+              previousPageTitle: ZoomTransitionExample.name,
               largeTitle: Text('Details $index'),
             ),
           ),
@@ -170,9 +168,7 @@ class DetailsPage extends StatelessWidget {
             child: Center(
               child: Heroine(
                 tag: SecondDetailsPage.name,
-                adjustToRouteTransitionDuration:
-                    adjustSpringTimingToRoute.value,
-                spring: springNotifier.value,
+                motion: SpringMotion(springNotifier.value),
                 flightShuttleBuilder: FadeShuttleBuilder(),
                 child: SizedBox(
                   width: 400,
@@ -211,7 +207,8 @@ class SecondDetailsPage extends StatelessWidget {
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemYellow,
       navigationBar: CupertinoNavigationBar(
-        middle: Text('The deepest'),
+        previousPageTitle: DetailsPage.name,
+        middle: Text(name),
       ),
       child: Center(
         child: Text('This is the end.'),
@@ -250,6 +247,12 @@ class HeroineZoomRoute<T> extends PageRoute<T>
   bool get opaque => false;
 
   @override
+  Simulation? createSimulation({required bool forward}) {
+    // TODO: implement createSimulation
+    return super.createSimulation(forward: forward);
+  }
+
+  @override
   Widget buildContent(BuildContext context) => HeroMode(
         // Flutter heroes begone
         enabled: false,
@@ -259,10 +262,8 @@ class HeroineZoomRoute<T> extends PageRoute<T>
               scale: 1 - progress * 0.2,
               child: Heroine(
                 tag: tag,
-                adjustToRouteTransitionDuration:
-                    adjustSpringTimingToRoute.value,
-                spring: springNotifier.value,
-                flightShuttleBuilder: FadeThroughShuttleBuilder(),
+                motion: SpringMotion(springNotifier.value),
+                flightShuttleBuilder: FadeShuttleBuilder(),
                 child: Card(
                   margin: EdgeInsets.zero,
                   clipBehavior: Clip.hardEdge,

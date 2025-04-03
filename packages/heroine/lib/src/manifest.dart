@@ -12,8 +12,7 @@ class _FlightManifest {
     required this.shuttleBuilder,
     required this.isUserGestureTransition,
     required this.isDiverted,
-    required this.spring,
-    required this.adjustToRouteTransitionDuration,
+    required this.motion,
   }) : assert(
           fromHero.widget.tag == toHero.widget.tag,
           'fromHero and toHero must have the same tag',
@@ -29,8 +28,7 @@ class _FlightManifest {
   final HeroineShuttleBuilder shuttleBuilder;
   final bool isUserGestureTransition;
   final bool isDiverted;
-  final bool adjustToRouteTransitionDuration;
-  final Spring spring;
+  final Motion motion;
 
   Object? get tag => fromHero.widget.tag;
 
@@ -41,10 +39,6 @@ class _FlightManifest {
   Duration get duration => direction == HeroFlightDirection.push
       ? toRoute.transitionDuration
       : fromRoute.transitionDuration;
-
-  Spring get adjustedSpring => adjustToRouteTransitionDuration
-      ? spring.copyWith(durationSeconds: duration.inMilliseconds / 1000)
-      : spring;
 
   Curve get curve => shuttleBuilder.curve;
 

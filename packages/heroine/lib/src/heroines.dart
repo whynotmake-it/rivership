@@ -18,10 +18,9 @@ class Heroine extends StatefulWidget {
     required this.child,
     required this.tag,
     super.key,
-    this.spring = const Spring(),
+    this.motion = const SpringMotion(Spring()),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
-    this.adjustToRouteTransitionDuration = false,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -41,10 +40,11 @@ class Heroine extends StatefulWidget {
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
-  /// The spring simulation to use for transitions towards this hero.
+  /// The motion to use for transitions towards this hero.
   ///
-  /// Defaults to [Spring], which is a smooth default without bounce.
-  final Spring spring;
+  /// Defaults to [SpringMotion] with a smooth spring,
+  /// which is a smooth default without bounce.
+  final Motion motion;
 
   ///
   final HeroPlaceholderBuilder? placeholderBuilder;
@@ -76,10 +76,6 @@ class Heroine extends StatefulWidget {
   /// * [HeroineShuttleBuilder]
   final HeroineShuttleBuilder? flightShuttleBuilder;
 
-  /// If true, [spring] will be adjusted to the duration of the route
-  /// transition.
-  final bool adjustToRouteTransitionDuration;
-
   @override
   State<Heroine> createState() => _HeroineState();
 }
@@ -103,14 +99,14 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     _disposeSpringControllers();
     _centerController = MotionController(
       vsync: this,
-      motion: SpringMotion(manifest.adjustedSpring),
+      motion: manifest.motion,
       initialValue: manifest.fromHeroLocation.center,
       converter: const OffsetMotionConverter(),
     )..addStatusListener(onFlightAnimationStatusChanged);
 
     _sizeController = MotionController(
       vsync: this,
-      motion: SpringMotion(manifest.adjustedSpring),
+      motion: manifest.motion,
       initialValue: manifest.fromHeroLocation.size,
       converter: const SizeMotionConverter(),
     );
@@ -553,9 +549,7 @@ class HeroineController extends NavigatorObserver {
                   const FadeShuttleBuilder(),
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
-              spring: toHero.widget.spring,
-              adjustToRouteTransitionDuration:
-                  toHero.widget.adjustToRouteTransitionDuration,
+              motion: toHero.widget.motion,
             );
 
       // Only proceed with a valid manifest. Otherwise abort the existing
@@ -731,11 +725,13 @@ class HeroineMode extends StatelessWidget {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(
-      FlagProperty('mode',
-          value: enabled,
-          ifTrue: 'enabled',
-          ifFalse: 'disabled',
-          showName: true),
+      FlagProperty(
+        'mode',
+        value: enabled,
+        ifTrue: 'enabled',
+        ifFalse: 'disabled',
+        showName: true,
+      ),
     );
   }
 }
