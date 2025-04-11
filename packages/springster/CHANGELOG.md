@@ -1,3 +1,13 @@
+## 1.0.0-dev.3
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: Add `HeroineMode`, an equivalent to `HeroMode` for Heroine.
+
+    Heroine does not respect `HeroMode` anymore, use `HeroineMode` instead.
+    This allows for better parallel use of Heroine and Hero in the same tree.
+
+
 ## 1.0.0-dev.2
 
  - **FEAT**: add directionality to bounded motion controllers.
