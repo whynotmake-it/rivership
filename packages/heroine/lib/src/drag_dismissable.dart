@@ -219,6 +219,7 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _cancel() {
     HeroinePageRoute.maybeOf<dynamic>(context)?.cancelDismiss();
+    _stopUserGesturePostFrame();
     setState(() {
       _dragStartOffset = null;
       _offset = Offset.zero;
@@ -226,12 +227,11 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _end(DragEndDetails details) {
-    Navigator.of(context).didStopUserGesture();
-
     if (ModalRoute.of(context)?.popDisposition ==
             RoutePopDisposition.doNotPop &&
         widget._popAsDismiss) {
       _cancel();
+
       return;
     }
 
@@ -242,8 +242,17 @@ class _DragDismissableState extends State<DragDismissable> {
         _dragStartOffset = null;
         onDismiss?.call();
       });
+      _stopUserGesturePostFrame();
     } else {
       _cancel();
     }
+  }
+
+  void _stopUserGesturePostFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Navigator.of(context).userGestureInProgress) {
+        Navigator.of(context).didStopUserGesture();
+      }
+    });
   }
 }

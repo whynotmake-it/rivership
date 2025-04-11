@@ -11,8 +11,11 @@ import 'package:springster/springster.dart';
 
 import 'main.dart';
 
-class HeroineExample extends StatelessWidget {
-  const HeroineExample({super.key});
+class ImageGridExample extends StatelessWidget {
+  const ImageGridExample({super.key});
+
+  static const name = 'Image Grid';
+  static const path = 'image-grid';
 
   @override
   Widget build(BuildContext context) {
@@ -49,15 +52,14 @@ class HeroineExample extends StatelessWidget {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => Heroine(
                     tag: index,
-                    spring: springNotifier.value,
-                    adjustToRouteTransitionDuration:
-                        adjustSpringTimingToRoute.value,
+                    motion: SpringMotion(springNotifier.value),
                     child: Cover(
                       index: index,
                       onPressed: () {
                         Navigator.push(
                           context,
                           MyCustomRoute(
+                            settings: RouteSettings(name: 'Details'),
                             fullscreenDialog: true,
                             title: 'Details',
                             builder: (context) => DetailsPage(index: index),
@@ -213,9 +215,7 @@ class DetailsPage extends StatelessWidget {
                   ),
                   child: Heroine(
                     tag: index,
-                    adjustToRouteTransitionDuration:
-                        adjustSpringTimingToRoute.value,
-                    spring: springNotifier.value,
+                    motion: SpringMotion(springNotifier.value),
                     flightShuttleBuilder: flightShuttleNotifier.value,
                     child: Cover(
                       index: index,

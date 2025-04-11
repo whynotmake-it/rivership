@@ -18,33 +18,33 @@ class Heroine extends StatefulWidget {
     required this.child,
     required this.tag,
     super.key,
-    this.spring = const Spring(),
+    this.motion = const SpringMotion(Spring()),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
-    this.adjustToRouteTransitionDuration = false,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
   /// the tag of a hero on a [PageRoute] that we're navigating to or from, then
-  /// a hero animation will be triggered.
+  /// a heroine animation will be triggered.
   ///
-  /// Make sure that the tags on both heroes are equal using `==`.
+  /// Make sure that the tags on both heroines are equal using `==`.
   final Object tag;
 
   /// The widget subtree that will "fly" from one route to another during a
   /// [Navigator] push or pop transition.
   ///
   /// The appearance of this subtree should be similar to the appearance of
-  /// the subtrees of any other heroes in the application with the same [tag].
+  /// the subtrees of any other heroines in the application with the same [tag].
   /// Changes in scale and aspect ratio work well in [Heroine] animations.
   ///
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
-  /// The spring simulation to use for transitions towards this hero.
+  /// The motion to use for transitions towards this hero.
   ///
-  /// Defaults to [Spring], which is a smooth default without bounce.
-  final Spring spring;
+  /// Defaults to [SpringMotion] with a smooth spring,
+  /// which is a smooth default without bounce.
+  final Motion motion;
 
   ///
   final HeroPlaceholderBuilder? placeholderBuilder;
@@ -76,10 +76,6 @@ class Heroine extends StatefulWidget {
   /// * [HeroineShuttleBuilder]
   final HeroineShuttleBuilder? flightShuttleBuilder;
 
-  /// If true, [spring] will be adjusted to the duration of the route
-  /// transition.
-  final bool adjustToRouteTransitionDuration;
-
   @override
   State<Heroine> createState() => _HeroineState();
 }
@@ -103,14 +99,14 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     _disposeSpringControllers();
     _centerController = MotionController(
       vsync: this,
-      motion: SpringMotion(manifest.adjustedSpring),
+      motion: manifest.motion,
       initialValue: manifest.fromHeroLocation.center,
       converter: const OffsetMotionConverter(),
     )..addStatusListener(onFlightAnimationStatusChanged);
 
     _sizeController = MotionController(
       vsync: this,
-      motion: SpringMotion(manifest.adjustedSpring),
+      motion: manifest.motion,
       initialValue: manifest.fromHeroLocation.size,
       converter: const SizeMotionConverter(),
     );
@@ -329,7 +325,7 @@ class HeroineController extends NavigatorObserver {
     }
   }
 
-  // All of the heroes that are currently in the overlay and in motion.
+  // All of the heroines that are currently in the overlay and in motion.
   // Indexed by the hero tag.
   final Map<Object, _HeroineFlight> _flights = <Object, _HeroineFlight>{};
 
@@ -553,9 +549,7 @@ class HeroineController extends NavigatorObserver {
                   const FadeShuttleBuilder(),
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
-              spring: toHero.widget.spring,
-              adjustToRouteTransitionDuration:
-                  toHero.widget.adjustToRouteTransitionDuration,
+              motion: toHero.widget.motion,
             );
 
       // Only proceed with a valid manifest. Otherwise abort the existing
@@ -690,7 +684,7 @@ extension on BuildContext {
             inviteHero(hero, tag);
           }
         }
-      } else if (widget is HeroMode && !widget.enabled) {
+      } else if (widget is HeroineMode && !widget.enabled) {
         return;
       }
       element.visitChildren(visitor);
@@ -698,5 +692,46 @@ extension on BuildContext {
 
     visitChildElements(visitor);
     return result;
+  }
+}
+
+/// Enables or disables [Heroine]es in the widget subtree.
+///
+///
+/// When [enabled] is false, all [Heroine] widgets in this subtree will not be
+/// involved in heroine animations.
+///
+/// When [enabled] is true (the default), [Heroine] widgets may be involved in
+/// heroine animations, as usual.
+class HeroineMode extends StatelessWidget {
+  /// Creates a widget that enables or disables [Heroine]es.
+  const HeroineMode({required this.child, super.key, this.enabled = true});
+
+  /// The subtree to place inside the [HeroineMode].
+  final Widget child;
+
+  /// Whether or not [Heroine]es are enabled in this subtree.
+  ///
+  /// If this property is false, the [Heroine]es in this subtree will not
+  /// animate on route changes. Otherwise, they will animate as usual.
+  ///
+  /// Defaults to true.
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => child;
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      FlagProperty(
+        'mode',
+        value: enabled,
+        ifTrue: 'enabled',
+        ifFalse: 'disabled',
+        showName: true,
+      ),
+    );
   }
 }
