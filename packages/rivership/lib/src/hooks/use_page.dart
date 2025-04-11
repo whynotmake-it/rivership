@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:rivership/rivership.dart';
 import 'package:rivership/src/hooks/use_keyed_state.dart';
-import 'package:rivership/src/hooks/use_on_listenable_change.dart';
 
 /// Returns the current page of a [PageController].
 ///
