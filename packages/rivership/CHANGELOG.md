@@ -1,3 +1,8 @@
+## 0.3.0-dev.3
+
+ - **FEAT**: add `useMotion` hook and derived hooks for different types.
+ - **DOCS**: added docs for `useMotion` to README.
+
 ## 0.3.0-dev.2
 
  - Update a dependency to the latest release.

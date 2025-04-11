@@ -1,3 +1,7 @@
+## 1.0.0-dev.3
+
+- Nothing significant changed.
+
 ## 1.0.0-dev.2
 
  - **FEAT**: add directionality to bounded motion controllers.

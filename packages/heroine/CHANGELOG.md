@@ -1,3 +1,15 @@
+## 0.5.0-dev.3
+
+> Note: This release has breaking changes.
+
+ - **DOCS**: improved zoom transition examples.
+ - **BREAKING** **FEAT**: Heroine now accepts any `Motion`, not just springs.
+ - **BREAKING** **FEAT**: Add `HeroineMode`, an equivalent to `HeroMode` for Heroine.
+
+    Heroine does not respect `HeroMode` anymore, use `HeroineMode` instead.
+    This allows for better parallel use of Heroine and Hero in the same tree.
+
+
 ## 0.5.0-dev.2
 
  - **FEAT**: support nested heroines if they are not part of the same transition.
