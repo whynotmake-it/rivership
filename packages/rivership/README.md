@@ -20,6 +20,27 @@ Rivership includes a diverse set of hooks, type extensions, and utilities that w
 
 ### Hooks
 
+#### `useMotion`
+A hook that animates a value using a [Motion].
+
+```dart
+final double value = useSingleMotion(
+    value: 100,
+    from: 0,
+    motion: const SpringMotion(Spring()),
+);
+
+final Offset offset = useOffsetMotion(
+    value: const Offset(100, 100),
+    from: const Offset(0, 0),
+    motion: const SpringMotion(Spring()),
+);
+```
+
+Whenever the `value` changes, the hook will animate to the new value using the provided `motion`.
+
+See the [springster docs](https://pub.dev/packages/springster) for more information on the different motions.
+
 #### `useTweenAnimation`
 A super helpful hook that lets you use the power of `TweenAnimationBuilder` without any nesting.
 

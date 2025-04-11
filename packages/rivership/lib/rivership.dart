@@ -19,6 +19,7 @@ export 'src/hooks/use_date_format.dart';
 export 'src/hooks/use_delayed.dart';
 export 'src/hooks/use_fixed_extent_scroll_controller.dart';
 export 'src/hooks/use_keyed_state.dart';
+export 'src/hooks/use_motion.dart';
 export 'src/hooks/use_page.dart';
 export 'src/hooks/use_tween_animation.dart';
 export 'src/widgets/animated_size_switcher.dart';
