@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:springster/springster.dart';
+import 'package:springster/src/simple_spring.dart';
 
 /// A widget that works like [Draggable] but with a spring animation on return.
 ///
@@ -22,7 +23,7 @@ class SpringDraggable<T extends Object> extends StatelessWidget {
     required this.data,
     required this.child,
     this.feedback,
-    this.spring = Spring.interactive,
+    this.spring = const SimpleSpring.withDamping(dampingFraction: 0.86),
     this.onlyReturnWhenCanceled = false,
     this.axis,
     this.childWhenDragging,
@@ -232,7 +233,7 @@ class SpringDraggable<T extends Object> extends StatelessWidget {
   final bool onlyReturnWhenCanceled;
 
   /// The spring to use for the return animation.
-  final Spring spring;
+  final SpringDescription spring;
 
   /// Whether the feedback widget should be built with the same constraints as
   /// [child].
@@ -246,7 +247,7 @@ class SpringDraggable<T extends Object> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MotionDraggable(
-      motion: SpringMotion(spring),
+      motion: Spring(spring),
       data: data,
       feedbackMatchesConstraints: feedbackMatchesConstraints,
       hitTestBehavior: hitTestBehavior,

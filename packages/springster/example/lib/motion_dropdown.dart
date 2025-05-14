@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:springster/springster.dart';
 
-const motionOptions = {
-  "Smooth Spring": SpringMotion(Spring()),
-  "Bouncy Spring": SpringMotion(Spring.bouncy),
-  "Snappy Spring": SpringMotion(Spring.snappy),
-  "Interactive Spring": SpringMotion(Spring.interactive),
+final motionOptions = {
+  "Smooth Spring": CupertinoMotion.smooth,
+  "Bouncy Spring": CupertinoMotion.bouncy,
+  "Snappy Spring": CupertinoMotion.snappy,
+  "Interactive Spring": CupertinoMotion.interactive,
   "Material 3 Ease": DurationAndCurve(
     duration: Durations.long2,
     curve: Easing.standard,

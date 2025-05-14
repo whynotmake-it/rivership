@@ -229,6 +229,9 @@ const mySpring = Spring.withDamping(
 
 ### Migrating to 1.0.0
 
+> **⚠️ Important:** If you're migrating from `SimpleSpring` and use negative bounce values (overdamped springs), please see the detailed migration guide in the `SimpleSpring` class documentation. The Flutter SDK's `SpringDescription.withDurationAndBounce` uses different mathematical formulas for negative bounce values, which may result in different spring behaviors.
+
+
 ### From SpringDraggable to MotionDraggable
 
 ```dart

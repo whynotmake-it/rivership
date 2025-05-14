@@ -3,6 +3,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:springster/springster.dart';
+import 'package:springster/src/simple_spring.dart';
 
 import '../util.dart';
 
@@ -12,7 +13,7 @@ void main() {
 
     late SpringSimulationController controller;
 
-    const spring = Spring();
+    const spring = SimpleSpring();
 
     tearDown(() {
       controller.dispose();
@@ -44,7 +45,7 @@ void main() {
         spring: spring,
         vsync: tester,
       );
-      const newSpring = Spring(durationSeconds: 0.1);
+      const newSpring = SimpleSpring(durationSeconds: 0.1);
       controller.spring = newSpring;
       expect(controller.spring, equals(newSpring));
     });
@@ -86,7 +87,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController(
-          spring: Spring.bouncy,
+          spring: const SimpleSpring(durationSeconds: 0.1, bounce: 0.1),
           vsync: tester,
         );
 
@@ -147,7 +148,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController(
-          spring: Spring.bouncy,
+          spring: const SimpleSpring(durationSeconds: 0.1, bounce: 0.1),
           vsync: tester,
           initialValue: 1,
         );
@@ -253,7 +254,7 @@ void main() {
         )..forward();
         await tester.pump();
 
-        const newSpring = Spring(durationSeconds: 0.1);
+        const newSpring = SimpleSpring(durationSeconds: 0.1);
         controller.spring = newSpring;
 
         expect(controller.spring, equals(newSpring));

@@ -5,7 +5,7 @@ import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/settings_menus.dart';
 import 'package:springster/springster.dart';
 
-final springNotifier = ValueNotifier(Spring());
+final springNotifier = ValueNotifier(CupertinoMotion.smooth);
 final flightShuttleNotifier =
     ValueNotifier<HeroineShuttleBuilder>(const FadeThroughShuttleBuilder());
 final detailsPageAspectRatio = ValueNotifier(1.0);
@@ -101,7 +101,7 @@ class ZoomTransitionExample extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => Heroine(
                       tag: index,
-                      motion: SpringMotion(springNotifier.value),
+                      motion: springNotifier.value,
                       child: FilledButton(
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(
@@ -168,7 +168,7 @@ class DetailsPage extends StatelessWidget {
             child: Center(
               child: Heroine(
                 tag: SecondDetailsPage.name,
-                motion: SpringMotion(springNotifier.value),
+                motion: springNotifier.value,
                 flightShuttleBuilder: FadeShuttleBuilder(),
                 child: SizedBox(
                   width: 400,
@@ -262,7 +262,7 @@ class HeroineZoomRoute<T> extends PageRoute<T>
               scale: 1 - progress * 0.2,
               child: Heroine(
                 tag: tag,
-                motion: SpringMotion(springNotifier.value),
+                motion: springNotifier.value,
                 flightShuttleBuilder: FadeShuttleBuilder(),
                 child: Card(
                   margin: EdgeInsets.zero,

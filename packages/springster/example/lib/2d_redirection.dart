@@ -9,7 +9,7 @@ void main() {
   ));
 }
 
-final motion = ValueNotifier<Motion>(SpringMotion(Spring()));
+final motion = ValueNotifier<Motion>(CupertinoMotion.smooth);
 
 class TwoDimensionRedirectionExample extends StatefulWidget {
   const TwoDimensionRedirectionExample({super.key});
