@@ -36,7 +36,7 @@ class _PipExampleState extends State<PipExample> {
                 alignment: alignment,
                 child: MotionDraggable<bool>(
                   data: true,
-                  motion: const SpringMotion(Spring.bouncy),
+                  motion: CupertinoMotion.bouncy,
                   child: Card(
                     color: Theme.of(context).colorScheme.primary,
                     child: SizedBox(

@@ -36,7 +36,7 @@ class SpringSimulationController2D extends BoundedMotionController<Double2D>
     super.initialValue = const (0, 0),
     super.behavior = AnimationBehavior.normal,
   }) : super(
-          motion: SpringMotion(spring),
+          motion: Spring(spring),
           converter: const Double2DMotionConverter(),
         );
 
@@ -67,11 +67,11 @@ class SpringSimulationController2D extends BoundedMotionController<Double2D>
       upperBound.y != double.infinity;
 
   @override
-  SpringDescription get spring => (motion as SpringMotion).spring;
+  SpringDescription get spring => (motion as Spring).description;
 
   @override
   set spring(SpringDescription newSpring) {
-    motion = SpringMotion(newSpring);
+    motion = Spring(newSpring);
   }
 
   @override

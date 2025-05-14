@@ -5,18 +5,73 @@ import 'package:flutter/widgets.dart';
 
 const _defaultDurationSeconds = 0.5;
 
-/// A persistent spring animation that is based on response
-/// and damping fraction.
+const _deprecationMessage =
+    'Use `Spring` and `CupertinoMotion` instead. See class '
+    'documentation for migration guide regarding negative bounce values.';
+
+/// A persistent spring animation that is based on a duration in seconds
+/// and a bounce, or damping fraction.
 ///
 /// Mostly adapted from
 /// [`fluid_animations`](https://pub.dev/packages/fluid_animations).
+///
+/// ## Migration to Flutter SDK's SpringDescription.withDurationAndBounce
+///
+/// This class is deprecated in favor of Flutter SDK's built-in
+/// `SpringDescription.withDurationAndBounce()`. However, there are important
+/// behavioral differences for negative bounce values (overdamped springs):
+///
+/// ### For non-negative bounce values (0 ≤ bounce ≤ 1):
+/// Both implementations produce identical results and can be migrated directly:
+/// ```dart
+/// // Old
+/// SimpleSpring(bounce: 0.5, durationSeconds: 1.0)
+///
+/// // New
+/// SpringDescription.withDurationAndBounce(
+///   bounce: 0.5,
+///   duration: Duration(seconds: 1)
+/// )
+/// ```
+///
+/// ### For negative bounce values (overdamped springs):
+/// The implementations use different mathematical formulas and produce
+/// different spring behaviors:
+///
+/// **SimpleSpring formula:**
+/// ```
+/// damping = 4π(1 - bounce) / duration
+/// ```
+///
+/// **Flutter SDK formula:**
+/// ```
+/// dampingRatio = 1 / (bounce + 1)  // for negative bounce
+/// damping = dampingRatio * 2 * sqrt(mass * stiffness)
+/// ```
+///
+/// **Example with bounce = -0.5, duration = 1s:**
+/// - SimpleSpring: `damping ≈ 18.85`
+/// - Flutter SDK: `damping ≈ 25.1`
+///
+/// This results in different settling behaviors for overdamped springs.
+/// If you rely on specific overdamped spring behavior, you may need to
+/// adjust your bounce values when migrating, or continue using this class
+/// until you can test and adjust the visual behavior.
+///
+/// ### Migration strategy:
+/// 1. For bounce ≥ 0: Direct migration with identical behavior
+/// 2. For bounce < 0: Test visual behavior and potentially adjust bounce values
+/// 3. Consider using `SpringDescription` with explicit mass/stiffness/damping
+///    if you need exact control over spring physics
+@Deprecated(_deprecationMessage)
 @immutable
-class Spring extends SpringDescription {
+class SimpleSpring extends SpringDescription {
   /// Creates a spring with the specified duration and bounce.
   ///
   /// A smooth spring with a response duration and no bounce is created by
   /// default.
-  const Spring({
+  @Deprecated(_deprecationMessage)
+  const SimpleSpring({
     this.durationSeconds = _defaultDurationSeconds,
     this.bounce = 0,
   })  : assert(
@@ -44,7 +99,8 @@ class Spring extends SpringDescription {
   ///
   /// A smooth spring with a response duration and no bounce is created by
   /// default.
-  const Spring.withDamping({
+  @Deprecated(_deprecationMessage)
+  const SimpleSpring.withDamping({
     double dampingFraction = 1.0,
     this.durationSeconds = _defaultDurationSeconds,
   })  : bounce = 1 - dampingFraction,
@@ -81,54 +137,28 @@ class Spring extends SpringDescription {
   /// It is effectively the inverse of the bounce amount.
   ///
   /// See also:
-  /// - [Spring.withDamping]
+  /// - [SimpleSpring.withDamping]
   double get dampingFraction => 1 - bounce;
-
-  /// An effectively instant spring.
-  static const instant = Spring(durationSeconds: 0);
-
-  /// A smooth spring with no bounce.
-  ///
-  /// This uses the [default values for iOS](https://developer.apple.com/documentation/swiftui/animation/default).
-  static const defaultIOS = Spring.withDamping(
-    durationSeconds: 0.55,
-  );
-
-  /// A spring with a predefined duration and higher amount of bounce.
-  static const bouncy = Spring.withDamping(
-    dampingFraction: 0.7,
-  );
-
-  /// A spring with a predefined response and small amount of bounce
-  /// that feels more snappy.
-  static const snappy = Spring.withDamping(dampingFraction: 0.85);
-
-  /// A spring animation with a lower response value,
-  /// intended for driving interactive animations.
-  static const interactive = Spring.withDamping(
-    dampingFraction: 0.86,
-    durationSeconds: 0.15,
-  );
 
   static const _instantStiffness = 10e15;
   static const _instantDamping = 10e3;
 
-  /// Creates a new [Spring] with the specified properties.
-  Spring copyWith({
+  /// Creates a new [SimpleSpring] with the specified properties.
+  SimpleSpring copyWith({
     double? bounce,
     double? durationSeconds,
   }) =>
-      Spring(
+      SimpleSpring(
         bounce: bounce ?? this.bounce,
         durationSeconds: durationSeconds ?? this.durationSeconds,
       );
 
-  /// Creates a new [Spring] with the specified properties.
-  Spring copyWithDamping({
+  /// Creates a new [SimpleSpring] with the specified properties.
+  SimpleSpring copyWithDamping({
     double? dampingFraction,
     double? durationSeconds,
   }) =>
-      Spring.withDamping(
+      SimpleSpring.withDamping(
         dampingFraction: dampingFraction ?? this.dampingFraction,
         durationSeconds: durationSeconds ?? this.durationSeconds,
       );
@@ -141,7 +171,7 @@ class Spring extends SpringDescription {
 
   @override
   bool operator ==(Object other) =>
-      other is Spring &&
+      other is SimpleSpring &&
       other.durationSeconds == durationSeconds &&
       other.bounce == bounce;
 

@@ -12,7 +12,7 @@ void main() {
 
     late SpringSimulationController2D controller;
 
-    const spring = Spring();
+    final spring = CupertinoMotion.smooth.description;
 
     tearDown(() {
       controller.dispose();
@@ -50,9 +50,10 @@ void main() {
         spring: spring,
         vsync: tester,
       );
-      const newSpring = Spring(durationSeconds: 0.1);
-      controller.spring = newSpring;
-      expect(controller.spring, equals(newSpring));
+      final newSpring = CupertinoMotion.smooth
+          .copyWithBounce(duration: const Duration(milliseconds: 100));
+      controller.spring = newSpring.description;
+      expect(controller.spring, equals(newSpring.description));
     });
 
     testWidgets('clamps value within bounds', (tester) async {
@@ -96,7 +97,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController2D(
-          spring: Spring.bouncy,
+          spring: CupertinoMotion.bouncy.description,
           vsync: tester,
         );
 
@@ -161,7 +162,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = SpringSimulationController2D(
-          spring: Spring.bouncy,
+          spring: CupertinoMotion.bouncy.description,
           vsync: tester,
           initialValue: const (1, 1),
         );
@@ -427,10 +428,11 @@ void main() {
         )..forward();
         await tester.pump();
 
-        const newSpring = Spring(durationSeconds: 0.1);
-        controller.spring = newSpring;
+        final newSpring = CupertinoMotion.smooth
+            .copyWithBounce(duration: const Duration(milliseconds: 100));
+        controller.spring = newSpring.description;
 
-        expect(controller.spring, equals(newSpring));
+        expect(controller.spring, equals(newSpring.description));
         expect(controller.isAnimating, isTrue);
         await tester.pumpAndSettle();
       });

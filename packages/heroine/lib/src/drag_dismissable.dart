@@ -20,7 +20,7 @@ class DragDismissable extends StatefulWidget {
     this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
-    this.spring = Spring.interactive,
+    this.motion = CupertinoMotion.interactive,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
@@ -36,7 +36,7 @@ class DragDismissable extends StatefulWidget {
     this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
-    this.spring = Spring.interactive,
+    this.motion = CupertinoMotion.interactive,
   }) : _popAsDismiss = false;
 
   /// The default for [threshold].
@@ -83,8 +83,8 @@ class DragDismissable extends StatefulWidget {
   /// The spring to use for when the dismissable is not dismissed and returns
   /// to its original position.
   ///
-  /// Defaults to [Spring.interactive].
-  final Spring spring;
+  /// Defaults to [CupertinoMotion.interactive].
+  final Motion motion;
 
   /// The child of the widget.
   final Widget child;
@@ -173,7 +173,7 @@ class _DragDismissableState extends State<DragDismissable> {
               : null,
       child: MotionBuilder(
         active: _dragStartOffset == null,
-        motion: SpringMotion(widget.spring),
+        motion: widget.motion,
         converter: const OffsetMotionConverter(),
         value: _offset,
         builder: (context, value, child) {

@@ -13,7 +13,7 @@ void main() {
 
     late SingleMotionController controller;
 
-    const spring = SpringMotion(Spring());
+    const spring = CupertinoMotion.smooth;
 
     tearDown(() {
       controller.dispose();
@@ -109,7 +109,8 @@ void main() {
         )..animateTo(1);
         await tester.pump();
 
-        const newSpring = SpringMotion(Spring(durationSeconds: 0.1));
+        final newSpring =
+            CupertinoMotion(duration: const Duration(milliseconds: 100));
         controller.motion = newSpring;
 
         expect(controller.motion, equals(newSpring));
@@ -141,7 +142,7 @@ void main() {
 
     late BoundedSingleMotionController controller;
 
-    const spring = SpringMotion(Spring());
+    const spring = CupertinoMotion.smooth;
 
     tearDown(() {
       controller.dispose();
@@ -164,7 +165,7 @@ void main() {
         motion: spring,
         vsync: tester,
       );
-      const newSpring = SpringMotion(Spring(durationSeconds: 0.1));
+      final newSpring = CupertinoMotion.smooth.copyWithBounce(bounce: 0.1);
       controller.motion = newSpring;
       expect(controller.motion, equals(newSpring));
     });
@@ -207,7 +208,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
-          motion: const SpringMotion(Spring.bouncy),
+          motion: CupertinoMotion.bouncy,
           vsync: tester,
         );
 
@@ -288,7 +289,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
-          motion: const SpringMotion(Spring.bouncy),
+          motion: CupertinoMotion.bouncy,
           vsync: tester,
           initialValue: 1,
         );
