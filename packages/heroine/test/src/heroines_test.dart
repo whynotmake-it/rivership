@@ -89,7 +89,7 @@ void main() {
               child: isHeroine
                   ? Heroine(
                       tag: tag,
-                      motion: motion ?? const SpringMotion(Spring()),
+                      motion: motion ?? CupertinoMotion.smooth,
                       flightShuttleBuilder:
                           shuttleBuilder ?? const FadeShuttleBuilder(),
                       child: child,
@@ -126,9 +126,7 @@ void main() {
       await tester.pumpWidget(widget);
 
       // push page 2
-      tester
-          .push(buildPage2(motion: const SpringMotion(Spring.bouncy)))
-          .ignore();
+      tester.push(buildPage2(motion: CupertinoMotion.bouncy)).ignore();
 
       await tester.pumpFrames(widget, pumpDuration);
 
@@ -143,9 +141,7 @@ void main() {
 
       await tester.pumpWidget(widget);
       // push page 2
-      tester
-          .push(buildPage2(motion: const SpringMotion(Spring.bouncy)))
-          .ignore();
+      tester.push(buildPage2(motion: CupertinoMotion.bouncy)).ignore();
 
       await tester.pumpFrames(widget, pumpDuration * 0.2);
 

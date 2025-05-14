@@ -18,7 +18,7 @@ class Heroine extends StatefulWidget {
     required this.child,
     required this.tag,
     super.key,
-    this.motion = const SpringMotion(Spring()),
+    this.motion = CupertinoMotion.smooth,
     this.placeholderBuilder,
     this.flightShuttleBuilder,
   });
@@ -42,7 +42,7 @@ class Heroine extends StatefulWidget {
 
   /// The motion to use for transitions towards this hero.
   ///
-  /// Defaults to [SpringMotion] with a smooth spring,
+  /// Defaults to [Spring] with a smooth spring,
   /// which is a smooth default without bounce.
   final Motion motion;
 

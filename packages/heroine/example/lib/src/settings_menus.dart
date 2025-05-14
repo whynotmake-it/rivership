@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:heroine/heroine.dart';
+import 'package:springster/springster.dart';
 
 class MainSettingsButton extends StatelessWidget {
   const MainSettingsButton({super.key});
@@ -21,31 +22,26 @@ class MainSettingsButton extends StatelessWidget {
       itemBuilder: (context) => [
         PullDownMenuTitle(title: Text('Select Spring')),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = Spring.bouncy,
+          onTap: () => springNotifier.value = CupertinoMotion.bouncy,
           title: 'Bouncy',
-          selected: springNotifier.value == Spring.bouncy,
+          selected: springNotifier.value == CupertinoMotion.bouncy,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = Spring.snappy,
+          onTap: () => springNotifier.value = CupertinoMotion.snappy,
           title: 'Snappy',
-          selected: springNotifier.value == Spring.snappy,
+          selected: springNotifier.value == CupertinoMotion.snappy,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = Spring.defaultIOS,
-          title: 'Default iOS',
-          selected: springNotifier.value == Spring.defaultIOS,
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = const Spring(),
+          onTap: () => springNotifier.value = CupertinoMotion.smooth,
           title: 'Smooth',
-          selected: springNotifier.value == const Spring(),
+          selected: springNotifier.value == CupertinoMotion.smooth,
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = Spring.interactive,
+          onTap: () => springNotifier.value = CupertinoMotion.interactive,
           title: 'Interactive',
           subtitle: 'Too fast - janky',
           icon: CupertinoIcons.exclamationmark_triangle,
-          selected: springNotifier.value == Spring.interactive,
+          selected: springNotifier.value == CupertinoMotion.interactive,
         ),
         PullDownMenuTitle(title: Text('Flight Shuttle Animation')),
         PullDownMenuItem.selectable(

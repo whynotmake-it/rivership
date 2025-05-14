@@ -33,7 +33,7 @@ import 'package:springster/springster.dart';
 /// * [DragTarget]
 /// * [LongPressDraggable]
 /// * [Motion]
-/// * [SpringMotion]
+/// * [Spring]
 class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Creates a widget that can be dragged to a [DragTarget].
   ///
@@ -42,7 +42,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     required this.data,
     required this.child,
     this.feedback,
-    this.motion = const SpringMotion(Spring.interactive),
+    this.motion = CupertinoMotion.interactive,
     this.onlyReturnWhenCanceled = false,
     this.axis,
     this.childWhenDragging,

@@ -81,7 +81,7 @@ class SpringBuilder extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleMotionBuilder(
       value: value,
-      motion: SpringMotion(spring),
+      motion: Spring(spring),
       builder: builder,
       active: simulate,
       from: from,
@@ -143,7 +143,7 @@ class SpringBuilder2D extends StatelessWidget {
   Widget build(BuildContext context) {
     return MotionBuilder(
       value: value,
-      motion: SpringMotion(spring),
+      motion: Spring(spring),
       from: from,
       active: simulate,
       onAnimationStatusChanged: onAnimationStatusChanged,

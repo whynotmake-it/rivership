@@ -52,7 +52,7 @@ class ImageGridExample extends StatelessWidget {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => Heroine(
                     tag: index,
-                    motion: SpringMotion(springNotifier.value),
+                    motion: springNotifier.value,
                     child: Cover(
                       index: index,
                       onPressed: () {
@@ -206,7 +206,7 @@ class DetailsPage extends StatelessWidget {
               child: Center(
                 child: SingleMotionBuilder(
                   value: detailsPageAspectRatio.value,
-                  motion: SpringMotion(Spring.bouncy),
+                  motion: CupertinoMotion.bouncy,
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(
@@ -215,7 +215,7 @@ class DetailsPage extends StatelessWidget {
                   ),
                   child: Heroine(
                     tag: index,
-                    motion: SpringMotion(springNotifier.value),
+                    motion: springNotifier.value,
                     flightShuttleBuilder: flightShuttleNotifier.value,
                     child: Cover(
                       index: index,

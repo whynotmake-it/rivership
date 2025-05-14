@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:springster/springster.dart';
+import 'package:springster/src/duration_spring.dart';
 
 import '../util.dart';
 
@@ -22,8 +23,7 @@ void main() {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
     late MotionController<Offset> controller;
-    const spring = Spring();
-    const motion = SpringMotion(spring);
+    const motion = CupertinoMotion.smooth;
     const converter = OffsetMotionConverter();
 
     tearDown(() {
@@ -48,10 +48,10 @@ void main() {
         converter: converter,
         initialValue: Offset.zero,
       );
-      const newSpring = Spring(durationSeconds: 0.1);
-      controller.motion = const SpringMotion(newSpring);
-      expect(controller.motion, isA<SpringMotion>());
-      expect((controller.motion as SpringMotion).spring, equals(newSpring));
+      const newSpring = DurationSpring(durationSeconds: 0.1);
+      controller.motion = const Spring(newSpring);
+      expect(controller.motion, isA<Spring>());
+      expect((controller.motion as Spring).description, equals(newSpring));
     });
 
     testWidgets('creates a single ticker', (tester) async {
@@ -197,11 +197,11 @@ void main() {
         )..animateTo(const Offset(1, 1));
         await tester.pump();
 
-        const newSpring = Spring(durationSeconds: 0.1);
-        controller.motion = const SpringMotion(newSpring);
+        const newSpring = DurationSpring(durationSeconds: 0.1);
+        controller.motion = const Spring(newSpring);
 
-        expect(controller.motion, isA<SpringMotion>());
-        expect((controller.motion as SpringMotion).spring, equals(newSpring));
+        expect(controller.motion, isA<Spring>());
+        expect((controller.motion as Spring).description, equals(newSpring));
         expect(controller.isAnimating, isTrue);
         await tester.pumpAndSettle();
       });
@@ -349,8 +349,7 @@ void main() {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
     late BoundedMotionController<Offset> controller;
-    const spring = Spring();
-    const motion = SpringMotion(spring);
+    const motion = CupertinoMotion.smooth;
     const converter = OffsetMotionConverter();
 
     tearDown(() {
@@ -419,7 +418,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = BoundedMotionController<Offset>(
-          motion: const SpringMotion(Spring.bouncy),
+          motion: CupertinoMotion.bouncy,
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
@@ -473,7 +472,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = BoundedMotionController<Offset>(
-          motion: const SpringMotion(Spring.bouncy),
+          motion: CupertinoMotion.bouncy,
           vsync: tester,
           converter: converter,
           initialValue: const Offset(1, 1),

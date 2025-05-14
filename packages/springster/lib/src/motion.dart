@@ -1,5 +1,6 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:springster/src/duration_spring.dart';
 import 'package:springster/src/simulations/curve_simulation.dart';
 
 /// {@template Motion}
@@ -34,8 +35,8 @@ abstract class Motion {
   /// Creates a motion with spring physics.
   ///
   /// See also:
-  ///   * [SpringMotion]
-  const factory Motion.spring(SpringDescription spring) = SpringMotion;
+  ///   * [Spring]
+  const factory Motion.spring(SpringDescription spring) = Spring;
 
   /// The tolerance for this motion.
   ///
@@ -165,41 +166,43 @@ class DurationAndCurve extends Motion {
 
 /// A motion based on spring physics.
 ///
-/// [SpringMotion] implements a motion that follows physical spring behavior,
+/// [Spring] implements a motion that follows physical spring behavior,
 /// using a [SpringDescription] to define its characteristics. This motion
 /// is useful for creating natural and responsive animations.
 ///
 /// Spring motions continue until they naturally settle based on physics,
 /// rather than completing in a predetermined duration.
 @immutable
-class SpringMotion extends Motion {
+class Spring extends Motion {
   /// Creates a motion with spring physics.
   ///
-  /// Parameter [spring] defines the physical characteristics of the spring.
-  const SpringMotion(this.spring, {this.snapToEnd = true});
+  /// Parameter [description] defines the physical characteristics of the
+  /// spring.
+  const Spring(this.description, {this.snapToEnd = true});
 
   /// The physical description of the spring.
   ///
   /// Contains parameters like mass, stiffness, and damping that define
   /// how the spring behaves.
-  final SpringDescription spring;
+  final SpringDescription description;
 
   /// Whether to snap to the end of the spring.
   ///
   /// If true, the spring will snap to the end of the motion when the simulation
   /// is done.
+  /// This ensures that the simulation will settle exactly to the target value.
   final bool snapToEnd;
 
   /// Whether this motion needs to settle.
   ///
-  /// Always returns true for [SpringMotion] because spring physics requires
+  /// Always returns true for [Spring] because spring physics requires
   /// the animation to continue until the spring naturally settles.
   @override
   bool get needsSettle => true;
 
   /// Whether this motion will settle without bounds.
   ///
-  /// Returns false for [SpringMotion] because spring physics may not
+  /// Returns false for [Spring] because spring physics may not
   /// necessarily terminate without bounds in all configurations.
   @override
   bool get unboundedWillSettle => false;
@@ -207,7 +210,7 @@ class SpringMotion extends Motion {
   /// Creates a simulation for this motion.
   ///
   /// Returns a [SpringSimulation] that follows the physical behavior
-  /// defined by the [spring] description.
+  /// defined by the [description] description.
   ///
   /// Parameters:
   ///   * [start] - The starting value for the simulation, defaults to 0.
@@ -221,7 +224,7 @@ class SpringMotion extends Motion {
     double velocity = 0,
   }) =>
       SpringSimulation(
-        spring,
+        description,
         start,
         end,
         velocity,
@@ -229,16 +232,16 @@ class SpringMotion extends Motion {
         snapToEnd: snapToEnd,
       );
 
-  /// Equality operator for [SpringMotion].
+  /// Equality operator for [Spring].
   ///
-  /// Two [SpringMotion] instances are considered equal if their [spring]
+  /// Two [Spring] instances are considered equal if their [description]
   /// descriptions have the same damping, mass, and stiffness values.
   @override
   bool operator ==(Object other) {
-    if (other is SpringMotion) {
-      return spring.damping == other.spring.damping &&
-          spring.mass == other.spring.mass &&
-          spring.stiffness == other.spring.stiffness;
+    if (other is Spring) {
+      return description.damping == other.description.damping &&
+          description.mass == other.description.mass &&
+          description.stiffness == other.description.stiffness;
     }
     return false;
   }
@@ -246,9 +249,113 @@ class SpringMotion extends Motion {
   /// Returns a hash code for this object.
   @override
   int get hashCode =>
-      Object.hash(spring.damping, spring.mass, spring.stiffness);
+      Object.hash(description.damping, description.mass, description.stiffness);
 
   /// Returns a string representation of this object.
   @override
-  String toString() => 'Spring(spring: $spring)';
+  String toString() => 'Spring(spring: $description)';
+
+  /// Creates a new [Spring] with the same properties as this one, but with
+  /// the specified [description] and [snapToEnd].
+  Spring copyWith({
+    SpringDescription? description,
+    bool? snapToEnd,
+  }) =>
+      Spring(
+        description ?? this.description,
+        snapToEnd: snapToEnd ?? this.snapToEnd,
+      );
+}
+
+/// A collection of spring motions that are commonly used in Cupertino apps.
+///
+/// These motions are based on the [DurationSpring] class and are designed to
+/// match the behavior of the springs used in Cupertino apps.
+class CupertinoMotion extends Spring {
+  /// Creates a new [CupertinoMotion] with the specified duration and bounce.
+  ///
+  /// The duration is the duration of the spring motion, and the bounce is the
+  /// amount of bounce in the spring motion.
+  ///
+  /// The default duration is 500 milliseconds, and the default bounce is 0.
+  CupertinoMotion({
+    Duration duration = const Duration(milliseconds: 500),
+    double bounce = 0,
+    bool snapToEnd = true,
+  }) : this._(
+          DurationSpring(
+            durationSeconds: duration.toFractionalSeconds(),
+            bounce: bounce,
+          ),
+          snapToEnd: snapToEnd,
+        );
+
+  const CupertinoMotion._(
+    DurationSpring super.description, {
+    super.snapToEnd,
+  }) : super();
+
+  @override
+  DurationSpring get description => super.description as DurationSpring;
+
+  /// A smooth spring with no bounce.
+  ///
+  /// This uses the [default values for iOS](https://developer.apple.com/documentation/swiftui/animation/default).
+  static const standard =
+      CupertinoMotion._(DurationSpring.withDamping(durationSeconds: 0.55));
+
+  /// A spring with a predefined duration and higher amount of bounce.
+  static const bouncy = CupertinoMotion._(DurationSpring(bounce: 0.3));
+
+  /// A snappy spring with a damping fraction of 0.85.
+  static const snappy =
+      CupertinoMotion._(DurationSpring.withDamping(dampingFraction: 0.85));
+
+  /// A smooth spring with a predefined duration and no bounce.
+  static const smooth = CupertinoMotion._(DurationSpring());
+
+  /// A spring animation with a lower response value,
+  /// intended for driving interactive animations.
+  static const interactive = CupertinoMotion._(
+    DurationSpring.withDamping(
+      dampingFraction: 0.86,
+      durationSeconds: 0.15,
+    ),
+  );
+
+  /// Creates a new [CupertinoMotion] with the same properties as this one,
+  /// but with a different damping fraction, and optionally a different
+  /// duration.
+  CupertinoMotion withDamping({
+    double? dampingFraction,
+    Duration? duration,
+    bool? snapToEnd,
+  }) =>
+      CupertinoMotion._(
+        description.copyWithDamping(
+          dampingFraction: dampingFraction,
+          durationSeconds: duration?.toFractionalSeconds(),
+        ),
+        snapToEnd: snapToEnd ?? this.snapToEnd,
+      );
+
+  /// Creates a new [CupertinoMotion] with the same properties as this one,
+  /// but with a different bounce, and optionally a different duration.
+  CupertinoMotion withBounce({
+    double? bounce,
+    Duration? duration,
+    bool? snapToEnd,
+  }) =>
+      CupertinoMotion._(
+        description.copyWith(
+          bounce: bounce,
+          durationSeconds: duration?.toFractionalSeconds(),
+        ),
+        snapToEnd: snapToEnd ?? this.snapToEnd,
+      );
+}
+
+extension on Duration {
+  double toFractionalSeconds() =>
+      inMicroseconds / Duration.microsecondsPerSecond;
 }

@@ -11,7 +11,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder(
           value: 10,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -25,7 +25,7 @@ void main() {
       double? capturedValue;
       final widget = SpringBuilder(
         value: 0,
-        spring: const Spring(),
+        spring: CupertinoMotion.smooth.description,
         builder: (context, value, child) {
           capturedValue = value;
           return const SizedBox();
@@ -38,7 +38,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder(
           value: 100,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -58,7 +58,7 @@ void main() {
         SpringBuilder(
           value: 100,
           from: 0,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -78,7 +78,7 @@ void main() {
         SpringBuilder(
           value: 100,
           from: 0,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -96,7 +96,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder(
           value: 0,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -108,7 +108,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder(
           value: 100,
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -128,7 +128,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder2D(
           value: (10.0, 20.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -144,7 +144,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder2D(
           value: (0.0, 0.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -155,7 +155,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder2D(
           value: (100.0, 200.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -177,7 +177,7 @@ void main() {
         SpringBuilder2D(
           value: (100.0, 200.0),
           from: (0.0, 0.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -198,7 +198,7 @@ void main() {
         SpringBuilder2D(
           value: (0.0, 0.0),
           from: (0.0, 100.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -220,7 +220,7 @@ void main() {
         SpringBuilder2D(
           value: (100.0, 200.0),
           from: (0.0, 0.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -239,7 +239,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder2D(
           value: (0.0, 0.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -251,7 +251,7 @@ void main() {
       await tester.pumpWidget(
         SpringBuilder2D(
           value: (100.0, 200.0),
-          spring: const Spring(),
+          spring: CupertinoMotion.smooth.description,
           simulate: false,
           builder: (context, value, child) {
             capturedValue = value;

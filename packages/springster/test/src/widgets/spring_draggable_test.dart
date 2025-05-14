@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spot/spot.dart';
 import 'package:springster/springster.dart';
+import 'package:springster/src/duration_spring.dart';
 
 void main() {
   group('SpringDraggable', () {
@@ -164,7 +165,7 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: SpringDraggable<String>(
-              spring: const Spring(),
+              spring: const DurationSpring(),
               data: 'test',
               feedback: buildFeedback(),
               child: buildChild(),
@@ -219,7 +220,7 @@ void main() {
               Align(
                 alignment: Alignment.topLeft,
                 child: SpringDraggable<String>(
-                  spring: const Spring(),
+                  spring: const DurationSpring(durationSeconds: .1),
                   onlyReturnWhenCanceled: true,
                   data: 'test',
                   feedback: buildFeedback(),

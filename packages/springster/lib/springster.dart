@@ -11,7 +11,6 @@ export 'src/legacy/spring_simulation_controller_2d.dart'
     hide Double2DMotionConverter;
 export 'src/motion.dart';
 export 'src/motion_converter.dart';
-export 'src/spring.dart';
 export 'src/spring_curve.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';

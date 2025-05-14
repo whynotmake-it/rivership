@@ -159,7 +159,7 @@ class _FlipCardWithSpringState extends State<_FlipCardWithSpring>
 
     _controller = SingleMotionController(
       vsync: this,
-      motion: Motion.spring(Spring.bouncy),
+      motion: CupertinoMotion.bouncy,
     );
   }
 

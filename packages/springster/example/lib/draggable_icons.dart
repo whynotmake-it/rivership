@@ -9,7 +9,7 @@ void main() async {
   ));
 }
 
-final motion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
+final motion = ValueNotifier<Motion>(CupertinoMotion.bouncy);
 
 class DraggableIconsExample extends StatelessWidget {
   const DraggableIconsExample({super.key});

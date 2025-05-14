@@ -29,7 +29,7 @@ class SpringSimulationController extends BoundedSingleMotionController
     super.upperBound = 1,
     super.behavior = AnimationBehavior.normal,
     super.initialValue = 0,
-  }) : super(motion: SpringMotion(spring));
+  }) : super(motion: Spring(spring));
 
   /// Creates an unbounded [SpringSimulationController].
   ///
@@ -42,17 +42,17 @@ class SpringSimulationController extends BoundedSingleMotionController
     super.behavior = AnimationBehavior.preserve,
     super.initialValue = 0,
   }) : super(
-          motion: SpringMotion(spring),
+          motion: Spring(spring),
           lowerBound: double.negativeInfinity,
           upperBound: double.infinity,
         );
 
   @override
-  SpringDescription get spring => (super.motion as SpringMotion).spring;
+  SpringDescription get spring => (super.motion as Spring).description;
 
   @override
   set spring(SpringDescription value) {
-    super.motion = SpringMotion(value);
+    super.motion = Spring(value);
   }
 
   @override

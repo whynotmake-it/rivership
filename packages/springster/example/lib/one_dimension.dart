@@ -9,7 +9,7 @@ void main() {
   ));
 }
 
-final motion = ValueNotifier<Motion>(SpringMotion(Spring.bouncy));
+final motion = ValueNotifier<Motion>(CupertinoMotion.bouncy);
 
 class OneDimensionExample extends StatefulWidget {
   const OneDimensionExample({super.key});
