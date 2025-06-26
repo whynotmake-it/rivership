@@ -2,7 +2,7 @@
 
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 void main() {
   group('SpringCurve', () {

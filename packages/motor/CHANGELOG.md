@@ -1,92 +1,28 @@
-## 2.0.0
-
-> Note: This release has breaking changes.
-
- - **BREAKING** **REFACTOR**: package renamed from `motor` to `motor` to better reflect its role as a unified motion system.
- - **BREAKING** **REFACTOR**: remove legacy `Spring` widgets. Use `Motion` widgets instead.
- - **BREAKING** **REFACTOR**: completely removed all legacy Spring classes including `SpringBuilder`, `SpringDraggable`, `SpringSimulationController`, `SpringSimulationController2D`, and `SimpleSpring`.
- - **DOCS**: updated README with comprehensive migration guide for 2.0.0.
- - **DOCS**: updated all examples to use current `CupertinoMotion` and `Motion.spring()` APIs.
- - **DOCS**: rebranded documentation to emphasize unified motion system rather than just spring animations.
-
-## 1.0.0-dev.3
-
-- Nothing significant changed.
-
-## 1.0.0-dev.2
-
- - **FEAT**: add directionality to bounded motion controllers.
- - **FEAT**: update examples to use new motor motion APIs.
- - **DOCS**: better deprecation documentation.
-
-## 1.0.0-dev.1
-
- - **REFACTOR**: `MotionController` now uses a single `Ticker`, which should also improve performance.
- - **FIX**: broken return animation in `Motion|SpringDraggable`.
- - **FEAT**: update example fidelity.
- - **FEAT**: support separate motion per dimension.
- - **DOCS**: fixed `SpringMotion` constructor in README.
-
 ## 1.0.0-dev.0
 
-> Note: This release has breaking changes.
+Initial release of Motor - a unified motion system for Flutter.
 
- - **DOCS**: update README and add migration guide.
- - **BREAKING** **FEAT**: deprecate Spring-based APIs and use the new APIs internally.
- - **BREAKING** **FEAT**: add `MotionConverter` API to simplify the usage of controllers.
- - **BREAKING** **FEAT**: replace direct Spring-based APIs with new Motion type.
+### Features 🎯
 
-## 0.4.0+1
+- **Unified Motion API** - One consistent interface for springs, curves, and custom motions
+- **Physics & Duration Based** - Choose between spring physics or traditional duration/curve animations  
+- **Apple Design System** - Built-in CupertinoMotion presets matching iOS animations
+- **Multi-dimensional** - Animate complex types like Offset, Size, and Rect with independent physics per dimension
+- **Interactive Widgets** - Motion-driven draggable widgets with natural return animations
+- **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
 
- - **FIX**: `SpringSimulationController` doesn't update values if `from:` and `to:` are the same.
+### Core Components
 
-## 0.4.0
+- **Motion System**: `Motion`, `Spring`, `DurationAndCurve`, `CupertinoMotion`
+- **Widgets**: `SingleMotionBuilder`, `MotionBuilder`, `MotionDraggable`
+- **Controllers**: `MotionController`, `SingleMotionController`, `BoundedMotionController`
+- **Converters**: `MotionConverter`, `OffsetMotionConverter`, `SizeMotionConverter`, `RectMotionConverter`, `AlignmentMotionConverter`
+- **Utilities**: `SpringCurve`, `SpringDescriptionExtension`
 
-> Note: This release has breaking changes.
+### CupertinoMotion Presets
 
- - **BREAKING** **REFACTOR**: rename `SimpleSpring` to `Spring`.
- - **BREAKING** **FEAT**: `Spring` now supports value equality.
-
-## 0.3.0
-
-> Note: This release has breaking changes.
-
- - **FEAT**: implement SpringSimulationControllerBase interface for spring controllers.
- - **DOCS**: add Bluesky badge to README files across packages.
- - **BREAKING** **REFACTOR**: unified `SpringSimulationController` interface to match `AnimationController` more closely.
- - **BREAKING** **FEAT**: `.stop()` will now settle the spring simulation instead of interrupting it by default (#60).
-
-## 0.2.1
-
- - **FIX**: status listener on 2D controller.
- - **FEAT**: update README files with example links.
- - **FEAT**: added unified example to monorepo.
- - **FEAT**: add onAnimationStatusChanged callback to SpringBuilder and SpringBuilder2D.
- - **DOCS**: fixed example links.
-
-## 0.2.0
-
-> Note: This release has breaking changes.
-
- - **FIX**: fixed missing updates when animating only the y dimension in 2D.
- - **FEAT**: add 'from' parameter to SpringBuilder and SpringBuilder2D for initial animation value.
- - **DOCS**: enhance documentation for SpringBuilder and SpringBuilder2D using templates.
- - **BREAKING** **FEAT**: removed `.smooth` constant in `SimpleSpring` since it is the default anyway.
- - **BREAKING** **FEAT**: removed `addBounce` in favor of `copyWith` methods on `SimpleSpring`.
- - **BREAKING** **FEAT**: renamed duration parameter in `SimpleSpring` to specify unit.
-
-## 0.1.1+1
-
- - **FIX**: update README to reflect correct Pub version for Motor.
-
-## 0.1.1
-
- - **FIX**: velocity calculation.
- - **FEAT**: polish in draggable.
- - **FEAT**: added `SpringDraggable`.
- - **FEAT**: add motor package.
- - **DOCS**: updated README.
-
-## 0.1.0
-
-- feat: initial commit 🎉
+- `CupertinoMotion.standard` - Default iOS spring with smooth motion
+- `CupertinoMotion.smooth` - Smooth spring animation with no bounce
+- `CupertinoMotion.bouncy` - Spring with higher bounce for playful interactions
+- `CupertinoMotion.snappy` - Snappy spring with small bounce that feels responsive
+- `CupertinoMotion.interactive` - Interactive spring with lower response for user-driven animations

@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 void main() async {
   runApp(CupertinoApp(

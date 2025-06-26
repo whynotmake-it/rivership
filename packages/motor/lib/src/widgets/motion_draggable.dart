@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 /// A widget that works like [Draggable] but with a [Motion]-based animation
 /// upon return.

@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 final ValueNotifier<bool> active = ValueNotifier(true);
 

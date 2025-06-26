@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 void main() async {
   final colorScheme = ColorScheme.fromSeed(seedColor: Colors.blue);

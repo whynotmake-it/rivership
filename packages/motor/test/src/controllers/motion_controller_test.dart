@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 import '../util.dart';
 

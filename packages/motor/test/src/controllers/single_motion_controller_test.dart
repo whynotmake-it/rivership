@@ -3,7 +3,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 import '../util.dart';
 
@@ -205,8 +205,6 @@ void main() {
         expect(controller.value, moreOrLessEquals(1, epsilon: error));
       });
 
-
-
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
@@ -266,8 +264,6 @@ void main() {
     });
 
     group('.reverse', () {
-
-
       testWidgets('animates to lower bound', (tester) async {
         controller = BoundedSingleMotionController(
           motion: spring,

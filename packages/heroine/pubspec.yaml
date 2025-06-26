@@ -15,7 +15,7 @@ dependencies:
   equatable: ^2.0.7
   flutter:
     sdk: flutter
-  motor: ^2.0.0
+  motor: ^1.0.0-dev.0
 
 dev_dependencies:
   flutter_test:

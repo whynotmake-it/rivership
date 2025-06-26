@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pull_down_button/pull_down_button.dart';
-import 'package:motor.dart';
+import 'package:motor/motor.dart';
 
 final motionOptions = {
   "Smooth Spring": CupertinoMotion.smooth,
