@@ -1,17 +1,15 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:springster/springster.dart';
 
 void main() {
-  group('SpringBuilder', () {
+  group('SingleMotionBuilder', () {
     testWidgets('builds with initial value', (tester) async {
       double? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 10,
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -23,9 +21,9 @@ void main() {
 
     testWidgets('animates to new value', (tester) async {
       double? capturedValue;
-      final widget = SpringBuilder(
+      final widget = SingleMotionBuilder(
         value: 0,
-        spring: CupertinoMotion.smooth.description,
+        motion: Spring(CupertinoMotion.smooth.description),
         builder: (context, value, child) {
           capturedValue = value;
           return const SizedBox();
@@ -36,9 +34,9 @@ void main() {
       expect(capturedValue, equals(0.0));
 
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 100,
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -55,10 +53,10 @@ void main() {
     testWidgets('starts at from value', (tester) async {
       double? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 100,
           from: 0,
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -72,14 +70,14 @@ void main() {
       expect(capturedValue, closeTo(100.0, 0.001));
     });
 
-    testWidgets('stays at from value if simulate is false', (tester) async {
+    testWidgets('stays at from value if active is false', (tester) async {
       double? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 100,
           from: 0,
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -91,13 +89,13 @@ void main() {
       expect(capturedValue, equals(0.0));
     });
 
-    testWidgets('respects simulate flag', (tester) async {
+    testWidgets('respects active flag', (tester) async {
       double? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 0,
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -106,10 +104,10 @@ void main() {
       );
 
       await tester.pumpWidget(
-        SpringBuilder(
+        SingleMotionBuilder(
           value: 100,
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -122,13 +120,17 @@ void main() {
     });
   });
 
-  group('SpringBuilder2D', () {
+  group('MotionBuilder', () {
     testWidgets('builds with initial value', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (10.0, 20.0),
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -142,9 +144,13 @@ void main() {
     testWidgets('animates to new value', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (0.0, 0.0),
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -153,9 +159,13 @@ void main() {
       );
 
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (100.0, 200.0),
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -174,10 +184,14 @@ void main() {
     testWidgets('starts at from value', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (100.0, 200.0),
           from: (0.0, 0.0),
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -195,10 +209,14 @@ void main() {
     testWidgets('animates 1d from in y direction', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (0.0, 0.0),
           from: (0.0, 100.0),
-          spring: CupertinoMotion.smooth.description,
+          motion: Spring(CupertinoMotion.smooth.description),
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -214,14 +232,18 @@ void main() {
       expect(capturedValue?.$2, closeTo(0.0, 0.001));
     });
 
-    testWidgets('stays at from value if simulate is false', (tester) async {
+    testWidgets('stays at from value if active is false', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (100.0, 200.0),
           from: (0.0, 0.0),
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -234,13 +256,17 @@ void main() {
       expect(capturedValue?.$2, equals(0.0));
     });
 
-    testWidgets('respects simulate flag', (tester) async {
+    testWidgets('respects active flag', (tester) async {
       (double x, double y)? capturedValue;
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (0.0, 0.0),
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();
@@ -249,10 +275,14 @@ void main() {
       );
 
       await tester.pumpWidget(
-        SpringBuilder2D(
+        MotionBuilder(
           value: (100.0, 200.0),
-          spring: CupertinoMotion.smooth.description,
-          simulate: false,
+          motion: Spring(CupertinoMotion.smooth.description),
+          active: false,
+          converter: MotionConverter<(double, double)>(
+            normalize: (value) => [value.$1, value.$2],
+            denormalize: (values) => (values[0], values[1]),
+          ),
           builder: (context, value, child) {
             capturedValue = value;
             return const SizedBox();

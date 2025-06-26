@@ -7,7 +7,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:springster/springster.dart';
-import 'package:springster/src/simple_spring.dart';
 
 import '../util.dart';
 
@@ -50,8 +49,10 @@ void main() {
         converter: converter,
         initialValue: Offset.zero,
       );
-      const newSpring = SimpleSpring(durationSeconds: 0.1);
-      controller.motion = const Spring(newSpring);
+      final newSpring = SpringDescription.withDurationAndBounce(
+        duration: const Duration(milliseconds: 100),
+      );
+      controller.motion = Spring(newSpring);
       expect(controller.motion, isA<Spring>());
       expect((controller.motion as Spring).description, equals(newSpring));
     });
@@ -187,6 +188,108 @@ void main() {
         );
         await tester.pumpAndSettle();
       });
+
+      // regression: https://github.com/whynotmake-it/rivership/issues/76
+      testWidgets(
+          'animates with from parameter correctly when x values are identical',
+          (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        // Track actual values during animation to debug
+        final values = <Offset>[];
+        controller.addListener(() {
+          values.add(controller.value);
+        });
+
+        // Use the exact values from the bug report
+        unawaited(
+          controller.animateTo(
+            const Offset(100, 400), // Same x as from value
+            from: const Offset(100, 100),
+          ),
+        );
+
+        await tester.pump();
+
+        // Check first value after animation starts
+        expect(values.isNotEmpty, isTrue);
+        expect(values.first.dx, equals(100));
+        expect(values.first.dy, equals(100));
+
+        // Check intermediate values
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value.dx, equals(100));
+        expect(controller.value.dy, inExclusiveRange(100, 400));
+
+        await tester.pumpAndSettle();
+        expect(controller.value.dx, equals(100));
+        expect(controller.value.dy, moreOrLessEquals(400, epsilon: error));
+
+        // Check all recorded values to ensure x stayed at 100
+        for (final recordedValue in values) {
+          expect(
+            recordedValue.dx,
+            equals(100),
+            reason: 'x changed from 100 during animation',
+          );
+        }
+      });
+
+      // regression: https://github.com/whynotmake-it/rivership/issues/76
+      testWidgets(
+          'animates with from parameter correctly when y values are identical',
+          (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        // Track actual values during animation to debug
+        final values = <Offset>[];
+        controller.addListener(() {
+          values.add(controller.value);
+        });
+
+        // Use the exact values from the bug report
+        unawaited(
+          controller.animateTo(
+            const Offset(400, 100), // Same y as from value
+            from: const Offset(100, 100),
+          ),
+        );
+
+        await tester.pump();
+
+        // Check first value after animation starts
+        expect(values.isNotEmpty, isTrue);
+        expect(values.first.dx, equals(100));
+        expect(values.first.dy, equals(100));
+
+        // Check intermediate values
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value.dx, inExclusiveRange(100, 400));
+        expect(controller.value.dy, equals(100));
+
+        await tester.pumpAndSettle();
+        expect(controller.value.dx, moreOrLessEquals(400, epsilon: error));
+        expect(controller.value.dy, equals(100));
+
+        // Check all recorded values to ensure y stayed at 100
+        for (final recordedValue in values) {
+          expect(
+            recordedValue.dy,
+            equals(100),
+            reason: 'y changed from 100 during animation',
+          );
+        }
+      });
     });
 
     group('.motion', () {
@@ -199,8 +302,11 @@ void main() {
         )..animateTo(const Offset(1, 1));
         await tester.pump();
 
-        const newSpring = SimpleSpring(durationSeconds: 0.1);
-        controller.motion = const Spring(newSpring);
+        final newSpring = SpringDescription.withDurationAndBounce(
+          duration: const Duration(milliseconds: 100),
+        );
+
+        controller.motion = Spring(newSpring);
 
         expect(controller.motion, isA<Spring>());
         expect((controller.motion as Spring).description, equals(newSpring));

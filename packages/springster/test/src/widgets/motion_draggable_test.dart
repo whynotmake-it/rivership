@@ -1,13 +1,10 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spot/spot.dart';
 import 'package:springster/springster.dart';
-import 'package:springster/src/simple_spring.dart';
 
 void main() {
-  group('SpringDraggable', () {
+  group('MotionDraggable', () {
     const childKey = Key('child');
     const feedbackKey = Key('feedback');
     const targetKey = Key('target');
@@ -40,8 +37,9 @@ void main() {
     testWidgets('builds with child', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             child: buildChild(),
           ),
         ),
@@ -53,8 +51,9 @@ void main() {
     testWidgets('shows feedback when dragging', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             feedback: buildFeedback(),
             child: buildChild(),
           ),
@@ -75,8 +74,9 @@ void main() {
     testWidgets('shows childWhenDragging when dragging', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             childWhenDragging: buildFeedback(),
             feedback: const SizedBox(),
             child: buildChild(),
@@ -96,8 +96,9 @@ void main() {
       var dragStarted = false;
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             onDragStarted: () => dragStarted = true,
             child: buildChild(),
           ),
@@ -115,8 +116,9 @@ void main() {
       var dragEnded = false;
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             onDragEnd: (_) => dragEnded = true,
             child: buildChild(),
           ),
@@ -135,8 +137,9 @@ void main() {
     testWidgets('respects axis constraint', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: SpringDraggable<String>(
+          home: MotionDraggable<String>(
             data: 'test',
+            motion: CupertinoMotion(),
             axis: Axis.horizontal,
             feedback: buildFeedback(),
             child: buildChild(),
@@ -164,8 +167,8 @@ void main() {
         MaterialApp(
           home: Align(
             alignment: Alignment.topLeft,
-            child: SpringDraggable<String>(
-              spring: const SimpleSpring(),
+            child: MotionDraggable<String>(
+              motion: CupertinoMotion(),
               data: 'test',
               feedback: buildFeedback(),
               child: buildChild(),
@@ -219,8 +222,10 @@ void main() {
             children: [
               Align(
                 alignment: Alignment.topLeft,
-                child: SpringDraggable<String>(
-                  spring: const SimpleSpring(durationSeconds: .1),
+                child: MotionDraggable<String>(
+                  motion: CupertinoMotion(
+                    duration: const Duration(milliseconds: 100),
+                  ),
                   onlyReturnWhenCanceled: true,
                   data: 'test',
                   feedback: buildFeedback(),
