@@ -165,18 +165,26 @@ class LinearMotion extends CurvedMotion {
 /// Spring motions continue until they naturally settle based on physics,
 /// rather than completing in a predetermined duration.
 @immutable
-class SpringMotion extends Motion {
+abstract class SpringMotion extends Motion {
   /// Creates a motion with spring physics.
   ///
   /// Parameter [description] defines the physical characteristics of the
   /// spring.
-  const SpringMotion(this.description, {this.snapToEnd = true});
+  const factory SpringMotion(
+    SpringDescription description, {
+    bool snapToEnd,
+  }) = _DescriptionSpringMotion;
+
+  /// Internal constructor;
+  const SpringMotion._({
+    this.snapToEnd = true,
+  });
 
   /// The physical description of the spring.
   ///
   /// Contains parameters like mass, stiffness, and damping that define
   /// how the spring behaves.
-  final SpringDescription description;
+  SpringDescription get description;
 
   /// Whether to snap to the end of the spring.
   ///
@@ -249,14 +257,32 @@ class SpringMotion extends Motion {
 
   /// Creates a new [SpringMotion] with the same properties as this one, but
   /// with the specified [description] and [snapToEnd].
+  SpringMotion copyWith();
+}
+
+class _DescriptionSpringMotion extends SpringMotion {
+  /// Creates a new [SpringMotion] with the specified [description].
+  const _DescriptionSpringMotion(
+    this.description, {
+    super.snapToEnd,
+  }) : super._();
+
+  @override
+  final SpringDescription description;
+
+  @override
+  String toString() => 'Spring(description: $description)';
+
+  @override
   SpringMotion copyWith({
     SpringDescription? description,
     bool? snapToEnd,
-  }) =>
-      SpringMotion(
-        description ?? this.description,
-        snapToEnd: snapToEnd ?? this.snapToEnd,
-      );
+  }) {
+    return _DescriptionSpringMotion(
+      description ?? this.description,
+      snapToEnd: snapToEnd ?? this.snapToEnd,
+    );
+  }
 }
 
 /// A collection of spring motions that are commonly used in Cupertino apps.
@@ -266,106 +292,262 @@ class CupertinoMotion extends SpringMotion {
   /// The duration is the duration of the spring motion, and the bounce is the
   /// amount of bounce in the spring motion.
   ///
-  /// The default duration is 500 milliseconds, and the default bounce is 0.
-  CupertinoMotion({
-    Duration duration = const Duration(milliseconds: 500),
-    double bounce = 0,
-    bool snapToEnd = true,
-  }) : this._(
-          SpringDescription.withDurationAndBounce(
-            duration: duration,
-            bounce: bounce,
-          ),
-          snapToEnd: snapToEnd,
-        );
-
-  const CupertinoMotion._(
-    super.description, {
+  /// By default, this creates a smooth spring with no bounce, matching the
+  /// [standard iOS spring motion behavior](https://developer.apple.com/documentation/swiftui/animation/default).
+  const CupertinoMotion({
+    this.duration = const Duration(milliseconds: 550),
+    this.bounce = 0,
     super.snapToEnd,
-  }) : super();
+  }) : super._();
 
-  /// A smooth spring with no bounce.
-  ///
-  /// This uses the [default values for iOS](https://developer.apple.com/documentation/swiftui/animation/default).
-  ///
-  /// {@template cupertino_motion.definition}
-  /// Note: the actual values this is calculated from are defined in
-  /// the test file [motion_test.dart](../../test/src/motion_test.dart).
-  ///
-  /// We can't use [SpringDescription.withDurationAndBounce] here, because it is
-  /// not a const constructor.
-  /// {@endtemplate}
-  static const standard = CupertinoMotion._(
-    SpringDescription(
-      mass: 1,
-      stiffness: 130.5071656342394,
-      damping: 22.84794657156213,
-    ),
-  );
+  /// The estimated duration of the spring motion.
+  final Duration duration;
+
+  /// The bounce of the spring motion.
+  final double bounce;
+
+  @override
+  SpringDescription get description => SpringDescription.withDurationAndBounce(
+        duration: duration,
+        bounce: bounce,
+      );
 
   /// A spring animation with a predefined duration and higher amount of bounce.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
-  ///
-  /// {@macro cupertino_motion.definition}
-  static const bouncy = CupertinoMotion._(
-    SpringDescription(
-      mass: 1,
-      stiffness: 157.91367041742973,
-      damping: 17.59291886010284,
-    ),
-  );
+  static const bouncy = CupertinoMotion(bounce: 0.3);
 
   /// A spring animation with a predefined duration and small amount of bounce
   /// that feels more snappy.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/snappy
-  ///
-  /// {@macro cupertino_motion.definition}
-  static const snappy = CupertinoMotion._(
-    SpringDescription(
-      mass: 1,
-      stiffness: 157.91367041742973,
-      damping: 21.362830044410593,
-    ),
-  );
+  static const snappy = CupertinoMotion(bounce: 0.15);
 
   /// A smooth spring animation with a predefined duration and no bounce.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/smooth
-  ///
-  /// {@macro cupertino_motion.definition}
-  static const smooth = CupertinoMotion._(
-    SpringDescription(
-      mass: 1,
-      stiffness: 157.91367041742973,
-      damping: 25.132741228718345,
-    ),
-  );
+  static const smooth = CupertinoMotion(duration: Duration(milliseconds: 500));
 
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
-  static const interactive = CupertinoMotion._(
-    SpringDescription(
-      mass: 1,
-      stiffness: 1754.5963379714415,
-      damping: 72.04719152232593,
-    ),
+  static const interactive = CupertinoMotion(
+    duration: Duration(milliseconds: 150),
+    bounce: 0.14,
   );
 
   /// Creates a new [CupertinoMotion] with the same properties as this one, but
   /// with the specified [bounce] and [duration].
-  CupertinoMotion copyWithBounce({double? bounce, Duration? duration}) {
+  @override
+  CupertinoMotion copyWith({
+    Duration? duration,
+    double? bounce,
+    bool? snapToEnd,
+  }) {
     return CupertinoMotion(
       duration: duration ?? description.duration,
       bounce: bounce ?? description.bounce,
-      snapToEnd: snapToEnd,
+      snapToEnd: snapToEnd ?? this.snapToEnd,
+    );
+  }
+}
+
+/// Material Design 3 spring motion tokens for expressive design system.
+///
+/// This class provides predefined spring motion tokens that follow the
+/// Material Design 3 motion guidelines for creating expressive and natural
+/// animations. The tokens are organized into two categories:
+/// - **Spatial**: For animating position, size, and layout changes
+/// - **Effects**: For animating visual properties like opacity and color
+///
+/// Each category has three speed variants: fast, default, and slow.
+///
+/// See also:
+/// * [Material Design 3 Motion Guidelines](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens)
+/// * [SpringMotion] for the base spring motion implementation
+class MaterialSpringMotion extends SpringMotion {
+  /// Creates a new [MaterialSpringMotion] with the specified damping and
+  /// stiffness.
+  const MaterialSpringMotion({
+    required this.damping,
+    required this.stiffness,
+    super.snapToEnd,
+  }) : super._();
+
+  /// The damping factor of the spring motion.
+  ///
+  /// Works exactly like the [SpringDescription.damping] property.
+  final double damping;
+
+  /// The stiffness factor of the spring motion.
+  ///
+  /// Works exactly like the [SpringDescription.stiffness] property.
+  final double stiffness;
+
+  @override
+  SpringDescription get description => SpringDescription(
+        damping: damping,
+        stiffness: stiffness,
+        mass: 1,
+      );
+
+  /// Standard spatial motion token - fast variant.
+  ///
+  /// Used for quick spatial animations like position changes, resizing,
+  /// and layout transitions. This is the fastest of the standard spatial
+  /// motion tokens.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
+  static const standardSpatialFast = MaterialSpringMotion(
+    damping: 0.9,
+    stiffness: 1400,
+  );
+
+  /// Standard spatial motion token - default variant.
+  ///
+  /// The recommended spatial motion for most position changes, resizing,
+  /// and layout transitions. Provides a balanced animation speed.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
+  static const standardSpatialDefault = MaterialSpringMotion(
+    damping: 0.9,
+    stiffness: 700,
+  );
+
+  /// Standard spatial motion token - slow variant.
+  ///
+  /// Used for deliberate spatial animations where a slower, more gentle
+  /// motion is desired for position changes, resizing, and layout transitions.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
+  static const standardSpatialSlow = MaterialSpringMotion(
+    damping: 0.9,
+    stiffness: 300,
+  );
+
+  /// Standard effects motion token - fast variant.
+  ///
+  /// Used for quick visual property animations like opacity, color,
+  /// and other non-spatial effects. This is the fastest of the standard
+  /// effects motion tokens.
+  ///
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  static const standardEffectsFast = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 3800,
+  );
+
+  /// Standard effects motion token - default variant.
+  ///
+  /// The recommended effects motion for most visual property animations
+  /// like opacity, color, and other non-spatial effects. Provides a
+  /// balanced animation speed.
+  ///
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  static const standardEffectsDefault = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 1600,
+  );
+
+  /// Standard effects motion token - slow variant.
+  ///
+  /// Used for deliberate visual property animations where a slower,
+  /// more gentle motion is desired for opacity, color, and other
+  /// non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  static const standardEffectsSlow = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 800,
+  );
+
+  /// Expressive spatial motion token - fast variant.
+  ///
+  /// Used for more dynamic and bouncy spatial animations with increased
+  /// expressiveness. Features lower damping for more spring-like behavior
+  /// in position changes, resizing, and layout transitions.
+  ///
+  /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
+  static const expressiveSpatialFast = MaterialSpringMotion(
+    damping: 0.6,
+    stiffness: 800,
+  );
+
+  /// Expressive spatial motion token - default variant.
+  ///
+  /// The recommended expressive spatial motion for creating more dynamic
+  /// and bouncy animations with moderate expressiveness. Features lower
+  /// damping for spring-like behavior in spatial transitions.
+  ///
+  /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
+  static const expressiveSpatialDefault = MaterialSpringMotion(
+    damping: 0.8,
+    stiffness: 380,
+  );
+
+  /// Expressive spatial motion token - slow variant.
+  ///
+  /// Used for slower, more deliberate expressive spatial animations
+  /// with gentle spring-like behavior. Features lower damping for
+  /// increased bounce in position changes and layout transitions.
+  ///
+  /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
+  static const expressiveSpatialSlow = MaterialSpringMotion(
+    damping: 0.8,
+    stiffness: 200,
+  );
+
+  /// Expressive effects motion token - fast variant.
+  ///
+  /// Used for quick expressive visual property animations. While maintaining
+  /// the same spring characteristics as standard effects, this token is part
+  /// of the expressive motion system for consistent design language.
+  ///
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  static const expressiveEffectsFast = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 3800,
+  );
+
+  /// Expressive effects motion token - default variant.
+  ///
+  /// The recommended expressive effects motion for visual property animations
+  /// like opacity and color. Part of the expressive motion system while
+  /// maintaining optimal characteristics for non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  static const expressiveEffectsDefault = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 1600,
+  );
+
+  /// Expressive effects motion token - slow variant.
+  ///
+  /// Used for slower, more deliberate expressive visual property animations.
+  /// Part of the expressive motion system while maintaining characteristics
+  /// optimized for opacity, color, and other non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  static const expressiveEffectsSlow = MaterialSpringMotion(
+    damping: 1,
+    stiffness: 800,
+  );
+
+  @override
+  MaterialSpringMotion copyWith({
+    double? damping,
+    double? stiffness,
+    bool? snapToEnd,
+  }) {
+    return MaterialSpringMotion(
+      damping: damping ?? this.damping,
+      stiffness: stiffness ?? this.stiffness,
+      snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
 }

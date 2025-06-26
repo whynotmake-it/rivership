@@ -109,8 +109,8 @@ void main() {
         )..animateTo(1);
         await tester.pump();
 
-        final newSpring =
-            CupertinoMotion(duration: const Duration(milliseconds: 100));
+        const newSpring =
+            CupertinoMotion(duration: Duration(milliseconds: 100));
         controller.motion = newSpring;
 
         expect(controller.motion, equals(newSpring));
@@ -165,7 +165,7 @@ void main() {
         motion: spring,
         vsync: tester,
       );
-      final newSpring = CupertinoMotion.smooth.copyWithBounce(bounce: 0.1);
+      final newSpring = CupertinoMotion.smooth.copyWith(bounce: 0.1);
       controller.motion = newSpring;
       expect(controller.motion, equals(newSpring));
     });

@@ -21,7 +21,7 @@ static const $name = CupertinoMotion._(
 
     test('generate constant SpringDescriptions', () async {
       try {
-        expect(CupertinoMotion.standard.description, equalsSpring(standard));
+        expect(const CupertinoMotion().description, equalsSpring(standard));
         expect(CupertinoMotion.bouncy.description, equalsSpring(bouncy));
         expect(CupertinoMotion.snappy.description, equalsSpring(snappy));
         expect(CupertinoMotion.smooth.description, equalsSpring(smooth));
