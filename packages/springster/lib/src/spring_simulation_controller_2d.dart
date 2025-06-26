@@ -1,23 +1,13 @@
 import 'package:flutter/widgets.dart';
-import 'package:springster/src/spring_simulation_controller.dart';
+import 'package:motor/motor.dart';
 import 'package:springster/src/spring_simulation_controller_base.dart';
 
 /// A simple 2d record type.
 typedef Double2D = (double x, double y);
 
 /// A controller that manages a 2D spring simulation.
-///
-/// This controller can be used to drive spring animations with a target value
-/// in two dimensions, while maintaining velocity between target changes.
-///
-/// The controller extends [ValueNotifier] to notify listeners of value changes,
-/// and provides access to the current velocity of the simulation.
-class SpringSimulationController2D
-    extends SpringSimulationControllerBase<Double2D>
-    with
-        AnimationLocalListenersMixin,
-        AnimationLocalStatusListenersMixin,
-        AnimationEagerListenerMixin {
+class SpringSimulationController2D extends BoundedMotionController<Double2D>
+    implements SpringSimulationControllerBase<Double2D> {
   /// Creates a [SpringSimulationController2D] with the given parameters.
   ///
   /// The [spring] parameter defines the characteristics of the spring
@@ -27,29 +17,14 @@ class SpringSimulationController2D
   /// to constrain the animation value.
   SpringSimulationController2D({
     required SpringDescription spring,
-    required TickerProvider vsync,
-    Double2D lowerBound = const (0, 0),
-    Double2D upperBound = const (1, 1),
-    Double2D initialValue = const (0, 0),
-    AnimationBehavior behavior = AnimationBehavior.normal,
-  })  : _spring = spring,
-        _lowerBound = lowerBound,
-        _upperBound = upperBound,
-        _xController = SpringSimulationController(
-          spring: spring,
-          vsync: vsync,
-          lowerBound: lowerBound.x,
-          upperBound: upperBound.x,
-          initialValue: initialValue.x,
-          behavior: behavior,
-        ),
-        _yController = SpringSimulationController(
-          spring: spring,
-          vsync: vsync,
-          lowerBound: lowerBound.y,
-          upperBound: upperBound.y,
-          initialValue: initialValue.y,
-          behavior: behavior,
+    required super.vsync,
+    super.lowerBound = const (0, 0),
+    super.upperBound = const (1, 1),
+    super.initialValue = const (0, 0),
+    super.behavior = AnimationBehavior.normal,
+  }) : super(
+          motion: SpringMotion(spring),
+          converter: const Double2DMotionConverter(),
         );
 
   /// Creates an unbounded [SpringSimulationController2D].
@@ -71,184 +46,37 @@ class SpringSimulationController2D
         );
 
   @override
-  bool get isBounded => _xController.isBounded && _yController.isBounded;
+  bool get isBounded =>
+      lowerBound.x != double.negativeInfinity &&
+      lowerBound.y != double.negativeInfinity &&
+      upperBound.x != double.infinity &&
+      upperBound.y != double.infinity;
 
   @override
-  Double2D get value => (
-        _xController.value,
-        _yController.value,
-      );
-
-  @override
-  set value(Double2D newValue) {
-    _xController.value = newValue.x;
-    _yController.value = newValue.y;
-  }
-
-  @override
-  AnimationStatus get status =>
-      (_listeningToY ?? false) ? _yController.status : _xController.status;
-
-  @override
-  bool get isAnimating => _xController.isAnimating || _yController.isAnimating;
-
-  final SpringSimulationController _xController;
-  final SpringSimulationController _yController;
-  SpringDescription _spring;
-  final Double2D _lowerBound;
-  final Double2D _upperBound;
-
-  @override
-  Double2D get lowerBound => _lowerBound;
-
-  @override
-  Double2D get upperBound => _upperBound;
-
-  @override
-  Double2D get velocity => (
-        _xController.velocity,
-        _yController.velocity,
-      );
-
-  @override
-  SpringDescription get spring => _spring;
+  SpringDescription get spring => (motion as SpringMotion).description;
 
   @override
   set spring(SpringDescription newSpring) {
-    if (_spring == newSpring) return;
-    _spring = newSpring;
-    _xController.spring = newSpring;
-    _yController.spring = newSpring;
+    motion = SpringMotion(newSpring);
   }
 
   @override
-  Tolerance get tolerance => _xController.tolerance;
-
-  @override
-  AnimationBehavior get animationBehavior => _xController.animationBehavior;
-
-  @override
-  void resync(TickerProvider ticker) {
-    _xController.resync(ticker);
-    _yController.resync(ticker);
-  }
-
-  bool? _listeningToY;
-  void _setListeningToY(bool value) {
-    if (value == _listeningToY) return;
-    _listeningToY = value;
-    if (value) {
-      _xController
-        ..removeListener(notifyListeners)
-        ..removeStatusListener(notifyStatusListeners);
-      _yController
-        ..addListener(notifyListeners)
-        ..addStatusListener(notifyStatusListeners);
-    } else {
-      _yController
-        ..removeListener(notifyListeners)
-        ..removeStatusListener(notifyStatusListeners);
-      _xController
-        ..addListener(notifyListeners)
-        ..addStatusListener(notifyStatusListeners);
-    }
-  }
+  Tolerance get tolerance => motion.tolerance;
 
   @override
   TickerFuture forward({Double2D? from, Double2D? withVelocity}) {
-    assert(isBounded, 'Cannot animate forward on an unbounded controller');
-    return animateTo(
-      upperBound,
-      from: from,
-      withVelocity: withVelocity,
-    );
+    if (!SpringSimulationControllerBase.assertBounded(this, forward: true)) {
+      return TickerFuture.complete();
+    }
+    return super.forward(from: from, withVelocity: withVelocity);
   }
 
   @override
   TickerFuture reverse({Double2D? from, Double2D? withVelocity}) {
-    assert(isBounded, 'Cannot animate reverse on an unbounded controller');
-    return animateTo(
-      lowerBound,
-      from: from,
-      withVelocity: withVelocity,
-    );
-  }
-
-  @override
-  TickerFuture animateTo(
-    Double2D target, {
-    Double2D? from,
-    Double2D? withVelocity,
-  }) {
-    final clamped = (
-      target.x.clamp(_lowerBound.x, _upperBound.x),
-      target.y.clamp(_lowerBound.y, _upperBound.y),
-    );
-
-    final fromValue = from ?? value;
-
-    final xChanged =
-        _xController.tolerance.distance < (clamped.x - fromValue.x).abs() ||
-            velocity.x > _xController.tolerance.velocity;
-
-    final yChanged =
-        _yController.tolerance.distance < (clamped.y - fromValue.y).abs() ||
-            velocity.y > _yController.tolerance.velocity;
-
-    TickerFuture animateY() => _yController.animateTo(
-          clamped.y,
-          from: fromValue.y,
-          withVelocity: withVelocity?.y,
-        );
-
-    // Start both animations but only return the future from one, since the
-    // x controller is the base for everything.
-    TickerFuture animateX() => _xController.animateTo(
-          clamped.x,
-          from: fromValue.x,
-          withVelocity: withVelocity?.x,
-        );
-
-    if (!xChanged && _xController.value != fromValue.x) {
-      _xController
-        ..value = fromValue.x
-        ..stop();
-    }
-    if (!yChanged && _yController.value != fromValue.y) {
-      _yController
-        ..value = fromValue.y
-        ..stop();
-    }
-
-    if (xChanged) {
-      _setListeningToY(false);
-      animateY();
-      return animateX();
-    }
-
-    if (yChanged) {
-      _setListeningToY(true);
-      return animateY();
-    }
-    return TickerFuture.complete();
-  }
-
-  @override
-  TickerFuture stop({bool canceled = false}) {
-    if (canceled) {
-      _xController.stop(canceled: canceled);
-      _yController.stop(canceled: canceled);
+    if (!SpringSimulationControllerBase.assertBounded(this, forward: false)) {
       return TickerFuture.complete();
-    } else {
-      return animateTo(value);
     }
-  }
-
-  @override
-  void dispose() {
-    _xController.dispose();
-    _yController.dispose();
-    super.dispose();
+    return super.reverse(from: from, withVelocity: withVelocity);
   }
 }
 
@@ -262,4 +90,16 @@ extension Value2DGetters on Double2D {
 
   /// Converts the 2D value to an [Offset].
   Offset toOffset() => Offset(x, y);
+}
+
+/// A converter for [Double2D] values to and from a list of doubles.
+class Double2DMotionConverter implements MotionConverter<Double2D> {
+  /// Creates a new instance of [Double2DMotionConverter].
+  const Double2DMotionConverter();
+
+  @override
+  Double2D denormalize(List<double> values) => (values[0], values[1]);
+
+  @override
+  List<double> normalize(Double2D value) => [value.x, value.y];
 }

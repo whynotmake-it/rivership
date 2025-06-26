@@ -1,19 +1,16 @@
-import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 import 'package:springster/src/spring_simulation_controller_base.dart';
 
 /// A controller that manages a spring simulation.
 ///
-/// This controller can be used to drive spring animations with a target value,
-/// while maintaining velocity between target changes.
+/// This class has been deprecated in favor of [SingleMotionController] and
+/// [BoundedSingleMotionController], which support different types of [Motion]s
+/// beyond springs and are more efficient and performant.
 ///
-/// The controller extends [ValueNotifier] to notify listeners of value changes,
-/// and provides access to the current velocity of the simulation.
-class SpringSimulationController extends SpringSimulationControllerBase<double>
-    with
-        AnimationLocalListenersMixin,
-        AnimationLocalStatusListenersMixin,
-        AnimationEagerListenerMixin {
+/// It also uses a [SingleMotionController] internally.
+class SpringSimulationController extends BoundedSingleMotionController
+    implements SpringSimulationControllerBase<double> {
   /// Creates a [SpringSimulationController] with the given parameters.
   ///
   /// The [spring] parameter defines the characteristics of the spring animation
@@ -23,21 +20,12 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
   /// to constrain the animation value.
   SpringSimulationController({
     required SpringDescription spring,
-    required TickerProvider vsync,
-    this.lowerBound = 0,
-    this.upperBound = 1,
-    AnimationBehavior behavior = AnimationBehavior.normal,
-    double initialValue = 0,
-  })  : _spring = spring,
-        _controller = AnimationController.unbounded(
-          value: initialValue,
-          vsync: vsync,
-          animationBehavior: behavior,
-        ) {
-    _controller
-      ..addListener(notifyListeners)
-      ..addStatusListener(notifyStatusListeners);
-  }
+    required super.vsync,
+    super.lowerBound = 0,
+    super.upperBound = 1,
+    super.behavior = AnimationBehavior.normal,
+    super.initialValue = 0,
+  }) : super(motion: SpringMotion(spring));
 
   /// Creates an unbounded [SpringSimulationController].
   ///
@@ -45,125 +33,44 @@ class SpringSimulationController extends SpringSimulationControllerBase<double>
   /// [AnimationBehavior.preserve] behavior.
   SpringSimulationController.unbounded({
     required SpringDescription spring,
-    required TickerProvider vsync,
-    AnimationBehavior behavior = AnimationBehavior.preserve,
-    double? initialValue,
-  }) : this(
-          spring: spring,
-          vsync: vsync,
+    required super.vsync,
+    super.behavior = AnimationBehavior.preserve,
+    super.initialValue = 0,
+  }) : super(
+          motion: SpringMotion(spring),
           lowerBound: double.negativeInfinity,
           upperBound: double.infinity,
-          behavior: behavior,
-          initialValue: initialValue ?? 0,
         );
 
   @override
-  final double lowerBound;
+  SpringDescription get spring => (super.motion as SpringMotion).description;
 
   @override
-  final double upperBound;
+  set spring(SpringDescription value) {
+    super.motion = SpringMotion(value);
+  }
 
   @override
   bool get isBounded =>
-      lowerBound != double.infinity && upperBound != double.infinity;
+      super.lowerBound != double.negativeInfinity &&
+      super.upperBound != double.infinity;
 
   @override
-  double get value => _controller.value;
+  Tolerance get tolerance => super.motion.tolerance;
 
   @override
-  set value(double value) {
-    _controller.value = value.clamp(lowerBound, upperBound);
-  }
-
-  @override
-  AnimationStatus get status => _controller.status;
-
-  @override
-  bool get isAnimating => _controller.isAnimating;
-
-  final AnimationController _controller;
-
-  SpringDescription _spring;
-
-  double? _target;
-
-  @override
-  double get velocity => _controller.velocity;
-
-  @override
-  SpringDescription get spring => _spring;
-
-  @override
-  set spring(SpringDescription newSpring) {
-    if (_spring == newSpring) return;
-    _spring = newSpring;
-    _redirectSimulation();
-  }
-
-  @override
-  Tolerance get tolerance => Tolerance.defaultTolerance;
-
-  @override
-  AnimationBehavior get animationBehavior => _controller.animationBehavior;
-
-  @override
-  void resync(TickerProvider ticker) => _controller.resync(ticker);
-
-  @override
-  TickerFuture animateTo(
-    double target, {
-    double? from,
-    double? withVelocity,
-  }) {
-    _target = target.clamp(lowerBound, upperBound);
-
-    final fromValue = from ?? value;
-    final velocity = withVelocity ?? this.velocity;
-
-    final simulation = SpringSimulation(
-      _spring,
-      fromValue,
-      _target!,
-      velocity,
-      tolerance: tolerance,
-    );
-
-    if ((_target! - fromValue).abs() < simulation.tolerance.distance &&
-        velocity.abs() < simulation.tolerance.velocity) {
-      _controller.stop();
+  TickerFuture forward({double? from, double? withVelocity}) {
+    if (!SpringSimulationControllerBase.assertBounded(this, forward: true)) {
       return TickerFuture.complete();
     }
-
-    return _controller.animateWith(simulation);
-  }
-
-  void _redirectSimulation() {
-    if (!_controller.isAnimating || _target == null) return;
-
-    final simulation = SpringSimulation(
-      _spring,
-      value,
-      _target!,
-      velocity,
-      tolerance: tolerance,
-    );
-    _controller.animateWith(simulation);
+    return super.forward(from: from, withVelocity: withVelocity);
   }
 
   @override
-  TickerFuture stop({bool canceled = false}) {
-    if (canceled) {
-      _controller.stop();
+  TickerFuture reverse({double? from, double? withVelocity}) {
+    if (!SpringSimulationControllerBase.assertBounded(this, forward: false)) {
       return TickerFuture.complete();
-    } else {
-      _controller.stop();
-      return animateTo(value);
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    return super.reverse(from: from, withVelocity: withVelocity);
   }
 }

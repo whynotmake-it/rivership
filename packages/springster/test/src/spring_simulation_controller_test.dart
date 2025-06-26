@@ -237,7 +237,7 @@ void main() {
         await tester.pump();
         expect(controller.isAnimating, isTrue);
 
-        controller.stop();
+        controller.stop(canceled: true);
         expect(controller.isAnimating, isFalse);
         final valueAfterStop = controller.value;
 

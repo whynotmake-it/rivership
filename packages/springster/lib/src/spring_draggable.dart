@@ -1,14 +1,16 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 import 'package:springster/springster.dart';
 
 /// A widget that works like [Draggable] but with a spring animation on return.
 ///
+/// See also:
 /// * [Draggable]
 /// * [DragTarget]
 /// * [LongPressDraggable]
-class SpringDraggable<T extends Object> extends StatefulWidget {
+class SpringDraggable<T extends Object> extends StatelessWidget {
   /// Creates a widget that can be dragged to a [DragTarget].
   ///
   /// If [maxSimultaneousDrags] is non-null, it must be non-negative.
@@ -226,8 +228,6 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   final bool onlyReturnWhenCanceled;
 
   /// The spring to use for the return animation.
-  ///
-  /// Defaults to [Spring.interactive].
   final SpringDescription spring;
 
   /// Whether the feedback widget should be built with the same constraints as
@@ -240,208 +240,30 @@ class SpringDraggable<T extends Object> extends StatefulWidget {
   final bool feedbackMatchesConstraints;
 
   @override
-  State<SpringDraggable> createState() => _SpringDraggableState();
-}
-
-class _SpringDraggableState<T extends Object> extends State<SpringDraggable<T>>
-    with TickerProviderStateMixin {
-  bool isReturning = false;
-
-  late final SpringSimulationController2D controller;
-
-  OverlayEntry? currentEntry;
-
-  Widget get feedbackChild => widget.feedback ?? widget.child;
-
-  BoxConstraints? constraints;
-
-  @override
-  void initState() {
-    controller = SpringSimulationController2D.unbounded(
-      spring: widget.spring,
-      vsync: this,
-    );
-    controller.addListener(_redirectReturn);
-    super.initState();
-  }
-
-  @override
-  void didUpdateWidget(covariant SpringDraggable<T> oldWidget) {
-    if (widget.spring != oldWidget.spring) {
-      controller.spring = widget.spring;
-    }
-    super.didUpdateWidget(oldWidget);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final childWhenDragging = widget.childWhenDragging ??
-        Visibility.maintain(
-          visible: false,
-          child: widget.child,
-        );
-
-    if (widget.feedbackMatchesConstraints) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          this.constraints = constraints;
-          return Draggable(
-            childWhenDragging: childWhenDragging,
-            affinity: widget.affinity,
-            axis: widget.axis,
-            allowedButtonsFilter: widget.allowedButtonsFilter,
-            feedbackOffset: widget.feedbackOffset,
-            dragAnchorStrategy: widget.dragAnchorStrategy,
-            ignoringFeedbackSemantics: widget.ignoringFeedbackSemantics,
-            ignoringFeedbackPointer: widget.ignoringFeedbackPointer,
-            maxSimultaneousDrags: widget.maxSimultaneousDrags,
-            onDragStarted: () {
-              widget.onDragStarted?.call();
-              _cancelReturn();
-            },
-            onDragUpdate: widget.onDragUpdate,
-            onDraggableCanceled: (v, o) {
-              if (widget.onlyReturnWhenCanceled) {
-                _onDragEnd(v, o);
-              }
-              widget.onDraggableCanceled?.call(v, o);
-            },
-            onDragEnd: (details) {
-              if (!widget.onlyReturnWhenCanceled || !details.wasAccepted) {
-                _onDragEnd(details.velocity, details.offset);
-              }
-              widget.onDragEnd?.call(details);
-            },
-            feedback: ConstrainedBox(
-              constraints: constraints,
-              child: feedbackChild,
-            ),
-            data: widget.data,
-            child: Visibility.maintain(
-              visible: !isReturning,
-              child: widget.child,
-            ),
-          );
-        },
-      );
-    }
-
-    return Draggable(
+    return MotionDraggable(
+      motion: SpringMotion(spring),
+      data: data,
+      feedbackMatchesConstraints: feedbackMatchesConstraints,
+      hitTestBehavior: hitTestBehavior,
+      maxSimultaneousDrags: maxSimultaneousDrags,
+      onDragCompleted: onDragCompleted,
+      onDragEnd: onDragEnd,
+      onDragStarted: onDragStarted,
+      onDragUpdate: onDragUpdate,
+      onDraggableCanceled: onDraggableCanceled,
+      onlyReturnWhenCanceled: onlyReturnWhenCanceled,
+      rootOverlay: rootOverlay,
+      affinity: affinity,
+      allowedButtonsFilter: allowedButtonsFilter,
+      axis: axis,
       childWhenDragging: childWhenDragging,
-      affinity: widget.affinity,
-      axis: widget.axis,
-      allowedButtonsFilter: widget.allowedButtonsFilter,
-      feedbackOffset: widget.feedbackOffset,
-      dragAnchorStrategy: widget.dragAnchorStrategy,
-      ignoringFeedbackSemantics: widget.ignoringFeedbackSemantics,
-      ignoringFeedbackPointer: widget.ignoringFeedbackPointer,
-      maxSimultaneousDrags: widget.maxSimultaneousDrags,
-      onDragStarted: () {
-        widget.onDragStarted?.call();
-        _cancelReturn();
-      },
-      onDragUpdate: widget.onDragUpdate,
-      onDraggableCanceled: (v, o) {
-        if (widget.onlyReturnWhenCanceled) {
-          _onDragEnd(v, o);
-        }
-        widget.onDraggableCanceled?.call(v, o);
-      },
-      onDragEnd: (details) {
-        if (!widget.onlyReturnWhenCanceled || !details.wasAccepted) {
-          _onDragEnd(details.velocity, details.offset);
-        }
-        widget.onDragEnd?.call(details);
-      },
-      feedback: feedbackChild,
-      data: widget.data,
-      child: Visibility.maintain(
-        visible: !isReturning,
-        child: widget.child,
-      ),
+      feedback: feedback,
+      feedbackOffset: feedbackOffset,
+      dragAnchorStrategy: dragAnchorStrategy,
+      ignoringFeedbackSemantics: ignoringFeedbackSemantics,
+      ignoringFeedbackPointer: ignoringFeedbackPointer,
+      child: child,
     );
-  }
-
-  @override
-  void dispose() {
-    _cancelReturn();
-    currentEntry?.dispose();
-    controller.dispose();
-    super.dispose();
-  }
-
-  void _cancelReturn() {
-    if (currentEntry?.mounted ?? false) {
-      currentEntry?.remove();
-    }
-    controller.stop();
-    isReturning = false;
-  }
-
-  void _onDragEnd(Velocity velocity, Offset offset) {
-    if (isReturning) {
-      setState(_cancelReturn);
-    }
-
-    if (context.findRenderObject() case final RenderBox box) {
-      setState(() {
-        isReturning = true;
-      });
-
-      final overlay = Overlay.of(context);
-
-      final targetPosition = box.localToGlobal(Offset.zero);
-
-      currentEntry = OverlayEntry(
-        builder: (context) => Stack(
-          children: [
-            ListenableBuilder(
-              listenable: controller,
-              builder: (context, child) => Positioned(
-                left: controller.value.x,
-                top: controller.value.y,
-                child: IgnorePointer(
-                  child: widget.feedbackMatchesConstraints
-                      ? ConstrainedBox(
-                          constraints: this.constraints!,
-                          child: feedbackChild,
-                        )
-                      : feedbackChild,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-
-      overlay.insert(currentEntry!);
-
-      final adjustedVelocity = velocity.pixelsPerSecond;
-
-      controller.animateTo(
-        (targetPosition.dx, targetPosition.dy),
-        from: (offset.dx, offset.dy),
-        withVelocity: (adjustedVelocity.dx, adjustedVelocity.dy),
-      ).then((value) {
-        setState(_cancelReturn);
-      });
-    }
-  }
-
-  void _redirectReturn() {
-    if (!isReturning ||
-        currentEntry?.mounted == false ||
-        context.mounted == false) {
-      return;
-    }
-
-    if (context.findRenderObject() case final RenderBox box) {
-      final targetPosition = box.localToGlobal(Offset.zero);
-
-      controller
-          .animateTo((targetPosition.dx, targetPosition.dy)).then((value) {
-        setState(_cancelReturn);
-      });
-    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 import 'package:springster/springster.dart';
 
 /// {@template springster.spring_builder}
@@ -8,7 +9,7 @@ import 'package:springster/springster.dart';
 ///
 /// See also:
 ///   * [SpringBuilder2D], which animates two values simultaneously
-class SpringBuilder extends StatefulWidget {
+class SpringBuilder extends StatelessWidget {
   /// {@template springster.spring_builder.constructor}
   /// Creates a widget that animates a single value using spring physics.
   ///
@@ -76,75 +77,17 @@ class SpringBuilder extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<SpringBuilder> createState() => _SpringBuilderState();
-}
-
-class _SpringBuilderState extends State<SpringBuilder>
-    with SingleTickerProviderStateMixin {
-  late SpringSimulationController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = SpringSimulationController.unbounded(
-      spring: widget.spring,
-      vsync: this,
-      initialValue: widget.from ?? widget.value,
-    );
-    if (widget.onAnimationStatusChanged != null) {
-      controller.addStatusListener(widget.onAnimationStatusChanged!);
-    }
-    if (widget.simulate && widget.from != null) {
-      controller.animateTo(widget.value);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant SpringBuilder oldWidget) {
-    if (widget.spring != oldWidget.spring) {
-      controller.spring = widget.spring;
-    }
-    if (!widget.simulate) {
-      controller
-        ..stop()
-        ..value = widget.value;
-    }
-
-    if (widget.value != oldWidget.value) {
-      if (widget.simulate) {
-        controller.animateTo(widget.value);
-      } else {
-        controller.value = widget.value;
-      }
-    }
-
-    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
-      if (oldWidget.onAnimationStatusChanged != null) {
-        controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
-      }
-      if (widget.onAnimationStatusChanged != null) {
-        controller.addStatusListener(widget.onAnimationStatusChanged!);
-      }
-    }
-
-    super.didUpdateWidget(oldWidget);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, child) {
-        return widget.builder(context, controller.value, child);
-      },
-      child: widget.child,
+    return MotionBuilder(
+      value: value,
+      motion: SpringMotion(spring),
+      converter: const SingleMotionConverter(),
+      builder: builder,
+      active: simulate,
+      from: from,
+      onAnimationStatusChanged: onAnimationStatusChanged,
+      child: child,
     );
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
   }
 }
 
@@ -155,7 +98,7 @@ class _SpringBuilderState extends State<SpringBuilder>
 ///
 /// See also:
 ///   * [SpringBuilder], which animates a single value
-class SpringBuilder2D extends StatefulWidget {
+class SpringBuilder2D extends StatelessWidget {
   /// {@template springster.spring_builder_2d.constructor}
   /// Creates a widget that animates two values using spring physics.
   ///
@@ -194,74 +137,19 @@ class SpringBuilder2D extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<SpringBuilder2D> createState() => _SpringBuilder2DState();
-}
-
-class _SpringBuilder2DState extends State<SpringBuilder2D>
-    with TickerProviderStateMixin {
-  late SpringSimulationController2D controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = SpringSimulationController2D.unbounded(
-      spring: widget.spring,
-      vsync: this,
-      initialValue: widget.from ?? widget.value,
-    );
-    if (widget.onAnimationStatusChanged != null) {
-      controller.addStatusListener(widget.onAnimationStatusChanged!);
-    }
-    if (widget.simulate && widget.from != null) {
-      controller.animateTo(widget.value);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant SpringBuilder2D oldWidget) {
-    if (widget.spring != oldWidget.spring) {
-      controller.spring = widget.spring;
-    }
-    if (!widget.simulate) {
-      controller
-        ..stop()
-        ..value = widget.value;
-    }
-
-    if (widget.value != oldWidget.value) {
-      if (widget.simulate) {
-        controller.animateTo(widget.value);
-      } else {
-        controller.value = widget.value;
-      }
-    }
-
-    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
-      if (oldWidget.onAnimationStatusChanged != null) {
-        controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
-      }
-      if (widget.onAnimationStatusChanged != null) {
-        controller.addStatusListener(widget.onAnimationStatusChanged!);
-      }
-    }
-
-    super.didUpdateWidget(oldWidget);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, child) {
-        return widget.builder(context, controller.value, child);
-      },
-      child: widget.child,
+    return MotionBuilder(
+      value: value,
+      motion: SpringMotion(spring),
+      converter: MotionConverter<Double2D>(
+        normalize: (value) => [value.$1, value.$2],
+        denormalize: (value) => (value[0], value[1]),
+      ),
+      builder: builder,
+      active: simulate,
+      from: from,
+      onAnimationStatusChanged: onAnimationStatusChanged,
+      child: child,
     );
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
   }
 }
