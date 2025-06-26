@@ -1,11 +1,9 @@
 import 'package:flutter/animation.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:meta/meta.dart';
 
 /// A base class for a controller that manages a spring simulation.
-abstract interface class SpringSimulationControllerBase<T extends Object>
+abstract class SpringSimulationControllerBase<T extends Object>
     extends Animation<T> {
   @override
   T get value;
@@ -85,7 +83,15 @@ abstract interface class SpringSimulationControllerBase<T extends Object>
   TickerFuture forward({
     T? from,
     T? withVelocity,
-  });
+  }) {
+    if (!isBounded) {
+      assert(false, 'Cannot animate forward on an unbounded controller');
+      if (from != null) value = from;
+      stop();
+      return TickerFuture.complete();
+    }
+    return animateTo(upperBound, from: from, withVelocity: withVelocity);
+  }
 
   /// Animates towards [lowerBound].
   ///
@@ -97,7 +103,15 @@ abstract interface class SpringSimulationControllerBase<T extends Object>
   TickerFuture reverse({
     T? from,
     T? withVelocity,
-  });
+  }) {
+    if (!isBounded) {
+      assert(false, 'Cannot animate reverse on an unbounded controller');
+      if (from != null) value = from;
+      stop();
+      return TickerFuture.complete();
+    }
+    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
+  }
 
   /// Animates towards [target], while ensuring that any current velocity is
   /// maintained.
@@ -128,27 +142,4 @@ abstract interface class SpringSimulationControllerBase<T extends Object>
 
   /// Frees any resources used by this object.
   void dispose();
-
-  /// Asserts that the controller is bounded.
-  ///
-  /// If the controller is not bounded, it will stop the simulation and return
-  /// false.
-  @internal
-  static bool assertBounded(
-    SpringSimulationControllerBase c, {
-    required bool forward,
-  }) {
-    if (!c.isBounded) {
-      assert(
-        false,
-        'Cannot ${forward ? 'forward' : 'reverse'} an unbounded '
-        '${objectRuntimeType(c, 'SpringSimulationController')}',
-      );
-
-      c.stop(canceled: true);
-      return false;
-    }
-
-    return true;
-  }
 }

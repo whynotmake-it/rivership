@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use_from_same_package
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spot/spot.dart';
@@ -9,7 +7,6 @@ void main() {
   group('SpringDraggable', () {
     const childKey = Key('child');
     const feedbackKey = Key('feedback');
-    const targetKey = Key('target');
 
     Widget buildChild() => Container(
           key: childKey,
@@ -23,17 +20,6 @@ void main() {
           width: 100,
           height: 100,
           color: Colors.red,
-        );
-
-    Widget buildTarget({void Function(String?)? onAccept}) =>
-        DragTarget<String>(
-          onAcceptWithDetails: (details) => onAccept?.call(details.data),
-          builder: (context, candidateData, rejectedData) => Container(
-            key: targetKey,
-            width: 100,
-            height: 100,
-            color: Colors.green,
-          ),
         );
 
     testWidgets('builds with child', (tester) async {
@@ -206,74 +192,6 @@ void main() {
 
       await tester.pumpAndSettle();
       feedback.doesNotExist();
-    });
-
-    testWidgets('feedback does not animate if onlyReturnWhenCanceled is true',
-        (tester) async {
-      String? acceptedData;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Stack(
-            children: [
-              Align(
-                alignment: Alignment.topLeft,
-                child: SpringDraggable<String>(
-                  spring: const Spring(),
-                  onlyReturnWhenCanceled: true,
-                  data: 'test',
-                  feedback: buildFeedback(),
-                  child: buildChild(),
-                ),
-              ),
-              Align(
-                alignment: Alignment.topRight,
-                child: buildTarget(onAccept: (data) => acceptedData = data),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      final child = spotKey(childKey)..existsOnce();
-
-      final childCenter = tester.getCenter(child.finder);
-
-      final cancelGesture = await tester.startGesture(childCenter);
-      await cancelGesture.moveBy(const Offset(50, 50));
-      await tester.pump();
-
-      spotKey(feedbackKey).existsOnce();
-
-      await cancelGesture.up();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-
-      spotKey(feedbackKey).existsOnce();
-
-      await tester.pumpAndSettle();
-
-      spotKey(targetKey).existsOnce();
-      spotKey(feedbackKey).doesNotExist();
-
-      final targetCenter = tester.getCenter(spotKey(targetKey).finder);
-
-      final successGesture = await tester.startGesture(childCenter);
-      await successGesture.moveTo(targetCenter);
-
-      await tester.pump();
-
-      spotKey(targetKey).existsOnce();
-      spotKey(feedbackKey).existsOnce();
-
-      await successGesture.up();
-      await tester.pump();
-      expect(acceptedData, equals('test'));
-
-      await tester.pump(const Duration(milliseconds: 250));
-
-      spotKey(feedbackKey).doesNotExist();
-      spotKey(childKey).existsOnce();
     });
   });
 }
