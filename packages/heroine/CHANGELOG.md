@@ -13,7 +13,7 @@
 ## 0.5.0-dev.2
 
  - **FEAT**: support nested heroines if they are not part of the same transition.
- - **FEAT**: update examples to use new springster motion APIs.
+ - **FEAT**: update examples to use new motor motion APIs.
  - **DOCS**: added fullscreen gif.
  - **DOCS**: add mention to nested heroines in README.
 
@@ -26,7 +26,7 @@
 
 > Note: This release has breaking changes.
 
- - **FEAT**: use new `Motion` based APIs from springster internally.
+ - **FEAT**: use new `Motion` based APIs from motor internally.
  - **BREAKING** **FEAT**: add `MotionConverter` API to simplify the usage of controllers.
 
 ## 0.4.0+1
@@ -69,7 +69,7 @@
  - **DOCS**: added animation to README.     
  - **FEAT**: update README files with example links.
  - **FEAT**: added unified example to monorepo.
- - **FEAT**: add springster dependency and enhance Hero widget documentation.
+ - **FEAT**: add motor dependency and enhance Hero widget documentation.
 
 ## 0.1.0
 

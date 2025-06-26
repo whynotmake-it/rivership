@@ -1,4 +1,4 @@
-name: heroine_example
+name: motor_example
 description: "A new Flutter project."
 
 # Prevent accidental publishing to pub.dev.
@@ -8,19 +8,15 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.5.4
+  flutter: ^3.27.0
 
 dependencies:
-  cached_network_image: ^3.4.1
-  cupertino_icons: ^1.0.8
-  figma_squircle_updated: ^1.0.1
+  auto_route: ^10.0.1
   flutter:
     sdk: flutter
-  lorem_gen: ^2.0.1
   pull_down_button: ^0.10.2
-  motor: ^2.0.0
-  heroine: 
+  motor:
     path: ../
-  auto_route: ^10.0.1
 
 dev_dependencies:
   flutter_test:

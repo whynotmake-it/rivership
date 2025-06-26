@@ -2,7 +2,7 @@
 library rivership;
 
 export 'package:heroine/heroine.dart';
-export 'package:springster/springster.dart';
+export 'package:motor/motor.dart';
 
 export 'src/design/blend_color_tween.dart';
 export 'src/design/simple_widget_states.dart';

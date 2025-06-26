@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/src/heroine_velocity.dart';
 import 'package:heroine/src/shuttle_builders.dart';
-import 'package:springster/springster.dart';
+import 'package:motor/motor.dart';
 
 part 'flight.dart';
 part 'manifest.dart';

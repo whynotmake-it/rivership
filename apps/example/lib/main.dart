@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:rivership/rivership.dart';
-import 'package:springster_example/main.dart';
+import 'package:motor_example/main.dart';
 import 'package:heroine_example/main.dart';
 
 void main() async {
@@ -20,9 +20,9 @@ void main() async {
         children: heroineRoutes,
       ),
       NamedRouteDef.shell(
-        name: 'Springster',
-        path: '/springster',
-        children: springsterRoutes,
+        name: 'Motor',
+        path: '/motor',
+        children: motorRoutes,
       ),
     ],
   );
@@ -59,8 +59,8 @@ class Home extends StatelessWidget {
               child: const Text('Heroine'),
             ),
             CupertinoButton.filled(
-              onPressed: () => context.navigateTo(NamedRoute('Springster')),
-              child: const Text('Springster'),
+              onPressed: () => context.navigateTo(NamedRoute('Motor')),
+              child: const Text('Motor'),
             ),
           ],
         ),

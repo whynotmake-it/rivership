@@ -152,7 +152,7 @@ If you look closely at the example GIF, you will see that the details page fades
 
 ## Spring Configuration 🎯
 
-Heroine uses [Springster](https://pub.dev/packages/springster) for spring animations. You can customize the spring behavior:
+Heroine uses [Motor](https://pub.dev/packages/motor) for motion animations. You can customize the spring behavior:
 
 ```dart
 const mySpring = Spring(

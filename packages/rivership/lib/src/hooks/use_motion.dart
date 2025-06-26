@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:springster/springster.dart';
+import 'package:motor/motor.dart';
 
 // ignore: implementation_imports
-import 'package:springster/src/controllers/motion_controller.dart';
+import 'package:motor/src/controllers/motion_controller.dart';
 
 part 'use_motion_utils.dart';
 
@@ -103,12 +103,12 @@ class MotionHook<T extends Object> extends Hook<T> {
     this.from,
   }) : motion = null;
 
-  /// {@template springster.MotionHook.vsync}
+  /// {@template motor.MotionHook.vsync}
   /// The [TickerProvider] to use for the animation.
   /// {@endtemplate}
   final TickerProvider vsync;
 
-  /// {@template springster.MotionHook.value}
+  /// {@template motor.MotionHook.value}
   /// The target value for the transition.
   ///
   /// Whenever this value changes, the hook smoothly animates from
@@ -116,7 +116,7 @@ class MotionHook<T extends Object> extends Hook<T> {
   /// {@endtemplate}
   final T value;
 
-  /// {@template springster.MotionHook.from}
+  /// {@template motor.MotionHook.from}
   /// The starting value for the initial animation.
   ///
   /// If this value is null, the hook will start out at [value].
@@ -126,17 +126,17 @@ class MotionHook<T extends Object> extends Hook<T> {
   /// {@endtemplate}
   final T? from;
 
-  /// {@template springster.MotionHook.motion}
+  /// {@template motor.MotionHook.motion}
   /// The motion to use for the animation.
   /// {@endtemplate}
   final Motion? motion;
 
-  /// {@template springster.MotionHook.motionPerDimension}
+  /// {@template motor.MotionHook.motionPerDimension}
   /// The motion to use for each dimension of the animation.
   /// {@endtemplate}
   final List<Motion>? motionPerDimension;
 
-  /// {@template springster.MotionHook.converter}
+  /// {@template motor.MotionHook.converter}
   /// The converter to use to convert [T] into its normalized form of values.
   ///
   /// See also:
@@ -148,14 +148,14 @@ class MotionHook<T extends Object> extends Hook<T> {
   /// {@endtemplate}
   final MotionConverter<T> converter;
 
-  /// {@template springster.simulate}
+  /// {@template motor.simulate}
   /// Whether the motion is active.
   ///
   /// If false, the [value] will be immediately set to the target value.
   /// {@endtemplate}
   final bool active;
 
-  /// {@template springster.on_animation_status_changed}
+  /// {@template motor.on_animation_status_changed}
   /// Called when the animation status changes.
   /// {@endtemplate}
   final ValueChanged<AnimationStatus>? onAnimationStatusChanged;

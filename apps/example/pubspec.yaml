@@ -16,8 +16,8 @@ dependencies:
     sdk: flutter
   heroine_example:
     path: ../../packages/heroine/example
-  springster_example:
-    path: ../../packages/springster/example
+  motor_example:
+    path: ../../packages/motor/example
 
 
   rivership: ^0.3.0-dev.3

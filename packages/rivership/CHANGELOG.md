@@ -59,7 +59,7 @@
 ## 0.1.3
 
  - **FIX**: layout in `AnimatedSizeSwitcher` when `immediateResize` is true.
- - **FEAT**: add and export springster package.
+ - **FEAT**: add and export motor package.
  - **FEAT**: `usePageIndex` hook to only trigger rebuilds when the page changes, not any inbetween values.
  - **FEAT**: `useKeyedState`, which allows for setting keys that trigger a state re-evaluation.
  - **FEAT**: added `AnimatedText` that smoothly swaps out text content and style.

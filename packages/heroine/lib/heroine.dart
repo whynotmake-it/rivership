@@ -2,7 +2,7 @@
 /// well as cleaner route transitions.
 library heroine;
 
-export 'package:springster/springster.dart' show Motion, Spring;
+export 'package:motor/motor.dart' show Motion, Spring;
 
 export 'src/drag_dismissable.dart' show DragDismissable;
 export 'src/heroine_route_mixin.dart'
