@@ -39,7 +39,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: CupertinoMotion.smooth,
             child: buildChild(),
           ),
         ),
@@ -53,7 +53,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: const CupertinoMotion(),
             feedback: buildFeedback(),
             child: buildChild(),
           ),
@@ -76,7 +76,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: const CupertinoMotion(),
             childWhenDragging: buildFeedback(),
             feedback: const SizedBox(),
             child: buildChild(),
@@ -98,7 +98,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: const CupertinoMotion(),
             onDragStarted: () => dragStarted = true,
             child: buildChild(),
           ),
@@ -118,7 +118,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: const CupertinoMotion(),
             onDragEnd: (_) => dragEnded = true,
             child: buildChild(),
           ),
@@ -139,7 +139,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion(),
+            motion: const CupertinoMotion(),
             axis: Axis.horizontal,
             feedback: buildFeedback(),
             child: buildChild(),
@@ -168,7 +168,7 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: MotionDraggable<String>(
-              motion: CupertinoMotion(),
+              motion: const CupertinoMotion(),
               data: 'test',
               feedback: buildFeedback(),
               child: buildChild(),
@@ -223,8 +223,8 @@ void main() {
               Align(
                 alignment: Alignment.topLeft,
                 child: MotionDraggable<String>(
-                  motion: CupertinoMotion(
-                    duration: const Duration(milliseconds: 100),
+                  motion: const CupertinoMotion(
+                    duration: Duration(milliseconds: 100),
                   ),
                   onlyReturnWhenCanceled: true,
                   data: 'test',
