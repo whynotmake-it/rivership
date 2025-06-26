@@ -64,16 +64,16 @@ abstract class Motion {
 
 /// A motion based on a fixed duration and curve.
 ///
-/// [DurationAndCurve] implements a motion that follows a specific [Curve] over
+/// [CurvedMotion] implements a motion that follows a specific [Curve] over
 /// a fixed [Duration]. This is the most common type of animation in Flutter,
 /// similar to what is used with [AnimationController.animateTo].
 ///
 /// This motion always completes in the specified duration and does not need to
 /// settle.
 @immutable
-class DurationAndCurve extends Motion {
+class CurvedMotion extends Motion {
   /// Creates a motion with a fixed duration and curve.
-  const DurationAndCurve({
+  const CurvedMotion({
     required this.duration,
     this.curve = Curves.linear,
   }) : super(tolerance: const Tolerance(distance: 0, time: 0, velocity: 0));
@@ -88,30 +88,30 @@ class DurationAndCurve extends Motion {
 
   /// Whether this motion needs to settle.
   ///
-  /// Always returns false for [DurationAndCurve] because it completes in a
+  /// Always returns false for [CurvedMotion] because it completes in a
   /// fixed duration.
   @override
   bool get needsSettle => false;
 
   /// Whether this motion will settle without bounds.
   ///
-  /// Always returns true for [DurationAndCurve] because it always terminates
+  /// Always returns true for [CurvedMotion] because it always terminates
   /// after the specified duration.
   @override
   bool get unboundedWillSettle => true;
 
-  /// Creates a new [DurationAndCurve] with the given parameters.
-  DurationAndCurve copyWith({
+  /// Creates a new [CurvedMotion] with the given parameters.
+  CurvedMotion copyWith({
     Duration? duration,
     Curve? curve,
   }) =>
-      DurationAndCurve(
+      CurvedMotion(
         duration: duration ?? this.duration,
         curve: curve ?? this.curve,
       );
 
   /// Applies [curve] to the current [duration].
-  DurationAndCurve withCurve(Curve curve) => copyWith(curve: curve);
+  CurvedMotion withCurve(Curve curve) => copyWith(curve: curve);
 
   @override
   Simulation createSimulation({
@@ -130,7 +130,7 @@ class DurationAndCurve extends Motion {
 
   @override
   bool operator ==(Object other) {
-    if (other is DurationAndCurve) {
+    if (other is CurvedMotion) {
       return duration == other.duration && curve == other.curve;
     }
     return false;
@@ -142,7 +142,18 @@ class DurationAndCurve extends Motion {
 
   /// Returns a string representation of this object.
   @override
-  String toString() => 'DurationAndCurve(duration: $duration, curve: $curve)';
+  String toString() => 'CurvedMotion(duration: $duration, curve: $curve)';
+}
+
+/// A convenience class for a [CurvedMotion] that uses a linear curve.
+class LinearMotion extends CurvedMotion {
+  /// Creates a linear motion with a fixed duration.
+  ///
+  /// The curve is set to [Curves.linear] by default.
+  const LinearMotion({required super.duration}) : super(curve: Curves.linear);
+
+  @override
+  String toString() => 'LinearMotion(duration: $duration)';
 }
 
 /// A motion based on spring physics.

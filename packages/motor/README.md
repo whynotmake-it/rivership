@@ -44,9 +44,9 @@ The core of Motor's unified motion system is the `Motion` class. It represents t
 
 ```dart
 // Duration-based motion (traditional Flutter approach)
-final classic = DurationAndCurve(Duration(seconds: 1));
+final linear = LinearMotion(Duration(seconds: 1));
 
-final withCurve = DurationAndCurve(
+final withCurve = CurvedMotion(
   duration: Duration(seconds: 1), 
   curve: Curves.easeInOut,
 );
@@ -57,8 +57,9 @@ final spring = CupertinoMotion.bouncy;
 
 Motor provides two main motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
 
+- **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
+- **`LinearMotion`** - Like `CurvedMotion` but always linear.
 - **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
-- **`DurationAndCurve`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 

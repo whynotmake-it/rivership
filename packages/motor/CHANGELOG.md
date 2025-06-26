@@ -13,7 +13,7 @@ Initial release of Motor - a unified motion system for Flutter.
 
 ### Core Components
 
-- **Motion System**: `Motion`, `Spring`, `DurationAndCurve`, `CupertinoMotion`
+- **Motion System**: `Motion`, `SpringMotion`, `CurvedMotion`, `CupertinoMotion`
 - **Widgets**: `SingleMotionBuilder`, `MotionBuilder`, `MotionDraggable`
 - **Controllers**: `MotionController`, `SingleMotionController`, `BoundedMotionController`
 - **Converters**: `MotionConverter`, `OffsetMotionConverter`, `SizeMotionConverter`, `RectMotionConverter`, `AlignmentMotionConverter`
