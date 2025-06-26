@@ -14,7 +14,7 @@ void main() {
           builder: (context) {
             capturedValue = useSingleMotion(
               value: 10,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
             );
 
             return SizedBox(
@@ -33,7 +33,7 @@ void main() {
         builder: (context) {
           capturedValue = useSingleMotion(
             value: 0,
-            motion: CupertinoMotion.smooth,
+            motion: const CupertinoMotion.smooth(),
           );
           return const SizedBox();
         },
@@ -47,7 +47,7 @@ void main() {
           builder: (context) {
             capturedValue = useSingleMotion(
               value: 100,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
             );
             return const SizedBox();
           },
@@ -68,7 +68,7 @@ void main() {
             capturedValue = useSingleMotion(
               value: 100,
               from: 0,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
             );
             return const SizedBox();
           },
@@ -89,7 +89,7 @@ void main() {
             capturedValue = useSingleMotion(
               value: 100,
               from: 0,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               active: false,
             );
             return const SizedBox();
@@ -108,7 +108,7 @@ void main() {
           builder: (context) {
             capturedValue = useSingleMotion(
               value: 0,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               active: false,
             );
             return const SizedBox();
@@ -121,7 +121,7 @@ void main() {
           builder: (context) {
             capturedValue = useSingleMotion(
               value: 100,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               active: false,
             );
             return const SizedBox();
@@ -142,7 +142,7 @@ void main() {
           builder: (context) {
             capturedValue = useMotion(
               value: const Offset(10, 20),
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
             );
             return const SizedBox();
@@ -159,7 +159,7 @@ void main() {
           builder: (context) {
             capturedValue = useMotion(
               value: Offset.zero,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
             );
             return const SizedBox();
@@ -172,7 +172,7 @@ void main() {
           builder: (context) {
             capturedValue = useMotion(
               value: const Offset(100, 200),
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
             );
             return const SizedBox();
@@ -196,7 +196,7 @@ void main() {
             capturedValue = useMotion(
               value: const Offset(100, 200),
               from: Offset.zero,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
             );
             return const SizedBox();
@@ -220,7 +220,7 @@ void main() {
             capturedValue = useMotion(
               value: Offset.zero,
               from: const Offset(0, 100),
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
             );
             return const SizedBox();
@@ -244,7 +244,7 @@ void main() {
             capturedValue = useMotion(
               value: const Offset(100, 200),
               from: Offset.zero,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
               active: false,
             );
@@ -266,7 +266,7 @@ void main() {
           builder: (context) {
             capturedValue = useMotion(
               value: Offset.zero,
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
               active: false,
             );
@@ -280,7 +280,7 @@ void main() {
           builder: (context) {
             capturedValue = useMotion(
               value: const Offset(100, 200),
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               converter: const OffsetMotionConverter(),
               active: false,
             );

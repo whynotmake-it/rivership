@@ -206,7 +206,7 @@ class DetailsPage extends StatelessWidget {
               child: Center(
                 child: SingleMotionBuilder(
                   value: detailsPageAspectRatio.value,
-                  motion: CupertinoMotion.bouncy,
+                  motion: CupertinoMotion.bouncy(),
                   builder: (context, value, child) => AspectRatio(
                     aspectRatio: value,
                     child: DragDismissable(

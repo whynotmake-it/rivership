@@ -27,13 +27,13 @@ A hook that animates a value using a [Motion].
 final double value = useSingleMotion(
     value: 100,
     from: 0,
-    motion: CupertinoMotion.standard,
+    motion: const CupertinoMotion(),
 );
 
 final Offset offset = useOffsetMotion(
     value: const Offset(100, 100),
     from: const Offset(0, 0),
-    motion: CupertinoMotion.bouncy,
+    motion: const CupertinoMotion.bouncy(),
 );
 ```
 

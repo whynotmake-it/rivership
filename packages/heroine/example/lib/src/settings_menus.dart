@@ -22,26 +22,26 @@ class MainSettingsButton extends StatelessWidget {
       itemBuilder: (context) => [
         PullDownMenuTitle(title: Text('Select Spring')),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.bouncy,
+          onTap: () => springNotifier.value = CupertinoMotion.bouncy(),
           title: 'Bouncy',
-          selected: springNotifier.value == CupertinoMotion.bouncy,
+          selected: springNotifier.value == CupertinoMotion.bouncy(),
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.snappy,
+          onTap: () => springNotifier.value = CupertinoMotion.snappy(),
           title: 'Snappy',
-          selected: springNotifier.value == CupertinoMotion.snappy,
+          selected: springNotifier.value == CupertinoMotion.snappy(),
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.smooth,
+          onTap: () => springNotifier.value = CupertinoMotion.smooth(),
           title: 'Smooth',
-          selected: springNotifier.value == CupertinoMotion.smooth,
+          selected: springNotifier.value == CupertinoMotion.smooth(),
         ),
         PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.interactive,
+          onTap: () => springNotifier.value = CupertinoMotion.interactive(),
           title: 'Interactive',
           subtitle: 'Too fast - janky',
           icon: CupertinoIcons.exclamationmark_triangle,
-          selected: springNotifier.value == CupertinoMotion.interactive,
+          selected: springNotifier.value == CupertinoMotion.interactive(),
         ),
         PullDownMenuTitle(title: Text('Flight Shuttle Animation')),
         PullDownMenuItem.selectable(

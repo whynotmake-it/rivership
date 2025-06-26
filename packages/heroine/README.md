@@ -162,7 +162,7 @@ final springMotion = SpringMotion(
   ),
 );
 
-final cupertinoMotion = CupertinoMotion.smooth;
+final cupertinoMotion = CupertinoMotion.smooth();
 
 final linearMotion = LinearMotion(duration: Duration(milliseconds: 300));
 

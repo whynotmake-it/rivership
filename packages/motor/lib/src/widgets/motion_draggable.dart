@@ -42,7 +42,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     required this.data,
     required this.child,
     this.feedback,
-    this.motion = CupertinoMotion.interactive,
+    this.motion = const CupertinoMotion.interactive(),
     this.onlyReturnWhenCanceled = false,
     this.axis,
     this.childWhenDragging,

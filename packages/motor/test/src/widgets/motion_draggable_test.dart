@@ -39,7 +39,7 @@ void main() {
         MaterialApp(
           home: MotionDraggable<String>(
             data: 'test',
-            motion: CupertinoMotion.smooth,
+            motion: const CupertinoMotion.smooth(),
             child: buildChild(),
           ),
         ),
@@ -168,7 +168,7 @@ void main() {
           home: Align(
             alignment: Alignment.topLeft,
             child: MotionDraggable<String>(
-              motion: const CupertinoMotion(),
+              motion: const CupertinoMotion.smooth(),
               data: 'test',
               feedback: buildFeedback(),
               child: buildChild(),

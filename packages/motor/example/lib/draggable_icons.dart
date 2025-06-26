@@ -9,7 +9,7 @@ void main() async {
   ));
 }
 
-final motion = ValueNotifier<Motion>(CupertinoMotion.bouncy);
+final motion = ValueNotifier<Motion>(const CupertinoMotion.bouncy());
 
 class DraggableIconsExample extends StatelessWidget {
   const DraggableIconsExample({super.key});

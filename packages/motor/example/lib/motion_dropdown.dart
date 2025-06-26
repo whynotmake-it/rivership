@@ -4,10 +4,10 @@ import 'package:pull_down_button/pull_down_button.dart';
 import 'package:motor/motor.dart';
 
 final motionOptions = {
-  "Smooth Spring": CupertinoMotion.smooth,
-  "Bouncy Spring": CupertinoMotion.bouncy,
-  "Snappy Spring": CupertinoMotion.snappy,
-  "Interactive Spring": CupertinoMotion.interactive,
+  "Smooth Spring": CupertinoMotion.smooth(),
+  "Bouncy Spring": CupertinoMotion.bouncy(),
+  "Snappy Spring": CupertinoMotion.snappy(),
+  "Interactive Spring": CupertinoMotion.interactive(),
   "Material 3 Ease": CurvedMotion(
     duration: Durations.long2,
     curve: Easing.standard,

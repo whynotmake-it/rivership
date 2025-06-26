@@ -13,7 +13,7 @@ void main() {
 
     late SingleMotionController controller;
 
-    const spring = CupertinoMotion.smooth;
+    const spring = CupertinoMotion.smooth();
 
     tearDown(() {
       controller.dispose();
@@ -142,7 +142,7 @@ void main() {
 
     late BoundedSingleMotionController controller;
 
-    const spring = CupertinoMotion.smooth;
+    const spring = CupertinoMotion.smooth();
 
     tearDown(() {
       controller.dispose();
@@ -165,7 +165,7 @@ void main() {
         motion: spring,
         vsync: tester,
       );
-      final newSpring = CupertinoMotion.smooth.copyWith(bounce: 0.1);
+      final newSpring = const CupertinoMotion.smooth().copyWith(bounce: 0.1);
       controller.motion = newSpring;
       expect(controller.motion, equals(newSpring));
     });
@@ -208,7 +208,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
-          motion: CupertinoMotion.bouncy,
+          motion: const CupertinoMotion.bouncy(),
           vsync: tester,
         );
 
@@ -289,7 +289,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
-          motion: CupertinoMotion.bouncy,
+          motion: const CupertinoMotion.bouncy(),
           vsync: tester,
           initialValue: 1,
         );
