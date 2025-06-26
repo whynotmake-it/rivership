@@ -1,3 +1,38 @@
+## 1.0.0-dev.1
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **REFACTOR**: remove experimental changes from `springster` and add to new `motor` package instead (#117).
+
+    * refactor!: remove legacy `Spring` widgets. Use `Motion` widgets instead
+    
+    * refactor!: renamed package to `motor`
+    
+    * chore: version
+    
+    * chore: add back springster at last released version
+    
+    * chore: add back legacy springster
+    
+    * rename `Spring` to `SpringMotion`
+    
+    * refactor!: renamed `Spring` to `SpringMotion`
+    
+    * more stuff
+    
+    * feat!: add `VelocityMotionBuilder`
+    
+    * feat: add `VelocityMotionBuilder`, which also passes the current velocity to the builder
+    
+    * add velocity stuff to example
+    
+    * linter love
+    
+    * docs: mention motor upgrade in springster readme
+    
+    * return springster version
+
+
 ## 1.0.0-dev.0
 
 Initial release of Motor - a unified motion system for Flutter.
