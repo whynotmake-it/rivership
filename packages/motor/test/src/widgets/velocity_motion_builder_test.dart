@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
-import 'package:motor/src/widgets/velocity_motion_builder.dart';
 
 void main() {
   group('SingleVelocityMotionBuilder', () {
