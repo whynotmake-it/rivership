@@ -1,0 +1,26 @@
+name: springster_example
+description: "A new Flutter project."
+
+# Prevent accidental publishing to pub.dev.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.4
+  flutter: ^3.27.0
+
+dependencies:
+  auto_route: ^10.0.1
+  flutter:
+    sdk: flutter
+  pull_down_button: ^0.10.2
+  springster:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
