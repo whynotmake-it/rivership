@@ -1,7 +1,18 @@
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
-import 'package:motor/src/motion.dart';
-import 'package:motor/src/motion_converter.dart';
+
+/// Builds a [Widget] when given a concrete value and velocity of a [Motion].
+///
+/// If the `child` parameter provided to the [ValueListenableBuilder] is not
+/// null, the same `child` widget is passed back to this [ValueWidgetBuilder]
+/// and should typically be incorporated in the returned widget tree.
+typedef VelocityMotionWidgetBuilder<T> = Widget Function(
+  BuildContext context,
+  T value,
+  T velocity,
+  Widget? child,
+);
 
 /// A widget that animates a value using a dynamic motion.
 ///
@@ -23,10 +34,13 @@ import 'package:motor/src/motion_converter.dart';
 /// ```
 ///
 /// See also:
-/// * [SingleMotionBuilder] for a motion builder that animates a single value.
-class MotionBuilder<T extends Object> extends StatefulWidget {
-  /// Creates a [MotionBuilder] with a single [motion].
-  const MotionBuilder({
+/// * [MotionBuilder] for simpler variant of this widget for when you don't need
+///  the velocity of the motion.
+/// * [SingleVelocityMotionBuilder] for a motion builder that animates a single
+/// value.
+class VelocityMotionBuilder<T extends Object> extends StatefulWidget {
+  /// Creates a [VelocityMotionBuilder] with a single [motion].
+  const VelocityMotionBuilder({
     required this.value,
     required Motion this.motion,
     required this.converter,
@@ -38,8 +52,9 @@ class MotionBuilder<T extends Object> extends StatefulWidget {
     super.key,
   }) : motionPerDimension = null;
 
-  /// Creates a [MotionBuilder] with a separate [motion] for each dimension.
-  const MotionBuilder.motionPerDimension({
+  /// Creates a [VelocityMotionBuilder] with a separate [motion] for each
+  /// dimension.
+  const VelocityMotionBuilder.motionPerDimension({
     required this.value,
     required List<Motion> this.motionPerDimension,
     required this.converter,
@@ -51,40 +66,24 @@ class MotionBuilder<T extends Object> extends StatefulWidget {
     super.key,
   }) : motion = null;
 
-  /// {@template motor.MotionBuilder.value}
-  /// The target value for the transition.
-  ///
-  /// Whenever this value changes, the widget smoothly animates from
-  /// the previous value to the new one.
-  /// {@endtemplate}
+  /// {@macro motor.MotionBuilder.value}
   final T value;
 
-  /// {@template motor.MotionBuilder.from}
-  /// The starting value for the initial animation.
-  ///
-  /// If this value is null, the widget will start out at [value].
-  ///
-  /// This is only considered for the first animation, any subsequent changes
-  /// during the lifecycle of this widget will be ignored.
-  /// {@endtemplate}
+  /// {@macro motor.MotionBuilder.from}
   final T? from;
 
-  /// {@template motor.MotionBuilder.builder}
+  /// {@template motor.VelocityMotionBuilder.builder}
   /// Called to build the child widget.
   ///
-  /// The [builder] function is passed the interpolated [value] from the
-  /// animation.
+  /// The [builder] function is passed the interpolated [value] and the current
+  /// velocity from the animation.
   /// {@endtemplate}
-  final ValueWidgetBuilder<T> builder;
+  final VelocityMotionWidgetBuilder<T> builder;
 
-  /// {@template motor.MotionBuilder.motion}
-  /// The motion to use for the animation.
-  /// {@endtemplate}
+  /// {@macro motor.MotionBuilder.motion}
   final Motion? motion;
 
-  /// {@template motor.MotionBuilder.motionPerDimension}
-  /// The motion to use for each dimension of the animation.
-  /// {@endtemplate}
+  /// {@macro motor.MotionBuilder.motionPerDimension}
   final List<Motion>? motionPerDimension;
 
   /// {@template motor.MotionBuilder.converter}
@@ -118,14 +117,13 @@ class MotionBuilder<T extends Object> extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<MotionBuilder<T>> createState() => _MotionBuilderState<T>();
+  State<VelocityMotionBuilder<T>> createState() => _MotionBuilderState<T>();
 }
 
-class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
-    with TickerProviderStateMixin {
+class _MotionBuilderState<T extends Object>
+    extends State<VelocityMotionBuilder<T>> with TickerProviderStateMixin {
   late MotionController<T> controller;
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -153,7 +151,7 @@ class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
   }
 
   @override
-  void didUpdateWidget(covariant MotionBuilder<T> oldWidget) {
+  void didUpdateWidget(covariant VelocityMotionBuilder<T> oldWidget) {
     if (widget.motion != oldWidget.motion ||
         !motionsEqual(
           widget.motionPerDimension,
@@ -197,7 +195,12 @@ class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
     return ListenableBuilder(
       listenable: controller,
       builder: (context, child) {
-        return widget.builder(context, controller.value, child);
+        return widget.builder(
+          context,
+          controller.value,
+          controller.velocity,
+          child,
+        );
       },
       child: widget.child,
     );
@@ -210,12 +213,12 @@ class _MotionBuilderState<T extends Object> extends State<MotionBuilder<T>>
   }
 }
 
-/// A [MotionBuilder] that animates a single value.
+/// A [VelocityMotionBuilder] that animates a single value.
 ///
 /// {@macro motor.MotionBuilder}
-class SingleMotionBuilder extends MotionBuilder<double> {
-  /// Creates a [SingleMotionBuilder].
-  const SingleMotionBuilder({
+class SingleVelocityMotionBuilder extends VelocityMotionBuilder<double> {
+  /// Creates a [SingleVelocityMotionBuilder].
+  const SingleVelocityMotionBuilder({
     required super.value,
     required super.motion,
     required super.builder,
