@@ -1,5 +1,14 @@
 # Springster
 
+> **⚠️ Consider upgrading to [Motor](https://pub.dev/packages/motor)!**  
+> Motor is the next-generation animation package that includes all of Springster's functionality plus:
+> - **Unified Motion API** - One consistent interface for springs, curves, and custom motions
+> - **Multi-dimensional animations** - Animate complex types like Offset, Size, and Rect with independent physics per dimension  
+> - **Apple Design System** - Built-in CupertinoMotion presets matching iOS animations
+> - **Enhanced flexibility** - Switch between physics-based and duration-based animations seamlessly
+> 
+> [**→ Upgrade to Motor**](https://pub.dev/packages/motor)
+
 [![Pub Version](https://img.shields.io/pub/v/springster)](https://pub.dev/packages/springster)
 [![Coverage](./coverage.svg)](./test/)
 [![lintervention_badge]]([lintervention_link])
