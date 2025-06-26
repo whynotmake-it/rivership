@@ -1,3 +1,8 @@
+## 0.3.0-dev.4
+
+> Note: This release has breaking changes.
+ - **BREAKING** **REFACTOR**: export new `motor` package instead of `springster` (#117).
+
 ## 0.3.0-dev.3
 
  - **FEAT**: add `useMotion` hook and derived hooks for different types.

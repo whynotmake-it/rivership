@@ -1,3 +1,12 @@
+## 0.5.0-dev.4
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **REFACTOR**: remove experimental changes from `springster` and add to new `motor` package instead (#117).
+ - **BREAKING** **FEAT**: migrate to motor's Motion system and add comprehensive migration guide.
+    - Support all kinds of motions, not just springs.
+    - Check out the [package documentation](https://pub.dev/packages/motor) for more details on how to use the new APIs.
+
 ## 0.5.0-dev.3
 
 > Note: This release has breaking changes.
