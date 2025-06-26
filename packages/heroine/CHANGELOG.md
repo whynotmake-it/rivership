@@ -3,25 +3,9 @@
 > Note: This release has breaking changes.
 
  - **BREAKING** **REFACTOR**: remove experimental changes from `springster` and add to new `motor` package instead (#117).
- - **BREAKING** **FEAT**: migrate to Flutter SDK SpringDescription and add comprehensive migration guide.
-
-    - Rename Spring to CupertinoMotion with predefined motion constants (smooth, bouncy, snappy, interactive)
-    - Replace SpringMotion with Spring class that wraps SpringDescription
-    - Deprecate SimpleSpring (formerly DurationSpring) with detailed migration documentation
-    - Add comprehensive migration guide documenting mathematical differences for negative bounce values
-    - Update all examples and tests to use new CupertinoMotion API
-    - Add SpringDescriptionExtension with copyWith methods for convenience
-    - Document behavioral differences between SimpleSpring and Flutter SDK's SpringDescription.withDurationAndBounce
-    - Add extensive test coverage validating migration behavior differences
-    - Update deprecation messages to reference migration guide for negative bounce values
-    - Add README warning about overdamped spring behavior differences during migration
-    
-    
-    - SpringMotion replaced with Spring wrapper around SpringDescription
-    - SimpleSpring deprecated in favor of Flutter SDK's SpringDescription.withDurationAndBounce
-    - Negative bounce values behave differently between SimpleSpring and Flutter SDK due to different damping formulas
-    - Default motion parameters changed to use Flutter SDK's SpringDescription.withDurationAndBounce
-
+ - **BREAKING** **FEAT**: migrate to motor's Motion system and add comprehensive migration guide.
+    - Support all kinds of motions, not just springs.
+    - Check out the [package documentation](https://pub.dev/packages/motor) for more details on how to use the new APIs.
 
 ## 0.5.0-dev.3
 
