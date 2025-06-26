@@ -24,7 +24,7 @@ void main() {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
     late MotionController<Offset> controller;
-    const motion = CupertinoMotion.smooth;
+    const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
 
     tearDown(() {
@@ -463,7 +463,7 @@ void main() {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
     late BoundedMotionController<Offset> controller;
-    const motion = CupertinoMotion.smooth;
+    const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
 
     tearDown(() {
@@ -532,7 +532,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = BoundedMotionController<Offset>(
-          motion: CupertinoMotion.bouncy,
+          motion: const CupertinoMotion.bouncy(),
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
@@ -586,7 +586,7 @@ void main() {
       testWidgets('will overshoot', (tester) async {
         var overshot = false;
         controller = BoundedMotionController<Offset>(
-          motion: CupertinoMotion.bouncy,
+          motion: const CupertinoMotion.bouncy(),
           vsync: tester,
           converter: converter,
           initialValue: const Offset(1, 1),

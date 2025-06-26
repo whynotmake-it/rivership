@@ -6,37 +6,15 @@ import 'util.dart';
 
 void main() {
   group('CupertinoMotion', () {
-    void printConstructor(SpringDescription spring, String name) {
-      // ignore: avoid_print
-      print('''
-static const $name = CupertinoMotion._(
-  SpringDescription(
-    mass: ${spring.mass},
-    stiffness: ${spring.stiffness},
-    damping: ${spring.damping},
-  ),
-);
-''');
-    }
-
     test('generate constant SpringDescriptions', () async {
-      try {
-        expect(const CupertinoMotion().description, equalsSpring(standard));
-        expect(CupertinoMotion.bouncy.description, equalsSpring(bouncy));
-        expect(CupertinoMotion.snappy.description, equalsSpring(snappy));
-        expect(CupertinoMotion.smooth.description, equalsSpring(smooth));
-        expect(
-          CupertinoMotion.interactive.description,
-          equalsSpring(interactive),
-        );
-      } on TestFailure {
-        // If we fail we print the correct constructors:
-        printConstructor(bouncy, 'bouncy');
-        printConstructor(snappy, 'snappy');
-        printConstructor(smooth, 'smooth');
-        printConstructor(interactive, 'interactive');
-        rethrow;
-      }
+      expect(const CupertinoMotion().description, equalsSpring(standard));
+      expect(const CupertinoMotion.bouncy().description, equalsSpring(bouncy));
+      expect(const CupertinoMotion.snappy().description, equalsSpring(snappy));
+      expect(const CupertinoMotion.smooth().description, equalsSpring(smooth));
+      expect(
+        const CupertinoMotion.interactive().description,
+        equalsSpring(interactive),
+      );
     });
   });
 }

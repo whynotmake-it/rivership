@@ -20,7 +20,7 @@ class DragDismissable extends StatefulWidget {
     this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
-    this.motion = CupertinoMotion.interactive,
+    this.motion = const CupertinoMotion.interactive(),
   })  : _popAsDismiss = true,
         onDismiss = null;
 
@@ -36,7 +36,7 @@ class DragDismissable extends StatefulWidget {
     this.velocityThreshold = defaultVelocityThreshold,
     this.axisAffinity,
     this.constrainToAxis = true,
-    this.motion = CupertinoMotion.interactive,
+    this.motion = const CupertinoMotion.interactive(),
   }) : _popAsDismiss = false;
 
   /// The default for [threshold].

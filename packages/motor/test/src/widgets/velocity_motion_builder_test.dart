@@ -10,7 +10,7 @@ void main() {
       await tester.pumpWidget(
         SingleVelocityMotionBuilder(
           value: 10,
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           builder: (context, value, velocity, child) {
             capturedValue = value;
             capturedVelocity = velocity;
@@ -28,7 +28,7 @@ void main() {
 
       final widget = SingleVelocityMotionBuilder(
         value: 0,
-        motion: SpringMotion(CupertinoMotion.smooth.description),
+        motion: const CupertinoMotion.smooth(),
         builder: (context, value, velocity, child) {
           capturedValue = value;
           capturedVelocity = velocity;
@@ -42,7 +42,7 @@ void main() {
       await tester.pumpWidget(
         SingleVelocityMotionBuilder(
           value: 100,
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           builder: (context, value, velocity, child) {
             capturedValue = value;
             capturedVelocity = velocity;
@@ -66,7 +66,7 @@ void main() {
       await tester.pumpWidget(
         VelocityMotionBuilder(
           value: (10.0, 20.0),
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           converter: MotionConverter<(double, double)>(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
@@ -90,7 +90,7 @@ void main() {
       await tester.pumpWidget(
         VelocityMotionBuilder(
           value: (0.0, 0.0),
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           converter: MotionConverter<(double, double)>(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
@@ -106,7 +106,7 @@ void main() {
       await tester.pumpWidget(
         VelocityMotionBuilder(
           value: (100.0, -200.0),
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           converter: MotionConverter<(double, double)>(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
@@ -136,7 +136,7 @@ void main() {
       await tester.pumpWidget(
         VelocityMotionBuilder(
           value: (0.0, 0.0),
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           active: false,
           converter: MotionConverter<(double, double)>(
             normalize: (value) => [value.$1, value.$2],
@@ -156,7 +156,7 @@ void main() {
       await tester.pumpWidget(
         VelocityMotionBuilder(
           value: (100.0, 200.0),
-          motion: SpringMotion(CupertinoMotion.smooth.description),
+          motion: const CupertinoMotion.smooth(),
           active: false,
           converter: MotionConverter<(double, double)>(
             normalize: (value) => [value.$1, value.$2],

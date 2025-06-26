@@ -77,7 +77,7 @@ class _ListItemState extends State<ListItem> {
         builder: (context, candidateData, rejectedData) => Column(
           children: [
             SingleMotionBuilder(
-              motion: CupertinoMotion.smooth,
+              motion: const CupertinoMotion.smooth(),
               value: candidateData.isNotEmpty ? 1.0 : 0.0,
               builder: (context, value, child) => SizedBox.fromSize(
                 size: Size.fromHeight(value.clamp(0, 1) * 64),

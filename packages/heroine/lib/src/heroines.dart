@@ -18,7 +18,7 @@ class Heroine extends StatefulWidget {
     required this.child,
     required this.tag,
     super.key,
-    this.motion = CupertinoMotion.smooth,
+    this.motion = const CupertinoMotion.smooth(),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
   });

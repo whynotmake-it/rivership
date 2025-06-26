@@ -9,7 +9,7 @@ void main() {
   ));
 }
 
-final motion = ValueNotifier<Motion>(CupertinoMotion.smooth);
+final motion = ValueNotifier<Motion>(const CupertinoMotion.smooth());
 
 class TwoDimensionRedirectionExample extends StatefulWidget {
   const TwoDimensionRedirectionExample({super.key});
@@ -61,7 +61,7 @@ class _TwoDimensionRedirectionExampleState
                           return Transform.translate(
                             offset: value,
                             child: MotionBuilder(
-                              motion: CupertinoMotion.bouncy,
+                              motion: const CupertinoMotion.bouncy(),
                               converter: const OffsetMotionConverter(),
                               value: velocity,
                               builder: (context, velocity, child) {

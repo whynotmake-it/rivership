@@ -5,7 +5,7 @@ import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/settings_menus.dart';
 import 'package:motor/motor.dart';
 
-final springNotifier = ValueNotifier(CupertinoMotion.smooth);
+final springNotifier = ValueNotifier(CupertinoMotion.smooth());
 final flightShuttleNotifier =
     ValueNotifier<HeroineShuttleBuilder>(const FadeThroughShuttleBuilder());
 final detailsPageAspectRatio = ValueNotifier(1.0);

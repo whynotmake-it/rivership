@@ -12,6 +12,7 @@ A unified motion system that brings together physics-based springs, duration-bas
 - 🎨 **Unified Motion API** - One consistent interface for springs, curves, and custom motions
 - 💡 **Physics & Duration Based** - Choose between spring physics or traditional duration/curve animations
 - 🍎 **Apple Design System** - Built-in CupertinoMotion presets matching iOS animations
+- 🎨 **Material Design 3** - MaterialSpringMotion tokens following Google's motion guidelines
 - 📱 **Multi-dimensional** - Animate complex types like Offset, Size, and Rect with independent physics per dimension
 - 🔄 **Interactive Widgets** - Motion-driven draggable widgets with natural return animations
 - 🎯 **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
@@ -52,14 +53,17 @@ final withCurve = CurvedMotion(
 );
 
 // Physics-based motion (natural, responsive)
-final spring = CupertinoMotion.bouncy;
+final spring = CupertinoMotion.bouncy();
+final material = MaterialSpringMotion.standardSpatialDefault;
 ```
 
-Motor provides two main motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
+Motor provides several motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
 
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
 - **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
+- **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
+- **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
@@ -69,11 +73,11 @@ This unified approach means you can easily switch between physics and duration-b
 
 `CupertinoMotion` offers several predefined constants that correspond to [SwiftUI's animation presets](https://developer.apple.com/documentation/swiftui/animation):
 
-- **`CupertinoMotion.standard`** - The [default iOS spring](https://developer.apple.com/documentation/swiftui/animation/default) with smooth motion and no bounce
-- **`CupertinoMotion.smooth`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
-- **`CupertinoMotion.bouncy`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
-- **`CupertinoMotion.snappy`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
-- **`CupertinoMotion.interactive`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)) with lower response, designed for user-driven animations
+- **`CupertinoMotion()`** - The default iOS spring with smooth motion and no bounce
+- **`CupertinoMotion.smooth()`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
+- **`CupertinoMotion.bouncy()`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
+- **`CupertinoMotion.snappy()`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
+- **`CupertinoMotion.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)) with lower response, designed for user-driven animations
 
 You can also create custom `CupertinoMotion` instances:
 
@@ -86,6 +90,37 @@ final customMotion = CupertinoMotion(
 
 Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can use it directly wherever a `Motion` is expected.
 
+### MaterialSpringMotion
+
+`MaterialSpringMotion` provides Material Design 3 spring motion tokens for creating expressive and natural animations that follow Google's design guidelines. The tokens are organized into two main categories with three speed variants each:
+
+**Spatial Motion** - For animating position, size, and layout changes:
+- **`MaterialSpringMotion.standardSpatialFast`** - Quick spatial animations (damping: 0.9, stiffness: 1400)
+- **`MaterialSpringMotion.standardSpatialDefault`** - Balanced spatial animations (damping: 0.9, stiffness: 700)
+- **`MaterialSpringMotion.standardSpatialSlow`** - Gentle spatial animations (damping: 0.9, stiffness: 300)
+- **`MaterialSpringMotion.expressiveSpatialFast`** - Dynamic spatial with bounce (damping: 0.6, stiffness: 800)
+- **`MaterialSpringMotion.expressiveSpatialDefault`** - Moderate expressive spatial (damping: 0.8, stiffness: 380)
+- **`MaterialSpringMotion.expressiveSpatialSlow`** - Gentle expressive spatial (damping: 0.8, stiffness: 200)
+
+**Effects Motion** - For animating visual properties like opacity and color:
+- **`MaterialSpringMotion.standardEffectsFast`** - Quick effects animations (damping: 1, stiffness: 3800)
+- **`MaterialSpringMotion.standardEffectsDefault`** - Balanced effects animations (damping: 1, stiffness: 1600)
+- **`MaterialSpringMotion.standardEffectsSlow`** - Gentle effects animations (damping: 1, stiffness: 800)
+- **`MaterialSpringMotion.expressiveEffectsFast`** - Quick expressive effects (damping: 1, stiffness: 3800)
+- **`MaterialSpringMotion.expressiveEffectsDefault`** - Moderate expressive effects (damping: 1, stiffness: 1600)
+- **`MaterialSpringMotion.expressiveEffectsSlow`** - Gentle expressive effects (damping: 1, stiffness: 800)
+
+You can also create custom `MaterialSpringMotion` instances:
+
+```dart
+final customMaterial = MaterialSpringMotion(
+  damping: 0.8,
+  stiffness: 500,
+);
+```
+
+These motion tokens follow the [Material Design 3 Motion Guidelines](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens) and are designed to create consistent, expressive animations across Material Design applications.
+
 ### Simple Animation
 
 Use `SingleMotionBuilder` for basic, one-dimensional animations:
@@ -94,7 +129,7 @@ Use `SingleMotionBuilder` for basic, one-dimensional animations:
 
 ```dart
 SingleMotionBuilder(
-  motion: CupertinoMotion.bouncy,
+  motion: CupertinoMotion.bouncy(),
   value: targetValue, // Changes trigger smooth spring animation
   builder: (context, value, child) {
     return Container(
@@ -112,7 +147,7 @@ If you want to animate more complex types, such as `Offset`, `Size`, or `Rect`, 
 
 ```dart
 MotionBuilder(
-  motion: CupertinoMotion.bouncy,
+  motion: CupertinoMotion.bouncy(),
   value: const Offset(100, 100),
   from: Offset.zero,
   converter: OffsetMotionConverter(),
@@ -126,6 +161,28 @@ MotionBuilder(
     width: 100,
     height: 100,
     color: Colors.blue,
+  ),
+)
+```
+
+For Material Design applications, you can use MaterialSpringMotion tokens:
+
+```dart
+MotionBuilder(
+  motion: MaterialSpringMotion.expressiveSpatialDefault,
+  value: const Offset(100, 100),
+  from: Offset.zero,
+  converter: OffsetMotionConverter(),
+  builder: (context, value, child) {
+    return Transform.translate(
+      offset: value,
+      child: child,
+    );
+  },
+  child: Container(
+    width: 100,
+    height: 100,
+    color: Colors.green,
   ),
 )
 ```
@@ -161,7 +218,7 @@ class My3DMotionConverter implements MotionConverter<Vector3> {
 
 Widget build(BuildContext context) {
   return MotionBuilder(
-    motion: CupertinoMotion.bouncy,
+    motion: CupertinoMotion.bouncy(),
     value: Vector3(100, 100, 100),
     converter: My3DMotionConverter(),
     // ...
@@ -190,7 +247,7 @@ It works just like Flutter's `Draggable` widget and supports native `DragTarget`
 
 ```dart
 MotionDraggable(
-  motion: CupertinoMotion.bouncy,
+  motion: CupertinoMotion.bouncy(),
   child: Container(
     width: 100,
     height: 100,
@@ -206,7 +263,7 @@ For maximum control, Motor provides `MotionController` for complex types and `Si
 
 ```dart
 final controller = MotionController(
-  motion: CupertinoMotion.bouncy, // or Motion.duration(), etc.
+  motion: CupertinoMotion.bouncy(), // or Motion.duration(), etc.
   vsync: this,
 );
 ```

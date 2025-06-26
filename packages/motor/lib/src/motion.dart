@@ -300,6 +300,64 @@ class CupertinoMotion extends SpringMotion {
     super.snapToEnd,
   }) : super._();
 
+  /// A spring animation with a predefined duration and higher amount of bounce.
+  ///
+  /// See also:
+  /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
+  const CupertinoMotion.bouncy({
+    Duration duration = const Duration(milliseconds: 500),
+    double extraBounce = 0.0,
+    bool snapToEnd = true,
+  }) : this(
+          duration: duration,
+          bounce: 0.3 + extraBounce,
+          snapToEnd: snapToEnd,
+        );
+
+  /// A spring animation with a predefined duration and small amount of bounce
+  /// that feels more snappy.
+  ///
+  /// See also:
+  /// * https://developer.apple.com/documentation/swiftui/animation/snappy
+  const CupertinoMotion.snappy({
+    Duration duration = const Duration(milliseconds: 500),
+    double extraBounce = 0.0,
+    bool snapToEnd = true,
+  }) : this(
+          duration: duration,
+          bounce: 0.15 + extraBounce,
+          snapToEnd: snapToEnd,
+        );
+
+  /// A smooth spring animation with a predefined duration and no bounce.
+  ///
+  /// See also:
+  /// * https://developer.apple.com/documentation/swiftui/animation/smooth
+  const CupertinoMotion.smooth({
+    Duration duration = const Duration(milliseconds: 500),
+    double extraBounce = 0.0,
+    bool snapToEnd = true,
+  }) : this(
+          duration: duration,
+          bounce: extraBounce,
+          snapToEnd: snapToEnd,
+        );
+
+  /// A spring animation with a lower response value,
+  /// intended for driving interactive animations.
+  ///
+  /// See also:
+  /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
+  const CupertinoMotion.interactive({
+    Duration duration = const Duration(milliseconds: 150),
+    double extraBounce = 0.0,
+    bool snapToEnd = true,
+  }) : this(
+          duration: duration,
+          bounce: 0.14 + extraBounce,
+          snapToEnd: snapToEnd,
+        );
+
   /// The estimated duration of the spring motion.
   final Duration duration;
 
@@ -311,35 +369,6 @@ class CupertinoMotion extends SpringMotion {
         duration: duration,
         bounce: bounce,
       );
-
-  /// A spring animation with a predefined duration and higher amount of bounce.
-  ///
-  /// See also:
-  /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
-  static const bouncy = CupertinoMotion(bounce: 0.3);
-
-  /// A spring animation with a predefined duration and small amount of bounce
-  /// that feels more snappy.
-  ///
-  /// See also:
-  /// * https://developer.apple.com/documentation/swiftui/animation/snappy
-  static const snappy = CupertinoMotion(bounce: 0.15);
-
-  /// A smooth spring animation with a predefined duration and no bounce.
-  ///
-  /// See also:
-  /// * https://developer.apple.com/documentation/swiftui/animation/smooth
-  static const smooth = CupertinoMotion(duration: Duration(milliseconds: 500));
-
-  /// A spring animation with a lower response value,
-  /// intended for driving interactive animations.
-  ///
-  /// See also:
-  /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
-  static const interactive = CupertinoMotion(
-    duration: Duration(milliseconds: 150),
-    bounce: 0.14,
-  );
 
   /// Creates a new [CupertinoMotion] with the same properties as this one, but
   /// with the specified [bounce] and [duration].
