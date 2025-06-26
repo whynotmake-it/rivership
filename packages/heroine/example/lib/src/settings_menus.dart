@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:heroine/heroine.dart';
-import 'package:springster/springster.dart';
+import 'package:motor/motor.dart';
 
 class MainSettingsButton extends StatelessWidget {
   const MainSettingsButton({super.key});

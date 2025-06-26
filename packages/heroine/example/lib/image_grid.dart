@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/settings_menus.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
-import 'package:springster/springster.dart';
+import 'package:motor/motor.dart';
 
 import 'main.dart';
 

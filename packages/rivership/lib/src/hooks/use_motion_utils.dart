@@ -22,7 +22,7 @@ double useSingleMotion({
 
 /// A hook that animates an [Offset] value using a [Motion].
 ///
-/// {@macro springster.MotionHook}
+/// {@macro motor.MotionHook}
 Offset useOffsetMotion({
   required Offset value,
   required Motion motion,
@@ -38,7 +38,7 @@ Offset useOffsetMotion({
 
 /// A hook that animates a [Size] value using a [Motion].
 ///
-/// {@macro springster.MotionHook}
+/// {@macro motor.MotionHook}
 Size useSizeMotion({
   required Size value,
   required Motion motion,
@@ -54,7 +54,7 @@ Size useSizeMotion({
 
 /// A hook that animates a [Rect] value using a [Motion].
 ///
-/// {@macro springster.MotionHook}
+/// {@macro motor.MotionHook}
 Rect useRectMotion({
   required Rect value,
   required Motion motion,
@@ -70,7 +70,7 @@ Rect useRectMotion({
 
 /// A hook that animates an [Alignment] value using a [Motion].
 ///
-/// {@macro springster.MotionHook}
+/// {@macro motor.MotionHook}
 Alignment useAlignmentMotion({
   required Alignment value,
   required Motion motion,

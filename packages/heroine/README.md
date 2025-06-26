@@ -152,18 +152,27 @@ If you look closely at the example GIF, you will see that the details page fades
 
 ## Spring Configuration 🎯
 
-Heroine uses [Springster](https://pub.dev/packages/springster) for spring animations. You can customize the spring behavior:
+Heroine uses [Motor](https://pub.dev/packages/motor) for motion animations. You can customize the motion:
 
 ```dart
-const mySpring = Spring(
-  durationSeconds: 0.5, // Settling duration
-  bounce: 0.2,   // Bounce amount (-1 to 1)
+final springMotion = SpringMotion(
+  Spring.withDurationAndBounce(
+    duration: Duration(milliseconds: 500), 
+    bounce: 0.5,
+  ),
 );
 
-// Or using damping fraction
-const mySpring = Spring.withDamping(
-  dampingFraction: 0.7,
-  durationSeconds: 0.5,
+final cupertinoMotion = CupertinoMotion.smooth;
+
+final linearMotion = LinearMotion(duration: Duration(milliseconds: 300));
+
+final ease = CurvedMotion(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+
+// Then pass it to the Heroine widget
+return Heroine(
+  tag: 'unique-tag',
+  spring: springMotion,
+  child: MyWidget(),
 );
 ```
 

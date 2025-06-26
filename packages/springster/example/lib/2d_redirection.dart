@@ -1,7 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
-import 'package:springster_example/motion_dropdown.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -9,13 +7,8 @@ void main() {
   ));
 }
 
-final motion = ValueNotifier<Motion>(CupertinoMotion.smooth);
-
 class TwoDimensionRedirectionExample extends StatefulWidget {
   const TwoDimensionRedirectionExample({super.key});
-
-  static const name = 'Two Dimension Redirection';
-  static const path = 'two-dimension-redirection';
 
   @override
   State<TwoDimensionRedirectionExample> createState() =>
@@ -28,71 +21,59 @@ class _TwoDimensionRedirectionExampleState
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Wrap(
-              spacing: 16,
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                MotionDropdown(motion: motion, label: const Text('Motion:')),
-              ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('2D with Dynamic Redirection'),
+      ),
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: AnimatedOpacity(
+              opacity: offset == Offset.zero ? 1 : 0,
+              duration: const Duration(milliseconds: 500),
+              child: const Text('Click or drag anywhere'),
             ),
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Transform.translate(
-                    offset: offset,
-                    child: const Icon(Icons.adjust_rounded),
+          ),
+          Transform.translate(
+            offset: offset,
+            child: const Icon(Icons.adjust_rounded),
+          ),
+          Center(
+            child: SpringBuilder2D(
+              spring: Spring.bouncy,
+              value: (offset.dx, offset.dy),
+              from: (0, 200),
+              builder: (context, value, child) => Transform.translate(
+                offset: value.toOffset(),
+                child: child,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                shape: StadiumBorder(
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 4,
                   ),
-                  Center(
-                    child: ListenableBuilder(
-                      listenable: motion,
-                      builder: (context, child) => MotionBuilder(
-                        motion: motion.value,
-                        converter: const OffsetMotionConverter(),
-                        value: offset,
-                        from: Offset(0, 200),
-                        builder: (context, value, child) => Transform.translate(
-                          offset: value,
-                          child: child,
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          shape: StadiumBorder(
-                            side: BorderSide(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 4,
-                            ),
-                          ),
-                          child: SizedBox.square(
-                            dimension: 100,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: LayoutBuilder(builder: (context, constraints) {
-                      return GestureDetector(
-                        onTapDown: (details) =>
-                            _setPosition(details.localPosition, constraints),
-                        onPanUpdate: (details) =>
-                            _setPosition(details.localPosition, constraints),
-                      );
-                    }),
-                  ),
-                ],
+                ),
+                child: SizedBox.square(
+                  dimension: 100,
+                ),
               ),
             ),
-            const Text('Click or drag anywhere'),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+          Positioned.fill(
+            child: LayoutBuilder(builder: (context, constraints) {
+              return GestureDetector(
+                onTapDown: (details) =>
+                    _setPosition(details.localPosition, constraints),
+                onPanUpdate: (details) =>
+                    _setPosition(details.localPosition, constraints),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
