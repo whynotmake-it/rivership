@@ -71,6 +71,7 @@ class Spring extends SpringDescription {
   /// positive values indicate increasing amounts of bounciness up to a maximum
   /// of 1.0 (corresponding to undamped oscillation), and negative values
   /// indicate overdamped springs with a minimum value of -1.0.
+  @override
   final double bounce;
 
   /// The amount of drag applied to the value being

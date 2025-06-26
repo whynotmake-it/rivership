@@ -33,7 +33,7 @@ import 'package:motor/motor.dart';
 /// * [DragTarget]
 /// * [LongPressDraggable]
 /// * [Motion]
-/// * [Spring]
+/// * [SpringMotion]
 class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Creates a widget that can be dragged to a [DragTarget].
   ///

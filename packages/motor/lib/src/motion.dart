@@ -16,26 +16,11 @@ abstract class Motion {
     this.tolerance = Tolerance.defaultTolerance,
   });
 
-  /// Creates a motion with a fixed duration that uses moves linearly.
-  ///
-  /// See also:
-  ///   * [DurationAndCurve]
-  const factory Motion.duration(Duration duration) = DurationAndCurve._;
-
-  /// Creates a motion with a fixed duration that uses a [Curve].
-  ///
-  /// See also:
-  ///   * [DurationAndCurve]
-  const factory Motion.durationAndCurve({
-    required Duration duration,
-    Curve curve,
-  }) = DurationAndCurve;
-
   /// Creates a motion with spring physics.
   ///
   /// See also:
-  ///   * [Spring]
-  const factory Motion.spring(SpringDescription spring) = Spring;
+  ///   * [SpringMotion]
+  const factory Motion.spring(SpringDescription spring) = SpringMotion;
 
   /// The tolerance for this motion.
   ///
@@ -92,9 +77,6 @@ class DurationAndCurve extends Motion {
     required this.duration,
     this.curve = Curves.linear,
   }) : super(tolerance: const Tolerance(distance: 0, time: 0, velocity: 0));
-
-  const DurationAndCurve._(Duration duration)
-      : this(duration: duration, curve: Curves.linear);
 
   /// The total duration of the motion.
   final Duration duration;
@@ -165,19 +147,19 @@ class DurationAndCurve extends Motion {
 
 /// A motion based on spring physics.
 ///
-/// [Spring] implements a motion that follows physical spring behavior,
+/// [SpringMotion] implements a motion that follows physical spring behavior,
 /// using a [SpringDescription] to define its characteristics. This motion
 /// is useful for creating natural and responsive animations.
 ///
 /// Spring motions continue until they naturally settle based on physics,
 /// rather than completing in a predetermined duration.
 @immutable
-class Spring extends Motion {
+class SpringMotion extends Motion {
   /// Creates a motion with spring physics.
   ///
   /// Parameter [description] defines the physical characteristics of the
   /// spring.
-  const Spring(this.description, {this.snapToEnd = true});
+  const SpringMotion(this.description, {this.snapToEnd = true});
 
   /// The physical description of the spring.
   ///
@@ -194,14 +176,14 @@ class Spring extends Motion {
 
   /// Whether this motion needs to settle.
   ///
-  /// Always returns true for [Spring] because spring physics requires
+  /// Always returns true for [SpringMotion] because spring physics requires
   /// the animation to continue until the spring naturally settles.
   @override
   bool get needsSettle => true;
 
   /// Whether this motion will settle without bounds.
   ///
-  /// Returns false for [Spring] because spring physics may not
+  /// Returns false for [SpringMotion] because spring physics may not
   /// necessarily terminate without bounds in all configurations.
   @override
   bool get unboundedWillSettle => false;
@@ -231,13 +213,13 @@ class Spring extends Motion {
         snapToEnd: snapToEnd,
       );
 
-  /// Equality operator for [Spring].
+  /// Equality operator for [SpringMotion].
   ///
-  /// Two [Spring] instances are considered equal if their [description]
+  /// Two [SpringMotion] instances are considered equal if their [description]
   /// descriptions have the same damping, mass, and stiffness values.
   @override
   bool operator ==(Object other) {
-    if (other is Spring) {
+    if (other is SpringMotion) {
       return description.damping == other.description.damping &&
           description.mass == other.description.mass &&
           description.stiffness == other.description.stiffness;
@@ -254,20 +236,20 @@ class Spring extends Motion {
   @override
   String toString() => 'Spring(spring: $description)';
 
-  /// Creates a new [Spring] with the same properties as this one, but with
-  /// the specified [description] and [snapToEnd].
-  Spring copyWith({
+  /// Creates a new [SpringMotion] with the same properties as this one, but
+  /// with the specified [description] and [snapToEnd].
+  SpringMotion copyWith({
     SpringDescription? description,
     bool? snapToEnd,
   }) =>
-      Spring(
+      SpringMotion(
         description ?? this.description,
         snapToEnd: snapToEnd ?? this.snapToEnd,
       );
 }
 
 /// A collection of spring motions that are commonly used in Cupertino apps.
-class CupertinoMotion extends Spring {
+class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
   ///
   /// The duration is the duration of the spring motion, and the bounce is the

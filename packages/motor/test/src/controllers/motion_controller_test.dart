@@ -52,9 +52,12 @@ void main() {
       final newSpring = SpringDescription.withDurationAndBounce(
         duration: const Duration(milliseconds: 100),
       );
-      controller.motion = Spring(newSpring);
-      expect(controller.motion, isA<Spring>());
-      expect((controller.motion as Spring).description, equals(newSpring));
+      controller.motion = SpringMotion(newSpring);
+      expect(controller.motion, isA<SpringMotion>());
+      expect(
+        (controller.motion as SpringMotion).description,
+        equals(newSpring),
+      );
     });
 
     testWidgets('creates a single ticker', (tester) async {
@@ -306,10 +309,13 @@ void main() {
           duration: const Duration(milliseconds: 100),
         );
 
-        controller.motion = Spring(newSpring);
+        controller.motion = SpringMotion(newSpring);
 
-        expect(controller.motion, isA<Spring>());
-        expect((controller.motion as Spring).description, equals(newSpring));
+        expect(controller.motion, isA<SpringMotion>());
+        expect(
+          (controller.motion as SpringMotion).description,
+          equals(newSpring),
+        );
         expect(controller.isAnimating, isTrue);
         await tester.pumpAndSettle();
       });

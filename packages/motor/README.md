@@ -44,9 +44,9 @@ The core of Motor's unified motion system is the `Motion` class. It represents t
 
 ```dart
 // Duration-based motion (traditional Flutter approach)
-final classic = Motion.duration(Duration(seconds: 1));
+final classic = DurationAndCurve(Duration(seconds: 1));
 
-final withCurve = Motion.durationAndCurve(
+final withCurve = DurationAndCurve(
   duration: Duration(seconds: 1), 
   curve: Curves.easeInOut,
 );
@@ -57,14 +57,14 @@ final spring = CupertinoMotion.bouncy;
 
 Motor provides two main motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
 
-- **`Spring`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
+- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
 - **`DurationAndCurve`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
 ### CupertinoMotion
 
-`CupertinoMotion` is a subclass of `Spring` that provides predefined spring configurations matching Apple's design system. These motions are designed to feel natural and familiar to iOS users, as they mirror the spring animations used throughout Apple's platforms.
+`CupertinoMotion` is a subclass of `SpringMotion` that provides predefined spring configurations matching Apple's design system. These motions are designed to feel natural and familiar to iOS users, as they mirror the spring animations used throughout Apple's platforms.
 
 `CupertinoMotion` offers several predefined constants that correspond to [SwiftUI's animation presets](https://developer.apple.com/documentation/swiftui/animation):
 
@@ -83,7 +83,7 @@ final customMotion = CupertinoMotion(
 );
 ```
 
-Since `CupertinoMotion` extends `Spring` (which extends `Motion`), you can use it directly wherever a `Motion` is expected.
+Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can use it directly wherever a `Motion` is expected.
 
 ### Simple Animation
 
@@ -243,7 +243,7 @@ final mySpring = CupertinoMotion(
 );
 
 // Or using Flutter SDK's SpringDescription directly
-final customSpring = Motion.spring(
+final customSpring = SpringMotion(
   SpringDescription.withDurationAndBounce(
     duration: Duration(milliseconds: 500),
     bounce: 0.2,
