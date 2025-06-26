@@ -10,3 +10,4 @@ export 'src/motion_converter.dart';
 export 'src/motion_curve.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
+export 'src/widgets/velocity_motion_builder.dart';

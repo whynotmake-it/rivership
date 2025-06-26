@@ -52,15 +52,33 @@ class _TwoDimensionRedirectionExampleState
                   Center(
                     child: ListenableBuilder(
                       listenable: motion,
-                      builder: (context, child) => MotionBuilder(
+                      builder: (context, child) => VelocityMotionBuilder(
                         motion: motion.value,
                         converter: const OffsetMotionConverter(),
                         value: offset,
                         from: Offset(0, 200),
-                        builder: (context, value, child) => Transform.translate(
-                          offset: value,
-                          child: child,
-                        ),
+                        builder: (context, value, velocity, child) {
+                          return Transform.translate(
+                            offset: value,
+                            child: MotionBuilder(
+                              motion: CupertinoMotion.bouncy,
+                              converter: const OffsetMotionConverter(),
+                              value: velocity,
+                              builder: (context, velocity, child) {
+                                return Transform.rotate(
+                                  angle: velocity.direction,
+                                  child: Transform.scale(
+                                    alignment: Alignment.center,
+                                    scaleX: 1 + velocity.distance / 3000,
+                                    scaleY: 1 - velocity.distance / 6000,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: child,
+                            ),
+                          );
+                        },
                         child: Material(
                           color: Colors.transparent,
                           shape: StadiumBorder(
