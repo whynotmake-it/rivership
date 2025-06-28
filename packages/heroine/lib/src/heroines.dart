@@ -21,6 +21,7 @@ class Heroine extends StatefulWidget {
     this.motion = const CupertinoMotion.smooth(),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
+    this.zIndex,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -75,6 +76,17 @@ class Heroine extends StatefulWidget {
   ///
   /// * [HeroineShuttleBuilder]
   final HeroineShuttleBuilder? flightShuttleBuilder;
+
+  /// The z-index for this heroine's overlay during flight animations.
+  ///
+  /// Heroines with higher z-index values will appear above those with lower
+  /// values. If not specified, the heroine will be added to the overlay
+  /// in the order they were found in the widget tree.
+  ///
+  /// When transitioning between routes, the z-index from the destination
+  /// heroine (toHero) is used. If the destination heroine doesn't have a
+  /// z-index, the source heroine's (fromHero) z-index is used instead.
+  final int? zIndex;
 
   @override
   State<Heroine> createState() => _HeroineState();
@@ -522,6 +534,11 @@ class HeroineController extends NavigatorObserver {
     final allFromTags = fromHeroes.keys.toList();
     final allToTags = toHeroes.keys.toList();
 
+    // Collect all valid manifests first
+    final manifests = <_FlightManifest>[];
+    final manifestsToExistingFlights = <_FlightManifest, _HeroineFlight>{};
+    final tagsToAbort = <Object>[];
+
     for (final fromHeroEntry in fromHeroes.entries) {
       final tag = fromHeroEntry.key;
       final fromHero = fromHeroEntry.value;
@@ -556,23 +573,59 @@ class HeroineController extends NavigatorObserver {
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               motion: toHero.widget.motion,
+              zIndex: toHero.widget.zIndex ?? fromHero.widget.zIndex,
             );
 
       // Only proceed with a valid manifest. Otherwise abort the existing
       // flight, and call endFlight when this for loop finishes.
       if (manifest != null && manifest.isValid) {
         toHeroes.remove(tag);
+        manifests.add(manifest);
         if (existingFlight != null) {
-          existingFlight.divert(manifest);
-        } else {
-          _flights[tag] = _HeroineFlight(
-            manifest,
-            () => _handleFlightEnded(manifest),
-          )..startFlight();
+          manifestsToExistingFlights[manifest] = existingFlight;
         }
       } else {
         existingFlight?.dispose();
-        _flights.remove(tag);
+        tagsToAbort.add(tag);
+      }
+    }
+
+    // Remove aborted flights
+    for (final tag in tagsToAbort) {
+      _flights.remove(tag);
+    }
+
+    // Sort manifests by z-index: first those with z-index (ordered by
+    // increasing z-index), then those without z-index (in their original order)
+    final manifestsWithZIndex = <_FlightManifest>[];
+    final manifestsWithoutZIndex = <_FlightManifest>[];
+
+    for (final manifest in manifests) {
+      if (manifest.zIndex != null) {
+        manifestsWithZIndex.add(manifest);
+      } else {
+        manifestsWithoutZIndex.add(manifest);
+      }
+    }
+
+    // Sort manifests with z-index by increasing z-index value
+    manifestsWithZIndex.sort((a, b) => a.zIndex!.compareTo(b.zIndex!));
+
+    // Create flights in the correct order: z-indexed first, then others
+    final orderedManifests = [
+      ...manifestsWithZIndex,
+      ...manifestsWithoutZIndex,
+    ];
+
+    for (final manifest in orderedManifests) {
+      final existingFlight = manifestsToExistingFlights[manifest];
+      if (existingFlight != null) {
+        existingFlight.divert(manifest);
+      } else {
+        _flights[manifest.tag!] = _HeroineFlight(
+          manifest,
+          () => _handleFlightEnded(manifest),
+        )..startFlight();
       }
     }
 

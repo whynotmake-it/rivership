@@ -13,6 +13,7 @@ class _FlightManifest {
     required this.isUserGestureTransition,
     required this.isDiverted,
     required this.motion,
+    this.zIndex,
   }) : assert(
           fromHero.widget.tag == toHero.widget.tag,
           'fromHero and toHero must have the same tag',
@@ -29,6 +30,7 @@ class _FlightManifest {
   final bool isUserGestureTransition;
   final bool isDiverted;
   final Motion motion;
+  final int? zIndex;
 
   Object? get tag => fromHero.widget.tag;
 
