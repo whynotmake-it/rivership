@@ -334,7 +334,7 @@ void main() {
             )
             .ignore();
 
-        await tester.pumpFrames(widget, pumpDuration);
+        await tester.pumpFrames(widget, pumpDuration * 0.5);
 
         // After animation, we should have 4 heroines on the second page
         expect(find.byType(Heroine), findsNWidgets(4));
