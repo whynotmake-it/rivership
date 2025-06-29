@@ -613,8 +613,8 @@ class HeroineController extends NavigatorObserver {
 
     // Create flights in the correct order: z-indexed first, then others
     final orderedManifests = [
-      ...manifestsWithZIndex,
       ...manifestsWithoutZIndex,
+      ...manifestsWithZIndex,
     ];
 
     for (final manifest in orderedManifests) {

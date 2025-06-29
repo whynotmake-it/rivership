@@ -241,6 +241,130 @@ void main() {
         },
       );
     });
+
+    group('z-index', () {
+      testWidgets('matches golden', (tester) async {
+        final heroines = <Heroine>[
+          // Heroine with z-index 10
+          Heroine(
+            tag: 'heroine-z10',
+            zIndex: 10,
+            flightShuttleBuilder: const SingleShuttleBuilder(),
+            child: Container(
+              key: const ValueKey(10),
+              width: 50,
+              height: 50,
+              color: Colors.red,
+            ),
+          ),
+          // Heroine with z-index 1
+          Heroine(
+            tag: 'heroine-z1',
+            zIndex: 1,
+            flightShuttleBuilder: const SingleShuttleBuilder(),
+            child: Container(
+              key: const ValueKey(1),
+              width: 50,
+              height: 50,
+              color: Colors.blue,
+            ),
+          ),
+          // Heroine with no z-index
+          Heroine(
+            tag: 'heroine-no-z',
+            flightShuttleBuilder: const SingleShuttleBuilder(),
+            child: Container(
+              key: const ValueKey(null),
+              width: 50,
+              height: 50,
+              color: Colors.green,
+            ),
+          ),
+          // Heroine with z-index 5
+          Heroine(
+            tag: 'heroine-z5',
+            flightShuttleBuilder: const SingleShuttleBuilder(),
+            zIndex: 5,
+            child: Container(
+              key: const ValueKey(5),
+              width: 50,
+              height: 50,
+              color: Colors.yellow,
+            ),
+          ),
+        ];
+        // Create a simple test with multiple heroines with different z-index
+        // values
+        final app = MaterialApp(
+          navigatorObservers: [HeroineController()],
+          home: Scaffold(
+            backgroundColor: Colors.black,
+            body: Row(
+              spacing: 20,
+              children: [
+                ...heroines,
+              ],
+            ),
+          ),
+        );
+
+        final widget = animationSheet.record(app);
+        await tester.pumpWidget(widget);
+
+        // Verify all heroines are present on the first page
+        expect(find.byType(Heroine), findsNWidgets(4));
+        expect(find.byKey(const ValueKey(10)), findsOneWidget);
+        expect(find.byKey(const ValueKey(1)), findsOneWidget);
+        expect(find.byKey(const ValueKey(null)), findsOneWidget);
+        expect(find.byKey(const ValueKey(5)), findsOneWidget);
+
+        // Navigate to trigger heroine animations
+        tester
+            .push(
+              Scaffold(
+                backgroundColor: Colors.white,
+                body: Row(
+                  spacing: 20,
+                  children: [
+                    // Corresponding heroines on second page
+                    ...heroines.reversed,
+                  ],
+                ),
+              ),
+            )
+            .ignore();
+
+        await tester.pumpFrames(widget, pumpDuration);
+
+        // After animation, we should have 4 heroines on the second page
+        expect(find.byType(Heroine), findsNWidgets(4));
+        expect(find.byKey(const ValueKey(10)), findsOneWidget);
+        expect(find.byKey(const ValueKey(1)), findsOneWidget);
+        expect(find.byKey(const ValueKey(null)), findsOneWidget);
+        expect(find.byKey(const ValueKey(5)), findsOneWidget);
+
+        await expectLater(
+          animationSheet.collate(1),
+          matchesGoldenFile('golden/z_index_heroine_in_flight.png'),
+        );
+      });
+
+      testWidgets('z-index property is accessible', (tester) async {
+        const heroine1 = Heroine(
+          tag: 'test1',
+          zIndex: 5,
+          child: Text('Test'),
+        );
+
+        const heroine2 = Heroine(
+          tag: 'test2',
+          child: Text('Test'),
+        );
+
+        expect(heroine1.zIndex, equals(5));
+        expect(heroine2.zIndex, isNull);
+      });
+    });
   });
 }
 
