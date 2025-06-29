@@ -17,7 +17,7 @@ dependencies:
     sdk: flutter
   lorem_gen: ^2.0.1
   pull_down_button: ^0.10.2
-  motor: ^1.0.0-dev.1
+  motor: ^1.0.0-dev.2
   heroine: 
     path: ../
   auto_route: ^10.0.1
