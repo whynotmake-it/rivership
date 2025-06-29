@@ -80,8 +80,11 @@ class Heroine extends StatefulWidget {
   /// The z-index for this heroine's overlay during flight animations.
   ///
   /// Heroines with higher z-index values will appear above those with lower
-  /// values. If not specified, the heroine will be added to the overlay
-  /// in the order they were found in the widget tree.
+  /// values. If not specified, defaults to 0.
+  ///
+  /// Heroines with the same z-index maintain their original order relative
+  /// to each other (stable sorting), which means heroines that were built
+  /// later, are higher in the z-index order.
   ///
   /// When transitioning between routes, the z-index from the destination
   /// heroine (toHero) is used. If the destination heroine doesn't have a
@@ -595,29 +598,17 @@ class HeroineController extends NavigatorObserver {
       _flights.remove(tag);
     }
 
-    // Sort manifests by z-index: first those with z-index (ordered by
-    // increasing z-index), then those without z-index (in their original order)
-    final manifestsWithZIndex = <_FlightManifest>[];
-    final manifestsWithoutZIndex = <_FlightManifest>[];
+    // Sort manifests by z-index (treating null as 0)
+    // Dart's sort is stable, so heroines with the same z-index maintain their
+    // original order
+    manifests.sort((a, b) {
+      final aZIndex = a.zIndex ?? 0;
+      final bZIndex = b.zIndex ?? 0;
+      return aZIndex.compareTo(bZIndex);
+    });
 
+    // Create flights in the correct order
     for (final manifest in manifests) {
-      if (manifest.zIndex != null) {
-        manifestsWithZIndex.add(manifest);
-      } else {
-        manifestsWithoutZIndex.add(manifest);
-      }
-    }
-
-    // Sort manifests with z-index by increasing z-index value
-    manifestsWithZIndex.sort((a, b) => a.zIndex!.compareTo(b.zIndex!));
-
-    // Create flights in the correct order: z-indexed first, then others
-    final orderedManifests = [
-      ...manifestsWithoutZIndex,
-      ...manifestsWithZIndex,
-    ];
-
-    for (final manifest in orderedManifests) {
       final existingFlight = manifestsToExistingFlights[manifest];
       if (existingFlight != null) {
         existingFlight.divert(manifest);

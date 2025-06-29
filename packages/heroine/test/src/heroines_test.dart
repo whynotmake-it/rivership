@@ -260,10 +260,10 @@ void main() {
           // Heroine with z-index 1
           Heroine(
             tag: 'heroine-z1',
-            zIndex: 1,
+            zIndex: 0,
             flightShuttleBuilder: const SingleShuttleBuilder(),
             child: Container(
-              key: const ValueKey(1),
+              key: const ValueKey(0),
               width: 50,
               height: 50,
               color: Colors.blue,
@@ -314,7 +314,7 @@ void main() {
         // Verify all heroines are present on the first page
         expect(find.byType(Heroine), findsNWidgets(4));
         expect(find.byKey(const ValueKey(10)), findsOneWidget);
-        expect(find.byKey(const ValueKey(1)), findsOneWidget);
+        expect(find.byKey(const ValueKey(0)), findsOneWidget);
         expect(find.byKey(const ValueKey(null)), findsOneWidget);
         expect(find.byKey(const ValueKey(5)), findsOneWidget);
 
@@ -339,7 +339,7 @@ void main() {
         // After animation, we should have 4 heroines on the second page
         expect(find.byType(Heroine), findsNWidgets(4));
         expect(find.byKey(const ValueKey(10)), findsOneWidget);
-        expect(find.byKey(const ValueKey(1)), findsOneWidget);
+        expect(find.byKey(const ValueKey(0)), findsOneWidget);
         expect(find.byKey(const ValueKey(null)), findsOneWidget);
         expect(find.byKey(const ValueKey(5)), findsOneWidget);
 
