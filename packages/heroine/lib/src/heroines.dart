@@ -21,6 +21,7 @@ class Heroine extends StatefulWidget {
     this.motion = const CupertinoMotion.smooth(),
     this.placeholderBuilder,
     this.flightShuttleBuilder,
+    this.zIndex,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -75,6 +76,20 @@ class Heroine extends StatefulWidget {
   ///
   /// * [HeroineShuttleBuilder]
   final HeroineShuttleBuilder? flightShuttleBuilder;
+
+  /// The z-index for this heroine's overlay during flight animations.
+  ///
+  /// Heroines with higher z-index values will appear above those with lower
+  /// values. If not specified, defaults to 0.
+  ///
+  /// Heroines with the same z-index maintain their original order relative
+  /// to each other (stable sorting), which means heroines that were built
+  /// later, are higher in the z-index order.
+  ///
+  /// When transitioning between routes, the z-index from the destination
+  /// heroine (toHero) is used. If the destination heroine doesn't have a
+  /// z-index, the source heroine's (fromHero) z-index is used instead.
+  final int? zIndex;
 
   @override
   State<Heroine> createState() => _HeroineState();
@@ -522,6 +537,11 @@ class HeroineController extends NavigatorObserver {
     final allFromTags = fromHeroes.keys.toList();
     final allToTags = toHeroes.keys.toList();
 
+    // Collect all valid manifests first
+    final manifests = <_FlightManifest>[];
+    final manifestsToExistingFlights = <_FlightManifest, _HeroineFlight>{};
+    final tagsToAbort = <Object>[];
+
     for (final fromHeroEntry in fromHeroes.entries) {
       final tag = fromHeroEntry.key;
       final fromHero = fromHeroEntry.value;
@@ -556,23 +576,47 @@ class HeroineController extends NavigatorObserver {
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               motion: toHero.widget.motion,
+              zIndex: toHero.widget.zIndex ?? fromHero.widget.zIndex,
             );
 
       // Only proceed with a valid manifest. Otherwise abort the existing
       // flight, and call endFlight when this for loop finishes.
       if (manifest != null && manifest.isValid) {
         toHeroes.remove(tag);
+        manifests.add(manifest);
         if (existingFlight != null) {
-          existingFlight.divert(manifest);
-        } else {
-          _flights[tag] = _HeroineFlight(
-            manifest,
-            () => _handleFlightEnded(manifest),
-          )..startFlight();
+          manifestsToExistingFlights[manifest] = existingFlight;
         }
       } else {
         existingFlight?.dispose();
-        _flights.remove(tag);
+        tagsToAbort.add(tag);
+      }
+    }
+
+    // Remove aborted flights
+    for (final tag in tagsToAbort) {
+      _flights.remove(tag);
+    }
+
+    // Sort manifests by z-index (treating null as 0)
+    // Dart's sort is stable, so heroines with the same z-index maintain their
+    // original order
+    manifests.sort((a, b) {
+      final aZIndex = a.zIndex ?? 0;
+      final bZIndex = b.zIndex ?? 0;
+      return aZIndex.compareTo(bZIndex);
+    });
+
+    // Create flights in the correct order
+    for (final manifest in manifests) {
+      final existingFlight = manifestsToExistingFlights[manifest];
+      if (existingFlight != null) {
+        existingFlight.divert(manifest);
+      } else {
+        _flights[manifest.tag!] = _HeroineFlight(
+          manifest,
+          () => _handleFlightEnded(manifest),
+        )..startFlight();
       }
     }
 
