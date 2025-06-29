@@ -296,6 +296,7 @@ void main() {
         // Create a simple test with multiple heroines with different z-index
         // values
         final app = MaterialApp(
+          debugShowCheckedModeBanner: false,
           navigatorObservers: [HeroineController()],
           home: Scaffold(
             backgroundColor: Colors.black,
