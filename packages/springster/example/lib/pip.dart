@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
@@ -14,6 +15,9 @@ void main() async {
 class PipExample extends StatefulWidget {
   const PipExample({super.key});
 
+  static const String name = 'Picture in Picture Example';
+  static const String path = 'pip';
+
   @override
   State<PipExample> createState() => _PipExampleState();
 }
@@ -23,31 +27,31 @@ class _PipExampleState extends State<PipExample> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Picture in Picture'),
-      ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Align(
-              alignment: alignment,
-              child: SpringDraggable<bool>(
-                data: true,
-                spring: Spring.bouncy,
-                child: Card(
-                  elevation: 4,
-                  color: Theme.of(context).colorScheme.primary,
-                  child: SizedBox(
-                    width: 320,
-                    height: 180,
-                    child: Center(
-                      child: Text(
-                        'Drag me to a corner!',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          fontSize: 24,
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Align(
+                alignment: alignment,
+                child: SpringDraggable<bool>(
+                  data: true,
+                  spring: Spring.bouncy,
+                  child: Card(
+                    elevation: 4,
+                    color: Theme.of(context).colorScheme.primary,
+                    child: SizedBox(
+                      width: 320,
+                      height: 180,
+                      child: Center(
+                        child: Text(
+                          'Drag me to a corner!',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontSize: 24,
+                          ),
                         ),
                       ),
                     ),
@@ -55,14 +59,14 @@ class _PipExampleState extends State<PipExample> {
                 ),
               ),
             ),
-          ),
-          Positioned.fill(
-            child: Recognizer(
-              onChanged: (alignment) =>
-                  setState(() => this.alignment = alignment),
+            Positioned.fill(
+              child: Recognizer(
+                onChanged: (alignment) =>
+                    setState(() => this.alignment = alignment),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

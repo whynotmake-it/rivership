@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
@@ -10,6 +11,9 @@ void main() {
 class OneDimensionExample extends StatefulWidget {
   const OneDimensionExample({super.key});
 
+  static const String name = 'One Dimension Example';
+  static const String path = 'one-dimension';
+
   @override
   State<OneDimensionExample> createState() => _OneDimensionExampleState();
 }
@@ -18,11 +22,9 @@ class _OneDimensionExampleState extends State<OneDimensionExample> {
   bool hovered = false;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('One Dimension'),
-      ),
-      body: Center(
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(),
+      child: Center(
         child: SpringBuilder(
           spring: Spring.bouncy,
           value: hovered ? 1.5 : 1,
