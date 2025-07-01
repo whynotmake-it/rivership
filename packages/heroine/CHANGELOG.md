@@ -1,3 +1,11 @@
+## 0.5.0-dev.5
+
+> Note: This release has breaking changes.
+
+ - **FIX**: removed an unnecessary rebuild for the arriving heroine (#121).
+ - **FEAT**: add optional z-index to `Heroine` (#122).
+ - **BREAKING** **REFACTOR**: turned `CupertinoMotion` constants into constructors so parameters can be adjusted on the fly.
+
 ## 0.5.0-dev.4
 
 > Note: This release has breaking changes.

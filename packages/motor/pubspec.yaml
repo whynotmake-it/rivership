@@ -1,6 +1,6 @@
 name: motor
 description: A unified motion system for Flutter - physics-based springs and duration-based curves under one API.
-version: 1.0.0-dev.1
+version: 1.0.0-dev.2
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/motor
 homepage: https://whynotmake.it
 
