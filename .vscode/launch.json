@@ -8,7 +8,8 @@
             "name": "example",
             "cwd": "apps/example",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": ["--enable-impeller"]
         },
         {
             "name": "example (profile mode)",
