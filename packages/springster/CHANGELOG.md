@@ -1,3 +1,7 @@
+## 1.0.0-dev.6
+
+ - **DOCS**: added back springster example.
+
 ## 1.0.0-dev.5
 
  - Update a dependency to the latest release.
