@@ -18,6 +18,8 @@ dependencies:
     path: ../../packages/heroine/example
   motor_example:
     path: ../../packages/motor/example
+  springster_example:
+    path: ../../packages/springster/example
 
 
   rivership: ^0.3.0-dev.5

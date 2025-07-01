@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
@@ -14,13 +15,14 @@ void main() async {
 class DraggableIconsExample extends StatelessWidget {
   const DraggableIconsExample({super.key});
 
+  static const String name = 'Draggable Icons Example';
+  static const String path = 'draggable-icons';
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Draggable Icons'),
-      ),
-      body: Column(
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(),
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('Drag the icons to the target'),

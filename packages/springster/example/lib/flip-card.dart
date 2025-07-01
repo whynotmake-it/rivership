@@ -1,19 +1,21 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
 class FlipCardExample extends StatelessWidget {
   const FlipCardExample({super.key});
 
+  static const String name = 'Flip Card Example';
+  static const String path = 'flip-card';
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flipper Sample'),
-      ),
-      body: Row(
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(),
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

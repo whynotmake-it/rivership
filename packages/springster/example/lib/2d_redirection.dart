@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:springster/springster.dart';
 
@@ -10,6 +11,9 @@ void main() {
 class TwoDimensionRedirectionExample extends StatefulWidget {
   const TwoDimensionRedirectionExample({super.key});
 
+  static const String name = '2D Redirection Example';
+  static const String path = 'two-dimension-redirection';
+
   @override
   State<TwoDimensionRedirectionExample> createState() =>
       _TwoDimensionRedirectionExampleState();
@@ -21,11 +25,9 @@ class _TwoDimensionRedirectionExampleState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('2D with Dynamic Redirection'),
-      ),
-      body: Stack(
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(),
+      child: Stack(
         alignment: Alignment.center,
         children: [
           Align(

@@ -11,9 +11,9 @@ environment:
   flutter: ^3.27.0
 
 dependencies:
+  auto_route: ^10.1.0+1
   flutter:
     sdk: flutter
-  go_router: ^14.6.3
   springster:
     path: ../
 
