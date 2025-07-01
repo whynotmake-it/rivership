@@ -1,12 +1,15 @@
 # Motor
 
+
 [![Pub Version](https://img.shields.io/pub/v/motor)](https://pub.dev/packages/motor)
 [![Coverage](./coverage.svg)](./test/)
 [![lintervention_badge]]([lintervention_link])
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
+
 A unified motion system that brings together physics-based springs, duration-based curves, and Flutter's animation system under one consistent API.
 
+![Title animation](./doc/title.gif)
 ## Features 🎯
 
 - 🎨 **Unified Motion API** - One consistent interface for springs, curves, and custom motions
