@@ -5,6 +5,7 @@ import 'package:motor_example/draggable_icons.dart';
 import 'package:motor_example/flip-card.dart';
 import 'package:motor_example/one_dimension.dart';
 import 'package:motor_example/pip.dart';
+import 'package:motor_example/title_slide.dart';
 
 void main() async {
   runApp(
@@ -51,6 +52,12 @@ final motorRoutes = [
     type: RouteType.cupertino(),
     builder: (context, state) => FlipCardExample(),
   ),
+  NamedRouteDef(
+    name: TitleSlideExample.name,
+    path: TitleSlideExample.path,
+    type: RouteType.cupertino(),
+    builder: (context, state) => TitleSlideExample(),
+  )
 ];
 
 final router = RootStackRouter.build(
@@ -80,26 +87,10 @@ class MotorExample extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 16,
                 children: [
-                  buildDestinationButton(
-                    context,
-                    OneDimensionExample.name,
-                  ),
-                  buildDestinationButton(
-                    context,
-                    TwoDimensionRedirectionExample.name,
-                  ),
-                  buildDestinationButton(
-                    context,
-                    DraggableIconsExample.name,
-                  ),
-                  buildDestinationButton(
-                    context,
-                    PipExample.name,
-                  ),
-                  buildDestinationButton(
-                    context,
-                    FlipCardExample.name,
-                  ),
+                  for (final route in motorRoutes) ...[
+                    if (route.path != '')
+                      buildDestinationButton(context, route.name),
+                  ],
                 ],
               ),
             ),

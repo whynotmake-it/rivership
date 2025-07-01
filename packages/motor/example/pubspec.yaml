@@ -24,3 +24,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: Archivo
+      fonts:
+        - asset: lib/assets/Archivo-VariableFont_wdth,wght.ttf
