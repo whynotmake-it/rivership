@@ -118,7 +118,7 @@ class _LetterState extends State<_Letter> {
     final additionalDuration = Duration(milliseconds: widget.index * 200);
     final motion = CupertinoMotion.bouncy(
       extraBounce: .3,
-      duration: Durations.extralong4 + additionalDuration,
+      duration: Durations.extralong4,
     );
 
     final initialStyle =
@@ -130,7 +130,7 @@ class _LetterState extends State<_Letter> {
       onEnter: (event) => setState(() => _hovered = true),
       onExit: (event) => setState(() => _hovered = false),
       child: MotionBuilder(
-        motion: motion,
+        motion: motion.copyWith(duration: motion.duration + additionalDuration),
         from: initialStyle,
         value: widget.visible
             ? initialStyle.copyWith(
@@ -143,10 +143,19 @@ class _LetterState extends State<_Letter> {
             : initialStyle,
         converter: FontMotionConverter(),
         builder: (context, value, child) {
-          return Text(
-            textHeightBehavior: TextHeightBehavior(),
-            widget.letter,
-            style: value,
+          return SingleMotionBuilder(
+            motion: motion,
+            from: -50,
+            value: widget.visible ? 0 : -50,
+            builder: (context, xOffset, child) => Transform.translate(
+              offset: Offset(xOffset, 0),
+              child: child,
+            ),
+            child: Text(
+              textHeightBehavior: TextHeightBehavior(),
+              widget.letter,
+              style: value,
+            ),
           );
         },
       ),
