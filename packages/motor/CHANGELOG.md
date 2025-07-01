@@ -1,3 +1,8 @@
+## 1.0.0-dev.3
+
+ - **DOCS**: add title gif to README.
+ - **DOCS**: add title slide to example.
+
 ## 1.0.0-dev.2
 
 > Note: This release has breaking changes.
