@@ -1,6 +1,7 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/src/simulations/end_velocity_spring_simulation.dart';
 
 /// {@template Motion}
 /// A motion pattern such as spring physics or duration-based curves.
@@ -576,6 +577,92 @@ class MaterialSpringMotion extends SpringMotion {
     return MaterialSpringMotion(
       damping: damping ?? this.damping,
       stiffness: stiffness ?? this.stiffness,
+      snapToEnd: snapToEnd ?? this.snapToEnd,
+    );
+  }
+}
+
+/// A spring motion that arrives at the target with a specified end velocity.
+///
+/// [EndVelocitySpringMotion] extends [SpringMotion] to provide spring-based
+/// animation that reaches the target position with a specific velocity rather
+/// than settling at zero velocity. This is useful for creating smooth
+/// transitions between animations or for motion that continues with momentum.
+///
+/// The motion uses the same spring physics as [SpringMotion] but modifies
+/// the simulation to achieve the desired end velocity at the target position.
+@immutable
+class EndVelocitySpringMotion extends SpringMotion {
+  /// Creates a spring motion that arrives at the target with the specified
+  /// end velocity.
+  ///
+  /// Parameters:
+  ///   * [description] - The spring characteristics (mass, stiffness, damping)
+  ///   * [endVelocity] - The desired velocity when reaching the target position
+  ///   * [snapToEnd] - Whether to snap to the end position when done
+  const EndVelocitySpringMotion(
+    this.description, {
+    required this.endVelocity,
+    super.snapToEnd,
+  }) : super._();
+
+  @override
+  final SpringDescription description;
+
+  /// The desired velocity when the motion reaches the target position.
+  ///
+  /// Unlike regular spring motion which settles to zero velocity, this motion
+  /// will arrive at the target with this specific velocity value.
+  final double endVelocity;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    return EndVelocitySpringSimulation(
+      description,
+      start,
+      end,
+      velocity,
+      endVelocity,
+      tolerance: tolerance,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is EndVelocitySpringMotion) {
+      return description.damping == other.description.damping &&
+          description.mass == other.description.mass &&
+          description.stiffness == other.description.stiffness &&
+          endVelocity == other.endVelocity;
+    }
+    return false;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        description.damping,
+        description.mass,
+        description.stiffness,
+        endVelocity,
+      );
+
+  @override
+  String toString() => 'EndVelocitySpringMotion('
+      'description: $description, endVelocity: $endVelocity)';
+
+  @override
+  EndVelocitySpringMotion copyWith({
+    SpringDescription? description,
+    double? endVelocity,
+    bool? snapToEnd,
+  }) {
+    return EndVelocitySpringMotion(
+      description ?? this.description,
+      endVelocity: endVelocity ?? this.endVelocity,
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
