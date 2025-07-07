@@ -17,12 +17,6 @@ abstract class Motion {
     this.tolerance = Tolerance.defaultTolerance,
   });
 
-  /// Creates a motion with spring physics.
-  ///
-  /// See also:
-  ///   * [SpringMotion]
-  const factory Motion.spring(SpringDescription spring) = SpringMotion;
-
   /// The tolerance for this motion.
   ///
   /// Default is [Tolerance.defaultTolerance].
