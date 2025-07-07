@@ -12,6 +12,7 @@ final motionOptions = {
     duration: Durations.long2,
     curve: Easing.standard,
   ),
+  "Material 3 Expressive Spring": MaterialSpringMotion.expressiveSpatialDefault,
 };
 
 class MotionDropdown extends StatelessWidget {
