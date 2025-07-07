@@ -76,7 +76,7 @@ class CurvedMotion extends Motion {
   const CurvedMotion({
     required this.duration,
     this.curve = Curves.linear,
-  }) : super(tolerance: const Tolerance(distance: 0, time: 0, velocity: 0));
+  }) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
   final Duration duration;
@@ -419,8 +419,8 @@ class MaterialSpringMotion extends SpringMotion {
   final double stiffness;
 
   @override
-  SpringDescription get description => SpringDescription(
-        damping: damping,
+  SpringDescription get description => SpringDescription.withDampingRatio(
+        ratio: damping,
         stiffness: stiffness,
         mass: 1,
       );
