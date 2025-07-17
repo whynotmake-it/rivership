@@ -22,7 +22,7 @@ dependencies:
     path: ../../packages/springster/example
 
 
-  rivership: ^0.3.0-dev.6
+  rivership: ^0.3.0-dev.7
   auto_route: ^10.0.1
 
   
