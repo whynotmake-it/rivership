@@ -1,3 +1,7 @@
+## 1.0.0-dev.4
+
+ - **FIX**: use the correct parameters for `MaterialSpringMotion` (#127).
+
 ## 1.0.0-dev.3
 
  - **DOCS**: add title gif to README.
