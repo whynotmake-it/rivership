@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapper/snapper.dart';
@@ -10,7 +8,7 @@ void main() {
       test('throws UnsupportedError when accessing properties', () {
         const device = WidgetTesterDevice();
 
-        expect(() => device.name, throwsUnsupportedError);
+        expect(device.name, equals('WidgetTester'));
         expect(() => device.screenSize, throwsUnsupportedError);
         expect(() => device.pixelRatio, throwsUnsupportedError);
         expect(() => device.safeAreas, throwsUnsupportedError);
