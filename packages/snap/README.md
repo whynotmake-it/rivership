@@ -22,6 +22,16 @@ dart pub add dev:snap
 
 There are two main ways of using Snap:
 
+### 0. Add `.snap` to your `.gitignore`
+
+Unless you want snapshots checked into version control, add this pattern to your `.gitignore` file:
+
+```gitignore
+**/.snap/
+```
+
+This will ignore all `.snap` directories throughout your project.
+
 
 ### 1. Call `snap()` from any widget test
 
@@ -33,7 +43,7 @@ import 'package:snap/snap.dart';
 
 void main() {
   testGroup('My Page', () {
-    widgetTest('Loaded State', (tester, snap) async {
+    testWidgets('Loaded State', (tester) async {
       await tester.pumpWidget(MyPage());
 
       expect(find.byType(MyPage), findsOneWidget);
@@ -59,7 +69,7 @@ By default, snapshots will be rendered using the "Ahem" font and without all ima
 
 You can pass a list of fake devices (`FakeDevice`) to the `snap` function to render the screenshot as if it was taken on real devices.
 
-You can also override the global settings by accessing the `SnapSettings` class.
+You can also override the global settings by modifying the `SnapSettings` class properties.
 
 If you want your screenshots to be rendered as close to the real device as possible, you need to call `enableRealRenderingForTest()` at the start of your test.
 
@@ -74,10 +84,10 @@ In your test setup, in addition to your `testWidget` widget tests, you can add `
 These allow you to easily take snapshots of your widgets, which will be rendered like they would be in
 a real device.
 
-You can pass a list of devices, all of which will take screenshots seperately.
+You can pass a list of devices, all of which will take screenshots separately.
 
 `screenshotTest`s are automatically tagged using the 'screenshot' tag, so you can selectively run and exclude them
-using `flutter test -t screenshot` and `flutter test -x -screenshot` respectively.
+using `flutter test -t screenshot` and `flutter test -x screenshot` respectively.
 
 
 ```dart
@@ -118,7 +128,7 @@ This script will delete all the screenshots in the `.snap` directories around yo
 dart run snap:assemble
 ```
 
-Will take all the screenshots in the `.snap` directories around your project and assemble them into a single directory at the root of your project (and potentially do something cool with them in the future 👀)
+Will take all the screenshots in the `.snap` directories around your project and assemble them into a `.snap/assets` directory at the root of your project (and potentially do something cool with them in the future 👀)
 
 ---
 
