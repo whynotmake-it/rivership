@@ -65,11 +65,13 @@ void main() {
               home: Scaffold(
                 appBar: AppBar(title: const Text('App Bar')),
                 body: const Center(
-                  child: Card(
-                    key: Key('test-card'),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Card Content'),
+                  child: RepaintBoundary(
+                    child: Card(
+                      key: Key('test-card'),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('Card Content'),
+                      ),
                     ),
                   ),
                 ),
