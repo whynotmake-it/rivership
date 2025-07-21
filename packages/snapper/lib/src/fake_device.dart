@@ -1,5 +1,3 @@
-import 'package:device_frame/device_frame.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapper/snapper.dart';
@@ -8,24 +6,16 @@ import 'package:spot/spot.dart' as spot;
 /// A device that represents the widget tester, will get special treatment in
 /// [setTestViewToFakeDevice] and [snap].
 ///
-/// Don't access its properties.
-class WidgetTesterDevice implements DeviceInfo {
+/// Don't access its properties, as it represents the defaults for widget tests.
+final class WidgetTesterDevice implements DeviceInfo {
   /// Creates a new [WidgetTesterDevice].
   const WidgetTesterDevice();
 
   @override
-  DeviceIdentifier get identifier => DeviceIdentifier(
-    defaultTargetPlatform,
-    DeviceType.unknown,
-    'WidgetTester',
-  );
-
-  @override
-  String get name => 'WidgetTester';
-
-  @override
   dynamic noSuchMethod(Invocation invocation) {
-    return super.noSuchMethod(invocation);
+    throw UnsupportedError(
+      "WidgetTesterDevice is not a real device, don't access its properties.",
+    );
   }
 }
 

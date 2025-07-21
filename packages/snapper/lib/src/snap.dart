@@ -115,6 +115,8 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 /// Sets the test view to the given [device] and returns a callback that
 /// restores the previous state.
 ///
+/// If [device] is `null`, the test view will be reset to the previous state.
+///
 /// Example usage:
 ///
 /// ```dart
@@ -127,25 +129,24 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
 
-  if (device is WidgetTesterDevice) {
-    return () {};
+  void restore() {
+    implicitView
+      ..resetPhysicalSize()
+      ..resetPadding()
+      ..resetDevicePixelRatio();
   }
 
-  final prevResolution = implicitView.physicalSize;
-  final prevPadding = implicitView.padding;
-  final prevPixelRatio = implicitView.devicePixelRatio;
+  if (device is WidgetTesterDevice) {
+    restore();
+    return () {};
+  }
 
   implicitView
     ..physicalSize = device.screenSize * device.pixelRatio
     ..padding = device.safeAreas.toFakeViewPadding()
     ..devicePixelRatio = device.pixelRatio;
 
-  return () {
-    implicitView
-      ..physicalSize = prevResolution
-      ..padding = prevPadding
-      ..devicePixelRatio = prevPixelRatio;
-  };
+  return restore;
 }
 
 /// Takes a screenshot of the current state of the widget test as if it was
