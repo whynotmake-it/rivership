@@ -66,7 +66,7 @@ import 'package:snapper/snapper.dart';
 
 void main() {
   testGroup('My Page', () {
-    screenshotTest('Loaded State', devices: [FakeDevice.iphone16Pro], (tester) async {
+    screenshotTest('Loaded State', devices: [Devices.ios.iPhone16Pro], (tester) async {
       await tester.pumpWidget(MyPage());
       await snap('loaded');
 

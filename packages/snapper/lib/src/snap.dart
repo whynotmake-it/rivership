@@ -120,7 +120,7 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 /// Example usage:
 ///
 /// ```dart
-/// final restore = setTestViewToFakeDevice(FakeDevice.reweMde);
+/// final restore = setTestViewToFakeDevice(Devices.ios.iPhone16Pro);
 ///
 /// // ...
 ///
@@ -176,7 +176,7 @@ Future<ui.Image?> takeDeviceScreenshot({
   return image;
 }
 
-/// Runs a given function [fn] in a [FakeDevice] [device].
+/// Runs a given function [fn] in a [DeviceInfo] [device].
 ///
 /// Resets the testers view to the previous state after the function has
 /// finished.
