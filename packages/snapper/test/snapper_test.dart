@@ -6,7 +6,7 @@ import 'package:snapper/snapper.dart';
 
 void main() {
   group('Snapper', () {
-    setUp(SnapSettings.reset);
+    setUp(SnapperSettings.resetGlobal);
 
     group('snap function', () {
       screenshotTest(
@@ -43,11 +43,13 @@ void main() {
 
           final files = await snap(
             name: 'multi_device',
-            devices: [
-              const WidgetTesterDevice(),
-              Devices.ios.iPhone16Pro,
-              Devices.android.samsungGalaxyS20,
-            ],
+            settings: SnapperSettings(
+              devices: [
+                const WidgetTesterDevice(),
+                Devices.ios.iPhone16Pro,
+                Devices.android.samsungGalaxyS20,
+              ],
+            ),
           );
 
           expect(files, hasLength(3));
@@ -128,13 +130,17 @@ void main() {
 
           final filesWithDeviceName = await snap(
             name: 'with_device_name',
-            devices: [Devices.ios.iPhone16Pro],
+            settings: SnapperSettings(
+              devices: [Devices.ios.iPhone16Pro],
+            ),
             appendDeviceName: true,
           );
 
           final filesWithoutDeviceName = await snap(
             name: 'without_device_name',
-            devices: [Devices.ios.iPhone16Pro],
+            settings: SnapperSettings(
+              devices: [Devices.ios.iPhone16Pro],
+            ),
             appendDeviceName: false,
           );
 
@@ -147,32 +153,39 @@ void main() {
       );
     });
 
-    group('SnapSettings', () {
+    group('SnapperSettings', () {
       test('has correct default values', () {
-        SnapSettings.reset();
-        expect(SnapSettings.renderShadows, isTrue);
-        expect(SnapSettings.devices, hasLength(1));
-        expect(SnapSettings.devices.first, isA<WidgetTesterDevice>());
+        SnapperSettings.resetGlobal();
+        expect(SnapperSettings.global.renderShadows, isFalse);
+        expect(SnapperSettings.global.renderImages, isFalse);
+        expect(SnapperSettings.global.blockText, isTrue);
+        expect(SnapperSettings.global.devices, hasLength(1));
+        expect(SnapperSettings.global.devices.first, isA<WidgetTesterDevice>());
       });
 
       test('can modify global settings', () {
-        SnapSettings.renderShadows = false;
-        SnapSettings.devices = [Devices.ios.iPhone16Pro];
+        SnapperSettings.global = SnapperSettings(
+          renderShadows: false,
+          devices: [Devices.ios.iPhone16Pro],
+        );
 
-        expect(SnapSettings.renderShadows, isFalse);
-        expect(SnapSettings.devices, hasLength(1));
-        expect(SnapSettings.devices.first, equals(Devices.ios.iPhone16Pro));
+        expect(SnapperSettings.global.renderShadows, isFalse);
+        expect(SnapperSettings.global.devices, hasLength(1));
+        expect(
+          SnapperSettings.global.devices.first,
+          equals(Devices.ios.iPhone16Pro),
+        );
       });
 
       test('reset restores default values', () {
-        SnapSettings.renderShadows = false;
-        SnapSettings.devices = [Devices.ios.iPhone16Pro];
+        SnapperSettings.global = SnapperSettings(
+          renderShadows: false,
+          devices: [Devices.ios.iPhone16Pro],
+        );
 
-        SnapSettings.reset();
+        SnapperSettings.resetGlobal();
 
-        expect(SnapSettings.renderShadows, isTrue);
-        expect(SnapSettings.devices, hasLength(1));
-        expect(SnapSettings.devices.first, isA<WidgetTesterDevice>());
+        expect(SnapperSettings.global, equals(const SnapperSettings()));
       });
     });
 
@@ -263,7 +276,11 @@ void main() {
 
           await snap(name: 'real_rendering');
         },
-        withRealRendering: true,
+        settings: SnapperSettings.full([
+          const WidgetTesterDevice(),
+          Devices.ios.iPhone16Pro,
+          Devices.android.samsungGalaxyS20,
+        ]),
       );
     });
   });
