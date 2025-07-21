@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:device_frame/device_frame.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +28,7 @@ import 'package:test_api/src/backend/invoker.dart';
 /// [renderShadows] to `true` or `false`. If not provided, the global default
 /// is used, which you can also set globally via [SnapSettings.renderShadows].
 Future<List<File>> snap({
-  List<FakeDevice>? devices,
+  List<DeviceInfo>? devices,
   String? name,
   Finder? from,
   bool appendDeviceName = true,
@@ -122,18 +123,22 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 /// // ...
 ///
 /// restore();
-VoidCallback setTestViewToFakeDevice(FakeDevice device) {
+VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+
+  if (device is WidgetTesterDevice) {
+    return () {};
+  }
 
   final prevResolution = implicitView.physicalSize;
   final prevPadding = implicitView.padding;
   final prevPixelRatio = implicitView.devicePixelRatio;
 
   implicitView
-    ..physicalSize = device.resolution ?? prevResolution
-    ..padding = device.viewPadding?.toFakeViewPadding() ?? prevPadding
-    ..devicePixelRatio = device.devicePixelRatio ?? prevPixelRatio;
+    ..physicalSize = device.screenSize * device.pixelRatio
+    ..padding = device.safeAreas.toFakeViewPadding()
+    ..devicePixelRatio = device.pixelRatio;
 
   return () {
     implicitView
@@ -153,7 +158,7 @@ VoidCallback setTestViewToFakeDevice(FakeDevice device) {
 /// [renderShadows] to `true` or `false`. If not provided, the global default
 /// is used, which you can also set globally via [SnapSettings.renderShadows].
 Future<ui.Image?> takeDeviceScreenshot({
-  required FakeDevice device,
+  required DeviceInfo device,
   Finder? from,
   bool? renderShadows,
 }) async {
@@ -175,7 +180,7 @@ Future<ui.Image?> takeDeviceScreenshot({
 /// Resets the testers view to the previous state after the function has
 /// finished.
 Future<T?> _runInFakeDevice<T>(
-  FakeDevice device,
+  DeviceInfo device,
   Future<T> Function() fn, {
   bool disableShadows = true,
 }) async {

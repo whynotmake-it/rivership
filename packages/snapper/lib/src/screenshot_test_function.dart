@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
-
 import 'package:snapper/snapper.dart';
 
 /// A helper test function meant to be used for taking real screenshots using
@@ -13,7 +12,7 @@ import 'package:snapper/snapper.dart';
 void screenshotTest(
   String description,
   WidgetTesterCallback callback, {
-  List<FakeDevice>? devices,
+  List<DeviceInfo>? devices,
   bool withRealRendering = true,
   bool? skip,
   Timeout? timeout,

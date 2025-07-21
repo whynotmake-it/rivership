@@ -1,103 +1,32 @@
-import 'package:equatable/equatable.dart';
+import 'package:device_frame/device_frame.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:snapper/snapper.dart';
 import 'package:spot/spot.dart' as spot;
 
-/// Represents a fake device for testing purposes.
+/// A device that represents the widget tester, will get special treatment in
+/// [setTestViewToFakeDevice] and [snap].
 ///
-/// Properties that are `null` will not be overridden for the screenshot.
-class FakeDevice with EquatableMixin {
-  /// Creates a fake device.
-  ///
-  /// [name] is the name of the device.
-  /// [resolution] is the resolution of the device.
-  /// [devicePixelRatio] is the device pixel ratio of the device.
-  /// [viewPadding] is the view padding of the device.
-  const FakeDevice({
-    required this.name,
-    this.resolution,
-    this.devicePixelRatio,
-    this.viewPadding,
-  });
-
-  /// The default fake device, which will not override any properties.
-  static const FakeDevice none = FakeDevice(name: '');
-
-  /// Properties of an iPhone 16 Pro.
-  static const FakeDevice iPhone16Pro = FakeDevice(
-    name: 'iPhone 16 Pro',
-    resolution: Size(1290, 2796),
-    viewPadding: EdgeInsets.only(bottom: 34, top: 62),
-    devicePixelRatio: 3,
-  );
-
-  /// Properties of an iPhone SE (2020).
-  static const FakeDevice iPhoneSE2020 = FakeDevice(
-    name: 'iPhone SE (2020)',
-    resolution: Size(750, 1334),
-    viewPadding: EdgeInsets.only(top: 20),
-    devicePixelRatio: 2,
-  );
-
-  /// The name of the device.
-  final String name;
-
-  /// The resolution of the device in physical pixels.
-  final Size? resolution;
-
-  /// The view padding of the device in logical pixels.
-  final EdgeInsets? viewPadding;
-
-  /// The device pixel ratio of the device.
-  final double? devicePixelRatio;
+/// Don't access its properties.
+class WidgetTesterDevice implements DeviceInfo {
+  /// Creates a new [WidgetTesterDevice].
+  const WidgetTesterDevice();
 
   @override
-  List<Object?> get props => [name, resolution, viewPadding, devicePixelRatio];
-
-  /// Creates a copy of this fake device with the given properties overridden.
-  FakeDevice copyWith({
-    Size? resolution,
-    EdgeInsets? viewPadding,
-    double? devicePixelRatio,
-  }) => FakeDevice(
-    name: name,
-    resolution: resolution ?? this.resolution,
-    viewPadding: viewPadding ?? this.viewPadding,
-    devicePixelRatio: devicePixelRatio ?? this.devicePixelRatio,
+  DeviceIdentifier get identifier => DeviceIdentifier(
+    defaultTargetPlatform,
+    DeviceType.unknown,
+    'WidgetTester',
   );
 
-  /// Whether the device is in landscape mode.
-  bool get isLandscape => switch (resolution) {
-    null => false,
-    Size(aspectRatio: >= 1) => true,
-    Size() => false,
-  };
+  @override
+  String get name => 'WidgetTester';
 
-  /// Creates a copy of this fake device in portrait mode.
-  FakeDevice portrait() => copyWith(
-    resolution: switch (resolution) {
-      // Flip width and height if aspect ratio is greater than 1
-      Size(:final width, :final height, aspectRatio: >= 1) => Size(
-        height,
-        width,
-      ),
-      Size(:final width, :final height) => Size(width, height),
-      null => null,
-    },
-  );
-
-  /// Creates a copy of this fake device in landscape mode.
-  FakeDevice landscape() => copyWith(
-    resolution: switch (resolution) {
-      // Flip width and height if aspect ratio is smaller than 1
-      Size(:final width, :final height, aspectRatio: <= 1) => Size(
-        height,
-        width,
-      ),
-      Size(:final width, :final height) => Size(width, height),
-      null => null,
-    },
-  );
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    return super.noSuchMethod(invocation);
+  }
 }
 
 /// Enables rendering fonts and images correctly for this test.

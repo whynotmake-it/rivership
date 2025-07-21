@@ -1,4 +1,5 @@
-import 'package:snapper/snapper.dart';
+import 'package:device_frame/device_frame.dart';
+import 'package:snapper/src/fake_device.dart';
 
 /// Global defaults for the snapper package.
 ///
@@ -10,11 +11,15 @@ abstract class SnapSettings {
   static bool renderShadows = true;
 
   /// The devices to use for the screenshot.
-  static List<FakeDevice> devices = [FakeDevice.none];
+  static List<DeviceInfo> devices = [
+    const WidgetTesterDevice(),
+  ];
 
   /// Resets the global settings to their default values.
   static void reset() {
     renderShadows = true;
-    devices = [FakeDevice.none];
+    devices = [
+      const WidgetTesterDevice(),
+    ];
   }
 }
