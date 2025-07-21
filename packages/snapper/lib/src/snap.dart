@@ -1,20 +1,24 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:alchemist/alchemist.dart';
 import 'package:device_frame/device_frame.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapper/src/fake_device.dart';
-import 'package:snapper/src/snap_settings.dart';
+import 'package:snapper/src/snapper_settings.dart';
+import 'package:spot/spot.dart' as spot;
+
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
 /// Saves a screenshot of the current state of the widget test as if it was
-/// rendered on each device in [devices] to the file system.
+/// rendered on each device in [settings].devices to the file system.
 ///
-/// If [devices] is not provided, the global default list of devices is used,
-/// which you can also set globally via [SnapSettings.devices].
+/// If [settings] is not provided, the global default settings are used,
+/// which you can also set globally via [SnapperSettings.global].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the given
 /// [pathPrefix] (`.snapper/` by default), optionally appending the device name to
@@ -25,17 +29,20 @@ import 'package:test_api/src/backend/invoker.dart';
 /// provided, the screenshot will be taken from the whole screen.
 ///
 /// You can decide whether shadows should be rendered or not by setting
-/// [renderShadows] to `true` or `false`. If not provided, the global default
-/// is used, which you can also set globally via [SnapSettings.renderShadows].
+/// [SnapperSettings.renderShadows] to `true` or `false`. If not provided, the
+/// global default is used, which you can also set globally via
+/// [SnapperSettings.global].
 Future<List<File>> snap({
-  List<DeviceInfo>? devices,
   String? name,
   Finder? from,
   bool appendDeviceName = true,
-  bool? renderShadows,
+  SnapperSettings? settings,
   String pathPrefix = '.snapper/',
 }) async {
+  final s = settings ?? SnapperSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
+
+  final restore = await _setUpForSettings(s);
 
   if (testName == null) {
     throw Exception('Could not determine a name for the screenshot.');
@@ -43,11 +50,11 @@ Future<List<File>> snap({
 
   final files = <File>[];
 
-  for (final device in devices ?? SnapSettings.devices) {
+  for (final device in s.devices) {
     final image = await takeDeviceScreenshot(
       device: device,
       from: from,
-      renderShadows: renderShadows,
+      settings: s,
     );
 
     await maybeRunAsync(() async {
@@ -85,6 +92,8 @@ Future<List<File>> snap({
       files.add(file);
     });
   }
+
+  restore();
 
   return files;
 }
@@ -130,6 +139,7 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
 
   void restore() {
+    debugDefaultTargetPlatformOverride = null;
     implicitView
       ..resetPhysicalSize()
       ..resetPadding()
@@ -146,6 +156,8 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
     ..padding = device.safeAreas.toFakeViewPadding()
     ..devicePixelRatio = device.pixelRatio;
 
+  debugDefaultTargetPlatformOverride = device.identifier.platform;
+
   return restore;
 }
 
@@ -155,13 +167,11 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
 /// If [from] is provided, the screenshot will be taken from the given [Finder].
 /// Otherwise, the screenshot will be taken from the whole screen.
 ///
-/// You can decide whether shadows should be rendered or not by setting
-/// [renderShadows] to `true` or `false`. If not provided, the global default
-/// is used, which you can also set globally via [SnapSettings.renderShadows].
+
 Future<ui.Image?> takeDeviceScreenshot({
   required DeviceInfo device,
+  required SnapperSettings settings,
   Finder? from,
-  bool? renderShadows,
 }) async {
   final finder = from ?? find.byType(View);
 
@@ -169,11 +179,80 @@ Future<ui.Image?> takeDeviceScreenshot({
 
   final image = await _runInFakeDevice(
     device,
-    () => _captureImage(element),
-    disableShadows: !(renderShadows ?? SnapSettings.renderShadows),
+    () async {
+      await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
+
+      return _captureImage(
+        element,
+        blockText: settings.blockText,
+      );
+    },
   );
 
   return image;
+}
+
+bool _fontsLoaded = false;
+
+Future<VoidCallback> _setUpForSettings(SnapperSettings settings) async {
+  final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
+
+  if (settings.renderImages) {
+    await precacheImages();
+  } else {
+    restoreImages();
+  }
+
+  if (!settings.blockText) {
+    await loadAppFonts();
+  }
+
+  final previousShadows = debugDisableShadows;
+
+  debugDisableShadows = !settings.renderShadows;
+
+  return () {
+    debugDisableShadows = previousShadows;
+    restoreImages();
+  };
+}
+
+/// Loads all fonts that the app uses so that they will be rendered correctly
+/// when taking screenshots.
+///
+/// {@macro snapper.fake_device.renderingUndoDisclaimer}
+Future<void> loadAppFonts() async {
+  if (_fontsLoaded) {
+    return;
+  }
+
+  await spot.loadAppFonts();
+  _fontsLoaded = true;
+}
+
+/// Pre-caches all images so that they will be rendered correctly when taking
+/// screenshots.
+///
+/// An optional [Finder] can be provided to limit the scope of the precaching to
+/// matching descendants of that [Finder].
+///
+/// {@macro snapper.fake_device.renderingUndoDisclaimer}
+Future<void> precacheImages([Finder? from]) async {
+  final finder = from ?? find.byType(View);
+  await TestWidgetsFlutterBinding.instance.runAsync(() async {
+    final children = find.descendant(
+      of: finder,
+      matching: find.bySubtype<Image>(),
+    );
+
+    final operations = children.evaluate().map((e) {
+      final image = e.widget as Image;
+
+      return precacheImage(image.image, e);
+    });
+
+    return Future.wait(operations);
+  });
 }
 
 /// Runs a given function [fn] in a [DeviceInfo] [device].
@@ -182,25 +261,18 @@ Future<ui.Image?> takeDeviceScreenshot({
 /// finished.
 Future<T?> _runInFakeDevice<T>(
   DeviceInfo device,
-  Future<T> Function() fn, {
-  bool disableShadows = true,
-}) async {
+  Future<T> Function() fn,
+) async {
   final binding = TestWidgetsFlutterBinding.instance;
+  await binding.pump(Duration.zero);
 
   final restoreView = setTestViewToFakeDevice(device);
-
-  final prevDisableShadows = debugDisableShadows;
-  debugDisableShadows = disableShadows;
-
-  await TestAsyncUtils.guard<void>(binding.pump);
 
   final result = await maybeRunAsync(fn);
 
   restoreView();
 
-  debugDisableShadows = prevDisableShadows;
-
-  await TestAsyncUtils.guard<void>(binding.pump);
+  await binding.pump(Duration.zero);
 
   return result;
 }
@@ -210,7 +282,10 @@ Future<T?> _runInFakeDevice<T>(
 /// See also:
 ///
 ///  * [OffsetLayer.toImage] which is the actual method being called.
-Future<ui.Image> _captureImage(Element element) async {
+Future<ui.Image> _captureImage(
+  Element element, {
+  required bool blockText,
+}) async {
   assert(
     element.renderObject != null,
     'The given element $element does not have a RenderObject',
@@ -223,6 +298,14 @@ Future<ui.Image> _captureImage(Element element) async {
   assert(!renderObject.debugNeedsPaint, 'The RenderObject needs painting');
 
   final layer = renderObject.debugLayer! as OffsetLayer;
+
+  if (blockText) {
+    BlockedTextPaintingContext(
+      containerLayer: layer,
+      estimatedBounds: renderObject.paintBounds,
+    ).paintSingleChild(renderObject);
+  }
+
   final image = await layer.toImage(renderObject.paintBounds);
 
   if (element.renderObject is RenderBox) {

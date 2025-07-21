@@ -5,15 +5,13 @@ import 'package:snapper/snapper.dart';
 /// A helper test function meant to be used for taking real screenshots using
 /// the [snap] function and the [WidgetTester].
 ///
-/// As opposed to [testWidgets], it automatically enables real rendering if
-/// [withRealRendering] is set to true, and includes the `screenshot` tag in the
-/// test to allow for easy filtering.
+/// As opposed to [testWidgets], it includes the `screenshot` tag in the test to
+/// allow for easy filtering.
 @isTest
 void screenshotTest(
   String description,
   WidgetTesterCallback callback, {
-  List<DeviceInfo>? devices,
-  bool withRealRendering = true,
+  SnapperSettings? settings,
   bool? skip,
   Timeout? timeout,
   bool semanticsEnabled = true,
@@ -24,20 +22,13 @@ void screenshotTest(
   testWidgets(
     description,
     (tester) async {
-      final previousDevices = SnapSettings.devices;
-      final previousShadows = SnapSettings.renderShadows;
+      final previousSettings = SnapperSettings.global;
 
-      SnapSettings.devices = devices ?? previousDevices;
-      SnapSettings.renderShadows = true;
-
-      if (withRealRendering) {
-        await enableRealRenderingForTest();
-      }
+      SnapperSettings.global = settings ?? previousSettings;
 
       await callback(tester);
 
-      SnapSettings.devices = previousDevices;
-      SnapSettings.renderShadows = previousShadows;
+      SnapperSettings.global = previousSettings;
     },
     skip: skip,
     timeout: timeout,
