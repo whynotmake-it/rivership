@@ -11,13 +11,14 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 
 
 ## Package overview
-| Package                                     | pub.dev                                                     | Description                                                        |
-| ------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
-| [rivership](./packages/rivership)           | ![Pub Version](https://img.shields.io/pub/v/rivership)      | An opinionated infrastructure package for use with hooks_riverpod. |
-| [rivership_test](./packages/rivership_test) | ![Pub Version](https://img.shields.io/pub/v/rivership_test) | A set of test utilities that are useful for testing riverpod apps  |
-| [motor](./packages/motor)         | ![Pub Version](https://img.shields.io/pub/v/motor)      | A unified motion system for physics-based and duration-based animations. |
-| [springster](./packages/springster)         | ![Pub Version](https://img.shields.io/pub/v/springster)      | Spring animations and simulations, simplified. |
-| [heroine](./packages/heroine)           | ![Pub Version](https://img.shields.io/pub/v/heroine)      | The queen of hero transitions. Flutter's most addictive interactions.              |
+| Package                                     | pub.dev                                                     | Description                                                              |
+| ------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [rivership](./packages/rivership)           | ![Pub Version](https://img.shields.io/pub/v/rivership)      | An opinionated infrastructure package for use with hooks_riverpod.       |
+| [rivership_test](./packages/rivership_test) | ![Pub Version](https://img.shields.io/pub/v/rivership_test) | A set of test utilities that are useful for testing riverpod apps        |
+| [motor](./packages/motor)                   | ![Pub Version](https://img.shields.io/pub/v/motor)          | A unified motion system for physics-based and duration-based animations. |
+| [springster](./packages/springster)         | ![Pub Version](https://img.shields.io/pub/v/springster)     | Spring animations and simulations, simplified.                           |
+| [heroine](./packages/heroine)               | ![Pub Version](https://img.shields.io/pub/v/heroine)        | The queen of hero transitions. Flutter's most addictive interactions.    |
+| [snap](./packages/snap)                     | ![Pub Version](https://img.shields.io/pub/v/snap)           | Snap photos in your widget tests.                                        |
 
 
 ---
