@@ -173,13 +173,13 @@ Future<ui.Image?> takeDeviceScreenshot({
 
   final element = finder.evaluate().single;
 
-  await _setUpForSettings(settings);
-
   final image = await _runInFakeDevice(
     device,
-    () => _captureImage(element, blockText: settings.blockText),
-    disableShadows: !settings.renderShadows,
-    blockText: settings.blockText,
+    () => _captureImage(
+      element,
+      blockText: settings.blockText,
+    ),
+    settings: settings,
   );
 
   return image;
@@ -244,15 +244,15 @@ Future<void> precacheImages([Finder? from]) async {
 Future<T?> _runInFakeDevice<T>(
   DeviceInfo device,
   Future<T> Function() fn, {
-  required bool disableShadows,
-  required bool blockText,
+  required SnapperSettings settings,
 }) async {
   final binding = TestWidgetsFlutterBinding.instance;
 
   final restoreView = setTestViewToFakeDevice(device);
 
   final prevDisableShadows = debugDisableShadows;
-  debugDisableShadows = disableShadows;
+
+  await TestAsyncUtils.guard(() async => _setUpForSettings(settings));
 
   await TestAsyncUtils.guard<void>(binding.pump);
 
