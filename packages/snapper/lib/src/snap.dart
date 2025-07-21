@@ -245,7 +245,7 @@ Future<ui.Image> _captureImage(Element element) async {
 }
 
 extension on String {
-  String toValidFilename() => replaceAll(RegExp(r'[^\w\s]'), '');
+  String toValidFilename() => replaceAll(RegExp(r'[^\w]'), '');
 }
 
 extension on EdgeInsets {

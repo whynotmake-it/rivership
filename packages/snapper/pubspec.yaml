@@ -27,7 +27,3 @@ dependencies:
 executables:
   assemble: assemble
   clean: clean
-
-flutter:
-  assets:
-    - packages/snapper/golden_bricks.ttf
