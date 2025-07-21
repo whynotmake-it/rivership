@@ -105,7 +105,7 @@ class FakeDevice with EquatableMixin {
 /// Make sure to call `.pump()` after calling this function to ensure that it
 /// takes effect.
 ///
-/// {@template snap.fake_device.renderingUndoDisclaimer}
+/// {@template snapper.fake_device.renderingUndoDisclaimer}
 /// **Beware:** Once this has been called in a widget test, it can't be undone
 /// for this test and will influence all subsequent rendering, including golden
 /// tests.
@@ -118,7 +118,7 @@ Future<void> enableRealRenderingForTest() async {
 /// Loads all fonts that the app uses so that they will be rendered correctly
 /// when taking screenshots.
 ///
-/// {@macro snap.fake_device.renderingUndoDisclaimer}
+/// {@macro snapper.fake_device.renderingUndoDisclaimer}
 Future<void> loadAppFonts() async {
   await spot.loadAppFonts();
 }
@@ -129,7 +129,7 @@ Future<void> loadAppFonts() async {
 /// An optional [Finder] can be provided to limit the scope of the precaching to
 /// matching descendants of that [Finder].
 ///
-/// {@macro snap.fake_device.renderingUndoDisclaimer}
+/// {@macro snapper.fake_device.renderingUndoDisclaimer}
 Future<void> precacheImages([Finder? from]) async {
   final finder = from ?? find.byType(View);
   await TestWidgetsFlutterBinding.instance.runAsync(() async {

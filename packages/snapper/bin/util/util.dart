@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
-/// Gets the top level .snap directory
+/// Gets the top level .snapper directory
 Directory get topLevelSnapDir => Directory(
-  path.join(Directory.current.path, '.snap'),
+  path.join(Directory.current.path, '.snapper'),
 );
 
-/// Gets all .snap directories under the test folder
+/// Gets all .snapper directories under the test folder
 Stream<Directory> findSnapDirectoriesInTest() async* {
   final currentDir = Directory.current;
   final testDir = Directory(path.join(currentDir.path, 'test'));
@@ -19,7 +19,7 @@ Stream<Directory> findSnapDirectoriesInTest() async* {
   }
 
   await for (final entity in testDir.list(recursive: true)) {
-    if (entity is Directory && path.basename(entity.path) == '.snap') {
+    if (entity is Directory && path.basename(entity.path) == '.snapper') {
       yield entity;
     }
   }

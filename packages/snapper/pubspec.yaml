@@ -1,4 +1,4 @@
-name: snap
+name: snapper
 description: Snap photos in your widget tests.
 version: 0.1.0
 publish_to: none
@@ -29,4 +29,4 @@ executables:
 
 flutter:
   assets:
-    - packages/snap/golden_bricks.ttf
+    - packages/snapper/golden_bricks.ttf

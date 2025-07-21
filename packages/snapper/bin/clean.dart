@@ -16,10 +16,10 @@ Future<void> main(List<String> args) async {
 Future<void> cleanSnapshots(Directory topLevelSnapDir) async {
   var snapshotsDeleted = 0;
 
-  // Clean the top level .snap directory
+  // Clean the top level .snapper directory
   deleteDirectoryIfExists(topLevelSnapDir);
 
-  // Clean all .snap directories under test/
+  // Clean all .snapper directories under test/
   await for (final snapDir in findSnapDirectoriesInTest()) {
     deleteDirectoryIfExists(snapDir);
     snapshotsDeleted++;

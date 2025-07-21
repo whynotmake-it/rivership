@@ -4,8 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snap/src/fake_device.dart';
-import 'package:snap/src/snap_settings.dart';
+import 'package:snapper/src/fake_device.dart';
+import 'package:snapper/src/snap_settings.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -16,7 +16,7 @@ import 'package:test_api/src/backend/invoker.dart';
 /// which you can also set globally via [SnapSettings.devices].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the given
-/// [pathPrefix] (`.snap/` by default), optionally appending the device name to
+/// [pathPrefix] (`.snapper/` by default), optionally appending the device name to
 /// the file name. If no [name] is provided, the name of the current test is
 /// used.
 ///
@@ -32,7 +32,7 @@ Future<List<File>> snap({
   Finder? from,
   bool appendDeviceName = true,
   bool? renderShadows,
-  String pathPrefix = '.snap/',
+  String pathPrefix = '.snapper/',
 }) async {
   final testName = name ?? Invoker.current?.liveTest.test.name;
 
@@ -61,7 +61,7 @@ Future<List<File>> snap({
           ? '_${device.name.toValidFilename()}'
           : '';
 
-      final fileName = '$pathPrefix/${testName.toValidFilename()}$appendix.png';
+      final fileName = '$pathPrefix${testName.toValidFilename()}$appendix.png';
 
       final String? path;
 

@@ -31,7 +31,7 @@ Future<void> assembleScreenshots(
   ensureDirectoryExists(inDirectory);
 
   var screenshotsMoved = 0;
-  // Find all .snap directories under test/
+  // Find all .snapper directories under test/
   await for (final snapDir in findSnapDirectoriesInTest()) {
     screenshotsMoved += await _processSnapDirectory(
       snapDir,
@@ -83,7 +83,7 @@ Future<int> _processSnapDirectory(
     }
   }
 
-  // Remove the source .snap directory if it's empty
+  // Remove the source .snapper directory if it's empty
   if ((await snapDir.list().toList()).isEmpty) {
     await snapDir.delete();
   }

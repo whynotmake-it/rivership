@@ -1,6 +1,6 @@
-import 'package:snap/snap.dart';
+import 'package:snapper/snapper.dart';
 
-/// Global defaults for the snap package.
+/// Global defaults for the snapper package.
 ///
 /// You can set them anywhere in your tests. Beware of side effects 🤷
 abstract class SnapSettings {
