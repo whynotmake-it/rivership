@@ -22,9 +22,17 @@ void main() {
             ),
           );
 
-          final files = await snap(name: 'basic_widget');
+          final files = await snap();
           expect(files, hasLength(1));
           expect(files.first.existsSync(), isTrue);
+
+          await tester.runAsync(() async {
+            final image = await files.first.readAsBytes();
+            await expectLater(
+              image,
+              matchesGoldenFile('golden/basic_widget.png'),
+            );
+          });
         },
       );
 
@@ -55,6 +63,15 @@ void main() {
           expect(files, hasLength(3));
           for (final file in files) {
             expect(file.existsSync(), isTrue);
+
+            await tester.runAsync(() async {
+              final image = await file.readAsBytes();
+              final name = file.path.split('/').last;
+              await expectLater(
+                image,
+                matchesGoldenFile('golden/$name'),
+              );
+            });
           }
         },
       );
@@ -144,10 +161,10 @@ void main() {
             appendDeviceName: false,
           );
 
-          expect(filesWithDeviceName.first.path, contains('iPhone16Pro'));
+          expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
           expect(
             filesWithoutDeviceName.first.path,
-            isNot(contains('iPhone16Pro')),
+            isNot(contains('iPhone 16 Pro')),
           );
         },
       );

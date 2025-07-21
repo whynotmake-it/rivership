@@ -179,10 +179,14 @@ Future<ui.Image?> takeDeviceScreenshot({
 
   final image = await _runInFakeDevice(
     device,
-    () => _captureImage(
-      element,
-      blockText: settings.blockText,
-    ),
+    () async {
+      await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
+
+      return _captureImage(
+        element,
+        blockText: settings.blockText,
+      );
+    },
   );
 
   return image;
@@ -260,16 +264,15 @@ Future<T?> _runInFakeDevice<T>(
   Future<T> Function() fn,
 ) async {
   final binding = TestWidgetsFlutterBinding.instance;
+  await binding.pump(Duration.zero);
 
   final restoreView = setTestViewToFakeDevice(device);
-
-  await TestAsyncUtils.guard<void>(binding.pump);
 
   final result = await maybeRunAsync(fn);
 
   restoreView();
 
-  await TestAsyncUtils.guard<void>(binding.pump);
+  await binding.pump(Duration.zero);
 
   return result;
 }
@@ -325,7 +328,7 @@ Future<ui.Image> _captureImage(
 }
 
 extension on String {
-  String toValidFilename() => replaceAll(RegExp(r'[^\w]'), '');
+  String toValidFilename() => replaceAll(RegExp(r'[^\w\s]'), '');
 }
 
 extension on EdgeInsets {
