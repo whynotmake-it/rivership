@@ -1,0 +1,33 @@
+name: snapper
+description: Snap photos in your widget tests.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dev_dependencies:
+  lintervention: ^0.3.1
+  mocktail: ^1.0.3
+
+dependencies:
+  args: ^2.4.0
+  device_frame: ">=1.0.0 <2.0.0"
+  equatable: ">=2.0.0 <3.0.0"
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  meta: ">=1.15.0 <2.0.0"
+  path: ^1.9.0
+  spot: ^0.16.0
+  stack_trace: ^1.11.1
+  test_api: ">=0.5.0 <0.8.0"
+
+executables:
+  assemble: assemble
+  clean: clean
+
+flutter:
+  assets:
+    - packages/snapper/golden_bricks.ttf
