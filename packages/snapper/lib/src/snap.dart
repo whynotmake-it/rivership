@@ -42,6 +42,8 @@ Future<List<File>> snap({
   final s = settings ?? SnapperSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
 
+  final restore = await _setUpForSettings(s);
+
   if (testName == null) {
     throw Exception('Could not determine a name for the screenshot.');
   }
@@ -90,6 +92,8 @@ Future<List<File>> snap({
       files.add(file);
     });
   }
+
+  restore();
 
   return files;
 }
@@ -179,7 +183,6 @@ Future<ui.Image?> takeDeviceScreenshot({
       element,
       blockText: settings.blockText,
     ),
-    settings: settings,
   );
 
   return image;
@@ -187,16 +190,27 @@ Future<ui.Image?> takeDeviceScreenshot({
 
 bool _fontsLoaded = false;
 
-Future<void> _setUpForSettings(SnapperSettings settings) async {
+Future<VoidCallback> _setUpForSettings(SnapperSettings settings) async {
+  final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
+
   if (settings.renderImages) {
     await precacheImages();
   } else {
-    TestWidgetsFlutterBinding.instance.imageCache.clear();
+    restoreImages();
   }
 
   if (!settings.blockText) {
     await loadAppFonts();
   }
+
+  final previousShadows = debugDisableShadows;
+
+  debugDisableShadows = !settings.renderShadows;
+
+  return () {
+    debugDisableShadows = previousShadows;
+    restoreImages();
+  };
 }
 
 /// Loads all fonts that the app uses so that they will be rendered correctly
@@ -243,24 +257,17 @@ Future<void> precacheImages([Finder? from]) async {
 /// finished.
 Future<T?> _runInFakeDevice<T>(
   DeviceInfo device,
-  Future<T> Function() fn, {
-  required SnapperSettings settings,
-}) async {
+  Future<T> Function() fn,
+) async {
   final binding = TestWidgetsFlutterBinding.instance;
 
   final restoreView = setTestViewToFakeDevice(device);
-
-  final prevDisableShadows = debugDisableShadows;
-
-  await TestAsyncUtils.guard(() async => _setUpForSettings(settings));
 
   await TestAsyncUtils.guard<void>(binding.pump);
 
   final result = await maybeRunAsync(fn);
 
   restoreView();
-
-  debugDisableShadows = prevDisableShadows;
 
   await TestAsyncUtils.guard<void>(binding.pump);
 
