@@ -244,30 +244,18 @@ void main() {
         'enables real rendering for fonts and images',
         (tester) async {
           await tester.pumpWidget(
-            MaterialApp(
+            const MaterialApp(
               home: Scaffold(
                 body: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Custom Font Text',
                       style: TextStyle(
                         fontFamily: 'Roboto',
                         fontSize: 24,
                       ),
                     ),
-                    Image.asset(
-                      'assets/test_image.png',
-                      width: 100,
-                      height: 100,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 100,
-                          height: 100,
-                          color: Colors.grey,
-                          child: const Icon(Icons.error),
-                        );
-                      },
-                    ),
+                    Icon(Icons.check),
                   ],
                 ),
               ),

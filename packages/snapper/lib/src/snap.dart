@@ -173,6 +173,8 @@ Future<ui.Image?> takeDeviceScreenshot({
 
   final element = finder.evaluate().single;
 
+  await _setUpForSettings(settings);
+
   final image = await _runInFakeDevice(
     device,
     () => _captureImage(element, blockText: settings.blockText),
@@ -185,7 +187,7 @@ Future<ui.Image?> takeDeviceScreenshot({
 
 bool _fontsLoaded = false;
 
-Future<void> setUpForSettings(SnapperSettings settings) async {
+Future<void> _setUpForSettings(SnapperSettings settings) async {
   if (settings.renderImages) {
     await precacheImages();
   } else {
