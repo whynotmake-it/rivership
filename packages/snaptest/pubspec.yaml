@@ -3,6 +3,9 @@ description: Snap photos in your widget tests.
 version: 0.1.0-dev.0
 topics: ["testing", "golden", "screenshots", "automation"]
 
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/snaptest
+homepage: https://whynotmake.it
+
 environment:
   sdk: ">=3.8.0 <4.0.0"
 
