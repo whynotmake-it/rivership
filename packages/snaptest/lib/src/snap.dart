@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:alchemist/alchemist.dart';
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -186,6 +187,7 @@ Future<ui.Image?> takeDeviceScreenshot({
         element,
         blockText: settings.blockText,
         device: device,
+        includeDeviceFrame: settings.includeDeviceFrame,
       );
     },
   );
@@ -287,6 +289,7 @@ Future<ui.Image> _captureImage(
   Element element, {
   required bool blockText,
   required DeviceInfo device,
+  required bool includeDeviceFrame,
 }) async {
   assert(
     element.renderObject != null,
@@ -326,7 +329,52 @@ Future<ui.Image> _captureImage(
     }
   }
 
+  if (includeDeviceFrame && device is! WidgetTesterDevice) {
+    return _wrapImageWithDeviceFrame(image, device);
+  }
+
   return image;
+}
+
+/// Wraps the given [image] with a device frame for the specified [device].
+///
+/// This creates a new image that includes the device frame around the content
+/// without modifying the original widget tree.
+Future<ui.Image> _wrapImageWithDeviceFrame(
+  ui.Image image,
+  DeviceInfo device,
+) async {
+  // Create a picture recorder to draw the device frame
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final deviceFrameSize = device.frameSize;
+
+  device.framePainter.paint(canvas, deviceFrameSize);
+
+  // Calculate the screen area within the device frame
+  final screenRect = Rect.fromCenter(
+    center: Offset(deviceFrameSize.width / 2, deviceFrameSize.height / 2),
+    width: device.screenSize.width / device.pixelRatio,
+    height: device.screenSize.height / device.pixelRatio,
+  );
+
+  // Draw the captured image in the screen area
+  canvas.drawImageRect(
+    image,
+    Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
+    screenRect,
+    Paint(),
+  );
+
+  // Convert to image
+  final picture = recorder.endRecording();
+  final framedImage = await picture.toImage(
+    deviceFrameSize.width.round(),
+    deviceFrameSize.height.round(),
+  );
+
+  picture.dispose();
+  return framedImage;
 }
 
 extension on String {

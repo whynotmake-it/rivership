@@ -290,6 +290,56 @@ void main() {
           Devices.android.samsungGalaxyS20,
         ]),
       );
+
+      snapTest(
+        'captures widget with device frame when enabled',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Device Frame Test'),
+                ),
+              ),
+            ),
+          );
+
+          final files = await snap(name: 'device_frame_test');
+          expect(files, hasLength(1));
+          expect(files.first.existsSync(), isTrue);
+        },
+        settings: const SnaptestSettings(
+          includeDeviceFrame: true,
+          devices: [
+            WidgetTesterDevice(),
+          ],
+        ),
+      );
+
+      snapTest(
+        'captures widget with device frame for real devices',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Real Device Frame Test'),
+                ),
+              ),
+            ),
+          );
+
+          final files = await snap(name: 'real_device_frame_test');
+          expect(files, hasLength(1));
+          expect(files.first.existsSync(), isTrue);
+        },
+        settings: SnaptestSettings(
+          includeDeviceFrame: true,
+          devices: [
+            Devices.ios.iPhone16Pro,
+          ],
+        ),
+      );
     });
   });
 }
