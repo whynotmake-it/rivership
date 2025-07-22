@@ -15,7 +15,6 @@ dev_dependencies:
   mocktail: ^1.0.3
 
 dependencies:
-  alchemist: ^0.12.1
   args: ^2.4.0
   device_frame: ">=1.0.0 <2.0.0"
   equatable: ">=2.0.0 <3.0.0"
@@ -23,10 +22,9 @@ dependencies:
     sdk: flutter
   flutter_test:
     sdk: flutter
-  flutter_test_goldens: ^0.0.7
   meta: ">=1.15.0 <2.0.0"
-  path: ^1.9.0
-  stack_trace: ^1.11.1
+  path: ">=1.0.0 <2.0.0"
+  spot: ">=0.18.0 <1.0.0"
   test_api: ">=0.5.0 <0.8.0"
 
 executables:

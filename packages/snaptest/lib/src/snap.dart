@@ -5,14 +5,14 @@ import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/fake_device.dart';
+import 'package:snaptest/src/flutter_sdk_root.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
+import 'package:spot/spot.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -248,9 +248,7 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   }
 
   if (!_fontsLoaded) {
-    await TestFonts.loadAppFonts();
-
-    await loadMaterialIconsFont();
+    await loadAppFonts();
 
     await _overrideCupertinoFonts();
     _fontsLoaded = true;
@@ -267,28 +265,34 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 }
 
 Future<void> _overrideCupertinoFonts() async {
-  final textLoader = FontLoader("CupertinoSystemText");
-  final displayLoader = FontLoader("CupertinoSystemDisplay");
+  final root = flutterSdkRoot().absolute.path;
 
-  void addFonts(FontLoader loader) {
-    const fonts = [
-      "packages/alchemist/assets/fonts/Roboto/Roboto-Thin.ttf",
-      "packages/alchemist/assets/fonts/Roboto/Roboto-Light.ttf",
-      "packages/alchemist/assets/fonts/Roboto/Roboto-Regular.ttf",
-      "packages/alchemist/assets/fonts/Roboto/Roboto-Bold.ttf",
-      "packages/alchemist/assets/fonts/Roboto/Roboto-Black.ttf",
-    ];
+  final materialFontsDir = Directory(
+    '$root/bin/cache/artifacts/material_fonts/',
+  );
 
-    for (final font in fonts) {
-      loader.addFont(rootBundle.load(font));
-    }
+  final fontFormats = ['.ttf', '.otf', '.ttc'];
+  final existingFonts = materialFontsDir
+      .listSync()
+      // dartfmt come on,...
+      .whereType<File>()
+      .where(
+        (font) => fontFormats.any((element) => font.path.endsWith(element)),
+      )
+      .toList();
+
+  final robotoFonts = existingFonts
+      .where((font) {
+        final name = basename(font.path).toLowerCase();
+        return name.startsWith('Roboto-'.toLowerCase());
+      })
+      .map((file) => file.path)
+      .toList();
+  if (robotoFonts.isEmpty) {
+    debugPrint("Warning: No Roboto font found in SDK");
   }
-
-  addFonts(textLoader);
-  await textLoader.load();
-
-  addFonts(displayLoader);
-  await displayLoader.load();
+  await loadFont('CupertinoSystemText', robotoFonts);
+  await loadFont('CupertinoSystemDisplay', robotoFonts);
 }
 
 /// Pre-caches all images so that they will be rendered correctly when taking
