@@ -22,62 +22,96 @@ dart pub add dev:snaptest
 
 There are two main ways of using Snaptest:
 
-### 0. Add `.snapper` to your `.gitignore`
+### 0. Add `.snaptest` to your `.gitignore`
 
 Unless you want snapshots checked into version control, add this pattern to your `.gitignore` file:
 
 ```gitignore
-**/.snapper/
+**/.snaptest/
 ```
 
-This will ignore all `.snapper` directories throughout your project.
+This will ignore all `.snaptest` directories throughout your project.
 
 
-### 1. Call `snap()` from any widget test
+### 1. Use `snapTest()` for screenshot tests
 
-You can take snapshots in any widget test by using the `snap` function.
+Use the `snapTest` function instead of `testWidgets` for tests that take screenshots. This automatically adds the `screenshot` tag for easy filtering.
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 
 void main() {
-  testGroup('My Page', () {
-    testWidgets('Loaded State', (tester) async {
+  group('My Page', () {
+    snapTest('Loaded State', (tester) async {
       await tester.pumpWidget(MyPage());
 
       expect(find.byType(MyPage), findsOneWidget);
       
-      // Do this anywhere
+      // Take a screenshot
       await snap();
     });
   });
 }
-
 ```
 
-The screenshot will be saved in a `.snapper` directory next to the current test file, using the name of the test.
+The screenshot will be saved in a `.snaptest` directory next to the current test file, using the name of the test.
 
-If you want to take multiple screenshots, you can pass a name to the `snap` function.
+### 2. Multiple screenshots and device testing
+
+You can take multiple screenshots and test on different devices:
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 
 void main() {
-  testGroup('My Page', () {
-      snapTest('Loaded State', devices: [Devices.ios.iPhone16Pro], (tester) async {      await tester.pumpWidget(MyPage());
-      await snap('loaded');
+  group('My Page', () {
+    snapTest(
+      'Loaded State', 
+      (tester) async {
+        await tester.pumpWidget(MyPage());
+        await snap('loaded');
 
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
 
-      await snap('tapped button');
-    });
+        await snap('tapped button');
+      },
+      settings: SnaptestSettings(
+        devices: [
+          Devices.ios.iPhone16Pro,
+          Devices.android.samsungGalaxyS20,
+        ],
+      ),
+    );
   });
 }
-
 ```
+
+### 3. Advanced configuration
+
+You can configure rendering options using `SnaptestSettings`:
+
+```dart
+snapTest(
+  'Full rendering test',
+  (tester) async {
+    await tester.pumpWidget(MyApp());
+    await snap();
+  },
+  settings: SnaptestSettings.full([
+    Devices.ios.iPhone16Pro,
+    Devices.android.samsungGalaxyS20,
+  ]),
+);
+```
+
+Available settings:
+- `blockText`: Whether to block text rendering (default: `true`)
+- `renderImages`: Whether to render images (default: `false`)
+- `renderShadows`: Whether to render shadows (default: `false`)
+- `devices`: List of devices to test on (default: `[WidgetTesterDevice()]`)
 
 ## Helper Scripts
 
@@ -89,7 +123,7 @@ void main() {
 dart run snaptest:clean
 ```
 
-This script will delete all the screenshots in the `.snapper` directories around your project.
+This script will delete all the screenshots in the `.snaptest` directories around your project.
 
 ### assemble
 
@@ -97,7 +131,7 @@ This script will delete all the screenshots in the `.snapper` directories around
 dart run snaptest:assemble
 ```
 
-Will take all the screenshots in the `.snapper` directories around your project and assemble them into a `.snapper/assets` directory at the root of your project (and potentially do something cool with them in the future 👀)
+Will take all the screenshots in the `.snaptest` directories around your project and assemble them into a `.snaptest/assets` directory at the root of your project (and potentially do something cool with them in the future 👀)
 
 ---
 

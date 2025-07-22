@@ -2,12 +2,12 @@ import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
 import 'package:snaptest/src/fake_device.dart';
 
-/// Global defaults for the snapper package.
+/// Global defaults for the snaptest package.
 ///
 /// You can set them anywhere in your tests. Beware of side effects 🤷
-class SnapperSettings with EquatableMixin {
-  /// Creates a new [SnapperSettings] instance.
-  const SnapperSettings({
+class SnaptestSettings with EquatableMixin {
+  /// Creates a new [SnaptestSettings] instance.
+  const SnaptestSettings({
     this.blockText = true,
     this.renderShadows = false,
     this.renderImages = false,
@@ -16,19 +16,19 @@ class SnapperSettings with EquatableMixin {
     ],
   });
 
-  /// Creates a new [SnapperSettings] instance with full rendering.
-  const SnapperSettings.full(
+  /// Creates a new [SnaptestSettings] instance with full rendering.
+  const SnaptestSettings.full(
     this.devices,
   ) : blockText = false,
       renderImages = true,
       renderShadows = true;
 
-  /// The global settings for the snapper package.
-  static SnapperSettings global = const SnapperSettings();
+  /// The global settings for the snaptest package.
+  static SnaptestSettings global = const SnaptestSettings();
 
   /// Resets the global settings to their default values.
   static void resetGlobal() {
-    global = const SnapperSettings();
+    global = const SnaptestSettings();
   }
 
   /// Whether to block text in the screenshot.

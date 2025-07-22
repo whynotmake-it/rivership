@@ -11,7 +11,7 @@ import 'package:snaptest/snaptest.dart';
 void snapTest(
   String description,
   WidgetTesterCallback callback, {
-  SnapperSettings? settings,
+  SnaptestSettings? settings,
   bool? skip,
   Timeout? timeout,
   bool semanticsEnabled = true,
@@ -22,13 +22,13 @@ void snapTest(
   testWidgets(
     description,
     (tester) async {
-      final previousSettings = SnapperSettings.global;
+      final previousSettings = SnaptestSettings.global;
 
-      SnapperSettings.global = settings ?? previousSettings;
+      SnaptestSettings.global = settings ?? previousSettings;
 
       await callback(tester);
 
-      SnapperSettings.global = previousSettings;
+      SnaptestSettings.global = previousSettings;
     },
     skip: skip,
     timeout: timeout,

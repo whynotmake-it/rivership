@@ -40,7 +40,7 @@ DA:79,1
 DA:81,0
 DA:84,1
 DA:86,1
-DA:87,0
+DA:87,1
 DA:90,1
 DA:92,1
 DA:96,1
@@ -128,9 +128,9 @@ DA:337,1
 DA:338,1
 DA:339,1
 LF:110
-LH:96
+LH:97
 end_of_record
-SF:lib/src/snapper_settings.dart
+SF:lib/src/snaptest_settings.dart
 DA:10,3
 DA:20,1
 DA:27,1
