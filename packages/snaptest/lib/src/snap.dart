@@ -185,6 +185,7 @@ Future<ui.Image?> takeDeviceScreenshot({
       return _captureImage(
         element,
         blockText: settings.blockText,
+        device: device,
       );
     },
   );
@@ -285,6 +286,7 @@ Future<T?> _runInFakeDevice<T>(
 Future<ui.Image> _captureImage(
   Element element, {
   required bool blockText,
+  required DeviceInfo device,
 }) async {
   assert(
     element.renderObject != null,
