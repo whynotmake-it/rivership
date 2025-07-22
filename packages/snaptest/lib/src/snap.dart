@@ -5,7 +5,6 @@ import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
@@ -14,7 +13,6 @@ import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/flutter_sdk_root.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
 import 'package:spot/spot.dart';
-
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
