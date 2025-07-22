@@ -1,3 +1,4 @@
+import 'package:alchemist/alchemist.dart';
 import 'package:flutter/rendering.dart';
 
 /// {@template blocked_text_painting_context}
@@ -14,6 +15,9 @@ class BlockedTextPaintingContext extends PaintingContext {
     required ContainerLayer containerLayer,
     required Rect estimatedBounds,
   }) : super(containerLayer, estimatedBounds);
+
+  @override
+  Canvas get canvas => BlockedTextCanvasAdapter(super.canvas);
 
   @override
   PaintingContext createChildContext(ContainerLayer childLayer, Rect bounds) {

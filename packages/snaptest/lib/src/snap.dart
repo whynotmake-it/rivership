@@ -373,8 +373,8 @@ Future<ui.Image> _captureImage(
 
   if (element.renderObject is RenderBox) {
     final expectedSize = (element.renderObject as RenderBox?)!.size;
-    if (expectedSize.width != image.width ||
-        expectedSize.height != image.height) {
+    if (expectedSize.width.ceil() != image.width ||
+        expectedSize.height.ceil() != image.height) {
       // ignore: avoid_print
       print(
         'Warning: The screenshot captured of ${element.toStringShort()} is '
