@@ -22,7 +22,8 @@ import 'package:snaptest/snaptest.dart';
 /// flutter test --tags screenshot
 /// ```
 ///
-/// You can also pass custom [settings] that apply to all [snap] calls in this test:
+/// You can also pass custom [settings] that apply to all [snap] calls in this
+/// test:
 /// ```dart
 /// snapTest(
 ///   'Multi-device test',

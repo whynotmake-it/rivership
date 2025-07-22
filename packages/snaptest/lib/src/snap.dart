@@ -156,15 +156,16 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 /// Temporarily changes the test environment to simulate a specific device.
 ///
 /// This is a lower-level function that [snap] uses internally. You typically
-/// don't need to call this directly - just use [snap] with device settings instead.
+/// don't need to call this directly - just use [snap] with device settings
+/// instead.
 ///
 /// Returns a callback to restore the original test environment:
 /// ```dart
 /// final restore = setTestViewToFakeDevice(Devices.ios.iPhone16Pro);
-/// 
+///
 /// // Test environment now simulates iPhone 16 Pro
 /// await tester.pumpWidget(MyApp());
-/// 
+///
 /// // Restore original test environment
 /// restore();
 /// ```

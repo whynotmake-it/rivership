@@ -1,11 +1,14 @@
+/// @docImport 'package:snaptest/src/snap.dart';
+library;
+
 import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
 import 'package:snaptest/src/fake_device.dart';
 
 /// Controls how screenshots are rendered and which devices to test on.
 ///
-/// Use this to customize screenshot behavior - from simple debugging screenshots
-/// to beautiful device-framed images for documentation.
+/// Use this to customize screenshot behavior - from simple debugging
+/// screenshots to beautiful device-framed images for documentation.
 ///
 /// ## Quick Start
 ///
@@ -83,7 +86,9 @@ class SnaptestSettings with EquatableMixin {
   ///
   /// Change this to set defaults for your entire test suite:
   /// ```dart
-  /// SnaptestSettings.global = SnaptestSettings.full([Devices.ios.iPhone16Pro]);
+  /// SnaptestSettings.global = SnaptestSettings.full(
+  ///   devices: [Devices.ios.iPhone16Pro],
+  /// );
   /// ```
   static SnaptestSettings global = const SnaptestSettings();
 
@@ -101,7 +106,7 @@ class SnaptestSettings with EquatableMixin {
 
   /// Whether to replace text with gray rectangles for consistency.
   ///
-  /// - `true` (default): Shows gray blocks instead of actual text
+  /// - `true` (default): Shows golden-friendly blocks instead of actual text
   /// - `false`: Shows real text as it appears in your app
   final bool blockText;
 
