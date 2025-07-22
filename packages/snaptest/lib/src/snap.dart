@@ -4,13 +4,14 @@ import 'dart:ui' as ui;
 import 'package:alchemist/alchemist.dart';
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
-import 'package:spot/spot.dart' as spot;
-
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -151,9 +152,13 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
     return () {};
   }
 
+  Devices.ios.iPhone16;
+
   implicitView
     ..physicalSize = device.screenSize * device.pixelRatio
-    ..padding = device.safeAreas.toFakeViewPadding()
+    ..padding = device.safeAreas.toFakeViewPadding(
+      devicePixelRatio: device.pixelRatio,
+    )
     ..devicePixelRatio = device.pixelRatio;
 
   debugDefaultTargetPlatformOverride = device.identifier.platform;
@@ -185,6 +190,8 @@ Future<ui.Image?> takeDeviceScreenshot({
       return _captureImage(
         element,
         blockText: settings.blockText,
+        device: device,
+        includeDeviceFrame: settings.includeDeviceFrame,
       );
     },
   );
@@ -203,8 +210,13 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     restoreImages();
   }
 
-  if (!settings.blockText) {
-    await loadAppFonts();
+  if (!_fontsLoaded) {
+    await TestFonts.loadAppFonts();
+
+    await loadMaterialIconsFont();
+
+    await _overrideCupertinoFonts();
+    _fontsLoaded = true;
   }
 
   final previousShadows = debugDisableShadows;
@@ -217,17 +229,29 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   };
 }
 
-/// Loads all fonts that the app uses so that they will be rendered correctly
-/// when taking screenshots.
-///
-/// {@macro snaptest.fake_device.renderingUndoDisclaimer}
-Future<void> loadAppFonts() async {
-  if (_fontsLoaded) {
-    return;
+Future<void> _overrideCupertinoFonts() async {
+  final textLoader = FontLoader("CupertinoSystemText");
+  final displayLoader = FontLoader("CupertinoSystemDisplay");
+
+  void addFonts(FontLoader loader) {
+    const fonts = [
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Thin.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Light.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Regular.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Bold.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Black.ttf",
+    ];
+
+    for (final font in fonts) {
+      loader.addFont(rootBundle.load(font));
+    }
   }
 
-  await spot.loadAppFonts();
-  _fontsLoaded = true;
+  addFonts(textLoader);
+  await textLoader.load();
+
+  addFonts(displayLoader);
+  await displayLoader.load();
 }
 
 /// Pre-caches all images so that they will be rendered correctly when taking
@@ -285,6 +309,8 @@ Future<T?> _runInFakeDevice<T>(
 Future<ui.Image> _captureImage(
   Element element, {
   required bool blockText,
+  required DeviceInfo device,
+  required bool includeDeviceFrame,
 }) async {
   assert(
     element.renderObject != null,
@@ -324,7 +350,50 @@ Future<ui.Image> _captureImage(
     }
   }
 
+  if (includeDeviceFrame && device is! WidgetTesterDevice) {
+    return _wrapImageWithDeviceFrame(image, device);
+  }
+
   return image;
+}
+
+/// Wraps the given [image] with a device frame for the specified [device].
+///
+/// This creates a new image that includes the device frame around the content
+/// without modifying the original widget tree.
+Future<ui.Image> _wrapImageWithDeviceFrame(
+  ui.Image image,
+  DeviceInfo device,
+) async {
+  // Create a picture recorder to draw the device frame
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final deviceFrameSize = device.frameSize;
+
+  device.framePainter.paint(canvas, deviceFrameSize);
+
+  // Calculate the screen area within the device frame
+  final screenRect = device.screenPath.getBounds();
+
+  canvas
+    ..clipPath(device.screenPath)
+    // Draw the captured image in the screen area
+    ..drawImageRect(
+      image,
+      Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
+      screenRect,
+      Paint(),
+    );
+
+  // Convert to image
+  final picture = recorder.endRecording();
+  final framedImage = await picture.toImage(
+    deviceFrameSize.width.round(),
+    deviceFrameSize.height.round(),
+  );
+
+  picture.dispose();
+  return framedImage;
 }
 
 extension on String {
@@ -332,10 +401,11 @@ extension on String {
 }
 
 extension on EdgeInsets {
-  FakeViewPadding toFakeViewPadding() => FakeViewPadding(
-    bottom: bottom,
-    left: left,
-    right: right,
-    top: top,
-  );
+  FakeViewPadding toFakeViewPadding({double devicePixelRatio = 1}) =>
+      FakeViewPadding(
+        bottom: bottom * devicePixelRatio,
+        left: left * devicePixelRatio,
+        right: right * devicePixelRatio,
+        top: top * devicePixelRatio,
+      );
 }

@@ -1,10 +1,13 @@
 # Snaptest
 
-[![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
+[![Code Coverage](./coverage.svg)](./test/)
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
+[![lints by lintervention][lintervention_badge]][lintervention_link]
 
 
 Snap photos in your widget tests.
+
+![Title banner](./doc/banner.jpg)
 
 ## Installation 💻
 
@@ -15,8 +18,6 @@ Install `snaptest` as a dev dependency:
 ```sh
 dart pub add dev:snaptest
 ```
-
----
 
 ## Quick Start Guide 🚀
 
@@ -211,6 +212,22 @@ await snap(
 );
 ```
 
+---
+
+## ⚠️ Font Limitations
+
+**Important:** Due to limitations in Flutter's golden test environment, this package has the following font-related constraints:
+
+- **Cupertino System Fonts**: iOS system fonts (CupertinoSystemText/CupertinoSystemDisplay) are not available in the test environment and are automatically overridden with Roboto fonts for consistent rendering across platforms.
+
+- **Google Fonts**: The `google_fonts` package will only work in golden tests if fonts are bundled as local assets in your `pubspec.yaml`. Remote font fetching (the default behavior) will not work in the test environment.
+
+- **Custom Fonts**: If you use custom fonts in your app, ensure they are included as local assets in your `pubspec.yaml` and properly loaded during tests for accurate screenshots.
+
+These limitations ensure consistent, reproducible screenshots across different test environments, but may result in visual differences from your actual app when using iOS system fonts or remote fonts.
+
+---
+
 ## Helper Scripts
 
 `snaptest` comes with with two scripts that you can run from the root of your project.
@@ -240,3 +257,5 @@ Will take all the screenshots in the `.snaptest` directories around your project
 [license_link]: https://opensource.org/licenses/MIT
 [mason_link]: https://github.com/felangel/mason
 [very_good_ventures_link]: https://verygood.ventures
+[lintervention_link]: https://github.com/whynotmake-it/lintervention
+[lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40

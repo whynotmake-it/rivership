@@ -11,17 +11,19 @@ class SnaptestSettings with EquatableMixin {
     this.blockText = true,
     this.renderShadows = false,
     this.renderImages = false,
+    this.includeDeviceFrame = false,
     this.devices = const [
       WidgetTesterDevice(),
     ],
   });
 
   /// Creates a new [SnaptestSettings] instance with full rendering.
-  const SnaptestSettings.full(
-    this.devices,
-  ) : blockText = false,
-      renderImages = true,
-      renderShadows = true;
+  const SnaptestSettings.full({
+    required this.devices,
+  }) : blockText = false,
+       renderImages = true,
+       renderShadows = true,
+       includeDeviceFrame = true;
 
   /// The global settings for the snaptest package.
   static SnaptestSettings global = const SnaptestSettings();
@@ -40,6 +42,9 @@ class SnaptestSettings with EquatableMixin {
   /// Whether to render shadows.
   final bool renderShadows;
 
+  /// Whether to include the device frame in the screenshot.
+  final bool includeDeviceFrame;
+
   /// The devices to use for the screenshot.
   final List<DeviceInfo> devices;
 
@@ -48,6 +53,7 @@ class SnaptestSettings with EquatableMixin {
     blockText,
     renderImages,
     renderShadows,
+    includeDeviceFrame,
     devices,
   ];
 }
