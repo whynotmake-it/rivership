@@ -8,11 +8,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
+import 'package:spot/spot.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -248,9 +248,7 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   }
 
   if (!_fontsLoaded) {
-    await TestFonts.loadAppFonts();
-
-    await loadMaterialIconsFont();
+    await loadAppFonts();
 
     await _overrideCupertinoFonts();
     _fontsLoaded = true;
