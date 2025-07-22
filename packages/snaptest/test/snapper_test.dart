@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_redundant_argument_values
 
+import 'package:device_frame/device_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
@@ -322,8 +323,14 @@ void main() {
           await tester.pumpWidget(
             const MaterialApp(
               home: Scaffold(
-                body: Center(
-                  child: Text('Real Device Frame Test'),
+                body: ColoredBox(
+                  color: Colors.red,
+                  child: SafeArea(
+                    child: ColoredBox(
+                      color: Colors.yellow,
+                      child: Center(child: Text('Real Device Frame Test')),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -332,6 +339,14 @@ void main() {
           final files = await snap(name: 'real_device_frame_test');
           expect(files, hasLength(1));
           expect(files.first.existsSync(), isTrue);
+
+          await tester.runAsync(() async {
+            final image = await files.first.readAsBytes();
+            await expectLater(
+              image,
+              matchesGoldenFile('golden/real_device_frame_test.png'),
+            );
+          });
         },
         settings: SnaptestSettings(
           includeDeviceFrame: true,

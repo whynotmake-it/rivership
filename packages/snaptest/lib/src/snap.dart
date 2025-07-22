@@ -152,9 +152,13 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
     return () {};
   }
 
+  Devices.ios.iPhone16;
+
   implicitView
     ..physicalSize = device.screenSize * device.pixelRatio
-    ..padding = device.safeAreas.toFakeViewPadding()
+    ..padding = device.safeAreas.toFakeViewPadding(
+      devicePixelRatio: device.pixelRatio,
+    )
     ..devicePixelRatio = device.pixelRatio;
 
   debugDefaultTargetPlatformOverride = device.identifier.platform;
@@ -380,10 +384,11 @@ extension on String {
 }
 
 extension on EdgeInsets {
-  FakeViewPadding toFakeViewPadding() => FakeViewPadding(
-    bottom: bottom,
-    left: left,
-    right: right,
-    top: top,
-  );
+  FakeViewPadding toFakeViewPadding({double devicePixelRatio = 1}) =>
+      FakeViewPadding(
+        bottom: bottom * devicePixelRatio,
+        left: left * devicePixelRatio,
+        right: right * devicePixelRatio,
+        top: top * devicePixelRatio,
+      );
 }
