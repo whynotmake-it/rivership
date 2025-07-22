@@ -18,12 +18,12 @@ class SnaptestSettings with EquatableMixin {
   });
 
   /// Creates a new [SnaptestSettings] instance with full rendering.
-  const SnaptestSettings.full(
-    this.devices,
-  ) : blockText = false,
-      renderImages = true,
-      renderShadows = true,
-      includeDeviceFrame = true;
+  const SnaptestSettings.full({
+    required this.devices,
+  }) : blockText = false,
+       renderImages = true,
+       renderShadows = true,
+       includeDeviceFrame = true;
 
   /// The global settings for the snaptest package.
   static SnaptestSettings global = const SnaptestSettings();

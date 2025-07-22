@@ -8,10 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
-import 'package:spot/spot.dart' as spot;
-
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -210,8 +209,11 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     restoreImages();
   }
 
-  if (!settings.blockText) {
-    await loadAppFonts();
+  if (!_fontsLoaded) {
+    await TestFonts.loadAppFonts();
+    // ignore: invalid_use_of_visible_for_testing_member
+    await loadMaterialIconsFont();
+    _fontsLoaded = true;
   }
 
   final previousShadows = debugDisableShadows;
@@ -222,19 +224,6 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     debugDisableShadows = previousShadows;
     restoreImages();
   };
-}
-
-/// Loads all fonts that the app uses so that they will be rendered correctly
-/// when taking screenshots.
-///
-/// {@macro snaptest.fake_device.renderingUndoDisclaimer}
-Future<void> loadAppFonts() async {
-  if (_fontsLoaded) {
-    return;
-  }
-
-  await spot.loadAppFonts();
-  _fontsLoaded = true;
 }
 
 /// Pre-caches all images so that they will be rendered correctly when taking

@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_redundant_argument_values
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
@@ -9,6 +10,30 @@ void main() {
     setUp(SnaptestSettings.resetGlobal);
 
     group('snap function', () {
+      testWidgets('my widget test', (tester) async {
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: CupertinoPageScaffold(
+              navigationBar: const CupertinoNavigationBar.large(
+                largeTitle: Text("Snaptest"),
+              ),
+              child: Center(
+                child: CupertinoButton(
+                  child: const Text("Wow!"),
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await snap(
+          settings: SnaptestSettings.full(
+            devices: [Devices.ios.iPhone16],
+          ),
+        );
+      });
+
       snapTest(
         'captures basic widget snapshot',
         (tester) async {
@@ -284,11 +309,13 @@ void main() {
 
           await snap(name: 'real_rendering');
         },
-        settings: SnaptestSettings.full([
-          const WidgetTesterDevice(),
-          Devices.ios.iPhone16Pro,
-          Devices.android.samsungGalaxyS20,
-        ]),
+        settings: SnaptestSettings.full(
+          devices: [
+            const WidgetTesterDevice(),
+            Devices.ios.iPhone16Pro,
+            Devices.android.samsungGalaxyS20,
+          ],
+        ),
       );
 
       snapTest(
