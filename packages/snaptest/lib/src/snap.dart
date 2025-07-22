@@ -34,6 +34,16 @@ import 'package:test_api/src/backend/invoker.dart';
 /// [SnaptestSettings.renderShadows] to `true` or `false`. If not provided, the
 /// global default is used, which you can also set globally via
 /// [SnaptestSettings.global].
+///
+/// ## Golden File Comparison
+///
+/// When [matchToGolden] is set to `true`, the function performs golden file
+/// comparison testing in addition to saving screenshots. This creates a
+/// reference image for each device in [settings] with golden-friendly settings.
+///
+/// It will then invoke the [matchesGoldenFile] matcher.name
+///
+/// See the documentation for this matcher to learn more about golden testing.
 Future<List<File>> snap({
   String? name,
   Finder? from,
@@ -143,19 +153,24 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
   return binding.runAsync(fn);
 }
 
-/// Sets the test view to the given [device] and returns a callback that
-/// restores the previous state.
+/// Temporarily changes the test environment to simulate a specific device.
 ///
-/// If [device] is `null`, the test view will be reset to the previous state.
+/// This is a lower-level function that [snap] uses internally. You typically
+/// don't need to call this directly - just use [snap] with device settings instead.
 ///
-/// Example usage:
-///
+/// Returns a callback to restore the original test environment:
 /// ```dart
 /// final restore = setTestViewToFakeDevice(Devices.ios.iPhone16Pro);
-///
-/// // ...
-///
+/// 
+/// // Test environment now simulates iPhone 16 Pro
+/// await tester.pumpWidget(MyApp());
+/// 
+/// // Restore original test environment
 /// restore();
+/// ```
+///
+/// The [snap] function handles this automatically, so prefer using [snap] with
+/// [SnaptestSettings] instead of calling this directly.
 VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;

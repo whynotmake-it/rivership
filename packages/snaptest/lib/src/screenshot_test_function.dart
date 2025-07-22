@@ -2,11 +2,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
 import 'package:snaptest/snaptest.dart';
 
-/// A helper test function meant to be used for taking real screenshots using
-/// the [snap] function and the [WidgetTester].
+/// A test function specifically designed for taking screenshots.
 ///
-/// As opposed to [testWidgets], it includes the `screenshot` tag in the test to
-/// allow for easy filtering.
+/// Works exactly like [testWidgets], but automatically:
+/// - Adds the `screenshot` tag for easy filtering
+/// - Applies the provided [settings] for the duration of the test
+///
+/// Perfect for dedicated screenshot tests that you want to run separately:
+///
+/// ```dart
+/// snapTest('Login screen looks correct', (tester) async {
+///   await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+///   await snap();
+/// });
+/// ```
+///
+/// Filter screenshot tests when running:
+/// ```sh
+/// flutter test --tags screenshot
+/// ```
+///
+/// You can also pass custom [settings] that apply to all [snap] calls in this test:
+/// ```dart
+/// snapTest(
+///   'Multi-device test',
+///   (tester) async {
+///     await tester.pumpWidget(const MaterialApp(home: MyPage()));
+///     await snap(); // Uses iPhone 16 Pro automatically
+///   },
+///   settings: SnaptestSettings.full([Devices.ios.iPhone16Pro]),
+/// );
+/// ```
 @isTest
 void snapTest(
   String description,
