@@ -27,6 +27,7 @@ pubspec_overrides.yaml
 
 # Test assets
 **/.snaptest/
+test/custom_screenshots/
 **/golden/
 
 # Doc assets
