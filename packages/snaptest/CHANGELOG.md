@@ -1,3 +1,7 @@
+## 0.1.0-dev.3
+
+ - **DOCS**: update banner image (#140).
+
 ## 0.1.0-dev.2
 
  - **FEAT**: allow include device frame (#137).
