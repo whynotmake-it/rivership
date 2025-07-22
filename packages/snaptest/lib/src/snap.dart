@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:alchemist/alchemist.dart';
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_goldens/flutter_test_goldens.dart';
+import 'package:path/path.dart';
+import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
 // ignore: implementation_imports
@@ -33,12 +34,24 @@ import 'package:test_api/src/backend/invoker.dart';
 /// [SnaptestSettings.renderShadows] to `true` or `false`. If not provided, the
 /// global default is used, which you can also set globally via
 /// [SnaptestSettings.global].
+///
+/// ## Golden File Comparison
+///
+/// When [matchToGolden] is set to `true`, the function performs golden file
+/// comparison testing in addition to saving screenshots. This creates a
+/// reference image for each device in [settings] with golden-friendly settings.
+///
+/// It will then invoke the [matchesGoldenFile] matcher.name
+///
+/// See the documentation for this matcher to learn more about golden testing.
 Future<List<File>> snap({
   String? name,
   Finder? from,
   bool appendDeviceName = true,
   SnaptestSettings? settings,
+  bool matchToGolden = false,
   String pathPrefix = '.snaptest/',
+  String goldenPrefix = 'goldens/',
 }) async {
   final s = settings ?? SnaptestSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
@@ -51,12 +64,28 @@ Future<List<File>> snap({
 
   final files = <File>[];
 
+  final goldens = <(String, ui.Image)>[];
+
   for (final device in s.devices) {
     final image = await takeDeviceScreenshot(
       device: device,
       from: from,
       settings: s,
     );
+
+    final goldenImage = switch (matchToGolden) {
+      true => await takeDeviceScreenshot(
+        device: device,
+        settings: const SnaptestSettings(),
+      ),
+      false => null,
+    };
+
+    final appendix = appendDeviceName && device.name.isNotEmpty
+        ? '_${device.name.toValidFilename()}'
+        : '';
+
+    final fileName = '${testName.toValidFilename()}$appendix.png';
 
     await maybeRunAsync(() async {
       final byteData = await image?.toByteData(format: ui.ImageByteFormat.png);
@@ -66,17 +95,11 @@ Future<List<File>> snap({
         throw Exception('Could not encode screenshot.');
       }
 
-      final appendix = appendDeviceName && device.name.isNotEmpty
-          ? '_${device.name.toValidFilename()}'
-          : '';
-
-      final fileName = '$pathPrefix${testName.toValidFilename()}$appendix.png';
-
       final String? path;
 
       if (goldenFileComparator case LocalFileComparator(:final basedir)) {
         path = goldenFileComparator
-            .getTestUri(basedir.resolve(fileName), null)
+            .getTestUri(basedir.resolve(join(pathPrefix, fileName)), null)
             .toFilePath();
       } else {
         throw Exception('Could not determine a path for the screenshot.');
@@ -92,9 +115,17 @@ Future<List<File>> snap({
 
       files.add(file);
     });
+
+    if (goldenImage != null) {
+      goldens.add((join(goldenPrefix, fileName), goldenImage));
+    }
   }
 
   restore();
+
+  for (final (key, image) in goldens) {
+    await expectLater(image, matchesGoldenFile(key));
+  }
 
   return files;
 }
@@ -122,19 +153,25 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
   return binding.runAsync(fn);
 }
 
-/// Sets the test view to the given [device] and returns a callback that
-/// restores the previous state.
+/// Temporarily changes the test environment to simulate a specific device.
 ///
-/// If [device] is `null`, the test view will be reset to the previous state.
+/// This is a lower-level function that [snap] uses internally. You typically
+/// don't need to call this directly - just use [snap] with device settings
+/// instead.
 ///
-/// Example usage:
-///
+/// Returns a callback to restore the original test environment:
 /// ```dart
 /// final restore = setTestViewToFakeDevice(Devices.ios.iPhone16Pro);
 ///
-/// // ...
+/// // Test environment now simulates iPhone 16 Pro
+/// await tester.pumpWidget(MyApp());
 ///
+/// // Restore original test environment
 /// restore();
+/// ```
+///
+/// The [snap] function handles this automatically, so prefer using [snap] with
+/// [SnaptestSettings] instead of calling this directly.
 VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
@@ -336,8 +373,8 @@ Future<ui.Image> _captureImage(
 
   if (element.renderObject is RenderBox) {
     final expectedSize = (element.renderObject as RenderBox?)!.size;
-    if (expectedSize.width != image.width ||
-        expectedSize.height != image.height) {
+    if (expectedSize.width.ceil() != image.width ||
+        expectedSize.height.ceil() != image.height) {
       // ignore: avoid_print
       print(
         'Warning: The screenshot captured of ${element.toStringShort()} is '
