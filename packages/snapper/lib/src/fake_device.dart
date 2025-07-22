@@ -1,4 +1,4 @@
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 /// A device that represents the widget tester, will get special treatment in
 /// [setTestViewToFakeDevice] and [snap].

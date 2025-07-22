@@ -1,4 +1,4 @@
-# Snapper
+# Snaptest
 
 [![Powered by Mason](https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge)](https://github.com/felangel/mason)
 [![melos](https://img.shields.io/badge/maintained%20with-melos-f700ff.svg?style=flat-square)](https://github.com/invertase/melos)
@@ -8,19 +8,19 @@ Snap photos in your widget tests.
 
 ## Installation 💻
 
-**❗ In order to start using Snapper you must have the [Dart SDK][dart_install_link] installed on your machine.**
+**❗ In order to start using Snaptest you must have the [Dart SDK][dart_install_link] installed on your machine.**
 
-Install `snapper` as a dev dependency:
+Install `snaptest` as a dev dependency:
 
 ```sh
-dart pub add dev:snapper
+dart pub add dev:snaptest
 ```
 
 ---
 
 ## Quick Start Guide 🚀
 
-There are two main ways of using Snapper:
+There are two main ways of using Snaptest:
 
 ### 0. Add `.snapper` to your `.gitignore`
 
@@ -39,7 +39,7 @@ You can take snapshots in any widget test by using the `snap` function.
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 void main() {
   testGroup('My Page', () {
@@ -62,12 +62,11 @@ If you want to take multiple screenshots, you can pass a name to the `snap` func
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 void main() {
   testGroup('My Page', () {
-    screenshotTest('Loaded State', devices: [Devices.ios.iPhone16Pro], (tester) async {
-      await tester.pumpWidget(MyPage());
+      snapTest('Loaded State', devices: [Devices.ios.iPhone16Pro], (tester) async {      await tester.pumpWidget(MyPage());
       await snap('loaded');
 
       await tester.tap(find.byType(FloatingActionButton));
@@ -82,12 +81,12 @@ void main() {
 
 ## Helper Scripts
 
-`snapper` comes with with two scripts that you can run from the root of your project.
+`snaptest` comes with with two scripts that you can run from the root of your project.
 
 ### clean
 
 ```sh
-dart run snapper:clean
+dart run snaptest:clean
 ```
 
 This script will delete all the screenshots in the `.snapper` directories around your project.
@@ -95,7 +94,7 @@ This script will delete all the screenshots in the `.snapper` directories around
 ### assemble
 
 ```sh
-dart run snapper:assemble
+dart run snaptest:assemble
 ```
 
 Will take all the screenshots in the `.snapper` directories around your project and assemble them into a `.snapper/assets` directory at the root of your project (and potentially do something cool with them in the future 👀)

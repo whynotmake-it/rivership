@@ -1,4 +1,4 @@
-name: snapper
+name: snaptest
 description: Snap photos in your widget tests.
 version: 0.1.0
 publish_to: none

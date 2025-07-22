@@ -1,6 +1,6 @@
 import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
-import 'package:snapper/src/fake_device.dart';
+import 'package:snaptest/src/fake_device.dart';
 
 /// Global defaults for the snapper package.
 ///

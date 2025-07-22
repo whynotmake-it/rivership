@@ -2,14 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 void main() {
   group('Snapper', () {
     setUp(SnapperSettings.resetGlobal);
 
     group('snap function', () {
-      screenshotTest(
+      snapTest(
         'captures basic widget snapshot',
         (tester) async {
           await tester.pumpWidget(
@@ -36,7 +36,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'captures widget with multiple devices',
         (tester) async {
           await tester.pumpWidget(
@@ -76,7 +76,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'captures specific widget using finder',
         (tester) async {
           await tester.pumpWidget(
@@ -108,7 +108,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'handles custom path prefix',
         (tester) async {
           await tester.pumpWidget(
@@ -132,7 +132,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'respects appendDeviceName setting',
         (tester) async {
           await tester.pumpWidget(
@@ -257,7 +257,7 @@ void main() {
     });
 
     group('real rendering', () {
-      screenshotTest(
+      snapTest(
         'enables real rendering for fonts and images',
         (tester) async {
           await tester.pumpWidget(
