@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:alchemist/alchemist.dart';
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_goldens/flutter_test_goldens.dart';
+import 'package:path/path.dart';
+import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
 // ignore: implementation_imports
@@ -38,7 +39,9 @@ Future<List<File>> snap({
   Finder? from,
   bool appendDeviceName = true,
   SnaptestSettings? settings,
+  bool matchToGolden = false,
   String pathPrefix = '.snaptest/',
+  String goldenPrefix = 'goldens/',
 }) async {
   final s = settings ?? SnaptestSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
@@ -51,12 +54,28 @@ Future<List<File>> snap({
 
   final files = <File>[];
 
+  final goldens = <(String, ui.Image)>[];
+
   for (final device in s.devices) {
     final image = await takeDeviceScreenshot(
       device: device,
       from: from,
       settings: s,
     );
+
+    final goldenImage = switch (matchToGolden) {
+      true => await takeDeviceScreenshot(
+        device: device,
+        settings: const SnaptestSettings(),
+      ),
+      false => null,
+    };
+
+    final appendix = appendDeviceName && device.name.isNotEmpty
+        ? '_${device.name.toValidFilename()}'
+        : '';
+
+    final fileName = '${testName.toValidFilename()}$appendix.png';
 
     await maybeRunAsync(() async {
       final byteData = await image?.toByteData(format: ui.ImageByteFormat.png);
@@ -66,17 +85,11 @@ Future<List<File>> snap({
         throw Exception('Could not encode screenshot.');
       }
 
-      final appendix = appendDeviceName && device.name.isNotEmpty
-          ? '_${device.name.toValidFilename()}'
-          : '';
-
-      final fileName = '$pathPrefix${testName.toValidFilename()}$appendix.png';
-
       final String? path;
 
       if (goldenFileComparator case LocalFileComparator(:final basedir)) {
         path = goldenFileComparator
-            .getTestUri(basedir.resolve(fileName), null)
+            .getTestUri(basedir.resolve(join(pathPrefix, fileName)), null)
             .toFilePath();
       } else {
         throw Exception('Could not determine a path for the screenshot.');
@@ -92,9 +105,17 @@ Future<List<File>> snap({
 
       files.add(file);
     });
+
+    if (goldenImage != null) {
+      goldens.add((join(goldenPrefix, fileName), goldenImage));
+    }
   }
 
   restore();
+
+  for (final (key, image) in goldens) {
+    await expectLater(image, matchesGoldenFile(key));
+  }
 
   return files;
 }

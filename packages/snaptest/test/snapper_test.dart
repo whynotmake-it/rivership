@@ -45,17 +45,9 @@ void main() {
             ),
           );
 
-          final files = await snap();
+          final files = await snap(matchToGolden: true);
           expect(files, hasLength(1));
           expect(files.first.existsSync(), isTrue);
-
-          await tester.runAsync(() async {
-            final image = await files.first.readAsBytes();
-            await expectLater(
-              image,
-              matchesGoldenFile('golden/basic_widget.png'),
-            );
-          });
         },
       );
 
@@ -81,21 +73,10 @@ void main() {
                 Devices.android.samsungGalaxyS20,
               ],
             ),
+            matchToGolden: true,
           );
 
           expect(files, hasLength(3));
-          for (final file in files) {
-            expect(file.existsSync(), isTrue);
-
-            await tester.runAsync(() async {
-              final image = await file.readAsBytes();
-              final name = file.path.split('/').last;
-              await expectLater(
-                image,
-                matchesGoldenFile('golden/$name'),
-              );
-            });
-          }
         },
       );
 
@@ -360,17 +341,12 @@ void main() {
             ),
           );
 
-          final files = await snap(name: 'real_device_frame_test');
+          final files = await snap(
+            name: 'real_device_frame_test',
+            matchToGolden: true,
+          );
           expect(files, hasLength(1));
           expect(files.first.existsSync(), isTrue);
-
-          await tester.runAsync(() async {
-            final image = await files.first.readAsBytes();
-            await expectLater(
-              image,
-              matchesGoldenFile('golden/real_device_frame_test.png'),
-            );
-          });
         },
         settings: SnaptestSettings(
           includeDeviceFrame: true,
@@ -397,16 +373,11 @@ void main() {
           ),
         );
 
-        final defaultFiles = await snap(name: 'global_settings_0');
+        final defaultFiles = await snap(
+          name: 'global_settings_0',
+          matchToGolden: true,
+        );
         expect(defaultFiles, hasLength(1));
-
-        await tester.runAsync(() async {
-          final image = await defaultFiles.first.readAsBytes();
-          await expectLater(
-            image,
-            matchesGoldenFile('golden/global_settings_0.png'),
-          );
-        });
 
         SnaptestSettings.global = SnaptestSettings(
           blockText: false,
@@ -425,16 +396,11 @@ void main() {
           ],
         );
 
-        final files2 = await snap(name: 'global_settings_2');
+        final files2 = await snap(
+          name: 'global_settings_2',
+          matchToGolden: true,
+        );
         expect(files2, hasLength(1));
-
-        await tester.runAsync(() async {
-          final image = await files2.first.readAsBytes();
-          await expectLater(
-            image,
-            matchesGoldenFile('golden/global_settings_2.png'),
-          );
-        });
       });
     });
   });
