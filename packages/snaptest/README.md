@@ -6,6 +6,8 @@
 
 Snap photos in your widget tests.
 
+![Title banner](./doc/banner.jpg)
+
 ## Installation 💻
 
 **❗ In order to start using Snaptest you must have the [Dart SDK][dart_install_link] installed on your machine.**
@@ -15,6 +17,20 @@ Install `snaptest` as a dev dependency:
 ```sh
 dart pub add dev:snaptest
 ```
+
+---
+
+## ⚠️ Font Limitations
+
+**Important:** Due to limitations in Flutter's golden test environment, this package has the following font-related constraints:
+
+- **Cupertino System Fonts**: iOS system fonts (CupertinoSystemText/CupertinoSystemDisplay) are not available in the test environment and are automatically overridden with Roboto fonts for consistent rendering across platforms.
+
+- **Google Fonts**: The `google_fonts` package will only work in golden tests if fonts are bundled as local assets in your `pubspec.yaml`. Remote font fetching (the default behavior) will not work in the test environment.
+
+- **Custom Fonts**: If you use custom fonts in your app, ensure they are included as local assets in your `pubspec.yaml` and properly loaded during tests for accurate screenshots.
+
+These limitations ensure consistent, reproducible screenshots across different test environments, but may result in visual differences from your actual app when using iOS system fonts or remote fonts.
 
 ---
 

@@ -28,9 +28,7 @@ void main() {
         );
 
         await snap(
-          settings: SnaptestSettings.full(
-            devices: [Devices.ios.iPhone16],
-          ),
+          settings: SnaptestSettings.full(devices: [Devices.ios.iPhone16]),
         );
       });
 

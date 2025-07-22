@@ -213,30 +213,9 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   if (!_fontsLoaded) {
     await TestFonts.loadAppFonts();
 
-    final textLoader = FontLoader("CupertinoSystemText");
-    final displayLoader = FontLoader("CupertinoSystemDisplay");
-
-    void addFonts(FontLoader loader) {
-      const fonts = [
-        "packages/alchemist/assets/fonts/Roboto/Roboto-Thin.ttf",
-        "packages/alchemist/assets/fonts/Roboto/Roboto-Light.ttf",
-        "packages/alchemist/assets/fonts/Roboto/Roboto-Regular.ttf",
-        "packages/alchemist/assets/fonts/Roboto/Roboto-Bold.ttf",
-        "packages/alchemist/assets/fonts/Roboto/Roboto-Black.ttf",
-      ];
-
-      for (final font in fonts) {
-        loader.addFont(rootBundle.load(font));
-      }
-    }
-
-    addFonts(textLoader);
-    await textLoader.load();
-
-    addFonts(displayLoader);
-    await displayLoader.load();
-
     await loadMaterialIconsFont();
+
+    await _overrideCupertinoFonts();
     _fontsLoaded = true;
   }
 
@@ -248,6 +227,31 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     debugDisableShadows = previousShadows;
     restoreImages();
   };
+}
+
+Future<void> _overrideCupertinoFonts() async {
+  final textLoader = FontLoader("CupertinoSystemText");
+  final displayLoader = FontLoader("CupertinoSystemDisplay");
+
+  void addFonts(FontLoader loader) {
+    const fonts = [
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Thin.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Light.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Regular.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Bold.ttf",
+      "packages/alchemist/assets/fonts/Roboto/Roboto-Black.ttf",
+    ];
+
+    for (final font in fonts) {
+      loader.addFont(rootBundle.load(font));
+    }
+  }
+
+  addFonts(textLoader);
+  await textLoader.load();
+
+  addFonts(displayLoader);
+  await displayLoader.load();
 }
 
 /// Pre-caches all images so that they will be rendered correctly when taking
