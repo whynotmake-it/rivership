@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 /// A helper test function meant to be used for taking real screenshots using
 /// the [snap] function and the [WidgetTester].
@@ -8,10 +8,10 @@ import 'package:snapper/snapper.dart';
 /// As opposed to [testWidgets], it includes the `screenshot` tag in the test to
 /// allow for easy filtering.
 @isTest
-void screenshotTest(
+void snapTest(
   String description,
   WidgetTesterCallback callback, {
-  SnapperSettings? settings,
+  SnaptestSettings? settings,
   bool? skip,
   Timeout? timeout,
   bool semanticsEnabled = true,
@@ -22,13 +22,13 @@ void screenshotTest(
   testWidgets(
     description,
     (tester) async {
-      final previousSettings = SnapperSettings.global;
+      final previousSettings = SnaptestSettings.global;
 
-      SnapperSettings.global = settings ?? previousSettings;
+      SnaptestSettings.global = settings ?? previousSettings;
 
       await callback(tester);
 
-      SnapperSettings.global = previousSettings;
+      SnaptestSettings.global = previousSettings;
     },
     skip: skip,
     timeout: timeout,

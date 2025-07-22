@@ -7,8 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snapper/src/fake_device.dart';
-import 'package:snapper/src/snapper_settings.dart';
+import 'package:snaptest/src/fake_device.dart';
+import 'package:snaptest/src/snaptest_settings.dart';
 import 'package:spot/spot.dart' as spot;
 
 // ignore: implementation_imports
@@ -18,10 +18,10 @@ import 'package:test_api/src/backend/invoker.dart';
 /// rendered on each device in [settings].devices to the file system.
 ///
 /// If [settings] is not provided, the global default settings are used,
-/// which you can also set globally via [SnapperSettings.global].
+/// which you can also set globally via [SnaptestSettings.global].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the given
-/// [pathPrefix] (`.snapper/` by default), optionally appending the device name to
+/// [pathPrefix] (`.snaptest/` by default), optionally appending the device name to
 /// the file name. If no [name] is provided, the name of the current test is
 /// used.
 ///
@@ -29,17 +29,17 @@ import 'package:test_api/src/backend/invoker.dart';
 /// provided, the screenshot will be taken from the whole screen.
 ///
 /// You can decide whether shadows should be rendered or not by setting
-/// [SnapperSettings.renderShadows] to `true` or `false`. If not provided, the
+/// [SnaptestSettings.renderShadows] to `true` or `false`. If not provided, the
 /// global default is used, which you can also set globally via
-/// [SnapperSettings.global].
+/// [SnaptestSettings.global].
 Future<List<File>> snap({
   String? name,
   Finder? from,
   bool appendDeviceName = true,
-  SnapperSettings? settings,
-  String pathPrefix = '.snapper/',
+  SnaptestSettings? settings,
+  String pathPrefix = '.snaptest/',
 }) async {
-  final s = settings ?? SnapperSettings.global;
+  final s = settings ?? SnaptestSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
 
   final restore = await _setUpForSettings(s);
@@ -170,7 +170,7 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
 
 Future<ui.Image?> takeDeviceScreenshot({
   required DeviceInfo device,
-  required SnapperSettings settings,
+  required SnaptestSettings settings,
   Finder? from,
 }) async {
   final finder = from ?? find.byType(View);
@@ -194,7 +194,7 @@ Future<ui.Image?> takeDeviceScreenshot({
 
 bool _fontsLoaded = false;
 
-Future<VoidCallback> _setUpForSettings(SnapperSettings settings) async {
+Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
 
   if (settings.renderImages) {
@@ -220,7 +220,7 @@ Future<VoidCallback> _setUpForSettings(SnapperSettings settings) async {
 /// Loads all fonts that the app uses so that they will be rendered correctly
 /// when taking screenshots.
 ///
-/// {@macro snapper.fake_device.renderingUndoDisclaimer}
+/// {@macro snaptest.fake_device.renderingUndoDisclaimer}
 Future<void> loadAppFonts() async {
   if (_fontsLoaded) {
     return;
@@ -236,7 +236,7 @@ Future<void> loadAppFonts() async {
 /// An optional [Finder] can be provided to limit the scope of the precaching to
 /// matching descendants of that [Finder].
 ///
-/// {@macro snapper.fake_device.renderingUndoDisclaimer}
+/// {@macro snaptest.fake_device.renderingUndoDisclaimer}
 Future<void> precacheImages([Finder? from]) async {
   final finder = from ?? find.byType(View);
   await TestWidgetsFlutterBinding.instance.runAsync(() async {

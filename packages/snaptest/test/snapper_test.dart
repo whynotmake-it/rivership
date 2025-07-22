@@ -2,14 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snapper/snapper.dart';
+import 'package:snaptest/snaptest.dart';
 
 void main() {
   group('Snapper', () {
-    setUp(SnapperSettings.resetGlobal);
+    setUp(SnaptestSettings.resetGlobal);
 
     group('snap function', () {
-      screenshotTest(
+      snapTest(
         'captures basic widget snapshot',
         (tester) async {
           await tester.pumpWidget(
@@ -36,7 +36,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'captures widget with multiple devices',
         (tester) async {
           await tester.pumpWidget(
@@ -51,7 +51,7 @@ void main() {
 
           final files = await snap(
             name: 'multi_device',
-            settings: SnapperSettings(
+            settings: SnaptestSettings(
               devices: [
                 const WidgetTesterDevice(),
                 Devices.ios.iPhone16Pro,
@@ -76,7 +76,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'captures specific widget using finder',
         (tester) async {
           await tester.pumpWidget(
@@ -108,7 +108,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'handles custom path prefix',
         (tester) async {
           await tester.pumpWidget(
@@ -132,7 +132,7 @@ void main() {
         },
       );
 
-      screenshotTest(
+      snapTest(
         'respects appendDeviceName setting',
         (tester) async {
           await tester.pumpWidget(
@@ -147,7 +147,7 @@ void main() {
 
           final filesWithDeviceName = await snap(
             name: 'with_device_name',
-            settings: SnapperSettings(
+            settings: SnaptestSettings(
               devices: [Devices.ios.iPhone16Pro],
             ),
             appendDeviceName: true,
@@ -155,7 +155,7 @@ void main() {
 
           final filesWithoutDeviceName = await snap(
             name: 'without_device_name',
-            settings: SnapperSettings(
+            settings: SnaptestSettings(
               devices: [Devices.ios.iPhone16Pro],
             ),
             appendDeviceName: false,
@@ -170,39 +170,42 @@ void main() {
       );
     });
 
-    group('SnapperSettings', () {
+    group('SnaptestSettings', () {
       test('has correct default values', () {
-        SnapperSettings.resetGlobal();
-        expect(SnapperSettings.global.renderShadows, isFalse);
-        expect(SnapperSettings.global.renderImages, isFalse);
-        expect(SnapperSettings.global.blockText, isTrue);
-        expect(SnapperSettings.global.devices, hasLength(1));
-        expect(SnapperSettings.global.devices.first, isA<WidgetTesterDevice>());
+        SnaptestSettings.resetGlobal();
+        expect(SnaptestSettings.global.renderShadows, isFalse);
+        expect(SnaptestSettings.global.renderImages, isFalse);
+        expect(SnaptestSettings.global.blockText, isTrue);
+        expect(SnaptestSettings.global.devices, hasLength(1));
+        expect(
+          SnaptestSettings.global.devices.first,
+          isA<WidgetTesterDevice>(),
+        );
       });
 
       test('can modify global settings', () {
-        SnapperSettings.global = SnapperSettings(
+        SnaptestSettings.global = SnaptestSettings(
           renderShadows: false,
           devices: [Devices.ios.iPhone16Pro],
         );
 
-        expect(SnapperSettings.global.renderShadows, isFalse);
-        expect(SnapperSettings.global.devices, hasLength(1));
+        expect(SnaptestSettings.global.renderShadows, isFalse);
+        expect(SnaptestSettings.global.devices, hasLength(1));
         expect(
-          SnapperSettings.global.devices.first,
+          SnaptestSettings.global.devices.first,
           equals(Devices.ios.iPhone16Pro),
         );
       });
 
       test('reset restores default values', () {
-        SnapperSettings.global = SnapperSettings(
+        SnaptestSettings.global = SnaptestSettings(
           renderShadows: false,
           devices: [Devices.ios.iPhone16Pro],
         );
 
-        SnapperSettings.resetGlobal();
+        SnaptestSettings.resetGlobal();
 
-        expect(SnapperSettings.global, equals(const SnapperSettings()));
+        expect(SnaptestSettings.global, equals(const SnaptestSettings()));
       });
     });
 
@@ -257,7 +260,7 @@ void main() {
     });
 
     group('real rendering', () {
-      screenshotTest(
+      snapTest(
         'enables real rendering for fonts and images',
         (tester) async {
           await tester.pumpWidget(
@@ -281,7 +284,7 @@ void main() {
 
           await snap(name: 'real_rendering');
         },
-        settings: SnapperSettings.full([
+        settings: SnaptestSettings.full([
           const WidgetTesterDevice(),
           Devices.ios.iPhone16Pro,
           Devices.android.samsungGalaxyS20,

@@ -18,7 +18,7 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 | [motor](./packages/motor)                   | ![Pub Version](https://img.shields.io/pub/v/motor)          | A unified motion system for physics-based and duration-based animations. |
 | [springster](./packages/springster)         | ![Pub Version](https://img.shields.io/pub/v/springster)     | Spring animations and simulations, simplified.                           |
 | [heroine](./packages/heroine)               | ![Pub Version](https://img.shields.io/pub/v/heroine)        | The queen of hero transitions. Flutter's most addictive interactions.    |
-| [snapper](./packages/snapper)               | ![Pub Version](https://img.shields.io/pub/v/snapper)        | Snap photos in your widget tests.                                        |
+| [snaptest](./packages/snapper)              | ![Pub Version](https://img.shields.io/pub/v/snaptest)       | Snap photos in your widget tests.                                        |
 
 
 ---
