@@ -356,5 +356,62 @@ void main() {
         ),
       );
     });
+
+    group('global settings', () {
+      testWidgets('works back and forth', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(child: Text('Hello Snapper!')),
+                  Center(child: Icon(Icons.check)),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        final defaultFiles = await snap(name: 'global_settings_0');
+        expect(defaultFiles, hasLength(1));
+
+        await tester.runAsync(() async {
+          final image = await defaultFiles.first.readAsBytes();
+          await expectLater(
+            image,
+            matchesGoldenFile('golden/global_settings_0.png'),
+          );
+        });
+
+        SnaptestSettings.global = SnaptestSettings(
+          blockText: false,
+          includeDeviceFrame: true,
+          devices: [
+            Devices.ios.iPhone16,
+          ],
+        );
+
+        final files = await snap(name: 'global_settings_1');
+        expect(files, hasLength(1));
+
+        SnaptestSettings.global = SnaptestSettings(
+          devices: [
+            Devices.ios.iPhone16,
+          ],
+        );
+
+        final files2 = await snap(name: 'global_settings_2');
+        expect(files2, hasLength(1));
+
+        await tester.runAsync(() async {
+          final image = await files2.first.readAsBytes();
+          await expectLater(
+            image,
+            matchesGoldenFile('golden/global_settings_2.png'),
+          );
+        });
+      });
+    });
   });
 }
