@@ -1,6 +1,6 @@
 name: snaptest
 description: Snap photos in your widget tests.
-version: 0.1.0-dev.1
+version: 0.1.0-dev.2
 topics: ["testing", "golden", "screenshots", "automation"]
 
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/snaptest
