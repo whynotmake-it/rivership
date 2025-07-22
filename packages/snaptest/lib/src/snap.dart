@@ -6,6 +6,7 @@ import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test_goldens/flutter_test_goldens.dart';
@@ -211,7 +212,30 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 
   if (!_fontsLoaded) {
     await TestFonts.loadAppFonts();
-    // ignore: invalid_use_of_visible_for_testing_member
+
+    final textLoader = FontLoader("CupertinoSystemText");
+    final displayLoader = FontLoader("CupertinoSystemDisplay");
+
+    void addFonts(FontLoader loader) {
+      const fonts = [
+        "packages/alchemist/assets/fonts/Roboto/Roboto-Thin.ttf",
+        "packages/alchemist/assets/fonts/Roboto/Roboto-Light.ttf",
+        "packages/alchemist/assets/fonts/Roboto/Roboto-Regular.ttf",
+        "packages/alchemist/assets/fonts/Roboto/Roboto-Bold.ttf",
+        "packages/alchemist/assets/fonts/Roboto/Roboto-Black.ttf",
+      ];
+
+      for (final font in fonts) {
+        loader.addFont(rootBundle.load(font));
+      }
+    }
+
+    addFonts(textLoader);
+    await textLoader.load();
+
+    addFonts(displayLoader);
+    await displayLoader.load();
+
     await loadMaterialIconsFont();
     _fontsLoaded = true;
   }
