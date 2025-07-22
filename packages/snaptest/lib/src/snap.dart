@@ -352,19 +352,17 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
   device.framePainter.paint(canvas, deviceFrameSize);
 
   // Calculate the screen area within the device frame
-  final screenRect = Rect.fromCenter(
-    center: Offset(deviceFrameSize.width / 2, deviceFrameSize.height / 2),
-    width: device.screenSize.width / device.pixelRatio,
-    height: device.screenSize.height / device.pixelRatio,
-  );
+  final screenRect = device.screenPath.getBounds();
 
-  // Draw the captured image in the screen area
-  canvas.drawImageRect(
-    image,
-    Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
-    screenRect,
-    Paint(),
-  );
+  canvas
+    ..clipPath(device.screenPath)
+    // Draw the captured image in the screen area
+    ..drawImageRect(
+      image,
+      Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
+      screenRect,
+      Paint(),
+    );
 
   // Convert to image
   final picture = recorder.endRecording();
