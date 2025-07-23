@@ -10,11 +10,36 @@
 
 Snaptest is simple: call `snap()` in any widget test to save a screenshot of what's currently on screen. Perfect for debugging, documentation, and visual regression testing.
 
-## Installation 💻
+## Installation
 
 ```sh
 dart pub add dev:snaptest
 ```
+
+### Recommended: Set up font loading
+
+Create a `flutter_test_config.dart` file in your `test/` directory to ensure consistent font rendering:
+
+```dart
+import 'dart:async';
+import 'package:snaptest/snaptest.dart';
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  // Load fonts before all tests to prevent side effects
+  await loadFontsAndIcons();
+
+  // Optional: Set global settings for all tests
+  SnaptestSettings.global = SnaptestSettings(
+    devices: [
+      Devices.ios.iPhone16Pro,
+    ],
+  );
+
+  await testMain();
+}
+```
+
+**Why this matters**: Flutter can't unload fonts once loaded, so without this setup, your `snap()` calls might influence your test layout later and produce different results depending on test execution order.
 
 ## The Basics 🚀
 
@@ -125,18 +150,8 @@ void main() {
 }
 ```
 
-Or create a `flutter_test_config.dart` file to set the global settings:
-```dart
-import 'dart:async';
-
-Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  SnaptestSettings.global = SnaptestSettings.rendered([
-    Devices.ios.iPhone16Pro,
-  ]);
-
-  await testMain();
-}
-```
+Or create a `flutter_test_config.dart` file to set the global settings, as
+described in the [Installation](#installation) section.
 
 ### Dedicated screenshot tests with `snapTest`
 
