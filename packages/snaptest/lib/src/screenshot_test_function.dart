@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
 import 'package:snaptest/snaptest.dart';
 
-/// A test function specifically designed for taking screenshots.
+/// A test function specifically designed for taking snaptest screenshots.
 ///
 /// Works exactly like [testWidgets], but automatically:
-/// - Adds the `screenshot` tag for easy filtering
+/// - Adds the `snaptest` tag for easy filtering
 /// - Applies the provided [settings] for the duration of the test
 ///
 /// Perfect for dedicated screenshot tests that you want to run separately:
@@ -17,9 +17,14 @@ import 'package:snaptest/snaptest.dart';
 /// });
 /// ```
 ///
-/// Filter screenshot tests when running:
+/// Filter snaptest tests when running:
 /// ```sh
-/// flutter test --tags screenshot
+/// flutter test --tags snaptest
+/// ```
+///
+/// Or exclude them:
+/// ```sh
+/// flutter test --exclude-tags snaptest
 /// ```
 ///
 /// You can also pass custom [settings] that apply to all [snap] calls in this
@@ -61,7 +66,7 @@ void snapTest(
     timeout: timeout,
     semanticsEnabled: semanticsEnabled,
     variant: variant,
-    tags: ['screenshot', ...?tags],
+    tags: ['snaptest', ...?tags],
     retry: retry,
   );
 }
