@@ -65,6 +65,7 @@ This creates beautiful screenshots with:
 - ✅ Shadows and effects
 - ✅ Device frames around the content
 - ✅ Multiple device sizes
+- ✅ Multiple orientations (portrait and landscape)
 
 Perfect for documentation, design reviews, or showing stakeholders what the app actually looks like.
 
@@ -127,6 +128,27 @@ void main() {
 }
 ```
 
+### Test multiple orientations
+```dart
+testWidgets('Responsive design test', (tester) async {
+  await tester.pumpWidget(const MaterialApp(home: MyPage()));
+  
+  await snap(
+    settings: SnaptestSettings.full(
+      devices: [Devices.ios.iPhone16Pro],
+      orientations: {
+        Orientation.portrait,
+        Orientation.landscape,
+      },
+    ),
+  );
+});
+```
+
+This automatically creates separate screenshots for each orientation:
+- `my_page_iPhone16Pro_portrait.png`
+- `my_page_iPhone16Pro_landscape.png`
+
 ### All `snap()` parameters
 ```dart
 await snap(
@@ -144,6 +166,7 @@ await snap(
 
 ### `SnaptestSettings` options:
 - **`devices`**: List of devices to test on (default: `[WidgetTesterDevice()]`)
+- **`orientations`**: Set of orientations to test (default: `{Orientation.portrait}`)
 - **`blockText`**: Whether to block text rendering for consistency (default: `true`)
 - **`renderImages`**: Whether to render actual images (default: `false`)
 - **`renderShadows`**: Whether to render shadows (default: `false`)

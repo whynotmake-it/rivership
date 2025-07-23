@@ -68,15 +68,22 @@ class SnaptestSettings with EquatableMixin {
   /// - Actual images and icons
   /// - Shadows and visual effects
   /// - Device frames around the content
+  /// - Multiple orientations (if specified)
   ///
   /// Perfect for documentation, design reviews, and showing stakeholders
   /// what the app actually looks like:
   /// ```dart
   /// await snap(
-  ///   settings: SnaptestSettings.full([
-  ///     Devices.ios.iPhone16Pro,
-  ///     Devices.android.samsungGalaxyS20,
-  ///   ]),
+  ///   settings: SnaptestSettings.full(
+  ///     devices: [
+  ///       Devices.ios.iPhone16Pro,
+  ///       Devices.android.samsungGalaxyS20,
+  ///     ],
+  ///     orientations: {
+  ///       Orientation.portrait,
+  ///       Orientation.landscape,
+  ///     },
+  ///   ),
   /// );
   /// ```
   const SnaptestSettings.full({
@@ -151,10 +158,20 @@ class SnaptestSettings with EquatableMixin {
   /// ```
   final List<DeviceInfo> devices;
 
-  /// List of orientations to generate screenshots for.
+  /// Set of orientations to generate screenshots for.
   ///
-  /// Each orientation creates a separate screenshot file. Use multiple
-  /// orientations to test responsive design:
+  /// Each orientation creates a separate screenshot file with an orientation
+  /// suffix (e.g., `_portrait`, `_landscape`). Use multiple orientations to
+  /// test responsive design:
+  /// ```dart
+  /// orientations: {
+  ///   Orientation.portrait,
+  ///   Orientation.landscape,
+  /// }
+  /// ```
+  ///
+  /// Note: Landscape orientation is automatically skipped for devices that
+  /// don't support rotation (like [WidgetTesterDevice]).
   final Set<Orientation> orientations;
 
   @override
