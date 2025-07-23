@@ -127,7 +127,7 @@ void main() {
 
           final files = await snap(
             name: 'custom_path',
-            pathPrefix: 'custom_screenshots/',
+            settings: const SnaptestSettings(pathPrefix: 'custom_screenshots/'),
           );
 
           expect(files, hasLength(1));

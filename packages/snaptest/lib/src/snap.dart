@@ -23,10 +23,10 @@ import 'package:test_api/src/backend/invoker.dart';
 /// If [settings] is not provided, the global default settings are used,
 /// which you can also set globally via [SnaptestSettings.global].
 ///
-/// The screenshot is saved as a PNG file with the given [name] in the given
-/// [pathPrefix] (`.snaptest/` by default), optionally appending the device name
-/// and orientation to the file name. If no [name] is provided, the name of the
-/// current test is used.
+/// The screenshot is saved as a PNG file with the given [name] in the directory
+/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default), 
+/// optionally appending the device name and orientation to the file name. 
+/// If no [name] is provided, the name of the current test is used.
 ///
 /// ## Multiple Devices and Orientations
 ///
@@ -59,13 +59,17 @@ import 'package:test_api/src/backend/invoker.dart';
 /// global default is used, which you can also set globally via
 /// [SnaptestSettings.global].
 ///
+/// The directory where screenshots are saved can be customized by setting
+/// [SnaptestSettings.pathPrefix]. By default, screenshots are saved to
+/// `.snaptest/`.
+///
 /// ## Golden File Comparison
 ///
 /// When [matchToGolden] is set to `true`, the function performs golden file
 /// comparison testing in addition to saving screenshots. This creates a
 /// reference image for each device in [settings] with golden-friendly settings.
 ///
-/// It will then invoke the [matchesGoldenFile] matcher.name
+/// It will then invoke the [matchesGoldenFile] matcher.
 ///
 /// See the documentation for this matcher to learn more about golden testing.
 Future<List<File>> snap({
@@ -73,7 +77,6 @@ Future<List<File>> snap({
   Finder? from,
   SnaptestSettings? settings,
   bool matchToGolden = false,
-  String pathPrefix = '.snaptest/',
   String goldenPrefix = 'goldens/',
   bool alwaysAppendDeviceName = false,
   bool alwaysAppendOrientation = false,
@@ -163,7 +166,7 @@ Future<List<File>> snap({
         if (goldenFileComparator case LocalFileComparator(:final basedir)) {
           path = goldenFileComparator
               .getTestUri(
-                basedir.resolve(join(pathPrefix, fileName)),
+                basedir.resolve(join(s.pathPrefix, fileName)),
                 null,
               )
               .toFilePath();
