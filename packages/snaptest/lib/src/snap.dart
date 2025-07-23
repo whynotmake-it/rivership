@@ -322,6 +322,56 @@ Future<ui.Image?> takeDeviceScreenshot({
 
 bool _fontsLoaded = false;
 
+/// Loads fonts and icons required for consistent screenshot rendering.
+///
+/// This function ensures that all fonts (including system fonts) and icons
+/// are properly loaded before taking screenshots. It should be called once
+/// before running any tests that use [snap] to ensure consistent text
+/// rendering across all screenshots.
+///
+/// **Important**: Once fonts are loaded, they cannot be unloaded due to
+/// Flutter's limitations. This means that if [loadFontsAndIcons] is called
+/// during one test, all subsequent tests in the same test run will use the
+/// loaded fonts, which may cause text to render differently than in a fresh
+/// test environment.
+///
+/// ## Recommended Usage
+///
+/// Add this to your `flutter_test_config.dart` file to ensure fonts are
+/// loaded before all tests:
+///
+/// ```dart
+/// import 'dart:async';
+/// import 'package:snaptest/snaptest.dart';
+///
+/// Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+///   await loadFontsAndIcons();
+///   await testMain();
+/// }
+/// ```
+///
+/// This prevents side effects where [snap] calls might produce different
+/// results depending on whether fonts were loaded in previous tests.
+///
+/// ## What it does
+///
+/// - Loads all application fonts defined in `pubspec.yaml`
+/// - Overrides Cupertino system fonts with Roboto for consistency, since
+/// Cupertino fonts can't be loaded on all platforms
+/// - Ensures icons are properly loaded for rendering
+/// - Sets a flag to prevent duplicate loading in the same test session
+///
+/// The function is idempotent - calling it multiple times has no additional
+/// effect after the first call.
+Future<void> loadFontsAndIcons() async {
+  if (_fontsLoaded) return;
+
+  await loadAppFonts();
+  await _overrideCupertinoFonts();
+
+  _fontsLoaded = true;
+}
+
 Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
 
@@ -331,12 +381,7 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     restoreImages();
   }
 
-  if (!_fontsLoaded) {
-    await loadAppFonts();
-
-    await _overrideCupertinoFonts();
-    _fontsLoaded = true;
-  }
+  await loadFontsAndIcons();
 
   final previousShadows = debugDisableShadows;
 
