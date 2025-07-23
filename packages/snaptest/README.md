@@ -109,10 +109,7 @@ testWidgets('User flow', (tester) async {
 
 ### Capture specific widgets
 ```dart
-await snap(
-  name: 'just_the_card',
-  from: find.byKey(const Key('my-card')),
-);
+await snap(from: find.byKey(const Key('my-card')));
 ```
 
 ### Global settings for all tests
@@ -139,6 +136,48 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
 
   await testMain();
 }
+```
+
+### Dedicated screenshot tests with `snapTest`
+
+For tests specifically designed for screenshots, use `snapTest` instead of `testWidgets`. It automatically:
+- Adds the `snaptest` tag for easy filtering
+- Applies custom settings for the entire test
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:snaptest/snaptest.dart';
+
+snapTest('Login screen looks correct', (tester) async {
+  await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+  await snap(); // Uses the settings from snapTest
+});
+
+snapTest(
+  'Multi-device homepage',
+  (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await snap('initial');
+    
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await snap('menu_open');
+  },
+  settings: SnaptestSettings.full([
+    Devices.ios.iPhone16Pro,
+    Devices.android.samsungGalaxyS20,
+  ]),
+);
+```
+
+Run only screenshot tests:
+```sh
+flutter test --tags snaptest
+```
+
+Or exclude them from regular test runs:
+```sh
+flutter test --exclude-tags snaptest
 ```
 
 ### Test multiple orientations
@@ -170,7 +209,6 @@ await snap(
   settings: SnaptestSettings(),  // Override global settings
   pathPrefix: 'screenshots/',    // Custom directory (default: '.snaptest/')
   goldenPrefix: 'goldens/',      // Golden files directory (default: 'goldens/')
-  appendDeviceName: false,       // Don't append device name to filename
   matchToGolden: true,           // Enable golden file comparison
 );
 ```
