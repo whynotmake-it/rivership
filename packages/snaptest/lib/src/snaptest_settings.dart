@@ -18,7 +18,7 @@ import 'package:snaptest/src/fake_device.dart';
 /// await snap(); // Uses SnaptestSettings()
 ///
 /// // Beautiful screenshots with device frames
-/// await snap(settings: SnaptestSettings.full([Devices.ios.iPhone16Pro]));
+/// await snap(settings: SnaptestSettings.rendered([Devices.ios.iPhone16Pro]));
 /// ```
 ///
 /// ## Global Settings
@@ -27,7 +27,7 @@ import 'package:snaptest/src/fake_device.dart';
 /// ```dart
 /// void main() {
 ///   setUpAll(() {
-///     SnaptestSettings.global = SnaptestSettings.full([
+///     SnaptestSettings.global = SnaptestSettings.rendered([
 ///       Devices.ios.iPhone16Pro,
 ///       Devices.android.samsungGalaxyS20,
 ///     ]);
@@ -61,9 +61,9 @@ class SnaptestSettings with EquatableMixin {
     },
   });
 
-  /// Creates settings for beautiful, realistic screenshots.
+  /// Creates settings for beautiful, realistic screenshots with full rendering.
   ///
-  /// Full rendering includes:
+  /// Rendered screenshots include:
   /// - Real text (no blocking)
   /// - Actual images and icons
   /// - Shadows and visual effects
@@ -74,7 +74,7 @@ class SnaptestSettings with EquatableMixin {
   /// what the app actually looks like:
   /// ```dart
   /// await snap(
-  ///   settings: SnaptestSettings.full(
+  ///   settings: SnaptestSettings.rendered(
   ///     devices: [
   ///       Devices.ios.iPhone16Pro,
   ///       Devices.android.samsungGalaxyS20,
@@ -86,7 +86,7 @@ class SnaptestSettings with EquatableMixin {
   ///   ),
   /// );
   /// ```
-  const SnaptestSettings.full({
+  const SnaptestSettings.rendered({
     required this.devices,
     this.orientations = const {
       Orientation.portrait,
@@ -100,7 +100,7 @@ class SnaptestSettings with EquatableMixin {
   ///
   /// Change this to set defaults for your entire test suite:
   /// ```dart
-  /// SnaptestSettings.global = SnaptestSettings.full(
+  /// SnaptestSettings.global = SnaptestSettings.rendered(
   ///   devices: [Devices.ios.iPhone16Pro],
   /// );
   /// ```

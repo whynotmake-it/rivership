@@ -36,7 +36,7 @@ import 'package:snaptest/snaptest.dart';
 ///     await tester.pumpWidget(const MaterialApp(home: MyPage()));
 ///     await snap(); // Uses iPhone 16 Pro automatically
 ///   },
-///   settings: SnaptestSettings.full([Devices.ios.iPhone16Pro]),
+///   settings: SnaptestSettings.rendered([Devices.ios.iPhone16Pro]),
 /// );
 /// ```
 @isTest

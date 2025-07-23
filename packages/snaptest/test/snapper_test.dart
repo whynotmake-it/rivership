@@ -28,7 +28,7 @@ void main() {
         );
 
         await snap(
-          settings: SnaptestSettings.full(devices: [Devices.ios.iPhone16]),
+          settings: SnaptestSettings.rendered(devices: [Devices.ios.iPhone16]),
         );
       });
 
@@ -319,7 +319,7 @@ void main() {
 
           await snap(name: 'real_rendering');
         },
-        settings: SnaptestSettings.full(
+        settings: SnaptestSettings.rendered(
           devices: [
             const WidgetTesterDevice(),
             Devices.ios.iPhone16Pro,
