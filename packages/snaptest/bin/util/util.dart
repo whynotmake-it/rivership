@@ -1,14 +1,20 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:snaptest/src/constants.dart';
 
 /// Gets the top level .snaptest directory
-Directory get topLevelSnapDir => Directory(
-  path.join(Directory.current.path, '.snaptest'),
+Directory get topLevelSnapDir => getTopLevelSnapDir(kDefaultSnaptestDir);
+
+/// Gets the top level snap directory with configurable name
+Directory getTopLevelSnapDir(String dirName) => Directory(
+  path.join(Directory.current.path, dirName),
 );
 
 /// Gets all .snaptest directories under the test folder
-Stream<Directory> findSnapDirectoriesInTest() async* {
+Stream<Directory> findSnapDirectoriesInTest([
+  String dirName = kDefaultSnaptestDir,
+]) async* {
   final currentDir = Directory.current;
   final testDir = Directory(path.join(currentDir.path, 'test'));
 
@@ -19,7 +25,7 @@ Stream<Directory> findSnapDirectoriesInTest() async* {
   }
 
   await for (final entity in testDir.list(recursive: true)) {
-    if (entity is Directory && path.basename(entity.path) == '.snaptest') {
+    if (entity is Directory && path.basename(entity.path) == dirName) {
       yield entity;
     }
   }

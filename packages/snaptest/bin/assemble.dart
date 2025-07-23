@@ -3,13 +3,16 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:snaptest/src/constants.dart';
 
 import 'util/util.dart';
 
 Future<void> main(List<String> args) async {
   try {
+    final dirName = args.isNotEmpty ? args[0] : kDefaultSnaptestDir;
     await assembleScreenshots(
-      Directory(path.join(topLevelSnapDir.path, 'assets')),
+      Directory(path.join(getTopLevelSnapDir(dirName).path, 'assets')),
+      dirName,
     );
   } catch (e) {
     print('Error: $e');
@@ -19,6 +22,7 @@ Future<void> main(List<String> args) async {
 
 Future<void> assembleScreenshots(
   Directory inDirectory,
+  String dirName,
 ) async {
   final currentDir = Directory.current;
   final testDir = Directory(path.join(currentDir.path, 'test'));
@@ -31,8 +35,8 @@ Future<void> assembleScreenshots(
   ensureDirectoryExists(inDirectory);
 
   var screenshotsMoved = 0;
-  // Find all .snaptest directories under test/
-  await for (final snapDir in findSnapDirectoriesInTest()) {
+  // Find all snap directories under test/
+  await for (final snapDir in findSnapDirectoriesInTest(dirName)) {
     screenshotsMoved += await _processSnapDirectory(
       snapDir,
       testDir.path,

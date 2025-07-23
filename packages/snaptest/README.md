@@ -222,7 +222,6 @@ await snap(
   name: 'custom_name',           // Custom filename
   from: find.byKey(key),         // Specific widget to capture
   settings: SnaptestSettings(),  // Override global settings
-  pathPrefix: 'screenshots/',    // Custom directory (default: '.snaptest/')
   goldenPrefix: 'goldens/',      // Golden files directory (default: 'goldens/')
   matchToGolden: true,           // Enable golden file comparison
 );
@@ -237,6 +236,7 @@ await snap(
 - **`renderImages`**: Whether to render actual images (default: `false`)
 - **`renderShadows`**: Whether to render shadows (default: `false`)
 - **`includeDeviceFrame`**: Whether to include device frame around content (default: `false`)
+- **`pathPrefix`**: Directory where screenshots are saved (default: `'.snaptest/'`)
 
 ### Convenience constructors:
 - **`SnaptestSettings()`**: Default settings - blocked text, no images/shadows/frames
@@ -249,10 +249,39 @@ Clean all screenshots:
 dart run snaptest:clean
 ```
 
+Clean screenshots from a custom directory:
+```sh
+dart run snaptest:clean my_custom_dir
+```
+
 Assemble screenshots into a single directory:
 ```sh
 dart run snaptest:assemble
 ```
+
+Assemble screenshots from a custom directory:
+```sh
+dart run snaptest:assemble my_custom_dir
+```
+
+### Custom Screenshot Directories
+
+You can customize where screenshots are saved by setting the `pathPrefix` in your settings:
+
+```dart
+testWidgets('Custom directory example', (tester) async {
+  await tester.pumpWidget(const MaterialApp(home: MyPage()));
+  
+  await snap(
+    settings: SnaptestSettings(
+      pathPrefix: 'my_screenshots/',
+      // ... other settings
+    ),
+  );
+});
+```
+
+The helper scripts will work with any custom directory name you specify.
 
 ## Font Limitations ⚠️
 

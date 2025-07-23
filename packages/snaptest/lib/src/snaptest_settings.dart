@@ -4,6 +4,7 @@ library;
 import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:snaptest/src/constants.dart';
 import 'package:snaptest/src/fake_device.dart';
 
 /// Controls how screenshots are rendered and which devices to test on.
@@ -45,6 +46,7 @@ class SnaptestSettings with EquatableMixin {
   /// - Text is blocked (shows gray rectangles instead of actual text)
   /// - No images, shadows, or device frames
   /// - Uses default test environment sizing
+  /// - Screenshots saved to `.snaptest/` directory
   ///
   /// Perfect for debugging and basic visual testing where you want consistency
   /// over visual fidelity.
@@ -53,6 +55,7 @@ class SnaptestSettings with EquatableMixin {
     this.renderShadows = false,
     this.renderImages = false,
     this.includeDeviceFrame = false,
+    this.pathPrefix = kDefaultPathPrefix,
     this.devices = const [
       WidgetTesterDevice(),
     ],
@@ -69,6 +72,7 @@ class SnaptestSettings with EquatableMixin {
   /// - Shadows and visual effects
   /// - Device frames around the content
   /// - Multiple orientations (if specified)
+  /// - Screenshots saved to `.snaptest/` directory (or custom [pathPrefix])
   ///
   /// Perfect for documentation, design reviews, and showing stakeholders
   /// what the app actually looks like:
@@ -91,6 +95,7 @@ class SnaptestSettings with EquatableMixin {
     this.orientations = const {
       Orientation.portrait,
     },
+    this.pathPrefix = kDefaultPathPrefix,
   }) : blockText = false,
        renderImages = true,
        renderShadows = true,
@@ -174,6 +179,19 @@ class SnaptestSettings with EquatableMixin {
   /// don't support rotation (like [WidgetTesterDevice]).
   final Set<Orientation> orientations;
 
+  /// Directory path prefix where screenshots are saved.
+  ///
+  /// Defaults to `.snaptest/` but can be customized:
+  /// ```dart
+  /// SnaptestSettings(
+  ///   pathPrefix: 'screenshots/',
+  ///   // ... other settings
+  /// )
+  /// ```
+  ///
+  /// The path should end with a forward slash.
+  final String pathPrefix;
+
   @override
   List<Object?> get props => [
     blockText,
@@ -182,5 +200,6 @@ class SnaptestSettings with EquatableMixin {
     includeDeviceFrame,
     devices,
     orientations,
+    pathPrefix,
   ];
 }
