@@ -128,6 +128,19 @@ void main() {
 }
 ```
 
+Or create a `flutter_test_config.dart` file to set the global settings:
+```dart
+import 'dart:async';
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  SnaptestSettings.global = SnaptestSettings.full([
+    Devices.ios.iPhone16Pro,
+  ]);
+
+  await testMain();
+}
+```
+
 ### Test multiple orientations
 ```dart
 testWidgets('Responsive design test', (tester) async {
