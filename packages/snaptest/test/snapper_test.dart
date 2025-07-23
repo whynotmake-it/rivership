@@ -152,9 +152,11 @@ void main() {
           final filesWithDeviceName = await snap(
             name: 'with_device_name',
             settings: SnaptestSettings(
-              devices: [Devices.ios.iPhone16Pro],
+              devices: [
+                Devices.ios.iPhone16Pro,
+                Devices.android.samsungGalaxyS20,
+              ],
             ),
-            appendDeviceName: true,
           );
 
           final filesWithoutDeviceName = await snap(
@@ -162,7 +164,6 @@ void main() {
             settings: SnaptestSettings(
               devices: [Devices.ios.iPhone16Pro],
             ),
-            appendDeviceName: false,
           );
 
           expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
@@ -170,6 +171,30 @@ void main() {
             filesWithoutDeviceName.first.path,
             isNot(contains('iPhone 16 Pro')),
           );
+        },
+      );
+
+      snapTest(
+        'orientation is not appended for widget tester only',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(body: Center(child: Text('Hello Snapper!'))),
+            ),
+          );
+          final files = await snap(
+            settings: const SnaptestSettings(
+              devices: [WidgetTesterDevice()],
+              orientations: {
+                Orientation.portrait,
+                Orientation.landscape,
+              },
+            ),
+          );
+
+          expect(files, hasLength(1));
+          expect(files.first.path, isNot(contains('portrait')));
+          expect(files.first.path, isNot(contains('landscape')));
         },
       );
     });
@@ -230,7 +255,10 @@ void main() {
           pixelRatio: originalPixelRatio * 2,
         );
 
-        final restore = setTestViewToFakeDevice(newDevice);
+        final restore = setTestViewToFakeDevice(
+          newDevice,
+          Orientation.portrait,
+        );
 
         expect(
           implicitView.physicalSize,
@@ -254,7 +282,10 @@ void main() {
         final originalSize = implicitView.physicalSize;
         final originalPixelRatio = implicitView.devicePixelRatio;
 
-        final restore = setTestViewToFakeDevice(const WidgetTesterDevice());
+        final restore = setTestViewToFakeDevice(
+          const WidgetTesterDevice(),
+          Orientation.portrait,
+        );
 
         expect(implicitView.physicalSize, equals(originalSize));
         expect(implicitView.devicePixelRatio, equals(originalPixelRatio));
@@ -345,7 +376,7 @@ void main() {
             name: 'real_device_frame_test',
             matchToGolden: true,
           );
-          expect(files, hasLength(1));
+          expect(files, hasLength(2));
           expect(files.first.existsSync(), isTrue);
         },
         settings: SnaptestSettings(
@@ -353,6 +384,10 @@ void main() {
           devices: [
             Devices.ios.iPhone16Pro,
           ],
+          orientations: {
+            Orientation.portrait,
+            Orientation.landscape,
+          },
         ),
       );
     });
