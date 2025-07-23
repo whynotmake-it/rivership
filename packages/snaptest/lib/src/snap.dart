@@ -28,19 +28,28 @@ import 'package:test_api/src/backend/invoker.dart';
 /// and orientation to the file name. If no [name] is provided, the name of the
 /// current test is used.
 ///
-/// ## Multiple Orientations
+/// ## Multiple Devices and Orientations
 ///
-/// When multiple orientations are specified, separate screenshots are created
-/// for each orientation with suffixes like `_portrait` and `_landscape`:
+/// When multiple devices and orientations are specified, separate screenshots
+/// are created for each device and orientation with suffixes like
+/// `_iPhone16Pro_portrait` and `_samsungGalaxyS20_landscape`:
 /// ```dart
 /// await snap(
 ///   settings: SnaptestSettings.full(
-///     devices: [Devices.ios.iPhone16Pro],
+///     devices: [
+///       Devices.ios.iPhone16Pro,
+///       Devices.android.samsungGalaxyS20,
+///     ],
 ///     orientations: {Orientation.portrait, Orientation.landscape},
 ///   ),
 /// );
 /// // Creates: my_test_iPhone16Pro_portrait.png, my_test_iPhone16Pro_landscape.png
 /// ```
+///
+/// Note: Device names and orientations are only appended if there are multiple
+/// devices or orientations.
+/// If you want to always append the device name or orientation, set
+/// [alwaysAppendDeviceName] or [alwaysAppendOrientation] to `true`.
 ///
 /// The Screenshot will be taken from the [from] [Finder] and if none is
 /// provided, the screenshot will be taken from the whole screen.
@@ -66,6 +75,8 @@ Future<List<File>> snap({
   bool matchToGolden = false,
   String pathPrefix = '.snaptest/',
   String goldenPrefix = 'goldens/',
+  bool alwaysAppendDeviceName = false,
+  bool alwaysAppendOrientation = false,
 }) async {
   final s = settings ?? SnaptestSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
@@ -98,9 +109,10 @@ Future<List<File>> snap({
 
   final rotatedDevices = s.devices.where((device) => device.canRotate);
 
-  final appendDeviceName = s.devices.length > 1;
+  final appendDeviceName = alwaysAppendDeviceName || s.devices.length > 1;
   final appendOrientation =
-      s.orientations.length > 1 && rotatedDevices.isNotEmpty;
+      alwaysAppendOrientation ||
+      (s.orientations.length > 1 && rotatedDevices.isNotEmpty);
 
   for (final device in s.devices) {
     for (final orientation in s.orientations) {
