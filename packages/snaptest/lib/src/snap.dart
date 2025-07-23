@@ -17,15 +17,30 @@ import 'package:spot/spot.dart';
 import 'package:test_api/src/backend/invoker.dart';
 
 /// Saves a screenshot of the current state of the widget test as if it was
-/// rendered on each device in [settings].devices to the file system.
+/// rendered on each device in [settings].devices and each orientation in
+/// [settings].orientations to the file system.
 ///
 /// If [settings] is not provided, the global default settings are used,
 /// which you can also set globally via [SnaptestSettings.global].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the given
-/// [pathPrefix] (`.snaptest/` by default), optionally appending the device name to
-/// the file name. If no [name] is provided, the name of the current test is
-/// used.
+/// [pathPrefix] (`.snaptest/` by default), optionally appending the device name
+/// and orientation to the file name. If no [name] is provided, the name of the
+/// current test is used.
+///
+/// ## Multiple Orientations
+///
+/// When multiple orientations are specified, separate screenshots are created
+/// for each orientation with suffixes like `_portrait` and `_landscape`:
+/// ```dart
+/// await snap(
+///   settings: SnaptestSettings.full(
+///     devices: [Devices.ios.iPhone16Pro],
+///     orientations: {Orientation.portrait, Orientation.landscape},
+///   ),
+/// );
+/// // Creates: my_test_iPhone16Pro_portrait.png, my_test_iPhone16Pro_landscape.png
+/// ```
 ///
 /// The Screenshot will be taken from the [from] [Finder] and if none is
 /// provided, the screenshot will be taken from the whole screen.
