@@ -1,3 +1,4 @@
+import 'package:flutter/src/painting/edge_insets.dart';
 import 'package:snaptest/snaptest.dart';
 
 /// Represents the default Flutter test environment (no specific device).
@@ -25,6 +26,9 @@ final class WidgetTesterDevice implements DeviceInfo {
 
   @override
   String get name => 'WidgetTester';
+
+  @override
+  EdgeInsets? get rotatedSafeAreas => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) {

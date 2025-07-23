@@ -47,7 +47,6 @@ import 'package:test_api/src/backend/invoker.dart';
 Future<List<File>> snap({
   String? name,
   Finder? from,
-  bool appendDeviceName = true,
   SnaptestSettings? settings,
   bool matchToGolden = false,
   String pathPrefix = '.snaptest/',
@@ -62,62 +61,103 @@ Future<List<File>> snap({
     throw Exception('Could not determine a name for the screenshot.');
   }
 
+  if (s.devices.isEmpty) {
+    throw ArgumentError.value(
+      s.devices,
+      'devices',
+      'No devices to screenshot.',
+    );
+  }
+
+  if (s.orientations.isEmpty) {
+    throw ArgumentError.value(
+      s.orientations,
+      'orientations',
+      'No orientations to screenshot.',
+    );
+  }
+
   final files = <File>[];
 
   final goldens = <(String, ui.Image)>[];
 
+  final rotatedDevices = s.devices.where((device) => device.canRotate);
+
+  final appendDeviceName = s.devices.length > 1;
+  final appendOrientation =
+      s.orientations.length > 1 && rotatedDevices.isNotEmpty;
+
   for (final device in s.devices) {
-    final image = await takeDeviceScreenshot(
-      device: device,
-      from: from,
-      settings: s,
-    );
+    for (final orientation in s.orientations) {
+      if (!device.canRotate && orientation == Orientation.landscape) {
+        continue;
+      }
 
-    final goldenImage = switch (matchToGolden) {
-      true => await takeDeviceScreenshot(
+      final image = await takeDeviceScreenshot(
         device: device,
-        settings: const SnaptestSettings(),
-      ),
-      false => null,
-    };
+        orientation: orientation,
+        from: from,
+        settings: s,
+      );
 
-    final appendix = appendDeviceName && device.name.isNotEmpty
-        ? '_${device.name.toValidFilename()}'
-        : '';
+      final goldenImage = switch (matchToGolden) {
+        true => await takeDeviceScreenshot(
+          device: device,
+          orientation: orientation,
+          settings: const SnaptestSettings(),
+        ),
+        false => null,
+      };
 
-    final fileName = '${testName.toValidFilename()}$appendix.png';
+      final deviceAppendix = appendDeviceName && device.name.isNotEmpty
+          ? '_${device.name.toValidFilename()}'
+          : '';
 
-    await maybeRunAsync(() async {
-      final byteData = await image?.toByteData(format: ui.ImageByteFormat.png);
-      final bytes = byteData?.buffer.asUint8List();
+      final orientationAppendix = appendOrientation
+          ? '_${orientation.name}'
+          : '';
 
-      if (bytes == null) {
-        throw Exception('Could not encode screenshot.');
+      final fileName =
+          '${testName.toValidFilename()}'
+          '$deviceAppendix$orientationAppendix.png';
+
+      await maybeRunAsync(() async {
+        final byteData = await image?.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        final bytes = byteData?.buffer.asUint8List();
+
+        if (bytes == null) {
+          throw Exception('Could not encode screenshot.');
+        }
+
+        final String? path;
+
+        if (goldenFileComparator case LocalFileComparator(:final basedir)) {
+          path = goldenFileComparator
+              .getTestUri(
+                basedir.resolve(join(pathPrefix, fileName)),
+                null,
+              )
+              .toFilePath();
+        } else {
+          throw Exception('Could not determine a path for the screenshot.');
+        }
+
+        final file = File(path);
+
+        if (!file.existsSync()) {
+          file.createSync(recursive: true);
+        }
+
+        await file.writeAsBytes(bytes);
+
+        files.add(file);
+      });
+
+      if (goldenImage != null) {
+        goldens.add((join(goldenPrefix, fileName), goldenImage));
       }
-
-      final String? path;
-
-      if (goldenFileComparator case LocalFileComparator(:final basedir)) {
-        path = goldenFileComparator
-            .getTestUri(basedir.resolve(join(pathPrefix, fileName)), null)
-            .toFilePath();
-      } else {
-        throw Exception('Could not determine a path for the screenshot.');
-      }
-
-      final file = File(path);
-
-      if (!file.existsSync()) {
-        file.createSync(recursive: true);
-      }
-
-      await file.writeAsBytes(bytes);
-
-      files.add(file);
-    });
-
-    if (goldenImage != null) {
-      goldens.add((join(goldenPrefix, fileName), goldenImage));
     }
   }
 
@@ -172,7 +212,10 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 ///
 /// The [snap] function handles this automatically, so prefer using [snap] with
 /// [SnaptestSettings] instead of calling this directly.
-VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
+VoidCallback setTestViewToFakeDevice(
+  DeviceInfo device,
+  Orientation orientation,
+) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
 
@@ -189,11 +232,22 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
     return () {};
   }
 
-  Devices.ios.iPhone16;
+  // Get screen size based on orientation
+  var screenSize = device.screenSize;
+  var safeAreas = device.safeAreas;
+
+  if (device.isLandscape(orientation)) {
+    // Swap width and height for landscape
+    screenSize = screenSize.flipped;
+    // Rotate safe areas for landscape (90 degrees clockwise)
+    // Portrait: top=notch, right=0, bottom=home, left=0
+    // Landscape: left=notch, top=0, right=home, bottom=0
+    safeAreas = device.rotatedSafeAreas!;
+  }
 
   implicitView
-    ..physicalSize = device.screenSize * device.pixelRatio
-    ..padding = device.safeAreas.toFakeViewPadding(
+    ..physicalSize = screenSize * device.pixelRatio
+    ..padding = safeAreas.toFakeViewPadding(
       devicePixelRatio: device.pixelRatio,
     )
     ..devicePixelRatio = device.pixelRatio;
@@ -213,6 +267,7 @@ VoidCallback setTestViewToFakeDevice(DeviceInfo device) {
 Future<ui.Image?> takeDeviceScreenshot({
   required DeviceInfo device,
   required SnaptestSettings settings,
+  required Orientation orientation,
   Finder? from,
 }) async {
   final finder = from ?? find.byType(View);
@@ -221,6 +276,7 @@ Future<ui.Image?> takeDeviceScreenshot({
 
   final image = await _runInFakeDevice(
     device,
+    orientation,
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
@@ -228,6 +284,7 @@ Future<ui.Image?> takeDeviceScreenshot({
         element,
         blockText: settings.blockText,
         device: device,
+        orientation: orientation,
         includeDeviceFrame: settings.includeDeviceFrame,
       );
     },
@@ -326,12 +383,13 @@ Future<void> precacheImages([Finder? from]) async {
 /// finished.
 Future<T?> _runInFakeDevice<T>(
   DeviceInfo device,
+  Orientation orientation,
   Future<T> Function() fn,
 ) async {
   final binding = TestWidgetsFlutterBinding.instance;
   await binding.pump(Duration.zero);
 
-  final restoreView = setTestViewToFakeDevice(device);
+  final restoreView = setTestViewToFakeDevice(device, orientation);
 
   final result = await maybeRunAsync(fn);
 
@@ -351,6 +409,7 @@ Future<ui.Image> _captureImage(
   Element element, {
   required bool blockText,
   required DeviceInfo device,
+  required Orientation orientation,
   required bool includeDeviceFrame,
 }) async {
   assert(
@@ -392,7 +451,7 @@ Future<ui.Image> _captureImage(
   }
 
   if (includeDeviceFrame && device is! WidgetTesterDevice) {
-    return _wrapImageWithDeviceFrame(image, device);
+    return _wrapImageWithDeviceFrame(image, device, orientation);
   }
 
   return image;
@@ -405,19 +464,53 @@ Future<ui.Image> _captureImage(
 Future<ui.Image> _wrapImageWithDeviceFrame(
   ui.Image image,
   DeviceInfo device,
+  Orientation orientation,
 ) async {
   // Create a picture recorder to draw the device frame
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  final deviceFrameSize = device.frameSize;
 
-  device.framePainter.paint(canvas, deviceFrameSize);
+  // Get frame size and screen path based on orientation
+  Size deviceFrameSize;
+  Path screenPath;
+
+  if (orientation == Orientation.landscape) {
+    // For landscape, we need to rotate the device frame
+    deviceFrameSize = Size(device.frameSize.height, device.frameSize.width);
+
+    // Transform the screen path for landscape orientation
+    final transform = Matrix4.identity()
+      ..translate(deviceFrameSize.width / 2, deviceFrameSize.height / 2)
+      ..rotateZ(1.5708) // 90 degrees in radians
+      ..translate(-device.frameSize.width / 2, -device.frameSize.height / 2);
+
+    screenPath = device.screenPath.transform(transform.storage);
+  } else {
+    deviceFrameSize = device.frameSize;
+    screenPath = device.screenPath;
+  }
+
+  // Save canvas state before transformation
+  canvas.save();
+
+  if (orientation == Orientation.landscape) {
+    // Rotate the canvas for landscape device frame painting
+    canvas
+      ..translate(deviceFrameSize.width / 2, deviceFrameSize.height / 2)
+      ..rotate(1.5708) // 90 degrees
+      ..translate(-device.frameSize.width / 2, -device.frameSize.height / 2);
+  }
+
+  device.framePainter.paint(canvas, device.frameSize);
+
+  // Restore canvas state
+  canvas.restore();
 
   // Calculate the screen area within the device frame
-  final screenRect = device.screenPath.getBounds();
+  final screenRect = screenPath.getBounds();
 
   canvas
-    ..clipPath(device.screenPath)
+    ..clipPath(screenPath)
     // Draw the captured image in the screen area
     ..drawImageRect(
       image,

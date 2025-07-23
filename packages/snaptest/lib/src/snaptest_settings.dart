@@ -3,6 +3,7 @@ library;
 
 import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:snaptest/src/fake_device.dart';
 
 /// Controls how screenshots are rendered and which devices to test on.
@@ -55,6 +56,9 @@ class SnaptestSettings with EquatableMixin {
     this.devices = const [
       WidgetTesterDevice(),
     ],
+    this.orientations = const {
+      Orientation.portrait,
+    },
   });
 
   /// Creates settings for beautiful, realistic screenshots.
@@ -77,6 +81,9 @@ class SnaptestSettings with EquatableMixin {
   /// ```
   const SnaptestSettings.full({
     required this.devices,
+    this.orientations = const {
+      Orientation.portrait,
+    },
   }) : blockText = false,
        renderImages = true,
        renderShadows = true,
@@ -144,6 +151,12 @@ class SnaptestSettings with EquatableMixin {
   /// ```
   final List<DeviceInfo> devices;
 
+  /// List of orientations to generate screenshots for.
+  ///
+  /// Each orientation creates a separate screenshot file. Use multiple
+  /// orientations to test responsive design:
+  final Set<Orientation> orientations;
+
   @override
   List<Object?> get props => [
     blockText,
@@ -151,5 +164,6 @@ class SnaptestSettings with EquatableMixin {
     renderShadows,
     includeDeviceFrame,
     devices,
+    orientations,
   ];
 }
