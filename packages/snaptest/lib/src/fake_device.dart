@@ -1,4 +1,4 @@
-import 'package:flutter/src/painting/edge_insets.dart';
+import 'package:flutter/widgets.dart';
 import 'package:snaptest/snaptest.dart';
 
 /// Represents the default Flutter test environment (no specific device).

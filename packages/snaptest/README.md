@@ -51,7 +51,7 @@ testWidgets('Real rendering example', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: MyPage()));
   
   await snap(
-    settings: SnaptestSettings.full([
+    settings: SnaptestSettings.rendered([
       Devices.ios.iPhone16Pro,
       Devices.android.samsungGalaxyS20,
     ]),
@@ -79,7 +79,7 @@ testWidgets('Golden comparison test', (tester) async {
   
   await snap(
     matchToGolden: true,
-    settings: SnaptestSettings.full([Devices.ios.iPhone16Pro]),
+    settings: SnaptestSettings.rendered([Devices.ios.iPhone16Pro]),
   );
 });
 ```
@@ -116,7 +116,7 @@ await snap(from: find.byKey(const Key('my-card')));
 ```dart
 void main() {
   setUpAll(() {
-    SnaptestSettings.global = SnaptestSettings.full([
+    SnaptestSettings.global = SnaptestSettings.rendered([
       Devices.ios.iPhone16Pro,
     ]);
   });
@@ -130,7 +130,7 @@ Or create a `flutter_test_config.dart` file to set the global settings:
 import 'dart:async';
 
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  SnaptestSettings.global = SnaptestSettings.full([
+  SnaptestSettings.global = SnaptestSettings.rendered([
     Devices.ios.iPhone16Pro,
   ]);
 
@@ -163,7 +163,7 @@ snapTest(
     await tester.pumpAndSettle();
     await snap('menu_open');
   },
-  settings: SnaptestSettings.full([
+  settings: SnaptestSettings.rendered([
     Devices.ios.iPhone16Pro,
     Devices.android.samsungGalaxyS20,
   ]),
@@ -186,7 +186,7 @@ testWidgets('Responsive design test', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: MyPage()));
   
   await snap(
-    settings: SnaptestSettings.full(
+    settings: SnaptestSettings.rendered(
       devices: [Devices.ios.iPhone16Pro],
       orientations: {
         Orientation.portrait,
@@ -225,7 +225,7 @@ await snap(
 
 ### Convenience constructors:
 - **`SnaptestSettings()`**: Default settings - blocked text, no images/shadows/frames
-- **`SnaptestSettings.full(devices)`**: Real rendering - actual text, images, shadows, and device frames
+- **`SnaptestSettings.rendered(devices)`**: Real rendering - actual text, images, shadows, and device frames
 
 ## Helper Scripts 🔧
 

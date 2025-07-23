@@ -35,7 +35,7 @@ import 'package:test_api/src/backend/invoker.dart';
 /// `_iPhone16Pro_portrait` and `_samsungGalaxyS20_landscape`:
 /// ```dart
 /// await snap(
-///   settings: SnaptestSettings.full(
+///   settings: SnaptestSettings.rendered(
 ///     devices: [
 ///       Devices.ios.iPhone16Pro,
 ///       Devices.android.samsungGalaxyS20,
