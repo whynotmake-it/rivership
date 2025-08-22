@@ -118,13 +118,13 @@ class LoadingPhaseExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sequence = ValuePhaseSequence<double>(
+      motion: CupertinoMotion.smooth(),
       values: [0.2, 1.0, 0.2, 1.0, 0.2], // Opacity phases for pulsing effect
     );
 
     return PhaseMotionBuilder<double, double>(
       sequence: sequence,
       converter: const SingleMotionConverter(),
-      motion: CupertinoMotion.smooth(),
       loopMode: PhaseLoopMode.loop,
       onPhaseChanged: (phase) => debugPrint('Loading phase changed to: $phase'),
       builder: (context, opacity, phase, child) {
@@ -163,6 +163,7 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
   @override
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence<CardProperties, CardPhase>(
+      motion: CupertinoMotion.bouncy(),
       phaseMap: {
         CardPhase.idle: const CardProperties(
           width: 200,
@@ -205,7 +206,6 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
         child: PhaseMotionBuilder<CardProperties, CardPhase>(
           sequence: sequence,
           converter: const CardPropertiesConverter(),
-          motion: CupertinoMotion.bouncy(extraBounce: .4),
           restartTrigger: animationTrigger,
           loopMode: PhaseLoopMode.pingPong,
           onPhaseChanged: (phase) {

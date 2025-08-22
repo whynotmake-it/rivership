@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:motor/src/motion.dart';
 
 /// {@template PhaseSequence}
 /// Defines a sequence of phases and their corresponding property values
@@ -26,6 +27,9 @@ abstract class PhaseSequence<T extends Object, P> {
   ///
   /// Defaults to the first phase in [phases].
   P get initialPhase => phases.first;
+
+  /// The motion that should be used for transitioning to [phase].
+  Motion motionForPhase(P phase);
 }
 
 /// A simple implementation of [PhaseSequence] that uses a map to define
@@ -35,10 +39,14 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
   /// Creates a [MapPhaseSequence] with the given phase-to-value mapping.
   const MapPhaseSequence({
     required this.phaseMap,
+    required this.motion,
   });
 
   /// The mapping from phases to their corresponding property values.
   final Map<P, T> phaseMap;
+
+  /// The motion to use for phase transitions.
+  final Motion motion;
 
   @override
   List<P> get phases => phaseMap.keys.toList();
@@ -51,32 +59,9 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
     }
     return value;
   }
-}
-
-/// A phase sequence that automatically cycles through enum values.
-///
-/// This is a convenience class for when your phases are defined as an enum
-/// that implements [Enum].
-@immutable
-class EnumPhaseSequence<T extends Object, P extends Enum>
-    extends PhaseSequence<T, P> {
-  /// Creates an [EnumPhaseSequence] with enum values and a value provider.
-  const EnumPhaseSequence({
-    required this.enumValues,
-    required this.valueProvider,
-  });
-
-  /// All the enum values to cycle through.
-  final List<P> enumValues;
-
-  /// Function that returns the property value for a given enum phase.
-  final T Function(P phase) valueProvider;
 
   @override
-  List<P> get phases => enumValues;
-
-  @override
-  T valueForPhase(P phase) => valueProvider(phase);
+  Motion motionForPhase(P phase) => motion;
 }
 
 /// A phase sequence for simple value-based phases where the phase
@@ -86,46 +71,60 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
   /// Creates a [ValuePhaseSequence] with the given values.
   const ValuePhaseSequence({
     required this.values,
+    required this.motion,
   });
 
   /// The values to cycle through as both phases and property values.
   final List<T> values;
+
+  /// The motion to use for phase transitions.
+  final Motion motion;
 
   @override
   List<T> get phases => values;
 
   @override
   T valueForPhase(T phase) => phase;
+
+  @override
+  Motion motionForPhase(T phase) => motion;
 }
 
-/// Utility extensions for creating common phase sequences.
-extension PhaseSequenceUtils on Never {
-  /// Creates a simple phase sequence from a list of values.
-  static ValuePhaseSequence<T> fromValues<T extends Object>(
-    List<T> values,
-  ) {
-    return ValuePhaseSequence<T>(
-      values: values,
-    );
-  }
+/// Wraps a [PhaseSequence] and adds per-phase motion customization.
+class MotionMapSequence<T extends Object, P> extends PhaseSequence<T, P> {
+  /// Creates a [MotionMapSequence] with the given parent sequence and motion
+  /// map.
+  const MotionMapSequence({
+    required this.parent,
+    required this.motionByPhase,
+  });
 
-  /// Creates a phase sequence from a map of phase-to-value relationships.
-  static MapPhaseSequence<T, P> fromMap<T extends Object, P>(
-    Map<P, T> phaseMap,
-  ) {
-    return MapPhaseSequence<T, P>(
-      phaseMap: phaseMap,
-    );
-  }
+  /// The parent phase sequence that should be wrapped.
+  final PhaseSequence<T, P> parent;
 
-  /// Creates a phase sequence from enum values with a value provider function.
-  static EnumPhaseSequence<T, P> fromEnum<T extends Object, P extends Enum>(
-    List<P> enumValues,
-    T Function(P phase) valueProvider,
-  ) {
-    return EnumPhaseSequence<T, P>(
-      enumValues: enumValues,
-      valueProvider: valueProvider,
+  /// The motion map that defines per-phase motion customizations.
+  final Map<P, Motion> motionByPhase;
+
+  @override
+  List<P> get phases => parent.phases;
+
+  @override
+  T valueForPhase(P phase) => parent.valueForPhase(phase);
+
+  @override
+  Motion motionForPhase(P phase) {
+    return motionByPhase[phase] ?? parent.motionForPhase(phase);
+  }
+}
+
+/// Provides motion customization for each phase in the sequence.
+extension MotionByPhaseExtension<T extends Object, P> on PhaseSequence<T, P> {
+  /// Wraps the phase sequence in a [MotionMapSequence] with the given motion
+  /// map.
+  MotionMapSequence<T, P> withMotionPerPhase(Map<P, Motion> motionMap) {
+    return MotionMapSequence<T, P>(
+      parent: this,
+      motionByPhase: motionMap,
     );
   }
 }

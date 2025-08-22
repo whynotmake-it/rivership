@@ -2,7 +2,6 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
-import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/phase_sequence.dart';
 
@@ -37,23 +36,11 @@ class PhaseController<T extends Object, P> extends Animation<T>
     required this.sequence,
     required this.converter,
     required TickerProvider vsync,
-    Motion? motion,
-    List<Motion>? motionPerPhase,
     this.onPhaseChanged,
     PhaseLoopMode loopMode = PhaseLoopMode.loop,
-  })  : assert(
-          motion != null || motionPerPhase != null,
-          'Either motion or motionPerPhase must be provided',
-        ),
-        assert(
-          motionPerPhase == null ||
-              motionPerPhase.length == sequence.phases.length,
-          'motionPerPhase length must match the number of phases',
-        ),
-        _motion = motion,
-        _motionPerPhase = motionPerPhase {
+  }) {
     _motionController = MotionController<T>(
-      motion: _getMotionForCurrentPhase(),
+      motion: sequence.motionForPhase(sequence.initialPhase),
       vsync: vsync,
       converter: converter,
       initialValue: sequence.valueForPhase(sequence.initialPhase),
@@ -76,12 +63,6 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
   /// Called when the phase changes.
   final void Function(P phase)? onPhaseChanged;
-
-  /// The default motion to use for phase transitions.
-  final Motion? _motion;
-
-  /// Per-phase motions for custom transition behavior.
-  final List<Motion>? _motionPerPhase;
 
   late final MotionController<T> _motionController;
 
@@ -231,7 +212,7 @@ class PhaseController<T extends Object, P> extends Animation<T>
     _currentPhaseIndex = index;
 
     // Update motion controller's motion if we have per-phase motions
-    _motionController.motion = _getMotionForCurrentPhase();
+    _motionController.motion = sequence.motionForPhase(newPhase);
 
     // Animate to the new phase's property value
     final targetValue = sequence.valueForPhase(newPhase);
@@ -239,14 +220,6 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
     // Notify listeners of phase change
     onPhaseChanged?.call(newPhase);
-  }
-
-  /// Returns the motion to use for the current phase transition.
-  Motion _getMotionForCurrentPhase() {
-    if (_motionPerPhase != null) {
-      return _motionPerPhase[_currentPhaseIndex];
-    }
-    return _motion!;
   }
 
   /// Schedules the next automatic phase transition.

@@ -52,18 +52,13 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
     required this.sequence,
     required this.converter,
     required this.builder,
-    this.motion,
-    this.motionPerPhase,
     this.restartTrigger,
     this.onPhaseChanged,
     this.playing = true,
     this.loopMode = PhaseLoopMode.loop,
     this.child,
     super.key,
-  }) : assert(
-          motion != null || motionPerPhase != null,
-          'Either motion or motionPerPhase must be provided',
-        );
+  });
 
   /// The sequence of phases and their corresponding property values.
   final PhaseSequence<T, P> sequence;
@@ -73,17 +68,6 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
 
   /// The builder function that creates the widget tree.
   final PhaseWidgetBuilder<T, P> builder;
-
-  /// The default motion to use for all phase transitions.
-  ///
-  /// If [motionPerPhase] is provided, this is ignored.
-  final Motion? motion;
-
-  /// Custom motions for each phase transition.
-  ///
-  /// The list should contain one motion for each phase in the sequence.
-  /// If provided, this overrides [motion].
-  final List<Motion>? motionPerPhase;
 
   /// A trigger value that causes the phase sequence to restart.
   ///
@@ -158,8 +142,6 @@ class _PhaseMotionBuilderState<T extends Object, P>
 
     // Recreate controller if sequence, motion, or converter changed
     if (widget.sequence != oldWidget.sequence ||
-        widget.motion != oldWidget.motion ||
-        widget.motionPerPhase != oldWidget.motionPerPhase ||
         widget.converter != oldWidget.converter) {
       _controller.dispose();
       _createController();
@@ -180,8 +162,6 @@ class _PhaseMotionBuilderState<T extends Object, P>
       sequence: widget.sequence,
       converter: widget.converter,
       vsync: this,
-      motion: widget.motion,
-      motionPerPhase: widget.motionPerPhase,
       onPhaseChanged: widget.onPhaseChanged,
       loopMode: widget.loopMode,
     );
@@ -216,18 +196,14 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
   const SinglePhaseMotionBuilder({
     required this.phases,
     required this.builder,
-    this.motion,
-    this.motionPerPhase,
+    required this.motion,
     this.trigger,
     this.onPhaseChanged,
     this.playing = true,
     this.loopMode = PhaseLoopMode.loop,
     this.child,
     super.key,
-  }) : assert(
-          motion != null || motionPerPhase != null,
-          'Either motion or motionPerPhase must be provided',
-        );
+  });
 
   /// The sequence of phases to animate through.
   ///
@@ -247,10 +223,7 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
   ) builder;
 
   /// The motion to use for phase transitions.
-  final Motion? motion;
-
-  /// Custom motions for each phase transition.
-  final List<Motion>? motionPerPhase;
+  final Motion motion;
 
   /// A trigger value that restarts the phase sequence.
   final Object? trigger;
@@ -294,11 +267,13 @@ class _SinglePhaseMotionBuilderState<P>
     // For numeric phases, use the phase value directly
     if (P == double || P == int) {
       _sequence = ValuePhaseSequence<double>(
+        motion: widget.motion,
         values: widget.phases.map((p) => (p as num).toDouble()).toList(),
       ) as PhaseSequence<double, P>;
     } else {
       // For non-numeric phases, use phase index as the animated value
       _sequence = MapPhaseSequence<double, P>(
+        motion: widget.motion,
         phaseMap: {
           for (final phase in widget.phases)
             phase: widget.phases.indexOf(phase).toDouble(),
@@ -312,8 +287,6 @@ class _SinglePhaseMotionBuilderState<P>
     return PhaseMotionBuilder<double, P>(
       sequence: _sequence,
       converter: const SingleMotionConverter(),
-      motion: widget.motion,
-      motionPerPhase: widget.motionPerPhase,
       restartTrigger: widget.trigger,
       onPhaseChanged: widget.onPhaseChanged,
       playing: widget.playing,
