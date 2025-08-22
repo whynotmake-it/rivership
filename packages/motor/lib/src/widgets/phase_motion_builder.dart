@@ -118,6 +118,21 @@ class _PhaseMotionBuilderState<T extends Object, P>
   void didUpdateWidget(PhaseMotionBuilder<T, P> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Recreate controller if converter changed
+    if (widget.converter != oldWidget.converter) {
+      _controller.dispose();
+      _createController();
+      if (widget.playing) {
+        _controller.start();
+      }
+      return;
+    }
+
+    // Update controller sequence if it changed
+    if (widget.sequence != oldWidget.sequence) {
+      _controller.sequence = widget.sequence;
+    }
+
     // Check if trigger changed
     if (widget.restartTrigger != _lastTrigger) {
       _lastTrigger = widget.restartTrigger;
@@ -125,7 +140,6 @@ class _PhaseMotionBuilderState<T extends Object, P>
       if (widget.playing) {
         _controller.start();
       }
-      return;
     }
 
     if (widget.loopMode != oldWidget.loopMode) {
@@ -137,16 +151,6 @@ class _PhaseMotionBuilderState<T extends Object, P>
         _controller.start();
       } else {
         _controller.stop();
-      }
-    }
-
-    // Recreate controller if sequence, motion, or converter changed
-    if (widget.sequence != oldWidget.sequence ||
-        widget.converter != oldWidget.converter) {
-      _controller.dispose();
-      _createController();
-      if (widget.playing) {
-        _controller.start();
       }
     }
   }
@@ -191,7 +195,7 @@ class _PhaseMotionBuilderState<T extends Object, P>
 ///
 /// This widget is useful when you want to animate a single property through
 /// multiple phases, similar to SwiftUI's PhaseAnimator with simple values.
-class SinglePhaseMotionBuilder<P> extends StatefulWidget {
+class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
   /// Creates a [SinglePhaseMotionBuilder] that animates through double values.
   const SinglePhaseMotionBuilder({
     required this.phases,
@@ -211,14 +215,9 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
   final List<P> phases;
 
   /// The builder function that creates the widget tree.
-  ///
-  /// For phases that are directly numeric (like double), [value] will be
-  /// the interpolated numeric value. For other phase types, [value] will
-  /// be the phase index as a double.
   final Widget Function(
     BuildContext context,
     double value,
-    P phase,
     Widget? child,
   ) builder;
 
@@ -245,7 +244,7 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
       _SinglePhaseMotionBuilderState<P>();
 }
 
-class _SinglePhaseMotionBuilderState<P>
+class _SinglePhaseMotionBuilderState<P extends num>
     extends State<SinglePhaseMotionBuilder<P>> {
   late PhaseSequence<double, P> _sequence;
 
@@ -291,8 +290,8 @@ class _SinglePhaseMotionBuilderState<P>
       onPhaseChanged: widget.onPhaseChanged,
       playing: widget.playing,
       loopMode: widget.loopMode,
-      builder: (context, value, phase, child) {
-        return widget.builder(context, value, phase, child);
+      builder: (context, value, _, child) {
+        return widget.builder(context, value, child);
       },
       child: widget.child,
     );

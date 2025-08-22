@@ -70,7 +70,7 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
       motion: CupertinoMotion.bouncy(),
       loopMode: PhaseLoopMode.loop,
       trigger: tapCount, // Restart animation on tap
-      builder: (context, scale, phase, child) {
+      builder: (context, scale, child) {
         return GestureDetector(
           onTap: () {
             setState(() {
@@ -87,7 +87,7 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: .3),
                     blurRadius: 8,
                     spreadRadius: 2,
                   ),

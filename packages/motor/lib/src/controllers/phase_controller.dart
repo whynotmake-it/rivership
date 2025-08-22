@@ -33,12 +33,12 @@ class PhaseController<T extends Object, P> extends Animation<T>
         AnimationEagerListenerMixin {
   /// {@macro PhaseController}
   PhaseController({
-    required this.sequence,
+    required PhaseSequence<T, P> sequence,
     required this.converter,
     required TickerProvider vsync,
     this.onPhaseChanged,
     PhaseLoopMode loopMode = PhaseLoopMode.loop,
-  }) {
+  }) : _sequence = sequence {
     _motionController = MotionController<T>(
       motion: sequence.motionForPhase(sequence.initialPhase),
       vsync: vsync,
@@ -55,8 +55,19 @@ class PhaseController<T extends Object, P> extends Animation<T>
       ..addStatusListener(_onMotionControllerStatusChange);
   }
 
+  PhaseSequence<T, P> _sequence;
+
   /// The phase sequence this controller manages.
-  final PhaseSequence<T, P> sequence;
+  PhaseSequence<T, P> get sequence => _sequence;
+
+  set sequence(PhaseSequence<T, P> value) {
+    if (_sequence == value) return;
+    _sequence = value;
+    _motionController.motion = _sequence.motionForPhase(_currentPhase);
+    _currentPhaseIndex =
+        _currentPhaseIndex.clamp(0, _sequence.phases.length - 1);
+    if (_playing) _goToPhaseIndex(_currentPhaseIndex);
+  }
 
   /// Converter for interpolating between property values.
   final MotionConverter<T> converter;
