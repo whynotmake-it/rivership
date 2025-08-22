@@ -1,11 +1,12 @@
 name: rivership_test
 description: A package containing testing utilites to accompany the rivership package.
 version: 0.1.0+4
+resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/rivership_test
 homepage: https://whynotmake.it
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
   flutter: ">=3.10.0"
 
 dependencies:
@@ -19,5 +20,5 @@ dependencies:
   mocktail: ">=1.0.4 <2.0.0"
 
 dev_dependencies:
-  lintervention: ^0.1.1
+  lintervention: ^0.3.1
   

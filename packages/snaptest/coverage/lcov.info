@@ -1,5 +1,5 @@
 SF:lib/src/fake_device.dart
-DA:25,2
+DA:25,1
 DA:27,1
 DA:30,1
 DA:33,0
@@ -211,7 +211,7 @@ LF:189
 LH:170
 end_of_record
 SF:lib/src/snaptest_settings.dart
-DA:53,4
+DA:53,1
 DA:93,1
 DA:112,1
 DA:122,1

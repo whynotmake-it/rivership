@@ -1,5 +1,6 @@
 name: example
 description: "A new Flutter project."
+resolution: workspace
 
 # Prevent accidental publishing to pub.dev.
 publish_to: 'none'
