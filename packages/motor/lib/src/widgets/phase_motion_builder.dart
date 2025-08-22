@@ -137,9 +137,6 @@ class _PhaseMotionBuilderState<T extends Object, P>
     if (widget.restartTrigger != _lastTrigger) {
       _lastTrigger = widget.restartTrigger;
       _controller.reset();
-      if (widget.playing) {
-        _controller.start();
-      }
     }
 
     if (widget.loopMode != oldWidget.loopMode) {

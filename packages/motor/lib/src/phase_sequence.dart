@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:collection/collection.dart';
 import 'package:motor/src/motion.dart';
 
 /// A function that provides the motion for a specific phase.
@@ -33,6 +34,30 @@ abstract class PhaseSequence<T extends Object, P> {
 
   /// The motion that should be used for transitioning to [phase].
   Motion motionForPhase(P phase);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    if (other is! PhaseSequence<T, P>) return false;
+
+    return const DeepCollectionEquality().equals(phases, other.phases) &&
+        const DeepCollectionEquality().equals(
+          phases.map(valueForPhase),
+          other.phases.map(valueForPhase),
+        ) &&
+        const DeepCollectionEquality().equals(
+          phases.map(motionForPhase),
+          other.phases.map(motionForPhase),
+        );
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        phases,
+        ...phases.map(valueForPhase),
+        ...phases.map(motionForPhase),
+      ]);
 }
 
 /// Allows setting a callback that will be used to obtain the motion for a given
