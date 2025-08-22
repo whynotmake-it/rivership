@@ -1,4 +1,4 @@
-import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion.dart';
 
@@ -13,7 +13,7 @@ typedef MotionFor<P> = Motion Function(P phase);
 /// using Motor's motion system.
 /// {@endtemplate}
 @immutable
-abstract class PhaseSequence<T extends Object, P> {
+abstract class PhaseSequence<T extends Object, P> with EquatableMixin {
   /// {@macro PhaseSequence}
   const PhaseSequence();
 
@@ -36,28 +36,11 @@ abstract class PhaseSequence<T extends Object, P> {
   Motion motionForPhase(P phase);
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    if (other is! PhaseSequence<T, P>) return false;
-
-    return const DeepCollectionEquality().equals(phases, other.phases) &&
-        const DeepCollectionEquality().equals(
-          phases.map(valueForPhase),
-          other.phases.map(other.valueForPhase),
-        ) &&
-        const DeepCollectionEquality().equals(
-          phases.map(motionForPhase),
-          other.phases.map(other.motionForPhase),
-        );
-  }
-
-  @override
-  int get hashCode => Object.hashAll([
+  List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
         ...phases.map(motionForPhase),
-      ]);
+      ];
 }
 
 /// Allows setting a callback that will be used to obtain the motion for a given
@@ -122,43 +105,4 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
 
   @override
   Motion motionForPhase(T phase) => motion(phase);
-}
-
-/// Wraps a [PhaseSequence] and adds per-phase motion customization.
-class MotionMapSequence<T extends Object, P> extends PhaseSequence<T, P> {
-  /// Creates a [MotionMapSequence] with the given parent sequence and motion
-  /// map.
-  const MotionMapSequence({
-    required this.parent,
-    required this.motionByPhase,
-  });
-
-  /// The parent phase sequence that should be wrapped.
-  final PhaseSequence<T, P> parent;
-
-  /// The motion map that defines per-phase motion customizations.
-  final Map<P, Motion> motionByPhase;
-
-  @override
-  List<P> get phases => parent.phases;
-
-  @override
-  T valueForPhase(P phase) => parent.valueForPhase(phase);
-
-  @override
-  Motion motionForPhase(P phase) {
-    return motionByPhase[phase] ?? parent.motionForPhase(phase);
-  }
-}
-
-/// Provides motion customization for each phase in the sequence.
-extension MotionByPhaseExtension<T extends Object, P> on PhaseSequence<T, P> {
-  /// Wraps the phase sequence in a [MotionMapSequence] with the given motion
-  /// map.
-  MotionMapSequence<T, P> withMotionPerPhase(Map<P, Motion> motionMap) {
-    return MotionMapSequence<T, P>(
-      parent: this,
-      motionByPhase: motionMap,
-    );
-  }
 }
