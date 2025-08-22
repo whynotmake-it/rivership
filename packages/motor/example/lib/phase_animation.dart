@@ -68,7 +68,7 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
     return SinglePhaseMotionBuilder<double>(
       phases: [0.5, 0.6, 0.7, 0.8, 1.0], // Scale values for phases
       motion: CupertinoMotion.bouncy(),
-      autoLoop: true, // Enable automatic looping
+      loopMode: PhaseLoopMode.loop,
       trigger: tapCount, // Restart animation on tap
       builder: (context, scale, phase, child) {
         return GestureDetector(
@@ -119,13 +119,13 @@ class LoadingPhaseExample extends StatelessWidget {
   Widget build(BuildContext context) {
     final sequence = ValuePhaseSequence<double>(
       values: [0.2, 1.0, 0.2, 1.0, 0.2], // Opacity phases for pulsing effect
-      autoLoop: true,
     );
 
     return PhaseMotionBuilder<double, double>(
       sequence: sequence,
       converter: const SingleMotionConverter(),
       motion: CupertinoMotion.smooth(),
+      loopMode: PhaseLoopMode.loop,
       onPhaseChanged: (phase) => debugPrint('Loading phase changed to: $phase'),
       builder: (context, opacity, phase, child) {
         return Row(
@@ -193,7 +193,6 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
           elevation: 12,
         ),
       },
-      autoLoop: true, // Enable auto-looping for continuous animation
     );
 
     return Center(
@@ -207,7 +206,8 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
           sequence: sequence,
           converter: const CardPropertiesConverter(),
           motion: CupertinoMotion.bouncy(extraBounce: .4),
-          trigger: animationTrigger,
+          restartTrigger: animationTrigger,
+          loopMode: PhaseLoopMode.pingPong,
           onPhaseChanged: (phase) {
             debugPrint('Phase changed to: $phase');
           },

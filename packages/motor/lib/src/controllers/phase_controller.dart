@@ -1,10 +1,25 @@
 import 'package:flutter/animation.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/phase_sequence.dart';
+
+/// The mode in which the phase animation should loop.
+enum PhaseLoopMode {
+  /// Don't loop the animation.
+  none,
+
+  /// The animation will loop from the last phase back to the first phase.
+  loop,
+
+  /// The animation will play forward and then reverse back to the start.
+  pingPong;
+
+  /// Whether the animation should loop.
+  bool get isLooping => this == loop || this == pingPong;
+}
 
 /// {@template PhaseController}
 /// A controller that manages transitions between phases in a [PhaseSequence].
@@ -25,6 +40,7 @@ class PhaseController<T extends Object, P> extends Animation<T>
     Motion? motion,
     List<Motion>? motionPerPhase,
     this.onPhaseChanged,
+    PhaseLoopMode loopMode = PhaseLoopMode.loop,
   })  : assert(
           motion != null || motionPerPhase != null,
           'Either motion or motionPerPhase must be provided',
@@ -43,27 +59,13 @@ class PhaseController<T extends Object, P> extends Animation<T>
       initialValue: sequence.valueForPhase(sequence.initialPhase),
     );
 
+    _loopMode = loopMode;
     _currentPhase = sequence.initialPhase;
-    _currentPhaseIndex = 0;
     _isForward = true;
 
     _motionController
       ..addListener(_onMotionControllerUpdate)
       ..addStatusListener(_onMotionControllerStatusChange);
-
-    // Start auto-looping if enabled - start first phase transition
-    if (sequence.autoLoop) {
-      _autoLoopScheduled = true;
-
-      // Start the first animation immediately to get things moving
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (_autoLoopScheduled &&
-            sequence.autoLoop &&
-            sequence.phases.length > 1) {
-          nextPhase();
-        }
-      });
-    }
   }
 
   /// The phase sequence this controller manages.
@@ -97,9 +99,22 @@ class PhaseController<T extends Object, P> extends Animation<T>
   @override
   bool get isAnimating => _motionController.isAnimating;
 
+  bool get _isInFirstPhase => _currentPhaseIndex == 0;
+
+  bool get _isInLastPhase => _currentPhaseIndex == sequence.phases.length - 1;
+
   @override
-  // TODO
-  AnimationStatus get status => AnimationStatus.forward;
+  AnimationStatus get status =>
+      switch ((_playing, _isForward, _isInFirstPhase, _isInLastPhase)) {
+        (true, true, _, _) ||
+        (false, true, false, false) =>
+          AnimationStatus.forward,
+        (true, false, _, _) ||
+        (false, false, false, false) =>
+          AnimationStatus.reverse,
+        (false, _, true, _) => AnimationStatus.dismissed,
+        (false, _, _, true) => AnimationStatus.completed,
+      };
 
   /// The current velocity of the animation.
   T get velocity => _motionController.velocity;
@@ -108,30 +123,28 @@ class PhaseController<T extends Object, P> extends Animation<T>
   bool _isForward = true;
 
   /// Timer for auto-looping phases.
-  bool _autoLoopScheduled = false;
+  bool _playing = false;
+
+  PhaseLoopMode _loopMode = PhaseLoopMode.loop;
+
+  /// The manner in which the phase animation should loop.
+  PhaseLoopMode get loopMode => _loopMode;
+  set loopMode(PhaseLoopMode mode) {
+    _loopMode = mode;
+    if (!_canAdvance) {
+      _playing = false; // Stop auto-looping if set to none
+      notifyListeners();
+    }
+  }
 
   /// Moves to the next phase in the sequence.
   void nextPhase() {
-    debugPrint(
-        'nextPhase: currentIndex=$_currentPhaseIndex, length=${sequence.phases.length}, autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
     if (_currentPhaseIndex >= sequence.phases.length - 1) {
-      // At the last phase
-      debugPrint(
-          'At last phase, autoReverse=${sequence.autoReverse}, autoLoop=${sequence.autoLoop}');
-      if (sequence.autoReverse && sequence.phases.length > 1) {
-        _isForward = false;
-        _goToPhaseIndex(_currentPhaseIndex - 1);
-      } else if (sequence.autoLoop) {
-        debugPrint('Looping back to phase 0');
+      // At the last phase we loop back if desired
+      if (_loopMode == PhaseLoopMode.loop) {
         _goToPhaseIndex(0);
-      } else {
-        // If neither autoReverse nor autoLoop, stop the auto-loop
-        debugPrint('Stopping auto-loop');
-        _autoLoopScheduled = false;
-        return;
       }
     } else {
-      debugPrint('Moving to next phase: ${_currentPhaseIndex + 1}');
       _goToPhaseIndex(_currentPhaseIndex + 1);
     }
   }
@@ -139,16 +152,9 @@ class PhaseController<T extends Object, P> extends Animation<T>
   /// Moves to the previous phase in the sequence.
   void previousPhase() {
     if (_currentPhaseIndex <= 0) {
-      // At the first phase
-      if (sequence.autoReverse && sequence.phases.length > 1) {
-        _isForward = true;
-        _goToPhaseIndex(1);
-      } else if (sequence.autoLoop) {
+      // At the first phase we loop around if desired
+      if (_loopMode == PhaseLoopMode.loop) {
         _goToPhaseIndex(sequence.phases.length - 1);
-      } else {
-        // If neither autoReverse nor autoLoop, stop the auto-loop
-        _autoLoopScheduled = false;
-        return;
       }
     } else {
       _goToPhaseIndex(_currentPhaseIndex - 1);
@@ -164,18 +170,26 @@ class PhaseController<T extends Object, P> extends Animation<T>
     _goToPhaseIndex(index);
   }
 
+  bool get _canAdvance => _hasMorePhases || _loopMode.isLooping;
+
+  bool get _hasMorePhases => _currentPhaseIndex < sequence.phases.length - 1;
+
   /// Starts the phase animation sequence.
   ///
-  /// If the sequence has [PhaseSequence.autoLoop] enabled, this will begin
-  /// automatic phase progression.
+  /// If [loopMode] is enabled, this will begin automatic phase progression.
   void start() {
-    if (sequence.autoLoop && !_autoLoopScheduled) {
-      _autoLoopScheduled = true;
+    if (!_playing) {
+      // If we don't loop and we don't have phases left, do nothing
+      if (!_canAdvance) {
+        return;
+      }
+
+      _playing = true;
+      notifyListeners();
+
       // Start the first animation immediately
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (_autoLoopScheduled &&
-            sequence.autoLoop &&
-            sequence.phases.length > 1) {
+        if (_playing && _canAdvance) {
           nextPhase();
         }
       });
@@ -186,14 +200,16 @@ class PhaseController<T extends Object, P> extends Animation<T>
   ///
   /// This will stop any ongoing animations and cancel auto-loop scheduling.
   void stop() {
-    _autoLoopScheduled = false;
+    _playing = false;
+    notifyListeners();
+
     _motionController.stop();
   }
 
   /// Resets the sequence to the initial phase.
   void reset() {
-    _autoLoopScheduled = false;
     _isForward = true;
+    notifyListeners();
     _goToPhaseIndex(0);
   }
 
@@ -201,16 +217,12 @@ class PhaseController<T extends Object, P> extends Animation<T>
   @override
   void dispose() {
     _motionController.dispose();
+    super.dispose();
   }
 
   /// Moves to the phase at the specified index.
   void _goToPhaseIndex(int index) {
     if (index < 0 || index >= sequence.phases.length) {
-      return;
-    }
-
-    // Don't return early if we're going to the same phase index - we might be looping
-    if (index == _currentPhaseIndex) {
       return;
     }
 
@@ -223,11 +235,8 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
     // Animate to the new phase's property value
     final targetValue = sequence.valueForPhase(newPhase);
-    
-    debugPrint('Going to phase $index ($newPhase), target: $targetValue, current: ${_motionController.value}');
-    
     _motionController.animateTo(targetValue);
-    
+
     // Notify listeners of phase change
     onPhaseChanged?.call(newPhase);
   }
@@ -242,14 +251,10 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
   /// Schedules the next automatic phase transition.
   void _scheduleNextPhase() {
-    debugPrint(
-        '_scheduleNextPhase: autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
-    if (!sequence.autoLoop || !_autoLoopScheduled) return;
+    if (!_canAdvance || !_playing) return;
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-          'PostFrame callback: autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled, forward=$_isForward');
-      if (!sequence.autoLoop || !_autoLoopScheduled) return;
+      if (!_canAdvance || !_playing) return;
 
       // Move to next phase
       if (_isForward) {
@@ -267,16 +272,20 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
   /// Called when the underlying motion controller's status changes.
   void _onMotionControllerStatusChange(AnimationStatus status) {
-    debugPrint(
-        'Status change: $status, autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
-    // Continue auto-loop when animation completes or is dismissed
-    // We need to check for both completed and dismissed because the animation
-    // can be dismissed when animating to a lower value than the current one
-    if ((status.isCompleted || status.isDismissed) &&
-        sequence.autoLoop &&
-        _autoLoopScheduled) {
-      debugPrint('Scheduling next phase');
-      _scheduleNextPhase();
+    if (status.isAnimating) return;
+
+    // The current phase has completed
+
+    if (!_canAdvance) {
+      _playing = false;
+      notifyListeners();
+      return;
     }
+    if (_loopMode == PhaseLoopMode.pingPong &&
+        (_isInFirstPhase || _isInLastPhase)) {
+      _isForward = !_isForward;
+    }
+
+    _scheduleNextPhase();
   }
 }

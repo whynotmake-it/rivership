@@ -54,9 +54,10 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
     required this.builder,
     this.motion,
     this.motionPerPhase,
-    this.trigger,
+    this.restartTrigger,
     this.onPhaseChanged,
-    this.autoStart = true,
+    this.playing = true,
+    this.loopMode = PhaseLoopMode.loop,
     this.child,
     super.key,
   }) : assert(
@@ -89,17 +90,18 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
   /// When this value changes, the animation will reset to the first phase
   /// and begin the sequence again. This is useful for user interactions
   /// like button taps or state changes.
-  final Object? trigger;
+  final Object? restartTrigger;
 
   /// Called when the current phase changes.
   final void Function(P phase)? onPhaseChanged;
 
-  /// Whether to automatically start the phase sequence.
+  /// Whether the sequence should currently be playing.
+  final bool playing;
+
+  /// The manner in which the phase animation should loop.
   ///
-  /// If true and the sequence has [PhaseSequence.autoLoop] enabled,
-  /// the animation will begin immediately. If false, you must call
-  /// [PhaseController.start] manually.
-  final bool autoStart;
+  /// Defaults to [PhaseLoopMode.loop].
+  final PhaseLoopMode loopMode;
 
   /// An optional child widget to pass to the [builder].
   ///
@@ -121,9 +123,9 @@ class _PhaseMotionBuilderState<T extends Object, P>
   void initState() {
     super.initState();
     _createController();
-    _lastTrigger = widget.trigger;
+    _lastTrigger = widget.restartTrigger;
 
-    if (widget.autoStart) {
+    if (widget.playing) {
       _controller.start();
     }
   }
@@ -133,13 +135,25 @@ class _PhaseMotionBuilderState<T extends Object, P>
     super.didUpdateWidget(oldWidget);
 
     // Check if trigger changed
-    if (widget.trigger != _lastTrigger) {
-      _lastTrigger = widget.trigger;
+    if (widget.restartTrigger != _lastTrigger) {
+      _lastTrigger = widget.restartTrigger;
       _controller.reset();
-      if (widget.autoStart) {
+      if (widget.playing) {
         _controller.start();
       }
       return;
+    }
+
+    if (widget.loopMode != oldWidget.loopMode) {
+      _controller.loopMode = widget.loopMode;
+    }
+
+    if (widget.playing != oldWidget.playing) {
+      if (widget.playing) {
+        _controller.start();
+      } else {
+        _controller.stop();
+      }
     }
 
     // Recreate controller if sequence, motion, or converter changed
@@ -149,7 +163,7 @@ class _PhaseMotionBuilderState<T extends Object, P>
         widget.converter != oldWidget.converter) {
       _controller.dispose();
       _createController();
-      if (widget.autoStart) {
+      if (widget.playing) {
         _controller.start();
       }
     }
@@ -169,6 +183,7 @@ class _PhaseMotionBuilderState<T extends Object, P>
       motion: widget.motion,
       motionPerPhase: widget.motionPerPhase,
       onPhaseChanged: widget.onPhaseChanged,
+      loopMode: widget.loopMode,
     );
     _controller.addListener(_onControllerUpdate);
   }
@@ -205,9 +220,8 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
     this.motionPerPhase,
     this.trigger,
     this.onPhaseChanged,
-    this.autoStart = true,
-    this.autoLoop = false,
-    this.autoReverse = false,
+    this.playing = true,
+    this.loopMode = PhaseLoopMode.loop,
     this.child,
     super.key,
   }) : assert(
@@ -244,14 +258,11 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
   /// Called when the current phase changes.
   final void Function(P phase)? onPhaseChanged;
 
-  /// Whether to automatically start the phase sequence.
-  final bool autoStart;
+  /// Whether the animation is currently playing.
+  final bool playing;
 
-  /// Whether this sequence should automatically cycle through all phases.
-  final bool autoLoop;
-
-  /// Whether the sequence should reverse after reaching the end.
-  final bool autoReverse;
+  /// Whether the animation should loop.
+  final PhaseLoopMode loopMode;
 
   /// An optional child widget to pass to the [builder].
   final Widget? child;
@@ -284,8 +295,6 @@ class _SinglePhaseMotionBuilderState<P>
     if (P == double || P == int) {
       _sequence = ValuePhaseSequence<double>(
         values: widget.phases.map((p) => (p as num).toDouble()).toList(),
-        autoLoop: widget.autoLoop,
-        autoReverse: widget.autoReverse,
       ) as PhaseSequence<double, P>;
     } else {
       // For non-numeric phases, use phase index as the animated value
@@ -294,8 +303,6 @@ class _SinglePhaseMotionBuilderState<P>
           for (final phase in widget.phases)
             phase: widget.phases.indexOf(phase).toDouble(),
         },
-        autoLoop: widget.autoLoop,
-        autoReverse: widget.autoReverse,
       );
     }
   }
@@ -307,9 +314,10 @@ class _SinglePhaseMotionBuilderState<P>
       converter: const SingleMotionConverter(),
       motion: widget.motion,
       motionPerPhase: widget.motionPerPhase,
-      trigger: widget.trigger,
+      restartTrigger: widget.trigger,
       onPhaseChanged: widget.onPhaseChanged,
-      autoStart: widget.autoStart,
+      playing: widget.playing,
+      loopMode: widget.loopMode,
       builder: (context, value, phase, child) {
         return widget.builder(context, value, phase, child);
       },

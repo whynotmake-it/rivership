@@ -75,12 +75,10 @@ void main() {
     test('ValuePhaseSequence works with simple values', () {
       const sequence = ValuePhaseSequence<double>(
         values: [0.0, 1.0, 2.0, 3.0],
-        autoLoop: true,
       );
 
       expect(sequence.phases, [0.0, 1.0, 2.0, 3.0]);
       expect(sequence.valueForPhase(1), 1.0);
-      expect(sequence.autoLoop, true);
     });
 
     test('EnumPhaseSequence works with enum values', () {
@@ -199,7 +197,7 @@ void main() {
             sequence: sequence,
             converter: const SingleMotionConverter(),
             motion: const LinearMotion(duration: Duration(milliseconds: 100)),
-            autoStart: false, // Don't auto-start for testing
+            playing: false, // Don't auto-start for testing
             builder: (context, value, phase, child) {
               buildCount++;
               lastValue = value;
@@ -236,8 +234,8 @@ void main() {
             sequence: sequence,
             converter: const SingleMotionConverter(),
             motion: const LinearMotion(duration: Duration(milliseconds: 50)),
-            trigger: trigger,
-            autoStart: false,
+            restartTrigger: trigger,
+            playing: false,
             builder: (context, value, phase, child) {
               lastPhase = phase;
               return SizedBox(
@@ -330,7 +328,7 @@ void main() {
             sequence: sequence,
             converter: const SingleMotionConverter(),
             motion: const CupertinoMotion.bouncy(), // Physics-based motion
-            autoStart: false,
+            playing: false,
             builder: (context, value, phase, child) {
               return SizedBox(
                 width: (value + 1) * 100,
@@ -370,7 +368,7 @@ void main() {
             sequence: sequence,
             converter: const TestPropertiesConverter(),
             motion: const LinearMotion(duration: Duration(milliseconds: 100)),
-            autoStart: false,
+            playing: false,
             builder: (context, properties, phase, child) {
               lastProperties = properties;
               return Container(

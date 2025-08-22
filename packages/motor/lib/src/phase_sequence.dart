@@ -26,18 +26,6 @@ abstract class PhaseSequence<T extends Object, P> {
   ///
   /// Defaults to the first phase in [phases].
   P get initialPhase => phases.first;
-
-  /// Whether this sequence should automatically cycle through all phases.
-  ///
-  /// If true, the animation will continuously cycle through phases.
-  /// If false, the animation will stop after reaching the last phase.
-  bool get autoLoop => false;
-
-  /// Whether the sequence should reverse after reaching the end.
-  ///
-  /// If true and [autoLoop] is true, the sequence will ping-pong between
-  /// the first and last phases.
-  bool get autoReverse => false;
 }
 
 /// A simple implementation of [PhaseSequence] that uses a map to define
@@ -47,18 +35,10 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
   /// Creates a [MapPhaseSequence] with the given phase-to-value mapping.
   const MapPhaseSequence({
     required this.phaseMap,
-    this.autoLoop = false,
-    this.autoReverse = false,
   });
 
   /// The mapping from phases to their corresponding property values.
   final Map<P, T> phaseMap;
-
-  @override
-  final bool autoLoop;
-
-  @override
-  final bool autoReverse;
 
   @override
   List<P> get phases => phaseMap.keys.toList();
@@ -84,8 +64,6 @@ class EnumPhaseSequence<T extends Object, P extends Enum>
   const EnumPhaseSequence({
     required this.enumValues,
     required this.valueProvider,
-    this.autoLoop = false,
-    this.autoReverse = false,
   });
 
   /// All the enum values to cycle through.
@@ -93,12 +71,6 @@ class EnumPhaseSequence<T extends Object, P extends Enum>
 
   /// Function that returns the property value for a given enum phase.
   final T Function(P phase) valueProvider;
-
-  @override
-  final bool autoLoop;
-
-  @override
-  final bool autoReverse;
 
   @override
   List<P> get phases => enumValues;
@@ -114,18 +86,10 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
   /// Creates a [ValuePhaseSequence] with the given values.
   const ValuePhaseSequence({
     required this.values,
-    this.autoLoop = false,
-    this.autoReverse = false,
   });
 
   /// The values to cycle through as both phases and property values.
   final List<T> values;
-
-  @override
-  final bool autoLoop;
-
-  @override
-  final bool autoReverse;
 
   @override
   List<T> get phases => values;
@@ -138,42 +102,30 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
 extension PhaseSequenceUtils on Never {
   /// Creates a simple phase sequence from a list of values.
   static ValuePhaseSequence<T> fromValues<T extends Object>(
-    List<T> values, {
-    bool autoLoop = false,
-    bool autoReverse = false,
-  }) {
+    List<T> values,
+  ) {
     return ValuePhaseSequence<T>(
       values: values,
-      autoLoop: autoLoop,
-      autoReverse: autoReverse,
     );
   }
 
   /// Creates a phase sequence from a map of phase-to-value relationships.
   static MapPhaseSequence<T, P> fromMap<T extends Object, P>(
-    Map<P, T> phaseMap, {
-    bool autoLoop = false,
-    bool autoReverse = false,
-  }) {
+    Map<P, T> phaseMap,
+  ) {
     return MapPhaseSequence<T, P>(
       phaseMap: phaseMap,
-      autoLoop: autoLoop,
-      autoReverse: autoReverse,
     );
   }
 
   /// Creates a phase sequence from enum values with a value provider function.
   static EnumPhaseSequence<T, P> fromEnum<T extends Object, P extends Enum>(
     List<P> enumValues,
-    T Function(P phase) valueProvider, {
-    bool autoLoop = false,
-    bool autoReverse = false,
-  }) {
+    T Function(P phase) valueProvider,
+  ) {
     return EnumPhaseSequence<T, P>(
       enumValues: enumValues,
       valueProvider: valueProvider,
-      autoLoop: autoLoop,
-      autoReverse: autoReverse,
     );
   }
 }
