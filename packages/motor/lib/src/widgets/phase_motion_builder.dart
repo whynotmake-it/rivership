@@ -206,6 +206,8 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
     this.trigger,
     this.onPhaseChanged,
     this.autoStart = true,
+    this.autoLoop = false,
+    this.autoReverse = false,
     this.child,
     super.key,
   }) : assert(
@@ -245,6 +247,12 @@ class SinglePhaseMotionBuilder<P> extends StatefulWidget {
   /// Whether to automatically start the phase sequence.
   final bool autoStart;
 
+  /// Whether this sequence should automatically cycle through all phases.
+  final bool autoLoop;
+
+  /// Whether the sequence should reverse after reaching the end.
+  final bool autoReverse;
+
   /// An optional child widget to pass to the [builder].
   final Widget? child;
 
@@ -276,7 +284,8 @@ class _SinglePhaseMotionBuilderState<P>
     if (P == double || P == int) {
       _sequence = ValuePhaseSequence<double>(
         values: widget.phases.map((p) => (p as num).toDouble()).toList(),
-        autoLoop: true,
+        autoLoop: widget.autoLoop,
+        autoReverse: widget.autoReverse,
       ) as PhaseSequence<double, P>;
     } else {
       // For non-numeric phases, use phase index as the animated value
@@ -285,7 +294,8 @@ class _SinglePhaseMotionBuilderState<P>
           for (final phase in widget.phases)
             phase: widget.phases.indexOf(phase).toDouble(),
         },
-        autoLoop: true,
+        autoLoop: widget.autoLoop,
+        autoReverse: widget.autoReverse,
       );
     }
   }

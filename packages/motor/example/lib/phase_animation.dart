@@ -68,7 +68,7 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
     return SinglePhaseMotionBuilder<double>(
       phases: [0.5, 0.6, 0.7, 0.8, 1.0], // Scale values for phases
       motion: CupertinoMotion.bouncy(),
-
+      autoLoop: true, // Enable automatic looping
       trigger: tapCount, // Restart animation on tap
       builder: (context, scale, phase, child) {
         return GestureDetector(

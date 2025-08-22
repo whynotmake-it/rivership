@@ -12,7 +12,11 @@ import 'package:motor/src/phase_sequence.dart';
 /// This controller uses Motor's [MotionController] internally to animate
 /// between phase property values using physics-based or duration-based motion.
 /// {@endtemplate}
-class PhaseController<T extends Object, P> extends ChangeNotifier {
+class PhaseController<T extends Object, P> extends Animation<T>
+    with
+        AnimationLocalListenersMixin,
+        AnimationLocalStatusListenersMixin,
+        AnimationEagerListenerMixin {
   /// {@macro PhaseController}
   PhaseController({
     required this.sequence,
@@ -87,11 +91,15 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
   int get currentPhaseIndex => _currentPhaseIndex;
   int _currentPhaseIndex = 0;
 
-  /// The current interpolated property value.
+  @override
   T get value => _motionController.value;
 
-  /// Whether the controller is currently animating.
+  @override
   bool get isAnimating => _motionController.isAnimating;
+
+  @override
+  // TODO
+  AnimationStatus get status => AnimationStatus.forward;
 
   /// The current velocity of the animation.
   T get velocity => _motionController.velocity;
@@ -104,17 +112,26 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
 
   /// Moves to the next phase in the sequence.
   void nextPhase() {
+    debugPrint(
+        'nextPhase: currentIndex=$_currentPhaseIndex, length=${sequence.phases.length}, autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
     if (_currentPhaseIndex >= sequence.phases.length - 1) {
-      if (sequence.autoReverse) {
+      // At the last phase
+      debugPrint(
+          'At last phase, autoReverse=${sequence.autoReverse}, autoLoop=${sequence.autoLoop}');
+      if (sequence.autoReverse && sequence.phases.length > 1) {
         _isForward = false;
-        if (_currentPhaseIndex > 0) {
-          _goToPhaseIndex(_currentPhaseIndex - 1);
-        }
+        _goToPhaseIndex(_currentPhaseIndex - 1);
       } else if (sequence.autoLoop) {
+        debugPrint('Looping back to phase 0');
         _goToPhaseIndex(0);
+      } else {
+        // If neither autoReverse nor autoLoop, stop the auto-loop
+        debugPrint('Stopping auto-loop');
+        _autoLoopScheduled = false;
+        return;
       }
-      // If neither autoReverse nor autoLoop, stop here
     } else {
+      debugPrint('Moving to next phase: ${_currentPhaseIndex + 1}');
       _goToPhaseIndex(_currentPhaseIndex + 1);
     }
   }
@@ -122,15 +139,17 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
   /// Moves to the previous phase in the sequence.
   void previousPhase() {
     if (_currentPhaseIndex <= 0) {
-      if (sequence.autoReverse) {
+      // At the first phase
+      if (sequence.autoReverse && sequence.phases.length > 1) {
         _isForward = true;
-        if (sequence.phases.length > 1) {
-          _goToPhaseIndex(1);
-        }
+        _goToPhaseIndex(1);
       } else if (sequence.autoLoop) {
         _goToPhaseIndex(sequence.phases.length - 1);
+      } else {
+        // If neither autoReverse nor autoLoop, stop the auto-loop
+        _autoLoopScheduled = false;
+        return;
       }
-      // If neither autoReverse nor autoLoop, stop here
     } else {
       _goToPhaseIndex(_currentPhaseIndex - 1);
     }
@@ -182,7 +201,6 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
   @override
   void dispose() {
     _motionController.dispose();
-    super.dispose();
   }
 
   /// Moves to the phase at the specified index.
@@ -191,11 +209,12 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
       return;
     }
 
-    final newPhase = sequence.phases[index];
-    if (newPhase == _currentPhase) {
+    // Don't return early if we're going to the same phase index - we might be looping
+    if (index == _currentPhaseIndex) {
       return;
     }
 
+    final newPhase = sequence.phases[index];
     _currentPhase = newPhase;
     _currentPhaseIndex = index;
 
@@ -204,8 +223,11 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
 
     // Animate to the new phase's property value
     final targetValue = sequence.valueForPhase(newPhase);
+    
+    debugPrint('Going to phase $index ($newPhase), target: $targetValue, current: ${_motionController.value}');
+    
     _motionController.animateTo(targetValue);
-
+    
     // Notify listeners of phase change
     onPhaseChanged?.call(newPhase);
   }
@@ -220,9 +242,13 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
 
   /// Schedules the next automatic phase transition.
   void _scheduleNextPhase() {
+    debugPrint(
+        '_scheduleNextPhase: autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
     if (!sequence.autoLoop || !_autoLoopScheduled) return;
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
+      debugPrint(
+          'PostFrame callback: autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled, forward=$_isForward');
       if (!sequence.autoLoop || !_autoLoopScheduled) return;
 
       // Move to next phase
@@ -241,10 +267,15 @@ class PhaseController<T extends Object, P> extends ChangeNotifier {
 
   /// Called when the underlying motion controller's status changes.
   void _onMotionControllerStatusChange(AnimationStatus status) {
-    // Continue auto-loop when animation completes
-    if (status == AnimationStatus.completed &&
+    debugPrint(
+        'Status change: $status, autoLoop=${sequence.autoLoop}, scheduled=$_autoLoopScheduled');
+    // Continue auto-loop when animation completes or is dismissed
+    // We need to check for both completed and dismissed because the animation
+    // can be dismissed when animating to a lower value than the current one
+    if ((status.isCompleted || status.isDismissed) &&
         sequence.autoLoop &&
         _autoLoopScheduled) {
+      debugPrint('Scheduling next phase');
       _scheduleNextPhase();
     }
   }
