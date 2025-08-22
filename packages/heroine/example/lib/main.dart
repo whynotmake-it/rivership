@@ -4,7 +4,6 @@ import 'package:heroine/heroine.dart';
 import 'package:heroine_example/image_grid.dart';
 import 'package:heroine_example/zoom_transition.dart';
 import 'package:lorem_gen/lorem_gen.dart';
-import 'package:motor/motor.dart';
 
 final springNotifier = ValueNotifier(CupertinoMotion.bouncy());
 final flightShuttleNotifier =

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heroine/heroine.dart';
-import 'package:motor/motor.dart';
 
 void main() {
   group('HeroineController', () {

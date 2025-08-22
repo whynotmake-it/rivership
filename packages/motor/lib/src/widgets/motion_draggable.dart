@@ -409,7 +409,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
                 child: IgnorePointer(
                   child: widget.feedbackMatchesConstraints
                       ? ConstrainedBox(
-                          constraints: this.constraints!,
+                          constraints: constraints!,
                           child: feedbackChild,
                         )
                       : feedbackChild,

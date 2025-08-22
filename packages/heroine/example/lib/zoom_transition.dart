@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/settings_menus.dart';
-import 'package:motor/motor.dart';
 
 final springNotifier = ValueNotifier(CupertinoMotion.smooth());
 final flightShuttleNotifier =
