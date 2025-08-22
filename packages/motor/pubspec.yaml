@@ -1,13 +1,14 @@
 name: motor
 description: A unified motion system for Flutter - physics-based springs and duration-based curves under one API.
 version: 1.0.0-dev.4
+resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/motor
 homepage: https://whynotmake.it
 
 topics: [animation, motion, physics, spring, curve]
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
   flutter: ">=3.10.0"
 
 dependencies:
@@ -18,6 +19,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  lintervention: ^0.1.1
+  lintervention: ^0.3.1
   mocktail: ^1.0.3
-  spot: ^0.16.0
+  spot: ^0.18.0

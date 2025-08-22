@@ -125,7 +125,7 @@ LF:24
 LH:0
 end_of_record
 SF:lib/src/heroines.dart
-DA:17,2
+DA:17,1
 DA:94,1
 DA:95,1
 DA:110,1
@@ -490,7 +490,7 @@ LF:93
 LH:85
 end_of_record
 SF:lib/src/shuttle_builders.dart
-DA:13,3
+DA:13,1
 DA:50,1
 DA:57,1
 DA:58,1
@@ -522,7 +522,7 @@ DA:121,0
 DA:129,0
 DA:139,0
 DA:140,0
-DA:146,2
+DA:146,1
 DA:150,1
 DA:158,1
 DA:160,1
