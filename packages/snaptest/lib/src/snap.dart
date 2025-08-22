@@ -24,8 +24,8 @@ import 'package:test_api/src/backend/invoker.dart';
 /// which you can also set globally via [SnaptestSettings.global].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the directory
-/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default), 
-/// optionally appending the device name and orientation to the file name. 
+/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default),
+/// optionally appending the device name and orientation to the file name.
 /// If no [name] is provided, the name of the current test is used.
 ///
 /// ## Multiple Devices and Orientations
@@ -555,9 +555,19 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
 
     // Transform the screen path for landscape orientation
     final transform = Matrix4.identity()
-      ..translate(deviceFrameSize.width / 2, deviceFrameSize.height / 2)
+      ..translateByDouble(
+        deviceFrameSize.width / 2,
+        deviceFrameSize.height / 2,
+        0,
+        0,
+      )
       ..rotateZ(1.5708) // 90 degrees in radians
-      ..translate(-device.frameSize.width / 2, -device.frameSize.height / 2);
+      ..translateByDouble(
+        -device.frameSize.width / 2,
+        -device.frameSize.height / 2,
+        0,
+        0,
+      );
 
     screenPath = device.screenPath.transform(transform.storage);
   } else {
