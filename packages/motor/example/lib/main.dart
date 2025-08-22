@@ -4,6 +4,7 @@ import 'package:motor_example/2d_redirection.dart';
 import 'package:motor_example/draggable_icons.dart';
 import 'package:motor_example/flip-card.dart';
 import 'package:motor_example/one_dimension.dart';
+import 'package:motor_example/phase_animation.dart';
 import 'package:motor_example/pip.dart';
 import 'package:motor_example/title_slide.dart';
 
@@ -57,6 +58,12 @@ final motorRoutes = [
     path: TitleSlideExample.path,
     type: RouteType.cupertino(),
     builder: (context, state) => TitleSlideExample(),
+  ),
+  NamedRouteDef(
+    name: PhaseAnimationExamples.name,
+    path: PhaseAnimationExamples.path,
+    type: RouteType.cupertino(),
+    builder: (context, state) => const PhaseAnimationExamples(),
   )
 ];
 

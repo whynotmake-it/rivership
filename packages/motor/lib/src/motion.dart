@@ -582,3 +582,287 @@ class MaterialSpringMotion extends SpringMotion {
     );
   }
 }
+
+/// {@template TrimmedMotion}
+/// A motion that uses only a portion of another motion's characteristic curve.
+///
+/// [TrimmedMotion] allows you to extract a subset of another motion's behavior
+/// by extending the simulation range and mapping back to the desired output.
+/// This is useful for creating variations of existing motions without defining
+/// entirely new physics or curves.
+///
+/// ## Accuracy by Motion Type
+///
+/// **Deterministic motions** (like [CurvedMotion]): Trimming produces exact
+/// results that precisely match the requested portion of the original curve.
+///
+/// **Physics-based motions** (like [SpringMotion]): Trimming produces an
+/// approximation by extending the simulation range and finishing early.
+/// The result approximates the characteristic curve behavior but may not be
+/// perfectly accurate to the original motion's physics at every point.
+///
+/// ## How it works
+///
+/// 1. Extends the parent simulation over a larger range
+/// 2. Maps the "middle portion" back to your desired 0→1 output
+/// 3. Finishes early when the trimmed portion is complete
+///
+/// Example: With `startTrim: 0.2` and `endTrim: 0.2`, your 0→1 motion will
+/// use the middle 60% of the parent motion's characteristic curve.
+/// {@endtemplate}
+@immutable
+class TrimmedMotion extends Motion {
+  /// {@macro TrimmedMotion}
+  ///
+  /// Parameters:
+  ///   * [parent] - The motion to trim
+  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
+
+  const TrimmedMotion({
+    required this.parent,
+    required this.startTrim,
+    required this.endTrim,
+  })  : assert(startTrim >= 0.0, 'startTrim must be non-negative'),
+        assert(endTrim >= 0.0, 'endTrim must be non-negative'),
+        assert(
+          startTrim + endTrim < 1.0,
+          'startTrim + endTrim must be less than 1.0',
+        );
+
+  /// The motion to trim.
+  final Motion parent;
+
+  /// Amount to trim from the start of the motion curve.
+  final double startTrim;
+
+  /// Amount to trim from the end of the motion curve.
+  final double endTrim;
+
+  @override
+  bool get needsSettle => parent.needsSettle;
+
+  @override
+  bool get unboundedWillSettle => parent.unboundedWillSettle;
+
+  @override
+  Tolerance get tolerance => parent.tolerance;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    // Fast path: if there's no trimming, just delegate to parent
+    if (startTrim == 0.0 && endTrim == 0.0) {
+      return parent.createSimulation(
+        start: start,
+        end: end,
+        velocity: velocity,
+      );
+    }
+
+    // Calculate the extended range needed to get our desired trim
+    final desiredRange = end - start;
+    final usablePortion = 1.0 - startTrim - endTrim;
+    final extendedRange = desiredRange / usablePortion;
+
+    // Calculate the extended start position
+    final extendedStart = start - (extendedRange * startTrim);
+    final extendedEnd = extendedStart + extendedRange;
+
+    // Scale velocity proportionally to maintain the same relative motion
+    final scaledVelocity = velocity / usablePortion;
+
+    final parentSimulation = parent.createSimulation(
+      start: extendedStart,
+      end: extendedEnd,
+      velocity: scaledVelocity,
+    );
+
+    return _TrimmedSimulation(
+      parent: parentSimulation,
+      startTrim: startTrim,
+      endTrim: endTrim,
+      start: start,
+      end: end,
+      extendedStart: extendedStart,
+      extendedEnd: extendedEnd,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is TrimmedMotion) {
+      return parent == other.parent &&
+          startTrim == other.startTrim &&
+          endTrim == other.endTrim;
+    }
+    return false;
+  }
+
+  @override
+  int get hashCode => Object.hash(parent, startTrim, endTrim);
+
+  @override
+  String toString() =>
+      'TrimmedMotion(parent: $parent, trim: $startTrim-$endTrim)';
+}
+
+class _TrimmedSimulation extends Simulation {
+  _TrimmedSimulation({
+    required this.parent,
+    required this.startTrim,
+    required this.endTrim,
+    required this.start,
+    required this.end,
+    required this.extendedStart,
+    required this.extendedEnd,
+  })  : usablePortion = 1.0 - startTrim - endTrim,
+        adjustedDuration = _calculateAdjustedDuration(
+          parent,
+          1.0 - startTrim - endTrim,
+        );
+
+  final Simulation parent;
+  final double startTrim;
+  final double endTrim;
+  final double start;
+  final double end;
+  final double extendedStart;
+  final double extendedEnd;
+
+  final double usablePortion;
+  final double? adjustedDuration;
+
+  static double? _calculateAdjustedDuration(
+    Simulation parent,
+    double usablePortion,
+  ) {
+    if (parent is CurveSimulation) {
+      return (parent.duration.inMicroseconds / Duration.microsecondsPerSecond) *
+          usablePortion;
+    }
+    return null; // For physics-based simulations, duration is not predetermined
+  }
+
+  @override
+  Tolerance get tolerance => parent.tolerance;
+
+  @override
+  double x(double time) {
+    if (isDone(time)) {
+      return end; // Snap to target when we're done
+    }
+
+    final parentValue = parent.x(time);
+
+    // Calculate current progress in parent simulation (0 to 1)
+    final parentRange = extendedEnd - extendedStart;
+    final parentProgress =
+        parentRange == 0 ? 0.0 : (parentValue - extendedStart) / parentRange;
+
+    // Map to our trimmed portion
+    // If we're before the trim start, output our start value
+    if (parentProgress <= startTrim) {
+      return start;
+    }
+
+    // Calculate progress within our usable portion
+    final trimmedProgress = (parentProgress - startTrim) / usablePortion;
+    final clampedProgress = trimmedProgress.clamp(0.0, 1.0);
+
+    return start + (clampedProgress * (end - start));
+  }
+
+  @override
+  double dx(double time) {
+    if (isDone(time)) {
+      return 0; // No velocity when we're done
+    }
+
+    // Get parent velocity and scale it appropriately
+    final parentVelocity = parent.dx(time);
+
+    // Scale velocity to match our compressed time/range
+    final velocityScale = 1.0 / usablePortion;
+    return parentVelocity * velocityScale;
+  }
+
+  @override
+  bool isDone(double time) {
+    // For time-based simulations, use the adjusted duration
+    if (adjustedDuration != null) {
+      return time >= adjustedDuration!;
+    }
+
+    // For physics-based simulations, check parent simulation state
+    // and progress through the trimmed portion
+    if (parent.isDone(time)) {
+      return true;
+    }
+
+    // We're done when we've reached the end of our trimmed section
+    final parentValue = parent.x(time);
+    final parentRange = extendedEnd - extendedStart;
+    final parentProgress =
+        parentRange == 0 ? 1.0 : (parentValue - extendedStart) / parentRange;
+
+    // Finish when we've consumed our trimmed portion
+    return parentProgress >= (startTrim + usablePortion);
+  }
+}
+
+/// Extension methods for [Motion] to provide convenient trimming functionality.
+///
+/// **Important**: Trimming behavior varies by motion type:
+/// * **Deterministic motions** (like [CurvedMotion]): Trimming is exact and
+///   produces precisely the requested portion of the motion curve.
+/// * **Physics-based motions** (like [SpringMotion]): Trimming is an
+///   approximation that extends the simulation range and maps progress back
+///   to the desired output. The result approximates the characteristic curve
+///   behavior but may not be perfectly accurate to the original motion's
+///   physics at every point.
+extension MotionTrimming on Motion {
+  /// {@macro TrimmedMotion}
+  ///
+  /// Parameters:
+  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
+
+  ///
+  /// Example:
+  /// ```dart
+  /// // Exact trimming for curves
+  /// final curve = CurvedMotion(duration: Duration(seconds: 1));
+  /// final trimmedCurve = curve.trimmed(startTrim: 0.1, endTrim: 0.1);
+  ///
+  /// // Approximate trimming for springs
+  /// final spring = CupertinoMotion();
+  /// final trimmedSpring = spring.trimmed(startTrim: 0.1, endTrim: 0.1);
+  /// ```
+  TrimmedMotion trimmed({
+    double startTrim = 0.0,
+    double endTrim = 0.0,
+  }) {
+    return TrimmedMotion(
+      parent: this,
+      startTrim: startTrim,
+      endTrim: endTrim,
+    );
+  }
+
+  /// Creates a [TrimmedMotion] that uses a sub-extent of this motion.
+  TrimmedMotion subExtent({
+    required double extent,
+    double start = 0.0,
+  }) {
+    assert(start + extent <= 1.0, 'start + extent cannot be larger than 1');
+    return TrimmedMotion(
+      parent: this,
+      startTrim: start,
+      endTrim: 1.0 - (start + extent),
+    );
+  }
+}
