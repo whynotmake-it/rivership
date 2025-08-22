@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/phase_sequence.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -308,8 +309,7 @@ class MotionController<T extends Object> extends Animation<T>
   void _tick(Duration elapsed) {
     _lastElapsedDuration = elapsed;
 
-    final elapsedInSeconds =
-        elapsed.inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
+    final elapsedInSeconds = elapsed.toSec();
 
     assert(elapsedInSeconds >= 0, 'elapsed must be non-negative');
 
@@ -539,6 +539,378 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
 
   return a.length == b.length &&
       [for (final (i, m) in a.indexed) m == b.elementAt(i)].every((e) => e);
+}
+
+/// A MotionController specialized for playing phase sequences with type-safe
+/// phase access.
+///
+/// This controller extends [MotionController] to provide reliable phase-based
+/// animations with compile-time type safety and smooth transitions between
+/// phases. This implementation uses the tick method for deterministic phase
+/// progression instead of relying on animation status callbacks.
+///
+/// Example:
+/// ```dart
+/// final controller = PhaseSequenceController<Color, Offset>(
+///   motion: Springs.smooth,
+///   vsync: this,
+///   converter: OffsetMotionConverter(),
+///   initialValue: Offset.zero,
+/// );
+///
+/// final sequence = PhaseSequence.map({
+///   Colors.red: Offset(100, 100),
+///   Colors.green: Offset(200, 200),
+/// }, motion: (_) => Springs.bouncy);
+///
+/// await controller.playSequence(sequence);
+/// ```
+class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
+  /// Creates a PhaseSequenceController with single motion for all dimensions.
+  PhaseSequenceController({
+    required super.motion,
+    required super.vsync,
+    required super.converter,
+    required super.initialValue,
+    super.behavior,
+  });
+
+  /// Creates a PhaseSequenceController with motion per dimension.
+  PhaseSequenceController.motionPerDimension({
+    required super.motionPerDimension,
+    required super.vsync,
+    required super.converter,
+    required super.initialValue,
+    super.behavior,
+  }) : super.motionPerDimension();
+
+  /// Active phase sequence being played
+  PhaseSequence<P, T>? _activeSequence;
+
+  /// Current phase index in the sequence
+  int _currentSequencePhaseIndex = 0;
+
+  /// Direction for ping-pong sequences (1 = forward, -1 = reverse)
+  int _sequenceDirection = 1;
+
+  /// Callback for phase changes
+  void Function(P phase)? _onSequencePhaseChanged;
+
+  /// Whether we're currently playing a sequence
+  bool _isPlayingSequence = false;
+
+  /// Target phase we're currently animating toward
+  P? _currentSequencePhase;
+
+  /// The elapsed time when the current phase started
+  Duration? _currentPhaseStartTime;
+
+  /// Current phase being animated to (null if not playing sequence)
+  P? get currentSequencePhase => _currentSequencePhase;
+
+  /// Whether a sequence is currently being played
+  bool get isPlayingSequence => _isPlayingSequence;
+
+  /// The active sequence (null if not playing)
+  PhaseSequence<P, T>? get activeSequence => _activeSequence;
+
+  /// Progress through current sequence (0.0 to 1.0, accounting for loops)
+  double get sequenceProgress {
+    if (_activeSequence == null || !_isPlayingSequence) return 0;
+
+    final totalPhases = _activeSequence!.phases.length;
+    if (totalPhases <= 1) return 1;
+
+    return _currentSequencePhaseIndex / (totalPhases - 1);
+  }
+
+  @override
+  set motion(Motion value) {
+    _motionPerDimension = List.filled(_motionPerDimension.length, value);
+  }
+
+  @override
+  set motionPerDimension(Iterable<Motion> value) {
+    assert(
+      value.length == _motionPerDimension.length,
+      'the number of motions must match the number of dimensions',
+    );
+    if (motionsEqual(_motionPerDimension, value)) return;
+
+    _motionPerDimension = value.toList();
+  }
+
+  /// Plays through a phase sequence starting from current value/velocity.
+  ///
+  /// Returns a [TickerFuture] that completes when sequence finishes
+  /// (non-looping) or never completes for looping sequences.
+  ///
+  /// If [atPhase] is provided, the sequence will start by animating to that
+  /// specific phase, then continue normal sequence progression.
+  ///
+  /// The [onPhaseChanged] callback is called whenever the animation transitions
+  /// to a new phase.
+  ///
+  /// Any existing sequence or animation is interrupted when this is called.
+  TickerFuture playSequence(
+    PhaseSequence<P, T> sequence, {
+    P? atPhase,
+    void Function(P phase)? onPhaseChanged,
+  }) {
+    // Stop any existing sequence by stopping underlying animation
+    _stopSequence();
+
+    if (sequence.phases.isEmpty) {
+      return TickerFuture.complete();
+    }
+
+    // Initialize sequence state
+    _activeSequence = sequence;
+    _onSequencePhaseChanged = onPhaseChanged;
+    _isPlayingSequence = true;
+    _sequenceDirection = 1;
+
+    // Determine target phase
+    final targetPhase = atPhase ?? sequence.phases.first;
+    _currentSequencePhaseIndex = sequence.phases.indexOf(targetPhase);
+
+    if (_currentSequencePhaseIndex == -1) {
+      throw ArgumentError('Phase $targetPhase not found in sequence');
+    }
+
+    // Set up the initial phase simulation
+    _setupPhaseSimulation(targetPhase);
+
+    // Stop any existing ticker and start fresh
+    _stopTicker(canceled: true);
+    _lastElapsedDuration = Duration.zero;
+    _currentPhaseStartTime = Duration.zero;
+    final tickerFuture = _ticker!.start();
+    _status = AnimationStatus.forward;
+    _checkStatusChanged();
+
+    // Notify phase change
+    _onSequencePhaseChanged?.call(targetPhase);
+
+    return tickerFuture;
+  }
+
+  /// Sets up simulations for transitioning to a specific phase
+  void _setupPhaseSimulation(P phase) {
+    if (!_isPlayingSequence || _activeSequence == null) return;
+
+    final sequence = _activeSequence!;
+    _currentSequencePhase = phase;
+
+    // Get motion and target for this phase
+    final motion = sequence.motionForPhase(phase);
+    final targetValue = sequence.valueForPhase(phase);
+    final target = converter.normalize(targetValue);
+
+    // Update motion for this phase
+    this.motion = motion;
+
+    // Set target for sequence tracking
+    _target = target;
+
+    // Create simulations for this phase, preserving current velocity
+    final velocityValue = velocities;
+    _simulations = [
+      for (var i = 0; i < _dimensions; i++)
+        _motionPerDimension[i].createSimulation(
+          start: _currentValues[i],
+          end: target[i],
+          velocity: velocityValue[i],
+        ),
+    ];
+
+    // Set the start time for this phase to the current elapsed time
+    _currentPhaseStartTime = _lastElapsedDuration ?? Duration.zero;
+  }
+
+  /// Stops any active sequence (internal method)
+  void _stopSequence() {
+    if (!_isPlayingSequence) return;
+
+    _isPlayingSequence = false;
+    _currentSequencePhase = null;
+    _onSequencePhaseChanged = null;
+    _currentPhaseStartTime = null;
+
+    _activeSequence = null;
+  }
+
+  @override
+  void _tick(Duration elapsed) {
+    if (_isPlayingSequence) {
+      // Handle sequence animation manually
+      _tickSequence(elapsed);
+    } else {
+      // Use parent implementation for normal animations
+      super._tick(elapsed);
+    }
+  }
+
+  /// Handles tick updates during sequence playback
+  void _tickSequence(Duration elapsed) {
+    _lastElapsedDuration = elapsed;
+
+    // Calculate elapsed time for the current phase
+    final phaseElapsed = elapsed - (_currentPhaseStartTime ?? Duration.zero);
+    final phaseElapsedInSeconds = phaseElapsed.toSec();
+
+    assert(phaseElapsedInSeconds >= 0, 'phase elapsed must be non-negative');
+
+    // Update current values from simulations using phase-specific elapsed time
+    _currentValues = [
+      for (var i = 0; i < _dimensions; i++)
+        _simulations[i].x(phaseElapsedInSeconds),
+    ];
+
+    // Check if current phase animation is done
+    final currentPhaseComplete =
+        _simulations.every((e) => e.isDone(phaseElapsedInSeconds));
+
+    if (currentPhaseComplete && _isPlayingSequence) {
+      // Current phase is complete, move to next phase
+      _handleSequencePhaseCompletion();
+    }
+
+    notifyListeners();
+    _checkStatusChanged();
+  }
+
+  /// Handles sequence progression when a phase animation completes.
+  void _handleSequencePhaseCompletion() {
+    if (!_isPlayingSequence || _activeSequence == null) {
+      _completeSequence();
+      return;
+    }
+
+    final sequence = _activeSequence!;
+    final totalPhases = sequence.phases.length;
+
+    // Determine next phase index
+    var nextIndex = _currentSequencePhaseIndex + _sequenceDirection;
+
+    // Handle sequence boundaries
+    if (nextIndex >= totalPhases) {
+      // Reached end of sequence
+      switch (sequence.loopMode) {
+        case PhaseLoopMode.none:
+          _completeSequence();
+          return;
+
+        case PhaseLoopMode.loop:
+          nextIndex = 0;
+
+        case PhaseLoopMode.seamless:
+          // Jump to start without animation
+          nextIndex = 0;
+          _jumpToSequencePhase(nextIndex);
+          return;
+
+        case PhaseLoopMode.pingPong:
+          _sequenceDirection = -1;
+          nextIndex = totalPhases - 2;
+          if (nextIndex < 0) nextIndex = 0;
+      }
+    } else if (nextIndex < 0) {
+      // Reached start during ping-pong reverse
+      _sequenceDirection = 1;
+      nextIndex = 1;
+      if (nextIndex >= totalPhases) nextIndex = totalPhases - 1;
+    }
+
+    _currentSequencePhaseIndex = nextIndex;
+
+    // Set up next phase simulation and continue
+    final nextPhase = sequence.phases[nextIndex];
+    _setupPhaseSimulation(nextPhase);
+    _onSequencePhaseChanged?.call(nextPhase);
+  }
+
+  /// Completes the current sequence and stops playback.
+  void _completeSequence() {
+    _isPlayingSequence = false;
+    _currentSequencePhase = null;
+
+    _activeSequence = null;
+    _onSequencePhaseChanged = null;
+
+    // Update status and stop ticker
+    _status = _getStatusWhenDone();
+    _stopTicker();
+    _checkStatusChanged();
+  }
+
+  /// Jumps to a sequence phase without animation.
+  void _jumpToSequencePhase(int phaseIndex) {
+    if (_activeSequence == null) return;
+
+    final sequence = _activeSequence!;
+    final phase = sequence.phases[phaseIndex];
+    final targetValue = sequence.valueForPhase(phase);
+
+    // Set value without animation
+    _internalSetValue(converter.normalize(targetValue));
+
+    _currentSequencePhaseIndex = phaseIndex;
+    _currentSequencePhase = phase;
+
+    // Notify phase change
+    _onSequencePhaseChanged?.call(phase);
+
+    // Immediately continue with the next phase
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_isPlayingSequence) {
+        _handleSequencePhaseCompletion();
+      }
+    });
+  }
+
+  @override
+  set value(T newValue) {
+    // Stop any active sequence when value is set
+    _stopSequence();
+    
+    // Call parent implementation
+    super.value = newValue;
+  }
+
+
+
+  @override
+  TickerFuture animateTo(
+    T target, {
+    T? from,
+    T? withVelocity,
+  }) {
+    // Stop any active sequence when a manual animateTo is called
+    _stopSequence();
+
+    // Call parent implementation
+    return super.animateTo(
+      target,
+      from: from,
+      withVelocity: withVelocity,
+    );
+  }
+
+  @override
+  TickerFuture stop({bool canceled = false}) {
+    // Stop sequence when animation is stopped
+    _stopSequence();
+
+    // Call parent implementation
+    return super.stop(canceled: canceled);
+  }
+
+  @override
+  void dispose() {
+    _stopSequence();
+    super.dispose();
+  }
 }
 
 extension on Duration {

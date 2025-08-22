@@ -555,18 +555,16 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
 
     // Transform the screen path for landscape orientation
     final transform = Matrix4.identity()
-      ..translateByDouble(
+      // ignore: deprecated_member_use
+      ..translate(
         deviceFrameSize.width / 2,
         deviceFrameSize.height / 2,
-        0,
-        0,
       )
       ..rotateZ(1.5708) // 90 degrees in radians
-      ..translateByDouble(
+      // ignore: deprecated_member_use
+      ..translate(
         -device.frameSize.width / 2,
         -device.frameSize.height / 2,
-        0,
-        0,
       );
 
     screenPath = device.screenPath.transform(transform.storage);
