@@ -44,17 +44,17 @@ abstract class PhaseSequence<T extends Object, P> {
     return const DeepCollectionEquality().equals(phases, other.phases) &&
         const DeepCollectionEquality().equals(
           phases.map(valueForPhase),
-          other.phases.map(valueForPhase),
+          other.phases.map(other.valueForPhase),
         ) &&
         const DeepCollectionEquality().equals(
           phases.map(motionForPhase),
-          other.phases.map(motionForPhase),
+          other.phases.map(other.motionForPhase),
         );
   }
 
   @override
   int get hashCode => Object.hashAll([
-        phases,
+        ...phases,
         ...phases.map(valueForPhase),
         ...phases.map(motionForPhase),
       ]);

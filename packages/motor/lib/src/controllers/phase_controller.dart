@@ -129,6 +129,10 @@ class PhaseController<T extends Object, P> extends Animation<T>
     }
   }
 
+  bool get _canAdvance => _hasMorePhases || _loopMode.isLooping;
+
+  bool get _hasMorePhases => _currentPhaseIndex < sequence.phases.length - 1;
+
   /// Moves to the next phase in the sequence.
   void nextPhase() {
     if (_currentPhaseIndex >= sequence.phases.length - 1) {
@@ -161,10 +165,6 @@ class PhaseController<T extends Object, P> extends Animation<T>
     }
     _goToPhaseIndex(index);
   }
-
-  bool get _canAdvance => _hasMorePhases || _loopMode.isLooping;
-
-  bool get _hasMorePhases => _currentPhaseIndex < sequence.phases.length - 1;
 
   /// Starts the phase animation sequence.
   ///

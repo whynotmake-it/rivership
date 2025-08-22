@@ -118,13 +118,13 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
   @override
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence<CardProperties, CardPhase>(
-      motion: (_) => CupertinoMotion.smooth(),
+      motion: (_) => CupertinoMotion.interactive(),
       phaseMap: {
         CardPhase.idle: const CardProperties(
-          width: 400,
+          width: 1020,
           height: 100,
           borderRadius: 12,
-          color: Colors.blue,
+          color: Colors.red,
           elevation: 4,
         ),
         CardPhase.hover: const CardProperties(
