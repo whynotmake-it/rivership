@@ -1,6 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion.dart';
 
+/// A function that provides the motion for a specific phase.
+typedef MotionFor<P> = Motion Function(P phase);
+
 /// {@template PhaseSequence}
 /// Defines a sequence of phases and their corresponding property values
 /// for phase-based animations.
@@ -32,10 +35,21 @@ abstract class PhaseSequence<T extends Object, P> {
   Motion motionForPhase(P phase);
 }
 
+/// Allows setting a callback that will be used to obtain the motion for a given
+/// phase.
+mixin PhaseCallbackMixin<T extends Object, P> on PhaseSequence<T, P> {
+  /// A function that provides the motion for a specific phase.
+  MotionFor<P> get motion;
+
+  @override
+  Motion motionForPhase(P phase) => motion(phase);
+}
+
 /// A simple implementation of [PhaseSequence] that uses a map to define
 /// phase-to-value relationships.
 @immutable
-class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
+class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P>
+    with PhaseCallbackMixin<T, P> {
   /// Creates a [MapPhaseSequence] with the given phase-to-value mapping.
   const MapPhaseSequence({
     required this.phaseMap,
@@ -45,8 +59,8 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
   /// The mapping from phases to their corresponding property values.
   final Map<P, T> phaseMap;
 
-  /// The motion to use for phase transitions.
-  final Motion motion;
+  @override
+  final MotionFor<P> motion;
 
   @override
   List<P> get phases => phaseMap.keys.toList();
@@ -61,13 +75,14 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P> {
   }
 
   @override
-  Motion motionForPhase(P phase) => motion;
+  Motion motionForPhase(P phase) => motion(phase);
 }
 
 /// A phase sequence for simple value-based phases where the phase
 /// itself IS the interpolatable value.
 @immutable
-class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
+class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
+    with PhaseCallbackMixin<T, T> {
   /// Creates a [ValuePhaseSequence] with the given values.
   const ValuePhaseSequence({
     required this.values,
@@ -77,8 +92,8 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
   /// The values to cycle through as both phases and property values.
   final List<T> values;
 
-  /// The motion to use for phase transitions.
-  final Motion motion;
+  @override
+  final MotionFor<T> motion;
 
   @override
   List<T> get phases => values;
@@ -87,7 +102,7 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T> {
   T valueForPhase(T phase) => phase;
 
   @override
-  Motion motionForPhase(T phase) => motion;
+  Motion motionForPhase(T phase) => motion(phase);
 }
 
 /// Wraps a [PhaseSequence] and adds per-phase motion customization.

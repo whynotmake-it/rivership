@@ -267,13 +267,13 @@ class _SinglePhaseMotionBuilderState<P>
     // For numeric phases, use the phase value directly
     if (P == double || P == int) {
       _sequence = ValuePhaseSequence<double>(
-        motion: widget.motion,
+        motion: (_) => widget.motion,
         values: widget.phases.map((p) => (p as num).toDouble()).toList(),
       ) as PhaseSequence<double, P>;
     } else {
       // For non-numeric phases, use phase index as the animated value
       _sequence = MapPhaseSequence<double, P>(
-        motion: widget.motion,
+        motion: (_) => widget.motion,
         phaseMap: {
           for (final phase in widget.phases)
             phase: widget.phases.indexOf(phase).toDouble(),
