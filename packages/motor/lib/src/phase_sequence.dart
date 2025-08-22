@@ -1,5 +1,5 @@
-import 'package:flutter/widgets.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion.dart';
 
 /// A function that provides the motion for a specific phase.
@@ -91,13 +91,7 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P>
   List<P> get phases => phaseMap.keys.toList();
 
   @override
-  T valueForPhase(P phase) {
-    final value = phaseMap[phase];
-    if (value == null) {
-      throw ArgumentError('No value defined for phase: $phase');
-    }
-    return value;
-  }
+  T valueForPhase(P phase) => phaseMap[phase]!;
 
   @override
   Motion motionForPhase(P phase) => motion(phase);

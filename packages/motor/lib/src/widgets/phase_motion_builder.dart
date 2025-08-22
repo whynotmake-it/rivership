@@ -133,14 +133,19 @@ class _PhaseMotionBuilderState<T extends Object, P>
       _controller.sequence = widget.sequence;
     }
 
+    if (widget.loopMode != oldWidget.loopMode) {
+      _controller.loopMode = widget.loopMode;
+    }
+
     // Check if trigger changed
     if (widget.restartTrigger != _lastTrigger) {
       _lastTrigger = widget.restartTrigger;
       _controller.reset();
-    }
 
-    if (widget.loopMode != oldWidget.loopMode) {
-      _controller.loopMode = widget.loopMode;
+      if (widget.playing) {
+        _controller.start();
+        return;
+      }
     }
 
     if (widget.playing != oldWidget.playing) {

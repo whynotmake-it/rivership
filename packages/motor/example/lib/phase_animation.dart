@@ -32,13 +32,6 @@ class PhaseAnimationExamples extends StatelessWidget {
               ButtonPhaseExample(),
               SizedBox(height: 32),
               Text(
-                'Loading Phase Animation',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              LoadingPhaseExample(),
-              SizedBox(height: 32),
-              Text(
                 'Complex Multi-Property Animation',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
@@ -111,44 +104,6 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
   }
 }
 
-/// Loading phase animation example.
-class LoadingPhaseExample extends StatelessWidget {
-  const LoadingPhaseExample({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final sequence = ValuePhaseSequence<double>(
-      motion: (_) => CupertinoMotion.smooth(),
-      values: [0.2, 1.0, 0.2, 1.0, 0.2], // Opacity phases for pulsing effect
-    );
-
-    return PhaseMotionBuilder<double, double>(
-      sequence: sequence,
-      converter: const SingleMotionConverter(),
-      loopMode: PhaseLoopMode.loop,
-      onPhaseChanged: (phase) => debugPrint('Loading phase changed to: $phase'),
-      builder: (context, opacity, phase, child) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
-            // Stagger the animation for each dot
-            final staggeredOpacity = ((opacity + index * 0.2).clamp(0.1, 1.0));
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: CupertinoColors.activeBlue.withOpacity(staggeredOpacity),
-                shape: BoxShape.circle,
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
 /// Complex phase animation with multiple properties.
 class ComplexPhaseExample extends StatefulWidget {
   const ComplexPhaseExample({super.key});
@@ -163,10 +118,10 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
   @override
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence<CardProperties, CardPhase>(
-      motion: (_) => CupertinoMotion.bouncy(),
+      motion: (_) => CupertinoMotion.smooth(),
       phaseMap: {
         CardPhase.idle: const CardProperties(
-          width: 200,
+          width: 400,
           height: 100,
           borderRadius: 12,
           color: Colors.blue,
@@ -207,10 +162,7 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
           sequence: sequence,
           converter: const CardPropertiesConverter(),
           restartTrigger: animationTrigger,
-          loopMode: PhaseLoopMode.pingPong,
-          onPhaseChanged: (phase) {
-            debugPrint('Phase changed to: $phase');
-          },
+          loopMode: PhaseLoopMode.loop,
           builder: (context, properties, phase, child) {
             return Container(
               width: properties.width,

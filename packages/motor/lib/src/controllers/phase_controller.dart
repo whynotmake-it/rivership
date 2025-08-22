@@ -201,8 +201,10 @@ class PhaseController<T extends Object, P> extends Animation<T>
   /// Resets the sequence to the initial phase.
   void reset() {
     _isForward = true;
-    notifyListeners();
-    _goToPhaseIndex(0);
+
+    if (currentPhaseIndex != 0) {
+      _goToPhaseIndex(0);
+    }
   }
 
   /// Disposes of the controller and frees resources.
