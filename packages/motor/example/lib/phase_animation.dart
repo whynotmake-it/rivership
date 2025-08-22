@@ -266,9 +266,9 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
         value.width,
         value.height,
         value.borderRadius,
-        value.color.red.toDouble(),
-        value.color.green.toDouble(),
-        value.color.blue.toDouble(),
+        value.color.r.toDouble(),
+        value.color.g.toDouble(),
+        value.color.b.toDouble(),
         value.elevation,
       ];
 
@@ -277,11 +277,11 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
         width: values[0],
         height: values[1],
         borderRadius: values[2],
-        color: Color.fromARGB(
-          255,
-          values[3].round().clamp(0, 255),
-          values[4].round().clamp(0, 255),
-          values[5].round().clamp(0, 255),
+        color: Color.from(
+          alpha: 1,
+          red: values[3],
+          green: values[4],
+          blue: values[5],
         ),
         elevation: values[6],
       );
