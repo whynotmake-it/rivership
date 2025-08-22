@@ -267,6 +267,8 @@ class _SleightOfHandBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final offstage = manifest != null && sleightOfHand == null;
+
     if (placeholderSize case final size?) {
       return AnimatedBuilder(
         animation:
@@ -286,9 +288,9 @@ class _SleightOfHandBuilder extends StatelessWidget {
                       sleightOfHand?.sizeY ?? size.height,
                     ),
                     child: Offstage(
-                      offstage: manifest != null && sleightOfHand == null,
+                      offstage: offstage,
                       child: TickerMode(
-                        enabled: manifest == null || sleightOfHand != null,
+                        enabled: !offstage,
                         child: KeyedSubtree(
                           key: globalKey,
                           child: child!,
@@ -410,7 +412,7 @@ class HeroineController extends NavigatorObserver {
     }
     final newRouteAnimation = toRoute.animation!;
     final oldRouteAnimation = fromRoute.animation!;
-    final HeroFlightDirection flightType;
+    final HeroFlightDirection? flightType;
     switch ((
       isUserGestureTransition,
       oldRouteAnimation.status,
@@ -422,28 +424,37 @@ class HeroineController extends NavigatorObserver {
       case (_, _, AnimationStatus.forward):
         flightType = HeroFlightDirection.push;
       default:
-        return;
+        flightType = null;
     }
 
     // A user gesture may have already completed the pop, or we might be the
     // initial route
-    switch (flightType) {
-      case HeroFlightDirection.pop:
-        if (fromRoute.animation!.value == 0.0) {
-          return;
-        }
-      case HeroFlightDirection.push:
-        if (toRoute.animation!.value == 1.0) {
-          return;
-        }
+    if (flightType != null) {
+      switch (flightType) {
+        case HeroFlightDirection.pop:
+          if (fromRoute.animation!.value == 0.0) {
+            return;
+          }
+        case HeroFlightDirection.push:
+          if (toRoute.animation!.value == 1.0) {
+            return;
+          }
+      }
     }
 
     // For pop transitions driven by a user gesture: if the "to" page has
     // maintainState = true, then the hero's final dimensions can be measured
     // immediately because their page's layout is still valid.
+    // Unless due to directly
+    // adding routes to the pages stack causing the route to never get laid out.
+    final fromRouteRenderBox =
+        toRoute.subtreeContext?.findRenderObject() as RenderBox?;
+    final hasValidSize = (fromRouteRenderBox?.hasSize ?? false) &&
+        fromRouteRenderBox!.size.isFinite;
     if (isUserGestureTransition &&
         flightType == HeroFlightDirection.pop &&
-        toRoute.maintainState) {
+        toRoute.maintainState &&
+        hasValidSize) {
       _startHeroTransition(
         fromRoute,
         toRoute,
@@ -454,10 +465,9 @@ class HeroineController extends NavigatorObserver {
       // Otherwise, delay measuring until the end of the next frame to allow
       // the 'to' route to build and layout.
 
-      // Putting a route offstage changes its animation value to 1.0. Once this
-      // frame completes, we'll know where the heroes in the `to` route are
-      // going to end up, and the `to` route will go back onstage.
-      toRoute.offstage = toRoute.animation!.value == 0.0;
+      // This is removed as it caused a flicker. However, I'm scared of side
+      // effects
+      // toRoute.offstage = toRoute.animation!.value == 0.0;
 
       WidgetsBinding.instance.addPostFrameCallback(
         (Duration value) {
@@ -481,13 +491,9 @@ class HeroineController extends NavigatorObserver {
   void _startHeroTransition(
     PageRoute<dynamic> from,
     PageRoute<dynamic> to,
-    HeroFlightDirection flightType,
+    HeroFlightDirection? flightType,
     bool isUserGestureTransition,
   ) {
-    // If the `to` route was offstage, then we're implicitly restoring its
-    // animation value back to what it was before it was "moved" offstage.
-    to.offstage = false;
-
     final navigator = this.navigator;
     final overlay = navigator?.overlay;
     // If the navigator or the overlay was removed before this end-of-frame
@@ -560,7 +566,7 @@ class HeroineController extends NavigatorObserver {
       );
 
       final existingFlight = _flights[tag];
-      final manifest = toHero == null
+      final manifest = toHero == null || flightType == null
           ? null
           : _FlightManifest(
               direction: flightType,

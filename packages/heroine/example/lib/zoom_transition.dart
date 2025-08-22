@@ -247,12 +247,6 @@ class HeroineZoomRoute<T> extends PageRoute<T>
   bool get opaque => false;
 
   @override
-  Simulation? createSimulation({required bool forward}) {
-    // TODO: implement createSimulation
-    return super.createSimulation(forward: forward);
-  }
-
-  @override
   Widget buildContent(BuildContext context) => HeroMode(
         // Flutter heroes begone
         enabled: false,
@@ -284,6 +278,7 @@ class HeroineZoomRoute<T> extends PageRoute<T>
   Widget buildTransitions(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation, Widget child) {
     return child;
+    //return FadeTransition(opacity: animation, child: child);
   }
 
   @override
