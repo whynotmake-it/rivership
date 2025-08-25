@@ -21,6 +21,8 @@ dependencies:
     path: ../../packages/motor/example
   springster_example:
     path: ../../packages/springster/example
+  stupid_simple_sheet_example:
+    path: ../../packages/stupid_simple_sheet/example
 
 
   rivership: ^0.3.0-dev.7

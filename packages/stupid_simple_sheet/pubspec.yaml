@@ -1,0 +1,27 @@
+name: stupid_simple_sheet
+description: A simple sheet widget for Flutter.
+version: 0.0.1
+resolution: workspace
+
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/stupid_simple_sheet
+homepage: https://whynotmake.it
+
+topics: [animation, motion, physics, spring, curve]
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ">=1.15.0 <2.0.0" 
+  motor: 1.0.0-dev.4
+  scroll_drag_detector: ^0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  mocktail: ^1.0.3
+  spot: ^0.18.0

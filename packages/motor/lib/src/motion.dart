@@ -2,6 +2,8 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
 
+export 'motion_curve.dart';
+
 /// {@template Motion}
 /// A motion pattern such as spring physics or duration-based curves.
 ///

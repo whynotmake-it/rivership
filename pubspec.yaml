@@ -10,11 +10,17 @@ environment:
 workspace:
   - apps/example
   - packages/heroine
+  - packages/heroine/example
   - packages/motor
+  - packages/motor/example
   - packages/rivership
   - packages/rivership_test
+  - packages/scroll_drag_detector
+  - packages/stupid_simple_sheet
+  - packages/stupid_simple_sheet/example
   - packages/snaptest
   - packages/springster
+  - packages/springster/example
   
 dev_dependencies:
   lintervention: ^0.3.1

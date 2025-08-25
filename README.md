@@ -19,6 +19,8 @@ This monorepo contains Rivership, and all its associated packages. Check out the
 | [springster](./packages/springster)         | [![Pub Version](https://img.shields.io/pub/v/springster)](https://pub.dev/packages/springster)     | Spring animations and simulations, simplified.                           |
 | [heroine](./packages/heroine)               | [![Pub Version](https://img.shields.io/pub/v/heroine)](https://pub.dev/packages/heroine)        | The queen of hero transitions. Flutter's most addictive interactions.    |
 | [snaptest](./packages/snaptest)              | [![Pub Version](https://img.shields.io/pub/v/snaptest)](https://pub.dev/packages/snaptest)       | Snap photos in your widget tests.                                        |
+| [scroll_drag_detector](./packages/scroll_drag_detector) | [![Pub Version](https://img.shields.io/pub/v/scroll_drag_detector)](https://pub.dev/packages/scroll_drag_detector) | A drag gesture detector that can deal with scroll views inside of it.    |
+| [stupid_simple_sheet](./packages/stupid_simple_sheet) | [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet) | A simple sheet widget for Flutter.                                       |
 
 
 ---
