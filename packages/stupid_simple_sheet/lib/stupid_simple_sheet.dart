@@ -262,8 +262,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // When dragging up past fully open, reduce the delta with diminishing
       // returns
       final overshoot = currentValue - 1.0;
-      final resistance =
-          1.0 / (1.0 + overshoot * 100.0); // Exponential resistance
+          1.0 / (1.0 + overshoot * overshootDragResistance); // Exponential resistance
       adjustedDelta = delta * resistance;
     }
 
