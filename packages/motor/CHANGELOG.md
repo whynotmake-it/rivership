@@ -1,6 +1,5 @@
 ## 1.0.0-dev.5
-
- - **FEAT**: stupid simple sheet and drag detector (#154).
+ - Nothing relevant
 
 ## 1.0.0-dev.4
 
