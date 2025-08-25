@@ -127,6 +127,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// The motion configuration for the sheet animation.
   Motion get motion;
 
+  /// How much resistance the sheet should give when the user tries to drag
+  /// it past it's fully opened state.
+  double get overshootResistance => 100;
+
   double? _dragEndVelocity;
 
   bool _shouldDismiss(double velocity, double currentValue) {
@@ -251,7 +255,19 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   }
 
   void _handleDragUpdate(BuildContext context, double delta) {
-    final newValue = (controller?.value ?? 0) - delta;
+    final currentValue = controller?.value ?? 0;
+    var adjustedDelta = delta;
+
+    // Apply diminishing returns when dragging past fully open (value > 1)
+    if (currentValue > 1.0 && delta < 0) {
+      // When dragging up past fully open, reduce the delta with diminishing returns
+      final overshoot = currentValue - 1.0;
+      final resistance =
+          1.0 / (1.0 + overshoot * 100.0); // Exponential resistance
+      adjustedDelta = delta * resistance;
+    }
+
+    final newValue = currentValue - adjustedDelta;
     controller?.value = newValue;
   }
 
@@ -261,19 +277,29 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ) {
     final currentValue = controller!.value;
 
-    // Determine if we should dismiss based on velocity and position
-    final shouldDismiss = _shouldDismiss(velocity, currentValue);
-
     _dragEndVelocity = -velocity / context.size!.height;
 
-    if (shouldDismiss) {
-      Navigator.of(context).pop();
-    } else {
+    // If dragged past fully open, always snap back to 1.0
+    if (currentValue > 1.0) {
       final backSim = motion.createSimulation(
         start: currentValue,
+        end: 1.0,
         velocity: _dragEndVelocity!,
       );
       controller!.animateWith(backSim);
+    } else {
+      // Determine if we should dismiss based on velocity and position
+      final shouldDismiss = _shouldDismiss(velocity, currentValue);
+
+      if (shouldDismiss) {
+        Navigator.of(context).pop();
+      } else {
+        final backSim = motion.createSimulation(
+          start: currentValue,
+          velocity: _dragEndVelocity!,
+        );
+        controller!.animateWith(backSim);
+      }
     }
     Navigator.of(context).didStopUserGesture();
   }

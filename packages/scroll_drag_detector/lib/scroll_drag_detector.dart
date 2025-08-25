@@ -236,7 +236,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _handleDragEnd(n.metrics.axis, DragEndDetails());
+              _handleDragEnd(n.metrics.axis, n.dragDetails ?? DragEndDetails());
             }
           });
         }
