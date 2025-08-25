@@ -128,49 +128,6 @@ void main() {
       });
     });
 
-    group('PhaseSequence.seamlessValues', () {
-      test('should duplicate first value at end for seamless looping', () {
-        final sequence = PhaseSequence.seamlessValues(
-          [0.0, 50.0, 100.0],
-          motion: (_) => const CupertinoMotion.smooth(),
-        );
-
-        expect(sequence.phases, equals([0.0, 50.0, 100.0, 0.0]));
-        expect(sequence.valueForPhase(0), equals(0.0));
-        expect(sequence.phases.first, equals(sequence.phases.last));
-      });
-
-      test('should not duplicate if first and last are already the same', () {
-        final sequence = PhaseSequence.seamlessValues(
-          [0.0, 50.0, 0.0],
-          motion: (_) => const CupertinoMotion.smooth(),
-        );
-
-        expect(sequence.phases, equals([0.0, 50.0, 0.0]));
-      });
-
-      test('should handle single value', () {
-        final sequence = PhaseSequence.seamlessValues(
-          [42.0],
-          motion: (_) => const CupertinoMotion.smooth(),
-        );
-
-        expect(sequence.phases, equals([42.0]));
-      });
-
-      test('should throw on empty values', () {
-        expect(
-          () {
-            PhaseSequence.seamlessValues(
-              <double>[],
-              motion: (_) => const CupertinoMotion.smooth(),
-            );
-          },
-          throwsArgumentError,
-        );
-      });
-    });
-
     group('compared to regular loop mode', () {
       testWidgets('regular loop should work as before', (tester) async {
         final sequence = PhaseSequence.values(

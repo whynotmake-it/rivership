@@ -1,6 +1,6 @@
 import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 
 /// Comprehensive example demonstrating phase animations with Motor.
@@ -31,6 +31,7 @@ class PhaseAnimationExamples extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionHeader(
+                  context,
                   'Simple Scale Animation',
                   'Tap the button to trigger a bouncy scale sequence through multiple phases',
                 ),
@@ -38,23 +39,23 @@ class PhaseAnimationExamples extends StatelessWidget {
                 const BouncyButtonExample(),
                 const SizedBox(height: 40),
                 _buildSectionHeader(
+                  context,
                   'Loading Sequence',
                   'Watch a continuous loading animation cycle through different phases',
                 ),
                 const SizedBox(height: 20),
                 const LoadingPhaseExample(),
                 const SizedBox(height: 40),
-                
                 _buildSectionHeader(
+                  context,
                   'Seamless vs Regular Loop',
                   'Compare seamless looping (top) with regular looping (bottom)',
                 ),
                 const SizedBox(height: 20),
                 const LoopComparisonExample(),
-                
                 const SizedBox(height: 40),
-                
                 _buildSectionHeader(
+                  context,
                   'Interactive Card States',
                   'Tap to cycle through different interactive states with smooth transitions',
                 ),
@@ -68,24 +69,29 @@ class PhaseAnimationExamples extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, String description) {
+  Widget _buildSectionHeader(
+      BuildContext context, String title, String description) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: CupertinoColors.label,
+            color: CupertinoTheme.of(context).textTheme.textStyle.color,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
-            color: CupertinoColors.secondaryLabel,
+            color: CupertinoTheme.of(context)
+                .textTheme
+                .textStyle
+                .color
+                ?.withValues(alpha: 0.7),
             height: 1.4,
           ),
         ),
@@ -169,9 +175,13 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
           const SizedBox(height: 16),
           Text(
             'Taps: $tapCount',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
-              color: CupertinoColors.secondaryLabel,
+              color: CupertinoTheme.of(context)
+                  .textTheme
+                  .textStyle
+                  .color
+                  ?.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -242,8 +252,8 @@ class LoadingPhaseExample extends StatelessWidget {
 
 /// Demonstrates the difference between seamless and regular loop modes.
 ///
-/// This example shows two identical animations side by side - one using
-/// seamless looping and one using regular looping to highlight the difference.
+/// This example shows two rotating squares - one using seamless looping
+/// and one using regular looping to clearly show the jump at the end.
 class LoopComparisonExample extends StatelessWidget {
   const LoopComparisonExample({super.key});
 
@@ -273,31 +283,57 @@ class LoopComparisonExample extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              SinglePhaseMotionBuilder<double>(
-                phases: const [0.0, 100.0, 200.0, 0.0], // Note: duplicated first value
-                motion: CupertinoMotion.smooth(),
-                loopMode: PhaseLoopMode.seamless,
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(value - 100, 0),
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: CupertinoColors.activeBlue,
-                        shape: BoxShape.circle,
+              SizedBox(
+                height: 60,
+                child: SinglePhaseMotionBuilder<double>(
+                  phases: const [
+                    0.0,
+                    math.pi / 2,
+                    math.pi,
+                    3 * math.pi / 2,
+                    2 * math.pi
+                  ], // Full rotation with return to start
+                  motion: CupertinoMotion.smooth(),
+                  loopMode: PhaseLoopMode.seamless,
+                  builder: (context, rotation, child) {
+                    return Center(
+                      child: Transform.rotate(
+                        angle: rotation,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.activeBlue,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: CupertinoColors.activeBlue
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              CupertinoIcons.arrow_up,
+                              color: CupertinoColors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
-        
+
         const SizedBox(height: 20),
-        
-        // Regular looping example  
+
+        // Regular looping example
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -319,34 +355,63 @@ class LoopComparisonExample extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              SinglePhaseMotionBuilder<double>(
-                phases: const [0.0, 100.0, 200.0], // No duplicated value
-                motion: CupertinoMotion.smooth(),
-                loopMode: PhaseLoopMode.loop,
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(value - 100, 0),
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: CupertinoColors.destructiveRed,
-                        shape: BoxShape.circle,
+              SizedBox(
+                height: 60,
+                child: SinglePhaseMotionBuilder<double>(
+                  phases: const [
+                    0.0,
+                    math.pi / 2,
+                    math.pi,
+                    3 * math.pi / 2
+                  ], // No return to start
+                  motion: CupertinoMotion.smooth(),
+                  loopMode: PhaseLoopMode.loop,
+                  builder: (context, rotation, child) {
+                    return Center(
+                      child: Transform.rotate(
+                        angle: rotation,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.destructiveRed,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: CupertinoColors.destructiveRed
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              CupertinoIcons.arrow_up,
+                              color: CupertinoColors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
-        
+
         const SizedBox(height: 12),
-        const Text(
-          'Notice how the top animation loops smoothly while the bottom has a sudden jump',
+        Text(
+          'Watch the arrows: seamless loops smoothly, regular jumps from 270° back to 0°',
           style: TextStyle(
             fontSize: 14,
-            color: CupertinoColors.secondaryLabel,
+            color: CupertinoTheme.of(context)
+                .textTheme
+                .textStyle
+                .color
+                ?.withValues(alpha: 0.7),
             fontStyle: FontStyle.italic,
           ),
           textAlign: TextAlign.center,
@@ -469,7 +534,11 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
             'Tap the card to cycle through states',
             style: TextStyle(
               fontSize: 14,
-              color: CupertinoColors.secondaryLabel,
+              color: CupertinoTheme.of(context)
+                  .textTheme
+                  .textStyle
+                  .color
+                  ?.withValues(alpha: .7),
               fontStyle: FontStyle.italic,
             ),
           ),
