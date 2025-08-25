@@ -1,3 +1,9 @@
+## 0.5.0-dev.8
+
+ - **FIX**: export all motor motion types from heroine.
+ - **FIX**: heroine transitions flicker with flutter 3.35.
+ - **FEAT**: stupid simple sheet and drag detector (#154).
+
 ## 0.5.0-dev.7
 
  - Update a dependency to the latest release.

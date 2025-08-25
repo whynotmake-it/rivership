@@ -1,3 +1,7 @@
+## 1.0.0-dev.5
+
+ - **FEAT**: stupid simple sheet and drag detector (#154).
+
 ## 1.0.0-dev.4
 
  - **FIX**: use the correct parameters for `MaterialSpringMotion` (#127).
