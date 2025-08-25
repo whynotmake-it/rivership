@@ -212,7 +212,7 @@ class LoadingPhaseExample extends StatelessWidget {
       ),
       child: Center(
         child: SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 0.25, 0.5, 0.75],
+          phases: const [0.0, 0.333, 0.666, 1],
           motion: CupertinoMotion.smooth(),
           loopMode: PhaseLoopMode.seamless,
           builder: (context, progress, child) {
@@ -220,11 +220,9 @@ class LoadingPhaseExample extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: List.generate(3, (index) {
                 // Create a smooth circular wave effect across the dots
-                final wavePosition = (progress + (index * 0.33)) % 1.0;
+                final wavePosition = ((index * 0.33) - progress) % 1.0;
                 final scale = 0.6 +
                     (0.4 * (0.5 + 0.5 * math.sin(wavePosition * 2 * math.pi)));
-                final opacity = 0.3 +
-                    (0.7 * (0.5 + 0.5 * math.sin(wavePosition * 2 * math.pi)));
 
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -234,8 +232,7 @@ class LoadingPhaseExample extends StatelessWidget {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: CupertinoColors.activeBlue
-                            .withValues(alpha: opacity),
+                        color: CupertinoColors.activeBlue,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -291,7 +288,7 @@ class LoopComparisonExample extends StatelessWidget {
                     math.pi / 2,
                     math.pi,
                     3 * math.pi / 2,
-                    2 * math.pi
+                    2 * math.pi,
                   ], // Full rotation with return to start
                   motion: CupertinoMotion.smooth(),
                   loopMode: PhaseLoopMode.seamless,
@@ -362,7 +359,8 @@ class LoopComparisonExample extends StatelessWidget {
                     0.0,
                     math.pi / 2,
                     math.pi,
-                    3 * math.pi / 2
+                    3 * math.pi / 2,
+                    2 * math.pi,
                   ], // No return to start
                   motion: CupertinoMotion.smooth(),
                   loopMode: PhaseLoopMode.loop,
