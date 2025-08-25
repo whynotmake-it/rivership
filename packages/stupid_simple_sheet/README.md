@@ -1,4 +1,4 @@
-# Scroll Drag Detector
+# Stupid Simple Sheet
 
 
 [![Pub Version](https://img.shields.io/pub/v/motor)](https://pub.dev/packages/scroll_drag_detector)
@@ -7,9 +7,8 @@
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 
-A special version of `GestureDetector` that picks up overscrolling ScrollViews inside of it.
-
 Unlocks easy draggable scrollable sheets in Flutter.
+
 ## Installation 💻
 
 **❗ In order to start using Scroll Drag Detector you must have the [Dart SDK][dart_install_link] installed on your machine.**

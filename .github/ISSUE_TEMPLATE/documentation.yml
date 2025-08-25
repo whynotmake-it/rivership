@@ -9,10 +9,14 @@ body:
       label: Package
       description: Which package's documentation needs to be improved?
       options:
-        - rivership
         - heroine
-        - springster
+        - motor
+        - rivership
         - rivership_test
+        - scroll_drag_detector
+        - snaptest
+        - springster
+        - stupid_simple_sheet
         - all
     validations:
       required: true
