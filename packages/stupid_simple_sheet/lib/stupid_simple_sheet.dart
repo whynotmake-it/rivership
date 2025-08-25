@@ -181,20 +181,16 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return MediaQuery.removePadding(
-      removeTop: true,
-      context: context,
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, child) => _RelativeGestureDetector(
-          scrollableCanMoveBack: animation.value < 1,
-          onRelativeDragStart: () => _handleDragStart(context),
-          onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
-          onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
-          child: child!,
-        ),
-        child: buildContent(context),
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => _RelativeGestureDetector(
+        scrollableCanMoveBack: animation.value < 1,
+        onRelativeDragStart: () => _handleDragStart(context),
+        onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
+        onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
+        child: child!,
       ),
+      child: buildContent(context),
     );
   }
 
@@ -221,30 +217,27 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 100),
-      child: AnimatedBuilder(
-        animation: controller!,
-        builder: (context, _) {
-          final value = controller!.value;
+    return AnimatedBuilder(
+      animation: controller!,
+      builder: (context, _) {
+        final value = controller!.value;
 
-          var transformedChild = child;
-          // Normal slide up transition
-          transformedChild = FractionalTranslation(
-            translation: Offset(0, 1 - value),
-            child: transformedChild,
-          );
+        var transformedChild = child;
+        // Normal slide up transition
+        transformedChild = FractionalTranslation(
+          translation: Offset(0, 1 - value),
+          child: transformedChild,
+        );
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(child: transformedChild),
-            ],
-          );
-        },
-      ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Flexible(child: transformedChild),
+          ],
+        );
+      },
     );
   }
 
