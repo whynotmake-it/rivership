@@ -580,3 +580,137 @@ class MaterialSpringMotion extends SpringMotion {
     );
   }
 }
+
+/// Takes a motion and trims it by extending the simulation range.
+///
+/// [TrimmedMotion] allows you to use only the "middle portion" of another
+/// motion's curve by simulating a larger range. For example, if you want
+/// a 0→1 animation that skips the first and last 20% of a spring's
+/// characteristic curve, you'd trim by 0.2 on each end.
+///
+/// The parent simulation runs over an extended range so that when you
+/// sample the desired output range, you get the trimmed portion.
+@immutable
+class TrimmedMotion extends Motion {
+  /// Creates a trimmed motion that uses the middle portion of the parent motion.
+  ///
+  /// Parameters:
+  ///   * [parent] - The motion to trim
+  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
+  ///   * [scaleVelocity] - Whether to scale velocity proportionally to the
+  ///     extended range (defaults to true)
+  ///
+  /// With startTrim=0.2 and endTrim=0.2, your 0→1 motion will use the
+  /// middle 60% of the parent motion's characteristic curve.
+  const TrimmedMotion({
+    required this.parent,
+    required this.startTrim,
+    required this.endTrim,
+    this.scaleVelocity = true,
+  })  : assert(startTrim >= 0.0, 'startTrim must be non-negative'),
+        assert(endTrim >= 0.0, 'endTrim must be non-negative'),
+        assert(
+          startTrim + endTrim < 1.0,
+          'startTrim + endTrim must be less than 1.0',
+        );
+
+  /// The motion to trim.
+  final Motion parent;
+
+  /// Amount to trim from the start of the motion curve.
+  final double startTrim;
+
+  /// Amount to trim from the end of the motion curve.
+  final double endTrim;
+
+  /// Whether to scale the initial velocity proportionally to the extended range.
+  ///
+  /// When true (default), the velocity is scaled by the reciprocal of the
+  /// usable portion to maintain the same relative velocity in the trimmed
+  /// motion. When false, the original velocity is passed through unchanged.
+  final bool scaleVelocity;
+
+  @override
+  bool get needsSettle => parent.needsSettle;
+
+  @override
+  bool get unboundedWillSettle => parent.unboundedWillSettle;
+
+  @override
+  Tolerance get tolerance => parent.tolerance;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    // Calculate the extended range needed to get our desired trim
+    final desiredRange = end - start;
+    final usablePortion = 1.0 - startTrim - endTrim;
+    final extendedRange = desiredRange / usablePortion;
+
+    // Calculate the extended start position
+    final extendedStart = start - (extendedRange * startTrim);
+    final extendedEnd = extendedStart + extendedRange;
+
+    // Scale velocity proportionally to the extended range if requested
+    final scaledVelocity = scaleVelocity ? velocity / usablePortion : velocity;
+
+    return parent.createSimulation(
+      start: extendedStart,
+      end: extendedEnd,
+      velocity: scaledVelocity,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is TrimmedMotion) {
+      return parent == other.parent &&
+          startTrim == other.startTrim &&
+          endTrim == other.endTrim &&
+          scaleVelocity == other.scaleVelocity;
+    }
+    return false;
+  }
+
+  @override
+  int get hashCode => Object.hash(parent, startTrim, endTrim, scaleVelocity);
+
+  @override
+  String toString() =>
+      'TrimmedMotion(parent: $parent, trim: $startTrim-$endTrim, scaleVelocity: $scaleVelocity)';
+}
+
+/// Extension methods for [Motion] to provide convenient trimming functionality.
+extension MotionTrimming on Motion {
+  /// Creates a [TrimmedMotion] that uses only the middle portion of this motion.
+  ///
+  /// Parameters:
+  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
+  ///   * [scaleVelocity] - Whether to scale velocity proportionally (defaults to true)
+  ///
+  /// With startTrim=0.2 and endTrim=0.2, your 0→1 motion will use the
+  /// middle 60% of this motion's characteristic curve.
+  ///
+  /// Example:
+  /// ```dart
+  /// final spring = CupertinoMotion();
+  /// final trimmedSpring = spring.trimmed(startTrim: 0.1, endTrim: 0.1);
+  /// ```
+  TrimmedMotion trimmed({
+    double startTrim = 0.0,
+    double endTrim = 0.0,
+    bool scaleVelocity = true,
+  }) {
+    return TrimmedMotion(
+      parent: this,
+      startTrim: startTrim,
+      endTrim: endTrim,
+      scaleVelocity: scaleVelocity,
+    );
+  }
+}
