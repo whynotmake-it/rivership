@@ -20,26 +20,31 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 /// target property values. The transitions between phases use Motor's physics
 /// or duration-based motion system for smooth, natural animations.
 ///
+/// You can control the current phase by passing a [currentPhase] value. When
+/// this changes, the animation will automatically transition to the new phase
+/// while respecting the [playing] and [loopMode] settings.
+///
 /// Example usage:
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final phases = MapPhaseSequence(
+/// final phases = MapPhaseSequence<Offset, ButtonState>(
 ///   phaseMap: {
-///     ButtonState.idle: ButtonProperties(width: 100, height: 40),
-///     ButtonState.pressed: ButtonProperties(width: 95, height: 38),
-///     ButtonState.loading: ButtonProperties(width: 40, height: 40),
+///     ButtonState.idle: const Offset(100, 40),
+///     ButtonState.pressed: const Offset(95, 38),
+///     ButtonState.loading: const Offset(40, 40),
 ///   },
+///   motion: (_) => const CupertinoMotion.bouncy(),
 /// );
 ///
-/// PhaseMotionBuilder<ButtonProperties, ButtonState>(
+/// PhaseMotionBuilder<Offset, ButtonState>(
 ///   sequence: phases,
-///   motion: CupertinoMotion.bouncy(),
-///   trigger: buttonTapCount,
-///   builder: (context, properties, phase, child) {
+///   converter: const OffsetMotionConverter(),
+///   currentPhase: currentButtonState,
+///   builder: (context, offset, phase, child) {
 ///     return Container(
-///       width: properties.width,
-///       height: properties.height,
+///       width: offset.dx,
+///       height: offset.dy,
 ///       child: _buildButtonContent(phase),
 ///     );
 ///   },
@@ -52,6 +57,7 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
     required this.sequence,
     required this.converter,
     required this.builder,
+    this.current,
     this.restartTrigger,
     this.onPhaseChanged,
     this.playing = true,
@@ -68,6 +74,14 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
 
   /// The builder function that creates the widget tree.
   final PhaseWidgetBuilder<T, P> builder;
+
+  /// The current phase to display.
+  ///
+  /// When this value changes, the animation will automatically transition
+  /// to the specified phase. If null, defaults to the first phase of the
+  /// sequence. The animation will continue playing or looping based on
+  /// the [playing] and [loopMode] settings after transitioning.
+  final P? current;
 
   /// A trigger value that causes the phase sequence to restart.
   ///
@@ -102,12 +116,19 @@ class _PhaseMotionBuilderState<T extends Object, P>
     extends State<PhaseMotionBuilder<T, P>> with TickerProviderStateMixin {
   late PhaseController<T, P> _controller;
   Object? _lastTrigger;
+  P? _lastCurrentPhase;
 
   @override
   void initState() {
     super.initState();
     _createController();
+
     _lastTrigger = widget.restartTrigger;
+    _lastCurrentPhase = widget.current;
+
+    if (widget.current case final phase?) {
+      _controller.jumpToPhase(phase);
+    }
 
     if (widget.playing) {
       _controller.start();
@@ -135,6 +156,21 @@ class _PhaseMotionBuilderState<T extends Object, P>
 
     if (widget.loopMode != oldWidget.loopMode) {
       _controller.loopMode = widget.loopMode;
+    }
+
+    // Check if current phase changed
+    if (widget.current != _lastCurrentPhase) {
+      _lastCurrentPhase = widget.current;
+
+      if (widget.current case final phase?) {
+        _controller.goToPhase(phase);
+      }
+
+      // Continue playing if it was already playing
+      if (widget.playing && !_controller.isAnimating) {
+        _controller.start();
+      }
+      return;
     }
 
     // Check if trigger changed
@@ -193,16 +229,40 @@ class _PhaseMotionBuilderState<T extends Object, P>
   }
 }
 
+/// {@template SinglePhaseMotionBuilder}
 /// A simplified version of [PhaseMotionBuilder] for single-value animations.
 ///
 /// This widget is useful when you want to animate a single property through
 /// multiple phases, similar to SwiftUI's PhaseAnimator with simple values.
+/// The phases themselves are the values being animated.
+///
+/// You can control the current phase by passing a [current] value. When
+/// this changes, the animation will automatically transition to the new phase
+/// while respecting the [playing] and [loopMode] settings.
+///
+/// Example usage:
+/// ```dart
+/// SinglePhaseMotionBuilder<double>(
+///   phases: [0.0, 1.0, 0.5],
+///   motion: const CupertinoMotion.smooth(),
+///   currentPhase: currentValue,
+///   builder: (context, value, child) {
+///     return Opacity(
+///       opacity: value,
+///       child: child,
+///     );
+///   },
+///   child: const Icon(Icons.star),
+/// )
+/// ```
+/// {@endtemplate}
 class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
-  /// Creates a [SinglePhaseMotionBuilder] that animates through double values.
+  /// {@macro SinglePhaseMotionBuilder}
   const SinglePhaseMotionBuilder({
     required this.phases,
     required this.builder,
     required this.motion,
+    this.current,
     this.trigger,
     this.onPhaseChanged,
     this.playing = true,
@@ -225,6 +285,14 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
 
   /// The motion to use for phase transitions.
   final Motion motion;
+
+  /// The current phase to display.
+  ///
+  /// When this value changes, the animation will automatically transition
+  /// to the specified phase. If null, defaults to the first phase of the
+  /// sequence. The animation will continue playing or looping based on
+  /// the [playing] and [loopMode] settings after transitioning.
+  final P? current;
 
   /// A trigger value that restarts the phase sequence.
   final Object? trigger;
@@ -288,6 +356,7 @@ class _SinglePhaseMotionBuilderState<P extends num>
     return PhaseMotionBuilder<double, P>(
       sequence: _sequence,
       converter: const SingleMotionConverter(),
+      current: widget.current,
       restartTrigger: widget.trigger,
       onPhaseChanged: widget.onPhaseChanged,
       playing: widget.playing,

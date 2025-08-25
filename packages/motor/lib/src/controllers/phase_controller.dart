@@ -166,6 +166,15 @@ class PhaseController<T extends Object, P> extends Animation<T>
     _goToPhaseIndex(index);
   }
 
+  /// Jumps directly to the specified phase without animation.
+  void jumpToPhase(P phase) {
+    final index = sequence.phases.indexOf(phase);
+    if (index == -1) {
+      throw ArgumentError('Phase $phase not found in sequence');
+    }
+    _goToPhaseIndex(index, animate: false);
+  }
+
   /// Starts the phase animation sequence.
   ///
   /// If [loopMode] is enabled, this will begin automatic phase progression.
@@ -215,7 +224,7 @@ class PhaseController<T extends Object, P> extends Animation<T>
   }
 
   /// Moves to the phase at the specified index.
-  void _goToPhaseIndex(int index) {
+  void _goToPhaseIndex(int index, {bool animate = true}) {
     if (index < 0 || index >= sequence.phases.length) {
       return;
     }
@@ -229,7 +238,11 @@ class PhaseController<T extends Object, P> extends Animation<T>
 
     // Animate to the new phase's property value
     final targetValue = sequence.valueForPhase(newPhase);
-    _motionController.animateTo(targetValue);
+    if (animate) {
+      _motionController.animateTo(targetValue);
+    } else {
+      _motionController.value = targetValue;
+    }
 
     // Notify listeners of phase change
     onPhaseChanged?.call(newPhase);
