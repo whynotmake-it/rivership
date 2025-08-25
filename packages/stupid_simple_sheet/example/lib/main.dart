@@ -128,35 +128,48 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
   int _itemCount = 5;
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              child: AnimatedSize(
-                alignment: Alignment.topCenter,
-                duration: CupertinoMotion.smooth().duration,
-                curve: CupertinoMotion.smooth().toCurve,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < _itemCount; i++)
-                      CupertinoListTile(
-                        title: Text('Item #${i + 1}'),
-                      ),
-                  ],
+    return SafeArea(
+      child: Card(
+        elevation: 0,
+        margin: EdgeInsets.all(8),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        color: CupertinoTheme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: AnimatedSize(
+                  alignment: Alignment.topCenter,
+                  duration: CupertinoMotion.smooth().duration,
+                  curve: CupertinoMotion.smooth().toCurve,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < _itemCount; i++)
+                        CupertinoListTile(
+                          title: Text('Item #${i + 1}'),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          CupertinoButton(
-              child: Text('Add Item'),
-              onPressed: () {
-                setState(() {
-                  _itemCount++;
-                });
-              }),
-        ],
+            Divider(
+              color: CupertinoColors.opaqueSeparator,
+              height: 1,
+            ),
+            CupertinoButton(
+                child: Text('Add Item'),
+                onPressed: () {
+                  setState(() {
+                    _itemCount++;
+                  });
+                }),
+          ],
+        ),
       ),
     );
   }
