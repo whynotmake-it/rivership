@@ -9,10 +9,14 @@ body:
       label: Package
       description: Which package needs test changes?
       options:
-        - rivership
         - heroine
-        - springster
+        - motor
+        - rivership
         - rivership_test
+        - scroll_drag_detector
+        - snaptest
+        - springster
+        - stupid_simple_sheet
     validations:
       required: true
 

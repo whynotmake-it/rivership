@@ -4,6 +4,7 @@ import 'package:rivership/rivership.dart';
 import 'package:motor_example/main.dart';
 import 'package:heroine_example/main.dart';
 import 'package:springster_example/main.dart';
+import 'package:stupid_simple_sheet_example/main.dart';
 
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +31,11 @@ void main() async {
         path: '/springster',
         children: springsterRoutes,
       ),
+      NamedRouteDef.shell(
+        name: 'Stupid Simple Sheet',
+        path: '/stupid_simple_sheet',
+        children: stupidSimpleSheetRoutes,
+      ),
     ],
   );
 
@@ -52,28 +58,30 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(),
-      child: Padding(
+      child: GridView.count(
         padding: const EdgeInsets.all(32),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            CupertinoButton.filled(
-              onPressed: () => context.navigateTo(NamedRoute('Heroine')),
-              child: const Text('Heroine'),
-            ),
-            CupertinoButton.filled(
-              onPressed: () => context.navigateTo(NamedRoute('Motor')),
-              child: const Text('Motor'),
-            ),
-            CupertinoButton.filled(
-              onPressed: () => context.navigateTo(NamedRoute('Springster')),
-              child: const Text('Springster'),
-            ),
-          ],
-        ),
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        children: [
+          CupertinoButton.filled(
+            onPressed: () => context.navigateTo(NamedRoute('Heroine')),
+            child: const Text('Heroine'),
+          ),
+          CupertinoButton.filled(
+            onPressed: () => context.navigateTo(NamedRoute('Motor')),
+            child: const Text('Motor'),
+          ),
+          CupertinoButton.filled(
+            onPressed: () => context.navigateTo(NamedRoute('Springster')),
+            child: const Text('Springster'),
+          ),
+          CupertinoButton.filled(
+            onPressed: () =>
+                context.navigateTo(NamedRoute('Stupid Simple Sheet')),
+            child: const Text('Stupid Simple Sheet'),
+          ),
+        ],
       ),
     );
   }

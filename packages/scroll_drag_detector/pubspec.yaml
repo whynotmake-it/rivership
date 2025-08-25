@@ -1,0 +1,25 @@
+name: scroll_drag_detector
+description: A drag gesture detector that can deal with scroll views inside of it.
+version: 0.0.1
+resolution: workspace
+
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/overscroll_gesture_detector
+homepage: https://whynotmake.it
+
+topics: [animation, motion, physics, spring, curve]
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ">=1.15.0 <2.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  mocktail: ^1.0.3
+  spot: ^0.18.0
