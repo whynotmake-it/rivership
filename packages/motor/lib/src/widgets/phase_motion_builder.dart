@@ -263,7 +263,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
     required this.builder,
     required this.motion,
     this.current,
-    this.trigger,
+    this.restartTrigger,
     this.onPhaseChanged,
     this.playing = true,
     this.loopMode = PhaseLoopMode.loop,
@@ -295,7 +295,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
   final P? current;
 
   /// A trigger value that restarts the phase sequence.
-  final Object? trigger;
+  final Object? restartTrigger;
 
   /// Called when the current phase changes.
   final void Function(P phase)? onPhaseChanged;
@@ -357,7 +357,7 @@ class _SinglePhaseMotionBuilderState<P extends num>
       sequence: _sequence,
       converter: const SingleMotionConverter(),
       current: widget.current,
-      restartTrigger: widget.trigger,
+      restartTrigger: widget.restartTrigger,
       onPhaseChanged: widget.onPhaseChanged,
       playing: widget.playing,
       loopMode: widget.loopMode,

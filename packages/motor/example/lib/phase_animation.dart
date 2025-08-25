@@ -62,7 +62,7 @@ class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
       phases: [0.5, 0.6, 0.7, 0.8, 1.0], // Scale values for phases
       motion: CupertinoMotion.bouncy(),
       loopMode: PhaseLoopMode.none,
-      trigger: tapCount, // Restart animation on tap
+      restartTrigger: tapCount, // Restart animation on tap
       builder: (context, scale, child) {
         return GestureDetector(
           onTap: () {
