@@ -1,3 +1,6 @@
+## 1.0.0-dev.5
+ - Nothing relevant
+
 ## 1.0.0-dev.4
 
  - **FIX**: use the correct parameters for `MaterialSpringMotion` (#127).

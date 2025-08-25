@@ -1,3 +1,7 @@
+## 1.0.0-dev.8
+
+ - **FEAT**: stupid simple sheet and drag detector (#154).
+
 ## 1.0.0-dev.7
 
  - Update a dependency to the latest release.
