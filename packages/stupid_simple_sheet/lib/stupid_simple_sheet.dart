@@ -258,9 +258,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    // Apply diminishing returns when dragging past fully open (value > 1)
     if (currentValue > 1.0 && delta < 0) {
-      // When dragging up past fully open, reduce the delta with diminishing returns
+      // When dragging up past fully open, reduce the delta with diminishing
+      // returns
       final overshoot = currentValue - 1.0;
       final resistance =
           1.0 / (1.0 + overshoot * 100.0); // Exponential resistance
@@ -283,7 +283,6 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     if (currentValue > 1.0) {
       final backSim = motion.createSimulation(
         start: currentValue,
-        end: 1.0,
         velocity: _dragEndVelocity!,
       );
       controller!.animateWith(backSim);

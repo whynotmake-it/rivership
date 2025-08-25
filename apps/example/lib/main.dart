@@ -58,7 +58,6 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(),
       child: GridView.count(
         padding: const EdgeInsets.all(32),
         crossAxisCount: 2,

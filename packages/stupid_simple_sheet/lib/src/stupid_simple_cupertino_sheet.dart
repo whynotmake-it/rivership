@@ -1,8 +1,6 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
