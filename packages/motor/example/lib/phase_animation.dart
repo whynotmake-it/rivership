@@ -119,7 +119,7 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence<CardProperties, CardPhase>(
       motion: (_) => CupertinoMotion.smooth(),
-      phaseMap: {
+      {
         CardPhase.idle: const CardProperties(
           width: 1020,
           height: 100,

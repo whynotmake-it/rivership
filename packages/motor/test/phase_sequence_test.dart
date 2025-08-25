@@ -8,15 +8,15 @@ void main() {
 
   group('MapPhaseSequence', () {
     final seq1 = MapPhaseSequence<int, String>(
-      phaseMap: const {'a': 1, 'b': 2},
+      const {'a': 1, 'b': 2},
       motion: (_) => motion,
     );
     final seq2 = MapPhaseSequence<int, String>(
-      phaseMap: const {'a': 1, 'b': 2},
+      const {'a': 1, 'b': 2},
       motion: (_) => motion,
     );
     final seq3 = MapPhaseSequence<int, String>(
-      phaseMap: const {'a': 1, 'b': 3},
+      const {'a': 1, 'b': 3},
       motion: (_) => motion2,
     );
 
@@ -39,15 +39,15 @@ void main() {
 
   group('ValuePhaseSequence', () {
     final seq1 = ValuePhaseSequence<int>(
-      values: const [1, 2, 3],
+      const [1, 2, 3],
       motion: (_) => motion,
     );
     final seq2 = ValuePhaseSequence<int>(
-      values: const [1, 2, 3],
+      const [1, 2, 3],
       motion: (_) => motion,
     );
     final seq3 = ValuePhaseSequence<int>(
-      values: const [1, 2, 4],
+      const [1, 2, 4],
       motion: (_) => motion2,
     );
 

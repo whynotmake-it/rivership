@@ -12,7 +12,7 @@ void main() {
 
     setUp(() {
       testSequence = MapPhaseSequence<Offset, TestPhase>(
-        phaseMap: const {
+        const {
           TestPhase.idle: Offset(100, 40),
           TestPhase.active: Offset(120, 45),
           TestPhase.loading: Offset(40, 40),
@@ -303,7 +303,7 @@ void main() {
         SinglePhaseMotionBuilder<double>(
           phases: const [0.0, 50.0, 100.0],
           motion: const CupertinoMotion.smooth(),
-          current: 100.0,
+          current: 100,
           playing: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -322,7 +322,7 @@ void main() {
         SinglePhaseMotionBuilder<double>(
           phases: const [0.0, 50.0, 100.0],
           motion: const CupertinoMotion.smooth(),
-          current: 0.0,
+          current: 0,
           playing: false,
           builder: (context, value, child) {
             capturedValue = value;
@@ -338,7 +338,7 @@ void main() {
         SinglePhaseMotionBuilder<double>(
           phases: const [0.0, 50.0, 100.0],
           motion: const CupertinoMotion.smooth(),
-          current: 50.0,
+          current: 50,
           playing: false,
           builder: (context, value, child) {
             capturedValue = value;

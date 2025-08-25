@@ -17,6 +17,22 @@ abstract class PhaseSequence<T extends Object, P> with EquatableMixin {
   /// {@macro PhaseSequence}
   const PhaseSequence();
 
+  /// {@macro MapPhaseSequence}
+  const factory PhaseSequence.map(
+    Map<P, T> phaseMap, {
+    required MotionFor<P> motion,
+  }) = MapPhaseSequence<T, P>;
+
+  /// {@macro ValuePhaseSequence}
+  static PhaseSequence<T, T> values<T extends Object>(
+    List<T> values, {
+    required MotionFor<T> motion,
+  }) =>
+      ValuePhaseSequence<T>(
+        values,
+        motion: motion,
+      );
+
   /// The list of phases in the sequence.
   ///
   /// The animation will cycle through these phases in order.
@@ -53,14 +69,16 @@ mixin PhaseCallbackMixin<T extends Object, P> on PhaseSequence<T, P> {
   Motion motionForPhase(P phase) => motion(phase);
 }
 
+/// {@template MapPhaseSequence}
 /// A simple implementation of [PhaseSequence] that uses a map to define
 /// phase-to-value relationships.
+/// {@endtemplate}
 @immutable
 class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P>
     with PhaseCallbackMixin<T, P> {
   /// Creates a [MapPhaseSequence] with the given phase-to-value mapping.
-  const MapPhaseSequence({
-    required this.phaseMap,
+  const MapPhaseSequence(
+    this.phaseMap, {
     required this.motion,
   });
 
@@ -80,14 +98,16 @@ class MapPhaseSequence<T extends Object, P> extends PhaseSequence<T, P>
   Motion motionForPhase(P phase) => motion(phase);
 }
 
+/// {@template ValuePhaseSequence}
 /// A phase sequence for simple value-based phases where the phase
 /// itself IS the interpolatable value.
+/// {@endtemplate}
 @immutable
 class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
     with PhaseCallbackMixin<T, T> {
   /// Creates a [ValuePhaseSequence] with the given values.
-  const ValuePhaseSequence({
-    required this.values,
+  const ValuePhaseSequence(
+    this.values, {
     required this.motion,
   });
 
