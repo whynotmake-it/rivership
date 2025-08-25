@@ -14,10 +14,14 @@ enum PhaseLoopMode {
   loop,
 
   /// The animation will play forward and then reverse back to the start.
-  pingPong;
+  pingPong,
+
+  /// The animation will loop seamlessly by treating the first and last phases
+  /// as identical, creating smooth circular transitions without jarring jumps.
+  seamless;
 
   /// Whether the animation should loop.
-  bool get isLooping => this == loop || this == pingPong;
+  bool get isLooping => this == loop || this == pingPong || this == seamless;
 }
 
 /// {@template PhaseController}
@@ -139,6 +143,8 @@ class PhaseController<T extends Object, P> extends Animation<T>
       // At the last phase we loop back if desired
       if (_loopMode == PhaseLoopMode.loop) {
         _goToPhaseIndex(0);
+      } else if (_loopMode == PhaseLoopMode.seamless) {
+        _goToPhaseIndex(0, animate: false);
       }
     } else {
       _goToPhaseIndex(_currentPhaseIndex + 1);
@@ -151,6 +157,8 @@ class PhaseController<T extends Object, P> extends Animation<T>
       // At the first phase we loop around if desired
       if (_loopMode == PhaseLoopMode.loop) {
         _goToPhaseIndex(sequence.phases.length - 1);
+      } else if (_loopMode == PhaseLoopMode.seamless) {
+        _goToPhaseIndex(sequence.phases.length - 1, animate: false);
       }
     } else {
       _goToPhaseIndex(_currentPhaseIndex - 1);
@@ -242,6 +250,14 @@ class PhaseController<T extends Object, P> extends Animation<T>
       _motionController.animateTo(targetValue);
     } else {
       _motionController.value = targetValue;
+      if (_playing) {
+        // Start the first animation immediately
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (_playing && _canAdvance) {
+            nextPhase();
+          }
+        });
+      }
     }
 
     // Notify listeners of phase change

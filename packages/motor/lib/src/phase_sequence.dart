@@ -33,6 +33,30 @@ abstract class PhaseSequence<T extends Object, P> with EquatableMixin {
         motion: motion,
       );
 
+  /// Creates a seamless looping phase sequence where the first phase value
+  /// is automatically duplicated at the end to ensure smooth transitions.
+  /// 
+  /// This is useful for creating circular animations where you want to loop
+  /// back to the beginning without a jarring jump between the last and first values.
+  static PhaseSequence<T, T> seamlessValues<T extends Object>(
+    List<T> values, {
+    required MotionFor<T> motion,
+  }) {
+    if (values.isEmpty) {
+      throw ArgumentError('Values list cannot be empty');
+    }
+    
+    // Add the first value at the end if it's not already there
+    final seamlessValues = values.length == 1 || values.last == values.first
+        ? values
+        : [...values, values.first];
+    
+    return ValuePhaseSequence<T>(
+      seamlessValues,
+      motion: motion,
+    );
+  }
+
   /// The list of phases in the sequence.
   ///
   /// The animation will cycle through these phases in order.

@@ -1,13 +1,15 @@
+import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 
-/// Example demonstrating phase animations with Motor.
+/// Comprehensive example demonstrating phase animations with Motor.
 ///
-/// This example shows several different ways to use phase animations:
-/// 1. Simple button state phases
-/// 2. Loading animation phases
-/// 3. Complex multi-property phases
+/// Phase animations allow you to define sequences of states (phases) that your
+/// UI smoothly transitions through. This example showcases:
+/// 1. Simple single-property phase transitions
+/// 2. Complex multi-property phase sequences
+/// 3. Different triggering mechanisms and loop modes
 class PhaseAnimationExamples extends StatelessWidget {
   const PhaseAnimationExamples({super.key});
 
@@ -17,170 +19,219 @@ class PhaseAnimationExamples extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(),
-      child: const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Button State Phase Animation',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              ButtonPhaseExample(),
-              SizedBox(height: 32),
-              Text(
-                'Complex Multi-Property Animation',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              ComplexPhaseExample(),
-            ],
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Phase Animations'),
+      ),
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader(
+                  'Simple Scale Animation',
+                  'Tap the button to trigger a bouncy scale sequence through multiple phases',
+                ),
+                const SizedBox(height: 20),
+                const BouncyButtonExample(),
+                const SizedBox(height: 40),
+                _buildSectionHeader(
+                  'Loading Sequence',
+                  'Watch a continuous loading animation cycle through different phases',
+                ),
+                const SizedBox(height: 20),
+                const LoadingPhaseExample(),
+                const SizedBox(height: 40),
+                
+                _buildSectionHeader(
+                  'Seamless vs Regular Loop',
+                  'Compare seamless looping (top) with regular looping (bottom)',
+                ),
+                const SizedBox(height: 20),
+                const LoopComparisonExample(),
+                
+                const SizedBox(height: 40),
+                
+                _buildSectionHeader(
+                  'Interactive Card States',
+                  'Tap to cycle through different interactive states with smooth transitions',
+                ),
+                const SizedBox(height: 20),
+                const InteractiveCardExample(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
-/// Simple button phase animation example.
-class ButtonPhaseExample extends StatefulWidget {
-  const ButtonPhaseExample({super.key});
-
-  @override
-  State<ButtonPhaseExample> createState() => _ButtonPhaseExampleState();
-}
-
-class _ButtonPhaseExampleState extends State<ButtonPhaseExample> {
-  int tapCount = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return SinglePhaseMotionBuilder<double>(
-      phases: [0.5, 0.6, 0.7, 0.8, 1.0], // Scale values for phases
-      motion: CupertinoMotion.bouncy(),
-      loopMode: PhaseLoopMode.none,
-      restartTrigger: tapCount, // Restart animation on tap
-      builder: (context, scale, child) {
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              tapCount++;
-            });
-          },
-          child: Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 200,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withValues(alpha: .3),
-                    blurRadius: 8,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  'Tap Me!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+  Widget _buildSectionHeader(String title, String description) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: CupertinoColors.label,
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          style: const TextStyle(
+            fontSize: 16,
+            color: CupertinoColors.secondaryLabel,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// Complex phase animation with multiple properties.
-class ComplexPhaseExample extends StatefulWidget {
-  const ComplexPhaseExample({super.key});
+/// Demonstrates a bouncy button that scales through multiple phases when tapped.
+///
+/// This example uses SinglePhaseMotionBuilder to animate a single property (scale)
+/// through a sequence of phases. Each tap triggers a restart of the animation.
+class BouncyButtonExample extends StatefulWidget {
+  const BouncyButtonExample({super.key});
 
   @override
-  State<ComplexPhaseExample> createState() => _ComplexPhaseExampleState();
+  State<BouncyButtonExample> createState() => _BouncyButtonExampleState();
 }
 
-class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
-  int animationTrigger = 0;
+class _BouncyButtonExampleState extends State<BouncyButtonExample> {
+  int tapCount = 0;
 
   @override
   Widget build(BuildContext context) {
-    final sequence = MapPhaseSequence<CardProperties, CardPhase>(
-      motion: (_) => CupertinoMotion.smooth(),
-      {
-        CardPhase.idle: const CardProperties(
-          width: 1020,
-          height: 100,
-          borderRadius: 12,
-          color: Colors.red,
-          elevation: 4,
-        ),
-        CardPhase.hover: const CardProperties(
-          width: 210,
-          height: 105,
-          borderRadius: 16,
-          color: Colors.blueAccent,
-          elevation: 8,
-        ),
-        CardPhase.pressed: const CardProperties(
-          width: 195,
-          height: 98,
-          borderRadius: 10,
-          color: Colors.indigo,
-          elevation: 2,
-        ),
-        CardPhase.success: const CardProperties(
-          width: 220,
-          height: 110,
-          borderRadius: 20,
-          color: Colors.green,
-          elevation: 12,
-        ),
-      },
-    );
-
     return Center(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            animationTrigger++;
-          });
-        },
-        child: PhaseMotionBuilder<CardProperties, CardPhase>(
-          sequence: sequence,
-          converter: const CardPropertiesConverter(),
-          restartTrigger: animationTrigger,
-          loopMode: PhaseLoopMode.loop,
-          builder: (context, properties, phase, child) {
-            return Container(
-              width: properties.width,
-              height: properties.height,
-              decoration: BoxDecoration(
-                color: properties.color,
-                borderRadius: BorderRadius.circular(properties.borderRadius),
-              ),
-              child: Center(
-                child: Text(
-                  phase.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+      child: Column(
+        children: [
+          SinglePhaseMotionBuilder<double>(
+            // Define the scale values for each phase
+            phases: const [1.0, 0.85, 1.1, 0.95, 1.0],
+            motion: CupertinoMotion.bouncy(),
+            loopMode: PhaseLoopMode.none,
+            restartTrigger: tapCount,
+            builder: (context, scale, child) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    tapCount++;
+                  });
+                },
+                child: Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 200,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          CupertinoColors.activeBlue,
+                          CupertinoColors.systemBlue
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              CupertinoColors.systemBlue.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Tap for Bounce!',
+                        style: TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Taps: $tapCount',
+            style: const TextStyle(
+              fontSize: 16,
+              color: CupertinoColors.secondaryLabel,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Demonstrates a continuous loading animation with rotating dots.
+///
+/// This example shows how to create a looping animation that cycles through
+/// different phases automatically, perfect for loading indicators.
+class LoadingPhaseExample extends StatelessWidget {
+  const LoadingPhaseExample({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: CupertinoColors.separator,
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: SinglePhaseMotionBuilder<double>(
+          phases: const [0.0, 0.25, 0.5, 0.75],
+          motion: CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
+          builder: (context, progress, child) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                // Create a smooth circular wave effect across the dots
+                final wavePosition = (progress + (index * 0.33)) % 1.0;
+                final scale = 0.6 +
+                    (0.4 * (0.5 + 0.5 * math.sin(wavePosition * 2 * math.pi)));
+                final opacity = 0.3 +
+                    (0.7 * (0.5 + 0.5 * math.sin(wavePosition * 2 * math.pi)));
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.activeBlue
+                            .withValues(alpha: opacity),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                );
+              }),
             );
           },
         ),
@@ -189,10 +240,289 @@ class _ComplexPhaseExampleState extends State<ComplexPhaseExample> {
   }
 }
 
-// Data structures for complex phase animation
+/// Demonstrates the difference between seamless and regular loop modes.
+///
+/// This example shows two identical animations side by side - one using
+/// seamless looping and one using regular looping to highlight the difference.
+class LoopComparisonExample extends StatelessWidget {
+  const LoopComparisonExample({super.key});
 
-enum CardPhase { idle, hover, pressed, success }
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Seamless looping example
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: CupertinoColors.separator,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Seamless Loop',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.activeBlue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SinglePhaseMotionBuilder<double>(
+                phases: const [0.0, 100.0, 200.0, 0.0], // Note: duplicated first value
+                motion: CupertinoMotion.smooth(),
+                loopMode: PhaseLoopMode.seamless,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(value - 100, 0),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        color: CupertinoColors.activeBlue,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Regular looping example  
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: CupertinoColors.separator,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Regular Loop',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.destructiveRed,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SinglePhaseMotionBuilder<double>(
+                phases: const [0.0, 100.0, 200.0], // No duplicated value
+                motion: CupertinoMotion.smooth(),
+                loopMode: PhaseLoopMode.loop,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(value - 100, 0),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        color: CupertinoColors.destructiveRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        const Text(
+          'Notice how the top animation loops smoothly while the bottom has a sudden jump',
+          style: TextStyle(
+            fontSize: 14,
+            color: CupertinoColors.secondaryLabel,
+            fontStyle: FontStyle.italic,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
 
+/// Demonstrates complex multi-property phase animations.
+///
+/// This example shows how to animate multiple properties simultaneously
+/// using PhaseMotionBuilder with custom data structures and converters.
+class InteractiveCardExample extends StatefulWidget {
+  const InteractiveCardExample({super.key});
+
+  @override
+  State<InteractiveCardExample> createState() => _InteractiveCardExampleState();
+}
+
+class _InteractiveCardExampleState extends State<InteractiveCardExample> {
+  CardPhase currentPhase = CardPhase.idle;
+  int phaseIndex = 0;
+
+  void _nextPhase() {
+    setState(() {
+      phaseIndex = (phaseIndex + 1) % CardPhase.values.length;
+      currentPhase = CardPhase.values[phaseIndex];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sequence = MapPhaseSequence<CardProperties, CardPhase>(
+      motion: (_) => CupertinoMotion.smooth(),
+      {
+        CardPhase.idle: const CardProperties(
+          width: 280,
+          height: 120,
+          borderRadius: 16,
+          color: CupertinoColors.systemGrey,
+          shadowBlur: 4,
+        ),
+        CardPhase.focused: const CardProperties(
+          width: 300,
+          height: 130,
+          borderRadius: 20,
+          color: CupertinoColors.activeBlue,
+          shadowBlur: 12,
+        ),
+        CardPhase.pressed: const CardProperties(
+          width: 270,
+          height: 115,
+          borderRadius: 12,
+          color: CupertinoColors.systemIndigo,
+          shadowBlur: 2,
+        ),
+        CardPhase.success: const CardProperties(
+          width: 320,
+          height: 140,
+          borderRadius: 24,
+          color: CupertinoColors.systemGreen,
+          shadowBlur: 16,
+        ),
+      },
+    );
+
+    return Center(
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _nextPhase,
+            child: PhaseMotionBuilder<CardProperties, CardPhase>(
+              sequence: sequence,
+              converter: const CardPropertiesConverter(),
+              current: currentPhase,
+              builder: (context, properties, phase, child) {
+                return Container(
+                  width: properties.width,
+                  height: properties.height,
+                  decoration: BoxDecoration(
+                    color: properties.color,
+                    borderRadius:
+                        BorderRadius.circular(properties.borderRadius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: CupertinoColors.black.withValues(alpha: 0.15),
+                        blurRadius: properties.shadowBlur,
+                        offset: Offset(0, properties.shadowBlur / 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _getIconForPhase(phase),
+                          color: CupertinoColors.white,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getDisplayName(phase),
+                          style: const TextStyle(
+                            color: CupertinoColors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Tap the card to cycle through states',
+            style: TextStyle(
+              fontSize: 14,
+              color: CupertinoColors.secondaryLabel,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getIconForPhase(CardPhase phase) {
+    switch (phase) {
+      case CardPhase.idle:
+        return CupertinoIcons.rectangle;
+      case CardPhase.focused:
+        return CupertinoIcons.eye;
+      case CardPhase.pressed:
+        return CupertinoIcons.hand_thumbsup;
+      case CardPhase.success:
+        return CupertinoIcons.checkmark_circle_fill;
+    }
+  }
+
+  String _getDisplayName(CardPhase phase) {
+    switch (phase) {
+      case CardPhase.idle:
+        return 'Idle';
+      case CardPhase.focused:
+        return 'Focused';
+      case CardPhase.pressed:
+        return 'Pressed';
+      case CardPhase.success:
+        return 'Success';
+    }
+  }
+}
+
+/// Data structures for complex phase animations
+
+/// Represents different states that the interactive card can be in
+enum CardPhase {
+  /// Default resting state
+  idle,
+
+  /// Card is being focused/hovered
+  focused,
+
+  /// Card is being pressed/touched
+  pressed,
+
+  /// Action completed successfully
+  success
+}
+
+/// Holds all the visual properties that can be animated for a card
 @immutable
 class CardProperties {
   const CardProperties({
@@ -200,16 +530,20 @@ class CardProperties {
     required this.height,
     required this.borderRadius,
     required this.color,
-    required this.elevation,
+    required this.shadowBlur,
   });
 
   final double width;
   final double height;
   final double borderRadius;
   final Color color;
-  final double elevation;
+  final double shadowBlur;
 }
 
+/// Converts CardProperties to/from a list of doubles for smooth animation
+///
+/// This converter allows Motor to interpolate between complex data structures
+/// by breaking them down into animatable numeric values.
 class CardPropertiesConverter implements MotionConverter<CardProperties> {
   const CardPropertiesConverter();
 
@@ -221,7 +555,7 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
         value.color.r.toDouble(),
         value.color.g.toDouble(),
         value.color.b.toDouble(),
-        value.elevation,
+        value.shadowBlur,
       ];
 
   @override
@@ -235,6 +569,6 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
           green: values[4],
           blue: values[5],
         ),
-        elevation: values[6],
+        shadowBlur: values[6],
       );
 }
