@@ -112,7 +112,7 @@ class BouncyButtonExample extends StatefulWidget {
 }
 
 class _BouncyButtonExampleState extends State<BouncyButtonExample> {
-  int tapCount = 0;
+  bool pressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -120,24 +120,30 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
       child: Column(
         children: [
           PhaseMotionBuilder(
-            sequence: TimelineSequence(
-              {
-                0: 1.0,
-                .05: 0.85,
-                .4: 1.1,
-                .9: 1.0,
-              },
-              motion: MaterialSpringMotion.expressiveSpatialDefault,
-            ),
+            sequence: pressed
+                ? PhaseSequence.single(0.5, motion: CupertinoMotion.smooth())
+                : TimelineSequence(
+                    {
+                      0: 1.0,
+                      .05: 0.85,
+                      .4: 1.1,
+                      .9: 1.0,
+                    },
+                    motion: CupertinoMotion.bouncy(),
+                  ),
             // Define the scale values for each phase
             converter: SingleMotionConverter(),
             loopMode: PhaseLoopMode.none,
-            restartTrigger: tapCount,
             builder: (context, scale, _, child) {
               return GestureDetector(
-                onTap: () {
+                onTapDown: (_) {
                   setState(() {
-                    tapCount++;
+                    pressed = true;
+                  });
+                },
+                onTapUp: (_) {
+                  setState(() {
+                    pressed = false;
                   });
                 },
                 child: Transform.scale(
@@ -179,19 +185,6 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                 ),
               );
             },
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Taps: $tapCount',
-            style: TextStyle(
-              fontSize: 16,
-              color: CupertinoTheme.of(context)
-                  .textTheme
-                  .textStyle
-                  .color
-                  ?.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w500,
-            ),
           ),
         ],
       ),

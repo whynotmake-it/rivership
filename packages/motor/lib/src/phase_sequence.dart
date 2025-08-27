@@ -47,13 +47,21 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   static PhaseSequence<T, T> values<T extends Object>(
     List<T> values, {
     required MotionFor<T> motion,
-    PhaseLoopMode loopMode = PhaseLoopMode.loop,
+    PhaseLoopMode loopMode = PhaseLoopMode.none,
   }) =>
       ValuePhaseSequence<T>(
         values,
         motion: motion,
         loopMode: loopMode,
       );
+
+  /// {@macro SingleValueSequence}
+  static PhaseSequence<T, T> single<T extends Object>(
+    T value, {
+    required Motion motion,
+    PhaseLoopMode loopMode = PhaseLoopMode.none,
+  }) =>
+      SingleValueSequence<T>(value, motion: motion);
 
   /// The list of phases in the sequence.
   ///
@@ -106,7 +114,7 @@ class MapPhaseSequence<P, T extends Object> extends PhaseSequence<P, T>
   const MapPhaseSequence(
     this.phaseMap, {
     required this.motion,
-    this.loopMode = PhaseLoopMode.loop,
+    this.loopMode = PhaseLoopMode.none,
   });
 
   /// The mapping from phases to their corresponding property values.
@@ -139,7 +147,7 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
   const ValuePhaseSequence(
     this.values, {
     required this.motion,
-    this.loopMode = PhaseLoopMode.loop,
+    this.loopMode = PhaseLoopMode.none,
   });
 
   /// The values to cycle through as both phases and property values.
@@ -159,6 +167,40 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
 
   @override
   Motion motionForPhase(T phase) => motion(phase);
+}
+
+/// {@template SingleValueSequence}
+/// A phase sequence containing a single value with a fixed motion.
+///
+/// This is useful for animations that need to animate to a single target
+/// value with a specific motion, such as button press feedback or
+/// simple state transitions.
+/// {@endtemplate}
+@immutable
+class SingleValueSequence<T extends Object> extends PhaseSequence<T, T> {
+  /// Creates a [SingleValueSequence] with the given value and motion.
+  const SingleValueSequence(
+    this.value, {
+    required this.motion,
+  });
+
+  /// The single value to animate to.
+  final T value;
+
+  /// The motion to use for animations.
+  final Motion motion;
+
+  @override
+  PhaseLoopMode get loopMode => PhaseLoopMode.none;
+
+  @override
+  List<T> get phases => [value];
+
+  @override
+  T valueForPhase(T phase) => value;
+
+  @override
+  Motion motionForPhase(T phase) => motion;
 }
 
 /// Normalizes timeline values to the range [0.0, 1.0].
@@ -202,7 +244,7 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   TimelineSequence(
     Map<double, T> values, {
     required this.motion,
-    this.loopMode = PhaseLoopMode.loop,
+    this.loopMode = PhaseLoopMode.none,
   }) : _values = values;
 
   final Map<double, T> _values;

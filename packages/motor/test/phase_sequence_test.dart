@@ -67,6 +67,47 @@ void main() {
     });
   });
 
+  group('SingleValueSequence', () {
+    final seq1 = PhaseSequence.single(
+      'hello',
+      motion: motion,
+    );
+    final seq2 = PhaseSequence.single(
+      'hello',
+      motion: motion,
+    );
+    final seq3 = PhaseSequence.single(
+      'world',
+      motion: motion2,
+    );
+
+    test('equality: identical', () {
+      expect(seq1, equals(seq2));
+      expect(seq1.hashCode, equals(seq2.hashCode));
+    });
+    test('equality: different values', () {
+      expect(seq1, isNot(equals(seq3)));
+    });
+    test('phases and valueForPhase', () {
+      expect(seq1.phases, ['hello']);
+      expect(seq1.valueForPhase('hello'), 'hello');
+    });
+    test('motionForPhase returns correct motion', () {
+      expect(seq1.motionForPhase('hello'), motion);
+    });
+    test('loopMode defaults to none', () {
+      expect(seq1.loopMode, PhaseLoopMode.none);
+    });
+    test('can set custom loopMode', () {
+      final customSeq = PhaseSequence.single(
+        42,
+        motion: motion,
+        loopMode: PhaseLoopMode.loop,
+      );
+      expect(customSeq.loopMode, PhaseLoopMode.loop);
+    });
+  });
+
   group('TimelineSequence', () {
     // Test with non-normalized values (10-50 range)
     final timeline1 = TimelineSequence<String>(
