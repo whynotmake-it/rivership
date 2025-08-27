@@ -123,7 +123,6 @@ void main() {
           converter: const OffsetMotionConverter(),
           current: TestPhase.idle,
           playing: true,
-          loopMode: PhaseLoopMode.loop,
           onPhaseChanged: phaseChanges.add,
           builder: (context, value, phase, child) {
             capturedPhase = phase;
@@ -141,7 +140,6 @@ void main() {
           converter: const OffsetMotionConverter(),
           current: TestPhase.active,
           playing: true,
-          loopMode: PhaseLoopMode.loop,
           onPhaseChanged: phaseChanges.add,
           builder: (context, value, phase, child) {
             capturedPhase = phase;

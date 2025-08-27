@@ -59,7 +59,6 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   static PhaseSequence<T, T> single<T extends Object>(
     T value, {
     required Motion motion,
-    PhaseLoopMode loopMode = PhaseLoopMode.none,
   }) =>
       SingleValueSequence<T>(value, motion: motion);
 

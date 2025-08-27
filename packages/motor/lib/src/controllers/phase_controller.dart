@@ -30,7 +30,6 @@ class PhaseController<P, T extends Object> extends Animation<T>
       initialValue: sequence.valueForPhase(sequence.initialPhase),
     );
 
-    _loopMode = sequence.loopMode;
     _currentPhase = sequence.initialPhase;
     _isForward = true;
 
@@ -47,11 +46,25 @@ class PhaseController<P, T extends Object> extends Animation<T>
   set sequence(PhaseSequence<P, T> value) {
     if (_sequence == value) return;
     _sequence = value;
-    _loopMode = value.loopMode;
+
+    // Find the current phase in the new sequence
+    final currentPhaseInNewSequence = _sequence.phases.contains(_currentPhase)
+        ? _currentPhase
+        : _sequence.initialPhase;
+
+    // Update current phase index to match the new sequence
+    _currentPhaseIndex = _sequence.phases.indexOf(currentPhaseInNewSequence);
+    _currentPhase = currentPhaseInNewSequence;
+
+    // Update the motion controller's motion
     _motionController.motion = _sequence.motionForPhase(_currentPhase);
-    _currentPhaseIndex =
-        _currentPhaseIndex.clamp(0, _sequence.phases.length - 1);
-    if (_playing) _goToPhaseIndex(_currentPhaseIndex);
+
+    // Smoothly animate to the new sequence's value for the current phase
+    final targetValue = _sequence.valueForPhase(_currentPhase);
+    _motionController.animateTo(targetValue);
+
+    // Notify listeners of potential phase change
+    onPhaseChanged?.call(_currentPhase);
   }
 
   /// Converter for interpolating between property values.
@@ -102,17 +115,7 @@ class PhaseController<P, T extends Object> extends Animation<T>
   /// Timer for auto-looping phases.
   bool _playing = false;
 
-  PhaseLoopMode _loopMode = PhaseLoopMode.loop;
-
-  /// The manner in which the phase animation should loop.
-  PhaseLoopMode get loopMode => _loopMode;
-  set loopMode(PhaseLoopMode mode) {
-    _loopMode = mode;
-    if (!_canAdvance) {
-      _playing = false; // Stop auto-looping if set to none
-      notifyListeners();
-    }
-  }
+  PhaseLoopMode get _loopMode => _sequence.loopMode;
 
   bool get _canAdvance => _hasMorePhases || _loopMode.isLooping;
 
@@ -166,7 +169,8 @@ class PhaseController<P, T extends Object> extends Animation<T>
 
   /// Starts the phase animation sequence.
   ///
-  /// If [loopMode] is enabled, this will begin automatic phase progression.
+  /// If the sequence's loop mode is enabled, this will begin automatic phase
+  /// progression.
   void start() {
     if (!_playing) {
       // If we don't loop and we don't have phases left, do nothing

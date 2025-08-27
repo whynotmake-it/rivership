@@ -98,13 +98,12 @@ void main() {
     test('loopMode defaults to none', () {
       expect(seq1.loopMode, PhaseLoopMode.none);
     });
-    test('can set custom loopMode', () {
+    test('has loopMode none', () {
       final customSeq = PhaseSequence.single(
         42,
         motion: motion,
-        loopMode: PhaseLoopMode.loop,
       );
-      expect(customSeq.loopMode, PhaseLoopMode.loop);
+      expect(customSeq.loopMode, PhaseLoopMode.none);
     });
   });
 

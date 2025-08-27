@@ -133,7 +133,6 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                   ),
             // Define the scale values for each phase
             converter: SingleMotionConverter(),
-            loopMode: PhaseLoopMode.none,
             builder: (context, scale, _, child) {
               return GestureDetector(
                 onTapDown: (_) {

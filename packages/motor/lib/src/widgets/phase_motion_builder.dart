@@ -22,7 +22,7 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 ///
 /// You can control the current phase by passing a [current] value. When
 /// this changes, the animation will automatically transition to the new phase
-/// while respecting the [playing] and [loopMode] settings.
+/// while respecting the [playing] setting.
 ///
 /// Example usage:
 /// ```dart
@@ -61,7 +61,6 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
     this.restartTrigger,
     this.onPhaseChanged,
     this.playing = true,
-    this.loopMode,
     this.child,
     super.key,
   });
@@ -80,7 +79,7 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// When this value changes, the animation will automatically transition
   /// to the specified phase. If null, defaults to the first phase of the
   /// sequence. The animation will continue playing or looping based on
-  /// the [playing] and [loopMode] settings after transitioning.
+  /// the [playing] setting after transitioning.
   final P? current;
 
   /// A trigger value that causes the phase sequence to restart.
@@ -95,12 +94,6 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// Whether the sequence should currently be playing.
   final bool playing;
-
-  /// The manner in which the phase animation should loop.
-  ///
-  /// Defaults to [PhaseLoopMode.loop]. If not provided, the sequence's
-  /// loop mode will be used.
-  final PhaseLoopMode? loopMode;
 
   /// An optional child widget to pass to the [builder].
   ///
@@ -153,10 +146,16 @@ class _PhaseMotionBuilderState<P, T extends Object>
     // Update controller sequence if it changed
     if (widget.sequence != oldWidget.sequence) {
       _controller.sequence = widget.sequence;
-    }
 
-    if (widget.loopMode != oldWidget.loopMode) {
-      _controller.loopMode = widget.loopMode ?? widget.sequence.loopMode;
+      // If there's a current phase specified, make sure we're animating to it
+      if (widget.current case final phase?) {
+        // Only go to phase if it's different from the controller's current
+        // phase to avoid interrupting an ongoing transition to the correct
+        // phase
+        if (_controller.currentPhase != phase) {
+          _controller.goToPhase(phase);
+        }
+      }
     }
 
     // Check if current phase changed
