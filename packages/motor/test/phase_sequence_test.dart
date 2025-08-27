@@ -90,10 +90,10 @@ void main() {
     });
     test('phases and valueForPhase', () {
       expect(seq1.phases, ['hello']);
-      expect(seq1.valueForPhase('hello'), 'hello');
+      expect(seq1.valueForPhase(12312312), 'hello');
     });
     test('motionForPhase returns correct motion', () {
-      expect(seq1.motionForPhase('hello'), motion);
+      expect(seq1.motionForPhase(0), motion);
     });
     test('loopMode defaults to none', () {
       expect(seq1.loopMode, PhaseLoopMode.none);

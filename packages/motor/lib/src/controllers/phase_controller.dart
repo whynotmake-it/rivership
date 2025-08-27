@@ -45,26 +45,54 @@ class PhaseController<P, T extends Object> extends Animation<T>
 
   set sequence(PhaseSequence<P, T> value) {
     if (_sequence == value) return;
+
+    final wasPlaying = _playing;
+
     _sequence = value;
 
-    // Find the current phase in the new sequence
-    final currentPhaseInNewSequence = _sequence.phases.contains(_currentPhase)
-        ? _currentPhase
-        : _sequence.initialPhase;
+    // Check if current phase exists in new sequence
+    final currentPhaseIndex = value.phases.indexOf(_currentPhase);
 
-    // Update current phase index to match the new sequence
-    _currentPhaseIndex = _sequence.phases.indexOf(currentPhaseInNewSequence);
-    _currentPhase = currentPhaseInNewSequence;
+    if (currentPhaseIndex != -1) {
+      // Current phase exists in new sequence, transition to it
+      _currentPhaseIndex = currentPhaseIndex;
+      _motionController.motion = value.motionForPhase(_currentPhase);
+      final targetValue = value.valueForPhase(_currentPhase);
+      _motionController.animateTo(targetValue);
+    } else {
+      // Current phase doesn't exist, transition to first phase
+      final firstPhase = value.phases.first;
+      _currentPhase = firstPhase;
+      _currentPhaseIndex = 0;
+      _motionController.motion = value.motionForPhase(firstPhase);
+      final targetValue = value.valueForPhase(firstPhase);
+      _motionController.animateTo(targetValue);
 
-    // Update the motion controller's motion
-    _motionController.motion = _sequence.motionForPhase(_currentPhase);
+      // Notify about phase change since we switched to a different phase
+      onPhaseChanged?.call(firstPhase);
+    }
 
-    // Smoothly animate to the new sequence's value for the current phase
-    final targetValue = _sequence.valueForPhase(_currentPhase);
-    _motionController.animateTo(targetValue);
+    // Restore playing state if it was playing before
+    if (wasPlaying) {
+      // Wait for the current transition to complete before starting
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!_motionController.isAnimating) {
+          start();
+        } else {
+          // If still animating, wait for completion
+          void waitForCompletion() {
+            if (!_motionController.isAnimating) {
+              start();
+            } else {
+              SchedulerBinding.instance
+                  .addPostFrameCallback((_) => waitForCompletion());
+            }
+          }
 
-    // Notify listeners of potential phase change
-    onPhaseChanged?.call(_currentPhase);
+          waitForCompletion();
+        }
+      });
+    }
   }
 
   /// Converter for interpolating between property values.
@@ -96,13 +124,12 @@ class PhaseController<P, T extends Object> extends Animation<T>
   @override
   AnimationStatus get status =>
       switch ((_playing, _isForward, _isInFirstPhase, _isInLastPhase)) {
-        (true, true, _, _) ||
-        (false, true, false, false) =>
-          AnimationStatus.forward,
-        (true, false, _, _) ||
-        (false, false, false, false) =>
-          AnimationStatus.reverse,
-        (false, _, true, _) => AnimationStatus.dismissed,
+        (true, true, _, _) => AnimationStatus.forward,
+        (true, false, _, _) => AnimationStatus.reverse,
+        (false, true, false, false) ||
+        (false, false, false, false) ||
+        (false, _, true, _) =>
+          AnimationStatus.dismissed,
         (false, _, _, true) => AnimationStatus.completed,
       };
 

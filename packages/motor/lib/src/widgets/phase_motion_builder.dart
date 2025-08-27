@@ -133,33 +133,14 @@ class _PhaseMotionBuilderState<P, T extends Object>
   void didUpdateWidget(PhaseMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Recreate controller if converter changed
-    if (widget.converter != oldWidget.converter) {
-      _controller.dispose();
-      _createController();
-      if (widget.playing) {
-        _controller.start();
-      }
-      return;
-    }
-
     // Update controller sequence if it changed
     if (widget.sequence != oldWidget.sequence) {
       _controller.sequence = widget.sequence;
 
-      // If there's a current phase specified, make sure we're animating to it
-      if (widget.current case final phase?) {
-        // Only go to phase if it's different from the controller's current
-        // phase to avoid interrupting an ongoing transition to the correct
-        // phase
-        if (_controller.currentPhase != phase) {
-          _controller.goToPhase(phase);
-        }
+      if (widget.playing && !_controller.isAnimating) {
+        _controller.start();
       }
-    }
-
-    // Check if current phase changed
-    if (widget.current != _lastCurrentPhase) {
+    } else if (widget.current != _lastCurrentPhase) {
       _lastCurrentPhase = widget.current;
 
       if (widget.current case final phase?) {
@@ -171,10 +152,7 @@ class _PhaseMotionBuilderState<P, T extends Object>
         _controller.start();
       }
       return;
-    }
-
-    // Check if trigger changed
-    if (widget.restartTrigger != _lastTrigger) {
+    } else if (widget.restartTrigger != _lastTrigger) {
       _lastTrigger = widget.restartTrigger;
       _controller.reset();
 

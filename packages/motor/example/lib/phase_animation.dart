@@ -128,9 +128,8 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                 : TimelineSequence(
                     {
                       0: 1.0,
-                      .05: 0.85,
-                      .4: 1.1,
-                      .9: 1.0,
+                      0.4: 1.1,
+                      0.9: 1.0,
                     },
                     motion: CupertinoMotion.bouncy(),
                   ),

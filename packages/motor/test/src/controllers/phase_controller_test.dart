@@ -24,7 +24,6 @@ void main() {
           [0.0, 50.0, 100.0],
           motion: (_) => const CupertinoMotion.smooth(),
           loopMode: PhaseLoopMode.seamless,
-          
         );
 
         final phaseChanges = <double>[];
@@ -69,7 +68,6 @@ void main() {
           [0.0, 50.0, 100.0],
           motion: (_) => const CupertinoMotion.smooth(),
           loopMode: PhaseLoopMode.seamless,
-          
         );
 
         final controller = PhaseController(
@@ -99,7 +97,6 @@ void main() {
           [10.0, 20.0, 30.0],
           motion: (_) => const CupertinoMotion.smooth(),
           loopMode: PhaseLoopMode.seamless,
-          
         );
 
         final phaseChanges = <double>[];
@@ -143,7 +140,6 @@ void main() {
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          
         );
 
         expect(controller.currentPhase, equals(10.0));
@@ -210,7 +206,6 @@ void main() {
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          
         );
 
         expect(controller.currentPhase, equals(42.0));
@@ -242,11 +237,114 @@ void main() {
               sequence: sequence,
               converter: const SingleMotionConverter(),
               vsync: vsync,
-              
             );
           },
           throwsStateError,
         );
+      });
+    });
+
+    group('sequence switching', () {
+      testWidgets('should handle switching from timeline to single sequence',
+          (tester) async {
+        // Create a timeline sequence similar to the button example (no loop)
+        final timelineSequence = TimelineSequence(
+          {
+            0: 1.0,
+            0.05: 0.85,
+            0.4: 1.1,
+            0.9: 1.0,
+          },
+          motion: CupertinoMotion.bouncy(),
+          loopMode: PhaseLoopMode.none, // Explicitly no loop
+        );
+
+        // Create a single value sequence like the pressed state
+        final singleSequence = PhaseSequence.single(
+          0.5,
+          motion: CupertinoMotion.smooth(),
+        );
+
+        final controller = PhaseController(
+          sequence: timelineSequence,
+          converter: const SingleMotionConverter(),
+          vsync: vsync,
+        );
+
+        // Start playing like the button example does
+        controller.start();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        // Switch to single sequence (like pressing the button)
+        controller.sequence = singleSequence;
+        await tester.pump(); // Allow initial setup
+
+        // Should smoothly animate to the single value
+        expect(controller.currentPhase, equals(0.0));
+
+        // Switch back to timeline sequence (like releasing the button)
+        controller.sequence = timelineSequence;
+        await tester.pump(); // Allow initial setup
+
+        // Should NOT immediately jump to phase 0, should stay at current phase
+        // and should stop playing since timeline doesn't loop
+        expect(controller.currentPhase, equals(0)); // Should be at phase 0
+
+        // Wait for animation to settle
+        await tester.pumpAndSettle();
+
+        // Should settle at the timeline value for phase 0, not restart the sequence
+        expect(controller.value, closeTo(1.0, 0.1));
+
+        // Should not be playing anymore since timeline doesn't loop
+        expect(controller.status, isNot(AnimationStatus.forward));
+
+        controller.dispose();
+      });
+
+      testWidgets(
+          'should restart looping sequences when switching while playing',
+          (tester) async {
+        // Create a looping timeline sequence
+        final loopingSequence = TimelineSequence(
+          {
+            0: 1.0,
+            0.5: 0.5,
+            1.0: 1.0,
+          },
+          motion: CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.loop, // This one loops
+        );
+
+        // Create a single value sequence
+        final singleSequence = PhaseSequence.single(
+          0.2,
+          motion: CupertinoMotion.smooth(),
+        );
+
+        final controller = PhaseController(
+          sequence: loopingSequence,
+          converter: const SingleMotionConverter(),
+          vsync: vsync,
+        );
+
+        // Start playing
+        controller.start();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        // Switch to single sequence
+        controller.sequence = singleSequence;
+        await tester.pump();
+
+        // Switch back to looping sequence
+        controller.sequence = loopingSequence;
+        await tester.pump();
+
+        // Should restart from the beginning since it's a looping sequence
+        expect(controller.currentPhase, equals(0));
+        expect(controller.currentPhaseIndex, equals(0));
+
+        controller.dispose();
       });
     });
   });
