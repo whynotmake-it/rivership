@@ -56,11 +56,16 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
       );
 
   /// {@macro SingleValueSequence}
-  static PhaseSequence<T, T> single<T extends Object>(
+  static PhaseSequence<double, T> single<T extends Object>(
     T value, {
     required Motion motion,
+    double phase = 0.0,
   }) =>
-      SingleValueSequence<T>(value, motion: motion);
+      SingleValueSequence<T>(
+        value,
+        motion: motion,
+        phase: phase,
+      );
 
   /// The list of phases in the sequence.
   ///
@@ -176,12 +181,16 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
 /// simple state transitions.
 /// {@endtemplate}
 @immutable
-class SingleValueSequence<T extends Object> extends PhaseSequence<T, T> {
+class SingleValueSequence<T extends Object> extends PhaseSequence<double, T> {
   /// Creates a [SingleValueSequence] with the given value and motion.
   const SingleValueSequence(
     this.value, {
     required this.motion,
+    this.phase = 0.0,
   });
+
+  /// The single of the animation.
+  final double phase;
 
   /// The single value to animate to.
   final T value;
@@ -193,13 +202,13 @@ class SingleValueSequence<T extends Object> extends PhaseSequence<T, T> {
   PhaseLoopMode get loopMode => PhaseLoopMode.none;
 
   @override
-  List<T> get phases => [value];
+  List<double> get phases => [phase];
 
   @override
-  T valueForPhase(T phase) => value;
+  T valueForPhase(double phase) => value;
 
   @override
-  Motion motionForPhase(T phase) => motion;
+  Motion motionForPhase(double phase) => motion;
 }
 
 /// Normalizes timeline values to the range [0.0, 1.0].

@@ -121,7 +121,10 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
         children: [
           PhaseMotionBuilder(
             sequence: pressed
-                ? PhaseSequence.single(0.5, motion: CupertinoMotion.smooth())
+                ? PhaseSequence.single(
+                    0.5,
+                    motion: CupertinoMotion.smooth(),
+                  )
                 : TimelineSequence(
                     {
                       0: 1.0,
@@ -132,7 +135,7 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                     motion: CupertinoMotion.bouncy(),
                   ),
             // Define the scale values for each phase
-            converter: SingleMotionConverter(),
+            converter: const SingleMotionConverter(),
             builder: (context, scale, _, child) {
               return GestureDetector(
                 onTapDown: (_) {
