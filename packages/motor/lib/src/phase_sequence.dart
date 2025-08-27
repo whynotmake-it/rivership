@@ -5,6 +5,25 @@ import 'package:motor/src/motion.dart';
 /// A function that provides the motion for a specific phase.
 typedef MotionFor<P> = Motion Function(P phase);
 
+/// The mode in which the phase animation should loop.
+enum PhaseLoopMode {
+  /// Don't loop the animation.
+  none,
+
+  /// The animation will loop from the last phase back to the first phase.
+  loop,
+
+  /// The animation will play forward and then reverse back to the start.
+  pingPong,
+
+  /// The animation will loop seamlessly by treating the first and last phases
+  /// as identical, creating smooth circular transitions without jarring jumps.
+  seamless;
+
+  /// Whether the animation should loop.
+  bool get isLooping => this == loop || this == pingPong || this == seamless;
+}
+
 /// {@template PhaseSequence}
 /// Defines a sequence of phases and their corresponding property values
 /// for phase-based animations.
@@ -21,16 +40,19 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   const factory PhaseSequence.map(
     Map<P, T> phaseMap, {
     required MotionFor<P> motion,
+    PhaseLoopMode loopMode,
   }) = MapPhaseSequence<P, T>;
 
   /// {@macro ValuePhaseSequence}
   static PhaseSequence<T, T> values<T extends Object>(
     List<T> values, {
     required MotionFor<T> motion,
+    PhaseLoopMode loopMode = PhaseLoopMode.loop,
   }) =>
       ValuePhaseSequence<T>(
         values,
         motion: motion,
+        loopMode: loopMode,
       );
 
   /// The list of phases in the sequence.
@@ -51,11 +73,15 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   /// The motion that should be used for transitioning to [phase].
   Motion motionForPhase(P phase);
 
+  /// The manner in which the phase animation should loop.
+  PhaseLoopMode get loopMode;
+
   @override
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
         ...phases.map(motionForPhase),
+        loopMode,
       ];
 }
 
@@ -80,6 +106,7 @@ class MapPhaseSequence<P, T extends Object> extends PhaseSequence<P, T>
   const MapPhaseSequence(
     this.phaseMap, {
     required this.motion,
+    this.loopMode = PhaseLoopMode.loop,
   });
 
   /// The mapping from phases to their corresponding property values.
@@ -87,6 +114,9 @@ class MapPhaseSequence<P, T extends Object> extends PhaseSequence<P, T>
 
   @override
   final MotionFor<P> motion;
+
+  @override
+  final PhaseLoopMode loopMode;
 
   @override
   List<P> get phases => phaseMap.keys.toList();
@@ -109,6 +139,7 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
   const ValuePhaseSequence(
     this.values, {
     required this.motion,
+    this.loopMode = PhaseLoopMode.loop,
   });
 
   /// The values to cycle through as both phases and property values.
@@ -116,6 +147,9 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
 
   @override
   final MotionFor<T> motion;
+
+  @override
+  final PhaseLoopMode loopMode;
 
   @override
   List<T> get phases => values;
@@ -168,6 +202,7 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   TimelineSequence(
     Map<double, T> values, {
     required this.motion,
+    this.loopMode = PhaseLoopMode.loop,
   }) : _values = values;
 
   final Map<double, T> _values;
@@ -198,6 +233,9 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   /// This motion will be trimmed to the relevant portion for each
   /// phase transition based on the timeline segments.
   final Motion motion;
+
+  @override
+  final PhaseLoopMode loopMode;
 
   @override
   List<double> get phases => _phasesList;

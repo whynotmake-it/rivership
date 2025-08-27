@@ -61,7 +61,7 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
     this.restartTrigger,
     this.onPhaseChanged,
     this.playing = true,
-    this.loopMode = PhaseLoopMode.loop,
+    this.loopMode,
     this.child,
     super.key,
   });
@@ -98,8 +98,9 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// The manner in which the phase animation should loop.
   ///
-  /// Defaults to [PhaseLoopMode.loop].
-  final PhaseLoopMode loopMode;
+  /// Defaults to [PhaseLoopMode.loop]. If not provided, the sequence's
+  /// loop mode will be used.
+  final PhaseLoopMode? loopMode;
 
   /// An optional child widget to pass to the [builder].
   ///
@@ -155,7 +156,7 @@ class _PhaseMotionBuilderState<P, T extends Object>
     }
 
     if (widget.loopMode != oldWidget.loopMode) {
-      _controller.loopMode = widget.loopMode;
+      _controller.loopMode = widget.loopMode ?? widget.sequence.loopMode;
     }
 
     // Check if current phase changed
@@ -205,7 +206,6 @@ class _PhaseMotionBuilderState<P, T extends Object>
       converter: widget.converter,
       vsync: this,
       onPhaseChanged: widget.onPhaseChanged,
-      loopMode: widget.loopMode,
     );
     _controller.addListener(_onControllerUpdate);
   }
@@ -336,6 +336,7 @@ class _SinglePhaseMotionBuilderState<P extends num>
     _sequence = PhaseSequence.map(
       {for (final p in widget.phases) p: p.toDouble()},
       motion: (_) => widget.motion,
+      loopMode: widget.loopMode,
     );
   }
 
@@ -348,7 +349,6 @@ class _SinglePhaseMotionBuilderState<P extends num>
       restartTrigger: widget.restartTrigger,
       onPhaseChanged: widget.onPhaseChanged,
       playing: widget.playing,
-      loopMode: widget.loopMode,
       builder: (context, value, _, child) {
         return widget.builder(context, value, child);
       },

@@ -23,6 +23,8 @@ void main() {
         final sequence = PhaseSequence.values(
           [0.0, 50.0, 100.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
+          
         );
 
         final phaseChanges = <double>[];
@@ -31,7 +33,6 @@ void main() {
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.seamless,
           onPhaseChanged: phaseChanges.add,
         );
 
@@ -67,13 +68,14 @@ void main() {
         final sequence = PhaseSequence.values(
           [0.0, 50.0, 100.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
+          
         );
 
         final controller = PhaseController(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.seamless,
         );
 
         // Start at first phase, should be able to go to last seamlessly
@@ -96,6 +98,8 @@ void main() {
         final sequence = PhaseSequence.values(
           [10.0, 20.0, 30.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
+          
         );
 
         final phaseChanges = <double>[];
@@ -104,7 +108,6 @@ void main() {
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.seamless,
           onPhaseChanged: phaseChanges.add,
         );
 
@@ -133,13 +136,14 @@ void main() {
         final sequence = PhaseSequence.values(
           [10.0, 20.0, 30.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.loop,
         );
 
         final controller = PhaseController(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.loop,
+          
         );
 
         expect(controller.currentPhase, equals(10.0));
@@ -167,15 +171,14 @@ void main() {
         final sequence = PhaseSequence.values(
           [10.0, 20.0, 30.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.none,
         );
 
         final controller = PhaseController(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.none,
         )
-
           // Go to last phase
           ..goToPhase(30);
         await tester.pump();
@@ -200,13 +203,14 @@ void main() {
         final sequence = PhaseSequence.values(
           [42.0],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
         );
 
         final controller = PhaseController(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           vsync: vsync,
-          loopMode: PhaseLoopMode.seamless,
+          
         );
 
         expect(controller.currentPhase, equals(42.0));
@@ -229,6 +233,7 @@ void main() {
         final sequence = PhaseSequence.values(
           <double>[],
           motion: (_) => const CupertinoMotion.smooth(),
+          loopMode: PhaseLoopMode.seamless,
         );
 
         expect(
@@ -237,7 +242,7 @@ void main() {
               sequence: sequence,
               converter: const SingleMotionConverter(),
               vsync: vsync,
-              loopMode: PhaseLoopMode.seamless,
+              
             );
           },
           throwsStateError,

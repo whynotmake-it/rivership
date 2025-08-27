@@ -5,25 +5,6 @@ import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/phase_sequence.dart';
 
-/// The mode in which the phase animation should loop.
-enum PhaseLoopMode {
-  /// Don't loop the animation.
-  none,
-
-  /// The animation will loop from the last phase back to the first phase.
-  loop,
-
-  /// The animation will play forward and then reverse back to the start.
-  pingPong,
-
-  /// The animation will loop seamlessly by treating the first and last phases
-  /// as identical, creating smooth circular transitions without jarring jumps.
-  seamless;
-
-  /// Whether the animation should loop.
-  bool get isLooping => this == loop || this == pingPong || this == seamless;
-}
-
 /// {@template PhaseController}
 /// A controller that manages transitions between phases in a [PhaseSequence].
 ///
@@ -41,7 +22,6 @@ class PhaseController<P, T extends Object> extends Animation<T>
     required this.converter,
     required TickerProvider vsync,
     this.onPhaseChanged,
-    PhaseLoopMode loopMode = PhaseLoopMode.loop,
   }) : _sequence = sequence {
     _motionController = MotionController<T>(
       motion: sequence.motionForPhase(sequence.initialPhase),
@@ -50,7 +30,7 @@ class PhaseController<P, T extends Object> extends Animation<T>
       initialValue: sequence.valueForPhase(sequence.initialPhase),
     );
 
-    _loopMode = loopMode;
+    _loopMode = sequence.loopMode;
     _currentPhase = sequence.initialPhase;
     _isForward = true;
 
@@ -67,6 +47,7 @@ class PhaseController<P, T extends Object> extends Animation<T>
   set sequence(PhaseSequence<P, T> value) {
     if (_sequence == value) return;
     _sequence = value;
+    _loopMode = value.loopMode;
     _motionController.motion = _sequence.motionForPhase(_currentPhase);
     _currentPhaseIndex =
         _currentPhaseIndex.clamp(0, _sequence.phases.length - 1);
