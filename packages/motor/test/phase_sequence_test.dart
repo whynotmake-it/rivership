@@ -186,7 +186,10 @@ void main() {
         middleMotion.startTrim,
         closeTo(0.375, 1e-10),
       ); // 0.25 + (0.5-0.25)/2
-      expect(middleMotion.endTrim, closeTo(0.25, 1e-10)); // 1 - 0.375 - 0.375
+      expect(
+        middleMotion.endTrim,
+        closeTo(0.375, 1e-10),
+      ); // 1.0 - (0.375 + 0.25)
 
       // Test last phase motion (should trim from 0.75 to end)
       final lastMotion = timeline.motionForPhase(500) as TrimmedMotion;
