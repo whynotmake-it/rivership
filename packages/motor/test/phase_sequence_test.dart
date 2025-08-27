@@ -7,15 +7,15 @@ void main() {
   const motion2 = CurvedMotion(duration: Duration(seconds: 2));
 
   group('MapPhaseSequence', () {
-    final seq1 = MapPhaseSequence<int, String>(
+    final seq1 = MapPhaseSequence(
       const {'a': 1, 'b': 2},
       motion: (_) => motion,
     );
-    final seq2 = MapPhaseSequence<int, String>(
+    final seq2 = MapPhaseSequence(
       const {'a': 1, 'b': 2},
       motion: (_) => motion,
     );
-    final seq3 = MapPhaseSequence<int, String>(
+    final seq3 = MapPhaseSequence(
       const {'a': 1, 'b': 3},
       motion: (_) => motion2,
     );

@@ -28,7 +28,7 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final phases = MapPhaseSequence<Offset, ButtonState>(
+/// final phases = MapPhaseSequence(
 ///   phaseMap: {
 ///     ButtonState.idle: const Offset(100, 40),
 ///     ButtonState.pressed: const Offset(95, 38),
@@ -37,7 +37,7 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 ///   motion: (_) => const CupertinoMotion.bouncy(),
 /// );
 ///
-/// PhaseMotionBuilder<Offset, ButtonState>(
+/// PhaseMotionBuilder(
 ///   sequence: phases,
 ///   converter: const OffsetMotionConverter(),
 ///   currentPhase: currentButtonState,
@@ -51,7 +51,7 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 /// )
 /// ```
 /// {@endtemplate}
-class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
+class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// {@macro PhaseMotionBuilder}
   const PhaseMotionBuilder({
     required this.sequence,
@@ -67,7 +67,7 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
   });
 
   /// The sequence of phases and their corresponding property values.
-  final PhaseSequence<T, P> sequence;
+  final PhaseSequence<P, T> sequence;
 
   /// Converter for interpolating between property values of type [T].
   final MotionConverter<T> converter;
@@ -108,13 +108,13 @@ class PhaseMotionBuilder<T extends Object, P> extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<PhaseMotionBuilder<T, P>> createState() =>
-      _PhaseMotionBuilderState<T, P>();
+  State<PhaseMotionBuilder<P, T>> createState() =>
+      _PhaseMotionBuilderState<P, T>();
 }
 
-class _PhaseMotionBuilderState<T extends Object, P>
-    extends State<PhaseMotionBuilder<T, P>> with TickerProviderStateMixin {
-  late PhaseController<T, P> _controller;
+class _PhaseMotionBuilderState<P, T extends Object>
+    extends State<PhaseMotionBuilder<P, T>> with TickerProviderStateMixin {
+  late PhaseController<P, T> _controller;
   Object? _lastTrigger;
   P? _lastCurrentPhase;
 
@@ -136,7 +136,7 @@ class _PhaseMotionBuilderState<T extends Object, P>
   }
 
   @override
-  void didUpdateWidget(PhaseMotionBuilder<T, P> oldWidget) {
+  void didUpdateWidget(PhaseMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     // Recreate controller if converter changed
@@ -200,7 +200,7 @@ class _PhaseMotionBuilderState<T extends Object, P>
   }
 
   void _createController() {
-    _controller = PhaseController<T, P>(
+    _controller = PhaseController(
       sequence: widget.sequence,
       converter: widget.converter,
       vsync: this,
@@ -316,7 +316,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
 
 class _SinglePhaseMotionBuilderState<P extends num>
     extends State<SinglePhaseMotionBuilder<P>> {
-  late PhaseSequence<double, P> _sequence;
+  late PhaseSequence<P, double> _sequence;
 
   @override
   void initState() {
@@ -341,7 +341,7 @@ class _SinglePhaseMotionBuilderState<P extends num>
 
   @override
   Widget build(BuildContext context) {
-    return PhaseMotionBuilder<double, P>(
+    return PhaseMotionBuilder(
       sequence: _sequence,
       converter: const SingleMotionConverter(),
       current: widget.current,

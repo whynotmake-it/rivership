@@ -713,4 +713,18 @@ extension MotionTrimming on Motion {
       scaleVelocity: scaleVelocity,
     );
   }
+
+  /// Creates a [TrimmedMotion] that uses a sub-extent of this motion.
+  TrimmedMotion subExtent({
+    required double extent,
+    double start = 0.0,
+    bool scaleVelocity = true,
+  }) {
+    return TrimmedMotion(
+      parent: this,
+      startTrim: start,
+      endTrim: 1.0 - (start + extent),
+      scaleVelocity: scaleVelocity,
+    );
+  }
 }

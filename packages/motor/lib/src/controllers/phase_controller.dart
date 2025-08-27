@@ -30,14 +30,14 @@ enum PhaseLoopMode {
 /// This controller uses Motor's [MotionController] internally to animate
 /// between phase property values using physics-based or duration-based motion.
 /// {@endtemplate}
-class PhaseController<T extends Object, P> extends Animation<T>
+class PhaseController<P, T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
   /// {@macro PhaseController}
   PhaseController({
-    required PhaseSequence<T, P> sequence,
+    required PhaseSequence<P, T> sequence,
     required this.converter,
     required TickerProvider vsync,
     this.onPhaseChanged,
@@ -59,12 +59,12 @@ class PhaseController<T extends Object, P> extends Animation<T>
       ..addStatusListener(_onMotionControllerStatusChange);
   }
 
-  PhaseSequence<T, P> _sequence;
+  PhaseSequence<P, T> _sequence;
 
   /// The phase sequence this controller manages.
-  PhaseSequence<T, P> get sequence => _sequence;
+  PhaseSequence<P, T> get sequence => _sequence;
 
-  set sequence(PhaseSequence<T, P> value) {
+  set sequence(PhaseSequence<P, T> value) {
     if (_sequence == value) return;
     _sequence = value;
     _motionController.motion = _sequence.motionForPhase(_currentPhase);

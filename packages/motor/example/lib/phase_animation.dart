@@ -443,7 +443,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
 
   @override
   Widget build(BuildContext context) {
-    final sequence = MapPhaseSequence<CardProperties, CardPhase>(
+    final sequence = MapPhaseSequence(
       motion: (_) => CupertinoMotion.smooth(),
       {
         CardPhase.idle: const CardProperties(
@@ -482,7 +482,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
         children: [
           GestureDetector(
             onTap: _nextPhase,
-            child: PhaseMotionBuilder<CardProperties, CardPhase>(
+            child: PhaseMotionBuilder(
               sequence: sequence,
               converter: const CardPropertiesConverter(),
               current: currentPhase,

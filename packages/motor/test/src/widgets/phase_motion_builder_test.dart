@@ -8,10 +8,10 @@ enum TestPhase { idle, active, loading }
 
 void main() {
   group('PhaseMotionBuilder', () {
-    late MapPhaseSequence<Offset, TestPhase> testSequence;
+    late MapPhaseSequence<TestPhase, Offset> testSequence;
 
     setUp(() {
-      testSequence = MapPhaseSequence<Offset, TestPhase>(
+      testSequence = MapPhaseSequence(
         const {
           TestPhase.idle: Offset(100, 40),
           TestPhase.active: Offset(120, 45),
@@ -27,7 +27,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           playing: false,
@@ -49,7 +49,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.loading,
@@ -72,7 +72,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.idle,
@@ -91,7 +91,7 @@ void main() {
 
       // Change to active phase
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.active,
@@ -118,7 +118,7 @@ void main() {
       final phaseChanges = <TestPhase>[];
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.idle,
@@ -136,7 +136,7 @@ void main() {
 
       // Change to active phase while playing
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.active,
@@ -165,7 +165,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.idle,
@@ -182,7 +182,7 @@ void main() {
 
       // Change phase while not playing
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.loading,
@@ -208,7 +208,7 @@ void main() {
       final phaseChanges = <TestPhase>[];
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.idle,
@@ -222,7 +222,7 @@ void main() {
 
       // Change to active phase
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.active,
@@ -241,7 +241,7 @@ void main() {
       var triggerValue = 0;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.loading,
@@ -259,7 +259,7 @@ void main() {
       // Change both currentPhase and restartTrigger
       triggerValue = 1;
       await tester.pumpWidget(
-        PhaseMotionBuilder<Offset, TestPhase>(
+        PhaseMotionBuilder(
           sequence: testSequence,
           converter: const OffsetMotionConverter(),
           current: TestPhase.active,
