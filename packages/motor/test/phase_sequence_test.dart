@@ -66,4 +66,132 @@ void main() {
       expect(seq1.motionForPhase(1), motion);
     });
   });
+
+  group('TimelineSequence', () {
+    // Test with non-normalized values (10-50 range)
+    final timeline1 = TimelineSequence<String>(
+      {
+        10.0: 'start',
+        30.0: 'middle',
+        50.0: 'end',
+      },
+      motion: motion,
+    );
+
+    // Test with negative values (-100 to 200 range)
+    final timeline2 = TimelineSequence<int>(
+      {
+        -100.0: 0,
+        0.0: 50,
+        200.0: 100,
+      },
+      motion: motion2,
+    );
+
+    // Test with single value
+    final timeline3 = TimelineSequence<String>(
+      {
+        42.0: 'single',
+      },
+      motion: motion,
+    );
+
+    test('returns original sorted values for 10-50 range', () {
+      final phases = timeline1.phases;
+      expect(phases.length, equals(3));
+      expect(phases[0], equals(10.0)); // Original value
+      expect(phases[1], equals(30.0)); // Original value
+      expect(phases[2], equals(50.0)); // Original value
+
+      expect(timeline1.valueForPhase(10), equals('start'));
+      expect(timeline1.valueForPhase(30), equals('middle'));
+      expect(timeline1.valueForPhase(50), equals('end'));
+    });
+
+    test('returns original sorted values for -100 to 200 range', () {
+      final phases = timeline2.phases;
+      expect(phases.length, equals(3));
+      expect(phases[0], equals(-100.0)); // Original value
+      expect(phases[1], equals(0.0)); // Original value
+      expect(phases[2], equals(200.0)); // Original value
+
+      expect(timeline2.valueForPhase(-100), equals(0));
+      expect(timeline2.valueForPhase(0), equals(50));
+      expect(timeline2.valueForPhase(200), equals(100));
+    });
+
+    test('handles single value correctly', () {
+      final phases = timeline3.phases;
+      expect(phases.length, equals(1));
+      expect(phases[0], equals(42.0)); // Original value
+
+      expect(timeline3.valueForPhase(42), equals('single'));
+    });
+
+    test('sortedValues accessor returns original sorted map', () {
+      final values = timeline1.sortedValues;
+      expect(values[10.0], equals('start'));
+      expect(values[30.0], equals('middle'));
+      expect(values[50.0], equals('end'));
+    });
+
+    test('motionForPhase returns trimmed motion based on timeline', () {
+      // The timeline automatically trims motions for each phase
+      // For the first phase, it should be a trimmed version of the original
+      // motion
+      final firstPhaseMotion = timeline1.motionForPhase(10);
+      expect(firstPhaseMotion, isA<TrimmedMotion>());
+      expect((firstPhaseMotion as TrimmedMotion).parent, equals(motion));
+
+      final firstPhaseMotion2 = timeline2.motionForPhase(-100);
+      expect(firstPhaseMotion2, isA<TrimmedMotion>());
+      expect((firstPhaseMotion2 as TrimmedMotion).parent, equals(motion2));
+    });
+
+    test('sorts phases correctly regardless of input order', () {
+      final unordered = TimelineSequence<String>(
+        {
+          50.0: 'end',
+          10.0: 'start',
+          30.0: 'middle',
+        },
+        motion: motion,
+      );
+
+      final phases = unordered.phases;
+      expect(phases[0], equals(10.0)); // start (original value)
+      expect(phases[1], equals(30.0)); // middle (original value)
+      expect(phases[2], equals(50.0)); // end (original value)
+    });
+
+    test('timeline trimming works correctly with normalized values internally',
+        () {
+      final timeline = TimelineSequence<String>(
+        {
+          100.0: 'first', // normalized to 0.0 internally
+          200.0: 'second', // normalized to 0.25 internally
+          300.0: 'third', // normalized to 0.5 internally
+          500.0: 'fourth', // normalized to 1.0 internally
+        },
+        motion: motion2,
+      );
+
+      // Test first phase motion (should use subExtent with extent = (0.25-0)/2 = 0.125)
+      final firstMotion = timeline.motionForPhase(100) as TrimmedMotion;
+      expect(firstMotion.startTrim, equals(0.0));
+      expect(firstMotion.endTrim, closeTo(0.875, 1e-10)); // 1 - 0.125
+
+      final middleMotion = timeline.motionForPhase(300) as TrimmedMotion;
+      expect(
+        middleMotion.startTrim,
+        closeTo(0.375, 1e-10),
+      ); // 0.25 + (0.5-0.25)/2
+      expect(middleMotion.endTrim, closeTo(0.25, 1e-10)); // 1 - 0.375 - 0.375
+
+      // Test last phase motion (should trim from 0.75 to end)
+      final lastMotion = timeline.motionForPhase(500) as TrimmedMotion;
+      expect(lastMotion.startTrim, closeTo(0.75, 1e-10)); // 0.5 + (1-0.5)/2
+      expect(lastMotion.endTrim, equals(0.0));
+    });
+  });
 }

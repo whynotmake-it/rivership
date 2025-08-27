@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/motion.dart';
 
 /// A function that provides the motion for a specific phase.
@@ -127,9 +127,32 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
   Motion motionForPhase(T phase) => motion(phase);
 }
 
+/// Normalizes timeline values to the range [0.0, 1.0].
+Map<double, T> _normalizeTimelineValues<T extends Object>(
+  Map<double, T> sortedValues,
+) {
+  if (sortedValues.isEmpty) return <double, T>{};
+
+  final keys = sortedValues.keys;
+  final min = keys.first;
+  final max = keys.last;
+  final range = max - min;
+
+  if (range == 0) {
+    return {0.0: sortedValues.values.first};
+  }
+
+  return Map.fromEntries(
+    sortedValues.entries.map((entry) {
+      final normalizedKey = (entry.key - min) / range;
+      return MapEntry(normalizedKey, entry.value);
+    }),
+  );
+}
+
 /// {@template TimelineSequence}
 /// A phase sequence that represents a timeline where phases are defined
-/// as normalized time values (0.0 to 1.0) mapping to property values.
+/// as time values mapping to property values.
 ///
 /// This is useful for creating complex animations with multiple keyframes
 /// at specific points in time. The motion is automatically trimmed to
@@ -139,29 +162,36 @@ class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
 class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   /// Creates a [TimelineSequence] with the given timeline values.
   ///
-  /// The [values] map should contain normalized time values (0.0 to 1.0)
-  /// as keys and the corresponding property values as values.
-  /// The [motion] defines the overall motion curve for the timeline.
+  /// The [values] map contains time values as keys and the corresponding
+  /// property values as values. The [motion] defines the overall motion
+  /// curve for the timeline.
   TimelineSequence(
-    this.values, {
+    Map<double, T> values, {
     required this.motion,
-  });
+  }) : _values = values;
 
-  /// The timeline mapping from normalized time values to property values.
-  ///
-  /// Keys should be normalized time values between 0.0 and 1.0,
-  /// representing keyframes in the animation timeline.
-  final Map<double, T> values;
+  final Map<double, T> _values;
+
+  /// The original timeline values sorted by their time keys in ascending order.
+  late final Map<double, T> _sortedValues = Map.fromEntries(
+    _values.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+  );
+
+  /// The normalized timeline values (0.0 to 1.0) for internal motion
+  /// calculations.
+  late final Map<double, T> _normalizedValues =
+      _normalizeTimelineValues(_sortedValues);
+
+  /// Cached list of original phase keys for performance.
+  late final List<double> _phasesList = _sortedValues.keys.toList();
+
+  /// Cached list of normalized phase keys for performance.
+  late final List<double> _normalizedPhasesList =
+      _normalizedValues.keys.toList();
 
   @visibleForTesting
-
-  /// The timeline values sorted by their time keys in ascending order.
-  late final sortedValues = Map.fromEntries(
-    values.entries.toList()
-      ..sort(
-        (a, b) => a.key.compareTo(b.key),
-      ),
-  );
+  // ignore: public_member_api_docs
+  Map<double, T> get sortedValues => _sortedValues;
 
   /// The motion curve to use for the entire timeline.
   ///
@@ -170,38 +200,37 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   final Motion motion;
 
   @override
-  List<double> get phases => sortedValues.keys.toList();
+  List<double> get phases => _phasesList;
 
   @override
-  T valueForPhase(double phase) => sortedValues[phase]!;
+  T valueForPhase(double phase) => _sortedValues[phase]!;
 
   @override
   Motion motionForPhase(double phase) {
-    final phaseList = phases;
-    final currentIndex = phaseList.indexOf(phase);
+    if (_normalizedPhasesList.length == 1) return motion;
 
-    if (phaseList.length == 1) return motion;
+    final currentIndex = _phasesList.indexOf(phase);
+    final normalizedPhase = _normalizedPhasesList[currentIndex];
 
     if (currentIndex == 0) {
-      final next = phaseList[currentIndex + 1];
-
-      return motion.subExtent(extent: (next - phase) / 2);
+      final nextNormalized = _normalizedPhasesList[currentIndex + 1];
+      return motion.subExtent(extent: (nextNormalized - normalizedPhase) / 2);
     }
 
     // If this is the last phase, use the motion from previous phase to 1.0
-    if (currentIndex == phaseList.length - 1) {
-      final previousPhase = phaseList[currentIndex - 1];
+    if (currentIndex == _normalizedPhasesList.length - 1) {
+      final previousNormalized = _normalizedPhasesList[currentIndex - 1];
       return motion.trimmed(
-        startTrim: previousPhase + (phase - previousPhase) / 2,
+        startTrim:
+            previousNormalized + (normalizedPhase - previousNormalized) / 2,
       );
     }
 
     // For middle phases, use the motion from previous phase to this phase
-    final previousPhase = phaseList[currentIndex - 1];
-    final next = phaseList[currentIndex + 1];
+    final previousNormalized = _normalizedPhasesList[currentIndex - 1];
     return motion.subExtent(
-      start: previousPhase + (phase - previousPhase) / 2,
-      extent: (next - previousPhase) / 2,
+      start: previousNormalized + (normalizedPhase - previousNormalized) / 2,
+      extent: normalizedPhase - previousNormalized,
     );
   }
 }

@@ -123,12 +123,11 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
             sequence: TimelineSequence(
               {
                 0: 1.0,
-                .2: 0.85,
+                .05: 0.85,
                 .4: 1.1,
-                .6: 0.95,
-                .1: 1.0,
+                .9: 1.0,
               },
-              motion: CupertinoMotion.bouncy(),
+              motion: MaterialSpringMotion.expressiveSpatialDefault,
             ),
             // Define the scale values for each phase
             converter: SingleMotionConverter(),
