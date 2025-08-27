@@ -180,22 +180,28 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
     final phaseList = phases;
     final currentIndex = phaseList.indexOf(phase);
 
-    // If this is the first phase, use the motion from 0 to this phase
+    if (phaseList.length == 1) return motion;
+
     if (currentIndex == 0) {
-      return motion.subExtent(extent: phase);
+      final next = phaseList[currentIndex + 1];
+
+      return motion.subExtent(extent: (next - phase) / 2);
     }
 
     // If this is the last phase, use the motion from previous phase to 1.0
     if (currentIndex == phaseList.length - 1) {
       final previousPhase = phaseList[currentIndex - 1];
-      return motion.trimmed(startTrim: previousPhase);
+      return motion.trimmed(
+        startTrim: previousPhase + (phase - previousPhase) / 2,
+      );
     }
 
     // For middle phases, use the motion from previous phase to this phase
     final previousPhase = phaseList[currentIndex - 1];
+    final next = phaseList[currentIndex + 1];
     return motion.subExtent(
-      start: previousPhase,
-      extent: phase - previousPhase,
+      start: previousPhase + (phase - previousPhase) / 2,
+      extent: (next - previousPhase) / 2,
     );
   }
 }

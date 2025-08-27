@@ -607,7 +607,7 @@ class TrimmedMotion extends Motion {
     required this.parent,
     required this.startTrim,
     required this.endTrim,
-    this.scaleVelocity = true,
+    this.scaleVelocity = false,
   })  : assert(startTrim >= 0.0, 'startTrim must be non-negative'),
         assert(endTrim >= 0.0, 'endTrim must be non-negative'),
         assert(
@@ -684,6 +684,32 @@ class TrimmedMotion extends Motion {
       'TrimmedMotion(parent: $parent, trim: $startTrim-$endTrim, scaleVelocity: $scaleVelocity)';
 }
 
+@immutable
+class _TrimmedSimulation extends Simulation {
+  _TrimmedSimulation(this.parent, this.startTrim, this.endTrim);
+
+  final Simulation parent;
+
+  final double startTrim;
+
+  final double endTrim;
+
+  @override
+  double dx(double time) {
+    // TODO: implement dx
+    throw UnimplementedError();
+  }
+
+  @override
+  bool isDone(double time) => parent.isDone(time);
+
+  @override
+  double x(double time) {
+    // TODO: implement x
+    throw UnimplementedError();
+  }
+}
+
 /// Extension methods for [Motion] to provide convenient trimming functionality.
 extension MotionTrimming on Motion {
   /// Creates a [TrimmedMotion] that uses only the middle portion of this motion.
@@ -704,7 +730,7 @@ extension MotionTrimming on Motion {
   TrimmedMotion trimmed({
     double startTrim = 0.0,
     double endTrim = 0.0,
-    bool scaleVelocity = true,
+    bool scaleVelocity = false,
   }) {
     return TrimmedMotion(
       parent: this,
@@ -718,8 +744,9 @@ extension MotionTrimming on Motion {
   TrimmedMotion subExtent({
     required double extent,
     double start = 0.0,
-    bool scaleVelocity = true,
+    bool scaleVelocity = false,
   }) {
+    assert(start + extent <= 1.0, 'start + extent cannot be larger than 1');
     return TrimmedMotion(
       parent: this,
       startTrim: start,

@@ -119,13 +119,22 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
     return Center(
       child: Column(
         children: [
-          SinglePhaseMotionBuilder<double>(
+          PhaseMotionBuilder(
+            sequence: TimelineSequence(
+              {
+                0: 1.0,
+                .2: 0.85,
+                .4: 1.1,
+                .6: 0.95,
+                .1: 1.0,
+              },
+              motion: CupertinoMotion.bouncy(),
+            ),
             // Define the scale values for each phase
-            phases: const [1.0, 0.85, 1.1, 0.95, 1.0],
-            motion: CupertinoMotion.bouncy(),
+            converter: SingleMotionConverter(),
             loopMode: PhaseLoopMode.none,
             restartTrigger: tapCount,
-            builder: (context, scale, child) {
+            builder: (context, scale, _, child) {
               return GestureDetector(
                 onTap: () {
                   setState(() {
