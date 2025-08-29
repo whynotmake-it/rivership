@@ -5,6 +5,7 @@ library motor;
 export 'src/controllers/motion_controller.dart'
     show BoundedMotionController, MotionController;
 export 'src/controllers/phase_controller.dart';
+export 'src/controllers/phase_sequence_controller.dart';
 export 'src/controllers/single_motion_controller.dart';
 export 'src/motion.dart';
 export 'src/motion_converter.dart';
