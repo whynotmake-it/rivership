@@ -114,8 +114,10 @@ void main() {
             vsync: tester,
             converter: converter,
             initialValue: Offset.zero,
-          )..animateTo(const Offset(0.5, 0.5),
-              withVelocity: const Offset(2, 2));
+          )..animateTo(
+              const Offset(0.5, 0.5),
+              withVelocity: const Offset(2, 2),
+            );
           await tester.pump();
 
           final initialVelocity = controller.velocity;
@@ -196,11 +198,11 @@ void main() {
 
         testWidgets('stops any active sequence when animateTo is called',
             (tester) async {
-          final sequence = PhaseSequence.map({
+          final sequence = PhaseSequence.map(motion: (_) => motion, const {
             'a': Offset.zero,
-            'b': const Offset(1, 1),
-            'c': const Offset(2, 2),
-          }, motion: (_) => motion);
+            'b': Offset(1, 1),
+            'c': Offset(2, 2),
+          });
 
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -226,7 +228,7 @@ void main() {
         });
 
         testWidgets(
-            'animates with from parameter correctly when x values are identical',
+            'animates with from parameter correctly when x are identical',
             (tester) async {
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -276,7 +278,7 @@ void main() {
         });
 
         testWidgets(
-            'animates with from parameter correctly when y values are identical',
+            'animates with from parameter correctly when y are identical',
             (tester) async {
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -402,11 +404,11 @@ void main() {
 
         testWidgets('stops any active sequence when stop is called',
             (tester) async {
-          final sequence = PhaseSequence.map({
+          final sequence = PhaseSequence.map(motion: (_) => motion, const {
             'a': Offset.zero,
-            'b': const Offset(1, 1),
-            'c': const Offset(2, 2),
-          }, motion: (_) => motion);
+            'b': Offset(1, 1),
+            'c': Offset(2, 2),
+          });
 
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -532,11 +534,14 @@ void main() {
 
         testWidgets('stops any active sequence when value is set',
             (tester) async {
-          final sequence = PhaseSequence.map({
-            'a': Offset.zero,
-            'b': const Offset(1, 1),
-            'c': const Offset(2, 2),
-          }, motion: (_) => motion);
+          final sequence = PhaseSequence.map(
+            const {
+              'a': Offset.zero,
+              'b': Offset(1, 1),
+              'c': Offset(2, 2),
+            },
+            motion: (_) => motion,
+          );
 
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
