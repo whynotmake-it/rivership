@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:motor/src/controllers/phase_sequence_controller.dart';
+import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/phase_sequence.dart';

@@ -44,7 +44,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Watch a continuous loading animation cycle through different phases',
                 ),
                 const SizedBox(height: 20),
-                //  const LoadingPhaseExample(),
+                const LoadingPhaseExample(),
                 const SizedBox(height: 40),
                 _buildSectionHeader(
                   context,
@@ -52,7 +52,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Compare seamless looping (top) with regular looping (bottom)',
                 ),
                 const SizedBox(height: 20),
-                //const LoopComparisonExample(),
+                const LoopComparisonExample(),
                 const SizedBox(height: 40),
                 _buildSectionHeader(
                   context,
@@ -60,7 +60,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Tap to cycle through different interactive states with smooth transitions',
                 ),
                 const SizedBox(height: 20),
-                //const InteractiveCardExample(),
+                const InteractiveCardExample(),
               ],
             ),
           ),
@@ -446,6 +446,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
   @override
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence(
+      loopMode: PhaseLoopMode.loop,
       motion: (_) => CupertinoMotion.smooth(),
       {
         CardPhase.idle: const CardProperties(
@@ -487,6 +488,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
             child: PhaseMotionBuilder(
               sequence: sequence,
               converter: const CardPropertiesConverter(),
+              currentPhase: currentPhase,
               builder: (context, properties, phase, child) {
                 return Container(
                   width: properties.width,
