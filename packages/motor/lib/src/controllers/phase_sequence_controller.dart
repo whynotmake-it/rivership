@@ -107,9 +107,8 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     P? atPhase,
     void Function(P phase)? onPhaseChanged,
   }) {
-    _stopSequence();
-
     if (sequence.phases.isEmpty) {
+      _stopSequence();
       return TickerFuture.complete();
     }
 
@@ -266,6 +265,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   }
 
   void _onStatusChanged(AnimationStatus status) {
+    print(status);
     if (!status.isAnimating && _isPlayingSequence) {
       _handleSequencePhaseCompletion();
     }

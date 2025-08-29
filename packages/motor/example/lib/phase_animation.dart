@@ -44,7 +44,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Watch a continuous loading animation cycle through different phases',
                 ),
                 const SizedBox(height: 20),
-                const LoadingPhaseExample(),
+                //  const LoadingPhaseExample(),
                 const SizedBox(height: 40),
                 _buildSectionHeader(
                   context,
@@ -52,7 +52,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Compare seamless looping (top) with regular looping (bottom)',
                 ),
                 const SizedBox(height: 20),
-                const LoopComparisonExample(),
+                //const LoopComparisonExample(),
                 const SizedBox(height: 40),
                 _buildSectionHeader(
                   context,
@@ -60,7 +60,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                   'Tap to cycle through different interactive states with smooth transitions',
                 ),
                 const SizedBox(height: 20),
-                const InteractiveCardExample(),
+                //const InteractiveCardExample(),
               ],
             ),
           ),
@@ -125,13 +125,13 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                     0.5,
                     motion: CupertinoMotion.smooth(),
                   )
-                : TimelineSequence(
+                : MapPhaseSequence<double, double>(
                     {
                       0: 1.0,
                       0.4: 1.1,
                       0.9: 1.0,
                     },
-                    motion: CupertinoMotion.bouncy(),
+                    motion: (_) => CupertinoMotion.bouncy(),
                   ),
             // Define the scale values for each phase
             converter: const SingleMotionConverter(),
