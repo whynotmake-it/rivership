@@ -125,13 +125,13 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
                     0.5,
                     motion: CupertinoMotion.smooth(),
                   )
-                : MapPhaseSequence<double, double>(
+                : TimelineSequence<double>(
                     {
                       0: 1.0,
                       0.4: 1.1,
                       0.9: 1.0,
                     },
-                    motion: (_) => CupertinoMotion.bouncy(),
+                    motion: CupertinoMotion.smooth(),
                   ),
             // Define the scale values for each phase
             converter: const SingleMotionConverter(),

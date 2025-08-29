@@ -112,11 +112,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
       return TickerFuture.complete();
     }
 
-    _activeSequence = sequence;
-    _onSequencePhaseChanged = onPhaseChanged;
-    _isPlayingSequence = true;
-    _sequenceDirection = 1;
-
     final targetPhase = atPhase ?? sequence.phases.first;
     _currentSequencePhaseIndex = sequence.phases.indexOf(targetPhase);
 
@@ -128,6 +123,12 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     final f = super.animateTo(
       sequence.valueForPhase(targetPhase),
     );
+
+    _activeSequence = sequence;
+    _onSequencePhaseChanged = onPhaseChanged;
+    _isPlayingSequence = true;
+    _sequenceDirection = 1;
+
     _currentAnimationFuture = f;
     _currentSequencePhase = targetPhase;
     _onSequencePhaseChanged?.call(targetPhase);
@@ -265,7 +266,8 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   }
 
   void _onStatusChanged(AnimationStatus status) {
-    print(status);
+    // Only handle completion if we're still playing the same sequence
+    // and the animation actually completed (not interrupted/dismissed)
     if (!status.isAnimating && _isPlayingSequence) {
       _handleSequencePhaseCompletion();
     }
