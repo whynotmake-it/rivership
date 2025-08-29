@@ -487,7 +487,6 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
             child: PhaseMotionBuilder(
               sequence: sequence,
               converter: const CardPropertiesConverter(),
-              current: currentPhase,
               builder: (context, properties, phase, child) {
                 return Container(
                   width: properties.width,

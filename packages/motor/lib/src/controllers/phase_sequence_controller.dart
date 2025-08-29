@@ -7,14 +7,8 @@ import 'package:motor/src/phase_sequence.dart';
 /// phase access.
 ///
 /// This controller extends [MotionController] to provide reliable phase-based
-/// animations
-/// using the existing ticker system rather than callback-based scheduling.
-///
-/// Unlike the standalone PhaseController, this approach:
-/// - Provides compile-time type safety for phase access
-/// - Uses ticker-driven progression for reliability
-/// - Naturally handles interruption through method overrides
-/// - Smoothly transitions from normal animations to sequences
+/// animations with compile-time type safety and smooth transitions between
+/// phases.
 ///
 /// Example:
 /// ```dart
@@ -41,7 +35,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     required super.initialValue,
     super.behavior,
   }) {
-    // Listen for status changes to handle sequence progression
     addStatusListener(_onStatusChanged);
   }
 
@@ -53,7 +46,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     required super.initialValue,
     super.behavior,
   }) : super.motionPerDimension() {
-    // Listen for status changes to handle sequence progression
     addStatusListener(_onStatusChanged);
   }
 
@@ -109,27 +101,23 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   /// The [onPhaseChanged] callback is called whenever the animation transitions
   /// to a new phase.
   ///
-  /// Any existing sequence or animation is smoothly interrupted when this is
-  /// called.
+  /// Any existing sequence or animation is interrupted when this is called.
   TickerFuture playSequence(
     PhaseSequence<P, T> sequence, {
     P? atPhase,
     void Function(P phase)? onPhaseChanged,
   }) {
-    // Stop any existing sequence
     _stopSequence();
 
     if (sequence.phases.isEmpty) {
       return TickerFuture.complete();
     }
 
-    // Initialize sequence state
     _activeSequence = sequence;
     _onSequencePhaseChanged = onPhaseChanged;
     _isPlayingSequence = true;
     _sequenceDirection = 1;
 
-    // Determine target phase
     final targetPhase = atPhase ?? sequence.phases.first;
     _currentSequencePhaseIndex = sequence.phases.indexOf(targetPhase);
 
@@ -137,25 +125,22 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
       throw ArgumentError('Phase $targetPhase not found in sequence');
     }
 
-    // Start the sequence by animating to the target phase
-    _currentAnimationFuture = super.animateTo(
+    motion = sequence.motionForPhase(targetPhase);
+    final f = super.animateTo(
       sequence.valueForPhase(targetPhase),
     );
+    _currentAnimationFuture = f;
     _currentSequencePhase = targetPhase;
     _onSequencePhaseChanged?.call(targetPhase);
-    
-    // Set motion for the target phase  
-    motion = sequence.motionForPhase(targetPhase);
 
-    return _currentAnimationFuture!;
+    return f;
   }
 
-  /// Stops any active sequence (internal method).
+  /// Stops any active sequence.
   void _stopSequence() {
     if (!_isPlayingSequence) return;
 
     _isPlayingSequence = false;
-    _currentSequencePhase = null;
     _onSequencePhaseChanged = null;
 
     _currentAnimationFuture = null;
@@ -169,17 +154,12 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     final sequence = _activeSequence!;
     _currentSequencePhase = phase;
 
-    // Notify phase change
     _onSequencePhaseChanged?.call(phase);
 
-    // Get motion and target for this phase
     final phaseMotion = sequence.motionForPhase(phase);
     final targetValue = sequence.valueForPhase(phase);
 
-    // Update motion for this phase
     motion = phaseMotion;
-
-    // Animate to the phase (preserves current velocity for smooth transition)
     _currentAnimationFuture = super.animateTo(targetValue);
   }
 
@@ -192,12 +172,9 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     final sequence = _activeSequence!;
     final totalPhases = sequence.phases.length;
 
-    // Determine next phase index
     var nextIndex = _currentSequencePhaseIndex + _sequenceDirection;
 
-    // Handle sequence boundaries
     if (nextIndex >= totalPhases) {
-      // Reached end of sequence
       switch (sequence.loopMode) {
         case PhaseLoopMode.none:
           _completeSequence();
@@ -207,7 +184,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
           nextIndex = 0;
 
         case PhaseLoopMode.seamless:
-          // Jump to start without animation
           nextIndex = 0;
           _jumpToSequencePhase(nextIndex);
           return;
@@ -218,7 +194,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
           if (nextIndex < 0) nextIndex = 0;
       }
     } else if (nextIndex < 0) {
-      // Reached start during ping-pong reverse
       _sequenceDirection = 1;
       nextIndex = 1;
       if (nextIndex >= totalPhases) nextIndex = totalPhases - 1;
@@ -226,7 +201,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
     _currentSequencePhaseIndex = nextIndex;
 
-    // Continue to next phase
     final nextPhase = sequence.phases[nextIndex];
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (_isPlayingSequence) {
@@ -238,13 +212,12 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   /// Completes the current sequence and stops playback.
   void _completeSequence() {
     _isPlayingSequence = false;
-    _currentSequencePhase = null;
     _activeSequence = null;
     _onSequencePhaseChanged = null;
     _currentAnimationFuture = null;
   }
 
-  /// Jumps to a sequence phase without animation (for seamless looping).
+  /// Jumps to a sequence phase without animation.
   void _jumpToSequencePhase(int phaseIndex) {
     if (_activeSequence == null) return;
 
@@ -252,16 +225,12 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     final phase = sequence.phases[phaseIndex];
     final targetValue = sequence.valueForPhase(phase);
 
-    // Set value without animation
     value = targetValue;
 
     _currentSequencePhaseIndex = phaseIndex;
     _currentSequencePhase = phase;
 
-    // Notify phase change
     _onSequencePhaseChanged?.call(phase);
-
-    // Continue sequence after a frame
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (_isPlayingSequence) {
         _handleSequencePhaseCompletion();
@@ -275,10 +244,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     T? from,
     T? withVelocity,
   }) {
-    // Stop any active sequence when a manual animateTo is called
     _stopSequence();
-
-    // Call parent implementation
     return super.animateTo(
       target,
       from: from,
@@ -288,10 +254,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
   @override
   TickerFuture stop({bool canceled = false}) {
-    // Stop sequence when animation is stopped
     _stopSequence();
-
-    // Call parent implementation
     return super.stop(canceled: canceled);
   }
 
@@ -302,9 +265,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     super.dispose();
   }
 
-  /// Internal status listener to handle sequence progression.
   void _onStatusChanged(AnimationStatus status) {
-    // When animation completes, handle sequence progression
     if (!status.isAnimating && _isPlayingSequence) {
       _handleSequencePhaseCompletion();
     }
