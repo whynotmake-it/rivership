@@ -870,6 +870,17 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   }
 
   @override
+  set value(T newValue) {
+    // Stop any active sequence when value is set
+    _stopSequence();
+    
+    // Call parent implementation
+    super.value = newValue;
+  }
+
+
+
+  @override
   TickerFuture animateTo(
     T target, {
     T? from,
