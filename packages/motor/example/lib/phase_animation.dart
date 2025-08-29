@@ -451,28 +451,24 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
       {
         CardPhase.idle: const CardProperties(
           width: 280,
-          height: 120,
           borderRadius: 16,
           color: CupertinoColors.systemGrey,
           shadowBlur: 4,
         ),
         CardPhase.focused: const CardProperties(
           width: 300,
-          height: 130,
           borderRadius: 20,
           color: CupertinoColors.activeBlue,
           shadowBlur: 12,
         ),
         CardPhase.pressed: const CardProperties(
           width: 270,
-          height: 115,
           borderRadius: 12,
           color: CupertinoColors.systemIndigo,
           shadowBlur: 2,
         ),
         CardPhase.success: const CardProperties(
           width: 320,
-          height: 140,
           borderRadius: 24,
           color: CupertinoColors.systemGreen,
           shadowBlur: 16,
@@ -492,7 +488,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
               builder: (context, properties, phase, child) {
                 return Container(
                   width: properties.width,
-                  height: properties.height,
+                  height: 200,
                   decoration: BoxDecoration(
                     color: properties.color,
                     borderRadius:
@@ -597,14 +593,12 @@ enum CardPhase {
 class CardProperties {
   const CardProperties({
     required this.width,
-    required this.height,
     required this.borderRadius,
     required this.color,
     required this.shadowBlur,
   });
 
   final double width;
-  final double height;
   final double borderRadius;
   final Color color;
   final double shadowBlur;
@@ -620,7 +614,6 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
   @override
   List<double> normalize(CardProperties value) => [
         value.width,
-        value.height,
         value.borderRadius,
         value.color.r.toDouble(),
         value.color.g.toDouble(),
@@ -631,14 +624,13 @@ class CardPropertiesConverter implements MotionConverter<CardProperties> {
   @override
   CardProperties denormalize(List<double> values) => CardProperties(
         width: values[0],
-        height: values[1],
-        borderRadius: values[2],
+        borderRadius: values[1],
         color: Color.from(
           alpha: 1,
-          red: values[3],
-          green: values[4],
-          blue: values[5],
+          red: values[2],
+          green: values[3],
+          blue: values[4],
         ),
-        shadowBlur: values[6],
+        shadowBlur: values[5],
       );
 }

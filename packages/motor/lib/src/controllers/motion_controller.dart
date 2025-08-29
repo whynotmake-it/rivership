@@ -616,10 +616,10 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
   /// Progress through current sequence (0.0 to 1.0, accounting for loops)
   double get sequenceProgress {
-    if (_activeSequence == null || !_isPlayingSequence) return 0.0;
+    if (_activeSequence == null || !_isPlayingSequence) return 0;
 
     final totalPhases = _activeSequence!.phases.length;
-    if (totalPhases <= 1) return 1.0;
+    if (totalPhases <= 1) return 1;
 
     return _currentSequencePhaseIndex / (totalPhases - 1);
   }
@@ -642,8 +642,8 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
   /// Plays through a phase sequence starting from current value/velocity.
   ///
-  /// Returns a [TickerFuture] that completes when sequence finishes (non-looping)
-  /// or never completes for looping sequences.
+  /// Returns a [TickerFuture] that completes when sequence finishes
+  /// (non-looping) or never completes for looping sequences.
   ///
   /// If [atPhase] is provided, the sequence will start by animating to that
   /// specific phase, then continue normal sequence progression.
@@ -832,7 +832,6 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
   /// Completes the current sequence and stops playback.
   void _completeSequence() {
-    print('complete sequence');
     _isPlayingSequence = false;
     _currentSequencePhase = null;
 

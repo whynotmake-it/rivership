@@ -167,18 +167,12 @@ class _PhaseMotionBuilderState<P, T extends Object>
       return;
     }
 
-    // Playing is true
-    final currentPhase = widget.currentPhase;
-    if (currentPhase != null) {
-      // Manual phase control - animate to specific phase
-      _animateToPhase(currentPhase);
-    } else {
-      // Auto-play the sequence
-      _controller.playSequence(
-        widget.sequence,
-        onPhaseChanged: widget.onPhaseChanged,
-      );
-    }
+    // Playing is true - always play the sequence
+    _controller.playSequence(
+      widget.sequence,
+      atPhase: widget.currentPhase, // Start from specified phase if provided
+      onPhaseChanged: widget.onPhaseChanged,
+    );
   }
 
   void _animateToPhase(P phase) {

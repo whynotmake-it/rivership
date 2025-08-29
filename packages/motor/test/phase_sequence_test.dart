@@ -89,7 +89,7 @@ void main() {
       expect(seq1, isNot(equals(seq3)));
     });
     test('phases and valueForPhase', () {
-      expect(seq1.phases, ['hello']);
+      expect(seq1.phases, [0]);
       expect(seq1.valueForPhase(12312312), 'hello');
     });
     test('motionForPhase returns correct motion', () {
