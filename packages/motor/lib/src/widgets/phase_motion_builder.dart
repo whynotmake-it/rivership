@@ -56,6 +56,7 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
     this.currentPhase,
     this.onPhaseChanged,
     this.child,
+    this.restartTrigger,
     super.key,
   });
 
@@ -89,6 +90,13 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// An optional child widget to pass to the [builder].
   final Widget? child;
+
+  /// A trigger that restarts the animation when changed.
+  ///
+  /// When this value changes, the animation will restart from either:
+  /// - The beginning of the sequence (if [playing] is true)
+  /// - The current phase (if [playing] is false and [currentPhase] is set)
+  final Object? restartTrigger;
 
   @override
   State<PhaseMotionBuilder<P, T>> createState() =>
@@ -130,10 +138,11 @@ class _PhaseMotionBuilderState<P, T extends Object>
       _controller.motion = newMotion;
     }
 
-    // Handle sequence, currentPhase, or playing changes
+    // Handle sequence, currentPhase, playing, or restart trigger changes
     if (widget.sequence != oldWidget.sequence ||
         widget.currentPhase != oldWidget.currentPhase ||
-        widget.playing != oldWidget.playing) {
+        widget.playing != oldWidget.playing ||
+        widget.restartTrigger != oldWidget.restartTrigger) {
       _updateAnimation();
     }
   }
@@ -167,7 +176,7 @@ class _PhaseMotionBuilderState<P, T extends Object>
       return;
     }
 
-    // Playing is true - always play the sequence
+    // Playing is true - restart the sequence from the beginning or current phase
     _controller.playSequence(
       widget.sequence,
       atPhase: widget.currentPhase, // Start from specified phase if provided
@@ -238,6 +247,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
     this.loopMode = PhaseLoopMode.loop,
     this.onPhaseChanged,
     this.child,
+    this.restartTrigger,
     super.key,
   });
 
@@ -268,6 +278,9 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
 
   /// An optional child widget to pass to the [builder].
   final Widget? child;
+
+  /// A trigger that restarts the animation when changed.
+  final Object? restartTrigger;
 
   @override
   State<SinglePhaseMotionBuilder<P>> createState() =>
@@ -309,6 +322,7 @@ class _SinglePhaseMotionBuilderState<P extends num>
       playing: widget.playing,
       currentPhase: widget.currentPhase,
       onPhaseChanged: widget.onPhaseChanged,
+      restartTrigger: widget.restartTrigger,
       builder: (context, value, _, child) {
         return widget.builder(context, value, child);
       },
