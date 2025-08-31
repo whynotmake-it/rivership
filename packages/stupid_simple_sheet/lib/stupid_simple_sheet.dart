@@ -168,10 +168,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   @override
   Simulation? createSimulation({required bool forward}) {
+    final v = _dragEndVelocity;
+    _dragEndVelocity = null;
     return motion.createSimulation(
       end: forward ? 1.0 : 0.0,
       start: animation?.value ?? 0,
-      velocity: _dragEndVelocity ?? 0,
+      velocity: v ?? 0,
     );
   }
 
@@ -279,6 +281,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         velocity: _dragEndVelocity!,
       );
       controller!.animateWith(backSim);
+      _dragEndVelocity = null;
     } else {
       // Determine if we should dismiss based on velocity and position
       final shouldDismiss = _shouldDismiss(velocity, currentValue);
@@ -291,6 +294,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           velocity: _dragEndVelocity!,
         );
         controller!.animateWith(backSim);
+        _dragEndVelocity = null;
       }
     }
     Navigator.of(context).didStopUserGesture();
