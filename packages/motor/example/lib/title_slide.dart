@@ -47,7 +47,7 @@ class _TitleSlideExampleState extends State<TitleSlideExample> {
             _visible = !_visible;
           }),
           child: Center(
-            child: _Text(
+            child: MotorLogo(
               'Motor',
               visible: _visible,
             ),
@@ -58,8 +58,8 @@ class _TitleSlideExampleState extends State<TitleSlideExample> {
   }
 }
 
-class _Text extends StatelessWidget {
-  const _Text(this.value, {this.visible = true});
+class MotorLogo extends StatelessWidget {
+  const MotorLogo(this.value, {this.visible = true});
 
   final String value;
 
