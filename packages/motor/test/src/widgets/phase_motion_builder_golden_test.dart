@@ -187,7 +187,7 @@ void main() {
         final sequence = PhaseSequence.map(
           phaseMap,
           loopMode: SequenceLoopMode.loop,
-          motion: const CurvedMotion(duration: Duration(milliseconds: 500)),
+          motion: const CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -209,7 +209,7 @@ void main() {
         final sequence = PhaseSequence.map(
           phaseMap,
           loopMode: SequenceLoopMode.pingPong,
-          motion: const CurvedMotion(duration: Duration(milliseconds: 500)),
+          motion: const CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -231,7 +231,7 @@ void main() {
         final sequence = PhaseSequence.map(
           phaseMap,
           loopMode: SequenceLoopMode.seamless,
-          motion: const CurvedMotion(duration: Duration(milliseconds: 500)),
+          motion: const CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -259,7 +259,7 @@ void main() {
             2: 1,
           },
           loopMode: SequenceLoopMode.pingPong,
-          motion: const CurvedMotion(duration: Duration(seconds: 1)),
+          motion: const CurvedMotion(Duration(seconds: 1)),
         );
 
         final widget = animationSheet.record(

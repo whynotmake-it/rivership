@@ -26,11 +26,8 @@ class CurveSimulation extends Simulation {
   @override
   double x(double time) {
     final relativeTime = time / duration.toSeconds();
-    if (relativeTime == 0) {
-      return start;
-    }
 
-    if (relativeTime >= 1) {
+    if (relativeTime > 1) {
       return end;
     }
 

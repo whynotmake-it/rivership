@@ -164,9 +164,9 @@ final springMotion = SpringMotion(
 
 final cupertinoMotion = CupertinoMotion.smooth();
 
-final linearMotion = LinearMotion(duration: Duration(milliseconds: 300));
+final linearMotion = LinearMotion(Duration(milliseconds: 300));
 
-final ease = CurvedMotion(duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+final ease = CurvedMotion(Duration(milliseconds: 300), curve: Curves.easeInOut);
 
 // Then pass it to the Heroine widget
 return Heroine(

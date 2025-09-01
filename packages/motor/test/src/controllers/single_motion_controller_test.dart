@@ -243,7 +243,7 @@ void main() {
         addTearDown(animationController.dispose);
 
         controller = BoundedSingleMotionController(
-          motion: const CurvedMotion(duration: duration),
+          motion: const CurvedMotion(duration),
           vsync: tester,
         );
 
