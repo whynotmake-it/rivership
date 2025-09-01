@@ -141,7 +141,7 @@ class SpringBuilder2D extends StatelessWidget {
     return MotionBuilder(
       value: value,
       motion: SpringMotion(spring),
-      converter: MotionConverter<Double2D>(
+      converter: MotionConverter<Double2D>.custom(
         normalize: (value) => [value.$1, value.$2],
         denormalize: (value) => (value[0], value[1]),
       ),
