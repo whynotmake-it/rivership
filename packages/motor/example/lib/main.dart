@@ -1,11 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor_example/2d_redirection.dart';
-import 'package:motor_example/card_stack.dart';
 import 'package:motor_example/draggable_icons.dart';
 import 'package:motor_example/flip_card.dart';
 import 'package:motor_example/one_dimension.dart';
-import 'package:motor_example/phase_animation.dart';
+import 'package:motor_example/phase_animation/phase_animation.dart';
 import 'package:motor_example/pip.dart';
 import 'package:motor_example/title_slide.dart';
 
@@ -66,12 +65,6 @@ final motorRoutes = [
     type: RouteType.cupertino(),
     builder: (context, state) => const PhaseAnimationExamples(),
   ),
-  NamedRouteDef(
-    name: CardStackExample.name,
-    path: CardStackExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => const CardStackExample(),
-  )
 ];
 
 final router = RootStackRouter.build(

@@ -1,21 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 
-class CardStackExample extends StatelessWidget {
-  const CardStackExample({super.key});
-
-  static const String name = 'Card Stack';
-  static const String path = 'card-stack';
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar.large(),
-      child: CardStack(),
-    );
-  }
-}
-
 class CardStack extends StatefulWidget {
   const CardStack({super.key});
 
@@ -105,11 +90,11 @@ class _DragCardExampleState extends State<_DragCardExample>
     return offset + vector * remainingDistance;
   }
 
-  PhaseSequence<DragCardPhase, Offset> buildReturn(
+  MotionSequence<DragCardPhase, Offset> buildReturn(
       Offset offset, Velocity velocity) {
     final clearance = getClearanceOffset(offset, velocity);
 
-    return PhaseSequence.mapWithMotionPerPhase({
+    return MotionSequence.statesWithMotions({
       DragCardPhase.idle: (offset, Motion.none()),
       if (clearance != null)
         DragCardPhase.clearing: (

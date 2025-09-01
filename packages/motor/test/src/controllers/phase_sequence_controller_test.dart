@@ -198,8 +198,8 @@ void main() {
 
         testWidgets('stops any active sequence when animateTo is called',
             (tester) async {
-          final sequence = PhaseSequence.map(
-            const {
+          const sequence = MotionSequence.states(
+            {
               'a': Offset.zero,
               'b': Offset(1, 1),
               'c': Offset(2, 2),
@@ -407,9 +407,9 @@ void main() {
 
         testWidgets('stops any active sequence when stop is called',
             (tester) async {
-          final sequence = PhaseSequence.map(
+          const sequence = MotionSequence.states(
             motion: motion,
-            const {
+            {
               'a': Offset.zero,
               'b': Offset(1, 1),
               'c': Offset(2, 2),
@@ -540,8 +540,8 @@ void main() {
 
         testWidgets('stops any active sequence when value is set',
             (tester) async {
-          final sequence = PhaseSequence.map(
-            const {
+          const sequence = MotionSequence.states(
+            {
               'a': Offset.zero,
               'b': Offset(1, 1),
               'c': Offset(2, 2),

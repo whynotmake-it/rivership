@@ -7,17 +7,17 @@ import 'package:motor/motor.dart';
 enum TestPhase { idle, active, complete }
 
 void main() {
-  group('PhaseMotionBuilder', () {
-    late PhaseSequence<TestPhase, double> sequence;
+  group('SequenceMotionBuilder', () {
+    late MotionSequence<TestPhase, double> sequence;
 
     setUp(() {
-      sequence = PhaseSequence.map(
-        const {
+      sequence = const MotionSequence.states(
+        {
           TestPhase.idle: 0.0,
           TestPhase.active: 100.0,
           TestPhase.complete: 50.0,
         },
-        motion: const CupertinoMotion.smooth(),
+        motion: CupertinoMotion.smooth(),
       );
     });
 
@@ -26,7 +26,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<TestPhase, double>(
+        SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -47,7 +47,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<TestPhase, double>(
+        SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -75,7 +75,7 @@ void main() {
       TestPhase? capturedPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<TestPhase, double>(
+        SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           builder: (context, value, phase, child) {
@@ -99,7 +99,7 @@ void main() {
       TestPhase? callbackPhase;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<TestPhase, double>(
+        SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -118,7 +118,7 @@ void main() {
       TestPhase? capturedPhase;
 
       Widget buildWidget(TestPhase? currentPhase) {
-        return PhaseMotionBuilder<TestPhase, double>(
+        return SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -149,7 +149,7 @@ void main() {
       double? capturedValue;
 
       Widget buildWidget(bool playing) {
-        return PhaseMotionBuilder<TestPhase, double>(
+        return SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: playing,
@@ -177,7 +177,7 @@ void main() {
       Object? trigger = 'initial';
 
       Widget buildWidget(Object? restartTrigger) {
-        return PhaseMotionBuilder<TestPhase, double>(
+        return SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -209,7 +209,7 @@ void main() {
       Widget? capturedChild;
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<TestPhase, double>(
+        SequenceMotionBuilder<TestPhase, double>(
           sequence: sequence,
           converter: const SingleMotionConverter(),
           playing: false,
@@ -226,16 +226,16 @@ void main() {
     });
 
     group('with Offset values', () {
-      late PhaseSequence<TestPhase, Offset> offsetSequence;
+      late MotionSequence<TestPhase, Offset> offsetSequence;
 
       setUp(() {
-        offsetSequence = PhaseSequence.map(
-          const {
+        offsetSequence = const MotionSequence.states(
+          {
             TestPhase.idle: Offset.zero,
             TestPhase.active: Offset(100, 50),
             TestPhase.complete: Offset(200, 100),
           },
-          motion: const CupertinoMotion.smooth(),
+          motion: CupertinoMotion.smooth(),
         );
       });
 
@@ -243,7 +243,7 @@ void main() {
         Offset? capturedValue;
 
         await tester.pumpWidget(
-          PhaseMotionBuilder<TestPhase, Offset>(
+          SequenceMotionBuilder<TestPhase, Offset>(
             sequence: offsetSequence,
             converter: const OffsetMotionConverter(),
             playing: false,
@@ -265,172 +265,6 @@ void main() {
         expect(capturedValue!.dx, closeTo(100.0, 0.001));
         expect(capturedValue!.dy, closeTo(50.0, 0.001));
       });
-    });
-  });
-
-  group('SinglePhaseMotionBuilder', () {
-    testWidgets('builds with initial phase', (tester) async {
-      double? capturedValue;
-
-      await tester.pumpWidget(
-        SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 1.0, 0.5],
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          builder: (context, value, child) {
-            capturedValue = value;
-            return const SizedBox();
-          },
-        ),
-      );
-
-      expect(capturedValue, equals(0.0));
-    });
-
-    testWidgets('animates to specified currentPhase', (tester) async {
-      double? capturedValue;
-
-      await tester.pumpWidget(
-        SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 1.0, 0.5],
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          currentPhase: 1,
-          builder: (context, value, child) {
-            capturedValue = value;
-            return const SizedBox();
-          },
-        ),
-      );
-
-      await tester.pump(const Duration(milliseconds: 16));
-      expect(capturedValue, greaterThan(0.0));
-      expect(capturedValue, lessThanOrEqualTo(1.0));
-
-      await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(1.0, 0.001));
-    });
-
-    testWidgets('starts sequence when playing is true', (tester) async {
-      double? capturedValue;
-
-      await tester.pumpWidget(
-        SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 1.0, 0.5],
-          motion: const CupertinoMotion.smooth(),
-          builder: (context, value, child) {
-            capturedValue = value;
-            return const SizedBox();
-          },
-        ),
-      );
-
-      expect(capturedValue, equals(0.0));
-
-      // Wait for animation to start progressing
-      await tester.pump(const Duration(milliseconds: 100));
-      final valueAfterStart = capturedValue;
-
-      await tester.pump(const Duration(milliseconds: 500));
-      final valueAfterProgress = capturedValue;
-
-      // Should have progressed from the initial value
-      expect(valueAfterStart, greaterThanOrEqualTo(0.0));
-      expect(valueAfterProgress, greaterThan(valueAfterStart!));
-    });
-
-    testWidgets('calls onPhaseChanged callback', (tester) async {
-      double? callbackPhase;
-
-      await tester.pumpWidget(
-        SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 1.0, 0.5],
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          currentPhase: 1,
-          onPhaseChanged: (phase) => callbackPhase = phase,
-          builder: (context, value, child) => const SizedBox(),
-        ),
-      );
-
-      await tester.pump();
-      expect(callbackPhase, equals(1.0));
-    });
-
-    testWidgets('updates sequence when phases change', (tester) async {
-      double? capturedValue;
-
-      Widget buildWidget(List<double> phases) {
-        return SinglePhaseMotionBuilder<double>(
-          phases: phases,
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          currentPhase: phases.last,
-          builder: (context, value, child) {
-            capturedValue = value;
-            return const SizedBox();
-          },
-        );
-      }
-
-      await tester.pumpWidget(buildWidget([0.0, 100.0]));
-      await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(100.0, 0.001));
-
-      await tester.pumpWidget(buildWidget([0.0, 200.0]));
-      await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(200.0, 0.001));
-    });
-
-    testWidgets('passes child widget to builder', (tester) async {
-      const childKey = Key('test-child');
-      Widget? capturedChild;
-
-      await tester.pumpWidget(
-        SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 1.0],
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          child: const SizedBox(key: childKey),
-          builder: (context, value, child) {
-            capturedChild = child;
-            return child ?? const SizedBox();
-          },
-        ),
-      );
-
-      expect(capturedChild, isA<SizedBox>());
-      expect((capturedChild! as SizedBox).key, equals(childKey));
-    });
-
-    testWidgets('respects restartTrigger', (tester) async {
-      double? capturedValue;
-      Object? trigger = 'initial';
-
-      Widget buildWidget(Object? restartTrigger) {
-        return SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 100.0],
-          motion: const CupertinoMotion.smooth(),
-          playing: false,
-          currentPhase: 100,
-          restartTrigger: restartTrigger,
-          builder: (context, value, child) {
-            capturedValue = value;
-            return const SizedBox();
-          },
-        );
-      }
-
-      await tester.pumpWidget(buildWidget(trigger));
-      await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(100.0, 0.001));
-
-      trigger = 'restart';
-      await tester.pumpWidget(buildWidget(trigger));
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(capturedValue, greaterThanOrEqualTo(0.0));
-      expect(capturedValue, lessThanOrEqualTo(100.0));
     });
   });
 }
