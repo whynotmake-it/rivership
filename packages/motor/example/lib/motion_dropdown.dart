@@ -8,10 +8,7 @@ final motionOptions = {
   "Bouncy Spring": CupertinoMotion.bouncy(),
   "Snappy Spring": CupertinoMotion.snappy(),
   "Interactive Spring": CupertinoMotion.interactive(),
-  "Material 3 Ease": CurvedMotion(
-    duration: Durations.long2,
-    curve: Easing.standard,
-  ),
+  "Material 3 Ease": CurvedMotion(Durations.long2, Easing.standard),
   "Material 3 Expressive Spring": MaterialSpringMotion.expressiveSpatialDefault,
 };
 

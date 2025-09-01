@@ -6,8 +6,8 @@ import 'package:motor/src/phase_sequence.dart';
 import 'src/util.dart';
 
 void main() {
-  const motion = CurvedMotion(duration: Duration.zero);
-  const motion2 = CurvedMotion(duration: Duration(seconds: 2));
+  const motion = CurvedMotion(Duration.zero);
+  const motion2 = CurvedMotion(Duration(seconds: 2));
 
   group('MapPhaseSequence', () {
     final seq1 = MapPhaseSequence(
@@ -183,7 +183,7 @@ void main() {
           4: 0.75,
           5: 1.0,
         },
-        motion: const CurvedMotion(duration: Duration(seconds: 1)),
+        motion: const CurvedMotion(Duration(seconds: 1)),
       );
 
       final curvedSimulation = timeline.motion.createSimulation();

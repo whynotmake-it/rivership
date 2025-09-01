@@ -177,9 +177,7 @@ class PhaseValue<P, T extends Object> extends PhaseSequence<P, T> {
 
   /// The default motion that will be used if this is created as a single value
   /// without a specific motion.
-  static const Motion defaultMotion = CurvedMotion(
-    duration: Duration(milliseconds: 500),
-  );
+  static const Motion defaultMotion = LinearMotion(Duration(milliseconds: 500));
 
   /// The single of the animation.
   final P phase;

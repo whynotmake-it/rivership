@@ -18,11 +18,45 @@ abstract class Motion {
     this.tolerance = Tolerance.defaultTolerance,
   });
 
-  /// Creates a motion with spring physics.
-  ///
-  /// See also:
-  ///   * [SpringMotion]
-  const factory Motion.spring(SpringDescription spring) = SpringMotion;
+  /// {@macro CurvedMotion}
+  const factory Motion.curved(Duration duration, [Curve curve]) = CurvedMotion;
+
+  /// {@macro NoMotion}
+  const factory Motion.none(Duration duration) = NoMotion;
+
+  /// {@macro SpringMotion}
+  const factory Motion.customSpring(SpringDescription spring) = SpringMotion;
+
+  /// {@macro CupertinoMotion}
+  const factory Motion.cupertino({
+    Duration duration,
+    double bounce,
+    bool snapToEnd,
+  }) = CupertinoMotion;
+
+  /// {@macro CupertinoMotion.bouncy}
+  const factory Motion.bouncySpring({
+    Duration duration,
+    double extraBounce,
+  }) = CupertinoMotion.bouncy;
+
+  /// {@macro CupertinoMotion.snappy}
+  const factory Motion.snappySpring({
+    Duration duration,
+    double extraBounce,
+  }) = CupertinoMotion.snappy;
+
+  /// {@macro CupertinoMotion.smooth}
+  const factory Motion.smoothSpring({
+    Duration duration,
+    double extraBounce,
+  }) = CupertinoMotion.smooth;
+
+  /// {@macro CupertinoMotion.interactive}
+  const factory Motion.interactiveSpring({
+    Duration duration,
+    double extraBounce,
+  }) = CupertinoMotion.interactive;
 
   /// The tolerance for this motion.
   ///
@@ -64,6 +98,7 @@ abstract class Motion {
   int get hashCode;
 }
 
+/// {@template CurvedMotion}
 /// A motion based on a fixed duration and curve.
 ///
 /// [CurvedMotion] implements a motion that follows a specific [Curve] over
@@ -72,13 +107,14 @@ abstract class Motion {
 ///
 /// This motion always completes in the specified duration and does not need to
 /// settle.
+/// {@endtemplate}
 @immutable
 class CurvedMotion extends Motion {
   /// Creates a motion with a fixed duration and curve.
-  const CurvedMotion({
-    required this.duration,
+  const CurvedMotion(
+    this.duration, [
     this.curve = Curves.linear,
-  }) : super(tolerance: Tolerance.defaultTolerance);
+  ]) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
   final Duration duration;
@@ -107,10 +143,7 @@ class CurvedMotion extends Motion {
     Duration? duration,
     Curve? curve,
   }) =>
-      CurvedMotion(
-        duration: duration ?? this.duration,
-        curve: curve ?? this.curve,
-      );
+      CurvedMotion(duration ?? this.duration, curve ?? this.curve);
 
   /// Applies [curve] to the current [duration].
   CurvedMotion withCurve(Curve curve) => copyWith(curve: curve);
@@ -144,7 +177,7 @@ class CurvedMotion extends Motion {
 
   /// Returns a string representation of this object.
   @override
-  String toString() => 'CurvedMotion(duration: $duration, curve: $curve)';
+  String toString() => 'CurvedMotion($duration, curve: $curve)';
 }
 
 /// A convenience class for a [CurvedMotion] that uses a linear curve.
@@ -152,12 +185,38 @@ class LinearMotion extends CurvedMotion {
   /// Creates a linear motion with a fixed duration.
   ///
   /// The curve is set to [Curves.linear] by default.
-  const LinearMotion({required super.duration}) : super(curve: Curves.linear);
+  const LinearMotion(Duration duration) : super(duration, Curves.linear);
 
   @override
-  String toString() => 'LinearMotion(duration: $duration)';
+  String toString() => 'LinearMotion($duration)';
 }
 
+/// {@template NoMotion}
+/// A motion that jumps to the target value immediately and holds there for
+/// [duration].
+/// {@endtemplate}
+class NoMotion extends CurvedMotion {
+  /// Creates a no-motion effect with a fixed duration.
+  const NoMotion(Duration duration)
+      : super(
+          duration,
+          const _TargetOnlyCurve(),
+        );
+
+  @override
+  String toString() => 'NoMotion($duration)';
+}
+
+class _TargetOnlyCurve extends Curve {
+  const _TargetOnlyCurve();
+
+  @override
+  double transform(double t) {
+    return 1;
+  }
+}
+
+/// {@template SpringMotion}
 /// A motion based on spring physics.
 ///
 /// [SpringMotion] implements a motion that follows physical spring behavior,
@@ -166,9 +225,10 @@ class LinearMotion extends CurvedMotion {
 ///
 /// Spring motions continue until they naturally settle based on physics,
 /// rather than completing in a predetermined duration.
+/// {@endtemplate}
 @immutable
 abstract class SpringMotion extends Motion {
-  /// Creates a motion with spring physics.
+  /// {@macro SpringMotion}
   ///
   /// Parameter [description] defines the physical characteristics of the
   /// spring.
@@ -287,7 +347,9 @@ class _DescriptionSpringMotion extends SpringMotion {
   }
 }
 
+/// {@template CupertinoMotion}
 /// A collection of spring motions that are commonly used in Cupertino apps.
+/// {@endtemplate}
 class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
   ///
@@ -302,10 +364,12 @@ class CupertinoMotion extends SpringMotion {
     super.snapToEnd,
   }) : super._();
 
+  /// {@template CupertinoMotion.bouncy}
   /// A spring animation with a predefined duration and higher amount of bounce.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
+  /// {@endtemplate}
   const CupertinoMotion.bouncy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
@@ -316,11 +380,13 @@ class CupertinoMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
+  /// {@template CupertinoMotion.snappy}
   /// A spring animation with a predefined duration and small amount of bounce
   /// that feels more snappy.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/snappy
+  /// {@endtemplate}
   const CupertinoMotion.snappy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
@@ -331,10 +397,12 @@ class CupertinoMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
+  /// {@template CupertinoMotion.smooth}
   /// A smooth spring animation with a predefined duration and no bounce.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/smooth
+  /// {@endtemplate}
   const CupertinoMotion.smooth({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
@@ -345,11 +413,13 @@ class CupertinoMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
+  /// {@template CupertinoMotion.interactive}
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
+  /// {@endtemplate}
   const CupertinoMotion.interactive({
     Duration duration = const Duration(milliseconds: 150),
     double extraBounce = 0.0,
@@ -790,7 +860,7 @@ extension MotionTrimming on Motion {
   /// Example:
   /// ```dart
   /// // Exact trimming for curves
-  /// final curve = CurvedMotion(duration: Duration(seconds: 1));
+  /// final curve = CurvedMotion(Duration(seconds: 1));
   /// final trimmedCurve = curve.trimmed(startTrim: 0.1, endTrim: 0.1);
   ///
   /// // Approximate trimming for springs

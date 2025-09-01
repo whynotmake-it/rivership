@@ -4,10 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
 void main() {
+  group('NoMotion', () {
+    test('creates a simulation that holds the target value', () {
+      const motion = Motion.none(Duration(seconds: 1));
+      final simulation = motion.createSimulation(start: 0, end: 100);
+
+      // Should hold the target value immediately
+      expect(simulation.x(0), closeTo(100, 1e-10));
+      expect(simulation.x(0.5), closeTo(100, 1e-10));
+      expect(simulation.x(1), closeTo(100, 1e-10));
+    });
+  });
+
   group('TrimmedMotion - Basic Tests', () {
     group('Linear Motion Trimming', () {
       test('no trimming = original behavior', () {
-        const parent = LinearMotion(duration: Duration(seconds: 1));
+        const parent = LinearMotion(Duration(seconds: 1));
         const trimmed = TrimmedMotion(parent: parent, startTrim: 0, endTrim: 0);
 
         final parentSim = parent.createSimulation(start: 0, end: 100);
@@ -20,7 +32,7 @@ void main() {
       });
 
       test('symmetric trimming (0.2, 0.2)', () {
-        const parent = LinearMotion(duration: Duration(seconds: 1));
+        const parent = LinearMotion(Duration(seconds: 1));
         const trimmed = TrimmedMotion(
           parent: parent,
           startTrim: 0.2,
@@ -45,7 +57,7 @@ void main() {
 
     group('Extension Methods', () {
       test('trimmed() extension works', () {
-        const parent = LinearMotion(duration: Duration(seconds: 1));
+        const parent = LinearMotion(Duration(seconds: 1));
         final trimmed = parent.trimmed(startTrim: 0.1, endTrim: 0.2);
 
         expect(trimmed, isA<TrimmedMotion>());
@@ -55,7 +67,7 @@ void main() {
       });
 
       test('subExtent() extension works', () {
-        const parent = LinearMotion(duration: Duration(seconds: 1));
+        const parent = LinearMotion(Duration(seconds: 1));
         final trimmed = parent.subExtent(extent: 0.5, start: 0.2);
 
         expect(trimmed.startTrim, equals(0.2));
@@ -64,7 +76,7 @@ void main() {
     });
 
     test('velocity calculation works', () {
-      const parent = LinearMotion(duration: Duration(seconds: 1));
+      const parent = LinearMotion(Duration(seconds: 1));
       const trimmed =
           TrimmedMotion(parent: parent, startTrim: 0.2, endTrim: 0.2);
 
