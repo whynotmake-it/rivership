@@ -22,7 +22,7 @@ abstract class Motion {
   const factory Motion.curved(Duration duration, [Curve curve]) = CurvedMotion;
 
   /// {@macro NoMotion}
-  const factory Motion.none(Duration duration) = NoMotion;
+  const factory Motion.none([Duration duration]) = NoMotion;
 
   /// {@macro SpringMotion}
   const factory Motion.customSpring(SpringDescription spring) = SpringMotion;
@@ -197,7 +197,7 @@ class LinearMotion extends CurvedMotion {
 /// {@endtemplate}
 class NoMotion extends CurvedMotion {
   /// Creates a no-motion effect with a fixed duration.
-  const NoMotion(Duration duration)
+  const NoMotion([Duration duration = Duration.zero])
       : super(
           duration,
           const _TargetOnlyCurve(),
@@ -474,11 +474,165 @@ class CupertinoMotion extends SpringMotion {
 class MaterialSpringMotion extends SpringMotion {
   /// Creates a new [MaterialSpringMotion] with the specified damping and
   /// stiffness.
-  const MaterialSpringMotion({
+  const MaterialSpringMotion._({
     required this.damping,
     required this.stiffness,
     super.snapToEnd,
   }) : super._();
+
+  /// Standard spatial motion token - fast variant.
+  ///
+  /// Used for quick spatial animations like position changes, resizing,
+  /// and layout transitions. This is the fastest of the standard spatial
+  /// motion tokens.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
+  const MaterialSpringMotion.standardSpatialFast()
+      : this._(
+          damping: 0.9,
+          stiffness: 1400,
+        );
+
+  /// Standard spatial motion token - default variant.
+  ///
+  /// The recommended spatial motion for most position changes, resizing,
+  /// and layout transitions. Provides a balanced animation speed.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
+  const MaterialSpringMotion.standardSpatialDefault()
+      : this._(
+          damping: 0.9,
+          stiffness: 700,
+        );
+
+  /// Standard spatial motion token - slow variant.
+  ///
+  /// Used for deliberate spatial animations where a slower, more gentle
+  /// motion is desired for position changes, resizing, and layout transitions.
+  ///
+  /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
+  const MaterialSpringMotion.standardSpatialSlow()
+      : this._(
+          damping: 0.9,
+          stiffness: 300,
+        );
+
+  /// Standard effects motion token - fast variant.
+  ///
+  /// Used for quick visual property animations like opacity, color,
+  /// and other non-spatial effects. This is the fastest of the standard
+  /// effects motion tokens.
+  ///
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  const MaterialSpringMotion.standardEffectsFast()
+      : this._(
+          damping: 1,
+          stiffness: 3800,
+        );
+
+  /// Standard effects motion token - default variant.
+  ///
+  /// The recommended effects motion for most visual property animations
+  /// like opacity, color, and other non-spatial effects. Provides a
+  /// balanced animation speed.
+  ///
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  const MaterialSpringMotion.standardEffectsDefault()
+      : this._(
+          damping: 1,
+          stiffness: 1600,
+        );
+
+  /// Standard effects motion token - slow variant.
+  ///
+  /// Used for deliberate visual property animations where a slower,
+  /// more gentle motion is desired for opacity, color, and other
+  /// non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  const MaterialSpringMotion.standardEffectsSlow()
+      : this._(
+          damping: 1,
+          stiffness: 800,
+        );
+
+  /// Expressive spatial motion token - fast variant.
+  ///
+  /// Used for more dynamic and bouncy spatial animations with increased
+  /// expressiveness. Features lower damping for more spring-like behavior
+  /// in position changes, resizing, and layout transitions.
+  ///
+  /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
+  const MaterialSpringMotion.expressiveSpatialFast()
+      : this._(
+          damping: 0.6,
+          stiffness: 800,
+        );
+
+  /// Expressive spatial motion token - default variant.
+  ///
+  /// The recommended expressive spatial motion for creating more dynamic
+  /// and bouncy animations with moderate expressiveness. Features lower
+  /// damping for spring-like behavior in spatial transitions.
+  ///
+  /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
+  const MaterialSpringMotion.expressiveSpatialDefault()
+      : this._(
+          damping: 0.8,
+          stiffness: 380,
+        );
+
+  /// Expressive spatial motion token - slow variant.
+  ///
+  /// Used for slower, more deliberate expressive spatial animations
+  /// with gentle spring-like behavior. Features lower damping for
+  /// increased bounce in position changes and layout transitions.
+  ///
+  /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
+  const MaterialSpringMotion.expressiveSpatialSlow()
+      : this._(
+          damping: 0.8,
+          stiffness: 200,
+        );
+
+  /// Expressive effects motion token - fast variant.
+  ///
+  /// Used for quick expressive visual property animations. While maintaining
+  /// the same spring characteristics as standard effects, this token is part
+  /// of the expressive motion system for consistent design language.
+  ///
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  const MaterialSpringMotion.expressiveEffectsFast()
+      : this._(
+          damping: 1,
+          stiffness: 3800,
+        );
+
+  /// Expressive effects motion token - default variant.
+  ///
+  /// The recommended expressive effects motion for visual property animations
+  /// like opacity and color. Part of the expressive motion system while
+  /// maintaining optimal characteristics for non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  const MaterialSpringMotion.expressiveEffectsDefault()
+      : this._(
+          damping: 1,
+          stiffness: 1600,
+        );
+
+  /// Expressive effects motion token - slow variant.
+  ///
+  /// Used for slower, more deliberate expressive visual property animations.
+  /// Part of the expressive motion system while maintaining characteristics
+  /// optimized for opacity, color, and other non-spatial effects.
+  ///
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  const MaterialSpringMotion.expressiveEffectsSlow()
+      : this._(
+          damping: 1,
+          stiffness: 800,
+        );
 
   /// The damping factor of the spring motion.
   ///
@@ -497,155 +651,13 @@ class MaterialSpringMotion extends SpringMotion {
         mass: 1,
       );
 
-  /// Standard spatial motion token - fast variant.
-  ///
-  /// Used for quick spatial animations like position changes, resizing,
-  /// and layout transitions. This is the fastest of the standard spatial
-  /// motion tokens.
-  ///
-  /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
-  static const standardSpatialFast = MaterialSpringMotion(
-    damping: 0.9,
-    stiffness: 1400,
-  );
-
-  /// Standard spatial motion token - default variant.
-  ///
-  /// The recommended spatial motion for most position changes, resizing,
-  /// and layout transitions. Provides a balanced animation speed.
-  ///
-  /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
-  static const standardSpatialDefault = MaterialSpringMotion(
-    damping: 0.9,
-    stiffness: 700,
-  );
-
-  /// Standard spatial motion token - slow variant.
-  ///
-  /// Used for deliberate spatial animations where a slower, more gentle
-  /// motion is desired for position changes, resizing, and layout transitions.
-  ///
-  /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
-  static const standardSpatialSlow = MaterialSpringMotion(
-    damping: 0.9,
-    stiffness: 300,
-  );
-
-  /// Standard effects motion token - fast variant.
-  ///
-  /// Used for quick visual property animations like opacity, color,
-  /// and other non-spatial effects. This is the fastest of the standard
-  /// effects motion tokens.
-  ///
-  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
-  static const standardEffectsFast = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 3800,
-  );
-
-  /// Standard effects motion token - default variant.
-  ///
-  /// The recommended effects motion for most visual property animations
-  /// like opacity, color, and other non-spatial effects. Provides a
-  /// balanced animation speed.
-  ///
-  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
-  static const standardEffectsDefault = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 1600,
-  );
-
-  /// Standard effects motion token - slow variant.
-  ///
-  /// Used for deliberate visual property animations where a slower,
-  /// more gentle motion is desired for opacity, color, and other
-  /// non-spatial effects.
-  ///
-  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
-  static const standardEffectsSlow = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 800,
-  );
-
-  /// Expressive spatial motion token - fast variant.
-  ///
-  /// Used for more dynamic and bouncy spatial animations with increased
-  /// expressiveness. Features lower damping for more spring-like behavior
-  /// in position changes, resizing, and layout transitions.
-  ///
-  /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
-  static const expressiveSpatialFast = MaterialSpringMotion(
-    damping: 0.6,
-    stiffness: 800,
-  );
-
-  /// Expressive spatial motion token - default variant.
-  ///
-  /// The recommended expressive spatial motion for creating more dynamic
-  /// and bouncy animations with moderate expressiveness. Features lower
-  /// damping for spring-like behavior in spatial transitions.
-  ///
-  /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
-  static const expressiveSpatialDefault = MaterialSpringMotion(
-    damping: 0.8,
-    stiffness: 380,
-  );
-
-  /// Expressive spatial motion token - slow variant.
-  ///
-  /// Used for slower, more deliberate expressive spatial animations
-  /// with gentle spring-like behavior. Features lower damping for
-  /// increased bounce in position changes and layout transitions.
-  ///
-  /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
-  static const expressiveSpatialSlow = MaterialSpringMotion(
-    damping: 0.8,
-    stiffness: 200,
-  );
-
-  /// Expressive effects motion token - fast variant.
-  ///
-  /// Used for quick expressive visual property animations. While maintaining
-  /// the same spring characteristics as standard effects, this token is part
-  /// of the expressive motion system for consistent design language.
-  ///
-  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
-  static const expressiveEffectsFast = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 3800,
-  );
-
-  /// Expressive effects motion token - default variant.
-  ///
-  /// The recommended expressive effects motion for visual property animations
-  /// like opacity and color. Part of the expressive motion system while
-  /// maintaining optimal characteristics for non-spatial effects.
-  ///
-  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
-  static const expressiveEffectsDefault = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 1600,
-  );
-
-  /// Expressive effects motion token - slow variant.
-  ///
-  /// Used for slower, more deliberate expressive visual property animations.
-  /// Part of the expressive motion system while maintaining characteristics
-  /// optimized for opacity, color, and other non-spatial effects.
-  ///
-  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
-  static const expressiveEffectsSlow = MaterialSpringMotion(
-    damping: 1,
-    stiffness: 800,
-  );
-
   @override
   MaterialSpringMotion copyWith({
     double? damping,
     double? stiffness,
     bool? snapToEnd,
   }) {
-    return MaterialSpringMotion(
+    return MaterialSpringMotion._(
       damping: damping ?? this.damping,
       stiffness: stiffness ?? this.stiffness,
       snapToEnd: snapToEnd ?? this.snapToEnd,

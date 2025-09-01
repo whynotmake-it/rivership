@@ -23,7 +23,7 @@ void main() {
   group('PhaseSequenceController', () {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
-    late PhaseSequenceController<String, Offset> controller;
+    late PhaseMotionController<String, Offset> controller;
     const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
 
@@ -33,7 +33,7 @@ void main() {
 
     group('MotionController API compatibility', () {
       testWidgets('creates with initial value', (tester) async {
-        controller = PhaseSequenceController<String, Offset>(
+        controller = PhaseMotionController<String, Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
@@ -44,7 +44,7 @@ void main() {
       });
 
       testWidgets('updates motion style', (tester) async {
-        controller = PhaseSequenceController<String, Offset>(
+        controller = PhaseMotionController<String, Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
@@ -67,7 +67,7 @@ void main() {
         when(() => mockTickerProvider.createTicker(any())).thenAnswer((_) {
           return mockTicker;
         });
-        controller = PhaseSequenceController<String, Offset>(
+        controller = PhaseMotionController<String, Offset>(
           motion: motion,
           vsync: mockTickerProvider,
           converter: converter,
@@ -79,7 +79,7 @@ void main() {
 
       group('.animateTo', () {
         testWidgets('animates to target value', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -109,7 +109,7 @@ void main() {
         });
 
         testWidgets('animates with initial velocity', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -128,7 +128,7 @@ void main() {
 
         testWidgets('completes immediately if target is within tolerance',
             (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -145,7 +145,7 @@ void main() {
         });
 
         testWidgets('animates only changed dimension', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -173,7 +173,7 @@ void main() {
         });
 
         testWidgets('maintains velocity between animations', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -207,7 +207,7 @@ void main() {
             motion: motion,
           );
 
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -233,7 +233,7 @@ void main() {
         testWidgets(
             'animates with from parameter correctly when x are identical',
             (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -283,7 +283,7 @@ void main() {
         testWidgets(
             'animates with from parameter correctly when y are identical',
             (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -333,7 +333,7 @@ void main() {
 
       group('.motion', () {
         testWidgets('redirects simulation', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -359,7 +359,7 @@ void main() {
 
       group('.stop', () {
         testWidgets('stop settles animation by default', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -388,7 +388,7 @@ void main() {
         });
 
         testWidgets('stops animation if canceled is true', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -416,7 +416,7 @@ void main() {
             },
           );
 
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -444,7 +444,7 @@ void main() {
             (_) => mockTicker,
           );
 
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: mockTickerProvider,
             converter: converter,
@@ -461,7 +461,7 @@ void main() {
 
       group('.status', () {
         testWidgets('is .dismissed initially', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -472,7 +472,7 @@ void main() {
 
         testWidgets('is forward when animating to larger values',
             (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -488,7 +488,7 @@ void main() {
 
         testWidgets('is forward when animating to smaller values',
             (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -503,7 +503,7 @@ void main() {
         });
 
         testWidgets('is dismissed when back at initial value', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -526,7 +526,7 @@ void main() {
 
       group('.value setter', () {
         testWidgets('sets value directly', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -549,7 +549,7 @@ void main() {
             motion: motion,
           );
 
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -571,7 +571,7 @@ void main() {
 
       group('.velocity', () {
         testWidgets('returns zero velocity when not animating', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -584,7 +584,7 @@ void main() {
 
       group('.isAnimating', () {
         testWidgets('returns false when not animating', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -595,7 +595,7 @@ void main() {
         });
 
         testWidgets('returns true when animating', (tester) async {
-          controller = PhaseSequenceController<String, Offset>(
+          controller = PhaseMotionController<String, Offset>(
             motion: motion,
             vsync: tester,
             converter: converter,
@@ -613,8 +613,7 @@ void main() {
 
       group('constructor variants', () {
         testWidgets('motionPerDimension constructor works', (tester) async {
-          controller =
-              PhaseSequenceController<String, Offset>.motionPerDimension(
+          controller = PhaseMotionController<String, Offset>.motionPerDimension(
             motionPerDimension: [motion, motion],
             vsync: tester,
             converter: converter,

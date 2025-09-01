@@ -9,7 +9,8 @@ final motionOptions = {
   "Snappy Spring": CupertinoMotion.snappy(),
   "Interactive Spring": CupertinoMotion.interactive(),
   "Material 3 Ease": CurvedMotion(Durations.long2, Easing.standard),
-  "Material 3 Expressive Spring": MaterialSpringMotion.expressiveSpatialDefault,
+  "Material 3 Expressive Spring":
+      MaterialSpringMotion.expressiveSpatialDefault(),
 };
 
 class MotionDropdown extends StatelessWidget {

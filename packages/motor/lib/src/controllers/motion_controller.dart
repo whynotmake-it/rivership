@@ -565,9 +565,9 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
 ///
 /// await controller.playSequence(sequence);
 /// ```
-class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
+class PhaseMotionController<P, T extends Object> extends MotionController<T> {
   /// Creates a PhaseSequenceController with single motion for all dimensions.
-  PhaseSequenceController({
+  PhaseMotionController({
     required super.motion,
     required super.vsync,
     required super.converter,
@@ -576,7 +576,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   });
 
   /// Creates a PhaseSequenceController with motion per dimension.
-  PhaseSequenceController.motionPerDimension({
+  PhaseMotionController.motionPerDimension({
     required super.motionPerDimension,
     required super.vsync,
     required super.converter,
@@ -658,6 +658,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   TickerFuture playSequence(
     PhaseSequence<P, T> sequence, {
     P? atPhase,
+    T? withVelocity,
     void Function(P phase)? onPhaseChanged,
   }) {
     // Stop any existing sequence by stopping underlying animation
@@ -683,11 +684,15 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
     // Check if we're already at the target phase value
     final targetValue = sequence.valueForPhase(targetPhase);
+    final velocities = switch (withVelocity) {
+      null => this.velocities,
+      final v => converter.normalize(v),
+    };
     if (value == targetValue) {
-      _handleSequencePhaseCompletion();
+      _handleSequencePhaseCompletion(velocities);
     } else {
       // Set up the initial phase simulation
-      _setupPhaseSimulation(targetPhase);
+      _setupPhaseSimulation(targetPhase, velocities);
     }
 
     // Stop any existing ticker and start fresh
@@ -705,7 +710,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   }
 
   /// Sets up simulations for transitioning to a specific phase
-  void _setupPhaseSimulation(P phase) {
+  void _setupPhaseSimulation(P phase, List<double> velocities) {
     if (!_isPlayingSequence || _activeSequence == null) return;
 
     final sequence = _activeSequence!;
@@ -787,7 +792,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
     if (currentPhaseComplete && _isPlayingSequence) {
       // Current phase is complete, move to next phase
-      _handleSequencePhaseCompletion();
+      _handleSequencePhaseCompletion(velocities);
     }
 
     notifyListeners();
@@ -795,7 +800,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   }
 
   /// Handles sequence progression when a phase animation completes.
-  void _handleSequencePhaseCompletion() {
+  void _handleSequencePhaseCompletion(List<double> velocities) {
     if (!_isPlayingSequence || _activeSequence == null) {
       _completeSequence();
       return;
@@ -840,7 +845,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
     // Set up next phase simulation and continue
     final nextPhase = sequence.phases[nextIndex];
-    _setupPhaseSimulation(nextPhase);
+    _setupPhaseSimulation(nextPhase, velocities);
     _onSequencePhaseChanged?.call(nextPhase);
   }
 
@@ -879,7 +884,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     // Immediately continue with the next phase
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (_isPlayingSequence) {
-        _handleSequencePhaseCompletion();
+        _handleSequencePhaseCompletion(velocities);
       }
     });
   }

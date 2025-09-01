@@ -272,19 +272,12 @@ class _FlipCard extends StatelessWidget {
     final angle = pi * animationValue;
     Widget cardFace;
     if (angle <= pi / 2) {
-      cardFace = ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          CupertinoColors.white
-              .withValues(alpha: (animationValue * 1.5).clamp(0, 1)),
-          BlendMode.lighten,
-        ),
-        child: SizedBox.fromSize(
-          size: size,
-          child: Card(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: const Center(
-              child: Text('Front'),
-            ),
+      cardFace = SizedBox.fromSize(
+        size: size,
+        child: Card(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: const Center(
+            child: Text('Front'),
           ),
         ),
       );

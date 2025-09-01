@@ -23,21 +23,13 @@ class PhaseAnimationExamples extends StatelessWidget {
         middle: Text('Phase Animations'),
       ),
       backgroundColor: CupertinoColors.systemGroupedBackground,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: SingleChildScrollView(
+      child: SingleChildScrollView(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader(
-                  context,
-                  'Simple Scale Animation',
-                  'Tap the button to trigger a bouncy scale sequence through multiple phases',
-                ),
-                const SizedBox(height: 20),
-                const BouncyButtonExample(),
-                const SizedBox(height: 40),
                 _buildSectionHeader(
                   context,
                   'Loading Sequence',
@@ -85,15 +77,7 @@ class PhaseAnimationExamples extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           description,
-          style: TextStyle(
-            fontSize: 16,
-            color: CupertinoTheme.of(context)
-                .textTheme
-                .textStyle
-                .color
-                ?.withValues(alpha: 0.7),
-            height: 1.4,
-          ),
+          style: CupertinoTheme.of(context).textTheme.textStyle,
         ),
       ],
     );
