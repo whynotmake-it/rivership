@@ -198,11 +198,14 @@ void main() {
 
         testWidgets('stops any active sequence when animateTo is called',
             (tester) async {
-          final sequence = PhaseSequence.map(motion: (_) => motion, const {
-            'a': Offset.zero,
-            'b': Offset(1, 1),
-            'c': Offset(2, 2),
-          });
+          final sequence = PhaseSequence.map(
+            const {
+              'a': Offset.zero,
+              'b': Offset(1, 1),
+              'c': Offset(2, 2),
+            },
+            motion: motion,
+          );
 
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -404,11 +407,14 @@ void main() {
 
         testWidgets('stops any active sequence when stop is called',
             (tester) async {
-          final sequence = PhaseSequence.map(motion: (_) => motion, const {
-            'a': Offset.zero,
-            'b': Offset(1, 1),
-            'c': Offset(2, 2),
-          });
+          final sequence = PhaseSequence.map(
+            motion: motion,
+            const {
+              'a': Offset.zero,
+              'b': Offset(1, 1),
+              'c': Offset(2, 2),
+            },
+          );
 
           controller = PhaseSequenceController<String, Offset>(
             motion: motion,
@@ -540,7 +546,7 @@ void main() {
               'b': Offset(1, 1),
               'c': Offset(2, 2),
             },
-            motion: (_) => motion,
+            motion: motion,
           );
 
           controller = PhaseSequenceController<String, Offset>(

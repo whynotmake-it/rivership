@@ -626,8 +626,9 @@ class TrimmedMotion extends Motion {
   })  : assert(startTrim >= 0.0, 'startTrim must be non-negative'),
         assert(endTrim >= 0.0, 'endTrim must be non-negative'),
         assert(
-          startTrim + endTrim < 1.0,
-          'startTrim + endTrim must be less than 1.0',
+          startTrim + endTrim <= 1.0,
+          'startTrim + endTrim must be less than 1.0, '
+          'but received $startTrim + $endTrim',
         );
 
   /// The motion to trim.
@@ -654,41 +655,25 @@ class TrimmedMotion extends Motion {
     double end = 1,
     double velocity = 0,
   }) {
-    // Fast path: if there's no trimming, just delegate to parent
-    if (startTrim == 0.0 && endTrim == 0.0) {
-      return parent.createSimulation(
-        start: start,
-        end: end,
-        velocity: velocity,
-      );
-    }
+    final trimmedExtent = 1.0 - startTrim - endTrim;
 
-    // Calculate the extended range needed to get our desired trim
-    final desiredRange = end - start;
-    final usablePortion = 1.0 - startTrim - endTrim;
-    final extendedRange = desiredRange / usablePortion;
+    // We simulate the parent over the extended range
+    final parentStart = start - trimmedExtent * startTrim;
+    final parentEnd = end + trimmedExtent * endTrim;
 
-    // Calculate the extended start position
-    final extendedStart = start - (extendedRange * startTrim);
-    final extendedEnd = extendedStart + extendedRange;
-
-    // Scale velocity proportionally to maintain the same relative motion
-    final scaledVelocity = velocity / usablePortion;
-
-    final parentSimulation = parent.createSimulation(
-      start: extendedStart,
-      end: extendedEnd,
-      velocity: scaledVelocity,
+    final scaledSim = parent.createSimulation(
+      start: parentStart,
+      end: parentEnd,
+      velocity: velocity,
     );
 
     return _TrimmedSimulation(
-      parent: parentSimulation,
+      parent: scaledSim,
       startTrim: startTrim,
       endTrim: endTrim,
+      trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      extendedStart: extendedStart,
-      extendedEnd: extendedEnd,
     );
   }
 
@@ -715,103 +700,73 @@ class _TrimmedSimulation extends Simulation {
     required this.parent,
     required this.startTrim,
     required this.endTrim,
+    required this.trimmedExtent,
     required this.start,
     required this.end,
-    required this.extendedStart,
-    required this.extendedEnd,
-  })  : usablePortion = 1.0 - startTrim - endTrim,
-        adjustedDuration = _calculateAdjustedDuration(
-          parent,
-          1.0 - startTrim - endTrim,
-        );
+  })  : _duration = _findParentDuration(parent) * trimmedExtent,
+        super(tolerance: parent.tolerance);
 
   final Simulation parent;
   final double startTrim;
   final double endTrim;
+  final double trimmedExtent;
   final double start;
   final double end;
-  final double extendedStart;
-  final double extendedEnd;
+  final double _duration;
 
-  final double usablePortion;
-  final double? adjustedDuration;
-
-  static double? _calculateAdjustedDuration(
-    Simulation parent,
-    double usablePortion,
-  ) {
-    if (parent is CurveSimulation) {
-      return (parent.duration.inMicroseconds / Duration.microsecondsPerSecond) *
-          usablePortion;
+  static double _findParentDuration(Simulation parent) {
+    // For most simulations, check when isDone returns true
+    for (var t = 0.01; t <= 10; t += 0.01) {
+      if (parent.isDone(t)) {
+        return t;
+      }
     }
-    return null; // For physics-based simulations, duration is not predetermined
+    return 1; // fallback
   }
 
   @override
-  Tolerance get tolerance => parent.tolerance;
-
-  @override
   double x(double time) {
-    if (isDone(time)) {
-      return end; // Snap to target when we're done
+    if (time <= 0) return start;
+    if (time >= _duration) return end;
+
+    // Map our time to the parent's time range
+    final parentDuration = _duration / trimmedExtent;
+    final progressStart = startTrim;
+    final progressEnd = 1.0 - endTrim;
+
+    // Scale time to fit within trimmed range
+    final normalizedTime = time / _duration;
+    final parentTime = parentDuration *
+        (progressStart + (progressEnd - progressStart) * normalizedTime);
+
+    // Get parent's values to normalize
+    final parentStartValue = parent.x(parentDuration * progressStart);
+    final parentEndValue = parent.x(parentDuration * progressEnd);
+    final parentCurrentValue = parent.x(parentTime);
+
+    // Normalize and map to our range
+    if ((parentEndValue - parentStartValue).abs() < 1e-10) {
+      return start + (end - start) * normalizedTime;
     }
 
-    final parentValue = parent.x(time);
-
-    // Calculate current progress in parent simulation (0 to 1)
-    final parentRange = extendedEnd - extendedStart;
-    final parentProgress =
-        parentRange == 0 ? 0.0 : (parentValue - extendedStart) / parentRange;
-
-    // Map to our trimmed portion
-    // If we're before the trim start, output our start value
-    if (parentProgress <= startTrim) {
-      return start;
-    }
-
-    // Calculate progress within our usable portion
-    final trimmedProgress = (parentProgress - startTrim) / usablePortion;
-    final clampedProgress = trimmedProgress.clamp(0.0, 1.0);
-
-    return start + (clampedProgress * (end - start));
+    final normalizedProgress = (parentCurrentValue - parentStartValue) /
+        (parentEndValue - parentStartValue);
+    return start + (end - start) * normalizedProgress;
   }
 
   @override
   double dx(double time) {
-    if (isDone(time)) {
-      return 0; // No velocity when we're done
-    }
+    if (time < 0 || time > _duration) return 0;
 
-    // Get parent velocity and scale it appropriately
-    final parentVelocity = parent.dx(time);
-
-    // Scale velocity to match our compressed time/range
-    final velocityScale = 1.0 / usablePortion;
-    return parentVelocity * velocityScale;
+    // Use numerical differentiation
+    const delta = 0.001;
+    final x1 = x(time - delta);
+    final x2 = x(time + delta);
+    return (x2 - x1) / (2 * delta);
   }
 
   @override
-  bool isDone(double time) {
-    // For time-based simulations, use the adjusted duration
-    if (adjustedDuration != null) {
-      return time >= adjustedDuration!;
-    }
-
-    // For physics-based simulations, check parent simulation state
-    // and progress through the trimmed portion
-    if (parent.isDone(time)) {
-      return true;
-    }
-
-    // We're done when we've reached the end of our trimmed section
-    final parentValue = parent.x(time);
-    final parentRange = extendedEnd - extendedStart;
-    final parentProgress =
-        parentRange == 0 ? 1.0 : (parentValue - extendedStart) / parentRange;
-
-    // Finish when we've consumed our trimmed portion
-    return parentProgress >= (startTrim + usablePortion);
-  }
+  bool isDone(double time) => time >= _duration - tolerance.time;
 }
 
 /// Extension methods for [Motion] to provide convenient trimming functionality.

@@ -1,12 +1,12 @@
+import 'dart:math';
+
 import 'package:equatable/equatable.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/motion.dart';
 
-/// A function that provides the motion for a specific phase.
-typedef MotionFor<P> = Motion Function(P phase);
-
 /// The mode in which the phase animation should loop.
-enum PhaseLoopMode {
+enum SequenceLoopMode {
   /// Don't loop the animation.
   none,
 
@@ -24,6 +24,9 @@ enum PhaseLoopMode {
   bool get isLooping => this == loop || this == pingPong || this == seamless;
 }
 
+/// A value and its associated motion.
+typedef ValueWithMotion<T> = (T value, Motion motion);
+
 /// {@template PhaseSequence}
 /// Defines a sequence of phases and their corresponding property values
 /// for phase-based animations.
@@ -36,36 +39,53 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   /// {@macro PhaseSequence}
   const PhaseSequence();
 
+  /// {@macro PhaseValue}
+  const factory PhaseSequence.value(
+    P phase,
+    T value, [
+    Motion? motion,
+  ]) = PhaseValue<P, T>;
+
+  /// {@macro ListPhaseSequence}
+  factory PhaseSequence.list(
+    List<PhaseValue<P, T>> values,
+  ) = ListPhaseSequence<P, T>;
+
   /// {@macro MapPhaseSequence}
-  const factory PhaseSequence.map(
-    Map<P, T> phaseMap, {
-    required MotionFor<P> motion,
-    PhaseLoopMode loopMode,
+  factory PhaseSequence.map(
+    Map<P, T> values, {
+    required Motion motion,
+    SequenceLoopMode loopMode,
   }) = MapPhaseSequence<P, T>;
 
-  /// {@macro ValuePhaseSequence}
-  static PhaseSequence<T, T> values<T extends Object>(
-    List<T> values, {
-    required MotionFor<T> motion,
-    PhaseLoopMode loopMode = PhaseLoopMode.none,
-  }) =>
-      ValuePhaseSequence<T>(
-        values,
-        motion: motion,
-        loopMode: loopMode,
-      );
+  /// {@macro MapPhaseSequence}
+  const factory PhaseSequence.mapWithMotionPerPhase(
+    Map<P, ValueWithMotion<T>> values, {
+    SequenceLoopMode loopMode,
+  }) = MapPhaseSequence<P, T>.motionPerPhase;
 
-  /// {@macro SingleValueSequence}
-  static PhaseSequence<double, T> single<T extends Object>(
-    T value, {
+  /// {@macro ValuesPhaseSequence}
+  static PhaseSequence<int, T> values<T extends Object>(
+    List<T> values, {
     required Motion motion,
-    double phase = 0.0,
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
   }) =>
-      SingleValueSequence<T>(
-        value,
-        motion: motion,
-        phase: phase,
-      );
+      ValuesPhaseSequence<T>(values, motion: motion, loopMode: loopMode);
+
+  /// {@macro ValuesPhaseSequence}
+  static PhaseSequence<int, T> valuesWithMotionPerPhase<T extends Object>(
+    List<ValueWithMotion<T>> values, {
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      ValuesPhaseSequence<T>.motionPerPhase(values, loopMode: loopMode);
+
+  /// {@macro TimelineSequence}
+  static TimelineSequence<T> timeline<T extends Object>(
+    Map<double, T> values, {
+    required Motion motion,
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      TimelineSequence<T>(values, motion: motion, loopMode: loopMode);
 
   /// The list of phases in the sequence.
   ///
@@ -82,156 +102,284 @@ abstract class PhaseSequence<P, T extends Object> with EquatableMixin {
   /// Defaults to the first phase in [phases].
   P get initialPhase => phases.first;
 
-  /// The motion that should be used for transitioning to [phase].
-  Motion motionForPhase(P phase);
+  /// The motion that should be used for transitioning to [toPhase] from
+  /// [fromPhase].
+  ///
+  /// If [fromPhase] is null, this represents the initial motion to the phase.
+  Motion motionForPhase({
+    required P toPhase,
+    P? fromPhase,
+  });
 
   /// The manner in which the phase animation should loop.
-  PhaseLoopMode get loopMode;
+  SequenceLoopMode get loopMode;
+
+  /// Chains this [PhaseSequence] with the given [sequence].
+  ///
+  /// Phases from [sequence] will take precedence over this sequence.
+  ///
+  /// If you don't provide a [loopMode], the loop mode from [sequence] will be
+  /// used.
+  PhaseSequence<P, T> chain(
+    PhaseSequence<P, T> sequence, {
+    SequenceLoopMode? loopMode,
+  }) {
+    return chainAll([sequence], loopMode: loopMode);
+  }
+
+  /// Chains this [PhaseSequence] with the given [sequences].
+  ///
+  /// Phases from later sequences will take precedence over earlier ones.
+  ///
+  /// If you don't provide a [loopMode], the last sequence's loop mode will be
+  /// used by default.
+  PhaseSequence<P, T> chainAll(
+    List<PhaseSequence<P, T>> sequences, {
+    SequenceLoopMode? loopMode,
+  }) {
+    return MapPhaseSequence.motionPerPhase(
+      {
+        for (final sequence in sequences)
+          for (final phase in sequence.phases)
+            phase: (
+              sequence.valueForPhase(phase),
+              sequence.motionForPhase(toPhase: phase),
+            ),
+      },
+      loopMode: loopMode ?? sequences.lastOrNull?.loopMode ?? this.loopMode,
+    );
+  }
 
   @override
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        ...phases.map(motionForPhase),
+        ...phases
+            .map((p) => motionForPhase(fromPhase: initialPhase, toPhase: p)),
         loopMode,
       ];
 }
 
-/// Allows setting a callback that will be used to obtain the motion for a given
-/// phase.
-mixin PhaseCallbackMixin<P, T extends Object> on PhaseSequence<P, T> {
-  /// A function that provides the motion for a specific phase.
-  MotionFor<P> get motion;
-
-  @override
-  Motion motionForPhase(P phase) => motion(phase);
-}
-
-/// {@template MapPhaseSequence}
-/// A simple implementation of [PhaseSequence] that uses a map to define
-/// phase-to-value relationships.
-/// {@endtemplate}
-@immutable
-class MapPhaseSequence<P, T extends Object> extends PhaseSequence<P, T>
-    with PhaseCallbackMixin<P, T> {
-  /// Creates a [MapPhaseSequence] with the given phase-to-value mapping.
-  const MapPhaseSequence(
-    this.phaseMap, {
-    required this.motion,
-    this.loopMode = PhaseLoopMode.none,
-  });
-
-  /// The mapping from phases to their corresponding property values.
-  final Map<P, T> phaseMap;
-
-  @override
-  final MotionFor<P> motion;
-
-  @override
-  final PhaseLoopMode loopMode;
-
-  @override
-  List<P> get phases => phaseMap.keys.toList();
-
-  @override
-  T valueForPhase(P phase) => phaseMap[phase]!;
-
-  @override
-  Motion motionForPhase(P phase) => motion(phase);
-}
-
-/// {@template ValuePhaseSequence}
-/// A phase sequence for simple value-based phases where the phase
-/// itself IS the interpolatable value.
-/// {@endtemplate}
-@immutable
-class ValuePhaseSequence<T extends Object> extends PhaseSequence<T, T>
-    with PhaseCallbackMixin<T, T> {
-  /// Creates a [ValuePhaseSequence] with the given values.
-  const ValuePhaseSequence(
-    this.values, {
-    required this.motion,
-    this.loopMode = PhaseLoopMode.none,
-  });
-
-  /// The values to cycle through as both phases and property values.
-  final List<T> values;
-
-  @override
-  final MotionFor<T> motion;
-
-  @override
-  final PhaseLoopMode loopMode;
-
-  @override
-  List<T> get phases => values;
-
-  @override
-  T valueForPhase(T phase) => phase;
-
-  @override
-  Motion motionForPhase(T phase) => motion(phase);
-}
-
-/// {@template SingleValueSequence}
-/// A phase sequence containing a single value with a fixed motion.
+/// {@template PhaseValue}
+/// A single entry in a phase sequence.
 ///
-/// This is useful for animations that need to animate to a single target
-/// value with a specific motion, such as button press feedback or
-/// simple state transitions.
+/// Can also be used as a standalone phase sequence with a single phase, which
+/// is useful if you want to react to live user input for example.
 /// {@endtemplate}
 @immutable
-class SingleValueSequence<T extends Object> extends PhaseSequence<double, T> {
-  /// Creates a [SingleValueSequence] with the given value and motion.
-  const SingleValueSequence(
-    this.value, {
-    required this.motion,
-    this.phase = 0.0,
-  });
+class PhaseValue<P, T extends Object> extends PhaseSequence<P, T> {
+  /// Creates a [PhaseValue] with the given value and motion.
+  const PhaseValue(
+    this.phase,
+    this.value, [
+    this.motion,
+  ]);
+
+  /// The default motion that will be used if this is created as a single value
+  /// without a specific motion.
+  static const Motion defaultMotion = CurvedMotion(
+    duration: Duration(milliseconds: 500),
+  );
 
   /// The single of the animation.
-  final double phase;
+  final P phase;
 
   /// The single value to animate to.
   final T value;
 
   /// The motion to use for animations.
+  final Motion? motion;
+
+  @override
+  SequenceLoopMode get loopMode => SequenceLoopMode.none;
+
+  @override
+  List<P> get phases => [phase];
+
+  @override
+  T valueForPhase(P phase) => value;
+
+  @override
+  Motion motionForPhase({required P toPhase, P? fromPhase}) =>
+      motion ?? defaultMotion;
+}
+
+/// {@template ListPhaseSequence}
+/// A phase sequence that uses a list of [PhaseValue] entries to define
+/// the animation phases and their corresponding values.
+/// {@endtemplate}
+class ListPhaseSequence<P, T extends Object> extends PhaseSequence<P, T> {
+  /// Creates a [ListPhaseSequence] with the given values and loop mode.
+  ListPhaseSequence(
+    List<PhaseValue<P, T>> values, {
+    this.loopMode = SequenceLoopMode.none,
+  }) : _valuesByPhase = {for (final value in values) value.phase: value};
+
+  /// A map of phase values by their corresponding phases.
+  final Map<P, PhaseValue<P, T>> _valuesByPhase;
+
+  @override
+  final SequenceLoopMode loopMode;
+
+  @override
+  List<P> get phases => _valuesByPhase.keys.toList();
+
+  @override
+  T valueForPhase(P phase) => _valuesByPhase[phase]!.value;
+
+  @override
+  Motion motionForPhase({required P toPhase, P? fromPhase}) {
+    final value = _valuesByPhase[toPhase];
+    return value!.motionForPhase(toPhase: toPhase);
+  }
+}
+
+/// {@template ValuesPhaseSequence}
+/// A phase sequence that uses a list of values and uses their indexes as phase.
+/// {@endtemplate}
+class ValuesPhaseSequence<T extends Object> extends PhaseSequence<int, T> {
+  /// Creates a [ValuesPhaseSequence] with the given [values], a [motion] and
+  /// loop mode.
+  ValuesPhaseSequence(
+    List<T> values, {
+    required Motion motion,
+    this.loopMode = SequenceLoopMode.none,
+  }) : _valuesByPhase = {
+          for (final (index, value) in values.indexed)
+            index: PhaseValue(index, value, motion),
+        };
+
+  /// Creates a [ValuesPhaseSequence] with the given [ValueWithMotion]s and loop
+  /// mode.
+  ValuesPhaseSequence.motionPerPhase(
+    List<ValueWithMotion<T>> values, {
+    this.loopMode = SequenceLoopMode.none,
+  }) : _valuesByPhase = {
+          for (final (index, value) in values.indexed)
+            index: PhaseValue(index, value.$1, value.$2),
+        };
+
+  /// A map of phase values by their corresponding phases.
+  final Map<int, PhaseValue<int, T>> _valuesByPhase;
+
+  @override
+  final SequenceLoopMode loopMode;
+
+  @override
+  List<int> get phases => _valuesByPhase.keys.toList();
+
+  @override
+  T valueForPhase(int phase) => _valuesByPhase[phase]!.value;
+
+  @override
+  Motion motionForPhase({required int toPhase, int? fromPhase}) {
+    final value = _valuesByPhase[toPhase];
+    return value!.motionForPhase(toPhase: toPhase);
+  }
+
+  @override
+  PhaseSequence<int, T> chainAll(
+    List<PhaseSequence<int, T>> sequences, {
+    SequenceLoopMode? loopMode,
+  }) {
+    // We need to offset the phases of all other [ValuesPhaseSequences]
+    final s = <PhaseSequence<int, T>>[];
+    var offset = phases.length;
+    for (final sequence in sequences) {
+      if (sequence is ValuesPhaseSequence<T>) {
+        s.add(
+          MapPhaseSequence.motionPerPhase({
+            for (final phase in sequence.phases)
+              phase + offset: (
+                sequence.valueForPhase(phase),
+                sequence.motionForPhase(toPhase: phase),
+              ),
+          }),
+        );
+        offset += sequence.phases.length;
+      }
+    }
+
+    return super.chainAll(s, loopMode: loopMode);
+  }
+}
+
+/// {@template MapPhaseSequence}
+/// A phase sequence that uses a map of [PhaseValue] entries to define
+/// the animation phases and their corresponding values.
+/// {@endtemplate}
+class MapPhaseSequence<P, T extends Object> extends PhaseSequence<P, T> {
+  /// Creates a [MapPhaseSequence] with a single motion for all phases.
+  MapPhaseSequence(
+    Map<P, T> values, {
+    required Motion motion,
+    this.loopMode = SequenceLoopMode.none,
+  }) : _valuesByPhase = {
+          for (final entry in values.entries) entry.key: (entry.value, motion),
+        };
+
+  /// Creates a [MapPhaseSequence] with the given values and loop mode.
+  const MapPhaseSequence.motionPerPhase(
+    this._valuesByPhase, {
+    this.loopMode = SequenceLoopMode.none,
+  });
+
+  /// A map of phase values by their corresponding phases.
+  final Map<P, ValueWithMotion<T>> _valuesByPhase;
+
+  @override
+  final SequenceLoopMode loopMode;
+
+  @override
+  List<P> get phases => _valuesByPhase.keys.toList();
+
+  @override
+  T valueForPhase(P phase) => _valuesByPhase[phase]!.$1;
+
+  @override
+  Motion motionForPhase({required P toPhase, P? fromPhase}) {
+    final value = _valuesByPhase[toPhase];
+    return value!.$2;
+  }
+}
+
+/// Provides methods to modify a given [PhaseSequence].
+extension SequenceModificationX<P, T extends Object> on PhaseSequence<P, T> {
+  /// Retains [phases] and values while using a single [motion] for all
+  /// transitions.
+  PhaseSequence<P, T> withSingleMotion(Motion motion) {
+    return SingleMotionPhaseSequence(this, motion);
+  }
+}
+
+/// A phase sequence that wraps a [parent] uses a single motion for all
+/// of its transitions.
+class SingleMotionPhaseSequence<P, T extends Object>
+    extends PhaseSequence<P, T> {
+  /// Creates a [SingleMotionPhaseSequence] with the given parent sequence
+  /// and motion.
+  const SingleMotionPhaseSequence(
+    this.parent,
+    this.motion,
+  );
+
+  /// The parent phase sequence.
+  final PhaseSequence<P, T> parent;
+
+  /// A single motion to use for every phase transition.
   final Motion motion;
 
   @override
-  PhaseLoopMode get loopMode => PhaseLoopMode.none;
+  SequenceLoopMode get loopMode => parent.loopMode;
 
   @override
-  List<double> get phases => [phase];
+  List<P> get phases => parent.phases;
 
   @override
-  T valueForPhase(double phase) => value;
+  T valueForPhase(P phase) => parent.valueForPhase(phase);
 
   @override
-  Motion motionForPhase(double phase) => motion;
-}
-
-/// Normalizes timeline values to the range [0.0, 1.0].
-Map<double, T> _normalizeTimelineValues<T extends Object>(
-  Map<double, T> sortedValues,
-) {
-  if (sortedValues.isEmpty) return <double, T>{};
-
-  final keys = sortedValues.keys;
-  final min = keys.first;
-  final max = keys.last;
-  final range = max - min;
-
-  if (range == 0) {
-    return {0.0: sortedValues.values.first};
-  }
-
-  return Map.fromEntries(
-    sortedValues.entries.map((entry) {
-      final normalizedKey = (entry.key - min) / range;
-      return MapEntry(normalizedKey, entry.value);
-    }),
-  );
+  Motion motionForPhase({required P toPhase, P? fromPhase}) => motion;
 }
 
 /// {@template TimelineSequence}
@@ -252,7 +400,7 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   TimelineSequence(
     Map<double, T> values, {
     required this.motion,
-    this.loopMode = PhaseLoopMode.none,
+    this.loopMode = SequenceLoopMode.none,
   }) : _values = values;
 
   final Map<double, T> _values;
@@ -285,7 +433,7 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   final Motion motion;
 
   @override
-  final PhaseLoopMode loopMode;
+  final SequenceLoopMode loopMode;
 
   @override
   List<double> get phases => _phasesList;
@@ -294,31 +442,136 @@ class TimelineSequence<T extends Object> extends PhaseSequence<double, T> {
   T valueForPhase(double phase) => _sortedValues[phase]!;
 
   @override
-  Motion motionForPhase(double phase) {
+  Motion motionForPhase({
+    required double toPhase,
+    double? fromPhase,
+  }) {
     if (_normalizedPhasesList.length == 1) return motion;
 
-    final currentIndex = _phasesList.indexOf(phase);
-    final normalizedPhase = _normalizedPhasesList[currentIndex];
+    // Find the index of the current phase in the original (non-normalized)
+    // phases
+    final currentIndex = _phasesList.indexOf(toPhase);
+    if (currentIndex == -1) return motion;
 
-    if (currentIndex == 0) {
-      final nextNormalized = _normalizedPhasesList[currentIndex + 1];
-      return motion.subExtent(extent: (nextNormalized - normalizedPhase) / 2);
+    // We're transitioning from a specific phase, so trim motion accordingly
+    final fromIndex = switch (fromPhase) {
+      null => _getBestPreviousIndex(currentIndex),
+      _ => _phasesList.indexOf(fromPhase),
+    };
+
+    if (fromIndex != -1) {
+      final fromNormalizedPos = _normalizedPhasesList[fromIndex];
+      final toNormalizedPos = _normalizedPhasesList[currentIndex];
+
+      // Trim the motion to use only the section between the two phases
+      final segmentStart = min(fromNormalizedPos, toNormalizedPos);
+      final segmentEnd = max(fromNormalizedPos, toNormalizedPos);
+
+      return motion.trimmed(startTrim: segmentStart, endTrim: 1 - segmentEnd);
     }
 
-    // If this is the last phase, use the motion from previous phase to 1.0
-    if (currentIndex == _normalizedPhasesList.length - 1) {
-      final previousNormalized = _normalizedPhasesList[currentIndex - 1];
-      return motion.trimmed(
-        startTrim:
-            previousNormalized + (normalizedPhase - previousNormalized) / 2,
-      );
-    }
-
-    // For middle phases, use the motion from previous phase to this phase
-    final previousNormalized = _normalizedPhasesList[currentIndex - 1];
-    return motion.subExtent(
-      start: previousNormalized + (normalizedPhase - previousNormalized) / 2,
-      extent: normalizedPhase - previousNormalized,
-    );
+    return motion;
   }
+
+  // Gets the next best previous index from [index]
+  int _getBestPreviousIndex(int index) {
+    int getNaive() {
+      if (index == 0) {
+        switch (loopMode) {
+          case SequenceLoopMode.none || SequenceLoopMode.pingPong:
+            return 1;
+          case SequenceLoopMode.loop:
+            return _phasesList.length - 1;
+          case SequenceLoopMode.seamless:
+            return _phasesList.length - 2;
+        }
+      } else {
+        return index - 1;
+      }
+    }
+
+    return getNaive().clamp(0, phases.length - 1);
+  }
+}
+
+/// Normalizes timeline values to the range [0.0, 1.0].
+Map<double, T> _normalizeTimelineValues<T extends Object>(
+  Map<double, T> sortedValues,
+) {
+  if (sortedValues.isEmpty) return <double, T>{};
+
+  final keys = sortedValues.keys;
+  final min = keys.first;
+  final max = keys.last;
+  final range = max - min;
+
+  if (range == 0) {
+    return {0.0: sortedValues.values.first};
+  }
+
+  return Map.fromEntries(
+    sortedValues.entries.map((entry) {
+      final normalizedKey = (entry.key - min) / range;
+      return MapEntry(normalizedKey, entry.value);
+    }),
+  );
+}
+
+/// Offers extension methods for [Map] to facilitate conversion to
+/// [PhaseSequence].
+extension MapConversionX<P, T extends Object> on Map<P, T> {
+  /// Creates a [PhaseSequence] from this map.
+  PhaseSequence<P, T> asSequence({
+    required Motion withMotion,
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      PhaseSequence.map(
+        this,
+        motion: withMotion,
+        loopMode: loopMode,
+      );
+}
+
+/// Offers extension methods for [Iterable] to facilitate conversion to
+/// [PhaseSequence].
+extension IterableConversionX<T extends Object> on Iterable<T> {
+  /// Creates a [PhaseSequence] from these values, where the phases are the
+  /// indeces.
+  PhaseSequence<int, T> asSequence({
+    required Motion withMotion,
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      PhaseSequence.values(
+        toList(),
+        motion: withMotion,
+        loopMode: loopMode,
+      );
+
+  /// Creates a [TimelineSequence] from these values, where each value is an
+  /// equal distance apart.
+  PhaseSequence<double, T> asTimeline({
+    required Motion withMotion,
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      PhaseSequence.timeline(
+        {
+          for (final (index, value) in indexed) index.toDouble(): value,
+        },
+        motion: withMotion,
+        loopMode: loopMode,
+      );
+}
+
+/// Offers extension methods for [Map] to facilitate conversion to
+/// [PhaseSequence].
+extension IterableMotionConversionX<T extends Object>
+    on Iterable<ValueWithMotion<T>> {
+  /// Creates a [PhaseSequence] from this list of [ValueWithMotion].
+  PhaseSequence<int, T> asSequence({
+    SequenceLoopMode loopMode = SequenceLoopMode.none,
+  }) =>
+      PhaseSequence.valuesWithMotionPerPhase(
+        toList(),
+        loopMode: loopMode,
+      );
 }

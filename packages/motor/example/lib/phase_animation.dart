@@ -121,10 +121,7 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
         children: [
           PhaseMotionBuilder(
             sequence: pressed
-                ? PhaseSequence.single(
-                    0.5,
-                    motion: CupertinoMotion.smooth(),
-                  )
+                ? PhaseSequence.value(0.0, 0.5, CupertinoMotion.smooth())
                 : TimelineSequence<double>(
                     {
                       0: 1.0,
@@ -216,7 +213,7 @@ class LoadingPhaseExample extends StatelessWidget {
         child: SinglePhaseMotionBuilder<double>(
           phases: const [0.0, 0.333, 0.666, 1],
           motion: CupertinoMotion.smooth(),
-          loopMode: PhaseLoopMode.seamless,
+          loopMode: SequenceLoopMode.seamless,
           builder: (context, progress, child) {
             return Row(
               mainAxisSize: MainAxisSize.min,
@@ -293,7 +290,7 @@ class LoopComparisonExample extends StatelessWidget {
                     2 * math.pi,
                   ], // Full rotation with return to start
                   motion: CupertinoMotion.smooth(),
-                  loopMode: PhaseLoopMode.seamless,
+                  loopMode: SequenceLoopMode.seamless,
                   builder: (context, rotation, child) {
                     return Center(
                       child: Transform.rotate(
@@ -365,7 +362,7 @@ class LoopComparisonExample extends StatelessWidget {
                     2 * math.pi,
                   ], // No return to start
                   motion: CupertinoMotion.smooth(),
-                  loopMode: PhaseLoopMode.loop,
+                  loopMode: SequenceLoopMode.loop,
                   builder: (context, rotation, child) {
                     return Center(
                       child: Transform.rotate(
@@ -446,8 +443,8 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
   @override
   Widget build(BuildContext context) {
     final sequence = MapPhaseSequence(
-      loopMode: PhaseLoopMode.loop,
-      motion: (_) => CupertinoMotion.smooth(),
+      loopMode: SequenceLoopMode.loop,
+      motion: CupertinoMotion.smooth(),
       {
         CardPhase.idle: const CardProperties(
           width: 280,
@@ -485,6 +482,7 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
               sequence: sequence,
               converter: const CardPropertiesConverter(),
               currentPhase: currentPhase,
+              playing: false,
               builder: (context, properties, phase, child) {
                 return Container(
                   width: properties.width,
