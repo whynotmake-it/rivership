@@ -100,7 +100,7 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 
 class _PhaseMotionBuilderState<P, T extends Object>
     extends State<PhaseMotionBuilder<P, T>> with TickerProviderStateMixin {
-  late PhaseSequenceController<P, T> _controller;
+  late PhaseMotionController<P, T> _controller;
   P? _previousPhase;
 
   @override
@@ -109,7 +109,7 @@ class _PhaseMotionBuilderState<P, T extends Object>
 
     // Create controller once, like BaseMotionBuilder
     final initialPhase = widget.currentPhase ?? widget.sequence.initialPhase;
-    _controller = PhaseSequenceController<P, T>(
+    _controller = PhaseMotionController<P, T>(
       motion: widget.sequence.motionForPhase(
         fromPhase: initialPhase,
         toPhase: initialPhase,
