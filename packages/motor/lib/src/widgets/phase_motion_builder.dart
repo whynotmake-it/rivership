@@ -51,7 +51,6 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
     required this.sequence,
     required this.converter,
     required this.builder,
-    this.motion,
     this.playing = true,
     this.currentPhase,
     this.onPhaseChanged,
@@ -68,10 +67,6 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// The builder function that creates the widget tree.
   final PhaseWidgetBuilder<T, P> builder;
-
-  /// The default motion to use when phases don't specify their own motion.
-  /// If null, uses the motion defined in the sequence.
-  final Motion? motion;
 
   /// Whether the sequence should currently be playing.
   ///
@@ -106,19 +101,25 @@ class PhaseMotionBuilder<P, T extends Object> extends StatefulWidget {
 class _PhaseMotionBuilderState<P, T extends Object>
     extends State<PhaseMotionBuilder<P, T>> with TickerProviderStateMixin {
   late PhaseSequenceController<P, T> _controller;
+  P? _previousPhase;
 
   @override
   void initState() {
     super.initState();
 
     // Create controller once, like BaseMotionBuilder
+    final initialPhase = widget.currentPhase ?? widget.sequence.initialPhase;
     _controller = PhaseSequenceController<P, T>(
-      motion: widget.motion ??
-          widget.sequence.motionForPhase(widget.sequence.phases.first),
+      motion: widget.sequence.motionForPhase(
+        fromPhase: initialPhase,
+        toPhase: initialPhase,
+      ),
       vsync: this,
       converter: widget.converter,
       initialValue: _getInitialValue(),
     )..addListener(_onControllerUpdate);
+
+    _previousPhase = initialPhase;
 
     // Start initial animation - this will set the current phase
     _updateAnimation();
@@ -128,22 +129,23 @@ class _PhaseMotionBuilderState<P, T extends Object>
   void didUpdateWidget(PhaseMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Update motion if it changed (like BaseMotionBuilder does)
-    final newMotion = widget.motion ??
-        widget.sequence.motionForPhase(widget.sequence.phases.first);
-    final oldMotion = oldWidget.motion ??
-        oldWidget.sequence.motionForPhase(oldWidget.sequence.phases.first);
+    // Handle different types of changes
+    final restartTriggerChanged =
+        widget.restartTrigger != oldWidget.restartTrigger;
+    final sequenceChanged = widget.sequence != oldWidget.sequence;
+    final playingChanged = widget.playing != oldWidget.playing;
+    final currentPhaseChanged = widget.currentPhase != oldWidget.currentPhase;
 
-    if (newMotion != oldMotion) {
-      _controller.motion = newMotion;
-    }
-
-    // Handle sequence, currentPhase, playing, or restart trigger changes
-    if (widget.sequence != oldWidget.sequence ||
-        widget.currentPhase != oldWidget.currentPhase ||
-        widget.playing != oldWidget.playing ||
-        widget.restartTrigger != oldWidget.restartTrigger) {
+    if (restartTriggerChanged) {
+      // Restart trigger changed - jump to phase immediately, then play if
+      // needed
+      _handleRestartTrigger();
+    } else if (sequenceChanged || playingChanged) {
+      // Sequence or playing state changed - full animation update
       _updateAnimation();
+    } else if (currentPhaseChanged) {
+      // Only currentPhase changed - animate to new phase
+      _handleCurrentPhaseChange();
     }
   }
 
@@ -176,7 +178,8 @@ class _PhaseMotionBuilderState<P, T extends Object>
       return;
     }
 
-    // Playing is true - restart the sequence from the beginning or current phase
+    // Playing is true - restart the sequence from the beginning or current
+    // phase
     _controller.playSequence(
       widget.sequence,
       atPhase: widget.currentPhase, // Start from specified phase if provided
@@ -184,11 +187,54 @@ class _PhaseMotionBuilderState<P, T extends Object>
     );
   }
 
+  void _handleRestartTrigger() {
+    // Restart trigger changed - jump immediately to target phase
+    final targetPhase = widget.currentPhase ?? widget.sequence.initialPhase;
+    final targetValue = widget.sequence.valueForPhase(targetPhase);
+
+    // Jump immediately without animation
+    _controller.value = targetValue;
+    widget.onPhaseChanged?.call(targetPhase);
+
+    // Only start playing if playing is true
+    if (widget.playing) {
+      _controller.playSequence(
+        widget.sequence,
+        atPhase: targetPhase,
+        onPhaseChanged: widget.onPhaseChanged,
+      );
+    }
+  }
+
+  void _handleCurrentPhaseChange() {
+    final newPhase = widget.currentPhase;
+    if (newPhase == null) return;
+
+    if (widget.playing) {
+      // If playing, animate to the new phase and continue sequence from there
+      _controller.playSequence(
+        widget.sequence,
+        atPhase: newPhase,
+        onPhaseChanged: widget.onPhaseChanged,
+      );
+    } else {
+      // If not playing, just animate to the new phase
+      _animateToPhase(newPhase);
+    }
+  }
+
   void _animateToPhase(P phase) {
     final targetValue = widget.sequence.valueForPhase(phase);
-    final motion = widget.sequence.motionForPhase(phase);
+    final motion = widget.sequence.motionForPhase(
+      toPhase: phase,
+      fromPhase: _previousPhase as P,
+    );
     _controller.motion = motion;
-    _controller.animateTo(targetValue);
+    _controller.animateTo(
+      targetValue,
+      withVelocity: _controller.velocity, // Preserve current velocity
+    );
+    _previousPhase = phase;
     widget.onPhaseChanged?.call(phase);
   }
 
@@ -244,7 +290,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
     required this.motion,
     this.playing = true,
     this.currentPhase,
-    this.loopMode = PhaseLoopMode.loop,
+    this.loopMode = SequenceLoopMode.loop,
     this.onPhaseChanged,
     this.child,
     this.restartTrigger,
@@ -271,7 +317,7 @@ class SinglePhaseMotionBuilder<P extends num> extends StatefulWidget {
   final P? currentPhase;
 
   /// How the animation should loop.
-  final PhaseLoopMode loopMode;
+  final SequenceLoopMode loopMode;
 
   /// Called when the current phase changes.
   final void Function(P phase)? onPhaseChanged;
@@ -306,9 +352,8 @@ class _SinglePhaseMotionBuilderState<P extends num>
   }
 
   void _createSequence() {
-    _sequence = PhaseSequence.map(
-      {for (final p in widget.phases) p: p.toDouble()},
-      motion: (_) => widget.motion,
+    _sequence = PhaseSequence.mapWithMotionPerPhase(
+      {for (final p in widget.phases) p: (p.toDouble(), widget.motion)},
       loopMode: widget.loopMode,
     );
   }
@@ -318,7 +363,6 @@ class _SinglePhaseMotionBuilderState<P extends num>
     return PhaseMotionBuilder(
       sequence: _sequence,
       converter: const SingleMotionConverter(),
-      motion: widget.motion,
       playing: widget.playing,
       currentPhase: widget.currentPhase,
       onPhaseChanged: widget.onPhaseChanged,

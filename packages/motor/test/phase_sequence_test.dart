@@ -1,6 +1,9 @@
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/phase_sequence.dart';
+
+import 'src/util.dart';
 
 void main() {
   const motion = CurvedMotion(duration: Duration.zero);
@@ -9,15 +12,15 @@ void main() {
   group('MapPhaseSequence', () {
     final seq1 = MapPhaseSequence(
       const {'a': 1, 'b': 2},
-      motion: (_) => motion,
+      motion: motion,
     );
     final seq2 = MapPhaseSequence(
       const {'a': 1, 'b': 2},
-      motion: (_) => motion,
+      motion: motion,
     );
     final seq3 = MapPhaseSequence(
       const {'a': 1, 'b': 3},
-      motion: (_) => motion2,
+      motion: motion2,
     );
 
     test('equality: identical', () {
@@ -32,23 +35,20 @@ void main() {
       expect(seq1.valueForPhase('a'), 1);
       expect(seq1.valueForPhase('b'), 2);
     });
-    test('motionForPhase returns correct motion', () {
-      expect(seq1.motionForPhase('a'), motion);
-    });
   });
 
   group('ValuePhaseSequence', () {
-    final seq1 = ValuePhaseSequence<int>(
+    final seq1 = ValuesPhaseSequence<int>(
       const [1, 2, 3],
-      motion: (_) => motion,
+      motion: motion,
     );
-    final seq2 = ValuePhaseSequence<int>(
+    final seq2 = ValuesPhaseSequence<int>(
       const [1, 2, 3],
-      motion: (_) => motion,
+      motion: motion,
     );
-    final seq3 = ValuePhaseSequence<int>(
+    final seq3 = ValuesPhaseSequence<int>(
       const [1, 2, 4],
-      motion: (_) => motion2,
+      motion: motion2,
     );
 
     test('equality: identical', () {
@@ -59,27 +59,15 @@ void main() {
       expect(seq1, isNot(equals(seq3)));
     });
     test('phases and valueForPhase', () {
-      expect(seq1.phases, [1, 2, 3]);
-      expect(seq1.valueForPhase(2), 2);
-    });
-    test('motionForPhase returns correct motion', () {
-      expect(seq1.motionForPhase(1), motion);
+      expect(seq1.phases, [0, 1, 2]);
+      expect(seq1.valueForPhase(2), 3);
     });
   });
 
-  group('SingleValueSequence', () {
-    final seq1 = PhaseSequence.single(
-      'hello',
-      motion: motion,
-    );
-    final seq2 = PhaseSequence.single(
-      'hello',
-      motion: motion,
-    );
-    final seq3 = PhaseSequence.single(
-      'world',
-      motion: motion2,
-    );
+  group('PhaseValue', () {
+    const seq1 = PhaseSequence.value(0, 'hello', motion);
+    const seq2 = PhaseSequence.value(0, 'hello', motion);
+    const seq3 = PhaseSequence.value(0, 'world', motion2);
 
     test('equality: identical', () {
       expect(seq1, equals(seq2));
@@ -92,18 +80,13 @@ void main() {
       expect(seq1.phases, [0]);
       expect(seq1.valueForPhase(12312312), 'hello');
     });
-    test('motionForPhase returns correct motion', () {
-      expect(seq1.motionForPhase(0), motion);
-    });
+
     test('loopMode defaults to none', () {
-      expect(seq1.loopMode, PhaseLoopMode.none);
+      expect(seq1.loopMode, SequenceLoopMode.none);
     });
     test('has loopMode none', () {
-      final customSeq = PhaseSequence.single(
-        42,
-        motion: motion,
-      );
-      expect(customSeq.loopMode, PhaseLoopMode.none);
+      const customSeq = PhaseSequence.value(0, 42, motion);
+      expect(customSeq.loopMode, SequenceLoopMode.none);
     });
   });
 
@@ -175,19 +158,6 @@ void main() {
       expect(values[50.0], equals('end'));
     });
 
-    test('motionForPhase returns trimmed motion based on timeline', () {
-      // The timeline automatically trims motions for each phase
-      // For the first phase, it should be a trimmed version of the original
-      // motion
-      final firstPhaseMotion = timeline1.motionForPhase(10);
-      expect(firstPhaseMotion, isA<TrimmedMotion>());
-      expect((firstPhaseMotion as TrimmedMotion).parent, equals(motion));
-
-      final firstPhaseMotion2 = timeline2.motionForPhase(-100);
-      expect(firstPhaseMotion2, isA<TrimmedMotion>());
-      expect((firstPhaseMotion2 as TrimmedMotion).parent, equals(motion2));
-    });
-
     test('sorts phases correctly regardless of input order', () {
       final unordered = TimelineSequence<String>(
         {
@@ -204,37 +174,34 @@ void main() {
       expect(phases[2], equals(50.0)); // end (original value)
     });
 
-    test('timeline trimming works correctly with normalized values internally',
-        () {
-      final timeline = TimelineSequence<String>(
+    test('linear trimmed timeline stays linear', () {
+      final timeline = TimelineSequence<double>(
         {
-          100.0: 'first', // normalized to 0.0 internally
-          200.0: 'second', // normalized to 0.25 internally
-          300.0: 'third', // normalized to 0.5 internally
-          500.0: 'fourth', // normalized to 1.0 internally
+          1: 0.0,
+          2: 0.25,
+          3: 0.5,
+          4: 0.75,
+          5: 1.0,
         },
-        motion: motion2,
+        motion: const CurvedMotion(duration: Duration(seconds: 1)),
       );
 
-      // Test first phase motion (should use subExtent with extent = (0.25-0)/2 = 0.125)
-      final firstMotion = timeline.motionForPhase(100) as TrimmedMotion;
-      expect(firstMotion.startTrim, equals(0.0));
-      expect(firstMotion.endTrim, closeTo(0.875, 1e-10)); // 1 - 0.125
+      final curvedSimulation = timeline.motion.createSimulation();
+      for (var t = 0.0; t <= 1; t += .01) {
+        expect(curvedSimulation.x(t), equals(t));
+      }
 
-      final middleMotion = timeline.motionForPhase(300) as TrimmedMotion;
-      expect(
-        middleMotion.startTrim,
-        closeTo(0.375, 1e-10),
-      ); // 0.25 + (0.5-0.25)/2
-      expect(
-        middleMotion.endTrim,
-        closeTo(0.375, 1e-10),
-      ); // 1.0 - (0.375 + 0.25)
+      void verifySim(Simulation sim, double from, double to) {
+        for (var t = from; t <= to; t += .01) {
+          expect(sim.x(t), closeTo(t, error));
+        }
+      }
 
-      // Test last phase motion (should trim from 0.75 to end)
-      final lastMotion = timeline.motionForPhase(500) as TrimmedMotion;
-      expect(lastMotion.startTrim, closeTo(0.75, 1e-10)); // 0.5 + (1-0.5)/2
-      expect(lastMotion.endTrim, equals(0.0));
+      final sim = timeline
+          .motionForPhase(toPhase: 2, fromPhase: 1)
+          .createSimulation(end: 0.25);
+
+      verifySim(sim, 0, 0.25);
     });
   });
 }

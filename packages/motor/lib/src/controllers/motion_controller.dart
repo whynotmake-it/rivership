@@ -602,6 +602,9 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   /// Target phase we're currently animating toward
   P? _currentSequencePhase;
 
+  /// The previous phase we're transitioning from
+  P? _previousSequencePhase;
+
   /// The elapsed time when the current phase started
   Duration? _currentPhaseStartTime;
 
@@ -671,15 +674,21 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     _sequenceDirection = 1;
 
     // Determine target phase
-    final targetPhase = atPhase ?? sequence.phases.first;
+    final targetPhase = atPhase ?? sequence.initialPhase;
     _currentSequencePhaseIndex = sequence.phases.indexOf(targetPhase);
 
     if (_currentSequencePhaseIndex == -1) {
       throw ArgumentError('Phase $targetPhase not found in sequence');
     }
 
-    // Set up the initial phase simulation
-    _setupPhaseSimulation(targetPhase);
+    // Check if we're already at the target phase value
+    final targetValue = sequence.valueForPhase(targetPhase);
+    if (value == targetValue) {
+      _handleSequencePhaseCompletion();
+    } else {
+      // Set up the initial phase simulation
+      _setupPhaseSimulation(targetPhase);
+    }
 
     // Stop any existing ticker and start fresh
     _stopTicker(canceled: true);
@@ -700,10 +709,14 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     if (!_isPlayingSequence || _activeSequence == null) return;
 
     final sequence = _activeSequence!;
+    _previousSequencePhase = _currentSequencePhase;
     _currentSequencePhase = phase;
 
-    // Get motion and target for this phase
-    final motion = sequence.motionForPhase(phase);
+    // Get motion and target for this phase, using the previous phase context
+    final motion = sequence.motionForPhase(
+      toPhase: phase,
+      fromPhase: _previousSequencePhase,
+    );
     final targetValue = sequence.valueForPhase(phase);
     final target = converter.normalize(targetValue);
 
@@ -734,6 +747,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
 
     _isPlayingSequence = false;
     _currentSequencePhase = null;
+    _previousSequencePhase = null;
     _onSequencePhaseChanged = null;
     _currentPhaseStartTime = null;
 
@@ -797,20 +811,20 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
     if (nextIndex >= totalPhases) {
       // Reached end of sequence
       switch (sequence.loopMode) {
-        case PhaseLoopMode.none:
+        case SequenceLoopMode.none:
           _completeSequence();
           return;
 
-        case PhaseLoopMode.loop:
+        case SequenceLoopMode.loop:
           nextIndex = 0;
 
-        case PhaseLoopMode.seamless:
+        case SequenceLoopMode.seamless:
           // Jump to start without animation
           nextIndex = 0;
           _jumpToSequencePhase(nextIndex);
           return;
 
-        case PhaseLoopMode.pingPong:
+        case SequenceLoopMode.pingPong:
           _sequenceDirection = -1;
           nextIndex = totalPhases - 2;
           if (nextIndex < 0) nextIndex = 0;
@@ -834,6 +848,7 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   void _completeSequence() {
     _isPlayingSequence = false;
     _currentSequencePhase = null;
+    _previousSequencePhase = null;
 
     _activeSequence = null;
     _onSequencePhaseChanged = null;
@@ -873,12 +888,10 @@ class PhaseSequenceController<P, T extends Object> extends MotionController<T> {
   set value(T newValue) {
     // Stop any active sequence when value is set
     _stopSequence();
-    
+
     // Call parent implementation
     super.value = newValue;
   }
-
-
 
   @override
   TickerFuture animateTo(
