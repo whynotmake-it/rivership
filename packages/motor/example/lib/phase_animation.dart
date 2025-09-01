@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_example/card_stack.dart';
 
 /// Comprehensive example demonstrating phase animations with Motor.
 ///
@@ -28,31 +29,32 @@ class PhaseAnimationExamples extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
+              spacing: 64,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader(
+                _buildSection(
                   context,
-                  'Loading Sequence',
-                  'Watch a continuous loading animation cycle through different phases',
+                  'From Gesture to Sequence',
+                  'Drag a Card to move it to the back of the stack. '
+                      'Watch how it always magically clears the stack before returning. '
+                      '\nThis is an example of a fully physics-based sequence.',
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 64),
+                    child: CardStack(),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                const LoadingPhaseExample(),
-                const SizedBox(height: 40),
-                _buildSectionHeader(
+                _buildSection(
                   context,
-                  'Seamless vs Regular Loop',
-                  'Compare seamless looping (top) with regular looping (bottom)',
+                  'Looping Phase Sequences',
+                  'Phase animations can be configured to loop in four ways.',
+                  const LoopComparisonExample(),
                 ),
-                const SizedBox(height: 20),
-                const LoopComparisonExample(),
-                const SizedBox(height: 40),
-                _buildSectionHeader(
+                _buildSection(
                   context,
                   'Interactive Card States',
                   'Tap to cycle through different interactive states with smooth transitions',
+                  const InteractiveCardExample(),
                 ),
-                const SizedBox(height: 20),
-                const InteractiveCardExample(),
               ],
             ),
           ),
@@ -61,8 +63,12 @@ class PhaseAnimationExamples extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(
-      BuildContext context, String title, String description) {
+  Widget _buildSection(
+    BuildContext context,
+    String title,
+    String description,
+    Widget child,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,6 +85,8 @@ class PhaseAnimationExamples extends StatelessWidget {
           description,
           style: CupertinoTheme.of(context).textTheme.textStyle,
         ),
+        const SizedBox(height: 16),
+        child,
       ],
     );
   }
@@ -174,228 +182,197 @@ class _BouncyButtonExampleState extends State<BouncyButtonExample> {
   }
 }
 
-/// Demonstrates a continuous loading animation with rotating dots.
-///
-/// This example shows how to create a looping animation that cycles through
-/// different phases automatically, perfect for loading indicators.
-class LoadingPhaseExample extends StatelessWidget {
-  const LoadingPhaseExample({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: CupertinoColors.separator,
-          width: 1,
-        ),
-      ),
-      child: Center(
-        child: SinglePhaseMotionBuilder<double>(
-          phases: const [0.0, 0.333, 0.666, 1],
-          motion: CupertinoMotion.smooth(),
-          loopMode: SequenceLoopMode.seamless,
-          builder: (context, progress, child) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (index) {
-                // Create a smooth circular wave effect across the dots
-                final wavePosition = ((index * 0.33) - progress) % 1.0;
-                final scale = 0.6 +
-                    (0.4 * (0.5 + 0.5 * math.sin(wavePosition * 2 * math.pi)));
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Transform.scale(
-                    scale: scale,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.activeBlue,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
 /// Demonstrates the difference between seamless and regular loop modes.
 ///
 /// This example shows two rotating squares - one using seamless looping
 /// and one using regular looping to clearly show the jump at the end.
-class LoopComparisonExample extends StatelessWidget {
+class LoopComparisonExample extends StatefulWidget {
   const LoopComparisonExample({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<LoopComparisonExample> createState() => _LoopComparisonExampleState();
+}
+
+class _LoopComparisonExampleState extends State<LoopComparisonExample> {
+  int retrigger = 0;
+
+  Widget _buildArrow(
+    BuildContext context, {
+    required String title,
+    required PhaseSequence<int, double> sequence,
+    Color color = CupertinoColors.activeBlue,
+  }) {
     return Column(
       children: [
-        // Seamless looping example
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: CupertinoColors.systemBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: CupertinoColors.separator,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Seamless Loop',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.activeBlue,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 60,
-                child: SinglePhaseMotionBuilder<double>(
-                  phases: const [
-                    0.0,
-                    math.pi / 2,
-                    math.pi,
-                    3 * math.pi / 2,
-                    2 * math.pi,
-                  ], // Full rotation with return to start
-                  motion: CupertinoMotion.smooth(),
-                  loopMode: SequenceLoopMode.seamless,
-                  builder: (context, rotation, child) {
-                    return Center(
-                      child: Transform.rotate(
-                        angle: rotation,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.activeBlue,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: CupertinoColors.activeBlue
-                                    .withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              CupertinoIcons.arrow_up,
-                              color: CupertinoColors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 20),
-
-        // Regular looping example
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: CupertinoColors.systemBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: CupertinoColors.separator,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Regular Loop',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.destructiveRed,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 60,
-                child: SinglePhaseMotionBuilder<double>(
-                  phases: const [
-                    0.0,
-                    math.pi / 2,
-                    math.pi,
-                    3 * math.pi / 2,
-                    2 * math.pi,
-                  ], // No return to start
-                  motion: CupertinoMotion.smooth(),
-                  loopMode: SequenceLoopMode.loop,
-                  builder: (context, rotation, child) {
-                    return Center(
-                      child: Transform.rotate(
-                        angle: rotation,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.destructiveRed,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: CupertinoColors.destructiveRed
-                                    .withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              CupertinoIcons.arrow_up,
-                              color: CupertinoColors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 12),
         Text(
-          'Watch the arrows: seamless loops smoothly, regular jumps from 270° back to 0°',
+          title,
           style: TextStyle(
-            fontSize: 14,
-            color: CupertinoTheme.of(context)
-                .textTheme
-                .textStyle
-                .color
-                ?.withValues(alpha: 0.7),
-            fontStyle: FontStyle.italic,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: CupertinoColors.label,
           ),
-          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 60,
+          child: PhaseMotionBuilder(
+            restartTrigger: retrigger,
+            converter: SingleMotionConverter(),
+            sequence: sequence,
+            builder: (context, rotation, _, child) {
+              return Center(
+                child: Transform.rotate(
+                  angle: rotation,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.arrow_up,
+                        color: CupertinoColors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            // Seamless looping example
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: CupertinoColors.separator,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildArrow(
+                      context,
+                      title: 'No Loop',
+                      color: CupertinoColors.systemRed,
+                      sequence: const [
+                        0.0,
+                        math.pi / 2,
+                        math.pi,
+                        3 * math.pi / 2,
+                        2 * math.pi
+                      ].asSequence(
+                        withMotion: Motion.cupertino(),
+                        loopMode: SequenceLoopMode.none,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildArrow(
+                      context,
+                      title: 'Loop',
+                      color: CupertinoColors.systemGreen,
+                      sequence: const [
+                        0.0,
+                        math.pi / 2,
+                        math.pi,
+                        3 * math.pi / 2,
+                        2 * math.pi
+                      ].asSequence(
+                        withMotion: Motion.cupertino(),
+                        loopMode: SequenceLoopMode.loop,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildArrow(
+                      context,
+                      title: 'Ping Pong',
+                      color: CupertinoColors.systemOrange,
+                      sequence: const [
+                        0.0,
+                        math.pi / 2,
+                        math.pi,
+                        3 * math.pi / 2,
+                        2 * math.pi
+                      ].asSequence(
+                        withMotion: Motion.cupertino(),
+                        loopMode: SequenceLoopMode.pingPong,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildArrow(
+                      context,
+                      title: 'Seamless',
+                      color: CupertinoColors.activeBlue,
+                      sequence: const [
+                        0.0,
+                        math.pi / 2,
+                        math.pi,
+                        3 * math.pi / 2,
+                        2 * math.pi
+                      ].asSequence(
+                        withMotion: Motion.cupertino(),
+                        loopMode: SequenceLoopMode.seamless,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Seamless loop treats the last and first phases as identical.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: CupertinoTheme.of(context)
+                          .textTheme
+                          .textStyle
+                          .color
+                          ?.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                CupertinoButton(
+                  minimumSize: Size.square(32),
+                  padding: EdgeInsets.zero,
+                  child: Icon(CupertinoIcons.refresh),
+                  onPressed: () {
+                    setState(() {
+                      retrigger++;
+                    });
+                  },
+                )
+              ],
+            ),
+          ],
         ),
       ],
     );
@@ -426,36 +403,32 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
 
   @override
   Widget build(BuildContext context) {
-    final sequence = MapPhaseSequence(
-      loopMode: SequenceLoopMode.loop,
-      motion: CupertinoMotion.smooth(),
-      {
-        CardPhase.idle: const CardProperties(
-          width: 280,
-          borderRadius: 16,
-          color: CupertinoColors.systemGrey,
-          shadowBlur: 4,
-        ),
-        CardPhase.focused: const CardProperties(
-          width: 300,
-          borderRadius: 20,
-          color: CupertinoColors.activeBlue,
-          shadowBlur: 12,
-        ),
-        CardPhase.pressed: const CardProperties(
-          width: 270,
-          borderRadius: 12,
-          color: CupertinoColors.systemIndigo,
-          shadowBlur: 2,
-        ),
-        CardPhase.success: const CardProperties(
-          width: 320,
-          borderRadius: 24,
-          color: CupertinoColors.systemGreen,
-          shadowBlur: 16,
-        ),
-      },
-    );
+    final sequence = {
+      CardPhase.idle: const CardProperties(
+        width: 280,
+        borderRadius: 16,
+        color: CupertinoColors.systemGrey,
+        shadowBlur: 4,
+      ),
+      CardPhase.focused: const CardProperties(
+        width: 300,
+        borderRadius: 20,
+        color: CupertinoColors.activeBlue,
+        shadowBlur: 12,
+      ),
+      CardPhase.pressed: const CardProperties(
+        width: 270,
+        borderRadius: 12,
+        color: CupertinoColors.systemIndigo,
+        shadowBlur: 2,
+      ),
+      CardPhase.success: const CardProperties(
+        width: 320,
+        borderRadius: 24,
+        color: CupertinoColors.systemGreen,
+        shadowBlur: 16,
+      ),
+    }.asSequence(withMotion: Motion.bouncySpring());
 
     return Center(
       child: Column(
@@ -471,11 +444,13 @@ class _InteractiveCardExampleState extends State<InteractiveCardExample> {
                 return Container(
                   width: properties.width,
                   height: 200,
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     color: properties.color,
-                    borderRadius:
-                        BorderRadius.circular(properties.borderRadius),
-                    boxShadow: [
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius:
+                          BorderRadius.circular(properties.borderRadius),
+                    ),
+                    shadows: [
                       BoxShadow(
                         color: CupertinoColors.black.withValues(alpha: 0.15),
                         blurRadius: properties.shadowBlur,
