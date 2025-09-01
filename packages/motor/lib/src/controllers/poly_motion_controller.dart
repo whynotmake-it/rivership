@@ -14,7 +14,7 @@ class PolyMotionController extends MotionController<List<double>> {
     super.initialValue = const [0, 0],
     super.behavior = AnimationBehavior.normal,
   }) : super(
-          converter: MotionConverter(
+          converter: MotionConverter.custom(
             denormalize: (values) => values,
             normalize: (value) => value,
           ),
@@ -46,7 +46,7 @@ class PolyMotionControllerBounded extends BoundedMotionController<List<double>>
           'lowerBound and upperBound must have the same length',
         ),
         super(
-          converter: MotionConverter(
+          converter: MotionConverter.custom(
             denormalize: (values) => values,
             normalize: (value) => value,
           ),
