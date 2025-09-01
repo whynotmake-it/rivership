@@ -1,7 +1,7 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/src/motion.dart';
-import 'package:motor/src/phase_sequence.dart';
+import 'package:motor/src/motion_sequence.dart';
 
 import 'src/util.dart';
 
@@ -9,17 +9,17 @@ void main() {
   const motion = CurvedMotion(Duration.zero);
   const motion2 = CurvedMotion(Duration(seconds: 2));
 
-  group('MapPhaseSequence', () {
-    final seq1 = MapPhaseSequence(
-      const {'a': 1, 'b': 2},
+  group('StateSequence', () {
+    const seq1 = StateSequence(
+      {'a': 1, 'b': 2},
       motion: motion,
     );
-    final seq2 = MapPhaseSequence(
-      const {'a': 1, 'b': 2},
+    const seq2 = StateSequence(
+      {'a': 1, 'b': 2},
       motion: motion,
     );
-    final seq3 = MapPhaseSequence(
-      const {'a': 1, 'b': 3},
+    const seq3 = StateSequence(
+      {'a': 1, 'b': 3},
       motion: motion2,
     );
 
@@ -37,17 +37,17 @@ void main() {
     });
   });
 
-  group('ValuePhaseSequence', () {
-    final seq1 = ValuesPhaseSequence<int>(
-      const [1, 2, 3],
+  group('StepSequence', () {
+    const seq1 = StepSequence<int>(
+      [1, 2, 3],
       motion: motion,
     );
-    final seq2 = ValuesPhaseSequence<int>(
-      const [1, 2, 3],
+    const seq2 = StepSequence<int>(
+      [1, 2, 3],
       motion: motion,
     );
-    final seq3 = ValuesPhaseSequence<int>(
-      const [1, 2, 4],
+    const seq3 = StepSequence<int>(
+      [1, 2, 4],
       motion: motion2,
     );
 
@@ -64,35 +64,9 @@ void main() {
     });
   });
 
-  group('PhaseValue', () {
-    const seq1 = PhaseSequence.value(0, 'hello', motion);
-    const seq2 = PhaseSequence.value(0, 'hello', motion);
-    const seq3 = PhaseSequence.value(0, 'world', motion2);
-
-    test('equality: identical', () {
-      expect(seq1, equals(seq2));
-      expect(seq1.hashCode, equals(seq2.hashCode));
-    });
-    test('equality: different values', () {
-      expect(seq1, isNot(equals(seq3)));
-    });
-    test('phases and valueForPhase', () {
-      expect(seq1.phases, [0]);
-      expect(seq1.valueForPhase(12312312), 'hello');
-    });
-
-    test('loopMode defaults to none', () {
-      expect(seq1.loopMode, SequenceLoopMode.none);
-    });
-    test('has loopMode none', () {
-      const customSeq = PhaseSequence.value(0, 42, motion);
-      expect(customSeq.loopMode, SequenceLoopMode.none);
-    });
-  });
-
-  group('TimelineSequence', () {
+  group('SpanningSequence', () {
     // Test with non-normalized values (10-50 range)
-    final timeline1 = TimelineSequence<String>(
+    final timeline1 = SpanningSequence<String>(
       {
         10.0: 'start',
         30.0: 'middle',
@@ -102,7 +76,7 @@ void main() {
     );
 
     // Test with negative values (-100 to 200 range)
-    final timeline2 = TimelineSequence<int>(
+    final timeline2 = SpanningSequence<int>(
       {
         -100.0: 0,
         0.0: 50,
@@ -112,7 +86,7 @@ void main() {
     );
 
     // Test with single value
-    final timeline3 = TimelineSequence<String>(
+    final timeline3 = SpanningSequence<String>(
       {
         42.0: 'single',
       },
@@ -151,15 +125,8 @@ void main() {
       expect(timeline3.valueForPhase(42), equals('single'));
     });
 
-    test('sortedValues accessor returns original sorted map', () {
-      final values = timeline1.sortedValues;
-      expect(values[10.0], equals('start'));
-      expect(values[30.0], equals('middle'));
-      expect(values[50.0], equals('end'));
-    });
-
     test('sorts phases correctly regardless of input order', () {
-      final unordered = TimelineSequence<String>(
+      final unordered = SpanningSequence<String>(
         {
           50.0: 'end',
           10.0: 'start',
@@ -175,8 +142,8 @@ void main() {
     });
 
     test('linear trimmed timeline stays linear', () {
-      final timeline = TimelineSequence<double>(
-        {
+      final timeline = SpanningSequence<double>(
+        const {
           1: 0.0,
           2: 0.25,
           3: 0.5,

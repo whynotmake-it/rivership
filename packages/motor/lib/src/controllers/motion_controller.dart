@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
-import 'package:motor/src/phase_sequence.dart';
+import 'package:motor/src/motion_sequence.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -585,7 +585,7 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
   }) : super.motionPerDimension();
 
   /// Active phase sequence being played
-  PhaseSequence<P, T>? _activeSequence;
+  MotionSequence<P, T>? _activeSequence;
 
   /// Current phase index in the sequence
   int _currentSequencePhaseIndex = 0;
@@ -615,7 +615,7 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
   bool get isPlayingSequence => _isPlayingSequence;
 
   /// The active sequence (null if not playing)
-  PhaseSequence<P, T>? get activeSequence => _activeSequence;
+  MotionSequence<P, T>? get activeSequence => _activeSequence;
 
   /// Progress through current sequence (0.0 to 1.0, accounting for loops)
   double get sequenceProgress {
@@ -656,7 +656,7 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
   ///
   /// Any existing sequence or animation is interrupted when this is called.
   TickerFuture playSequence(
-    PhaseSequence<P, T> sequence, {
+    MotionSequence<P, T> sequence, {
     P? atPhase,
     T? withVelocity,
     void Function(P phase)? onPhaseChanged,
@@ -815,21 +815,21 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
     // Handle sequence boundaries
     if (nextIndex >= totalPhases) {
       // Reached end of sequence
-      switch (sequence.loopMode) {
-        case SequenceLoopMode.none:
+      switch (sequence.loop) {
+        case LoopMode.none:
           _completeSequence();
           return;
 
-        case SequenceLoopMode.loop:
+        case LoopMode.loop:
           nextIndex = 0;
 
-        case SequenceLoopMode.seamless:
+        case LoopMode.seamless:
           // Jump to start without animation
           nextIndex = 0;
           _jumpToSequencePhase(nextIndex);
           return;
 
-        case SequenceLoopMode.pingPong:
+        case LoopMode.pingPong:
           _sequenceDirection = -1;
           nextIndex = totalPhases - 2;
           if (nextIndex < 0) nextIndex = 0;

@@ -16,7 +16,7 @@ Color _getPhaseColor(AnimationPhase phase) {
 }
 
 void main() {
-  group('PhaseMotionBuilder', () {
+  group('SequenceMotionBuilder', () {
     const frameSize = Size(200, 2);
     const rectSize = 2.0;
 
@@ -26,7 +26,7 @@ void main() {
       animationSheet = AnimationSheetBuilder(frameSize: frameSize);
     });
 
-    group('with MapPhaseSequence', () {
+    group('with StateSequence', () {
       const phaseMap = <AnimationPhase, double>{
         AnimationPhase.start: -1.0,
         AnimationPhase.middle: 0,
@@ -34,7 +34,7 @@ void main() {
       };
 
       Widget buildTestApp({
-        required PhaseSequence<AnimationPhase, double> sequence,
+        required MotionSequence<AnimationPhase, double> sequence,
         bool playing = false,
         AnimationPhase? currentPhase,
         Object? restartTrigger,
@@ -46,7 +46,7 @@ void main() {
             body: SizedBox(
               width: frameSize.width,
               height: frameSize.height,
-              child: PhaseMotionBuilder<AnimationPhase, double>(
+              child: SequenceMotionBuilder<AnimationPhase, double>(
                 sequence: sequence,
                 converter: const SingleMotionConverter(),
                 playing: playing,
@@ -74,9 +74,9 @@ void main() {
 
       testWidgets('1D horizontal phase animation through sequence',
           (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          motion: const CupertinoMotion.bouncy(),
+          motion: CupertinoMotion.bouncy(),
         );
 
         final widget = animationSheet.record(
@@ -91,14 +91,14 @@ void main() {
 
         await expectLater(
           animationSheet.collate(1),
-          matchesGoldenFile('golden/phase_motion_1d_animation.png'),
+          matchesGoldenFile('golden/state_sequence_1d_animation.png'),
         );
       });
 
       testWidgets('phase change triggers animation correctly', (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          motion: const CupertinoMotion.smooth(),
+          motion: CupertinoMotion.smooth(),
         );
 
         var currentPhase = AnimationPhase.start;
@@ -135,14 +135,14 @@ void main() {
 
         await expectLater(
           animationSheet.collate(1),
-          matchesGoldenFile('golden/phase_motion_manual_changes.png'),
+          matchesGoldenFile('golden/state_manual_change.png'),
         );
       });
 
       testWidgets('restart trigger jumps animation correctly', (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          motion: const CupertinoMotion.smooth(),
+          motion: CupertinoMotion.smooth(),
         );
 
         var currentPhase = AnimationPhase.start;
@@ -184,10 +184,10 @@ void main() {
       });
 
       testWidgets('loop works well', (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          loopMode: SequenceLoopMode.loop,
-          motion: const CurvedMotion(Duration(milliseconds: 500)),
+          loop: LoopMode.loop,
+          motion: CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -206,10 +206,10 @@ void main() {
       });
 
       testWidgets('ping pong loop works well', (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          loopMode: SequenceLoopMode.pingPong,
-          motion: const CurvedMotion(Duration(milliseconds: 500)),
+          loop: LoopMode.pingPong,
+          motion: CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -228,10 +228,10 @@ void main() {
       });
 
       testWidgets('seamless loop works well', (tester) async {
-        final sequence = PhaseSequence.map(
+        const sequence = MotionSequence.states(
           phaseMap,
-          loopMode: SequenceLoopMode.seamless,
-          motion: const CurvedMotion(Duration(milliseconds: 500)),
+          loop: LoopMode.seamless,
+          motion: CurvedMotion(Duration(milliseconds: 500)),
         );
 
         final widget = animationSheet.record(
@@ -250,16 +250,15 @@ void main() {
       });
     });
 
-    group('PhaseMotionBuilder with Timeline', () {
-      testWidgets('timeline sequence', (tester) async {
-        final sequence = TimelineSequence<double>(
-          {
-            0: -1,
-            1: 0,
-            2: 1,
-          },
-          loopMode: SequenceLoopMode.pingPong,
-          motion: const CurvedMotion(Duration(seconds: 1)),
+    group('SequenceMotionBuilder with spanning', () {
+      testWidgets('spanning sequence', (tester) async {
+        final sequence = <double, double>{
+          0: -1,
+          1: 0,
+          2: 1,
+        }.spanning(
+          motion: const Motion.curved(Duration(seconds: 1)),
+          loop: LoopMode.pingPong,
         );
 
         final widget = animationSheet.record(
@@ -270,7 +269,7 @@ void main() {
               body: SizedBox(
                 width: frameSize.width,
                 height: frameSize.height,
-                child: PhaseMotionBuilder(
+                child: SequenceMotionBuilder(
                   sequence: sequence,
                   converter: const SingleMotionConverter(),
                   builder: (context, offset, phase, child) {
@@ -297,7 +296,7 @@ void main() {
 
         await expectLater(
           animationSheet.collate(1),
-          matchesGoldenFile('golden/timeline.png'),
+          matchesGoldenFile('golden/spanning.png'),
         );
       });
     });
