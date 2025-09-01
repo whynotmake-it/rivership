@@ -127,7 +127,7 @@ void main() {
         MotionBuilder(
           value: (10.0, 20.0),
           motion: const CupertinoMotion.smooth(),
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -147,7 +147,7 @@ void main() {
         MotionBuilder(
           value: (0.0, 0.0),
           motion: const CupertinoMotion.smooth(),
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -162,7 +162,7 @@ void main() {
         MotionBuilder(
           value: (100.0, 200.0),
           motion: const CupertinoMotion.smooth(),
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -188,7 +188,7 @@ void main() {
           value: (100.0, 200.0),
           from: (0.0, 0.0),
           motion: const CupertinoMotion.smooth(),
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -213,7 +213,7 @@ void main() {
           value: (0.0, 0.0),
           from: (0.0, 100.0),
           motion: const CupertinoMotion.smooth(),
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -240,7 +240,7 @@ void main() {
           from: (0.0, 0.0),
           motion: const CupertinoMotion.smooth(),
           active: false,
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -263,7 +263,7 @@ void main() {
           value: (0.0, 0.0),
           motion: const CupertinoMotion.smooth(),
           active: false,
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),
@@ -279,7 +279,7 @@ void main() {
           value: (100.0, 200.0),
           motion: const CupertinoMotion.smooth(),
           active: false,
-          converter: MotionConverter<(double, double)>(
+          converter: MotionConverter<(double, double)>.custom(
             normalize: (value) => [value.$1, value.$2],
             denormalize: (values) => (values[0], values[1]),
           ),

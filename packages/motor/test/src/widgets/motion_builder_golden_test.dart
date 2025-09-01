@@ -116,7 +116,7 @@ void main() {
                 value: value,
                 from: from,
                 motion: const CupertinoMotion.bouncy(),
-                converter: MotionConverter<(double, double)>(
+                converter: MotionConverter<(double, double)>.custom(
                   normalize: (value) => [value.$1, value.$2],
                   denormalize: (values) => (values[0], values[1]),
                 ),

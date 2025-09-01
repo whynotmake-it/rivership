@@ -11,11 +11,12 @@ typedef Denormalize<T> = T Function(List<double> values);
 ///
 /// This allows for different value types to be animated by converting them
 /// to and from lists of doubles that can be used by the animation system.
-///
-/// See also:
-abstract interface class MotionConverter<T> {
+abstract class MotionConverter<T> {
+  /// Creates a motion converter.
+  const MotionConverter();
+
   /// Creates a motion converter with normalize and denormalize functions.
-  const factory MotionConverter({
+  const factory MotionConverter.custom({
     required Normalize<T> normalize,
     required Denormalize<T> denormalize,
   }) = _CallbackMotionConverter<T>;
@@ -28,7 +29,7 @@ abstract interface class MotionConverter<T> {
 }
 
 /// A [MotionConverter] for double values.
-class SingleMotionConverter implements MotionConverter<double> {
+class SingleMotionConverter extends MotionConverter<double> {
   /// Creates a [SingleMotionConverter].
   const SingleMotionConverter();
 
@@ -40,7 +41,7 @@ class SingleMotionConverter implements MotionConverter<double> {
 }
 
 /// A [MotionConverter] for [Offset] values.
-class OffsetMotionConverter implements MotionConverter<Offset> {
+class OffsetMotionConverter extends MotionConverter<Offset> {
   /// Creates an [OffsetMotionConverter].
   const OffsetMotionConverter();
 
@@ -52,7 +53,7 @@ class OffsetMotionConverter implements MotionConverter<Offset> {
 }
 
 /// A [MotionConverter] for [Size] values.
-class SizeMotionConverter implements MotionConverter<Size> {
+class SizeMotionConverter extends MotionConverter<Size> {
   /// Creates a [SizeMotionConverter].
   const SizeMotionConverter();
 
@@ -64,7 +65,7 @@ class SizeMotionConverter implements MotionConverter<Size> {
 }
 
 /// A [MotionConverter] for [Rect] values.
-class RectMotionConverter implements MotionConverter<Rect> {
+class RectMotionConverter extends MotionConverter<Rect> {
   /// Creates a [RectMotionConverter].
   const RectMotionConverter();
 
@@ -86,7 +87,7 @@ class RectMotionConverter implements MotionConverter<Rect> {
 }
 
 /// A [MotionConverter] for [Alignment] values.
-class AlignmentMotionConverter implements MotionConverter<Alignment> {
+class AlignmentMotionConverter extends MotionConverter<Alignment> {
   /// Creates an [AlignmentMotionConverter].
   const AlignmentMotionConverter();
 
@@ -97,7 +98,7 @@ class AlignmentMotionConverter implements MotionConverter<Alignment> {
   Alignment denormalize(List<double> values) => Alignment(values[0], values[1]);
 }
 
-class _CallbackMotionConverter<T> implements MotionConverter<T> {
+class _CallbackMotionConverter<T> extends MotionConverter<T> {
   const _CallbackMotionConverter({
     required Normalize<T> normalize,
     required Denormalize<T> denormalize,
