@@ -60,10 +60,10 @@ final motorRoutes = [
     builder: (context, state) => TitleSlideExample(),
   ),
   NamedRouteDef(
-    name: PhaseAnimationExamples.name,
-    path: PhaseAnimationExamples.path,
+    name: SequenceAnimationExamples.name,
+    path: SequenceAnimationExamples.path,
     type: RouteType.cupertino(),
-    builder: (context, state) => const PhaseAnimationExamples(),
+    builder: (context, state) => const SequenceAnimationExamples(),
   ),
 ];
 

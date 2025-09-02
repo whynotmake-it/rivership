@@ -5,7 +5,7 @@ import 'package:motor/src/motion_sequence.dart';
 
 /// A function that builds a widget based on the current phase and interpolated
 /// value.
-typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
+typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
   BuildContext context,
   T value,
   P phase,
@@ -60,7 +60,7 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   final MotionConverter<T> converter;
 
   /// The builder function that creates the widget tree.
-  final PhaseWidgetBuilder<T, P> builder;
+  final SequenceWidgetBuilder<P, T> builder;
 
   /// Whether to automatically progress through the sequence.
   ///
