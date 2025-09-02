@@ -21,6 +21,21 @@ abstract class MotionConverter<T> {
     required Denormalize<T> denormalize,
   }) = _CallbackMotionConverter<T>;
 
+  /// A motion converter for single values.
+  static const single = SingleMotionConverter();
+
+  /// A motion converter for offset values.
+  static const offset = OffsetMotionConverter();
+
+  /// A motion converter for size values.
+  static const size = SizeMotionConverter();
+
+  /// A motion converter for rect values.
+  static const rect = RectMotionConverter();
+
+  /// A motion converter for alignment values.
+  static const alignment = AlignmentMotionConverter();
+
   /// Converts a value of type [T] to a list of double values.
   List<double> normalize(T value);
 

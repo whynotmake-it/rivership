@@ -35,16 +35,14 @@ import 'package:motor/src/motion_sequence.dart';
 ///   * [SingleMotionController] and [BoundedSingleMotionController] for a one-
 ///     dimensional version of this class. These are most closely related to
 ///     [AnimationController]s.
+///   * [SequenceMotionController] for a version that can play
+///     [MotionSequence]s.
 class MotionController<T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
-  /// Creates a [MotionController] with the given parameters and a single motion
-  /// that is used for all dimensions.
-  ///
-  /// The [motion] parameter defines the characteristics of the motion
-  /// and the [vsync] parameter is required to drive the animation.
+  /// Creates a motion controller with a single motion for all dimensions.
   MotionController({
     required Motion motion,
     required TickerProvider vsync,
@@ -62,8 +60,7 @@ class MotionController<T extends Object> extends Animation<T>
           behavior: behavior,
         );
 
-  /// Creates a [MotionController] with the given parameters and a list of
-  /// motions for each dimension.
+  /// Creates a motion controller with individual motions per dimension.
   MotionController.motionPerDimension({
     required List<Motion> motionPerDimension,
     required TickerProvider vsync,
@@ -541,33 +538,30 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
       [for (final (i, m) in a.indexed) m == b.elementAt(i)].every((e) => e);
 }
 
-/// A MotionController specialized for playing phase sequences with type-safe
-/// phase access.
+/// A motion controller that adds the capability to play motion sequences.
 ///
-/// This controller extends [MotionController] to provide reliable phase-based
-/// animations with compile-time type safety and smooth transitions between
-/// phases. This implementation uses the tick method for deterministic phase
-/// progression instead of relying on animation status callbacks.
+/// Extends [MotionController] with sequence playback capabilities,
+/// automatic phase progression, and loop mode support.
 ///
-/// Example:
 /// ```dart
-/// final controller = PhaseSequenceController<Color, Offset>(
-///   motion: Springs.smooth,
+/// final controller = SequenceMotionController<ButtonState, Offset>(
+///   motion: Motion.smoothSpring(),
 ///   vsync: this,
-///   converter: OffsetMotionConverter(),
+///   converter: MotionConverter.offset,
 ///   initialValue: Offset.zero,
 /// );
 ///
-/// final sequence = PhaseSequence.map({
-///   Colors.red: Offset(100, 100),
-///   Colors.green: Offset(200, 200),
-/// }, motion: (_) => Springs.bouncy);
+/// final sequence = MotionSequence.states({
+///   ButtonState.idle: Offset(0, 0),
+///   ButtonState.pressed: Offset(0, 5),
+/// }, motion: Motion.smoothSpring());
 ///
 /// await controller.playSequence(sequence);
 /// ```
-class PhaseMotionController<P, T extends Object> extends MotionController<T> {
-  /// Creates a PhaseSequenceController with single motion for all dimensions.
-  PhaseMotionController({
+class SequenceMotionController<P, T extends Object>
+    extends MotionController<T> {
+  /// Creates a phase motion controller with single motion for all dimensions.
+  SequenceMotionController({
     required super.motion,
     required super.vsync,
     required super.converter,
@@ -575,8 +569,8 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
     super.behavior,
   });
 
-  /// Creates a PhaseSequenceController with motion per dimension.
-  PhaseMotionController.motionPerDimension({
+  /// Creates a seequence motion controller with motion per dimension.
+  SequenceMotionController.motionPerDimension({
     required super.motionPerDimension,
     required super.vsync,
     required super.converter,
@@ -608,16 +602,16 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
   /// The elapsed time when the current phase started
   Duration? _currentPhaseStartTime;
 
-  /// Current phase being animated to (null if not playing sequence)
+  /// Current target phase (null if not playing sequence).
   P? get currentSequencePhase => _currentSequencePhase;
 
-  /// Whether a sequence is currently being played
+  /// Whether a sequence is currently playing.
   bool get isPlayingSequence => _isPlayingSequence;
 
-  /// The active sequence (null if not playing)
+  /// The active sequence (null if not playing).
   MotionSequence<P, T>? get activeSequence => _activeSequence;
 
-  /// Progress through current sequence (0.0 to 1.0, accounting for loops)
+  /// Progress through current sequence (0.0 to 1.0).
   double get sequenceProgress {
     if (_activeSequence == null || !_isPlayingSequence) return 0;
 
@@ -643,18 +637,13 @@ class PhaseMotionController<P, T extends Object> extends MotionController<T> {
     _motionPerDimension = value.toList();
   }
 
-  /// Plays through a phase sequence starting from current value/velocity.
+  /// Plays through a motion sequence with automatic phase progression.
   ///
-  /// Returns a [TickerFuture] that completes when sequence finishes
-  /// (non-looping) or never completes for looping sequences.
+  /// Returns a future that completes when non-looping sequences finish.
+  /// Looping sequences run indefinitely until stopped.
   ///
-  /// If [atPhase] is provided, the sequence will start by animating to that
-  /// specific phase, then continue normal sequence progression.
-  ///
-  /// The [onPhaseChanged] callback is called whenever the animation transitions
-  /// to a new phase.
-  ///
-  /// Any existing sequence or animation is interrupted when this is called.
+  /// Optionally start [atPhase] and receive [onPhaseChanged] callbacks.
+  /// Preserves current velocity unless [withVelocity] is provided.
   TickerFuture playSequence(
     MotionSequence<P, T> sequence, {
     P? atPhase,
