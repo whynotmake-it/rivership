@@ -48,22 +48,20 @@ The core of Motor's unified motion system is the `Motion` class. It represents t
 
 ```dart
 // Duration-based motion (traditional Flutter approach)
-final linear = LinearMotion(Duration(seconds: 1));
+final linear = Motion.linear(Duration(seconds: 1));
 
-final withCurve = CurvedMotion(
-  duration: Duration(seconds: 1), 
-  curve: Curves.easeInOut,
-);
+final withCurve = Motion.curved(Duration(seconds: 1), Curves.easeInOut);
 
 // Physics-based motion (natural, responsive)
-final spring = CupertinoMotion.bouncy();
-final material = MaterialSpringMotion.standardSpatialDefault;
+final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
+final material = MaterialSpringMotion.standardSpatialDefault();
 ```
 
 Motor provides several motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
 
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
+- **`NoMotion`** - Holds at the target value for an optional duration.
 - **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
@@ -77,10 +75,10 @@ This unified approach means you can easily switch between physics and duration-b
 `CupertinoMotion` offers several predefined constants that correspond to [SwiftUI's animation presets](https://developer.apple.com/documentation/swiftui/animation):
 
 - **`CupertinoMotion()`** - The default iOS spring with smooth motion and no bounce
-- **`CupertinoMotion.smooth()`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
-- **`CupertinoMotion.bouncy()`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
-- **`CupertinoMotion.snappy()`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
-- **`CupertinoMotion.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)) with lower response, designed for user-driven animations
+- **`.smooth()`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
+- **`.bouncy()`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
+- **`.snappy()`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
+- **`.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)) with lower response, designed for user-driven animations
 
 You can also create custom `CupertinoMotion` instances:
 
@@ -98,20 +96,20 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 `MaterialSpringMotion` provides Material Design 3 spring motion tokens for creating expressive and natural animations that follow Google's design guidelines. The tokens are organized into two main categories with three speed variants each:
 
 **Spatial Motion** - For animating position, size, and layout changes:
-- **`MaterialSpringMotion.standardSpatialFast`** - Quick spatial animations (damping: 0.9, stiffness: 1400)
-- **`MaterialSpringMotion.standardSpatialDefault`** - Balanced spatial animations (damping: 0.9, stiffness: 700)
-- **`MaterialSpringMotion.standardSpatialSlow`** - Gentle spatial animations (damping: 0.9, stiffness: 300)
-- **`MaterialSpringMotion.expressiveSpatialFast`** - Dynamic spatial with bounce (damping: 0.6, stiffness: 800)
-- **`MaterialSpringMotion.expressiveSpatialDefault`** - Moderate expressive spatial (damping: 0.8, stiffness: 380)
-- **`MaterialSpringMotion.expressiveSpatialSlow`** - Gentle expressive spatial (damping: 0.8, stiffness: 200)
+- **`.standardSpatialFast()`** - Quick spatial animations (damping: 0.9, stiffness: 1400)
+- **`.standardSpatialDefault()`** - Balanced spatial animations (damping: 0.9, stiffness: 700)
+- **`.standardSpatialSlow()`** - Gentle spatial animations (damping: 0.9, stiffness: 300)
+- **`.expressiveSpatialFast()`** - Dynamic spatial with bounce (damping: 0.6, stiffness: 800)
+- **`.expressiveSpatialDefault()`** - Moderate expressive spatial (damping: 0.8, stiffness: 380)
+- **`.expressiveSpatialSlow()`** - Gentle expressive spatial (damping: 0.8, stiffness: 200)
 
 **Effects Motion** - For animating visual properties like opacity and color:
-- **`MaterialSpringMotion.standardEffectsFast`** - Quick effects animations (damping: 1, stiffness: 3800)
-- **`MaterialSpringMotion.standardEffectsDefault`** - Balanced effects animations (damping: 1, stiffness: 1600)
-- **`MaterialSpringMotion.standardEffectsSlow`** - Gentle effects animations (damping: 1, stiffness: 800)
-- **`MaterialSpringMotion.expressiveEffectsFast`** - Quick expressive effects (damping: 1, stiffness: 3800)
-- **`MaterialSpringMotion.expressiveEffectsDefault`** - Moderate expressive effects (damping: 1, stiffness: 1600)
-- **`MaterialSpringMotion.expressiveEffectsSlow`** - Gentle expressive effects (damping: 1, stiffness: 800)
+- **`.standardEffectsFast()`** - Quick effects animations (damping: 1, stiffness: 3800)
+- **`.standardEffectsDefault()`** - Balanced effects animations (damping: 1, stiffness: 1600)
+- **`.standardEffectsSlow()`** - Gentle effects animations (damping: 1, stiffness: 800)
+- **`.expressiveEffectsFast()`** - Quick expressive effects (damping: 1, stiffness: 3800)
+- **`.expressiveEffectsDefault()`** - Moderate expressive effects (damping: 1, stiffness: 1600)
+- **`.expressiveEffectsSlow()`** - Gentle expressive effects (damping: 1, stiffness: 800)
 
 You can also create custom `MaterialSpringMotion` instances:
 
@@ -190,6 +188,140 @@ MotionBuilder(
 )
 ```
 
+## Sequence Animations 🎬
+
+Motor's sequence animations let you create complex, multi-phase animations with smooth transitions between states. Perfect for storytelling, onboarding flows, state machines, and complex UI transitions.
+
+> **Note:** The upcoming examples use the Dart 3.10 dot-shorthand syntax.
+
+### Motion Sequences
+
+A `MotionSequence` defines a series of phases that your animation progresses through. Motor provides three types of sequences for different use cases:
+
+#### 1. State Sequences - Named Phases
+
+Perfect for state machines, enums, or any named phase system:
+
+```dart
+enum ButtonState { idle, pressed, loading }
+
+final MotionSequence<ButtonState, Offset> buttonSequence = .states({
+  .idle: Offset(0, 0),
+  .pressed: Offset(0, 5),
+  .loading: Offset(10, 0),
+}, motion: .bouncySpring());
+```
+
+#### 2. Step Sequences - Ordered Progression  
+
+The most common sequence type for ordered progressions through values:
+
+```dart
+final MotionSequence<int, Color> colorSequence = MotionSequence.steps([
+  Colors.red,
+  Colors.yellow, 
+  Colors.green,
+  Colors.blue,
+], motion: .smoothSpring(), loop: .seamless);
+```
+
+#### 3. Spanning Sequences - Proportional Timing
+
+For precise timing control where a single motion spans across positioned phases. Think of it like flexbox - phases at higher positions take proportionally more time to reach:
+
+```dart
+final logoSequence = MotionSequence.spanning({
+  0.0: LogoState(opacity: 0),        // Start (0% of total time)
+  1.0: LogoState(opacity: 1),        // 50% of total time
+  2.0: LogoState(opacity: 1, text: 1), // 100% of total time
+}, motion: .linear(Duration(seconds: 2)));
+```
+
+### Loop Modes
+
+Control how your sequences repeat:
+
+- **`LoopMode.none`** - Play once and stop
+- **`LoopMode.loop`** - Animate back to start and repeat
+- **`LoopMode.seamless`** - Treat first/last phases as identical for smooth circular loops
+- **`LoopMode.pingPong`** - Play forward then backward
+
+### Sequence Animation Widget
+
+Use `SequenceMotionBuilder` to bring sequences to life:
+
+```dart
+enum LoadingState { idle, spinning, complete }
+
+SequenceMotionBuilder<LoadingState, double>(
+  sequence: .states({
+    .idle: 0.0,
+    .spinning: 2 * pi,
+    .complete: 2 * pi,
+  }, motion: .smoothSpring()),
+  converter: .single,
+  playing: true, // Auto-progress through phases
+  currentPhase: currentState, // Or control manually
+  onPhaseChanged: (phase) => print('Now in phase: $phase'),
+  builder: (context, rotation, phase, child) {
+    return Transform.rotate(
+      angle: rotation,
+      child: Icon(
+        phase == .complete ? Icons.check : Icons.refresh,
+        color: phase == .complete ? Colors.green : Colors.blue,
+      ),
+    );
+  },
+)
+```
+
+### Manual vs Automatic Playback
+
+**Automatic Playback** (`playing: true`):
+- Progresses through all phases automatically
+- Respects loop modes for continuous animation
+- Perfect for loading indicators, demonstrations
+
+**Manual Control** (`playing: false`):
+- Only animates when `currentPhase` changes
+- Full control over phase transitions
+- Ideal for user-driven state changes, interactive tutorials
+
+### Individual Motion Per Phase
+
+For ultimate control, specify different motions for each phase:
+
+```dart
+final complexSequence = MotionSequence<AppState, ButtonStyle>.statesWithMotions({
+  .loading: (loadingStyle, .smoothSpring()),
+  .error: (errorStyle, .bouncySpring()), // Extra bounce for attention
+  .success: (successStyle, .curved(Duration(seconds: 2), Curves.ease)),
+});
+```
+
+### Advanced: Phase Motion Controllers
+
+For maximum control, use `PhaseMotionController` directly:
+
+```dart
+final controller = PhaseMotionController<ButtonState, Offset>(
+  motion: .smoothSpring(),
+  vsync: this,
+  converter: .offset,
+  initialValue: .zero,
+);
+
+// Play a sequence
+await controller.playSequence(buttonSequence);
+
+// Check current state
+if (controller.isPlayingSequence) {
+  print('Current phase: ${controller.currentSequencePhase}');
+  print('Progress: ${controller.sequenceProgress}');
+}
+```
+
+Sequence animations work with **any motion type** - mix springs, curves, and custom motions within the same sequence for rich, expressive animations.
 
 ### MotionConverter
 
