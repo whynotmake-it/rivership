@@ -11,17 +11,17 @@ import 'package:motor_example/phase_animation/manual_phase_control.dart';
 /// 1. Simple single-property phase transitions
 /// 2. Complex multi-property phase sequences
 /// 3. Different triggering mechanisms and loop modes
-class PhaseAnimationExamples extends StatelessWidget {
-  const PhaseAnimationExamples({super.key});
+class SequenceAnimationExamples extends StatelessWidget {
+  const SequenceAnimationExamples({super.key});
 
-  static const String name = 'Phase Animations';
-  static const String path = 'phase-animations';
+  static const String name = 'Sequence Animations';
+  static const String path = 'sequence-animations';
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(
-        middle: Text('Phase Animations'),
+        middle: Text('Sequence Animations'),
       ),
       backgroundColor: CupertinoColors.systemGroupedBackground,
       child: SingleChildScrollView(
@@ -35,7 +35,7 @@ class PhaseAnimationExamples extends StatelessWidget {
                 _buildSection(
                   context,
                   'Logo Animation',
-                  'The simplest use case of phase animations are animation timelines.',
+                  'The simplest use case of sequence animations are animation timelines.',
                   LogoAnimation(),
                 ),
                 _buildSection(
@@ -59,8 +59,8 @@ class PhaseAnimationExamples extends StatelessWidget {
                 ),
                 _buildSection(
                   context,
-                  'Looping Phase Sequences',
-                  'Phase animations can be configured to loop in four ways.',
+                  'Looping Sequence Animations',
+                  'Sequence animations can be configured to loop in four ways.',
                   const LoopComparisonExample(),
                 ),
               ],
