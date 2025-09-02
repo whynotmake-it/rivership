@@ -28,31 +28,74 @@ enum LoopMode {
 typedef ValueWithMotion<T> = (T value, Motion motion);
 
 /// {@template MotionSequence}
-/// Defines a sequence of phases and their corresponding property values
-/// for phase-based animations.
+/// A sequence of phases that smoothly animate between property values.
 ///
-/// Each phase [P] maps to a property value [T] that can be interpolated
-/// using Motor's motion system.
+/// Create motion sequences using:
+/// - [MotionSequence.states] for named phases (enums, strings)
+/// - [MotionSequence.steps] for indexed progressions (0, 1, 2...)
+/// - [MotionSequence.spanning] for time-based positioning
+///
+/// ```dart
+/// // State-based sequence
+/// final states = MotionSequence.states({
+///   ButtonState.idle: Offset(0, 0),
+///   ButtonState.pressed: Offset(0, 10),
+/// }, motion: Motion.bouncySpring());
+///
+/// // Step sequence
+/// final steps = MotionSequence.steps([
+///   Colors.red, Colors.green, Colors.blue
+/// ], motion: Motion.smoothSpring());
+/// ```
 /// {@endtemplate}
 @immutable
 abstract class MotionSequence<P, T extends Object> with EquatableMixin {
-  /// {@macro PhaseSequence}
+  /// {@macro MotionSequence}
   const MotionSequence();
 
-  /// {@macro StateSequence}
+  /// Creates a sequence from named phases to values.
+  ///
+  /// Perfect for state machines, enums, or any named phase system.
+  ///
+  /// ```dart
+  /// enum ButtonState { idle, pressed, loading }
+  ///
+  /// final sequence = MotionSequence.states({
+  ///   ButtonState.idle: Offset(0, 0),
+  ///   ButtonState.pressed: Offset(0, 5),
+  ///   ButtonState.loading: Offset(10, 0),
+  /// }, motion: Motion.bouncySpring());
+  /// ```
   const factory MotionSequence.states(
     Map<P, T> values, {
     required Motion motion,
     LoopMode loop,
   }) = StateSequence<P, T>;
 
-  /// {@macro StateSequence}
+  /// Creates a sequence from named phases to values, each with its own motion.
+  ///
+  /// ```dart
+  /// final sequence = MotionSequence.statesWithMotions({
+  ///   ButtonState.idle: (Offset(0, 0), Motion.smoothSpring()),
+  ///   ButtonState.pressed: (Offset(0, 5), Motion.snappySpring()),
+  /// });
+  /// ```
   const factory MotionSequence.statesWithMotions(
     Map<P, ValueWithMotion<T>> values, {
     LoopMode loop,
   }) = StateSequence<P, T>.withMotions;
 
-  /// {@macro Sequence}
+  /// Creates a sequence that steps through values by index (0, 1, 2...).
+  ///
+  /// The most common sequence type for ordered progressions.
+  ///
+  /// ```dart
+  /// final positions = MotionSequence.steps([
+  ///   Offset(0, 0),
+  ///   Offset(100, 100),
+  ///   Offset(200, 0),
+  /// ], motion: Motion.smoothSpring(), loop: LoopMode.seamless);
+  /// ```
   static MotionSequence<int, T> steps<T extends Object>(
     List<T> values, {
     required Motion motion,
@@ -60,14 +103,34 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   }) =>
       StepSequence<T>(values, motion: motion, loop: loop);
 
-  /// {@macro Sequence}
+  /// Creates a sequence that steps through values, each with its own motion.
+  ///
+  /// ```dart
+  /// final sequence = MotionSequence.stepsWithMotions([
+  ///   (Offset(0, 0), Motion.smoothSpring()),
+  ///   (Offset(100, 100), Motion.bouncySpring()),
+  ///   (Offset(200, 0), Motion.smoothSpring()),
+  /// ]);
+  /// ```
   static MotionSequence<int, T> stepsWithMotions<T extends Object>(
     List<ValueWithMotion<T>> values, {
     LoopMode loop = LoopMode.none,
   }) =>
       StepSequence<T>.withMotions(values, loop: loop);
 
-  /// {@macro SpanningSequence}
+  /// Creates a sequence where a single motion spans across positioned phases.
+  ///
+  /// Phases are positioned proportionally like flexbox - a phase at position
+  /// 2.0 takes twice as long to reach as one at 1.0.
+  ///
+  /// ```dart
+  /// // 2-second animation with proportional timing
+  /// final timeline = MotionSequence.spanning({
+  ///   0.0: LogoState(opacity: 0),      // Start (0% of time)
+  ///   1.0: LogoState(opacity: 1),      // 50% of time
+  ///   2.0: LogoState(opacity: 0),      // 100% of time
+  /// }, motion: LinearMotion(Duration(seconds: 2)));
+  /// ```
   static SpanningSequence<T> spanning<T extends Object>(
     Map<num, T> values, {
     required Motion motion,
@@ -147,12 +210,13 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
       ];
 }
 
-/// {@template Sequence}
-/// A phase sequence that uses a list of values and uses their indeces.
+/// {@template StepSequence}
+/// A sequence that steps through values by index (0, 1, 2...).
+///
+/// Use [MotionSequence.steps] to create step sequences.
 /// {@endtemplate}
 class StepSequence<T extends Object> extends MotionSequence<int, T> {
-  /// Creates a [StepSequence] with the given [steps], a [motion] and
-  /// loop mode.
+  /// Creates a step sequence with a single motion for all steps.
   const StepSequence(
     this._steps, {
     required Motion motion,
@@ -160,8 +224,7 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
   })  : _motion = motion,
         _stepsWithMotions = null;
 
-  /// Creates a [StepSequence] with the given [ValueWithMotion]s and loop
-  /// mode.
+  /// Creates a step sequence with individual motions per step.
   const StepSequence.withMotions(
     this._stepsWithMotions, {
     this.loop = LoopMode.none,
@@ -228,11 +291,13 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
 }
 
 /// {@template StateSequence}
-/// A phase sequence that uses a map of phases to their entries to define
-/// the animation phases and their corresponding values.
+/// A sequence using named phases mapped to values.
+///
+/// Perfect for state machines, enums, or any named phase system.
+/// Use [MotionSequence.states] to create state sequences.
 /// {@endtemplate}
 class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
-  /// Creates a [StateSequence] with a single motion for all phases.
+  /// Creates a state sequence with a single motion for all transitions.
   const StateSequence(
     this._states, {
     required Motion motion,
@@ -240,7 +305,7 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   })  : _motion = motion,
         _statesWithMotions = null;
 
-  /// Creates a [StateSequence] with the given values and loop mode.
+  /// Creates a state sequence with individual motions per phase.
   const StateSequence.withMotions(
     this._statesWithMotions, {
     this.loop = LoopMode.none,
@@ -311,20 +376,27 @@ class SingleMotionPhaseSequence<P, T extends Object>
 }
 
 /// {@template SpanningSequence}
-/// A phase sequence that represents a timeline where phases are defined
-/// as time values mapping to property values.
+/// A sequence where a single motion spans across positioned phases.
 ///
-/// This is useful for creating complex animations with multiple keyframes
-/// at specific points in time. The motion is automatically trimmed to
-/// the relevant portion of the timeline for each phase transition.
+/// Phases are positioned proportionally like flexbox - higher position
+/// values take more time to reach. The single motion is distributed
+/// across all phases based on their relative positions.
+///
+/// ```dart
+/// // A 2-second animation with proportional timing:
+/// SpanningSequence({
+///   0.0: startValue,  // 0% of animation time
+///   1.0: midValue,    // 50% of animation time
+///   3.0: endValue,    // 100% of animation time
+/// }, motion: LinearMotion(Duration(seconds: 2)))
+/// ```
 /// {@endtemplate}
 @immutable
 class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
-  /// Creates a [SpanningSequence] with the given timeline values.
+  /// Creates a spanning sequence with positioned phases.
   ///
-  /// The [values] map contains time values as keys and the corresponding
-  /// property values as values. The [motion] defines the overall motion
-  /// curve for the timeline.
+  /// [values] maps position numbers to property values. The [motion]
+  /// spans across all phases proportionally based on their positions.
   SpanningSequence(
     Map<num, T> values, {
     required this.motion,
@@ -350,10 +422,10 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   /// Cached list of normalized phase keys for performance.
   late final List<num> _normalizedPhasesList = _normalizedValues.keys.toList();
 
-  /// The motion curve to use for the entire timeline.
+  /// The motion that spans across all phases.
   ///
-  /// This motion will be trimmed to the relevant portion for each
-  /// phase transition based on the timeline segments.
+  /// This motion is automatically trimmed for each phase transition
+  /// based on the proportional positions.
   final Motion motion;
 
   @override
@@ -444,21 +516,33 @@ Map<double, T> _normalizeTimelineValues<T extends Object>(
   );
 }
 
-/// Offers extension methods for [Map] to facilitate conversion to
-/// [MotionSequence].
+/// Extension methods for creating step sequences from value-motion pairs.
 extension IterableMotionConversionX<T extends Object>
     on Iterable<ValueWithMotion<T>> {
-  /// Creates a [MotionSequence] from this list of [ValueWithMotion].
+  /// Creates a step sequence from this list of values with motions.
+  ///
+  /// ```dart
+  /// final sequence = [
+  ///   (Colors.red, Motion.smoothSpring()),
+  ///   (Colors.green, Motion.bouncySpring()),
+  /// ].toSteps();
+  /// ```
   MotionSequence<int, T> toSteps({
     LoopMode loop = LoopMode.none,
   }) =>
       MotionSequence.stepsWithMotions(toList(), loop: loop);
 }
 
-/// Offers extension methods for [Map] to facilitate conversion to
-/// [MotionSequence].
+/// Extension methods for creating state sequences from maps.
 extension MapConversionX<P, T extends Object> on Map<P, T> {
-  /// Creates a [MotionSequence] from this map.
+  /// Creates a state sequence from this phase-to-value mapping.
+  ///
+  /// ```dart
+  /// final sequence = {
+  ///   ButtonState.idle: Offset(0, 0),
+  ///   ButtonState.pressed: Offset(0, 5),
+  /// }.toStates(motion: Motion.bouncySpring());
+  /// ```
   MotionSequence<P, T> toStates({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -470,10 +554,19 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
       );
 }
 
-/// Offers extension methods for [Map] to facilitate conversion to
-/// [MotionSequence].
+/// Extension methods for creating spanning sequences from position maps.
 extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
-  /// Creates a [MotionSequence] from this map.
+  /// Creates a spanning sequence from this position-to-value mapping.
+  ///
+  /// Perfect for Dart 3.10 dot shorthand syntax.
+  ///
+  /// ```dart
+  /// final timeline = {
+  ///   0.0: startState,
+  ///   1.5: midState,
+  ///   3.0: endState,
+  /// }.spanning(motion: LinearMotion(Duration(seconds: 2)));
+  /// ```
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -485,11 +578,19 @@ extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
       );
 }
 
-/// Offers extension methods for [Iterable] to facilitate conversion to
-/// [MotionSequence].
+/// Extension methods for creating sequences from lists.
 extension IterableConversionX<T extends Object> on Iterable<T> {
-  /// Creates a [MotionSequence] from these values, where the phases are the
-  /// indeces.
+  /// Creates a step sequence from this list using indices as phases.
+  ///
+  /// Perfect for Dart 3.10 dot shorthand syntax.
+  ///
+  /// ```dart
+  /// final colors = [
+  ///   Colors.red,
+  ///   Colors.green,
+  ///   Colors.blue,
+  /// ].toSteps(motion: Motion.smoothSpring());
+  /// ```
   MotionSequence<int, T> toSteps({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,
@@ -500,8 +601,16 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
         loop: loopMode,
       );
 
-  /// Creates a [SpanningSequence] from these values, where each value is an
-  /// equal distance apart.
+  /// Creates a spanning sequence where values are equally spaced.
+  ///
+  /// ```dart
+  /// final positions = [
+  ///   Offset(0, 0),
+  ///   Offset(50, 50),
+  ///   Offset(100, 0),
+  /// ].spanning(motion: LinearMotion(Duration(seconds: 2)));
+  /// // Equivalent to: {0.0: pos1, 1.0: pos2, 2.0: pos3}
+  /// ```
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,

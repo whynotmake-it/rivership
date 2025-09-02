@@ -13,34 +13,29 @@ typedef PhaseWidgetBuilder<T extends Object, P> = Widget Function(
 );
 
 /// {@template SequenceMotionBuilder}
-/// A widget that creates phase-based animations using Motor's motion system.
+/// Animates through a [MotionSequence] with smooth phase transitions.
 ///
-/// This widget animates through a sequence of phases, with each phase defining
-/// target property values. The transitions between phases use Motor's physics
-/// or duration-based motion system for smooth, natural animations.
+/// Use [playing] to control automatic sequence progression or [currentPhase]
+/// for manual control. Supports all sequence types (states, steps, spanning).
 ///
-/// Example usage:
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final phases = MotionSequence.states({
-///   ButtonState.idle: const Offset(100, 40),
-///   ButtonState.pressed: const Offset(95, 38),
-///   ButtonState.loading: const Offset(40, 40),
-/// }, motion: (_) => Springs.bouncy);
+/// final sequence = MotionSequence.states({
+///   ButtonState.idle: Offset(100, 40),
+///   ButtonState.pressed: Offset(95, 38),
+///   ButtonState.loading: Offset(40, 40),
+/// }, motion: Motion.smoothSpring());
 ///
 /// SequenceMotionBuilder(
-///   sequence: phases,
-///   converter: OffsetMotionConverter(),
-///   playing: true, // Enable automatic sequence progression
-///   currentPhase: currentButtonState, // Or null for auto-sequence
-///   builder: (context, offset, phase, child) {
-///     return Container(
-///       width: offset.dx,
-///       height: offset.dy,
-///       child: _buildButtonContent(phase),
-///     );
-///   },
+///   sequence: sequence,
+///   converter: MotionConverter.offset,
+///   playing: true, // Auto-progress through phases
+///   builder: (context, offset, phase, child) => Container(
+///     width: offset.dx,
+///     height: offset.dy,
+///     child: child,
+///   ),
 /// )
 /// ```
 /// {@endtemplate}
@@ -67,29 +62,27 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// The builder function that creates the widget tree.
   final PhaseWidgetBuilder<T, P> builder;
 
-  /// Whether the sequence should currently be playing.
+  /// Whether to automatically progress through the sequence.
   ///
-  /// If true, the sequence will automatically progress through phases.
-  /// If false, only manual phase changes via [currentPhase] will animate.
+  /// If `true`, plays through all phases automatically.
+  /// If `false`, only animates when [currentPhase] changes.
   final bool playing;
 
-  /// The current phase to display.
+  /// The phase to display or animate to.
   ///
-  /// When this value changes, the animation will automatically transition
-  /// to the specified phase. If null, uses the sequence's initial phase.
+  /// When changed, animates to this phase. If `null`, uses sequence's
+  /// initial phase.
   final P? currentPhase;
 
-  /// Called when the current phase changes.
+  /// Called when the animation transitions to a new phase.
   final void Function(P phase)? onPhaseChanged;
 
-  /// An optional child widget to pass to the [builder].
+  /// Optional child widget passed to [builder].
   final Widget? child;
 
-  /// A trigger that restarts the animation when changed.
+  /// Restarts animation when this value changes.
   ///
-  /// When this value changes, the animation will restart from either:
-  /// - The beginning of the sequence (if [playing] is true)
-  /// - The current phase (if [playing] is false and [currentPhase] is set)
+  /// Useful for triggering replays without rebuilding the widget.
   final Object? restartTrigger;
 
   @override
@@ -99,7 +92,7 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
 
 class _SequenceMotionBuilderState<P, T extends Object>
     extends State<SequenceMotionBuilder<P, T>> with TickerProviderStateMixin {
-  late PhaseMotionController<P, T> _controller;
+  late SequenceMotionController<P, T> _controller;
   P? _previousPhase;
 
   @override
@@ -108,7 +101,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
 
     // Create controller once, like BaseMotionBuilder
     final initialPhase = widget.currentPhase ?? widget.sequence.initialPhase;
-    _controller = PhaseMotionController<P, T>(
+    _controller = SequenceMotionController<P, T>(
       motion: widget.sequence.motionForPhase(
         fromPhase: initialPhase,
         toPhase: initialPhase,

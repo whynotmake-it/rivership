@@ -64,7 +64,7 @@ class _DragCardExample extends StatefulWidget {
 
 class _DragCardExampleState extends State<_DragCardExample>
     with SingleTickerProviderStateMixin {
-  late final phaseController = PhaseMotionController<DragCardPhase, Offset>(
+  late final phaseController = SequenceMotionController<DragCardPhase, Offset>(
     motion: Motion.bouncySpring(),
     vsync: this,
     converter: OffsetMotionConverter(),
