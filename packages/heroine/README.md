@@ -87,15 +87,50 @@ Heroine(
     axis: Axis.vertical,
     halfFlips: 1,
   ),
-  spring: Spring.bouncy, // Customize your springs!
+  motion: Motion.bouncySpring(),
   child: MyWidget(),
 )
 ```
 
 Available shuttle builders:
-- `FadeShuttleBuilder` - Smooth fade transition
-- `FlipShuttleBuilder` - 3D flip animation
+- `FadeShuttleBuilder` - Smooth fade transition between heroes
+- `FlipShuttleBuilder` - 3D flip animation with customizable axis and direction
 - `SingleShuttleBuilder` - Only displays the destination widget – like Flutter's default hero transition
+- `FadeThroughShuttleBuilder` - Fades through a specified color during transition
+- `ChainedShuttleBuilder` - Combines multiple shuttle builders for complex effects
+- `HeroineShuttleBuilder.fromHero()` - Use existing `HeroFlightShuttleBuilder` implementations
+
+
+#### Chaining Multiple Effects
+
+Combine multiple shuttle builders for complex transitions:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  flightShuttleBuilder: const FlipShuttleBuilder()
+    .chain(const FadeShuttleBuilder()),
+  // or using ChainedShuttleBuilder directly:
+  // flightShuttleBuilder: const ChainedShuttleBuilder(
+  //   builders: [FlipShuttleBuilder(), FadeShuttleBuilder()],
+  // ),
+  child: MyWidget(),
+)
+```
+
+#### Custom Color Fade Through
+
+Fade through a specific color during transition:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  flightShuttleBuilder: const FadeThroughShuttleBuilder(
+    fadeColor: Colors.white,
+  ),
+  child: MyWidget(),
+)
+```
 
 ### Drag-to-Dismiss
 
@@ -150,12 +185,12 @@ If you look closely at the example GIF, you will see that the details page fades
 
 **Warning:** While Heroine throws an assertion error if it detects that you are trying to fly two nested heroines at the same time, it can't check for this in release builds, since it needs to walk the widget tree. If you miss an occurrence of this, it will break your heroine transitions.
 
-## Spring Configuration 🎯
+## Motion Configuration 🎯
 
 Heroine uses [Motor](https://pub.dev/packages/motor) for motion animations. You can customize the motion:
 
 ```dart
-final springMotion = SpringMotion(
+final springMotion = Motion.spring(
   Spring.withDurationAndBounce(
     duration: Duration(milliseconds: 500), 
     bounce: 0.5,
@@ -164,14 +199,14 @@ final springMotion = SpringMotion(
 
 final cupertinoMotion = CupertinoMotion.smooth();
 
-final linearMotion = LinearMotion(Duration(milliseconds: 300));
+final linearMotion = Motion.linear(Duration(milliseconds: 300));
 
-final ease = CurvedMotion(Duration(milliseconds: 300), curve: Curves.easeInOut);
+final ease = Motion.curved(Duration(milliseconds: 300), Curves.easeInOut);
 
 // Then pass it to the Heroine widget
 return Heroine(
   tag: 'unique-tag',
-  spring: springMotion,
+  motion: springMotion,
   child: MyWidget(),
 );
 ```
@@ -180,7 +215,7 @@ return Heroine(
 
 ### Velocity-Aware Transitions
 
-Provide velocity information for smoother transitions from gestures:
+Provide velocity information for smoother transitions from gestures using `HeroineVelocity`:
 
 ```dart
 HeroineVelocity(
@@ -192,29 +227,43 @@ HeroineVelocity(
 )
 ```
 
+The `HeroineVelocity` widget automatically provides velocity context to any `Heroine` widgets below it in the widget tree. This is particularly useful when transitioning from gesture-based interactions.
+
 Check out the implementation of `DragDismissable`, to see how that widget uses `HeroineVelocity` to pass the user's drag velocity to the heroine.
 
-### Route Transition Duration
+For full control however, just pass in a custom `Motion` to the `Heroine` widget with whatever duration you want.
 
-You can have `Heroine` adjust the timing of its spring to match the duration of the route transition:
+## Available Tools & Widgets 🛠️
 
-```dart
-Heroine(
-  tag: 'unique-tag',
-  adjustToRouteTransitionDuration: true,
-  child: MyWidget(),
-)
-```
+### Core Widgets
+- **`Heroine`** - The main hero widget with spring-based animations
+- **`HeroineController`** - Navigator observer for managing hero transitions
+- **`DragDismissable`** - Wrapper for drag-to-dismiss functionality
+- **`HeroineVelocity`** - Provides velocity context for gesture-based transitions
+- **`ReactToHeroineDismiss`** - Responds to dismiss gestures in your UI
 
-For full control however, just pass in a custom `Spring` to the `Heroine` widget with whatever duration you want.
+### Route Integration
+- **`HeroinePageRouteMixin`** - Mixin for creating heroine-aware routes
+- **`HeroinePageRoute`** - Pre-built page route with heroine support
+
+### Shuttle Builders
+- **`FadeShuttleBuilder`** - Cross-fade between heroes
+- **`FlipShuttleBuilder`** - 3D flip transitions (customizable axis, direction, and flip count)
+- **`SingleShuttleBuilder`** - Show only source or destination hero
+- **`FadeThroughShuttleBuilder`** - Fade through a specified color
+- **`ChainedShuttleBuilder`** - Combine multiple effects
+- **`HeroineShuttleBuilder.fromHero()`** - Adapter for existing Flutter hero builders
+- **Extension methods** - `.chain()` method for fluent builder chaining
 
 ## Best Practices 📝
 
 1. Use unique tags for each hero pair
 2. Keep heroine widget's shapes similar in both routes
-3. Consider using `adjustToRouteTransitionDuration` for smoother transitions
-4. Test transitions with different spring configurations
-5. Handle edge cases with custom shuttle builders
+3. Register `HeroineController` in your app's navigator observers
+4. Use `HeroineVelocity` for gesture-driven transitions
+5. Test transitions with different motion configurations
+6. Handle edge cases with custom shuttle builders
+7. Avoid nested heroines in the same transition
 
 ---
 
