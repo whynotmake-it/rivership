@@ -1,3 +1,8 @@
+## 0.2.1-dev.0
+
+ - **FEAT**: add sequence animations to motor.
+ - **FEAT**: add TrimmedMotion as a way to take subsets of any motion.
+
 ## 0.2.0
 
 > Note: This release has breaking changes.

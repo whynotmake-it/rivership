@@ -1,3 +1,17 @@
+## 1.0.0-dev.6
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: add constants for included MotionConverters.
+ - **FEAT**: add sequence animations to motor.
+ - **FEAT**: add TrimmedMotion as a way to take subsets of any motion.
+ - **DOCS**: add phase animation to readme.
+ - **DOCS**: way better examples.
+ - **BREAKING** **REFACTOR**: use `MotionConverter.custom()` if you want to pass custom normalization callbacks.
+ - **BREAKING** **REFACTOR**: use const constructors for material springs and make default constructor private.
+ - **BREAKING** **REFACTOR**: use positional parameters for `CurvedMotion`.
+ - **BREAKING** **BUILD**: require Flutter 3.32.
+
 ## 1.0.0-dev.5
  - Nothing relevant
 

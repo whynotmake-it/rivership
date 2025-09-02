@@ -1,3 +1,11 @@
+## 0.5.0-dev.9
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: add TrimmedMotion as a way to take subsets of any motion.
+ - **DOCS**: update readme in heroine to reflect new changes.
+ - **BREAKING** **REFACTOR**: use positional parameters for `CurvedMotion`.
+
 ## 0.5.0-dev.8
 
  - **FIX**: export all motor motion types from heroine.
