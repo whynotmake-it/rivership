@@ -25,7 +25,7 @@ dependencies:
     path: ../../packages/stupid_simple_sheet/example
 
 
-  rivership: ^0.3.0-dev.9
+  rivership: ^0.3.0-dev.10
   auto_route: ^10.0.1
 
   

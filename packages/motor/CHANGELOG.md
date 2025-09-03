@@ -1,3 +1,12 @@
+## 1.0.0-dev.7
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FIX**: `SequenceMotionController` will not skip the initial phase (#164).
+
+    However, all sequences with a single provided motion will now return `NoMotion` for the very initial phase only. This retains the expected playing behavior, while working better with customized motions per phase.
+
+
 ## 1.0.0-dev.6
 
 > Note: This release has breaking changes.
