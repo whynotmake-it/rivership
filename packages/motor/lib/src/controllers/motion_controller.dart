@@ -671,18 +671,13 @@ class SequenceMotionController<P, T extends Object>
       throw ArgumentError('Phase $targetPhase not found in sequence');
     }
 
-    // Check if we're already at the target phase value
-    final targetValue = sequence.valueForPhase(targetPhase);
     final velocities = switch (withVelocity) {
       null => this.velocities,
       final v => converter.normalize(v),
     };
-    if (value == targetValue) {
-      _handleSequencePhaseCompletion(velocities);
-    } else {
-      // Set up the initial phase simulation
-      _setupPhaseSimulation(targetPhase, velocities);
-    }
+
+    // Set up the initial phase simulation
+    _setupPhaseSimulation(targetPhase, velocities);
 
     // Stop any existing ticker and start fresh
     _stopTicker(canceled: true);

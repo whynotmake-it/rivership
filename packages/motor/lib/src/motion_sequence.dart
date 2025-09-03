@@ -57,6 +57,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///
   /// Perfect for state machines, enums, or any named phase system.
   ///
+  /// Note: this will skip the given motion for the very initial phase.
+  /// This means that if you provide [CurvedMotion] at the initial phase, the
+  /// phase will not hold for that duration, but it will still use the motion
+  /// for all other phase transitions.
+  ///
   /// ```dart
   /// enum ButtonState { idle, pressed, loading }
   ///
@@ -88,6 +93,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence that steps through values by index (0, 1, 2...).
   ///
   /// The most common sequence type for ordered progressions.
+  ///
+  /// Note: this will skip the given motion for the very initial phase.
+  /// This means that if you provide [CurvedMotion] at the initial phase, the
+  /// phase will not hold for that duration, but it will still use the motion
+  /// for all other phase transitions.
   ///
   /// ```dart
   /// final positions = MotionSequence.steps([
@@ -259,6 +269,12 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
 
   @override
   Motion motionForPhase({required int toPhase, int? fromPhase}) {
+    // If the user did not provide their own motion per phase, we assume that
+    // the first phase should be skipped.
+    if (_stepsWithMotions == null && fromPhase == null) {
+      return const NoMotion();
+    }
+
     final value = _valuesByPhase[toPhase];
     return value!.$2;
   }
@@ -332,6 +348,12 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
 
   @override
   Motion motionForPhase({required P toPhase, P? fromPhase}) {
+    // If the user did not provide their own motion per phase, we assume that
+    // the first phase should be skipped.
+    if (_statesWithMotions == null && fromPhase == null) {
+      return const NoMotion();
+    }
+
     return _statesWithMotions?[toPhase]?.$2 ?? _motion!;
   }
 }
