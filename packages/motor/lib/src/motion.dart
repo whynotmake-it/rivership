@@ -1,6 +1,7 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/src/simulations/no_motion_simulation.dart';
 
 export 'motion_curve.dart';
 
@@ -20,6 +21,9 @@ abstract class Motion {
 
   /// {@macro CurvedMotion}
   const factory Motion.curved(Duration duration, [Curve curve]) = CurvedMotion;
+
+  /// Creates a linear motion with a fixed duration.
+  const factory Motion.linear(Duration duration) = LinearMotion;
 
   /// {@macro NoMotion}
   const factory Motion.none([Duration duration]) = NoMotion;
@@ -183,8 +187,6 @@ class CurvedMotion extends Motion {
 /// A convenience class for a [CurvedMotion] that uses a linear curve.
 class LinearMotion extends CurvedMotion {
   /// Creates a linear motion with a fixed duration.
-  ///
-  /// The curve is set to [Curves.linear] by default.
   const LinearMotion(Duration duration) : super(duration, Curves.linear);
 
   @override
@@ -192,28 +194,39 @@ class LinearMotion extends CurvedMotion {
 }
 
 /// {@template NoMotion}
-/// A motion that jumps to the target value immediately and holds there for
-/// [duration].
+/// A motion that holds at the current value for [duration] and never reaches
+/// its target.
 /// {@endtemplate}
-class NoMotion extends CurvedMotion {
-  /// Creates a no-motion effect with a fixed duration.
-  const NoMotion([Duration duration = Duration.zero])
-      : super(
-          duration,
-          const _TargetOnlyCurve(),
-        );
+class NoMotion extends Motion {
+  /// {@macro NoMotion}
+  ///
+  /// By default, the [duration] is set to zero.
+  const NoMotion([this.duration = Duration.zero]);
+
+  /// The duration that this motion holds its value.
+  final Duration duration;
 
   @override
   String toString() => 'NoMotion($duration)';
-}
-
-class _TargetOnlyCurve extends Curve {
-  const _TargetOnlyCurve();
 
   @override
-  double transform(double t) {
-    return 1;
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    return NoMotionSimulation(
+      duration: duration,
+      value: start,
+      tolerance: tolerance,
+    );
   }
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
 }
 
 /// {@template SpringMotion}
