@@ -42,6 +42,31 @@ void main() {
       expect(capturedPhase, equals(TestPhase.idle));
     });
 
+    testWidgets('supports a single value', (tester) async {
+      double? capturedValue;
+      TestPhase? capturedPhase;
+
+      await tester.pumpWidget(
+        SequenceMotionBuilder<TestPhase, double>(
+          sequence: const MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+            },
+            motion: Motion.none(),
+          ),
+          converter: const SingleMotionConverter(),
+          builder: (context, value, phase, child) {
+            capturedValue = value;
+            capturedPhase = phase;
+            return const SizedBox();
+          },
+        ),
+      );
+
+      expect(capturedValue, equals(0.0));
+      expect(capturedPhase, equals(TestPhase.idle));
+    });
+
     testWidgets('animates to specified currentPhase', (tester) async {
       double? capturedValue;
       TestPhase? capturedPhase;
@@ -88,11 +113,11 @@ void main() {
 
       // We immediately start going to the next phase
       expect(capturedValue, equals(0.0));
-      expect(capturedPhase, equals(TestPhase.active));
+      expect(capturedPhase, equals(TestPhase.idle));
 
       // Should start animating through sequence
       await tester.pump(const Duration(seconds: 2));
-      expect(capturedPhase, equals(TestPhase.complete));
+      expect(capturedPhase, equals(TestPhase.active));
     });
 
     testWidgets('calls onPhaseChanged callback', (tester) async {
