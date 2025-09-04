@@ -127,7 +127,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// The ticker that drives the animation
   Ticker? _ticker;
 
-  /// The target values for each dimension when animating.
+  /// The normalized target values for each dimension when animating.
   List<double>? _target;
 
   /// List of simulations, one for each dimension
@@ -298,9 +298,11 @@ class MotionController<T extends Object> extends Animation<T>
   }
 
   /// Evaluates the current status when we're at the end of the animation.
-  AnimationStatus _getStatusWhenDone() => value == _initialValue
-      ? AnimationStatus.dismissed
-      : AnimationStatus.completed;
+  AnimationStatus _getStatusWhenDone() => switch (_target) {
+        final v? when converter.denormalize(v) == _initialValue =>
+          AnimationStatus.dismissed,
+        _ => AnimationStatus.completed
+      };
 
   /// Tick function called by the ticker
   void _tick(Duration elapsed) {
@@ -462,9 +464,11 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Evaluates the current status when we're at the end of the animation.
   @override
-  AnimationStatus _getStatusWhenDone() => switch (value) {
-        final v when v == lowerBound => AnimationStatus.dismissed,
-        final v when v == upperBound => AnimationStatus.completed,
+  AnimationStatus _getStatusWhenDone() => switch (_target) {
+        final v? when converter.denormalize(v) == lowerBound =>
+          AnimationStatus.dismissed,
+        final v? when converter.denormalize(v) == upperBound =>
+          AnimationStatus.completed,
         _ when !_forward => AnimationStatus.reverse,
         _ => AnimationStatus.forward,
       };
@@ -709,9 +713,6 @@ class SequenceMotionController<P, T extends Object>
     final targetValue = sequence.valueForPhase(phase);
     final target = converter.normalize(targetValue);
 
-    // Update motion for this phase
-    this.motion = motion;
-
     // Set target for sequence tracking
     _target = target;
 
@@ -719,7 +720,7 @@ class SequenceMotionController<P, T extends Object>
     final velocityValue = velocities;
     _simulations = [
       for (var i = 0; i < _dimensions; i++)
-        _motionPerDimension[i].createSimulation(
+        motion.createSimulation(
           start: _currentValues[i],
           end: target[i],
           velocity: velocityValue[i],
