@@ -138,6 +138,25 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
   DragStartDetails? _dragStartDetails;
 
+  bool get hasVertical =>
+      widget.onVerticalDragStart != null ||
+      widget.onVerticalDragUpdate != null ||
+      widget.onVerticalDragEnd != null ||
+      widget.onVerticalDragCancel != null;
+
+  bool get hasHorizontal =>
+      widget.onHorizontalDragStart != null ||
+      widget.onHorizontalDragUpdate != null ||
+      widget.onHorizontalDragEnd != null ||
+      widget.onHorizontalDragCancel != null;
+
+  Set<Axis> get dragAxes {
+    return <Axis>{
+      if (hasVertical) Axis.vertical,
+      if (hasHorizontal) Axis.horizontal,
+    };
+  }
+
   @override
   void dispose() {
     _isDragging.dispose();
@@ -162,7 +181,8 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           builder: (context, value, child) {
             return ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
-                physics: value ? const _OverscrollScrollPhysics() : null,
+                physics:
+                    value ? _OverscrollScrollPhysics(axes: dragAxes) : null,
               ),
               child: child!,
             );
@@ -174,6 +194,8 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
+    if (!dragAxes.contains(notification.metrics.axis)) return true;
+
     switch (notification) {
       case ScrollStartNotification(:final dragDetails):
         _dragStartDetails = dragDetails;
@@ -274,11 +296,19 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 /// Scroll physics that don't allow moving from the current position and just
 /// always send an overscroll notification.
 class _OverscrollScrollPhysics extends ClampingScrollPhysics {
-  const _OverscrollScrollPhysics({super.parent});
+  const _OverscrollScrollPhysics({
+    required this.axes,
+    super.parent,
+  });
+
+  final Set<Axis> axes;
 
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return _OverscrollScrollPhysics(parent: buildParent(ancestor));
+    return _OverscrollScrollPhysics(
+      axes: axes,
+      parent: buildParent(ancestor),
+    );
   }
 
   @override
@@ -286,6 +316,9 @@ class _OverscrollScrollPhysics extends ClampingScrollPhysics {
     ScrollMetrics position,
     double value,
   ) {
-    return value - position.pixels;
+    if (axes.contains(position.axis)) return value - position.pixels;
+
+    return parent?.applyBoundaryConditions(position, value) ??
+        super.applyBoundaryConditions(position, value);
   }
 }
