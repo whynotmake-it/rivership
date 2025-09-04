@@ -1,3 +1,7 @@
+## 0.3.0-dev.2
+
+ - **FEAT**: add clip behavior option to sheet (#173).
+
 ## 0.3.0-dev.1
 
  - **FIX**: don't render overscroll indicators while we drag.
