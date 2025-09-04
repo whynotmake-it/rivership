@@ -1,6 +1,6 @@
 ## 0.3.0-dev.0
 
- - build: fixed package versioning
+ - **BUILD**: fixed package versioning
 
 ## 0.0.2-dev.2
 
