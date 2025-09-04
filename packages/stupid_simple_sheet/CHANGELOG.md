@@ -1,3 +1,7 @@
+## 0.3.0-dev.0
+
+ - **BUILD**: fixed package versioning
+
 ## 0.0.2-dev.2
 
  - **FIX**: default to `snapToEnd` in sheet motions for compatibility with the latest motor update.
