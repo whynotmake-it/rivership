@@ -93,24 +93,48 @@ class _CupertinoSheetContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Sheet'),
-            leading: CupertinoButton(
-              child: Text("Close"),
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => CupertinoListTile(
-                title: Text('Item #$index'),
+      child: PageView(
+        children: [
+          CustomScrollView(
+            slivers: [
+              CupertinoSliverNavigationBar(
+                largeTitle: Text('Sheet'),
+                leading: CupertinoButton(
+                  child: Text("Close"),
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               ),
-              childCount: 50,
-            ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => CupertinoListTile(
+                    title: Text('Item #$index'),
+                  ),
+                  childCount: 50,
+                ),
+              ),
+            ],
           ),
+          CustomScrollView(
+            slivers: [
+              CupertinoSliverNavigationBar(
+                largeTitle: Text('Sheet'),
+                leading: CupertinoButton(
+                  child: Text("Close"),
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => CupertinoListTile(
+                    title: Text('Item #$index'),
+                  ),
+                  childCount: 50,
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );
