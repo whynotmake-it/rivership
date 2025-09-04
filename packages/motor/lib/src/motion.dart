@@ -42,24 +42,28 @@ abstract class Motion {
   const factory Motion.bouncySpring({
     Duration duration,
     double extraBounce,
+    bool snapToEnd,
   }) = CupertinoMotion.bouncy;
 
   /// {@macro CupertinoMotion.snappy}
   const factory Motion.snappySpring({
     Duration duration,
     double extraBounce,
+    bool snapToEnd,
   }) = CupertinoMotion.snappy;
 
   /// {@macro CupertinoMotion.smooth}
   const factory Motion.smoothSpring({
     Duration duration,
     double extraBounce,
+    bool snapToEnd,
   }) = CupertinoMotion.smooth;
 
   /// {@macro CupertinoMotion.interactive}
   const factory Motion.interactiveSpring({
     Duration duration,
     double extraBounce,
+    bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
   /// The tolerance for this motion.
@@ -252,7 +256,7 @@ abstract class SpringMotion extends Motion {
 
   /// Internal constructor;
   const SpringMotion._({
-    this.snapToEnd = true,
+    this.snapToEnd = false,
   });
 
   /// The physical description of the spring.
@@ -386,7 +390,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.bouncy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = true,
+    bool snapToEnd = false,
   }) : this(
           duration: duration,
           bounce: 0.3 + extraBounce,
@@ -403,7 +407,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.snappy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = true,
+    bool snapToEnd = false,
   }) : this(
           duration: duration,
           bounce: 0.15 + extraBounce,
@@ -419,7 +423,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.smooth({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = true,
+    bool snapToEnd = false,
   }) : this(
           duration: duration,
           bounce: extraBounce,
@@ -436,7 +440,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.interactive({
     Duration duration = const Duration(milliseconds: 150),
     double extraBounce = 0.0,
-    bool snapToEnd = true,
+    bool snapToEnd = false,
   }) : this(
           duration: duration,
           bounce: 0.14 + extraBounce,
@@ -500,10 +504,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// motion tokens.
   ///
   /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
-  const MaterialSpringMotion.standardSpatialFast()
-      : this._(
+  const MaterialSpringMotion.standardSpatialFast({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.9,
           stiffness: 1400,
+          snapToEnd: snapToEnd,
         );
 
   /// Standard spatial motion token - default variant.
@@ -512,8 +518,9 @@ class MaterialSpringMotion extends SpringMotion {
   /// and layout transitions. Provides a balanced animation speed.
   ///
   /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
-  const MaterialSpringMotion.standardSpatialDefault()
-      : this._(
+  const MaterialSpringMotion.standardSpatialDefault({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.9,
           stiffness: 700,
         );
@@ -524,10 +531,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// motion is desired for position changes, resizing, and layout transitions.
   ///
   /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
-  const MaterialSpringMotion.standardSpatialSlow()
-      : this._(
+  const MaterialSpringMotion.standardSpatialSlow({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.9,
           stiffness: 300,
+          snapToEnd: snapToEnd,
         );
 
   /// Standard effects motion token - fast variant.
@@ -537,10 +546,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// effects motion tokens.
   ///
   /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
-  const MaterialSpringMotion.standardEffectsFast()
-      : this._(
+  const MaterialSpringMotion.standardEffectsFast({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 3800,
+          snapToEnd: snapToEnd,
         );
 
   /// Standard effects motion token - default variant.
@@ -550,10 +561,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// balanced animation speed.
   ///
   /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
-  const MaterialSpringMotion.standardEffectsDefault()
-      : this._(
+  const MaterialSpringMotion.standardEffectsDefault({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 1600,
+          snapToEnd: snapToEnd,
         );
 
   /// Standard effects motion token - slow variant.
@@ -563,10 +576,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// non-spatial effects.
   ///
   /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
-  const MaterialSpringMotion.standardEffectsSlow()
-      : this._(
+  const MaterialSpringMotion.standardEffectsSlow({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 800,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive spatial motion token - fast variant.
@@ -576,10 +591,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// in position changes, resizing, and layout transitions.
   ///
   /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
-  const MaterialSpringMotion.expressiveSpatialFast()
-      : this._(
+  const MaterialSpringMotion.expressiveSpatialFast({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.6,
           stiffness: 800,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive spatial motion token - default variant.
@@ -589,10 +606,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// damping for spring-like behavior in spatial transitions.
   ///
   /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
-  const MaterialSpringMotion.expressiveSpatialDefault()
-      : this._(
+  const MaterialSpringMotion.expressiveSpatialDefault({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.8,
           stiffness: 380,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive spatial motion token - slow variant.
@@ -602,10 +621,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// increased bounce in position changes and layout transitions.
   ///
   /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
-  const MaterialSpringMotion.expressiveSpatialSlow()
-      : this._(
+  const MaterialSpringMotion.expressiveSpatialSlow({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 0.8,
           stiffness: 200,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive effects motion token - fast variant.
@@ -615,10 +636,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// of the expressive motion system for consistent design language.
   ///
   /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
-  const MaterialSpringMotion.expressiveEffectsFast()
-      : this._(
+  const MaterialSpringMotion.expressiveEffectsFast({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 3800,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive effects motion token - default variant.
@@ -628,10 +651,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// maintaining optimal characteristics for non-spatial effects.
   ///
   /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
-  const MaterialSpringMotion.expressiveEffectsDefault()
-      : this._(
+  const MaterialSpringMotion.expressiveEffectsDefault({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 1600,
+          snapToEnd: snapToEnd,
         );
 
   /// Expressive effects motion token - slow variant.
@@ -641,10 +666,12 @@ class MaterialSpringMotion extends SpringMotion {
   /// optimized for opacity, color, and other non-spatial effects.
   ///
   /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
-  const MaterialSpringMotion.expressiveEffectsSlow()
-      : this._(
+  const MaterialSpringMotion.expressiveEffectsSlow({
+    bool snapToEnd = false,
+  }) : this._(
           damping: 1,
           stiffness: 800,
+          snapToEnd: snapToEnd,
         );
 
   /// The damping factor of the spring motion.
