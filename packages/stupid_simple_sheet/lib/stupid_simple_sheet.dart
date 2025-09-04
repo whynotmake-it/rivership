@@ -224,19 +224,17 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       builder: (context, _) {
         final value = controller!.value;
 
-        var transformedChild = child;
-        // Normal slide up transition
-        transformedChild = FractionalTranslation(
-          translation: Offset(0, 1 - value),
-          child: transformedChild,
-        );
-
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Flexible(child: transformedChild),
+            Flexible(
+              child: FractionalTranslation(
+                translation: Offset(0, 1 - value),
+                child: child,
+              ),
+            ),
           ],
         );
       },

@@ -181,6 +181,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           builder: (context, value, child) {
             return ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
+                overscroll: false,
                 physics:
                     value ? _OverscrollScrollPhysics(axes: dragAxes) : null,
               ),
