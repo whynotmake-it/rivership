@@ -1,3 +1,9 @@
+## 0.3.0-dev.1
+
+ - **FIX**: don't render overscroll indicators while we drag.
+ - **FIX**: only pay attention to drags on the axis we care about.
+ - **FIX**: only pay attention to relevant axes.
+
 ## 0.3.0-dev.0
 
  - **BUILD**: fixed package versioning
