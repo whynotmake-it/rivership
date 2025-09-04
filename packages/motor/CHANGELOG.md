@@ -1,3 +1,11 @@
+## 1.0.0-dev.8
+
+> Note: This release has breaking changes.
+
+ - **FIX**: all motion controllers now correctly report their status, even for imprecise simulations.
+ - **BREAKING** **REFACTOR**: `Motion.none` will not jump to target anymore, but hold at current value instead.
+ - **BREAKING** **FEAT**: all spring motions now default to `snapToEnd: false` to reduce unexpected jitter when animating.
+
 ## 1.0.0-dev.7
 
 > Note: This release has breaking changes.
