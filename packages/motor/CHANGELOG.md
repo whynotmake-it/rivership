@@ -2,7 +2,6 @@
 
 > Note: This release has breaking changes.
 
- - **FIX**: default to `snapoToEnd` in sheet motions for compatibility with the latest motor update.
  - **FIX**: all motion controllers now correctly report their status, even for imprecise simulations.
  - **BREAKING** **REFACTOR**: `Motion.none` will not jump to target anymore, but hold at current value instead.
  - **BREAKING** **FEAT**: all spring motions now default to `snapToEnd: false` to reduce unexpected jitter when animating.
