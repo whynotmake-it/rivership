@@ -15,8 +15,10 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   StupidSimpleCupertinoSheetRoute({
     required this.child,
     super.settings,
-    this.motion =
-        const CupertinoMotion.smooth(duration: Duration(milliseconds: 400)),
+    this.motion = const CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    ),
   }) : super();
 
   @override
