@@ -1,3 +1,7 @@
+## 0.0.2-dev.2
+
+ - **FIX**: default to `snapoToEnd` in sheet motions for compatibility with the latest motor update.
+
 ## 0.0.2-dev.1
 
  - Update a dependency to the latest release.
