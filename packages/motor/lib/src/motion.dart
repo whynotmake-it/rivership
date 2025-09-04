@@ -523,6 +523,7 @@ class MaterialSpringMotion extends SpringMotion {
   }) : this._(
           damping: 0.9,
           stiffness: 700,
+          snapToEnd: snapToEnd,
         );
 
   /// Standard spatial motion token - slow variant.

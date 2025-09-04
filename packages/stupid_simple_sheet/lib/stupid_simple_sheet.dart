@@ -34,7 +34,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   StupidSimpleSheetRoute({
     required this.child,
     super.settings,
-    this.motion = const CupertinoMotion.smooth(),
+    this.motion = const CupertinoMotion.smooth(snapToEnd: true),
     this.barrierColor = const Color.fromRGBO(0, 0, 0, 0.2),
     this.barrierDismissible = true,
     this.barrierLabel,
