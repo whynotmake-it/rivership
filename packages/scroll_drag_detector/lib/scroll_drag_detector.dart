@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// {@template scroll_drag_detector}
@@ -180,11 +181,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           valueListenable: _isDragging,
           builder: (context, value, child) {
             return ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(
-                overscroll: false,
-                physics:
-                    value ? _OverscrollScrollPhysics(axes: dragAxes) : null,
-              ),
+              behavior: value
+                  ? _DraggingScrollBehavior(
+                      parent: ScrollConfiguration.of(context),
+                      axes: dragAxes,
+                    )
+                  : ScrollConfiguration.of(context),
               child: child!,
             );
           },
@@ -291,6 +293,73 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     } else {
       widget.onHorizontalDragEnd?.call(details);
     }
+  }
+}
+
+class _DraggingScrollBehavior extends ScrollBehavior {
+  const _DraggingScrollBehavior({
+    required this.parent,
+    required this.axes,
+  });
+
+  final ScrollBehavior parent;
+
+  final Set<Axis> axes;
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      _OverscrollScrollPhysics(axes: axes);
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return parent.buildScrollbar(context, child, details);
+  }
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => parent.dragDevices;
+
+  @override
+  ScrollViewKeyboardDismissBehavior getKeyboardDismissBehavior(
+    BuildContext context,
+  ) {
+    return parent.getKeyboardDismissBehavior(context);
+  }
+
+  @override
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) {
+    return parent.getMultitouchDragStrategy(context);
+  }
+
+  @override
+  TargetPlatform getPlatform(BuildContext context) {
+    return parent.getPlatform(context);
+  }
+
+  @override
+  Set<LogicalKeyboardKey> get pointerAxisModifiers =>
+      parent.pointerAxisModifiers;
+
+  @override
+  GestureVelocityTrackerBuilder velocityTrackerBuilder(BuildContext context) {
+    return parent.velocityTrackerBuilder(context);
+  }
+
+  @override
+  bool shouldNotify(covariant ScrollBehavior oldDelegate) {
+    return parent.shouldNotify(oldDelegate);
   }
 }
 
