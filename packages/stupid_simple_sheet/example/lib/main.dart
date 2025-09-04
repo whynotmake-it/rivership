@@ -32,6 +32,18 @@ final stupidSimpleSheetRoutes = [
     ),
   ),
   NamedRouteDef(
+    name: 'Paged Sheet',
+    path: 'paged-sheet',
+    builder: (context, data) => _PagedSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        child: child,
+      ),
+    ),
+  ),
+  NamedRouteDef(
     name: 'Small Sheet',
     path: 'small-sheet',
     builder: (context, data) => _SmallSheetContent(),
@@ -77,6 +89,10 @@ class MotorExample extends StatelessWidget {
                   context.navigateTo(NamedRoute('Cupertino Sheet')),
             ),
             CupertinoButton.filled(
+              child: Text('Paged Sheet'),
+              onPressed: () => context.navigateTo(NamedRoute('Paged Sheet')),
+            ),
+            CupertinoButton.filled(
               child: Text('Resizing Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Small Sheet')),
             ),
@@ -93,12 +109,42 @@ class _CupertinoSheetContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Sheet'),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => CupertinoListTile(
+                title: Text('Item #$index'),
+              ),
+              childCount: 50,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PagedSheetContent extends StatelessWidget {
+  const _PagedSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
       child: PageView(
         children: [
           CustomScrollView(
             slivers: [
               CupertinoSliverNavigationBar(
-                largeTitle: Text('Sheet'),
+                middle: Text('Page 1'),
                 leading: CupertinoButton(
                   child: Text("Close"),
                   padding: EdgeInsets.zero,
@@ -118,7 +164,7 @@ class _CupertinoSheetContent extends StatelessWidget {
           CustomScrollView(
             slivers: [
               CupertinoSliverNavigationBar(
-                largeTitle: Text('Sheet'),
+                middle: Text('Page 2'),
                 leading: CupertinoButton(
                   child: Text("Close"),
                   padding: EdgeInsets.zero,
