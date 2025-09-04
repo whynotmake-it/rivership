@@ -41,6 +41,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.shape = const RoundedSuperellipseBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
+    this.clipBehavior = Clip.antiAlias,
   }) : super();
 
   @override
@@ -51,9 +52,16 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   /// The shape that the sheet should have.
   ///
-  /// The child will be clipped to fit that shape.
+  /// The child will be clipped to fit that shape, if [clipBehavior] is not
+  /// [Clip.none].
   /// Defaults to a rounded superellipse with 24px radius at the top.
   final ShapeBorder shape;
+
+  /// The [Clip] behavior to use for the sheet's content.
+  ///
+  /// Defaults to [Clip.antiAlias].
+  /// If you set this to [Clip.none], the sheet's content will not be clipped.
+  final Clip clipBehavior;
 
   @override
   final Color? barrierColor;
@@ -68,6 +76,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   Widget buildContent(BuildContext context) => DecoratedBox(
         decoration: ShapeDecoration(shape: shape),
         child: ClipPath(
+          clipBehavior: clipBehavior,
           clipper: ShapeBorderClipper(shape: shape),
           child: child,
         ),
