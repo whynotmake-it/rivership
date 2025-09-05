@@ -1,5 +1,5 @@
 import 'package:flutter/animation.dart';
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 @internal
 class ClampedAnimation extends Animation<double>
