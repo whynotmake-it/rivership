@@ -1,3 +1,7 @@
+## 0.3.0-dev.3
+
+ - **FIX**: import internal from package:meta again.
+
 ## 0.3.0-dev.2
 
  - **FEAT**: add clip behavior option to sheet (#173).
