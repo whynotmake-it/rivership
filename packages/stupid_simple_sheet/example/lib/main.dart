@@ -143,14 +143,6 @@ class _PagedSheetContent extends StatelessWidget {
         children: [
           CustomScrollView(
             slivers: [
-              CupertinoSliverNavigationBar(
-                middle: Text('Page 1'),
-                leading: CupertinoButton(
-                  child: Text("Close"),
-                  padding: EdgeInsets.zero,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => CupertinoListTile(
@@ -163,14 +155,6 @@ class _PagedSheetContent extends StatelessWidget {
           ),
           CustomScrollView(
             slivers: [
-              CupertinoSliverNavigationBar(
-                middle: Text('Page 2'),
-                leading: CupertinoButton(
-                  child: Text("Close"),
-                  padding: EdgeInsets.zero,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => CupertinoListTile(
