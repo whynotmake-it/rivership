@@ -1,3 +1,7 @@
+## 1.0.0-dev.9
+
+ - **FIX**: import internal from package:meta again.
+
 ## 1.0.0-dev.8
 
 > Note: This release has breaking changes.

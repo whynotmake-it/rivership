@@ -1,6 +1,6 @@
 name: springster
 description: Spring animations and simulations, simplified.
-version: 1.0.0-dev.11
+version: 1.0.0-dev.12
 resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/springster
 homepage: https://whynotmake.it
@@ -14,7 +14,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  motor: ^1.0.0-dev.8
+  motor: ^1.0.0-dev.9
 
 dev_dependencies:
   flutter_test:
