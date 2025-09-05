@@ -26,7 +26,8 @@ void main() {
                   onPressed: () => Navigator.of(
                     context,
                   ).push(
-                    StupidSimpleCupertinoSheetRoute<void>(
+                    StupidSimpleSheetRoute<void>(
+                      clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
