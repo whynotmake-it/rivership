@@ -59,7 +59,7 @@ DA:172,1
 DA:174,0
 DA:177,1
 DA:179,1
-DA:180,0
+DA:180,1
 DA:183,1
 DA:185,1
 DA:189,2
@@ -212,7 +212,7 @@ DA:624,2
 DA:625,2
 DA:626,2
 LF:193
-LH:174
+LH:175
 end_of_record
 SF:lib/src/snaptest_settings.dart
 DA:53,1
