@@ -59,7 +59,7 @@ class Home extends StatelessWidget {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       child: GridView.count(
-        padding: const EdgeInsets.all(32),
+        padding: MediaQuery.viewPaddingOf(context) + const EdgeInsets.all(32),
         crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
