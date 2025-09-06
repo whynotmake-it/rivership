@@ -19,10 +19,14 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
       duration: Duration(milliseconds: 400),
       snapToEnd: true,
     ),
+    this.clearBarrierImmediately = true,
   }) : super();
 
   @override
   final Motion motion;
+
+  @override
+  final bool clearBarrierImmediately;
 
   /// The widget to display in the sheet.
   final Widget child;
