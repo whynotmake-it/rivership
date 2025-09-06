@@ -83,10 +83,12 @@ class CopiedCupertinoSheetTransition {
             ? Stack(
                 children: <Widget>[
                   child,
-                  FadeTransition(
-                    opacity: opacityAnimation,
-                    child: ColoredBox(
-                        color: overlayColor, child: const SizedBox.expand()),
+                  IgnorePointer(
+                    child: FadeTransition(
+                      opacity: opacityAnimation,
+                      child: ColoredBox(
+                          color: overlayColor, child: const SizedBox.expand()),
+                    ),
                   ),
                 ],
               )

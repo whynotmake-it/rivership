@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,8 +14,13 @@ void main() {
 
   tearDown(SnaptestSettings.resetGlobal);
 
-  group('showStupidSimpleSheet', () {
-    Widget build() {
+  group('StupidSimpleSheetRoute', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({Motion motion = motion}) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
         home: Scaffold(
@@ -27,6 +33,7 @@ void main() {
                     context,
                   ).push(
                     StupidSimpleSheetRoute<void>(
+                      motion: motion,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -111,9 +118,79 @@ void main() {
       final indicatorFinder = find.byType(GlowingOverscrollIndicator);
       expect(indicatorFinder, findsNothing);
 
-      debugDefaultTargetPlatformOverride = null;
-
       await gesture.up();
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('route becomes interactable quickly', (tester) async {
+      final buttonFinder = find.byKey(const ValueKey('button'));
+      final widget = build();
+      await tester.pumpWidget(widget);
+      await tester.tap(buttonFinder);
+
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      expect(buttonFinder.hitTestable(), findsNothing);
+
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+
+      await tester.pump();
+      expect(buttonFinder.hitTestable(), findsOneWidget);
+    });
+  });
+
+  group('Sup', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({Motion motion = motion}) {
+      return CupertinoApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return CupertinoButton.filled(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(
+                    StupidSimpleCupertinoSheetRoute<void>(
+                      motion: motion,
+                      child: Scaffold(
+                        key: const ValueKey('scaffold'),
+                        body: ListView.builder(
+                          itemCount: 100,
+                          itemBuilder: (context, index) => ListTile(
+                            title: Text('Item $index'),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Show Stupid Simple Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('route becomes interactable quickly', (tester) async {
+      final buttonFinder = find.byKey(const ValueKey('button'));
+      final widget = build();
+      await tester.pumpWidget(widget);
+      await tester.tap(buttonFinder);
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      expect(buttonFinder.hitTestable(), findsNothing);
+
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+
+      await tester.pump();
+      expect(buttonFinder.hitTestable(), findsOneWidget);
     });
   });
 }
