@@ -1,3 +1,7 @@
+## 0.3.1
+
+ - **FEAT**: add `clearBarrierImmediately` setting that allows the route to make underlying routes interactible straight away (#183).
+
 ## 0.3.0+1
 
  - **FIX**: routes below `StupidSimpleCupertinoSheetRoute` took too long to become interactable (#180).
