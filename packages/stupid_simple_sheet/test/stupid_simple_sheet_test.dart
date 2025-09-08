@@ -122,30 +122,35 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    testWidgets('route becomes interactable quickly', (tester) async {
-      final buttonFinder = find.byKey(const ValueKey('button'));
-      final widget = build();
-      await tester.pumpWidget(widget);
-      await tester.tap(buttonFinder);
+    group('page behind becomes interactable quickly', () {
+      testWidgets('when popping', (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        final widget = build();
+        await tester.pumpWidget(widget);
+        await tester.tap(buttonFinder);
 
-      await tester.pumpAndSettle();
-      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
-      expect(buttonFinder.hitTestable(), findsNothing);
+        await tester.pumpAndSettle();
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
 
-      Navigator.of(tester.element(scaffoldFinder)).pop();
+        Navigator.of(tester.element(scaffoldFinder)).pop();
 
-      await tester.pump();
-      expect(buttonFinder.hitTestable(), findsOneWidget);
+        await tester.pump();
+        expect(buttonFinder.hitTestable(), findsOneWidget);
+      });
     });
   });
 
-  group('Sup', () {
+  group('StupidSimpleCupertinoSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
       snapToEnd: true,
     );
 
-    Widget build({Motion motion = motion}) {
+    Widget build({
+      Motion motion = motion,
+      bool clearBarrierImmediately = true,
+    }) {
       return CupertinoApp(
         home: Scaffold(
           body: Center(
@@ -157,6 +162,7 @@ void main() {
                     context,
                   ).push(
                     StupidSimpleCupertinoSheetRoute<void>(
+                      clearBarrierImmediately: clearBarrierImmediately,
                       motion: motion,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -178,19 +184,67 @@ void main() {
       );
     }
 
-    testWidgets('route becomes interactable quickly', (tester) async {
-      final buttonFinder = find.byKey(const ValueKey('button'));
-      final widget = build();
-      await tester.pumpWidget(widget);
-      await tester.tap(buttonFinder);
-      await tester.pumpAndSettle();
-      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
-      expect(buttonFinder.hitTestable(), findsNothing);
+    group('route behind becomes interactable quickly', () {
+      testWidgets('when popping', (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        final widget = build();
+        await tester.pumpWidget(widget);
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
 
-      Navigator.of(tester.element(scaffoldFinder)).pop();
+        Navigator.of(tester.element(scaffoldFinder)).pop();
 
-      await tester.pump();
-      expect(buttonFinder.hitTestable(), findsOneWidget);
+        await tester.pump();
+        expect(buttonFinder.hitTestable(), findsOneWidget);
+      });
+
+      testWidgets('when swiping', (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        final widget = build();
+        await tester.pumpWidget(widget);
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
+
+        await tester.timedDragFrom(
+          tester.getTopLeft(scaffoldFinder),
+          Offset(0, tester.getSize(scaffoldFinder).height * .6),
+          const Duration(milliseconds: 300),
+        );
+
+        await tester.pump(motion.duration);
+
+        await snap();
+
+        expect(buttonFinder.hitTestable(), findsOneWidget);
+        expect(find.byType(ModalBarrier).hitTestable(), findsNothing);
+      });
+
+      testWidgets('unless clearBarrierImmediately is false', (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        final widget = build(clearBarrierImmediately: false);
+        await tester.pumpWidget(widget);
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
+
+        await tester.timedDragFrom(
+          tester.getTopLeft(scaffoldFinder),
+          Offset(0, tester.getSize(scaffoldFinder).height * .6),
+          const Duration(milliseconds: 300),
+        );
+
+        await tester.pump(motion.duration);
+
+        await snap();
+
+        expect(buttonFinder.hitTestable(), findsNothing);
+        expect(find.byType(ModalBarrier).hitTestable(), findsOneWidget);
+      });
     });
   });
 }

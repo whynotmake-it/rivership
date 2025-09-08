@@ -215,13 +215,29 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
               color: CupertinoColors.opaqueSeparator,
               height: 1,
             ),
-            CupertinoButton(
-                child: Text('Add Item'),
-                onPressed: () {
-                  setState(() {
-                    _itemCount++;
-                  });
-                }),
+            Row(
+              children: [
+                Expanded(
+                  child: CupertinoButton(
+                    foregroundColor: CupertinoColors.destructiveRed,
+                    child: Text('Close'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: CupertinoButton(
+                    child: Text('Add Item'),
+                    onPressed: () {
+                      setState(() {
+                        _itemCount++;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

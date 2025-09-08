@@ -42,6 +42,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     this.clipBehavior = Clip.antiAlias,
+    this.clearBarrierImmediately = true,
   }) : super();
 
   @override
@@ -71,6 +72,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   final String? barrierLabel;
+
+  @override
+  final bool clearBarrierImmediately;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -105,7 +109,9 @@ class _RelativeGestureDetector extends StatelessWidget {
       scrollableCanMoveBack: scrollableCanMoveBack,
       onVerticalDragStart: (details) => onRelativeDragStart(),
       onVerticalDragEnd: (details) {
-        onRelativeDragEnd(details.velocity.pixelsPerSecond.dy);
+        onRelativeDragEnd(
+          details.velocity.pixelsPerSecond.dy / context.size!.height,
+        );
       },
       onVerticalDragUpdate: (details) {
         onRelativeDragUpdate(details.primaryDelta! / context.size!.height);
@@ -140,12 +146,23 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// it past it's fully opened state.
   double get overshootResistance => 100;
 
+  /// {@template clearBarrierImmediately}
+  /// Whether this route should clear the modal barrier immediately when
+  /// dismissed.
+  ///
+  /// This can make your app feel more responsive by letting the user interact
+  /// with the underlying content, while this sheet is still animating out.
+  ///
+  /// Defaults to true.
+  /// {@endtemplate}
+  bool get clearBarrierImmediately => true;
+
   double? _dragEndVelocity;
 
   bool _shouldDismiss(double velocity, double currentValue) {
     // Constants for dismissal logic
     const dismissThreshold = 0.5; // Dismiss if dragged more than 50% down
-    const velocityThreshold = 300.0; // Pixels per second
+    const velocityThreshold = .5; // Relative velocity threshold
 
     // High downward velocity should dismiss regardless of position
     if (velocity > velocityThreshold) {
@@ -182,7 +199,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     return motion.createSimulation(
       end: forward ? 1.0 : 0.0,
       start: animation?.value ?? 0,
-      velocity: v ?? 0,
+      velocity: -(v ?? 0),
     );
   }
 
@@ -250,6 +267,28 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     );
   }
 
+  final _poppedNotifier = ValueNotifier(false);
+
+  @override
+  Widget buildModalBarrier() {
+    return ValueListenableBuilder(
+      valueListenable: _poppedNotifier,
+      builder: (context, value, child) {
+        return IgnorePointer(
+          ignoring: value && clearBarrierImmediately,
+          child: super.buildModalBarrier(),
+        );
+      },
+    );
+  }
+
+  @override
+  @mustCallSuper
+  bool didPop(T? result) {
+    _poppedNotifier.value = true;
+    return super.didPop(result);
+  }
+
   void _handleDragStart(
     BuildContext context,
   ) {
@@ -278,14 +317,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double velocity,
   ) {
     final currentValue = controller!.value;
+    Navigator.of(context).didStopUserGesture();
 
-    _dragEndVelocity = -velocity / context.size!.height;
+    _dragEndVelocity = velocity;
 
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > 1.0) {
       final backSim = motion.createSimulation(
         start: currentValue,
-        velocity: _dragEndVelocity!,
+        velocity: -_dragEndVelocity!,
       );
       controller!.animateWith(backSim);
       _dragEndVelocity = null;
@@ -298,12 +338,18 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       } else {
         final backSim = motion.createSimulation(
           start: currentValue,
-          velocity: _dragEndVelocity!,
+          velocity: -_dragEndVelocity!,
         );
         controller!.animateWith(backSim);
         _dragEndVelocity = null;
       }
     }
-    Navigator.of(context).didStopUserGesture();
+  }
+
+  @override
+  @mustCallSuper
+  void dispose() {
+    _poppedNotifier.dispose();
+    super.dispose();
   }
 }
