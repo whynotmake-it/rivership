@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +22,10 @@ void main() {
       snapToEnd: true,
     );
 
-    Widget build({Motion motion = motion}) {
+    Widget build({
+      Motion motion = motion,
+      bool onlyDragWhenScrollWasAtTop = true,
+    }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
         home: Scaffold(
@@ -34,6 +39,7 @@ void main() {
                   ).push(
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
+                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -120,6 +126,70 @@ void main() {
 
       await gesture.up();
       debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('only drags when started at top', (tester) async {
+      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: true));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      // First scroll down to move away from the top
+      await tester.timedDragFrom(
+        tester.getCenter(scaffoldFinder),
+        const Offset(0, -50),
+        const Duration(milliseconds: 100),
+      );
+      await tester.pumpAndSettle();
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      for (var i = 0; i < 20; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final finalTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      await snap();
+
+      // Sheet should not have moved down (should be overscrolling instead)
+      expect(finalTopLeft.dy, equals(initialTopLeft.dy));
+      expect(find.byType(GlowingOverscrollIndicator), findsOneWidget);
+    });
+
+    testWidgets('drags from anywhere if onlyDragWhenScrollWasAtTop is false',
+        (tester) async {
+      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: false));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      // First scroll down to move away from the top
+      await tester.timedDragFrom(
+        tester.getCenter(scaffoldFinder),
+        const Offset(0, -100),
+        const Duration(milliseconds: 100),
+      );
+      await tester.pumpAndSettle();
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      // Now scroll up/drag the sheet downwards
+      for (var i = 0; i < 20; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final finalTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      // Sheet has moved down
+      expect(finalTopLeft.dy, greaterThan(initialTopLeft.dy));
+      expect(find.byType(GlowingOverscrollIndicator), findsNothing);
     });
 
     group('page behind becomes interactable quickly', () {
