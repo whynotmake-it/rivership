@@ -1,3 +1,7 @@
+## 0.0.3
+
+ - **FEAT**: add `onlyDragWhenScrollWasAtTop` parameter.
+
 ## 0.0.2+1
 
  - **FIX**: don't render overscroll indicators while we drag.

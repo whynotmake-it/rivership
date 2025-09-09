@@ -1,3 +1,12 @@
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: add `onlyDragWhenScrollWasAtTop` and default to true.
+
+    This allows sheets to prevent closing accidentally when the user just wanted to scroll to the top, especially in short lists. It matches iOS default behavior.
+
+
 ## 0.3.1
 
  - **FEAT**: add `clearBarrierImmediately` setting that allows the route to make underlying routes interactible straight away (#183).
