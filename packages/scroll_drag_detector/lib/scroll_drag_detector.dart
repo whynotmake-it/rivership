@@ -22,6 +22,7 @@ class ScrollDragDetector extends StatefulWidget {
   const ScrollDragDetector({
     required this.child,
     this.scrollableCanMoveBack = true,
+    this.onlyDragWhenScrollWasAtTop = true,
     this.onVerticalDragDown,
     this.onVerticalDragStart,
     this.onVerticalDragUpdate,
@@ -47,6 +48,12 @@ class ScrollDragDetector extends StatefulWidget {
   ///
   /// It will then send an [onVerticalDragEnd] callback.
   final bool scrollableCanMoveBack;
+
+  /// If true, scrolls will only transition to drags, when the initial drag
+  /// started at the top of the scrollable.
+  ///
+  /// This matches iOS sheet default behavior and defaults to true.
+  final bool onlyDragWhenScrollWasAtTop;
 
   /// A pointer has contacted the screen with a primary button and might begin
   /// to move vertically.
@@ -137,6 +144,10 @@ class ScrollDragDetector extends StatefulWidget {
 class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   final _isDragging = ValueNotifier(false);
 
+  var _scrollStartedAtTop = false;
+
+  bool get canDrag => _scrollStartedAtTop || !widget.onlyDragWhenScrollWasAtTop;
+
   DragStartDetails? _dragStartDetails;
 
   bool get hasVertical =>
@@ -201,11 +212,14 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
     switch (notification) {
       case ScrollStartNotification(:final dragDetails):
+        _scrollStartedAtTop = notification.metrics.extentBefore <= kTouchSlop;
+
         _dragStartDetails = dragDetails;
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
         ):
+        if (!canDrag) return true;
         if (dragDetails != null) {
           // When we are overscrolling at the top
           if (metrics.extentBefore <= 0 &&
@@ -224,6 +238,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           :final dragDetails,
           :final velocity,
         ):
+        if (!canDrag) return true;
         if (dragDetails != null) {
           // When we are overscrolling at the top
           if (metrics.extentBefore <= 0) {
@@ -239,6 +254,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             }
           }
         } else {
+          if (!canDrag) return true;
           if (_isDragging.value) {
             _isDragging.value = false;
             _handleDragEnd(
@@ -257,6 +273,8 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
 
       case final ScrollEndNotification n:
+        if (!canDrag) return true;
+
         if (_isDragging.value) {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
