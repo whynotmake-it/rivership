@@ -43,6 +43,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     ),
     this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
+    this.onlyDragWhenScrollWasAtTop = true,
   }) : super();
 
   @override
@@ -77,6 +78,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool clearBarrierImmediately;
 
   @override
+  final bool onlyDragWhenScrollWasAtTop;
+
+  @override
   Widget buildContent(BuildContext context) => DecoratedBox(
         decoration: ShapeDecoration(shape: shape),
         child: ClipPath(
@@ -90,6 +94,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 class _RelativeGestureDetector extends StatelessWidget {
   const _RelativeGestureDetector({
     required this.scrollableCanMoveBack,
+    required this.onlyDragWhenScrollWasAtTop,
     required this.onRelativeDragStart,
     required this.onRelativeDragUpdate,
     required this.onRelativeDragEnd,
@@ -97,6 +102,7 @@ class _RelativeGestureDetector extends StatelessWidget {
   });
 
   final bool scrollableCanMoveBack;
+  final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
   final ValueChanged<double> onRelativeDragUpdate;
   final ValueChanged<double> onRelativeDragEnd;
@@ -106,6 +112,7 @@ class _RelativeGestureDetector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScrollDragDetector(
+      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: scrollableCanMoveBack,
       onVerticalDragStart: (details) => onRelativeDragStart(),
       onVerticalDragEnd: (details) {
@@ -156,6 +163,17 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// Defaults to true.
   /// {@endtemplate}
   bool get clearBarrierImmediately => true;
+
+  /// {@template onlyDragWhenScrollWasAtTop}
+  /// Whether the sheet should only start being draggable when its scrollable
+  /// content was at the top whenever the user initiates a drag.
+  ///
+  /// If this is true, and the user starts scrolling up from somewhere other
+  /// than the top, the scroll view will perform a normal overscroll.
+  ///
+  /// This matches iOS sheet behavior and defaults to true.
+  /// {@endtemplate}
+  bool get onlyDragWhenScrollWasAtTop => true;
 
   double? _dragEndVelocity;
 
@@ -212,6 +230,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) => _RelativeGestureDetector(
+        onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
         scrollableCanMoveBack: animation.value < 1,
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
