@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
-import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
+
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 
@@ -47,11 +47,8 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
-    this.snappingPoints = const [
-      SnappingPoint.relative(1),
-    ],
-    this.initialSnap,
-  }) : super();
+    this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
+  });
 
   @override
   final Motion motion;
@@ -87,14 +84,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   @override
   final bool onlyDragWhenScrollWasAtTop;
 
+  /// The snapping configuration for the sheet.
   @override
-  final List<SnappingPoint> snappingPoints;
-
-  /// The initial snap point when the sheet opens.
-  ///
-  /// If null, defaults to the lowest non-zero snap point.
-  @override
-  final SnappingPoint? initialSnap;
+  late final SheetSnappingConfig snappingConfig;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -191,128 +183,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
 
-  /// The snapping points for the sheet, ordered from smallest to largest.
+  /// The snapping configuration for the sheet.
   ///
-  /// Defaults to only containing [SnappingPoint.relative(1.0)] (fully open).
+  /// Defaults to only containing a relative point at 1.0 (fully open).
   ///
-  /// A fully closed snapping point of [SnappingPoint.relative(0.0)] is always
-  /// added implicitly, even if not specified here.
-  final List<SnappingPoint> snappingPoints = const [
-    SnappingPoint.relative(1),
-  ];
-
-  /// [snappingPoints] but with an implicit 0.0 point added.
-  @protected
-  Set<SnappingPoint> get internalSnappingPoints {
-    return {
-      const SnappingPoint.relative(0),
-      ...snappingPoints,
-    };
-  }
-
-  SnappingPoint get _maxExtent => internalSnappingPoints.isNotEmpty
-      ? internalSnappingPoints.last
-      : const SnappingPoint.relative(1);
-
-  /// The initial snap point when the sheet opens.
-  ///
-  /// If null, defaults to the lowest non-zero snap point.
-  /// If all snap points are zero or there are no snap points,
-  /// defaults to 1.0 (fully open).
-  SnappingPoint? get initialSnap => null;
+  /// A fully closed point of 0.0 is always added implicitly.
+  SheetSnappingConfig get snappingConfig =>
+      const SheetSnappingConfig.relative([1.0]);
 
   double? _dragEndVelocity;
-
-  /// Gets the effective initial snap point, with fallback logic.
-  double _getInitialSnapValue(double sheetHeight) {
-    if (initialSnap case final initial?) {
-      return initial.toRelative(sheetHeight);
-    }
-
-    // Find the lowest non-zero snap point
-    final relativeSnapPoints = internalSnappingPoints
-        .map((point) => point.toRelative(sheetHeight))
-        .where((value) => value > 0.001) // Exclude values effectively zero
-        .toList();
-
-    if (relativeSnapPoints.isNotEmpty) {
-      return relativeSnapPoints.first;
-    }
-
-    // Fallback to fully open if no valid points found
-    return 1;
-  }
-
-  /// Finds the closest snapping point based on current position and velocity.
-  SnappingPoint _findTargetSnapPoint(
-    double currentValue,
-    double velocity,
-    double sheetHeight,
-  ) {
-    // Convert all snap points to relative values for comparison
-    final relativeSnapPoints = internalSnappingPoints
-        .map((point) => point.toRelative(sheetHeight))
-        .toList()
-      ..sort();
-
-    // Remove duplicates and ensure they're within bounds
-    final validSnapPoints = relativeSnapPoints
-        .toSet()
-        .where((point) => point >= 0.0 && point <= 1.0)
-        .toList()
-      ..sort();
-
-    if (validSnapPoints.isEmpty) {
-      // Fallback to default points if none are valid
-      return const SnappingPoint.relative(1);
-    }
-
-    // For high velocity, predict where the sheet would naturally settle
-    const velocityThreshold = 0.5;
-
-    if (velocity.abs() > velocityThreshold) {
-      // High velocity - predict the natural settling position
-      final projectedPosition = currentValue - (velocity * 0.3);
-
-      // Find the closest snap point to the projected position
-      var minDistance = double.infinity;
-      var targetSnapValue = validSnapPoints.first;
-
-      for (final snapValue in validSnapPoints) {
-        final distance = (projectedPosition - snapValue).abs();
-        if (distance < minDistance) {
-          minDistance = distance;
-          targetSnapValue = snapValue;
-        }
-      }
-
-      // Return the original snap point that matches this relative value
-      return internalSnappingPoints.firstWhere(
-        (point) =>
-            (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
-        orElse: () => SnappingPoint.relative(targetSnapValue),
-      );
-    } else {
-      // Low velocity - snap to the closest point based on current position
-      var minDistance = double.infinity;
-      var targetSnapValue = validSnapPoints.first;
-
-      for (final snapValue in validSnapPoints) {
-        final distance = (currentValue - snapValue).abs();
-        if (distance < minDistance) {
-          minDistance = distance;
-          targetSnapValue = snapValue;
-        }
-      }
-
-      // Return the original snap point that matches this relative value
-      return internalSnappingPoints.firstWhere(
-        (point) =>
-            (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
-        orElse: () => SnappingPoint.relative(targetSnapValue),
-      );
-    }
-  }
 
   @override
   Duration get transitionDuration => switch (motion) {
@@ -339,7 +218,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // Opening: use initial snap point or default
       if (navigator?.context != null) {
         final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
-        endValue = _getInitialSnapValue(sheetHeight);
+        endValue = snappingConfig.resolve(sheetHeight).initialSnap;
       } else {
         // Fallback if context is not available
         endValue = 1.0;
@@ -367,7 +246,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       builder: (context, child) => _RelativeGestureDetector(
         onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
         scrollableCanMoveBack: animation.value <
-            _maxExtent.toRelative(MediaQuery.sizeOf(context).height),
+            snappingConfig.resolve(MediaQuery.sizeOf(context).height).maxExtent,
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
         onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
@@ -489,12 +368,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       _dragEndVelocity = null;
     } else {
       // Find the target snap point based on position and velocity
-      final targetSnapPoint = _findTargetSnapPoint(
-        currentValue,
-        velocity,
-        sheetHeight,
-      );
-      final targetValue = targetSnapPoint.toRelative(sheetHeight);
+      final targetValue =
+          snappingConfig.resolve(sheetHeight).findTargetSnapPoint(
+                currentValue,
+                velocity,
+                sheetHeight,
+              );
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
