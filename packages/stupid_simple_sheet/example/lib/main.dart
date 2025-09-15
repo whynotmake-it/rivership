@@ -56,6 +56,24 @@ final stupidSimpleSheetRoutes = [
       ),
     ),
   ),
+  NamedRouteDef(
+    name: 'Snapping Sheet',
+    path: 'snapping-sheet',
+    builder: (context, data) => _CupertinoSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        snappingPoints: const [
+          SnappingPoint.relative(0),
+          SnappingPoint.relative(0.5),
+          SnappingPoint.relative(1),
+        ],
+        initialSnap: SnappingPoint.relative(0.5),
+        child: child,
+      ),
+    ),
+  ),
 ];
 
 final router = RootStackRouter.build(
@@ -95,6 +113,10 @@ class MotorExample extends StatelessWidget {
             CupertinoButton.filled(
               child: Text('Resizing Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Small Sheet')),
+            ),
+            CupertinoButton.filled(
+              child: Text('Snapping Sheet'),
+              onPressed: () => context.navigateTo(NamedRoute('Snapping Sheet')),
             ),
           ],
         ),

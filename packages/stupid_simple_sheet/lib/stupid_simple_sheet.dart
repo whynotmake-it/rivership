@@ -2,8 +2,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
+export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 
 /// A modal route that displays a sheet that slides up from the bottom.
@@ -44,6 +46,11 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
+    this.snappingPoints = const [
+      SnappingPoint.relative(0),
+      SnappingPoint.relative(1),
+    ],
+    this.initialSnap,
   }) : super();
 
   @override
@@ -79,6 +86,15 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool onlyDragWhenScrollWasAtTop;
+
+  @override
+  final List<SnappingPoint> snappingPoints;
+
+  /// The initial snap point when the sheet opens.
+  ///
+  /// If null, defaults to the lowest non-zero snap point.
+  @override
+  final SnappingPoint? initialSnap;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -175,25 +191,114 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
 
+  /// The snapping points for the sheet.
+  ///
+  /// Defaults to [SnappingPoint.relative(0.0)] (closed) and
+  /// [SnappingPoint.relative(1.0)] (fully open).
+  List<SnappingPoint> get snappingPoints => const [
+        SnappingPoint.relative(0),
+        SnappingPoint.relative(1),
+      ];
+
+  /// The initial snap point when the sheet opens.
+  ///
+  /// If null, defaults to the lowest non-zero snap point.
+  /// If all snap points are zero or there are no snap points,
+  /// defaults to 1.0 (fully open).
+  SnappingPoint? get initialSnap => null;
+
   double? _dragEndVelocity;
 
-  bool _shouldDismiss(double velocity, double currentValue) {
-    // Constants for dismissal logic
-    const dismissThreshold = 0.5; // Dismiss if dragged more than 50% down
-    const velocityThreshold = .5; // Relative velocity threshold
-
-    // High downward velocity should dismiss regardless of position
-    if (velocity > velocityThreshold) {
-      return true;
+  /// Gets the effective initial snap point, with fallback logic.
+  double _getInitialSnapValue(double sheetHeight) {
+    if (initialSnap != null) {
+      return initialSnap!.toRelative(sheetHeight);
     }
 
-    // High upward velocity should not dismiss regardless of position
-    if (velocity < -velocityThreshold) {
-      return false;
+    // Find the lowest non-zero snap point
+    final relativeSnapPoints = snappingPoints
+        .map((point) => point.toRelative(sheetHeight))
+        .where((value) => value > 0.001) // Exclude values effectively zero
+        .toList()
+      ..sort();
+
+    if (relativeSnapPoints.isNotEmpty) {
+      return relativeSnapPoints.first;
     }
 
-    // For low velocities, use position-based logic
-    return currentValue < dismissThreshold;
+    // Fallback to fully open if no valid points found
+    return 1;
+  }
+
+  /// Finds the closest snapping point based on current position and velocity.
+  SnappingPoint _findTargetSnapPoint(
+    double currentValue,
+    double velocity,
+    double sheetHeight,
+  ) {
+    // Convert all snap points to relative values for comparison
+    final relativeSnapPoints = snappingPoints
+        .map((point) => point.toRelative(sheetHeight))
+        .toList()
+      ..sort();
+
+    // Remove duplicates and ensure they're within bounds
+    final validSnapPoints = relativeSnapPoints
+        .toSet()
+        .where((point) => point >= 0.0 && point <= 1.0)
+        .toList()
+      ..sort();
+
+    if (validSnapPoints.isEmpty) {
+      // Fallback to default points if none are valid
+      return const SnappingPoint.relative(1);
+    }
+
+    // For high velocity, predict where the sheet would naturally settle
+    const velocityThreshold = 0.5;
+
+    if (velocity.abs() > velocityThreshold) {
+      // High velocity - predict the natural settling position
+      final projectedPosition = currentValue - (velocity * 0.3);
+
+      // Find the closest snap point to the projected position
+      var minDistance = double.infinity;
+      var targetSnapValue = validSnapPoints.first;
+
+      for (final snapValue in validSnapPoints) {
+        final distance = (projectedPosition - snapValue).abs();
+        if (distance < minDistance) {
+          minDistance = distance;
+          targetSnapValue = snapValue;
+        }
+      }
+
+      // Return the original snap point that matches this relative value
+      return snappingPoints.firstWhere(
+        (point) =>
+            (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
+        orElse: () => SnappingPoint.relative(targetSnapValue),
+      );
+    } else {
+      // Low velocity - snap to the closest point based on current position
+      var minDistance = double.infinity;
+      var targetSnapValue = validSnapPoints.first;
+
+      for (final snapValue in validSnapPoints) {
+        final distance = (currentValue - snapValue).abs();
+        if (distance < minDistance) {
+          minDistance = distance;
+          targetSnapValue = snapValue;
+        }
+      }
+
+      // Return the original snap point that matches this relative value
+      return snappingPoints.firstWhere(
+        (point) =>
+            (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
+        orElse: () => SnappingPoint.relative(targetSnapValue),
+      );
+    }
   }
 
   @override
@@ -214,8 +319,25 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   Simulation? createSimulation({required bool forward}) {
     final v = _dragEndVelocity;
     _dragEndVelocity = null;
+
+    // Get the appropriate end value
+    double endValue;
+    if (forward) {
+      // Opening: use initial snap point or default
+      if (navigator?.context != null) {
+        final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
+        endValue = _getInitialSnapValue(sheetHeight);
+      } else {
+        // Fallback if context is not available
+        endValue = 1.0;
+      }
+    } else {
+      // Closing
+      endValue = 0.0;
+    }
+
     return motion.createSimulation(
-      end: forward ? 1.0 : 0.0,
+      end: endValue,
       start: animation?.value ?? 0,
       velocity: -(v ?? 0),
     );
@@ -231,7 +353,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       animation: animation,
       builder: (context, child) => _RelativeGestureDetector(
         onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-        scrollableCanMoveBack: animation.value < 1,
+        scrollableCanMoveBack: animation.value <
+            snappingPoints.last.toRelative(
+              MediaQuery.sizeOf(context).height,
+            ),
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
         onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
@@ -340,6 +465,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     _dragEndVelocity = velocity;
 
+    // Get the sheet height for pixel-based calculations
+    final sheetHeight = MediaQuery.sizeOf(context).height;
+
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > 1.0) {
       final backSim = motion.createSimulation(
@@ -349,17 +477,25 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       controller!.animateWith(backSim);
       _dragEndVelocity = null;
     } else {
-      // Determine if we should dismiss based on velocity and position
-      final shouldDismiss = _shouldDismiss(velocity, currentValue);
+      // Find the target snap point based on position and velocity
+      final targetSnapPoint = _findTargetSnapPoint(
+        currentValue,
+        velocity,
+        sheetHeight,
+      );
+      final targetValue = targetSnapPoint.toRelative(sheetHeight);
 
-      if (shouldDismiss) {
+      // If target is 0 (closed), dismiss the sheet
+      if (targetValue <= 0.001) {
         Navigator.of(context).pop();
       } else {
-        final backSim = motion.createSimulation(
+        // Animate to the target snap point
+        final snapSim = motion.createSimulation(
           start: currentValue,
+          end: targetValue,
           velocity: -_dragEndVelocity!,
         );
-        controller!.animateWith(backSim);
+        controller!.animateWith(snapSim);
         _dragEndVelocity = null;
       }
     }
