@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
 // to achieve a smoother end to the corner radius animation.  A value of 1.0 would use
@@ -29,32 +30,46 @@ final Animatable<double> _kOpacityTween = Tween<double>(begin: 0.0, end: 0.10);
 // will go from a default of 1.0 to 1.0 - _kSheetScaleFactor.
 const double _kSheetScaleFactor = 0.0835;
 
+const _kSheetPaddingToPrevious = 11.0;
+
 final Animatable<double> _kScaleTween =
     Tween<double>(begin: 1.0, end: 1.0 - _kSheetScaleFactor);
 
-class CopiedCupertinoSheetTransition {
-  /// The primary delegated transition. Will slide a non [CupertinoSheetRoute] page down.
-  ///
-  /// Provided to the previous route to coordinate transitions between routes.
-  ///
-  /// If a [CupertinoSheetRoute] already exists in the stack, then it will
-  /// slide the previous sheet upwards instead.
-  static Widget delegateTransition(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    bool allowSnapshotting,
-    Widget? child,
-  ) {
+abstract class CopiedCupertinoSheetTransitions {
+  static double _getRelativeTopPadding(
+    BuildContext context, {
+    double extraPadding = 0,
+    double minFraction = 0.05,
+  }) {
     final safeArea = MediaQuery.paddingOf(context);
     final height = MediaQuery.sizeOf(context).height;
 
+    if (height == 0) {
+      return minFraction;
+    }
     // Ensure that the sheet moves down by at least 5% of the screen height if
     // the safe area is very small (e.g. no notch).
-    final topFactor = max(safeArea.top / height, 0.05);
+    return max((safeArea.top + extraPadding) / height, minFraction);
+  }
 
-    final Animatable<Offset> topDownTween =
-        Tween<Offset>(begin: Offset.zero, end: Offset(0, topFactor));
+  /// The primary delegated transition. Will slide a non [CupertinoSheetRoute] page down.
+  ///
+  /// Provided to the previous route to coordinate transitions between routes.
+  static Widget? secondarySlideDownTransition(
+    BuildContext context, {
+    required Animation<double> animation,
+    required Animation<double> secondaryAnimation,
+    required (double, double) opacityRange,
+    required (double, double) slideBackRange,
+    Widget? child,
+  }) {
+    final Animatable<Offset> topDownTween = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset(
+        0,
+        _getRelativeTopPadding(context),
+      ),
+    );
 
     final double deviceCornerRadius =
         (MediaQuery.maybeViewPaddingOf(context)?.top ?? 0) *
@@ -70,37 +85,37 @@ class CopiedCupertinoSheetTransition {
       end: BorderRadius.circular(8),
     );
 
-    final Animation<BorderRadiusGeometry> radiusAnimation =
-        secondaryAnimation.drive(decorationTween);
-    final Animation<double> opacityAnimation =
-        secondaryAnimation.drive(_kOpacityTween);
-    final Animation<Offset> slideAnimation =
-        secondaryAnimation.drive(topDownTween);
-    final Animation<double> scaleAnimation =
-        secondaryAnimation.drive(_kScaleTween);
+    final Animation<BorderRadiusGeometry> radiusAnimation = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .drive(decorationTween);
 
-    final bool isDarkMode =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final Color overlayColor =
-        isDarkMode ? const Color(0xFFc8c8c8) : const Color(0xFF000000);
+    final Animation<Offset> slideAnimation = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .drive(topDownTween);
+    final Animation<double> scaleAnimation = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .drive(_kScaleTween);
 
-    final Widget? contrastedChild =
-        child != null && !secondaryAnimation.isDismissed
-            ? Stack(
-                children: <Widget>[
-                  child,
-                  IgnorePointer(
-                    child: FadeTransition(
-                      opacity: opacityAnimation,
-                      child: ColoredBox(
-                          color: overlayColor, child: const SizedBox.expand()),
-                    ),
-                  ),
-                ],
-              )
-            : child;
+    final Widget? contrastedChild = _getOverlayedChild(
+      context,
+      child,
+      secondaryAnimation.remapped(
+        start: opacityRange.$1,
+        end: opacityRange.$2,
+      ),
+    );
 
-    final double topGapHeight = MediaQuery.sizeOf(context).height * 0.08;
+    final double topGapHeight =
+        MediaQuery.sizeOf(context).height * _getRelativeTopPadding(context);
 
     return Stack(
       children: <Widget>[
@@ -128,6 +143,137 @@ class CopiedCupertinoSheetTransition {
                   child: contrastedChild,
                 );
               },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Widget secondarySlideUpTransition(
+    BuildContext context, {
+    required Animation<double> animation,
+    required Animation<double> secondaryAnimation,
+    required (double, double) opacityRange,
+    required (double, double) slideBackRange,
+    Widget? child,
+  }) {
+    return SlideTransition(
+      position: secondaryAnimation
+          .remapped(
+            start: slideBackRange.$1,
+            end: slideBackRange.$2,
+          )
+          .drive(
+            Tween<Offset>(
+              begin: Offset(0, 0),
+              end: Offset(
+                0,
+                -_kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
+              ),
+            ),
+          ),
+      transformHitTests: false,
+      child: ScaleTransition(
+        scale: secondaryAnimation
+            .remapped(
+              start: slideBackRange.$1,
+              end: slideBackRange.$2,
+            )
+            .drive(_kScaleTween),
+        alignment: Alignment.topCenter,
+        filterQuality: FilterQuality.medium,
+        child: _getOverlayedChild(
+          context,
+          child,
+          secondaryAnimation.remapped(
+            start: opacityRange.$1,
+            end: opacityRange.$2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget fullTransition(
+    BuildContext context, {
+    required Animation<double> animation,
+    required Animation<double> secondaryAnimation,
+    required (double, double) opacityRange,
+    required (double, double) slideBackRange,
+    Widget? child,
+  }) {
+    final offsetTween = Tween<Offset>(
+      begin: Offset(0, 1),
+      end: Offset(0, 0),
+    );
+
+    final radiusTween = BorderRadiusTween(
+      begin: BorderRadius.circular(12),
+      end: BorderRadius.circular(8),
+    );
+
+    final Animation<Offset> positionAnimation = animation.drive(offsetTween);
+
+    return SafeArea(
+      left: false,
+      right: false,
+      bottom: false,
+      minimum: EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
+      child: Padding(
+        padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
+        child: SizedBox.expand(
+          child: secondarySlideUpTransition(
+            context,
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            opacityRange: opacityRange,
+            slideBackRange: slideBackRange,
+            child: SlideTransition(
+              position: positionAnimation,
+              child: ValueListenableBuilder(
+                valueListenable: secondaryAnimation
+                    .remapped(
+                      start: slideBackRange.$1,
+                      end: slideBackRange.$2,
+                    )
+                    .drive(radiusTween),
+                builder: (context, value, child) {
+                  return ClipRSuperellipse(
+                    borderRadius: value!,
+                    child: child,
+                  );
+                },
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget? _getOverlayedChild(
+    BuildContext context,
+    Widget? child,
+    Animation<double> animation,
+  ) {
+    final opacity = animation.drive(_kOpacityTween);
+
+    final bool isDarkMode =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final overlayColor =
+        isDarkMode ? const Color(0xFFc8c8c8) : const Color(0xFF000000);
+
+    return Stack(
+      children: <Widget>[
+        if (child != null) child,
+        IgnorePointer(
+          child: FadeTransition(
+            opacity: opacity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: overlayColor),
+              child: const SizedBox.expand(),
             ),
           ),
         ),

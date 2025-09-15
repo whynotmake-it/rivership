@@ -147,6 +147,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   var _scrollStartedAtTop = false;
 
   DragStartDetails? _dragStartDetails;
+  late ScrollMetrics _startMetrics;
 
   bool get hasVertical =>
       widget.onVerticalDragStart != null ||
@@ -194,6 +195,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
                   ? _DraggingScrollBehavior(
                       parent: ScrollConfiguration.of(context),
                       axes: dragAxes,
+                      startMetrics: _startMetrics,
                     )
                   : ScrollConfiguration.of(context),
               child: child!,
@@ -209,9 +211,10 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     if (!dragAxes.contains(notification.metrics.axis)) return true;
 
     switch (notification) {
-      case ScrollStartNotification(:final dragDetails):
+      case ScrollStartNotification(:final dragDetails, :final metrics):
         _scrollStartedAtTop = notification.metrics.extentBefore <= kTouchSlop;
         _dragStartDetails = dragDetails;
+        _startMetrics = metrics;
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
@@ -336,9 +339,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
 class _DraggingScrollBehavior extends ScrollBehavior {
   const _DraggingScrollBehavior({
+    required this.startMetrics,
     required this.parent,
     required this.axes,
   });
+
+  final ScrollMetrics startMetrics;
 
   final ScrollBehavior parent;
 
@@ -346,7 +352,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) =>
-      _OverscrollScrollPhysics(axes: axes);
+      _OverscrollScrollPhysics(axes: axes, startMetrics: startMetrics);
 
   @override
   Widget buildOverscrollIndicator(
@@ -401,18 +407,28 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 class _OverscrollScrollPhysics extends ClampingScrollPhysics {
   const _OverscrollScrollPhysics({
     required this.axes,
+    required this.startMetrics,
     super.parent,
   });
 
   final Set<Axis> axes;
 
+  final ScrollMetrics startMetrics;
+
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
     return _OverscrollScrollPhysics(
       axes: axes,
+      startMetrics: startMetrics,
       parent: buildParent(ancestor),
     );
   }
+
+  @override
+  bool get allowUserScrolling => false;
+
+  @override
+  bool get allowImplicitScrolling => false;
 
   @override
   double applyBoundaryConditions(

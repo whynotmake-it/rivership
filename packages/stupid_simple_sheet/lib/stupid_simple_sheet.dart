@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
@@ -47,7 +48,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
     this.snappingPoints = const [
-      SnappingPoint.relative(0),
       SnappingPoint.relative(1),
     ],
     this.initialSnap,
@@ -191,14 +191,28 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
 
-  /// The snapping points for the sheet.
+  /// The snapping points for the sheet, ordered from smallest to largest.
   ///
-  /// Defaults to [SnappingPoint.relative(0.0)] (closed) and
-  /// [SnappingPoint.relative(1.0)] (fully open).
-  List<SnappingPoint> get snappingPoints => const [
-        SnappingPoint.relative(0),
-        SnappingPoint.relative(1),
-      ];
+  /// Defaults to only containing [SnappingPoint.relative(1.0)] (fully open).
+  ///
+  /// A fully closed snapping point of [SnappingPoint.relative(0.0)] is always
+  /// added implicitly, even if not specified here.
+  final List<SnappingPoint> snappingPoints = const [
+    SnappingPoint.relative(1),
+  ];
+
+  /// [snappingPoints] but with an implicit 0.0 point added.
+  @protected
+  Set<SnappingPoint> get internalSnappingPoints {
+    return {
+      const SnappingPoint.relative(0),
+      ...snappingPoints,
+    };
+  }
+
+  SnappingPoint get _maxExtent => internalSnappingPoints.isNotEmpty
+      ? internalSnappingPoints.last
+      : const SnappingPoint.relative(1);
 
   /// The initial snap point when the sheet opens.
   ///
@@ -211,16 +225,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   /// Gets the effective initial snap point, with fallback logic.
   double _getInitialSnapValue(double sheetHeight) {
-    if (initialSnap != null) {
-      return initialSnap!.toRelative(sheetHeight);
+    if (initialSnap case final initial?) {
+      return initial.toRelative(sheetHeight);
     }
 
     // Find the lowest non-zero snap point
-    final relativeSnapPoints = snappingPoints
+    final relativeSnapPoints = internalSnappingPoints
         .map((point) => point.toRelative(sheetHeight))
         .where((value) => value > 0.001) // Exclude values effectively zero
-        .toList()
-      ..sort();
+        .toList();
 
     if (relativeSnapPoints.isNotEmpty) {
       return relativeSnapPoints.first;
@@ -237,7 +250,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double sheetHeight,
   ) {
     // Convert all snap points to relative values for comparison
-    final relativeSnapPoints = snappingPoints
+    final relativeSnapPoints = internalSnappingPoints
         .map((point) => point.toRelative(sheetHeight))
         .toList()
       ..sort();
@@ -274,7 +287,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       }
 
       // Return the original snap point that matches this relative value
-      return snappingPoints.firstWhere(
+      return internalSnappingPoints.firstWhere(
         (point) =>
             (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
         orElse: () => SnappingPoint.relative(targetSnapValue),
@@ -293,7 +306,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       }
 
       // Return the original snap point that matches this relative value
-      return snappingPoints.firstWhere(
+      return internalSnappingPoints.firstWhere(
         (point) =>
             (point.toRelative(sheetHeight) - targetSnapValue).abs() < 0.001,
         orElse: () => SnappingPoint.relative(targetSnapValue),
@@ -354,9 +367,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       builder: (context, child) => _RelativeGestureDetector(
         onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
         scrollableCanMoveBack: animation.value <
-            snappingPoints.last.toRelative(
-              MediaQuery.sizeOf(context).height,
-            ),
+            _maxExtent.toRelative(MediaQuery.sizeOf(context).height),
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
         onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),

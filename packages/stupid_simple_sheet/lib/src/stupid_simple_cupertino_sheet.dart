@@ -21,7 +21,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     ),
     this.clearBarrierImmediately = true,
     this.snappingPoints = const [
-      SnappingPoint.relative(0),
       SnappingPoint.relative(1),
     ],
     this.initialSnap,
@@ -60,30 +59,58 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) =>
-          CopiedCupertinoSheetTransition.delegateTransition(
+          CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
             context,
-            animation.clamped,
-            secondaryAnimation.clamped,
-            allowSnapshotting,
-            child,
+            animation: animation.clamped,
+            secondaryAnimation: secondaryAnimation.clamped,
+            slideBackRange: _getTopTwoSnapPoints(context),
+            opacityRange: _getOpacityRange(context),
+            child: child,
           );
 
   @override
   Widget buildContent(BuildContext context) {
-    final topPadding = MediaQuery.heightOf(context) * 0.08;
     return MediaQuery.removePadding(
       context: context,
       removeTop: true,
-      child: Padding(
-        padding: EdgeInsets.only(top: topPadding),
-        child: ClipRSuperellipse(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          child: CupertinoUserInterfaceLevel(
-            data: CupertinoUserInterfaceLevelData.elevated,
-            child: child,
-          ),
-        ),
+      child: CupertinoUserInterfaceLevel(
+        data: CupertinoUserInterfaceLevelData.elevated,
+        child: child,
       ),
+    );
+  }
+
+  (double, double) _getTopTwoSnapPoints(BuildContext context) {
+    final lastSnapPoint = snappingPoints.isNotEmpty
+        ? snappingPoints.last
+        : const SnappingPoint.relative(1);
+
+    final secondLastSnapPoint = snappingPoints.length > 1
+        ? snappingPoints[snappingPoints.length - 2]
+        : const SnappingPoint.relative(0);
+
+    final height = MediaQuery.sizeOf(context).height;
+
+    return (
+      secondLastSnapPoint.toRelative(height),
+      lastSnapPoint.toRelative(height),
+    );
+  }
+
+  (double, double) _getOpacityRange(BuildContext context) {
+    final firstSnapPoint = snappingPoints.isNotEmpty
+        ? snappingPoints.first
+        : const SnappingPoint.relative(0);
+
+    final secondSnapPoint = snappingPoints.length > 1
+        ? snappingPoints[1]
+        : const SnappingPoint.relative(1);
+
+    final height = MediaQuery.sizeOf(context).height;
+
+    return (
+      firstSnapPoint.toRelative(height),
+      secondSnapPoint.toRelative(height),
     );
   }
 
@@ -94,11 +121,36 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return CupertinoSheetTransition(
-      primaryRouteAnimation: animation.clamped,
-      secondaryRouteAnimation: secondaryAnimation.clamped,
-      linearTransition: true,
+    return CopiedCupertinoSheetTransitions.fullTransition(
+      context,
+      animation: animation.clamped,
+      secondaryAnimation: secondaryAnimation.clamped,
+      slideBackRange: _getTopTwoSnapPoints(context),
+      opacityRange: _getOpacityRange(context),
       child: child,
     );
+  }
+
+  @override
+  bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
+    return nextRoute is StupidSimpleCupertinoSheetRoute;
+  }
+
+  @override
+  void didChangeNext(Route<dynamic>? nextRoute) {
+    super.didChangeNext(nextRoute);
+    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+    }
+  }
+
+  @override
+  void didPopNext(Route<dynamic> nextRoute) {
+    super.didPopNext(nextRoute);
+    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+    }
   }
 }
