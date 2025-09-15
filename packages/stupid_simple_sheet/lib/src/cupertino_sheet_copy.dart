@@ -3,6 +3,8 @@
 library;
 // ignore_for_file: type=lint
 
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -21,12 +23,6 @@ const double _kRoundedDeviceCornersThreshold = 20.0;
 
 final Animatable<double> _kOpacityTween = Tween<double>(begin: 0.0, end: 0.10);
 
-// Offset from top of screen to slightly down when a fullscreen page is covered
-// by a sheet. Values found from eyeballing a simulator running iOS 18.0.
-final Animatable<Offset> _kTopDownTween = Tween<Offset>(
-  begin: Offset.zero,
-  end: const Offset(0.0, 0.07),
-);
 // Amount the sheet in the background scales down. Found by measuring the width
 // of the sheet in the background and comparing against the screen width on the
 // iOS simulator showing an iPhone 16 pro running iOS 18.0. The scale transition
@@ -50,6 +46,16 @@ class CopiedCupertinoSheetTransition {
     bool allowSnapshotting,
     Widget? child,
   ) {
+    final safeArea = MediaQuery.paddingOf(context);
+    final height = MediaQuery.sizeOf(context).height;
+
+    // Ensure that the sheet moves down by at least 5% of the screen height if
+    // the safe area is very small (e.g. no notch).
+    final topFactor = max(safeArea.top / height, 0.05);
+
+    final Animatable<Offset> topDownTween =
+        Tween<Offset>(begin: Offset.zero, end: Offset(0, topFactor));
+
     final double deviceCornerRadius =
         (MediaQuery.maybeViewPaddingOf(context)?.top ?? 0) *
             _kDeviceCornerRadiusSmoothingFactor;
@@ -61,7 +67,7 @@ class CopiedCupertinoSheetTransition {
       begin: BorderRadius.vertical(
         top: Radius.circular(roundedDeviceCorners ? deviceCornerRadius : 0),
       ),
-      end: BorderRadius.circular(12),
+      end: BorderRadius.circular(8),
     );
 
     final Animation<BorderRadiusGeometry> radiusAnimation =
@@ -69,7 +75,7 @@ class CopiedCupertinoSheetTransition {
     final Animation<double> opacityAnimation =
         secondaryAnimation.drive(_kOpacityTween);
     final Animation<Offset> slideAnimation =
-        secondaryAnimation.drive(_kTopDownTween);
+        secondaryAnimation.drive(topDownTween);
     final Animation<double> scaleAnimation =
         secondaryAnimation.drive(_kScaleTween);
 
