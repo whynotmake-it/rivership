@@ -20,6 +20,11 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
       snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
+    this.snappingPoints = const [
+      SnappingPoint.relative(0),
+      SnappingPoint.relative(1),
+    ],
+    this.initialSnap,
   }) : super();
 
   @override
@@ -45,6 +50,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   bool get opaque => false;
+
+  @override
+  final List<SnappingPoint> snappingPoints;
+
+  @override
+  final SnappingPoint? initialSnap;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>

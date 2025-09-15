@@ -146,8 +146,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
   var _scrollStartedAtTop = false;
 
-  bool get canDrag => _scrollStartedAtTop || !widget.onlyDragWhenScrollWasAtTop;
-
   DragStartDetails? _dragStartDetails;
 
   bool get hasVertical =>
@@ -213,24 +211,20 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     switch (notification) {
       case ScrollStartNotification(:final dragDetails):
         _scrollStartedAtTop = notification.metrics.extentBefore <= kTouchSlop;
-
         _dragStartDetails = dragDetails;
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
         ):
-        if (!canDrag) return true;
-        if (dragDetails != null) {
+        if (dragDetails != null &&
+            _isScrollActuallyDrag(metrics, dragDetails)) {
           // When we are overscrolling at the top
-          if (metrics.extentBefore <= 0 &&
-              dragDetails.primaryDelta != null &&
-              dragDetails.primaryDelta! > 0) {
-            if (!_isDragging.value) {
-              _isDragging.value = true;
-              _handleDragStart(metrics.axis);
-            } else {
-              _handleDragUpdate(metrics.axis, dragDetails);
-            }
+
+          if (!_isDragging.value) {
+            _isDragging.value = true;
+            _handleDragStart(metrics.axis);
+          } else {
+            _handleDragUpdate(metrics.axis, dragDetails);
           }
         }
       case OverscrollNotification(
@@ -238,23 +232,21 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           :final dragDetails,
           :final velocity,
         ):
-        if (!canDrag) return true;
-        if (dragDetails != null) {
+        if (dragDetails != null &&
+            _isScrollActuallyDrag(metrics, dragDetails)) {
           // When we are overscrolling at the top
-          if (metrics.extentBefore <= 0) {
-            if (!_isDragging.value) {
-              _isDragging.value = true;
-              _handleDragStart(metrics.axis);
-            } else if (dragDetails.primaryDelta case final delta?
-                when delta < 0 && !widget.scrollableCanMoveBack) {
-              _isDragging.value = false;
-              _handleDragEnd(metrics.axis, DragEndDetails());
-            } else {
-              _handleDragUpdate(metrics.axis, dragDetails);
-            }
+
+          if (!_isDragging.value) {
+            _isDragging.value = true;
+            _handleDragStart(metrics.axis);
+          } else if (dragDetails.primaryDelta case final delta?
+              when delta < 0 && !widget.scrollableCanMoveBack) {
+            _isDragging.value = false;
+            _handleDragEnd(metrics.axis, DragEndDetails());
+          } else {
+            _handleDragUpdate(metrics.axis, dragDetails);
           }
         } else {
-          if (!canDrag) return true;
           if (_isDragging.value) {
             _isDragging.value = false;
             _handleDragEnd(
@@ -273,8 +265,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
 
       case final ScrollEndNotification n:
-        if (!canDrag) return true;
-
         if (_isDragging.value) {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -285,6 +275,36 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
     }
     return true;
+  }
+
+  /// Whether it is possible that the user could intend to drag backward
+  /// (towards the direction of the leading edge).
+  ///
+  /// If `onlyDragWhenScrollWasAtTop` is true, this is only possible if the
+  /// scroll started at the top.
+  bool get _canDragBackward =>
+      _scrollStartedAtTop || !widget.onlyDragWhenScrollWasAtTop;
+
+  /// Whether it is possible that the user could intend to drag forward
+  /// (towards the direction of the trailing edge).
+  bool get _canDragForward => widget.scrollableCanMoveBack;
+
+  /// Whether the given scroll metrics and drag details indicate that the user
+  /// is trying to drag instead of scroll.
+  bool _isScrollActuallyDrag(ScrollMetrics metrics, DragUpdateDetails details) {
+    // We are at the top and trying to scroll further up
+    if (metrics.extentBefore <= 0 &&
+        details.primaryDelta != null &&
+        details.primaryDelta! > 0) {
+      return _canDragBackward;
+    }
+
+    // We aren't at the top and can move further forward
+    if (details.primaryDelta != null && details.primaryDelta! < 0) {
+      return _canDragForward;
+    }
+
+    return false;
   }
 
   void _handleDragStart(Axis axis) {
@@ -333,18 +353,16 @@ class _DraggingScrollBehavior extends ScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) {
-    return child;
-  }
+  ) =>
+      child;
 
   @override
   Widget buildScrollbar(
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) {
-    return parent.buildScrollbar(context, child, details);
-  }
+  ) =>
+      parent.buildScrollbar(context, child, details);
 
   @override
   Set<PointerDeviceKind> get dragDevices => parent.dragDevices;
@@ -352,19 +370,16 @@ class _DraggingScrollBehavior extends ScrollBehavior {
   @override
   ScrollViewKeyboardDismissBehavior getKeyboardDismissBehavior(
     BuildContext context,
-  ) {
-    return parent.getKeyboardDismissBehavior(context);
-  }
+  ) =>
+      parent.getKeyboardDismissBehavior(context);
 
   @override
-  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) {
-    return parent.getMultitouchDragStrategy(context);
-  }
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) =>
+      parent.getMultitouchDragStrategy(context);
 
   @override
-  TargetPlatform getPlatform(BuildContext context) {
-    return parent.getPlatform(context);
-  }
+  TargetPlatform getPlatform(BuildContext context) =>
+      parent.getPlatform(context);
 
   @override
   Set<LogicalKeyboardKey> get pointerAxisModifiers =>
