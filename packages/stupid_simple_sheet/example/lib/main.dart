@@ -64,12 +64,10 @@ final stupidSimpleSheetRoutes = [
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
         settings: page,
-        snappingPoints: const [
-          SnappingPoint.relative(0),
-          SnappingPoint.relative(0.5),
-          SnappingPoint.relative(1),
-        ],
-        initialSnap: SnappingPoint.relative(0.5),
+        snappingConfig: SheetSnappingConfig.relative(
+          [0.5, 1.0],
+          initialSnap: 1,
+        ),
         child: child,
       ),
     ),
@@ -141,14 +139,20 @@ class _CupertinoSheetContent extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => CupertinoListTile(
-                title: Text('Item #$index'),
+          SliverSafeArea(
+              sliver: SliverMainAxisGroup(slivers: [
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => CupertinoListTile(
+                  title: Text('Item #$index'),
+                ),
+                childCount: 50,
               ),
-              childCount: 50,
             ),
-          ),
+            SliverToBoxAdapter(
+              child: CupertinoTextField(),
+            ),
+          ]))
         ],
       ),
     );
@@ -217,7 +221,7 @@ class _PagedSheetContent extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

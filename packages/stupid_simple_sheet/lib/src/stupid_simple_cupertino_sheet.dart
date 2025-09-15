@@ -16,16 +16,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     required this.child,
     super.settings,
     this.motion = const CupertinoMotion.smooth(
-      duration: Duration(milliseconds: 400),
+      duration: Duration(milliseconds: 350),
       snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
-    this.snappingPoints = const [
-      SnappingPoint.relative(1),
-    ],
-    this.initialSnap,
-  }) : super();
-
+    this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
+  });
   @override
   final Motion motion;
 
@@ -39,7 +35,11 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   Color? get barrierColor => CupertinoColors.transparent;
 
   @override
-  bool get barrierDismissible => false;
+  bool get barrierDismissible => switch (navigator) {
+        NavigatorState(:final context) =>
+          snappingConfig.resolveFromContext(context).hasInbetweenSnaps,
+        _ => false,
+      };
 
   @override
   String? get barrierLabel => null;
@@ -51,22 +51,21 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   bool get opaque => false;
 
   @override
-  final List<SnappingPoint> snappingPoints;
-
-  @override
-  final SnappingPoint? initialSnap;
+  final SheetSnappingConfig snappingConfig;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
-      (context, animation, secondaryAnimation, canSnapshot, child) =>
-          CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
-            context,
-            animation: animation.clamped,
-            secondaryAnimation: secondaryAnimation.clamped,
-            slideBackRange: _getTopTwoSnapPoints(context),
-            opacityRange: _getOpacityRange(context),
-            child: child,
-          );
+      (context, animation, secondaryAnimation, canSnapshot, child) {
+        final height = MediaQuery.sizeOf(context).height;
+        return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
+          context,
+          animation: animation.clamped,
+          secondaryAnimation: secondaryAnimation.clamped,
+          slideBackRange: snappingConfig.resolve(height).topTwoPoints,
+          opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
+          child: child,
+        );
+      };
 
   @override
   Widget buildContent(BuildContext context) {
@@ -80,40 +79,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     );
   }
 
-  (double, double) _getTopTwoSnapPoints(BuildContext context) {
-    final lastSnapPoint = snappingPoints.isNotEmpty
-        ? snappingPoints.last
-        : const SnappingPoint.relative(1);
-
-    final secondLastSnapPoint = snappingPoints.length > 1
-        ? snappingPoints[snappingPoints.length - 2]
-        : const SnappingPoint.relative(0);
-
-    final height = MediaQuery.sizeOf(context).height;
-
-    return (
-      secondLastSnapPoint.toRelative(height),
-      lastSnapPoint.toRelative(height),
-    );
-  }
-
-  (double, double) _getOpacityRange(BuildContext context) {
-    final firstSnapPoint = snappingPoints.isNotEmpty
-        ? snappingPoints.first
-        : const SnappingPoint.relative(0);
-
-    final secondSnapPoint = snappingPoints.length > 1
-        ? snappingPoints[1]
-        : const SnappingPoint.relative(1);
-
-    final height = MediaQuery.sizeOf(context).height;
-
-    return (
-      firstSnapPoint.toRelative(height),
-      secondSnapPoint.toRelative(height),
-    );
-  }
-
   @override
   Widget buildTransitions(
     BuildContext context,
@@ -121,12 +86,13 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    final height = MediaQuery.sizeOf(context).height;
     return CopiedCupertinoSheetTransitions.fullTransition(
       context,
-      animation: animation.clamped,
-      secondaryAnimation: secondaryAnimation.clamped,
-      slideBackRange: _getTopTwoSnapPoints(context),
-      opacityRange: _getOpacityRange(context),
+      animation: controller!.view,
+      secondaryAnimation: secondaryAnimation,
+      slideBackRange: snappingConfig.resolve(height).topTwoPoints,
+      opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
       child: child,
     );
   }

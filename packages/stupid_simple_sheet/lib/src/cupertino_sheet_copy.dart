@@ -22,8 +22,6 @@ const double _kDeviceCornerRadiusSmoothingFactor = 0.9;
 // to double the targeted radius of 12.  Determined through testing and visual inspection.
 const double _kRoundedDeviceCornersThreshold = 20.0;
 
-final Animatable<double> _kOpacityTween = Tween<double>(begin: 0.0, end: 0.10);
-
 // Amount the sheet in the background scales down. Found by measuring the width
 // of the sheet in the background and comparing against the screen width on the
 // iOS simulator showing an iPhone 16 pro running iOS 18.0. The scale transition
@@ -112,6 +110,7 @@ abstract class CopiedCupertinoSheetTransitions {
         start: opacityRange.$1,
         end: opacityRange.$2,
       ),
+      false,
     );
 
     final double topGapHeight =
@@ -190,6 +189,7 @@ abstract class CopiedCupertinoSheetTransitions {
             start: opacityRange.$1,
             end: opacityRange.$2,
           ),
+          true,
         ),
       ),
     );
@@ -209,47 +209,58 @@ abstract class CopiedCupertinoSheetTransitions {
     );
 
     final radiusTween = BorderRadiusTween(
-      begin: BorderRadius.circular(12),
-      end: BorderRadius.circular(8),
+      begin: BorderRadius.vertical(top: Radius.circular(12)),
+      end: BorderRadius.vertical(top: Radius.circular(8)),
     );
 
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);
 
-    return SafeArea(
-      left: false,
-      right: false,
-      bottom: false,
-      minimum: EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
-      child: Padding(
-        padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
-        child: SizedBox.expand(
-          child: secondarySlideUpTransition(
-            context,
-            animation: animation,
-            secondaryAnimation: secondaryAnimation,
-            opacityRange: opacityRange,
-            slideBackRange: slideBackRange,
-            child: SlideTransition(
-              position: positionAnimation,
-              child: ValueListenableBuilder(
-                valueListenable: secondaryAnimation
-                    .remapped(
-                      start: slideBackRange.$1,
-                      end: slideBackRange.$2,
-                    )
-                    .drive(radiusTween),
-                builder: (context, value, child) {
-                  return ClipRSuperellipse(
-                    borderRadius: value!,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ColoredBox(
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+        ),
+        SafeArea(
+          left: false,
+          right: false,
+          bottom: false,
+          minimum:
+              EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
+          child: Padding(
+            padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
+            child: SizedBox.expand(
+              child: secondarySlideUpTransition(
+                context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                opacityRange: opacityRange,
+                slideBackRange: slideBackRange,
+                child: SlideTransition(
+                  position: positionAnimation,
+                  transformHitTests: false,
+                  child: ValueListenableBuilder(
+                    valueListenable: secondaryAnimation
+                        .remapped(
+                          start: slideBackRange.$1,
+                          end: slideBackRange.$2,
+                        )
+                        .drive(radiusTween),
+                    builder: (context, value, child) {
+                      return ClipRSuperellipse(
+                        clipBehavior: Clip.antiAliasWithSaveLayer,
+                        borderRadius: value!,
+                        child: child,
+                      );
+                    },
                     child: child,
-                  );
-                },
-                child: child,
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -257,14 +268,17 @@ abstract class CopiedCupertinoSheetTransitions {
     BuildContext context,
     Widget? child,
     Animation<double> animation,
+    bool secondLayer,
   ) {
-    final opacity = animation.drive(_kOpacityTween);
-
     final bool isDarkMode =
         CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final overlayColor =
-        isDarkMode ? const Color(0xFFc8c8c8) : const Color(0xFF000000);
-
+    final overlayColor = isDarkMode && !secondLayer
+        ? const Color(0xFFc8c8c8)
+        : const Color(0xFF000000);
+    final opacity = animation.drive(Tween(
+      begin: 0.0,
+      end: secondLayer && isDarkMode ? 0.15 : 0.1,
+    ));
     return Stack(
       children: <Widget>[
         if (child != null) child,

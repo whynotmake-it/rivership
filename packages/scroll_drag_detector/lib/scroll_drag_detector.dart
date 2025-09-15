@@ -425,12 +425,6 @@ class _OverscrollScrollPhysics extends ClampingScrollPhysics {
   }
 
   @override
-  bool get allowUserScrolling => false;
-
-  @override
-  bool get allowImplicitScrolling => false;
-
-  @override
   double applyBoundaryConditions(
     ScrollMetrics position,
     double value,
