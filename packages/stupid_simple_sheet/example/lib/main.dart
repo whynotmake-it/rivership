@@ -59,7 +59,7 @@ final stupidSimpleSheetRoutes = [
   NamedRouteDef(
     name: 'Snapping Sheet',
     path: 'snapping-sheet',
-    builder: (context, data) => _CupertinoSheetContent(),
+    builder: (context, data) => _SnappingSheetContent(),
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
@@ -147,6 +147,37 @@ class _CupertinoSheetContent extends StatelessWidget {
                 title: Text('Item #$index'),
               ),
               childCount: 50,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnappingSheetContent extends StatelessWidget {
+  const _SnappingSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Sheet'),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: CupertinoButton.tinted(
+                child: Text('Another'),
+                onPressed: () =>
+                    context.pushRoute(NamedRoute('Snapping Sheet')),
+              ),
             ),
           ),
         ],

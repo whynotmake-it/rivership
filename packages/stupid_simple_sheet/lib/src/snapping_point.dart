@@ -25,7 +25,6 @@ class SnappingPoint {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is SnappingPoint &&
-          runtimeType == other.runtimeType &&
           value == other.value &&
           isRelative == other.isRelative;
 
