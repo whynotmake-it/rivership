@@ -66,7 +66,7 @@ final stupidSimpleSheetRoutes = [
         settings: page,
         snappingConfig: SheetSnappingConfig.relative(
           [0.5, 1.0],
-          initialSnap: 1,
+          initialSnap: .5,
         ),
         child: child,
       ),

@@ -51,7 +51,7 @@ sealed class SheetSnappingConfig {
   }
 
   /// Resolves the snapping configuration to a [RelativeSnappingConfig]
-  RelativeSnappingConfig resolveFromContext(BuildContext context) {
+  RelativeSnappingConfig resolveWith(BuildContext context) {
     return resolve(MediaQuery.sizeOf(context).height);
   }
 
