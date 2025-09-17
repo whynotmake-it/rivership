@@ -193,6 +193,8 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   double? _dragEndVelocity;
 
+  double? _animationTargetValue;
+
   @override
   Duration get transitionDuration => switch (motion) {
         CurvedMotion(:final duration) => duration,
@@ -227,7 +229,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // Closing
       endValue = 0.0;
     }
-
+    _animationTargetValue = endValue;
     return motion.createSimulation(
       end: endValue,
       start: animation?.value ?? 0,
@@ -245,8 +247,8 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       animation: animation,
       builder: (context, child) => _RelativeGestureDetector(
         onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-        scrollableCanMoveBack: animation.value <
-            snappingConfig.resolve(MediaQuery.sizeOf(context).height).maxExtent,
+        scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
+            snappingConfig.resolveWith(context).maxExtent,
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
         onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
@@ -344,6 +346,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final newValue = currentValue - adjustedDelta;
     controller?.value = newValue;
+    _animationTargetValue = newValue;
   }
 
   void _handleDragEnd(

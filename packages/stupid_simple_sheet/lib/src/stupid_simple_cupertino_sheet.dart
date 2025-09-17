@@ -20,13 +20,23 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
       snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
+    this.backgroundColor = CupertinoColors.systemBackground,
     this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
   });
+
+  @override
+  double get overshootResistance => 5000;
+
   @override
   final Motion motion;
 
   @override
   final bool clearBarrierImmediately;
+
+  /// The background color of the sheet.
+  ///
+  /// Will default [CupertinoColors.secondarySystemBackground] if not provided.
+  final Color backgroundColor;
 
   /// The widget to display in the sheet.
   final Widget child;
@@ -37,7 +47,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   bool get barrierDismissible => switch (navigator) {
         NavigatorState(:final context) =>
-          snappingConfig.resolveFromContext(context).hasInbetweenSnaps,
+          snappingConfig.resolveWith(context).hasInbetweenSnaps,
         _ => false,
       };
 
@@ -72,10 +82,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     return MediaQuery.removePadding(
       context: context,
       removeTop: true,
-      child: CupertinoUserInterfaceLevel(
-        data: CupertinoUserInterfaceLevelData.elevated,
-        child: child,
-      ),
+      child: child,
     );
   }
 
@@ -87,13 +94,18 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Widget child,
   ) {
     final height = MediaQuery.sizeOf(context).height;
-    return CopiedCupertinoSheetTransitions.fullTransition(
-      context,
-      animation: controller!.view,
-      secondaryAnimation: secondaryAnimation,
-      slideBackRange: snappingConfig.resolve(height).topTwoPoints,
-      opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
-      child: child,
+
+    return CupertinoUserInterfaceLevel(
+      data: CupertinoUserInterfaceLevelData.elevated,
+      child: CopiedCupertinoSheetTransitions.fullTransition(
+        context,
+        animation: controller!.view,
+        secondaryAnimation: secondaryAnimation,
+        slideBackRange: snappingConfig.resolve(height).topTwoPoints,
+        opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
+        backgroundColor: backgroundColor,
+        child: child,
+      ),
     );
   }
 

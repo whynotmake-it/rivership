@@ -6,8 +6,10 @@ library;
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
 // to achieve a smoother end to the corner radius animation.  A value of 1.0 would use
@@ -201,6 +203,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required Animation<double> secondaryAnimation,
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
+    required Color backgroundColor,
     Widget? child,
   }) {
     final offsetTween = Tween<Offset>(
@@ -215,52 +218,52 @@ abstract class CopiedCupertinoSheetTransitions {
 
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ColoredBox(
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-        ),
-        SafeArea(
-          left: false,
-          right: false,
-          bottom: false,
-          minimum:
-              EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
-          child: Padding(
-            padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
-            child: SizedBox.expand(
-              child: secondarySlideUpTransition(
-                context,
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                opacityRange: opacityRange,
-                slideBackRange: slideBackRange,
-                child: SlideTransition(
-                  position: positionAnimation,
-                  transformHitTests: false,
-                  child: ValueListenableBuilder(
-                    valueListenable: secondaryAnimation
-                        .remapped(
-                          start: slideBackRange.$1,
-                          end: slideBackRange.$2,
-                        )
-                        .drive(radiusTween),
-                    builder: (context, value, child) {
-                      return ClipRSuperellipse(
-                        clipBehavior: Clip.antiAliasWithSaveLayer,
-                        borderRadius: value!,
-                        child: child,
-                      );
-                    },
-                    child: child,
+    return SafeArea(
+      left: false,
+      right: false,
+      bottom: false,
+      minimum: EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
+      child: Padding(
+        padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
+        child: secondarySlideUpTransition(
+          context,
+          animation: animation,
+          secondaryAnimation: secondaryAnimation,
+          opacityRange: opacityRange,
+          slideBackRange: slideBackRange,
+          child: SlideTransition(
+            position: positionAnimation,
+            child: ValueListenableBuilder(
+              valueListenable: secondaryAnimation
+                  .remapped(
+                    start: slideBackRange.$1,
+                    end: slideBackRange.$2,
+                  )
+                  .drive(radiusTween),
+              builder: (context, value, child) {
+                return ExtendSheetAtBottom(
+                  color: CupertinoDynamicColor.resolve(
+                    backgroundColor,
+                    context,
                   ),
-                ),
-              ),
+                  child: ClipRSuperellipse(
+                    clipBehavior: Clip.antiAliasWithSaveLayer,
+                    borderRadius: value!,
+                    child: Container(
+                      color: CupertinoDynamicColor.resolve(
+                        backgroundColor,
+                        context,
+                      ),
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: child,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
