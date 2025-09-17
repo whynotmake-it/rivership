@@ -86,7 +86,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   /// The snapping configuration for the sheet.
   @override
-  late final SheetSnappingConfig snappingConfig;
+  final SheetSnappingConfig snappingConfig;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -363,9 +363,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > 1.0) {
+      // Scale the velocity by the same resistance factor that was applied
+      //during dragging
+      final overshoot = currentValue - 1.0;
+      final resistance = 1.0 / (1.0 + overshoot * overshootResistance);
+      final adjustedVelocity = velocity * resistance;
+
       final backSim = motion.createSimulation(
         start: currentValue,
-        velocity: -_dragEndVelocity!,
+        velocity: -adjustedVelocity,
       );
       controller!.animateWith(backSim);
       _dragEndVelocity = null;
