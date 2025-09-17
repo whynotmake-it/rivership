@@ -111,12 +111,16 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
-    return nextRoute is StupidSimpleCupertinoSheetRoute;
+    return nextRoute is StupidSimpleCupertinoSheetRoute ||
+        super.canTransitionTo(nextRoute);
   }
 
   @override
+  @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
+
+    // This is a hack for forcing the internal secondary transition instead
     if (nextRoute is StupidSimpleCupertinoSheetRoute) {
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;
@@ -124,8 +128,11 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   }
 
   @override
+  @mustCallSuper
   void didPopNext(Route<dynamic> nextRoute) {
     super.didPopNext(nextRoute);
+
+    // This is a hack for forcing the internal secondary transition instead
     if (nextRoute is StupidSimpleCupertinoSheetRoute) {
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;

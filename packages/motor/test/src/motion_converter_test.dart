@@ -159,14 +159,26 @@ void main() {
           final normalized = converter.normalize(color);
           final denormalized = converter.denormalize(normalized);
 
-          expect(denormalized.r, closeTo(color.r, 0.001),
-              reason: 'Red component failed for $color');
-          expect(denormalized.g, closeTo(color.g, 0.001),
-              reason: 'Green component failed for $color');
-          expect(denormalized.b, closeTo(color.b, 0.001),
-              reason: 'Blue component failed for $color');
-          expect(denormalized.a, closeTo(color.a, 0.001),
-              reason: 'Alpha component failed for $color');
+          expect(
+            denormalized.r,
+            closeTo(color.r, 0.001),
+            reason: 'Red component failed for $color',
+          );
+          expect(
+            denormalized.g,
+            closeTo(color.g, 0.001),
+            reason: 'Green component failed for $color',
+          );
+          expect(
+            denormalized.b,
+            closeTo(color.b, 0.001),
+            reason: 'Blue component failed for $color',
+          );
+          expect(
+            denormalized.a,
+            closeTo(color.a, 0.001),
+            reason: 'Alpha component failed for $color',
+          );
         }
       });
     });

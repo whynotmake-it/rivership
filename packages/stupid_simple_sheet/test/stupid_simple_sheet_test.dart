@@ -266,7 +266,10 @@ void main() {
 
         Navigator.of(tester.element(scaffoldFinder)).pop();
 
-        await tester.pump();
+        // Allow the sheet to clear the button enough, it should become
+        // hit testable even though the sheet is still animating down.
+        await tester.pumpFrames(build(), const Duration(milliseconds: 120));
+
         expect(buttonFinder.hitTestable(), findsOneWidget);
       });
 
@@ -309,8 +312,6 @@ void main() {
         );
 
         await tester.pump(motion.duration);
-
-        await snap();
 
         expect(buttonFinder.hitTestable(), findsNothing);
         expect(find.byType(ModalBarrier).hitTestable(), findsOneWidget);
