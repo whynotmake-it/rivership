@@ -19,7 +19,7 @@ class SingleMotionController extends MotionController<double> {
 
   /// Creates a [BoundedSingleMotionController].
   factory SingleMotionController.bounded({
-    required SpringMotion motion,
+    required Motion motion,
     required TickerProvider vsync,
     double initialValue,
     double lowerBound,
