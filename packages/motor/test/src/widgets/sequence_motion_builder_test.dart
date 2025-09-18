@@ -291,5 +291,358 @@ void main() {
         expect(capturedValue!.dy, closeTo(50.0, 0.001));
       });
     });
+
+    group('sequence equality', () {
+      group('StateSequence', () {
+        testWidgets('detects motion changes in single motion sequences',
+            (tester) async {
+          const seq1 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          const seq2 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(milliseconds: 500)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects motion changes in per-phase motion sequences',
+            (tester) async {
+          const seq1 = MotionSequence.statesWithMotions({
+            TestPhase.idle: (0.0, Motion.linear(Duration(seconds: 1))),
+            TestPhase.active: (100.0, Motion.linear(Duration(seconds: 1))),
+          });
+
+          const seq2 = MotionSequence.statesWithMotions({
+            TestPhase.idle: (0.0, Motion.linear(Duration(milliseconds: 500))),
+            TestPhase.active: (100.0, Motion.linear(Duration(seconds: 1))),
+          });
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects value changes', (tester) async {
+          const seq1 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          const seq2 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 50.0, // Different value
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects loop mode changes', (tester) async {
+          const seq1 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          const seq2 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+            loop: LoopMode.loop,
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+      });
+
+      group('StepSequence', () {
+        testWidgets('detects motion changes in single motion sequences',
+            (tester) async {
+          final seq1 = MotionSequence.steps(
+            [0.0, 100.0],
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq2 = MotionSequence.steps(
+            [0.0, 100.0],
+            motion: const Motion.linear(Duration(milliseconds: 500)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects motion changes in per-step motion sequences',
+            (tester) async {
+          final seq1 = MotionSequence.stepsWithMotions([
+            (0.0, const Motion.linear(Duration(seconds: 1))),
+            (100.0, const Motion.linear(Duration(seconds: 1))),
+          ]);
+
+          final seq2 = MotionSequence.stepsWithMotions([
+            (0.0, const Motion.linear(Duration(milliseconds: 500))),
+            (100.0, const Motion.linear(Duration(seconds: 1))),
+          ]);
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects value changes', (tester) async {
+          final seq1 = MotionSequence.steps(
+            [0.0, 100.0],
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq2 = MotionSequence.steps(
+            [0.0, 50.0],
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+      });
+
+      group('SpanningSequence', () {
+        testWidgets('detects motion changes', (tester) async {
+          final seq1 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              1.0: 100.0,
+            },
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq2 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              1.0: 100.0,
+            },
+            motion: const Motion.linear(Duration(milliseconds: 500)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects value changes', (tester) async {
+          final seq1 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              1.0: 100.0,
+            },
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq2 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              1.0: 50.0, // Different value
+            },
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects position changes', (tester) async {
+          final seq1 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              1.0: 100.0,
+            },
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq2 = MotionSequence.spanning(
+            {
+              0.0: 0.0,
+              2.0: 100.0, // Different position
+            },
+            motion: const Motion.linear(Duration(seconds: 1)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+      });
+
+      group('SingleMotionPhaseSequence', () {
+        testWidgets('detects motion changes', (tester) async {
+          const baseSequence = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.none(),
+          );
+
+          final seq1 = baseSequence
+              .withSingleMotion(const Motion.linear(Duration(seconds: 1)));
+          final seq2 = baseSequence.withSingleMotion(
+            const Motion.linear(Duration(milliseconds: 500)),
+          );
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+
+        testWidgets('detects parent sequence changes', (tester) async {
+          const baseSequence1 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.none(),
+          );
+
+          const baseSequence2 = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+              TestPhase.active: 50.0, // Different value
+            },
+            motion: Motion.none(),
+          );
+
+          const motion = Motion.linear(Duration(seconds: 1));
+          final seq1 = baseSequence1.withSingleMotion(motion);
+          final seq2 = baseSequence2.withSingleMotion(motion);
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+      });
+
+      group('Chained sequences', () {
+        testWidgets('detects changes in chained sequences', (tester) async {
+          const baseSequence = MotionSequence.states(
+            {
+              TestPhase.idle: 0.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          const chainSequence1 = MotionSequence.states(
+            {
+              TestPhase.active: 100.0,
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          const chainSequence2 = MotionSequence.states(
+            {
+              TestPhase.active: 50.0, // Different value
+            },
+            motion: Motion.linear(Duration(seconds: 1)),
+          );
+
+          final seq1 = baseSequence.chain(chainSequence1);
+          final seq2 = baseSequence.chain(chainSequence2);
+
+          expect(seq1, isNot(equals(seq2)));
+          expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+        });
+      });
+    });
+
+    group('value updates', () {
+      testWidgets('detects sequence changes when motion duration changes',
+          (tester) async {
+        // Test that sequences with different motion durations are
+        // considered different
+        const seq1 = StepSequence(
+          [0, 1],
+          motion: Motion.linear(Duration(seconds: 1)),
+          loop: LoopMode.pingPong,
+        );
+
+        const seq2 = StepSequence(
+          [0, 1],
+          motion: Motion.linear(Duration(milliseconds: 500)),
+          loop: LoopMode.pingPong,
+        );
+
+        expect(seq1, isNot(equals(seq2)));
+        expect(seq1.hashCode, isNot(equals(seq2.hashCode)));
+
+        // The motions for transitions from phase 0 to phase 1 should be
+        // different
+        expect(
+          seq1.motionForPhase(toPhase: 1, fromPhase: 0),
+          isNot(equals(seq2.motionForPhase(toPhase: 1, fromPhase: 0))),
+        );
+      });
+
+      testWidgets('updates correctly with duration', (tester) async {
+        final duration = ValueNotifier(const Duration(seconds: 1));
+        var overHalf = false;
+        var counter = 0;
+
+        final widget = ValueListenableBuilder(
+          valueListenable: duration,
+          builder: (context, value, child) {
+            return SequenceMotionBuilder<int, double>(
+              sequence: StepSequence(
+                const [0, 1],
+                motion: Motion.linear(value),
+                loop: LoopMode.pingPong,
+              ),
+              converter: const SingleMotionConverter(),
+              builder: (context, value, phase, child) {
+                if (value > 0.5 && !overHalf) {
+                  overHalf = true;
+                  counter++;
+                } else if (value <= 0.5 && overHalf) {
+                  overHalf = false;
+                }
+
+                return const SizedBox();
+              },
+            );
+          },
+        );
+
+        await tester.pumpFrames(widget, const Duration(seconds: 2));
+
+        expect(counter, equals(1));
+
+        await tester.pumpFrames(widget, const Duration(seconds: 1));
+
+        expect(counter, equals(2));
+
+        await tester.pumpFrames(widget, const Duration(seconds: 1));
+
+        // We should be around zero here
+        // Double the speed and reset counter
+        counter = 0;
+        duration.value = const Duration(milliseconds: 500);
+
+        await tester.pumpFrames(widget, const Duration(seconds: 2));
+        expect(counter, equals(2));
+      });
+    });
   });
 }

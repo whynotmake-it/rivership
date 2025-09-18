@@ -280,6 +280,14 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
   }
 
   @override
+  List<Object?> get props => [
+        ...phases,
+        ...phases.map(valueForPhase),
+        _motion ?? _stepsWithMotions,
+        loop,
+      ];
+
+  @override
   MotionSequence<int, T> chainAll(
     List<MotionSequence<int, T>> sequences, {
     LoopMode? loop,
@@ -356,6 +364,14 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
 
     return _statesWithMotions?[toPhase]?.$2 ?? _motion!;
   }
+
+  @override
+  List<Object?> get props => [
+        ...phases,
+        ...phases.map(valueForPhase),
+        _motion ?? _statesWithMotions,
+        loop,
+      ];
 }
 
 /// Provides methods to modify a given [MotionSequence].
@@ -395,6 +411,14 @@ class SingleMotionPhaseSequence<P, T extends Object>
 
   @override
   Motion motionForPhase({required P toPhase, P? fromPhase}) => motion;
+
+  @override
+  List<Object?> get props => [
+        ...phases,
+        ...phases.map(valueForPhase),
+        motion,
+        loop,
+      ];
 }
 
 /// {@template SpanningSequence}
@@ -493,6 +517,14 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
 
     return motion;
   }
+
+  @override
+  List<Object?> get props => [
+        ...phases,
+        ...phases.map(valueForPhase),
+        motion,
+        loop,
+      ];
 
   // Gets the next best previous index from [index]
   int _getBestPreviousIndex(int index) {
