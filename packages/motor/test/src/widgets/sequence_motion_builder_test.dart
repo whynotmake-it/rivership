@@ -120,8 +120,9 @@ void main() {
       expect(capturedPhase, equals(TestPhase.active));
     });
 
-    testWidgets('calls onPhaseChanged callback', (tester) async {
-      TestPhase? callbackPhase;
+    testWidgets('calls onTransition callback when static phase set',
+        (tester) async {
+      PhaseTransition<TestPhase>? callbackTransition;
 
       await tester.pumpWidget(
         SequenceMotionBuilder<TestPhase, double>(
@@ -129,13 +130,153 @@ void main() {
           converter: const SingleMotionConverter(),
           playing: false,
           currentPhase: TestPhase.active,
-          onPhaseChanged: (phase) => callbackPhase = phase,
+          onTransition: (t) => callbackTransition = t,
           builder: (context, value, phase, child) => const SizedBox(),
         ),
       );
 
       await tester.pump();
-      expect(callbackPhase, equals(TestPhase.active));
+      expect(callbackTransition, equals(const PhaseSettled(TestPhase.active)));
+    });
+
+    testWidgets('provides correct transition sequence during playback',
+        (tester) async {
+      final capturedTransitions = <PhaseTransition<TestPhase>>[];
+
+      await tester.pumpWidget(
+        SequenceMotionBuilder<TestPhase, double>(
+          sequence: sequence,
+          converter: const SingleMotionConverter(),
+          onTransition: capturedTransitions.add,
+          builder: (context, value, phase, child) => const SizedBox(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(
+        capturedTransitions,
+        containsAllInOrder([
+          const PhaseTransitioning(
+            from: TestPhase.idle,
+            to: TestPhase.active,
+          ),
+          const PhaseTransitioning(
+            from: TestPhase.active,
+            to: TestPhase.complete,
+          ),
+          const PhaseSettled(TestPhase.complete),
+        ]),
+      );
+    });
+
+    testWidgets('provides correct transition sequence when setting phases',
+        (tester) async {
+      final capturedTransitions = <PhaseTransition<TestPhase>>[];
+
+      Widget build(TestPhase phase) {
+        return SequenceMotionBuilder<TestPhase, double>(
+          sequence: sequence,
+          currentPhase: phase,
+          playing: false,
+          converter: const SingleMotionConverter(),
+          onTransition: capturedTransitions.add,
+          builder: (context, value, phase, child) => const SizedBox(),
+        );
+      }
+
+      await tester.pumpWidget(build(TestPhase.idle));
+
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(build(TestPhase.active));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(build(TestPhase.complete));
+
+      await tester.pump(const Duration(milliseconds: 1000));
+
+      await tester.pumpWidget(build(TestPhase.idle));
+
+      expect(
+        capturedTransitions,
+        containsAllInOrder([
+          const PhaseTransitioning(
+            from: TestPhase.idle,
+            to: TestPhase.active,
+          ),
+          const PhaseSettled(TestPhase.active),
+          const PhaseTransitioning(
+            from: TestPhase.active,
+            to: TestPhase.complete,
+          ),
+          const PhaseTransitioning(
+            from: TestPhase.complete,
+            to: TestPhase.idle,
+          ),
+          const PhaseSettled(TestPhase.idle),
+        ]),
+      );
+    });
+
+    testWidgets('calls onAnimationStatusChanged callback', (tester) async {
+      final capturedStatuses = <AnimationStatus>[];
+
+      await tester.pumpWidget(
+        SequenceMotionBuilder<TestPhase, double>(
+          sequence: sequence,
+          converter: const SingleMotionConverter(),
+          playing: false,
+          currentPhase: TestPhase.active,
+          onAnimationStatusChanged: capturedStatuses.add,
+          builder: (context, value, phase, child) => const SizedBox(),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Should have received some status updates
+      expect(capturedStatuses, isNotEmpty);
+      expect(capturedStatuses, contains(AnimationStatus.forward));
+    });
+
+    testWidgets('stops calling onAnimationStatusChanged when widget updates',
+        (tester) async {
+      final capturedStatuses = <AnimationStatus>[];
+
+      Widget buildWidget({ValueChanged<AnimationStatus>? callback}) {
+        return SequenceMotionBuilder<TestPhase, double>(
+          sequence: sequence,
+          converter: const SingleMotionConverter(),
+          playing: false,
+          currentPhase: TestPhase.active,
+          onAnimationStatusChanged: callback,
+          builder: (context, value, phase, child) => const SizedBox(),
+        );
+      }
+
+      // Start with callback
+      await tester.pumpWidget(buildWidget(callback: capturedStatuses.add));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final statusCountAfterFirst = capturedStatuses.length;
+
+      // Update to remove callback
+
+      await tester.pumpWidget(SequenceMotionBuilder<TestPhase, double>(
+        sequence: sequence,
+        converter: const SingleMotionConverter(),
+        playing: false,
+        currentPhase: TestPhase.complete,
+        builder: (context, value, phase, child) => const SizedBox(),
+      ));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Should not have received any new status updates
+      expect(capturedStatuses.length, equals(statusCountAfterFirst));
     });
 
     testWidgets('updates animation when currentPhase changes', (tester) async {

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/phase_transition.dart';
 
 /// A function that builds a widget based on the current phase and interpolated
 /// value.
@@ -18,6 +19,9 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// Use [playing] to control automatic sequence progression or [currentPhase]
 /// for manual control. Supports all sequence types (states, steps, spanning).
 ///
+/// Provides callbacks for phase transitions via [onTransition] and animation
+/// status changes via [onAnimationStatusChanged].
+///
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
@@ -31,6 +35,19 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 ///   sequence: sequence,
 ///   converter: MotionConverter.offset,
 ///   playing: true, // Auto-progress through phases
+///   onTransition: (transition) {
+///     // Handle phase transitions
+///     switch (transition) {
+///       case PhaseSettled(:final phase):
+///         print('Settled at $phase');
+///       case PhaseTransitioning(:final from, :final to):
+///         print('Transitioning from $from to $to');
+///     }
+///   },
+///   onAnimationStatusChanged: (status) {
+///     // Handle animation status changes
+///     print('Animation status: $status');
+///   },
 ///   builder: (context, offset, phase, child) => Container(
 ///     width: offset.dx,
 ///     height: offset.dy,
@@ -47,7 +64,8 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
     required this.builder,
     this.playing = true,
     this.currentPhase,
-    this.onPhaseChanged,
+    this.onTransition,
+    this.onAnimationStatusChanged,
     this.child,
     this.restartTrigger,
     super.key,
@@ -74,8 +92,11 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// initial phase.
   final P? currentPhase;
 
-  /// Called when the animation transitions to a new phase.
-  final void Function(P phase)? onPhaseChanged;
+  /// Called when the animation transitions between phases.
+  final void Function(PhaseTransition<P> transition)? onTransition;
+
+  /// Called when the animation status changes.
+  final ValueChanged<AnimationStatus>? onAnimationStatusChanged;
 
   /// Optional child widget passed to [builder].
   final Widget? child;
@@ -111,6 +132,11 @@ class _SequenceMotionBuilderState<P, T extends Object>
       initialValue: _getInitialValue(),
     )..addListener(_onControllerUpdate);
 
+    // Add status listener if provided
+    if (widget.onAnimationStatusChanged != null) {
+      _controller.addStatusListener(widget.onAnimationStatusChanged!);
+    }
+
     _previousPhase = initialPhase;
 
     // Start initial animation - this will set the current phase
@@ -120,6 +146,16 @@ class _SequenceMotionBuilderState<P, T extends Object>
   @override
   void didUpdateWidget(SequenceMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Handle status listener changes
+    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
+      if (oldWidget.onAnimationStatusChanged != null) {
+        _controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
+      }
+      if (widget.onAnimationStatusChanged != null) {
+        _controller.addStatusListener(widget.onAnimationStatusChanged!);
+      }
+    }
 
     // Handle different types of changes
     final restartTriggerChanged =
@@ -175,7 +211,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
     _controller.playSequence(
       widget.sequence,
       atPhase: widget.currentPhase, // Start from specified phase if provided
-      onPhaseChanged: widget.onPhaseChanged,
+      onTransition: widget.onTransition,
     );
   }
 
@@ -186,14 +222,14 @@ class _SequenceMotionBuilderState<P, T extends Object>
 
     // Jump immediately without animation
     _controller.value = targetValue;
-    widget.onPhaseChanged?.call(targetPhase);
+    widget.onTransition?.call(PhaseSettled(targetPhase));
 
     // Only start playing if playing is true
     if (widget.playing) {
       _controller.playSequence(
         widget.sequence,
         atPhase: targetPhase,
-        onPhaseChanged: widget.onPhaseChanged,
+        onTransition: widget.onTransition,
       );
     }
   }
@@ -207,7 +243,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
       _controller.playSequence(
         widget.sequence,
         atPhase: newPhase,
-        onPhaseChanged: widget.onPhaseChanged,
+        onTransition: widget.onTransition,
       );
     } else {
       // If not playing, just animate to the new phase
@@ -222,12 +258,20 @@ class _SequenceMotionBuilderState<P, T extends Object>
       fromPhase: _previousPhase as P,
     );
     _controller.motion = motion;
-    _controller.animateTo(
+    _previousPhase = phase;
+    _controller
+        .animateTo(
       targetValue,
       withVelocity: _controller.velocity, // Preserve current velocity
+    )
+        .then(
+      (_) {
+        // Ensure we notify settled phase after animation completes
+        if (mounted && _controller.currentSequencePhase == phase) {
+          widget.onTransition?.call(PhaseSettled(phase));
+        }
+      },
     );
-    _previousPhase = phase;
-    widget.onPhaseChanged?.call(phase);
   }
 
   void _onControllerUpdate() {

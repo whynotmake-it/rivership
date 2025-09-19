@@ -119,9 +119,10 @@ class _DragCardExampleState extends State<_DragCardExample>
     if (phaseController.value.distance > dismissThreshold) {
       phaseController.playSequence(
         buildReturn(phaseController.value, details.velocity),
-        onPhaseChanged: (phase) {
+        onTransition: (t) {
+          print(t);
           // We wait until the flight back to tell the stack to resort
-          if (phase == DragCardPhase.dismissing) {
+          if (t case PhaseTransitioning(to: DragCardPhase.dismissing)) {
             widget.onDismiss();
           }
         },
