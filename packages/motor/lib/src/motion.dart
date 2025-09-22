@@ -1,5 +1,6 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/src/extensions/spring_description_extension.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
 
@@ -454,7 +455,8 @@ class CupertinoMotion extends SpringMotion {
   final double bounce;
 
   @override
-  SpringDescription get description => SpringDescription.withDurationAndBounce(
+  SpringDescription get description =>
+      SpringDescriptionExtension.withDurationAndBounce(
         duration: duration,
         bounce: bounce,
       );

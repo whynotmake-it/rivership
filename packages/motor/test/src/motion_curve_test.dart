@@ -3,19 +3,20 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
+import 'package:motor/src/extensions/spring_description_extension.dart';
 
 import 'util.dart';
 
 void main() {
   group('MotionCurve', () {
     test('creates with spring description', () {
-      final spring = SpringDescription.withDurationAndBounce();
+      final spring = SpringDescriptionExtension.withDurationAndBounce();
       final curve = MotionCurve(motion: SpringMotion(spring));
       expect(curve.motion, equals(SpringMotion(spring)));
     });
 
     test('creates with initial velocity', () {
-      final spring = SpringDescription.withDurationAndBounce();
+      final spring = SpringDescriptionExtension.withDurationAndBounce();
       final curve = MotionCurve(motion: SpringMotion(spring), velocity: 2);
       expect(curve.motion, equals(SpringMotion(spring)));
       expect(curve.simulation.dx(0), equals(2.0));
@@ -23,7 +24,8 @@ void main() {
 
     test('transform returns values between 0 and 1', () {
       final curve = MotionCurve(
-        motion: SpringMotion(SpringDescription.withDurationAndBounce()),
+        motion:
+            SpringMotion(SpringDescriptionExtension.withDurationAndBounce()),
       );
       expect(curve.transform(0), equals(0.0));
       expect(curve.transform(1), closeTo(1.0, 0.1));
@@ -31,7 +33,7 @@ void main() {
     });
 
     test('toCurve extension creates correct MotionCurve', () {
-      final spring = SpringDescription.withDurationAndBounce();
+      final spring = SpringDescriptionExtension.withDurationAndBounce();
       final curve = SpringMotion(spring).toCurve;
       expect(curve, isA<MotionCurve>());
 

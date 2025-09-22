@@ -182,7 +182,6 @@ class _LoopComparisonExampleState extends State<LoopComparisonExample> {
                   ),
                 ),
                 CupertinoButton(
-                  minimumSize: Size.square(32),
                   padding: EdgeInsets.zero,
                   child: Icon(CupertinoIcons.refresh),
                   onPressed: () {

@@ -11,11 +11,11 @@ screenshots:
     path: doc/banner.jpg  
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  sdk: ">=3.7.2 <4.0.0"
 
 dev_dependencies:
   google_fonts: ^6.2.1
-  lintervention: ^0.3.1
+  # lintervention: ^0.3.1
   mocktail: ^1.0.3
 
 dependencies:

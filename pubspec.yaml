@@ -4,7 +4,7 @@ version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: ">=3.9.0 <4.0.0"
+  sdk: ">=3.7.2 <4.0.0"
   flutter: ">=3.10.0"
 
 workspace:
@@ -23,8 +23,8 @@ workspace:
   - packages/springster/example
   
 dev_dependencies:
-  lintervention: ^0.3.1
-  melos: ^7.1.0
+  # lintervention: ^0.3.1
+  melos: ^6.3.1
 
 melos:
   command:

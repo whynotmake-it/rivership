@@ -156,7 +156,7 @@ class _DragCardExampleState extends State<_DragCardExample>
             index: widget.index,
             child: Container(
               decoration: ShapeDecoration(
-                shape: RoundedSuperellipseBorder(
+                shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16)),
                 color: CupertinoTheme.of(context).primaryColor,
               ),

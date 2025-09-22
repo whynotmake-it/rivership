@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:motor/motor.dart';
+import 'package:motor/src/extensions/spring_description_extension.dart';
 
 import '../util.dart';
 
@@ -50,7 +51,7 @@ void main() {
           converter: converter,
           initialValue: Offset.zero,
         );
-        final newSpring = SpringDescription.withDurationAndBounce(
+        final newSpring = SpringDescriptionExtension.withDurationAndBounce(
           duration: const Duration(milliseconds: 100),
         );
         controller.motion = SpringMotion(newSpring);
@@ -341,7 +342,7 @@ void main() {
           )..animateTo(const Offset(1, 1));
           await tester.pump();
 
-          final newSpring = SpringDescription.withDurationAndBounce(
+          final newSpring = SpringDescriptionExtension.withDurationAndBounce(
             duration: const Duration(milliseconds: 100),
           );
 
