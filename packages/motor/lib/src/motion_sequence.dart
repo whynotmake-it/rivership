@@ -509,9 +509,9 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
       final segmentStart = min(fromNormalizedPos, toNormalizedPos);
       final segmentEnd = max(fromNormalizedPos, toNormalizedPos);
 
-      return motion.trimmed(
-        startTrim: segmentStart.toDouble(),
-        endTrim: 1 - segmentEnd.toDouble(),
+      return motion.sliced(
+        from: segmentStart.toDouble(),
+        to: segmentEnd.toDouble(),
       );
     }
 

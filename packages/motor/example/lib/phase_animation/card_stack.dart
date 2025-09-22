@@ -100,7 +100,7 @@ class _DragCardExampleState extends State<_DragCardExample>
         DragCardPhase.clearing: (
           clearance,
           // Only use the very beginning of the spring way before it settles
-          Motion.smoothSpring().subExtent(extent: .1),
+          Motion.smoothSpring().segment(length: .1),
         ),
       DragCardPhase.dismissing: (
         Offset.zero,
