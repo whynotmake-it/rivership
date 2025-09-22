@@ -258,7 +258,37 @@ class _SequenceMotionBuilderState<P, T extends Object>
       fromPhase: _previousPhase as P,
     );
     _controller.motion = motion;
+
+    // Notify transition start if we have a previous phase and it's different
+    if (_previousPhase != null && _previousPhase != phase) {
+      widget.onTransition?.call(
+        PhaseTransitioning(
+          from: _previousPhase as P,
+          to: phase,
+        ),
+      );
+    }
+
     _previousPhase = phase;
+
+    // Check if we're already at the target value (no animation needed)
+    final currentValue = _controller.value;
+    if (currentValue == targetValue) {
+      // We're already at the target, immediately call settled
+      widget.onTransition?.call(PhaseSettled(phase));
+      return;
+    }
+
+    // For static phase changes (playing: false), call settled on next frame
+    // regardless of animation state
+    if (!widget.playing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onTransition?.call(PhaseSettled(phase));
+        }
+      });
+    }
+
     _controller
         .animateTo(
       targetValue,
@@ -267,7 +297,8 @@ class _SequenceMotionBuilderState<P, T extends Object>
         .then(
       (_) {
         // Ensure we notify settled phase after animation completes
-        if (mounted && _controller.currentSequencePhase == phase) {
+        // only if we're playing (for sequence playback)
+        if (mounted && widget.playing) {
           widget.onTransition?.call(PhaseSettled(phase));
         }
       },

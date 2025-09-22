@@ -27,7 +27,7 @@ void main() {
     group('Linear Motion Trimming', () {
       test('no trimming = original behavior', () {
         const parent = LinearMotion(Duration(seconds: 1));
-        const trimmed = TrimmedMotion(parent: parent, startTrim: 0, endTrim: 0);
+        const trimmed = TrimmedMotion(parent: parent, fromStart: 0, fromEnd: 0);
 
         final parentSim = parent.createSimulation(start: 0, end: 100);
         final trimmedSim = trimmed.createSimulation(start: 0, end: 100);
@@ -42,8 +42,8 @@ void main() {
         const parent = LinearMotion(Duration(seconds: 1));
         const trimmed = TrimmedMotion(
           parent: parent,
-          startTrim: 0.2,
-          endTrim: 0.2,
+          fromStart: 0.2,
+          fromEnd: 0.2,
         );
 
         final simulation = trimmed.createSimulation();
@@ -65,27 +65,27 @@ void main() {
     group('Extension Methods', () {
       test('trimmed() extension works', () {
         const parent = LinearMotion(Duration(seconds: 1));
-        final trimmed = parent.trimmed(startTrim: 0.1, endTrim: 0.2);
+        final trimmed = parent.trimmed(fromStart: 0.1, fromEnd: 0.2);
 
         expect(trimmed, isA<TrimmedMotion>());
         expect(trimmed.parent, equals(parent));
-        expect(trimmed.startTrim, equals(0.1));
-        expect(trimmed.endTrim, equals(0.2));
+        expect(trimmed.fromStart, equals(0.1));
+        expect(trimmed.fromEnd, equals(0.2));
       });
 
       test('subExtent() extension works', () {
         const parent = LinearMotion(Duration(seconds: 1));
-        final trimmed = parent.subExtent(extent: 0.5, start: 0.2);
+        final trimmed = parent.segment(length: 0.5, start: 0.2);
 
-        expect(trimmed.startTrim, equals(0.2));
-        expect(trimmed.endTrim, closeTo(0.3, error)); // 1.0 - (0.2 + 0.5)
+        expect(trimmed.fromStart, equals(0.2));
+        expect(trimmed.fromEnd, closeTo(0.3, error)); // 1.0 - (0.2 + 0.5)
       });
     });
 
     test('velocity calculation works', () {
       const parent = LinearMotion(Duration(seconds: 1));
       const trimmed =
-          TrimmedMotion(parent: parent, startTrim: 0.2, endTrim: 0.2);
+          TrimmedMotion(parent: parent, fromStart: 0.2, fromEnd: 0.2);
 
       final simulation = trimmed.createSimulation(start: 0, end: 100);
 

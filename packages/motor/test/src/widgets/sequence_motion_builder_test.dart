@@ -265,13 +265,15 @@ void main() {
 
       // Update to remove callback
 
-      await tester.pumpWidget(SequenceMotionBuilder<TestPhase, double>(
-        sequence: sequence,
-        converter: const SingleMotionConverter(),
-        playing: false,
-        currentPhase: TestPhase.complete,
-        builder: (context, value, phase, child) => const SizedBox(),
-      ));
+      await tester.pumpWidget(
+        SequenceMotionBuilder<TestPhase, double>(
+          sequence: sequence,
+          converter: const SingleMotionConverter(),
+          playing: false,
+          currentPhase: TestPhase.complete,
+          builder: (context, value, phase, child) => const SizedBox(),
+        ),
+      );
       await tester.pump();
       await tester.pumpAndSettle();
 
