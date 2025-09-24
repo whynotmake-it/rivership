@@ -36,6 +36,9 @@ abstract class MotionConverter<T> {
   /// A motion converter for alignment values.
   static const alignment = AlignmentMotionConverter();
 
+  /// A motion converter for color values that interpolates in RGB space.
+  static const colorRgb = ColorRgbMotionConverter();
+
   /// Converts a value of type [T] to a list of double values.
   List<double> normalize(T value);
 
@@ -111,6 +114,28 @@ class AlignmentMotionConverter extends MotionConverter<Alignment> {
 
   @override
   Alignment denormalize(List<double> values) => Alignment(values[0], values[1]);
+}
+
+/// A [MotionConverter] for [Color] values that interpolates in RGB space.
+class ColorRgbMotionConverter extends MotionConverter<Color> {
+  /// Creates a [ColorRgbMotionConverter].
+  const ColorRgbMotionConverter();
+
+  @override
+  List<double> normalize(Color value) => [
+        value.r,
+        value.g,
+        value.b,
+        value.a,
+      ];
+
+  @override
+  Color denormalize(List<double> values) => Color.from(
+        red: values[0].clamp(0, 1),
+        green: values[1].clamp(0, 1),
+        blue: values[2].clamp(0, 1),
+        alpha: values[3].clamp(0, 1),
+      );
 }
 
 class _CallbackMotionConverter<T> extends MotionConverter<T> {
