@@ -1,3 +1,12 @@
+## 0.5.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FIX**: don't call `Navigator.did[Start|Stop]UserGesture` by default to match Flutter sheets.
+
+    You can restore the old behavior by passing `callNavigatorUserGestureMethods = true` to your sheet route
+
+
 ## 0.4.2
 
  - **FEAT**: add `StupidSimpleSheetController` that can be used from a sheets subtree for imperative control.
