@@ -1,3 +1,11 @@
+## 0.4.1
+
+ - **FIX**: velocity scaling when overdragging with resistance.
+ - **FIX**: secondary animation in cupertino sheet.
+ - **FEAT**: cupertino sheet can now be dragged over its limits with resistance.
+ - **FEAT**: sheets support snapping points now.
+ - **FEAT**: cupertino sheet top padding is based on safe area now.
+
 ## 0.4.0+2
 
  - Update a dependency to the latest release.

@@ -1,3 +1,9 @@
+## 0.0.4
+
+ - **FIX**: velocity scaling when overdragging with resistance.
+ - **FIX**: secondary animation in cupertino sheet.
+ - **FEAT**: sheets support snapping points now.
+
 ## 0.0.3
 
  - **FEAT**: add `onlyDragWhenScrollWasAtTop` parameter.
