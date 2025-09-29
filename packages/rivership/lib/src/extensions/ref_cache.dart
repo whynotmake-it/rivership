@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// Useful extensions on [Ref] for caching.
-extension RefCacheX<T> on Ref<T> {
+extension RefCacheX on Ref {
   /// When invoked, makes sure the provider stays alive for at least [duration].
   ///
   /// This timer is only reset when the provider recomputes. So if a listener is
