@@ -21,6 +21,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     ),
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
+    this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
   });
 
@@ -59,6 +60,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   bool get opaque => false;
+
+  @override
+  final bool callNavigatorUserGestureMethods;
 
   @override
   final SheetSnappingConfig snappingConfig;

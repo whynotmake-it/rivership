@@ -47,6 +47,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
+    this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
   });
 
@@ -83,6 +84,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool onlyDragWhenScrollWasAtTop;
+
+  @override
+  final bool callNavigatorUserGestureMethods;
 
   /// The snapping configuration for the sheet.
   @override
@@ -182,6 +186,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// This matches iOS sheet behavior and defaults to true.
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
+
+  /// Whether the navigator's user gesture methods should be called when
+  /// dragging starts and ends.
+  ///
+  /// Defaults to false.
+  bool get callNavigatorUserGestureMethods => false;
 
   /// The snapping configuration for the sheet.
   ///
@@ -328,7 +338,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void _handleDragStart(
     BuildContext context,
   ) {
-    Navigator.of(context).didStartUserGesture();
+    if (callNavigatorUserGestureMethods) {
+      Navigator.of(context).didStartUserGesture();
+    }
   }
 
   void _handleDragUpdate(BuildContext context, double delta) {
@@ -354,7 +366,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double velocity,
   ) {
     final currentValue = controller!.value;
-    Navigator.of(context).didStopUserGesture();
+    if (callNavigatorUserGestureMethods) {
+      Navigator.of(context).didStopUserGesture();
+    }
 
     _dragEndVelocity = velocity;
 
