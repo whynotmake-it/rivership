@@ -10,11 +10,4 @@ extension AsyncValueTools<T> on AsyncValue<T> {
   ///
   /// Behaves just like [AsyncValue.value], which means errors are rethrown.
   T? get newestValue => unwrapPrevious().value;
-
-  /// Returns the most recent [valueOrNull] of this [AsyncValue], ignoring any
-  /// previous values.
-  ///
-  /// Behaves just like [valueOrNull], which means errors are ignored and the
-  /// value will be null in error and loading states.
-  T? get newestValueOrNull => unwrapPrevious().valueOrNull;
 }
