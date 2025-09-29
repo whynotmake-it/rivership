@@ -8,5 +8,4 @@ export 'package:flutter_test/flutter_test.dart';
 export 'package:mocktail/mocktail.dart';
 
 export 'src/matchers/is_shuffled.dart';
-export 'src/riverpod/create_container.dart';
 export 'src/riverpod/mock_provider_listener.dart';
