@@ -109,7 +109,6 @@ class RelativeSnappingConfig extends SheetSnappingConfig {
   double findTargetSnapPoint(
     double currentRelativePosition,
     double velocity,
-    double sheetHeight,
   ) {
     final allPoints = getAllPoints();
 

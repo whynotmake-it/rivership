@@ -8,7 +8,7 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 /// Simular to [CupertinoSheetRoute] but with the drag gesture improvements from
 /// this package.
 class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
-    with StupidSimpleSheetTransitionMixin<T> {
+    with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
   /// Creates a sheet route for displaying modal content.
   ///
   /// The [motion] and [child] arguments must not be null.

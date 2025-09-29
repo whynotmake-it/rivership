@@ -220,6 +220,8 @@ void main() {
     Widget build({
       Motion motion = motion,
       bool clearBarrierImmediately = true,
+      SheetSnappingConfig snappingConfig =
+          const SheetSnappingConfig.relative([1.0]),
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -234,6 +236,7 @@ void main() {
                     StupidSimpleCupertinoSheetRoute<void>(
                       clearBarrierImmediately: clearBarrierImmediately,
                       motion: motion,
+                      snappingConfig: snappingConfig,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -315,6 +318,87 @@ void main() {
 
         expect(buttonFinder.hitTestable(), findsNothing);
         expect(find.byType(ModalBarrier).hitTestable(), findsOneWidget);
+      });
+    });
+
+    group('controlling imperatively', () {
+      testWidgets('can find controller', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        expect(controller, isA<StupidSimpleSheetController<dynamic>>());
+      });
+
+      testWidgets('can move sheet to specific position', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        controller!.animateToRelative(0.5).ignore();
+        await tester.pumpAndSettle();
+
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleCupertinoSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, equals(0.5));
+      });
+
+      testWidgets('will snap to snap point', (tester) async {
+        final widget = build(
+          snappingConfig: const SheetSnappingConfig.relative([0.5, 1.0]),
+        );
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        controller!.animateToRelative(0.6, snap: true).ignore();
+        await tester.pumpAndSettle();
+
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleCupertinoSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, equals(0.5));
+      });
+
+      testWidgets('will throw if trying to close', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        expect(
+          () => controller!.animateToRelative(0, snap: true).ignore(),
+          throwsA(isA<AssertionError>()),
+        );
       });
     });
   });

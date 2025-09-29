@@ -30,7 +30,7 @@ export 'src/stupid_simple_cupertino_sheet.dart';
 ///    behavior for this modal route.
 ///  * [CupertinoModalPopupRoute], for a similar iOS-style modal popup.
 class StupidSimpleSheetRoute<T> extends PopupRoute<T>
-    with StupidSimpleSheetTransitionMixin<T> {
+    with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
   /// Creates a sheet route for displaying modal content.
   ///
   /// The [motion] and [child] arguments must not be null.
@@ -381,7 +381,6 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           snappingConfig.resolve(sheetHeight).findTargetSnapPoint(
                 currentValue,
                 velocity,
-                sheetHeight,
               );
 
       // If target is 0 (closed), dismiss the sheet
@@ -405,5 +404,69 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void dispose() {
     _poppedNotifier.dispose();
     super.dispose();
+  }
+}
+
+/// A mixin that provides imperative control over a sheet's animation.
+///
+/// Mix this into your [PopupRoute] that also uses
+/// [StupidSimpleSheetTransitionMixin] to allow children of the sheet to
+/// imperatively control the sheet's position.
+mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
+  /// Retrieves the current [StupidSimpleSheetController] from the given
+  /// [BuildContext].
+  ///
+  /// This will only work if called from a context that is inside the
+  /// [StupidSimpleSheetRoute].
+  static StupidSimpleSheetController<T>? maybeOf<T>(BuildContext context) {
+    final route = ModalRoute.of(context);
+    if (route case final StupidSimpleSheetController<T> route) {
+      return route;
+    }
+
+    return null;
+  }
+
+  /// Can be used to imperatively animate the sheet to a relative position, but
+  /// can't close it.
+  ///
+  /// The [relativePosition] must be larger than 0.0 (fully closed) and
+  /// lower than or equal to 1.0 (fully open).
+  ///
+  /// If [snap] is true, the sheet will snap to the nearest snapping point
+  /// after reaching the target position.
+  ///
+  /// If you want to close the sheet, use [Navigator.pop] instead.
+  TickerFuture animateToRelative(double relativePosition, {bool snap = false}) {
+    assert(
+      relativePosition > 0.0 && relativePosition <= 1.0,
+      'Relative position must be larger than 0.0 and less than or equal to 1.0',
+    );
+
+    assert(
+      controller != null,
+      'Controller is null. Make sure the route is pushed before calling.',
+    );
+
+    final double target;
+
+    if (snap) {
+      final config = snappingConfig.resolveWith(navigator!.context);
+      // Find the closest snapping point that isn't 0.0
+      target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
+        0.0 => config.points.first,
+        final v => v,
+      };
+    } else {
+      target = relativePosition;
+    }
+
+    final simulation = motion.createSimulation(
+      start: controller!.value,
+      end: target,
+      velocity: controller!.velocity,
+    );
+
+    return controller!.animateWith(simulation);
   }
 }
