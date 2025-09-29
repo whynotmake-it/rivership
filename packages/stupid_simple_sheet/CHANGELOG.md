@@ -1,3 +1,7 @@
+## 0.4.2
+
+ - **FEAT**: add `StupidSimpleSheetController` that can be used from a sheets subtree for imperative control.
+
 ## 0.4.1
 
  - **FIX**: velocity scaling when overdragging with resistance.
