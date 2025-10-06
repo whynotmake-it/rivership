@@ -9,9 +9,9 @@ void main() {
       // This test verifies that HeroineVelocity is properly exported
       // and can be instantiated without needing to import from src/
       const velocity = Velocity(pixelsPerSecond: Offset(100, 100));
-      final widget = HeroineVelocity(
+      const widget = HeroineVelocity(
         velocity: velocity,
-        child: const SizedBox(),
+        child: SizedBox(),
       );
 
       expect(widget, isA<HeroineVelocity>());
