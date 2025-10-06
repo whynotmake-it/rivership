@@ -15,7 +15,7 @@ environment:
 
 dev_dependencies:
   google_fonts: ^6.2.1
-  lintervention: ^0.3.1
+  lintervention: ^0.4.0+1
   mocktail: ^1.0.3
 
 dependencies:
