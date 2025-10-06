@@ -1,3 +1,12 @@
+## 0.2.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: update to riverpod 3.0.0.
+
+    - remove `createContainer()` utility since we now have `ProviderContainer.test()`
+
+
 ## 0.1.0+4
 
  - **FIX**: fixed example dependencies (#62).

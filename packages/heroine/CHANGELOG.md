@@ -1,3 +1,7 @@
+## 0.5.0+2
+
+ - **FIX**: export `HeroineVelocity` (#199).
+
 ## 0.5.0+1
 
  - Update a dependency to the latest release.
