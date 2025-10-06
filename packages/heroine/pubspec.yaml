@@ -1,6 +1,6 @@
 name: heroine
 description: The queen of hero transitions. Flutter's most addictive interactions.
-version: 0.5.0+1
+version: 0.5.0+2
 resolution: workspace
 
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/heroine
