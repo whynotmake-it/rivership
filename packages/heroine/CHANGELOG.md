@@ -1,3 +1,7 @@
+## 0.5.0+2
+
+ - **FIX**: Export HeroineVelocity from main library file.
+
 ## 0.5.0+1
 
  - Update a dependency to the latest release.
