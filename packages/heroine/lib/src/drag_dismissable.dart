@@ -20,6 +20,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.builder,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
@@ -36,6 +37,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.builder,
   }) : _popAsDismiss = false;
 
   /// The default for [threshold].
@@ -43,6 +45,15 @@ class DragDismissable extends StatefulWidget {
 
   /// The default for [velocityThreshold].
   static const defaultVelocityThreshold = 1000.0;
+
+  /// Page Builder if you want to finetune Drag Behavior based on drag axis
+  ///
+  /// provides the axis on which the drag gesture started, can be null if its just a tap
+  final Widget Function(
+    BuildContext context,
+    Axis? dragStartAxis,
+    Widget? child,
+  )? builder;
 
   /// The callback that will be called when the widget is dismissed.
   ///
@@ -100,6 +111,7 @@ class _DragDismissableState extends State<DragDismissable> {
   Offset? _dragStartOffset;
   Offset _offset = Offset.zero;
   Velocity _velocity = Velocity.zero;
+  Axis? _dragStartAxis;
 
   VoidCallback? get onDismiss =>
       widget.onDismiss ??
@@ -183,7 +195,9 @@ class _DragDismissableState extends State<DragDismissable> {
         },
         child: HeroineVelocity(
           velocity: _velocity,
-          child: widget.child,
+          child: widget.builder != null
+              ? widget.builder!(context, _dragStartAxis, widget.child)
+              : widget.child,
         ),
       ),
     );
@@ -198,6 +212,16 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _update(DragUpdateDetails details) {
+    // Infer axis dynamically from gesture deltas
+    final inferredAxis = () {
+      final dx = details.delta.dx.abs();
+      final dy = details.delta.dy.abs();
+      if (dx == 0 && dy == 0) return null;
+      if (dx > dy) return Axis.horizontal;
+      if (dy > dx) return Axis.vertical;
+      return _dragStartAxis; // keep previous if equal to avoid jitter
+    }();
+    _dragStartAxis ??= inferredAxis;
     if (_dragStartOffset case final startOffset?) {
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
         case (null, _) || (_, false):
@@ -222,6 +246,7 @@ class _DragDismissableState extends State<DragDismissable> {
     setState(() {
       _dragStartOffset = null;
       _offset = Offset.zero;
+      _dragStartAxis = null;
     });
   }
 
