@@ -220,8 +220,7 @@ void main() {
     Widget build({
       Motion motion = motion,
       bool clearBarrierImmediately = true,
-      SheetSnappingConfig snappingConfig =
-          const SheetSnappingConfig.relative([1.0]),
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -399,6 +398,75 @@ void main() {
           () => controller!.animateToRelative(0, snap: true).ignore(),
           throwsA(isA<AssertionError>()),
         );
+      });
+    });
+
+    group('updateSnappingConfig', () {
+      testWidgets('updates the snapping configuration', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        // Initially should use the default config
+        expect(
+          controller!.effectiveSnappingConfig,
+          equals(SheetSnappingConfig.full),
+        );
+
+        // Update to a new configuration
+        const newConfig = SheetSnappingConfig.relative([0.3, 0.6, 1.0]);
+        await controller.overrideSnappingConfig(newConfig);
+
+        expect(controller.effectiveSnappingConfig, equals(newConfig));
+
+        // Reset to the original configuration
+        await controller.overrideSnappingConfig(null);
+
+        expect(
+          controller.effectiveSnappingConfig,
+          equals(SheetSnappingConfig.full),
+        );
+      });
+
+      testWidgets('animates to comply with new config', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        // Move to a specific position
+        controller!.animateToRelative(0.8).ignore();
+        await tester.pumpAndSettle();
+
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleCupertinoSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, closeTo(0.8, 0.01));
+
+        // Update config with animateToComply - should snap to nearest point
+        const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+        controller
+            .overrideSnappingConfig(newConfig, animateToComply: true)
+            ?.ignore();
+        await tester.pumpAndSettle();
+
+        // Should snap to 1.0 as it's closest to 0.8
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, closeTo(1.0, 0.01));
       });
     });
   });
