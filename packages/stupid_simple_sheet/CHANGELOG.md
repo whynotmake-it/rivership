@@ -1,3 +1,12 @@
+## 0.6.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: allow overriding the current sheet's snapping config from its controller (#203).
+
+    For this, `effectiveSnappingConfig` was introduced on `StupidSimpleSheetTransitionMixin`, which should be used for all snapping configuration calculations instead of `snappingConfig`.
+    If you only set `snappingConfig` and didn't do your own calculations with its values, you don't need to change anything.
+
 ## 0.5.0
 
 > Note: This release has breaking changes.
