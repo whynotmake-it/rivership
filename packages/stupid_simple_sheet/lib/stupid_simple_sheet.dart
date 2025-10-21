@@ -48,7 +48,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
     this.callNavigatorUserGestureMethods = false,
-    this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
+    this.snappingConfig = SheetSnappingConfig.full,
   });
 
   @override
@@ -88,7 +88,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   @override
   final bool callNavigatorUserGestureMethods;
 
-  /// The snapping configuration for the sheet.
+  /// The base snapping configuration for the sheet.
   @override
   final SheetSnappingConfig snappingConfig;
 
@@ -193,13 +193,27 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// Defaults to false.
   bool get callNavigatorUserGestureMethods => false;
 
-  /// The snapping configuration for the sheet.
+  SheetSnappingConfig? _snappingConfigOverride;
+
+  /// The base snapping configuration for the sheet, as provided by the
+  /// implementing class.
+  ///
+  /// This is used as the fallback when no override is set via
+  /// [StupidSimpleSheetController.overrideSnappingConfig].
   ///
   /// Defaults to only containing a relative point at 1.0 (fully open).
   ///
   /// A fully closed point of 0.0 is always added implicitly.
-  SheetSnappingConfig get snappingConfig =>
-      const SheetSnappingConfig.relative([1.0]);
+  @protected
+  SheetSnappingConfig get snappingConfig;
+
+  /// The currently active snapping configuration for the sheet.
+  ///
+  /// This will return the override if one has been set via
+  /// [StupidSimpleSheetController.overrideSnappingConfig], otherwise it returns
+  /// [snappingConfig].
+  SheetSnappingConfig get effectiveSnappingConfig =>
+      _snappingConfigOverride ?? snappingConfig;
 
   double? _dragEndVelocity;
 
@@ -230,7 +244,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // Opening: use initial snap point or default
       if (navigator?.context != null) {
         final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
-        endValue = snappingConfig.resolve(sheetHeight).initialSnap;
+        endValue = effectiveSnappingConfig.resolve(sheetHeight).initialSnap;
       } else {
         // Fallback if context is not available
         endValue = 1.0;
@@ -258,7 +272,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       builder: (context, child) => _RelativeGestureDetector(
         onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
         scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-            snappingConfig.resolveWith(context).maxExtent,
+            effectiveSnappingConfig.resolveWith(context).maxExtent,
         onRelativeDragStart: () => _handleDragStart(context),
         onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
         onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
@@ -392,7 +406,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     } else {
       // Find the target snap point based on position and velocity
       final targetValue =
-          snappingConfig.resolve(sheetHeight).findTargetSnapPoint(
+          effectiveSnappingConfig.resolve(sheetHeight).findTargetSnapPoint(
                 currentValue,
                 velocity,
               );
@@ -465,7 +479,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     final double target;
 
     if (snap) {
-      final config = snappingConfig.resolveWith(navigator!.context);
+      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
       // Find the closest snapping point that isn't 0.0
       target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
         0.0 => config.points.first,
@@ -482,5 +496,64 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     );
 
     return controller!.animateWith(simulation);
+  }
+
+  /// Updates the snapping configuration to an override for the sheet.
+  ///
+  /// Pass `null` to [newConfig] to reset the configuration to the one
+  /// originally passed to the route constructor.
+  ///
+  /// If [animateToComply] is `true`, the sheet will immediately animate to
+  /// comply with the new snapping configuration. This will snap the sheet to
+  /// the nearest valid snapping point in the new configuration.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Update to a new configuration and animate to comply
+  /// controller.updateSnappingConfig(
+  ///   SheetSnappingConfig.relative([0.3, 0.6, 1.0]),
+  ///   animateToComply: true,
+  /// );
+  ///
+  /// // Reset to the original configuration
+  /// controller.updateSnappingConfig(null);
+  /// ```
+  TickerFuture? overrideSnappingConfig(
+    SheetSnappingConfig? newConfig, {
+    bool animateToComply = false,
+  }) {
+    assert(
+      controller != null,
+      'Controller is null. Make sure the route is pushed before calling.',
+    );
+
+    _snappingConfigOverride = newConfig;
+
+    if (animateToComply) {
+      final currentPosition = controller!.value;
+      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
+
+      // Find the nearest snapping point in the new configuration
+      final targetPosition = config.findTargetSnapPoint(
+        currentPosition,
+        controller!.velocity,
+        includeClosed: false,
+      );
+
+      // If the current position is already at a valid snap point, don't animate
+      if ((targetPosition - currentPosition).abs() < 0.001) {
+        return null;
+      }
+
+      final simulation = motion.createSimulation(
+        start: currentPosition,
+        end: targetPosition,
+        velocity: controller!.velocity,
+      );
+
+      return controller!.animateWith(simulation);
+    }
+
+    return null;
   }
 }

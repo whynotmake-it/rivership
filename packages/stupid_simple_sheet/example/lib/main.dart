@@ -159,8 +159,15 @@ class _CupertinoSheetContent extends StatelessWidget {
   }
 }
 
-class _SnappingSheetContent extends StatelessWidget {
+class _SnappingSheetContent extends StatefulWidget {
   const _SnappingSheetContent();
+
+  @override
+  State<_SnappingSheetContent> createState() => _SnappingSheetContentState();
+}
+
+class _SnappingSheetContentState extends State<_SnappingSheetContent> {
+  bool _snapDisabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +176,22 @@ class _SnappingSheetContent extends StatelessWidget {
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: Text('Sheet'),
+            trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: Text(_snapDisabled ? 'Enable Snaps' : 'Disable Snaps'),
+                onPressed: () {
+                  final controller =
+                      StupidSimpleSheetController.maybeOf(context);
+                  controller
+                      ?.overrideSnappingConfig(
+                        _snapDisabled ? null : SheetSnappingConfig.full,
+                        animateToComply: true,
+                      )
+                      ?.ignore();
+                  setState(() {
+                    _snapDisabled = !_snapDisabled;
+                  });
+                }),
             leading: CupertinoButton(
               child: Text("Close"),
               padding: EdgeInsets.zero,
