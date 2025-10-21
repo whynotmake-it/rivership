@@ -66,6 +66,16 @@ abstract class Motion {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
+  /// {@macro FrictionMotion}
+  const factory Motion.friction({
+    double endVelocity,
+  }) = FrictionMotion;
+
+  /// {@macro ScaledFrictionMotion}
+  const factory Motion.scaledFriction({
+    double velocityFactor,
+  }) = ScaledFrictionMotion;
+
   /// The tolerance for this motion.
   ///
   /// Default is [Tolerance.defaultTolerance].
@@ -703,6 +713,128 @@ class MaterialSpringMotion extends SpringMotion {
       stiffness: stiffness ?? this.stiffness,
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
+  }
+}
+
+/// {@template FrictionMotion}
+/// Physics-based motion that decelerates through friction to a target velocity.
+///
+/// Unlike springs that oscillate, friction motions smoothly decelerate without
+/// bouncing. Use for scroll animations, drag-and-release, or any grounded,
+/// non-bouncy transitions.
+///
+/// The motion settles when velocity drops below [tolerance]. Control the final
+/// velocity with [endVelocity], or use [FrictionMotion.scaled] to scale the
+/// initial velocity by a factor.
+///
+/// ## Common Pitfalls
+///
+/// **Direction mismatch:** The initial velocity must point toward the target.
+/// If velocity is positive but target is behind start, or velocity is negative
+/// but target is ahead, the simulation will be invalid and may not animate.
+///
+/// **Wrong motion type:** If you need bouncing or oscillation, use a spring
+/// motion instead. Friction only decelerates.
+///
+/// Example:
+/// ```dart
+/// Motion.friction(endVelocity: 0)  // Complete stop
+/// Motion.scaledFriction(velocityFactor: 0.5)  // 50% of initial velocity
+/// ```
+/// {@endtemplate}
+class FrictionMotion extends Motion {
+  /// {@macro FrictionMotion}
+  ///
+  /// Creates a friction motion that decelerates to [endVelocity].
+  /// Defaults to 0 (complete stop).
+  const FrictionMotion({
+    double endVelocity = 0,
+  }) : _endVelocity = endVelocity;
+
+  /// Creates a friction motion that reduces the current velocity by a
+  /// specified factor.
+  const factory FrictionMotion.scaled({
+    double velocityFactor,
+  }) = ScaledFrictionMotion;
+
+  /// The velocity that the motion should end at.
+  ///
+  /// Defaults to 0.
+  final double _endVelocity;
+
+  @override
+  Tolerance get tolerance => Tolerance(velocity: _endVelocity.abs());
+
+  /// Calculates the end velocity based on the starting velocity.
+  double getEndVelocity(double startVelocity) => _endVelocity;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      FrictionSimulation.through(
+        start,
+        end,
+        velocity,
+        getEndVelocity(velocity),
+      );
+
+  @override
+  bool get needsSettle => true;
+
+  @override
+  bool get unboundedWillSettle => false;
+}
+
+/// {@template ScaledFrictionMotion}
+/// Friction motion where final velocity is a fraction of initial velocity.
+///
+/// The [velocityFactor] determines what proportion of the starting velocity
+/// remains at the end:
+/// - `0.0` = Complete stop
+/// - `0.5` = Settles at 50% of initial velocity
+/// - `1.0` = Maintains full velocity (no friction)
+///
+/// Useful for momentum scrolling where final speed relates to initial speed,
+/// or drag interactions that retain some energy.
+///
+/// ## Common Pitfalls
+///
+/// **Same as FrictionMotion:** Initial velocity must point toward the target.
+///
+/// **Factor too high:** Setting `velocityFactor` close to 1.0 creates minimal
+/// deceleration. The animation may take a very long time to settle.
+///
+/// Example:
+/// ```dart
+/// Motion.scaledFriction(velocityFactor: 0.3)  // Retains 30% velocity
+/// ```
+/// {@endtemplate}
+class ScaledFrictionMotion extends FrictionMotion {
+  /// {@macro ScaledFrictionMotion}
+  ///
+  /// The [velocityFactor] must be between 0.0 and 1.0.
+  const ScaledFrictionMotion({
+    this.velocityFactor = 0.0,
+  }) : assert(
+          velocityFactor >= 0.0 && velocityFactor <= 1.0,
+          'velocityFactor must be between 0.0 and 1.0',
+        );
+
+  /// The factor by which to scale the initial velocity.
+  ///
+  /// - `0.0` = Complete stop
+  /// - `0.5` = Settles at half initial velocity
+  /// - `1.0` = Maintains full velocity
+  ///
+  /// Must be between 0.0 and 1.0 inclusive.
+  final double velocityFactor;
+
+  @override
+  double getEndVelocity(double startVelocity) {
+    return startVelocity * velocityFactor;
   }
 }
 

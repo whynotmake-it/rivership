@@ -65,6 +65,7 @@ Motor provides several motion types out of the box, with the ability to create c
 - **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
+- **`FrictionMotion`** - Physics-based friction that gradually decelerates to a stop or target velocity. Great for drag-and-release interactions.
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
@@ -121,6 +122,59 @@ final customMaterial = MaterialSpringMotion(
 ```
 
 These motion tokens follow the [Material Design 3 Motion Guidelines](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens) and are designed to create consistent, expressive animations across Material Design applications.
+
+### FrictionMotion
+
+`FrictionMotion` provides physics-based friction animations that gradually decelerate to a stop or target velocity. Unlike springs that can oscillate and bounce, friction motions smoothly slow down in a natural, grounded way - similar to how objects in the real world come to rest.
+
+Friction motions are perfect for:
+- **Scroll animations** that need to settle naturally after a fling
+- **Drag-and-release interactions** that should feel grounded
+- **Non-bouncy transitions** that need predictable deceleration
+- **Momentum-based animations** where initial speed affects final behavior
+
+Motor provides two friction motion variants:
+
+#### Basic Friction
+
+Creates a motion that decelerates to a specific velocity (or complete stop):
+
+```dart
+// Friction that comes to a complete stop
+final stopMotion = Motion.friction(endVelocity: 0);
+
+// Friction that settles at a specific velocity
+final partialStop = Motion.friction(endVelocity: 100);
+```
+
+#### Scaled Friction
+
+Creates a motion where the final velocity is proportional to the initial velocity. This is useful when you want the ending speed to relate to how fast the motion started:
+
+```dart
+// Settles at 20% of the initial velocity
+final scaledMotion = Motion.scaledFriction(velocityFactor: 0.2);
+
+// Use in a drag interaction
+SingleMotionBuilder(
+  motion: Motion.scaledFriction(velocityFactor: 0.3),
+  value: dragPosition,
+  builder: (context, value, child) {
+    return Transform.translate(
+      offset: Offset(value, 0),
+      child: child,
+    );
+  },
+  child: Container(width: 100, height: 100, color: Colors.blue),
+)
+```
+
+The `velocityFactor` parameter accepts values from 0.0 to 1.0:
+- `0.0` - Complete stop (same as `Motion.friction(endVelocity: 0)`)
+- `0.5` - Settles at 50% of initial velocity
+- `1.0` - Maintains initial velocity (no friction effect)
+
+Friction motions continue animating until the velocity drops below the tolerance threshold, creating smooth, natural-feeling deceleration.
 
 ### Simple Animation
 
