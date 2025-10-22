@@ -1,3 +1,7 @@
+## 0.6.0+1
+
+ - **FIX**: `overrideSnappingConfig` and `animateToRelative` could interrupt sheet dismissal and break Navigator (#205).
+
 ## 0.6.0
 
 > Note: This release has breaking changes.
