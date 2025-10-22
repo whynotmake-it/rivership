@@ -187,7 +187,7 @@ class _SnappingSheetContentState extends State<_SnappingSheetContent> {
                         _snapDisabled ? null : SheetSnappingConfig.full,
                         animateToComply: true,
                       )
-                      ?.ignore();
+                      .ignore();
                   setState(() {
                     _snapDisabled = !_snapDisabled;
                   });

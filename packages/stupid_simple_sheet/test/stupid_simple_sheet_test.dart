@@ -461,13 +461,159 @@ void main() {
         const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
         controller
             .overrideSnappingConfig(newConfig, animateToComply: true)
-            ?.ignore();
+            .ignore();
         await tester.pumpAndSettle();
 
         // Should snap to 1.0 as it's closest to 0.8
         // ignore: invalid_use_of_protected_member
         expect(route.controller!.value, closeTo(1.0, 0.01));
       });
+
+      testWidgets(
+        'does not interrupt dismissal animation when called right after pop',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          // Pop the route but don't pump yet
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Before any animation frames, try to override config
+          const newConfig = SheetSnappingConfig.relative([0.3, 0.7]);
+          controller!
+              .overrideSnappingConfig(newConfig, animateToComply: true)
+              .ignore();
+
+          // Now pump the dismissal animation
+          await tester.pumpAndSettle();
+
+          // The sheet should be gone
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'does not interrupt dismissal animation when called mid-dismissal',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          final route = ModalRoute.of(tester.element(scaffold))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          // Start dismissing
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Pump a few frames so dismissal animation is in progress
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 50));
+
+          // ignore: invalid_use_of_protected_member
+          final valueDuringDismissal = route.controller!.value;
+
+          // Value should be decreasing (dismissing)
+          expect(valueDuringDismissal, lessThan(1.0));
+
+          // Try to override config mid-dismissal
+          const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+          controller!
+              .overrideSnappingConfig(newConfig, animateToComply: true)
+              .ignore();
+
+          // Continue the animation
+          await tester.pumpAndSettle();
+
+          // Sheet should still dismiss properly
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+    });
+
+    group('animateToRelative', () {
+      testWidgets(
+        'does not interrupt dismissal animation when called right after pop',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          // Pop the route but don't pump yet
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Before any animation frames, try to animate to a position
+          controller!.animateToRelative(0.5).ignore();
+
+          // Now pump the dismissal animation
+          await tester.pumpAndSettle();
+
+          // The sheet should be gone
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'does not interrupt dismissal animation when called mid-dismissal',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          final route = ModalRoute.of(tester.element(scaffold))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          // Start dismissing
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Pump a few frames so dismissal animation is in progress
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 50));
+
+          // ignore: invalid_use_of_protected_member
+          final valueDuringDismissal = route.controller!.value;
+
+          // Value should be decreasing (dismissing)
+          expect(valueDuringDismissal, lessThan(1.0));
+
+          // Try to animate to a position mid-dismissal
+          controller!.animateToRelative(0.8, snap: true).ignore();
+
+          // Continue the animation
+          await tester.pumpAndSettle();
+
+          // Sheet should still dismiss properly
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
     });
   });
 }
