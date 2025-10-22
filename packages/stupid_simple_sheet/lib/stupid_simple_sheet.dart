@@ -476,6 +476,9 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       'Controller is null. Make sure the route is pushed before calling.',
     );
 
+    // We only animate if this route is still current
+    if (!isCurrent) return TickerFuture.complete();
+
     final double target;
 
     if (snap) {
@@ -518,7 +521,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// // Reset to the original configuration
   /// controller.updateSnappingConfig(null);
   /// ```
-  TickerFuture? overrideSnappingConfig(
+  TickerFuture overrideSnappingConfig(
     SheetSnappingConfig? newConfig, {
     bool animateToComply = false,
   }) {
@@ -529,7 +532,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
 
     _snappingConfigOverride = newConfig;
 
-    if (animateToComply) {
+    // Only animate to comply if requested and if this route is still current
+    if (animateToComply && isCurrent) {
       final currentPosition = controller!.value;
       final config = effectiveSnappingConfig.resolveWith(navigator!.context);
 
@@ -542,7 +546,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
 
       // If the current position is already at a valid snap point, don't animate
       if ((targetPosition - currentPosition).abs() < 0.001) {
-        return null;
+        return TickerFuture.complete();
       }
 
       final simulation = motion.createSimulation(
@@ -554,6 +558,6 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       return controller!.animateWith(simulation);
     }
 
-    return null;
+    return TickerFuture.complete();
   }
 }
