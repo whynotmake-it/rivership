@@ -1,3 +1,7 @@
+## 0.6.1
+
+ - **FEAT**: add `draggable` parameter to sheets that can be used to disable user drags (#206).
+
 ## 0.6.0+1
 
  - **FIX**: `overrideSnappingConfig` and `animateToRelative` could interrupt sheet dismissal and break Navigator (#205).
