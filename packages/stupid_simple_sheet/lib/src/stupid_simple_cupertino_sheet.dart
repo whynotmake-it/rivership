@@ -23,6 +23,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
+    this.draggable = true,
   });
 
   @override
@@ -66,6 +67,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   final SheetSnappingConfig snappingConfig;
+
+  @override
+  final bool draggable;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>

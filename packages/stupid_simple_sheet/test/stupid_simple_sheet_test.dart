@@ -25,6 +25,7 @@ void main() {
     Widget build({
       Motion motion = motion,
       bool onlyDragWhenScrollWasAtTop = true,
+      bool draggable = true,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -40,6 +41,7 @@ void main() {
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      draggable: draggable,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -209,6 +211,35 @@ void main() {
         expect(buttonFinder.hitTestable(), findsOneWidget);
       });
     });
+
+    testWidgets('cannot be dragged when draggable is false', (tester) async {
+      await tester.pumpWidget(build(draggable: false));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+      const expectedDragDelta = dragFrames * dragPx;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+      final dragDelta = draggedTopLeft.dy - initialTopLeft.dy;
+
+      // We have moved less than 20% of the expected drag distance because we're
+      // sticking to the top.
+      expect(dragDelta, lessThan(expectedDragDelta * .2));
+
+      await gesture.up();
+    });
   });
 
   group('StupidSimpleCupertinoSheetRoute', () {
@@ -221,6 +252,7 @@ void main() {
       Motion motion = motion,
       bool clearBarrierImmediately = true,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+      bool draggable = true,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -236,6 +268,7 @@ void main() {
                       clearBarrierImmediately: clearBarrierImmediately,
                       motion: motion,
                       snappingConfig: snappingConfig,
+                      draggable: draggable,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -614,6 +647,36 @@ void main() {
           expect(find.byKey(const ValueKey('scaffold')), findsNothing);
         },
       );
+    });
+
+    testWidgets('cannot be dragged when draggable is false', (tester) async {
+      await tester.pumpWidget(build(draggable: false));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+      const expectedDragDelta = dragFrames * dragPx;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final dragDelta = draggedTopLeft.dy - initialTopLeft.dy;
+
+      // We have moved less than 20% of the expected drag distance because we're
+      // sticking
+      expect(dragDelta, lessThan(expectedDragDelta * .2));
+
+      await gesture.up();
     });
   });
 }

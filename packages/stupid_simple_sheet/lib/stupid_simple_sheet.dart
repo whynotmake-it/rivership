@@ -49,6 +49,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.onlyDragWhenScrollWasAtTop = true,
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
+    this.draggable = true,
   });
 
   @override
@@ -91,6 +92,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   /// The base snapping configuration for the sheet.
   @override
   final SheetSnappingConfig snappingConfig;
+
+  @override
+  final bool draggable;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -187,6 +191,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
 
+  /// Whether the sheet can be dragged.
+  ///
+  /// When false, the sheet cannot be moved by dragging and applies
+  /// resistance in both directions, similar to the resistance applied when
+  /// dragging past 1.0.
+  ///
+  /// Defaults to true.
+  bool get draggable => true;
+
   /// Whether the navigator's user gesture methods should be called when
   /// dragging starts and ends.
   ///
@@ -218,6 +231,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   double? _dragEndVelocity;
 
   double? _animationTargetValue;
+
+  /// Where the sheet should stick if [draggable] is false, or when
+  /// overshooting.
+  double? _stickingPoint;
 
   @override
   Duration get transitionDuration => switch (motion) {
@@ -254,6 +271,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       endValue = 0.0;
     }
     _animationTargetValue = endValue;
+    _stickingPoint = endValue;
     return motion.createSimulation(
       end: endValue,
       start: animation?.value ?? 0,
@@ -361,12 +379,17 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    if (currentValue > 1.0 && delta < 0) {
+    final applyResistance = !draggable || currentValue > 1.0;
+
+    if (applyResistance && delta != 0) {
       // When dragging up past fully open, reduce the delta with diminishing
       // returns
-      final overshoot = currentValue - 1.0;
+      final stickingPoint = _stickingPoint ?? 1.0;
+      final overshoot = (stickingPoint - currentValue).abs();
+
       final resistance = 1.0 /
           (1.0 + overshoot * overshootResistance); // Exponential resistance
+
       adjustedDelta = delta * resistance;
     }
 
@@ -390,10 +413,11 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final sheetHeight = MediaQuery.sizeOf(context).height;
 
     // If dragged past fully open, always snap back to 1.0
-    if (currentValue > 1.0) {
+    if (currentValue > 1.0 || !draggable) {
+      final stickingPoint = _stickingPoint ?? 1.0;
       // Scale the velocity by the same resistance factor that was applied
       //during dragging
-      final overshoot = currentValue - 1.0;
+      final overshoot = (currentValue - stickingPoint).abs();
       final resistance = 1.0 / (1.0 + overshoot * overshootResistance);
       final adjustedVelocity = velocity * resistance;
 

@@ -72,6 +72,19 @@ final stupidSimpleSheetRoutes = [
       ),
     ),
   ),
+  NamedRouteDef(
+    name: 'Non-Draggable Sheet',
+    path: 'non-draggable-sheet',
+    builder: (context, data) => _NonDraggableSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        draggable: false,
+        child: child,
+      ),
+    ),
+  ),
 ];
 
 final router = RootStackRouter.build(
@@ -115,6 +128,11 @@ class MotorExample extends StatelessWidget {
             CupertinoButton.filled(
               child: Text('Snapping Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Snapping Sheet')),
+            ),
+            CupertinoButton.filled(
+              child: Text('Non-Draggable Sheet'),
+              onPressed: () =>
+                  context.navigateTo(NamedRoute('Non-Draggable Sheet')),
             ),
           ],
         ),
@@ -244,6 +262,51 @@ class _PagedSheetContent extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonDraggableSheetContent extends StatelessWidget {
+  const _NonDraggableSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Non-Draggable Sheet'),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 16,
+                children: [
+                  Text(
+                    'This sheet cannot be dragged!',
+                    style: CupertinoTheme.of(context).textTheme.textStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'Use the Close button to dismiss.',
+                    style: CupertinoTheme.of(context)
+                        .textTheme
+                        .textStyle
+                        .copyWith(color: CupertinoColors.secondaryLabel),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
