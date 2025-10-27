@@ -25,6 +25,7 @@ void main() {
     Widget build({
       Motion motion = motion,
       bool onlyDragWhenScrollWasAtTop = true,
+      bool draggable = true,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -40,6 +41,7 @@ void main() {
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      draggable: draggable,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -209,6 +211,35 @@ void main() {
         expect(buttonFinder.hitTestable(), findsOneWidget);
       });
     });
+
+    testWidgets('cannot be dragged when draggable is false', (tester) async {
+      await tester.pumpWidget(build(draggable: false));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+      const expectedDragDelta = dragFrames * dragPx;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+      final dragDelta = draggedTopLeft.dy - initialTopLeft.dy;
+
+      // We have moved less than 20% of the expected drag distance because we're
+      // sticking to the top.
+      expect(dragDelta, lessThan(expectedDragDelta * .2));
+
+      await gesture.up();
+    });
   });
 
   group('StupidSimpleCupertinoSheetRoute', () {
@@ -220,8 +251,8 @@ void main() {
     Widget build({
       Motion motion = motion,
       bool clearBarrierImmediately = true,
-      SheetSnappingConfig snappingConfig =
-          const SheetSnappingConfig.relative([1.0]),
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+      bool draggable = true,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -237,6 +268,7 @@ void main() {
                       clearBarrierImmediately: clearBarrierImmediately,
                       motion: motion,
                       snappingConfig: snappingConfig,
+                      draggable: draggable,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -400,6 +432,251 @@ void main() {
           throwsA(isA<AssertionError>()),
         );
       });
+    });
+
+    group('updateSnappingConfig', () {
+      testWidgets('updates the snapping configuration', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        // Initially should use the default config
+        expect(
+          controller!.effectiveSnappingConfig,
+          equals(SheetSnappingConfig.full),
+        );
+
+        // Update to a new configuration
+        const newConfig = SheetSnappingConfig.relative([0.3, 0.6, 1.0]);
+        await controller.overrideSnappingConfig(newConfig);
+
+        expect(controller.effectiveSnappingConfig, equals(newConfig));
+
+        // Reset to the original configuration
+        await controller.overrideSnappingConfig(null);
+
+        expect(
+          controller.effectiveSnappingConfig,
+          equals(SheetSnappingConfig.full),
+        );
+      });
+
+      testWidgets('animates to comply with new config', (tester) async {
+        final widget = build();
+
+        await tester.pumpWidget(widget);
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+          tester.element(scaffold),
+        );
+
+        // Move to a specific position
+        controller!.animateToRelative(0.8).ignore();
+        await tester.pumpAndSettle();
+
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleCupertinoSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, closeTo(0.8, 0.01));
+
+        // Update config with animateToComply - should snap to nearest point
+        const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+        controller
+            .overrideSnappingConfig(newConfig, animateToComply: true)
+            .ignore();
+        await tester.pumpAndSettle();
+
+        // Should snap to 1.0 as it's closest to 0.8
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, closeTo(1.0, 0.01));
+      });
+
+      testWidgets(
+        'does not interrupt dismissal animation when called right after pop',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          // Pop the route but don't pump yet
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Before any animation frames, try to override config
+          const newConfig = SheetSnappingConfig.relative([0.3, 0.7]);
+          controller!
+              .overrideSnappingConfig(newConfig, animateToComply: true)
+              .ignore();
+
+          // Now pump the dismissal animation
+          await tester.pumpAndSettle();
+
+          // The sheet should be gone
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'does not interrupt dismissal animation when called mid-dismissal',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          final route = ModalRoute.of(tester.element(scaffold))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          // Start dismissing
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Pump a few frames so dismissal animation is in progress
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 50));
+
+          // ignore: invalid_use_of_protected_member
+          final valueDuringDismissal = route.controller!.value;
+
+          // Value should be decreasing (dismissing)
+          expect(valueDuringDismissal, lessThan(1.0));
+
+          // Try to override config mid-dismissal
+          const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+          controller!
+              .overrideSnappingConfig(newConfig, animateToComply: true)
+              .ignore();
+
+          // Continue the animation
+          await tester.pumpAndSettle();
+
+          // Sheet should still dismiss properly
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+    });
+
+    group('animateToRelative', () {
+      testWidgets(
+        'does not interrupt dismissal animation when called right after pop',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          // Pop the route but don't pump yet
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Before any animation frames, try to animate to a position
+          controller!.animateToRelative(0.5).ignore();
+
+          // Now pump the dismissal animation
+          await tester.pumpAndSettle();
+
+          // The sheet should be gone
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+
+      testWidgets(
+        'does not interrupt dismissal animation when called mid-dismissal',
+        (tester) async {
+          final widget = build();
+
+          await tester.pumpWidget(widget);
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final scaffold = find.byKey(const ValueKey('scaffold'));
+          final controller = StupidSimpleSheetController.maybeOf<dynamic>(
+            tester.element(scaffold),
+          );
+
+          final route = ModalRoute.of(tester.element(scaffold))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          // Start dismissing
+          Navigator.of(tester.element(scaffold)).pop();
+
+          // Pump a few frames so dismissal animation is in progress
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 50));
+
+          // ignore: invalid_use_of_protected_member
+          final valueDuringDismissal = route.controller!.value;
+
+          // Value should be decreasing (dismissing)
+          expect(valueDuringDismissal, lessThan(1.0));
+
+          // Try to animate to a position mid-dismissal
+          controller!.animateToRelative(0.8, snap: true).ignore();
+
+          // Continue the animation
+          await tester.pumpAndSettle();
+
+          // Sheet should still dismiss properly
+          expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+        },
+      );
+    });
+
+    testWidgets('cannot be dragged when draggable is false', (tester) async {
+      await tester.pumpWidget(build(draggable: false));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+      const expectedDragDelta = dragFrames * dragPx;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final dragDelta = draggedTopLeft.dy - initialTopLeft.dy;
+
+      // We have moved less than 20% of the expected drag distance because we're
+      // sticking
+      expect(dragDelta, lessThan(expectedDragDelta * .2));
+
+      await gesture.up();
     });
   });
 }

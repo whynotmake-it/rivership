@@ -39,6 +39,9 @@ sealed class SheetSnappingConfig {
     double? initialSnap,
   }) = _AbsoluteSnappingConfig;
 
+  /// A snapping configuration that only includes the fully open state (1.0).
+  static const SheetSnappingConfig full = SheetSnappingConfig.relative([1.0]);
+
   /// The raw snapping points as provided to the constructor.
   List<double> get points;
 
@@ -108,9 +111,12 @@ class RelativeSnappingConfig extends SheetSnappingConfig {
   /// velocity.
   double findTargetSnapPoint(
     double currentRelativePosition,
-    double velocity,
-  ) {
-    final allPoints = getAllPoints();
+    double velocity, {
+    bool includeClosed = true,
+  }) {
+    final allPoints = getAllPoints()
+        .where((p) => includeClosed || p > 0) // Exclude 0 if needed
+        .toList();
 
     // For high velocity, predict where the sheet would naturally settle
     const velocityThreshold = 0.5;

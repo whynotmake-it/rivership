@@ -72,6 +72,19 @@ final stupidSimpleSheetRoutes = [
       ),
     ),
   ),
+  NamedRouteDef(
+    name: 'Non-Draggable Sheet',
+    path: 'non-draggable-sheet',
+    builder: (context, data) => _NonDraggableSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        draggable: false,
+        child: child,
+      ),
+    ),
+  ),
 ];
 
 final router = RootStackRouter.build(
@@ -116,6 +129,11 @@ class MotorExample extends StatelessWidget {
               child: Text('Snapping Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Snapping Sheet')),
             ),
+            CupertinoButton.filled(
+              child: Text('Non-Draggable Sheet'),
+              onPressed: () =>
+                  context.navigateTo(NamedRoute('Non-Draggable Sheet')),
+            ),
           ],
         ),
       ),
@@ -159,8 +177,15 @@ class _CupertinoSheetContent extends StatelessWidget {
   }
 }
 
-class _SnappingSheetContent extends StatelessWidget {
+class _SnappingSheetContent extends StatefulWidget {
   const _SnappingSheetContent();
+
+  @override
+  State<_SnappingSheetContent> createState() => _SnappingSheetContentState();
+}
+
+class _SnappingSheetContentState extends State<_SnappingSheetContent> {
+  bool _snapDisabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +194,22 @@ class _SnappingSheetContent extends StatelessWidget {
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: Text('Sheet'),
+            trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: Text(_snapDisabled ? 'Enable Snaps' : 'Disable Snaps'),
+                onPressed: () {
+                  final controller =
+                      StupidSimpleSheetController.maybeOf(context);
+                  controller
+                      ?.overrideSnappingConfig(
+                        _snapDisabled ? null : SheetSnappingConfig.full,
+                        animateToComply: true,
+                      )
+                      .ignore();
+                  setState(() {
+                    _snapDisabled = !_snapDisabled;
+                  });
+                }),
             leading: CupertinoButton(
               child: Text("Close"),
               padding: EdgeInsets.zero,
@@ -221,6 +262,51 @@ class _PagedSheetContent extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonDraggableSheetContent extends StatelessWidget {
+  const _NonDraggableSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Non-Draggable Sheet'),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 16,
+                children: [
+                  Text(
+                    'This sheet cannot be dragged!',
+                    style: CupertinoTheme.of(context).textTheme.textStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'Use the Close button to dismiss.',
+                    style: CupertinoTheme.of(context)
+                        .textTheme
+                        .textStyle
+                        .copyWith(color: CupertinoColors.secondaryLabel),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

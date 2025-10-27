@@ -22,7 +22,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,
-    this.snappingConfig = const SheetSnappingConfig.relative([1.0]),
+    this.snappingConfig = SheetSnappingConfig.full,
+    this.draggable = true,
   });
 
   @override
@@ -48,7 +49,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   bool get barrierDismissible => switch (navigator) {
         NavigatorState(:final context) =>
-          snappingConfig.resolveWith(context).hasInbetweenSnaps,
+          effectiveSnappingConfig.resolveWith(context).hasInbetweenSnaps,
         _ => false,
       };
 
@@ -68,6 +69,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   final SheetSnappingConfig snappingConfig;
 
   @override
+  final bool draggable;
+
+  @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
         final height = MediaQuery.sizeOf(context).height;
@@ -75,8 +79,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           context,
           animation: animation.clamped,
           secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: snappingConfig.resolve(height).topTwoPoints,
-          opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
+          slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
+          opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
           child: child,
         );
       };
@@ -105,8 +109,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
         context,
         animation: controller!.view,
         secondaryAnimation: secondaryAnimation,
-        slideBackRange: snappingConfig.resolve(height).topTwoPoints,
-        opacityRange: snappingConfig.resolve(height).bottomTwoPoints,
+        slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
+        opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
         backgroundColor: backgroundColor,
         child: child,
       ),
