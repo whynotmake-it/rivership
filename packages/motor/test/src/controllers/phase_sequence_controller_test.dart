@@ -502,6 +502,40 @@ void main() {
           expect(controller.status, equals(AnimationStatus.completed));
         });
 
+        testWidgets(
+            'is reverse when forward: false and animating to larger values',
+            (tester) async {
+          controller = SequenceMotionController<String, Offset>(
+            motion: motion,
+            vsync: tester,
+            converter: converter,
+            initialValue: Offset.zero,
+          );
+
+          unawaited(controller.animateTo(const Offset(1, 1), forward: false));
+          await tester.pump();
+          expect(controller.status, equals(AnimationStatus.reverse));
+          await tester.pumpAndSettle();
+          expect(controller.status, equals(AnimationStatus.completed));
+        });
+
+        testWidgets(
+            'is dismissed when forward: false and animating to smaller values',
+            (tester) async {
+          controller = SequenceMotionController<String, Offset>(
+            motion: motion,
+            vsync: tester,
+            converter: converter,
+            initialValue: const Offset(1, 1),
+          );
+
+          unawaited(controller.animateTo(Offset.zero, forward: false));
+          await tester.pump();
+          expect(controller.status, equals(AnimationStatus.reverse));
+          await tester.pumpAndSettle();
+          expect(controller.status, equals(AnimationStatus.completed));
+        });
+
         testWidgets('is dismissed when back at initial value', (tester) async {
           controller = SequenceMotionController<String, Offset>(
             motion: motion,
