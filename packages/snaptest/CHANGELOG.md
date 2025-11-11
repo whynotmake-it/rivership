@@ -1,3 +1,13 @@
+## 0.2.2
+
+ - **FEAT**: improve font loading drastically.
+
+    - Remove dependency on spot package
+    - Load actual SFPro fonts on macOS if you have them installed, otherwise
+      print a warning and fall back to Roboto.
+    - Allow calling `snap()` from within `runAsync`, even with font loading.
+
+
 ## 0.2.1
 
  - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.
