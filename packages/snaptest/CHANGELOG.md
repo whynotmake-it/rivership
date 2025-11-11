@@ -1,3 +1,7 @@
+## 0.2.2+1
+
+ - **DOCS**: remove outdated font loading section from README.
+
 ## 0.2.2
 
  - **FEAT**: improve font loading drastically.
