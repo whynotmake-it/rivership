@@ -197,6 +197,25 @@ void main() {
           expect(files.first.path, isNot(contains('landscape')));
         },
       );
+
+      testWidgets('works from within runAsync', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text('Async Snap Test'),
+              ),
+            ),
+          ),
+        );
+
+        await tester.runAsync(() async {
+          final files = await snap(name: 'run_async_snap');
+
+          expect(files, hasLength(1));
+          expect(files.first.existsSync(), isTrue);
+        });
+      });
     });
 
     group('SnaptestSettings', () {
