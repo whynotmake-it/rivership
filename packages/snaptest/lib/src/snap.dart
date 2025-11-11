@@ -291,8 +291,6 @@ VoidCallback setTestViewToFakeDevice(
 ///
 /// If [from] is provided, the screenshot will be taken from the given [Finder].
 /// Otherwise, the screenshot will be taken from the whole screen.
-///
-
 Future<ui.Image?> takeDeviceScreenshot({
   required DeviceInfo device,
   required SnaptestSettings settings,
@@ -414,7 +412,9 @@ Future<ui.Image> _captureImage(
   }
   assert(!renderObject.debugNeedsPaint, 'The RenderObject needs painting');
 
-  final layer = renderObject.debugLayer! as OffsetLayer;
+  // RepaintBoundary is guaranteed to have an OffsetLayer
+  // ignore: invalid_use_of_protected_member
+  final layer = renderObject.layer! as OffsetLayer;
 
   if (blockText) {
     BlockedTextPaintingContext(
@@ -526,6 +526,7 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
   );
 
   picture.dispose();
+  image.dispose();
   return framedImage;
 }
 
