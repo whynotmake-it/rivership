@@ -1,3 +1,7 @@
+## 0.6.2+1
+
+ - **DOCS**: fixed an incorrect changelog entry.
+
 ## 0.6.2
 
  - **FEAT**: add `topRadius` to cupertino sheet.
