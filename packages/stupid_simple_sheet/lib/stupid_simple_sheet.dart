@@ -50,6 +50,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
+    this.originateAboveBottomViewInset = false,
   });
 
   @override
@@ -95,6 +96,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool draggable;
+
+  @override
+  final bool originateAboveBottomViewInset;
 
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
@@ -206,6 +210,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// Defaults to false.
   bool get callNavigatorUserGestureMethods => false;
 
+  /// Whether the sheet's origin should be moved up by the bottom view inset of
+  /// the current [MediaQuery].
+  ///
+  /// If this is true, and the keyboard is opened, the sheet will originate from
+  /// above the keyboard.
+  bool get originateAboveBottomViewInset => false;
+
   SheetSnappingConfig? _snappingConfigOverride;
 
   /// The base snapping configuration for the sheet, as provided by the
@@ -287,14 +298,20 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) => _RelativeGestureDetector(
-        onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-        scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-            effectiveSnappingConfig.resolveWith(context).maxExtent,
-        onRelativeDragStart: () => _handleDragStart(context),
-        onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
-        onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
-        child: child!,
+      builder: (context, child) => MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: originateAboveBottomViewInset,
+        // ^ The sheet is already moved up by the bottom view inset, so we make
+        // sure the content inside the sheet doesn't add extra padding
+        child: _RelativeGestureDetector(
+          onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+          scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
+              effectiveSnappingConfig.resolveWith(context).maxExtent,
+          onRelativeDragStart: () => _handleDragStart(context),
+          onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
+          onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
+          child: child!,
+        ),
       ),
       child: buildContent(context),
     );
@@ -339,6 +356,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
                 child: child,
               ),
             ),
+            if (originateAboveBottomViewInset)
+              SizedBox(
+                height: MediaQuery.viewInsetsOf(context).bottom,
+              ),
           ],
         );
       },

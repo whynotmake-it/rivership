@@ -26,6 +26,7 @@ void main() {
       Motion motion = motion,
       bool onlyDragWhenScrollWasAtTop = true,
       bool draggable = true,
+      bool originateAboveBottomViewInset = false,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -42,6 +43,8 @@ void main() {
                       motion: motion,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       draggable: draggable,
+                      originateAboveBottomViewInset:
+                          originateAboveBottomViewInset,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -239,6 +242,90 @@ void main() {
       expect(dragDelta, lessThan(expectedDragDelta * .2));
 
       await gesture.up();
+    });
+
+    group('originateAboveBottomViewInset', () {
+      const keyboardHeight = 300.0;
+
+      void openKeyboard(WidgetTester tester) {
+        tester.view.viewInsets = FakeViewPadding(
+          bottom: keyboardHeight * tester.view.devicePixelRatio,
+        );
+        addTearDown(tester.view.reset);
+      }
+
+      testWidgets('sheet moves up by bottom view inset', (tester) async {
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(build(originateAboveBottomViewInset: true));
+        // Show the sheet without keyboard
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final bottomLeft = tester.getBottomLeft(scaffoldFinder);
+
+        // Close the sheet
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+        await tester.pumpAndSettle();
+
+        // Simulate keyboard appearing
+        openKeyboard(tester);
+
+        // Show the sheet with keyboard
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final withKeyboardBottomLeft = tester.getBottomLeft(scaffoldFinder);
+
+        // The sheet should have moved up by the keyboard height
+        expect(
+          withKeyboardBottomLeft.dy,
+          equals(bottomLeft.dy - keyboardHeight),
+        );
+      });
+
+      testWidgets(
+        'viewInsets inside the sheet are unchaged by default',
+        (tester) async {
+          // Simulate keyboard appearing
+          openKeyboard(tester);
+
+          await tester.pumpWidget(build());
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final element = tester.element(
+            find.byKey(const ValueKey('scaffold')),
+          );
+
+          final insets = MediaQuery.viewInsetsOf(element);
+
+          // The insets should reflect the keyboard height
+          expect(insets.bottom, equals(keyboardHeight));
+        },
+      );
+
+      testWidgets(
+        'viewInsets inside the sheet is 0 when keyboard is opened',
+        (tester) async {
+          // Simulate keyboard appearing
+          openKeyboard(tester);
+
+          await tester.pumpWidget(build(originateAboveBottomViewInset: true));
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final element = tester.element(
+            find.byKey(const ValueKey('scaffold')),
+          );
+
+          final insets = MediaQuery.viewInsetsOf(element);
+
+          // The insets should be zero because they are removed
+          expect(insets.bottom, equals(0.0));
+        },
+      );
     });
   });
 

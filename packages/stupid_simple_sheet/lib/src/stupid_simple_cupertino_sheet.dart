@@ -24,6 +24,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
+    this.originateAboveBottomViewInset = false,
   });
 
   @override
@@ -70,6 +71,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool draggable;
+
+  @override
+  final bool originateAboveBottomViewInset;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
