@@ -340,6 +340,7 @@ void main() {
       bool clearBarrierImmediately = true,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
       bool draggable = true,
+      Radius topRadius = const Radius.circular(12),
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -356,6 +357,7 @@ void main() {
                       motion: motion,
                       snappingConfig: snappingConfig,
                       draggable: draggable,
+                      topRadius: topRadius,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -765,5 +767,97 @@ void main() {
 
       await gesture.up();
     });
+
+    group('radius goldens', () {
+      setUp(() {
+        final comparator = goldenFileComparator;
+
+        goldenFileComparator = PixelDiffGoldenComparator(
+          (goldenFileComparator as LocalFileComparator).basedir.path,
+          pixelCount: 750,
+        );
+
+        addTearDown(() {
+          goldenFileComparator = comparator;
+        });
+      });
+
+      testWidgets('looks correct with default radius', (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'default radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with large radius', (tester) async {
+        await tester.pumpWidget(build(topRadius: const Radius.circular(32)));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'large radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with zero radius', (tester) async {
+        await tester.pumpWidget(build(topRadius: Radius.zero));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'zero radius', matchToGolden: true);
+      });
+    });
   });
+}
+
+/// A golden file comparator that allows a specified number of pixels
+/// to be different between the golden image file and the test image file, and
+/// still pass.
+class PixelDiffGoldenComparator extends LocalFileComparator {
+  PixelDiffGoldenComparator(
+    String testBaseDirectory, {
+    required int pixelCount,
+  })  : _testBaseDirectory = testBaseDirectory,
+        _maxPixelMismatchCount = pixelCount,
+        super(Uri.parse(testBaseDirectory));
+
+  @override
+  Uri get basedir => Uri.parse(_testBaseDirectory);
+
+  /// The file system path to the directory that holds the currently executing
+  /// Dart test file.
+  final String _testBaseDirectory;
+
+  /// The maximum number of mismatched pixels for which this pixel test
+  /// is considered a success/pass.
+  final int _maxPixelMismatchCount;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    // Note: the incoming `golden` Uri is a partial path from the currently
+    // executing test directory to the golden file, e.g., "goldens/my-test.png".
+    final result = await GoldenFileComparator.compareLists(
+      imageBytes,
+      await getGoldenBytes(golden),
+    );
+
+    if (result.passed) {
+      return true;
+    }
+
+    final diffImage = result.diffs!.entries.first.value;
+    final pixelCount = diffImage.width * diffImage.height;
+    final pixelMismatchCount = pixelCount * result.diffPercent;
+
+    if (pixelMismatchCount <= _maxPixelMismatchCount) {
+      return true;
+    }
+
+    // Paint the golden diffs and images to failure files.
+    await generateFailureOutput(result, golden, basedir);
+    throw FlutterError(
+      "Pixel test failed. ${result.diffPercent.toStringAsFixed(2)}% diff, "
+      "$pixelMismatchCount pixel count diff (max allowed pixel mismatch "
+      "count is $_maxPixelMismatchCount)",
+    );
+  }
 }
