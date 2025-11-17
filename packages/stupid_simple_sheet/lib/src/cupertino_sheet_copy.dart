@@ -60,6 +60,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required Animation<double> secondaryAnimation,
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
+    Radius borderRadius = const Radius.circular(12.0),
     Widget? child,
   }) {
     final Animatable<Offset> topDownTween = Tween<Offset>(
@@ -81,7 +82,7 @@ abstract class CopiedCupertinoSheetTransitions {
       begin: BorderRadius.vertical(
         top: Radius.circular(roundedDeviceCorners ? deviceCornerRadius : 0),
       ),
-      end: BorderRadius.circular(8),
+      end: BorderRadius.circular(borderRadius.x / 1.5),
     );
 
     final Animation<BorderRadiusGeometry> radiusAnimation = secondaryAnimation
@@ -203,6 +204,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required Color backgroundColor,
+    Radius borderRadius = const Radius.circular(12.0),
     Widget? child,
   }) {
     final offsetTween = Tween<Offset>(
@@ -211,8 +213,8 @@ abstract class CopiedCupertinoSheetTransitions {
     );
 
     final radiusTween = BorderRadiusTween(
-      begin: BorderRadius.vertical(top: Radius.circular(12)),
-      end: BorderRadius.vertical(top: Radius.circular(8)),
+      begin: BorderRadius.vertical(top: borderRadius),
+      end: BorderRadius.vertical(top: Radius.circular(borderRadius.x / 1.5)),
     );
 
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);

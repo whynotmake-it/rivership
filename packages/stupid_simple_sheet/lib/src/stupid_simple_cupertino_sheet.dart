@@ -25,6 +25,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.topRadius = const Radius.circular(12),
   });
 
   @override
@@ -43,6 +44,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
+
+  /// The border radius of the sheet's top corners when it first appears.
+  ///
+  /// Defaults to `Radius.circular(12.0)`. The radius when another
+  /// sheet is pushed on top\ will be this value divided by 1.5 (8 by default).
+  final Radius topRadius;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
@@ -85,6 +92,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           secondaryAnimation: secondaryAnimation.clamped,
           slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
           opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+          borderRadius: topRadius,
           child: child,
         );
       };
@@ -116,6 +124,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
         slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
         opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
         backgroundColor: backgroundColor,
+        borderRadius: topRadius,
         child: child,
       ),
     );
