@@ -1,3 +1,14 @@
+## 0.6.2
+
+ - **FEAT**: add `topRadius` to cupertino sheet.
+
+    This allows matching the iOS 26.0 appearance more closely
+
+ - **FEAT**: add `originateAboveBottomViewInset` to `StupidSimpleSheet` and its mixin.
+
+    The cupertino sheet does not support this, as it always takes full height anyway, and should continue handling safe areas internally
+
+
 ## 0.6.1
 
  - **FEAT**: add `draggable` parameter to sheets that can be used to disable user drags (#206).
