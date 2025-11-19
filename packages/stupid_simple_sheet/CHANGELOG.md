@@ -1,3 +1,7 @@
+## 0.6.2+2
+
+ - **FIX**: stop bounce when scrolling down while sheet is at top.
+
 ## 0.6.2+1
 
  - **DOCS**: fixed an incorrect changelog entry.
