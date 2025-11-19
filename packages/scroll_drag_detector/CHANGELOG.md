@@ -1,3 +1,17 @@
+## 0.1.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: callbacks now indicate if a scroll did, would have, or will occur.
+
+    All callbacks in `ScrollDragDetector` besides down and cancel now pass an extra bool that
+    
+    - For drag update, whether the drag would have been a scroll gesture
+    - For drag end, whether the drag will turn into a scroll gesture
+    
+    This allows consumers to better handle interactions between dragging and scrolling.
+
+
 ## 0.0.4
 
  - **FIX**: velocity scaling when overdragging with resistance.
