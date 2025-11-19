@@ -124,8 +124,10 @@ class _RelativeGestureDetector extends StatelessWidget {
   final bool scrollableCanMoveBack;
   final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
-  final ValueChanged<double> onRelativeDragUpdate;
-  final ValueChanged<double> onRelativeDragEnd;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragUpdate;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragEnd;
 
   final Widget child;
 
@@ -134,14 +136,18 @@ class _RelativeGestureDetector extends StatelessWidget {
     return ScrollDragDetector(
       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: scrollableCanMoveBack,
-      onVerticalDragStart: (details) => onRelativeDragStart(),
-      onVerticalDragEnd: (details) {
+      onVerticalDragStart: (details, _) => onRelativeDragStart(),
+      onVerticalDragEnd: (details, willScroll) {
         onRelativeDragEnd(
           details.velocity.pixelsPerSecond.dy / context.size!.height,
+          willScroll,
         );
       },
-      onVerticalDragUpdate: (details) {
-        onRelativeDragUpdate(details.primaryDelta! / context.size!.height);
+      onVerticalDragUpdate: (details, wouldScroll) {
+        onRelativeDragUpdate(
+          details.primaryDelta! / context.size!.height,
+          wouldScroll,
+        );
       },
       child: child,
     );
@@ -308,8 +314,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.resolveWith(context).maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
-          onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
-          onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
+          onRelativeDragUpdate: (delta, wouldScroll) =>
+              _handleDragUpdate(context, delta, wouldScroll),
+          onRelativeDragEnd: (velocity, willScroll) =>
+              _handleDragEnd(context, velocity, willScroll),
           child: child!,
         ),
       ),
@@ -396,16 +404,23 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     }
   }
 
-  void _handleDragUpdate(BuildContext context, double delta) {
+  void _handleDragUpdate(BuildContext context, double delta, bool wouldScroll) {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    final applyResistance = !draggable || currentValue > 1.0;
+    final maxExtent = effectiveSnappingConfig.resolveWith(context).maxExtent;
 
-    if (applyResistance && delta != 0) {
+    final applyResistance = !draggable || currentValue > maxExtent;
+
+    if (wouldScroll && (currentValue - delta) > maxExtent) {
+      // If the scrollable would scroll, and the sheet will be dragged past its
+      // max, we don't allow that.
+      adjustedDelta = currentValue - maxExtent;
+    } else if (applyResistance && delta != 0) {
+      final stickingPoint = _stickingPoint ?? 1.0;
       // When dragging up past fully open, reduce the delta with diminishing
       // returns
-      final stickingPoint = _stickingPoint ?? 1.0;
+
       final overshoot = (stickingPoint - currentValue).abs();
 
       final resistance = 1.0 /
@@ -415,6 +430,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     }
 
     final newValue = currentValue - adjustedDelta;
+
     controller?.value = newValue;
     _animationTargetValue = newValue;
   }
@@ -422,6 +438,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void _handleDragEnd(
     BuildContext context,
     double velocity,
+    bool willScroll,
   ) {
     final currentValue = controller!.value;
     if (callNavigatorUserGestureMethods) {
@@ -433,13 +450,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     // Get the sheet height for pixel-based calculations
     final sheetHeight = MediaQuery.sizeOf(context).height;
 
+    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+
     // If dragged past fully open, always snap back to 1.0
-    if (currentValue > 1.0 || !draggable) {
-      final stickingPoint = _stickingPoint ?? 1.0;
+    if (currentValue > maxExtent || !draggable) {
+      final stickingPoint = _stickingPoint ?? maxExtent;
       // Scale the velocity by the same resistance factor that was applied
       //during dragging
       final overshoot = (currentValue - stickingPoint).abs();
-      final resistance = 1.0 / (1.0 + overshoot * overshootResistance);
+      final resistance = 1.0 / (maxExtent + overshoot * overshootResistance);
       final adjustedVelocity = velocity * resistance;
 
       final backSim = motion.createSimulation(

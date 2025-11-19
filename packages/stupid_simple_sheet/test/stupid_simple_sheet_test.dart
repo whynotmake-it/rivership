@@ -244,6 +244,50 @@ void main() {
       await gesture.up();
     });
 
+    testWidgets('does not bounce when dragged at the top', (tester) async {
+      await tester.pumpWidget(build());
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 5;
+      const dragDownPx = 20.0;
+      const dragUpPx = -40.0;
+
+      // Drag downwards
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragDownPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // And upwards but with some extra distance
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragUpPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      // We did not overshoot
+      expect(draggedTopLeft, equals(initialTopLeft));
+
+      // and we have started scrolling
+      final scrollableState = tester.state<ScrollableState>(
+        find.descendant(
+          of: scaffoldFinder,
+          matching: find.byType(Scrollable),
+        ),
+      );
+
+      expect(scrollableState.position.pixels, greaterThan(0.0));
+
+      await gesture.up();
+    });
+
     group('originateAboveBottomViewInset', () {
       const keyboardHeight = 300.0;
 
