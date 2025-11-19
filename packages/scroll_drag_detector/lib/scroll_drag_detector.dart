@@ -1,6 +1,29 @@
+// ignore_for_file: avoid_positional_boolean_parameters
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+/// Works like [GestureDragStartCallback] but also tells whether the scrollable
+/// did scroll before the drag started.
+typedef ScrollDragStartCallback = void Function(
+  DragStartDetails details,
+  bool didScroll,
+);
+
+/// Works like [GestureDragUpdateCallback] but also tells whether the drag would
+/// have been a scroll.
+typedef ScrollDragUpdateCallback = void Function(
+  DragUpdateDetails details,
+  bool wouldScroll,
+);
+
+/// Works like [GestureDragEndCallback] but also tells whether the scrollable
+/// will start scrolling after the drag ended.
+typedef ScrollDragEndCallback = void Function(
+  DragEndDetails details,
+  bool willScroll,
+);
 
 /// {@template scroll_drag_detector}
 /// A widget similar to GestureDetector that can smoothly transition between
@@ -69,7 +92,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragStartCallback? onVerticalDragStart;
+  final ScrollDragStartCallback? onVerticalDragStart;
 
   /// A pointer that is in contact with the screen with a primary button and
   /// moving vertically has moved in the vertical direction.
@@ -77,7 +100,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragUpdateCallback? onVerticalDragUpdate;
+  final ScrollDragUpdateCallback? onVerticalDragUpdate;
 
   /// A pointer that was previously in contact with the screen with a primary
   /// button and moving vertically is no longer in contact with the screen and
@@ -86,7 +109,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragEndCallback? onVerticalDragEnd;
+  final ScrollDragEndCallback? onVerticalDragEnd;
 
   /// The pointer that previously triggered [onVerticalDragDown] did not
   /// complete.
@@ -110,7 +133,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragStartCallback? onHorizontalDragStart;
+  final ScrollDragStartCallback? onHorizontalDragStart;
 
   /// A pointer that is in contact with the screen with a primary button and
   /// moving horizontally has moved in the horizontal direction.
@@ -118,7 +141,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragUpdateCallback? onHorizontalDragUpdate;
+  final ScrollDragUpdateCallback? onHorizontalDragUpdate;
 
   /// A pointer that was previously in contact with the screen with a primary
   /// button and moving horizontally is no longer in contact with the screen and
@@ -127,7 +150,7 @@ class ScrollDragDetector extends StatefulWidget {
   /// See also:
   ///
   ///  * [kPrimaryButton], the button this callback responds to.
-  final GestureDragEndCallback? onHorizontalDragEnd;
+  final ScrollDragEndCallback? onHorizontalDragEnd;
 
   /// The pointer that previously triggered [onHorizontalDragDown] did not
   /// complete.
@@ -179,13 +202,45 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
       child: GestureDetector(
-        onVerticalDragStart: widget.onVerticalDragStart,
-        onVerticalDragUpdate: widget.onVerticalDragUpdate,
-        onVerticalDragEnd: widget.onVerticalDragEnd,
+        onVerticalDragDown: widget.onVerticalDragDown,
+        onVerticalDragStart: switch (widget.onVerticalDragStart) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
+        onVerticalDragUpdate: switch (widget.onVerticalDragUpdate) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
+        onVerticalDragEnd: switch (widget.onVerticalDragEnd) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
         onVerticalDragCancel: widget.onVerticalDragCancel,
-        onHorizontalDragStart: widget.onHorizontalDragStart,
-        onHorizontalDragUpdate: widget.onHorizontalDragUpdate,
-        onHorizontalDragEnd: widget.onHorizontalDragEnd,
+        onHorizontalDragDown: widget.onHorizontalDragDown,
+        onHorizontalDragStart: switch (widget.onHorizontalDragStart) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
+        onHorizontalDragUpdate: switch (widget.onHorizontalDragUpdate) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
+        onHorizontalDragEnd: switch (widget.onHorizontalDragEnd) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
         onHorizontalDragCancel: widget.onHorizontalDragCancel,
         child: ValueListenableBuilder(
           valueListenable: _isDragging,
@@ -244,13 +299,21 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             _handleDragStart(metrics.axis);
           } else if (dragDetails.primaryDelta case final delta?
               when delta < 0 && !widget.scrollableCanMoveBack) {
+            // We cannot move back anymore, but the user is still dragging.
+            // So we end the drag here, but we notify that we will continue
+            // scrolling.
             _isDragging.value = false;
-            _handleDragEnd(metrics.axis, DragEndDetails());
+            _handleDragEnd(metrics.axis, DragEndDetails(), true);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
         } else {
           if (_isDragging.value) {
+            // Either the user let go, or the overscroll is part of normal
+            // scrolling, not dragging.
+            // In both cases, we end the drag, and if the user's gesture is
+            // still active, we notify that we will continue scrolling.
+            final gestureActive = dragDetails != null;
             _isDragging.value = false;
             _handleDragEnd(
               metrics.axis,
@@ -263,6 +326,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
                   },
                 ),
               ),
+              gestureActive,
             );
           }
         }
@@ -272,7 +336,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _handleDragEnd(n.metrics.axis, n.dragDetails ?? DragEndDetails());
+              // The user stopped scrolling, so we also end the drag.
+              _handleDragEnd(
+                n.metrics.axis,
+                n.dragDetails ?? DragEndDetails(),
+                false,
+              );
             }
           });
         }
@@ -313,26 +382,26 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   void _handleDragStart(Axis axis) {
     if (_dragStartDetails case final details?) {
       if (axis == Axis.vertical) {
-        widget.onVerticalDragStart?.call(details);
+        widget.onVerticalDragStart?.call(details, true);
       } else {
-        widget.onHorizontalDragStart?.call(details);
+        widget.onHorizontalDragStart?.call(details, true);
       }
     }
   }
 
   void _handleDragUpdate(Axis axis, DragUpdateDetails details) {
     if (axis == Axis.vertical) {
-      widget.onVerticalDragUpdate?.call(details);
+      widget.onVerticalDragUpdate?.call(details, true);
     } else {
-      widget.onHorizontalDragUpdate?.call(details);
+      widget.onHorizontalDragUpdate?.call(details, true);
     }
   }
 
-  void _handleDragEnd(Axis axis, DragEndDetails details) {
+  void _handleDragEnd(Axis axis, DragEndDetails details, bool willScroll) {
     if (axis == Axis.vertical) {
-      widget.onVerticalDragEnd?.call(details);
+      widget.onVerticalDragEnd?.call(details, willScroll);
     } else {
-      widget.onHorizontalDragEnd?.call(details);
+      widget.onHorizontalDragEnd?.call(details, willScroll);
     }
   }
 }
