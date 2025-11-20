@@ -85,13 +85,13 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
-        final height = MediaQuery.sizeOf(context).height;
+        final resolvedConfig = effectiveSnappingConfig.resolveWith(context);
         return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
           context,
           animation: animation.clamped,
           secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
-          opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+          slideBackRange: resolvedConfig.topTwoPoints,
+          opacityRange: resolvedConfig.bottomTwoPoints,
           borderRadius: topRadius,
           child: child,
         );
@@ -113,16 +113,15 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final height = MediaQuery.sizeOf(context).height;
-
+    final resolvedConfig = effectiveSnappingConfig.resolveWith(context);
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: CopiedCupertinoSheetTransitions.fullTransition(
         context,
         animation: controller!.view,
         secondaryAnimation: secondaryAnimation,
-        slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
-        opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+        slideBackRange: resolvedConfig.topTwoPoints,
+        opacityRange: resolvedConfig.bottomTwoPoints,
         backgroundColor: backgroundColor,
         borderRadius: topRadius,
         child: child,

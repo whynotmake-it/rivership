@@ -27,6 +27,8 @@ void main() {
       bool onlyDragWhenScrollWasAtTop = true,
       bool draggable = true,
       bool originateAboveBottomViewInset = false,
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+      Widget? content,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -40,21 +42,23 @@ void main() {
                     context,
                   ).push(
                     StupidSimpleSheetRoute<void>(
+                      snappingConfig: snappingConfig,
                       motion: motion,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       draggable: draggable,
                       originateAboveBottomViewInset:
                           originateAboveBottomViewInset,
                       clipBehavior: Clip.none,
-                      child: Scaffold(
-                        key: const ValueKey('scaffold'),
-                        body: ListView.builder(
-                          itemCount: 100,
-                          itemBuilder: (context, index) => ListTile(
-                            title: Text('Item $index'),
+                      child: content ??
+                          Scaffold(
+                            key: const ValueKey('scaffold'),
+                            body: ListView.builder(
+                              itemCount: 100,
+                              itemBuilder: (context, index) => ListTile(
+                                title: Text('Item $index'),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                     ),
                   ),
                   child: const Text('Show Stupid Simple Sheet'),
@@ -195,6 +199,90 @@ void main() {
       // Sheet has moved down
       expect(finalTopLeft.dy, greaterThan(initialTopLeft.dy));
       expect(find.byType(GlowingOverscrollIndicator), findsNothing);
+    });
+
+    group('snapping config', () {
+      const childHeight = 400.0;
+      const childKey = ValueKey('scaffold');
+      testWidgets('snaps to relative with small sheet', (tester) async {
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig.relative([0.5, 1.0]),
+            content: Container(
+              color: Colors.red,
+              height: childHeight,
+              key: childKey,
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(childKey);
+        expect(scaffoldFinder, findsOneWidget);
+
+        final topLeft = tester.getTopLeft(scaffoldFinder);
+        final screenBottomLeft = tester.getBottomLeft(find.byType(MaterialApp));
+
+        final extent = screenBottomLeft.dy - topLeft.dy;
+        await snap(name: 'snapped to 50%');
+        expect(extent, equals(childHeight * 0.5));
+      });
+
+      testWidgets('snaps to pixels with full size sheet', (tester) async {
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig.pixels([200.0]),
+            content: Container(
+              color: Colors.red,
+              height: double.infinity,
+              key: childKey,
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(childKey);
+        expect(scaffoldFinder, findsOneWidget);
+
+        final topLeft = tester.getTopLeft(scaffoldFinder);
+        final screenBottomLeft = tester.getBottomLeft(find.byType(MaterialApp));
+
+        final extent = screenBottomLeft.dy - topLeft.dy;
+        expect(extent, moreOrLessEquals(200));
+      });
+
+      testWidgets('snaps to pixels with small sheet', (tester) async {
+        const childHeight = 400.0;
+        const childKey = ValueKey('scaffold');
+
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig.pixels([200.0, 400.0]),
+            content: Container(
+              color: Colors.red,
+              height: childHeight,
+              key: childKey,
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(childKey);
+        expect(scaffoldFinder, findsOneWidget);
+
+        final topLeft = tester.getTopLeft(scaffoldFinder);
+        final screenBottomLeft = tester.getBottomLeft(find.byType(MaterialApp));
+
+        final extent = screenBottomLeft.dy - topLeft.dy;
+        await snap(name: 'snapped to 200px');
+        expect(extent, equals(200));
+      });
     });
 
     group('page behind becomes interactable quickly', () {

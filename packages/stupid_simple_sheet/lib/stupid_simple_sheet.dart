@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
@@ -277,8 +278,8 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     if (forward) {
       // Opening: use initial snap point or default
       if (navigator?.context != null) {
-        final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
-        endValue = effectiveSnappingConfig.resolve(sheetHeight).initialSnap;
+        endValue =
+            effectiveSnappingConfig.resolveWith(navigator!.context).initialSnap;
       } else {
         // Fallback if context is not available
         endValue = 1.0;
@@ -297,31 +298,33 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   }
 
   @override
+  @nonVirtual
   Widget buildPage(
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) => MediaQuery.removeViewInsets(
-        context: context,
-        removeBottom: originateAboveBottomViewInset,
-        // ^ The sheet is already moved up by the bottom view inset, so we make
-        // sure the content inside the sheet doesn't add extra padding
-        child: _RelativeGestureDetector(
-          onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-          scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-              effectiveSnappingConfig.resolveWith(context).maxExtent,
-          onRelativeDragStart: () => _handleDragStart(context),
-          onRelativeDragUpdate: (delta, wouldScroll) =>
-              _handleDragUpdate(context, delta, wouldScroll),
-          onRelativeDragEnd: (velocity, willScroll) =>
-              _handleDragEnd(context, velocity, willScroll),
-          child: child!,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Flexible(
+          child: AnimatedBuilder(
+            animation: animation,
+            builder: (context, child) => MediaQuery.removeViewInsets(
+              context: context,
+              removeBottom: originateAboveBottomViewInset,
+              child: child!,
+            ),
+            child: buildContent(context),
+          ),
         ),
-      ),
-      child: buildContent(context),
+        if (originateAboveBottomViewInset)
+          SizedBox(
+            height: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+      ],
     );
   }
 
@@ -352,23 +355,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       animation: controller!,
       builder: (context, _) {
         final value = controller!.value;
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Flexible(
-              child: FractionalTranslation(
-                translation: Offset(0, 1 - value),
-                child: child,
-              ),
-            ),
-            if (originateAboveBottomViewInset)
-              SizedBox(
-                height: MediaQuery.viewInsetsOf(context).bottom,
-              ),
-          ],
+        return FractionalTranslation(
+          translation: Offset(0, 1 - value),
+          child: child,
         );
       },
     );
@@ -448,9 +437,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     _dragEndVelocity = velocity;
 
     // Get the sheet height for pixel-based calculations
-    final sheetHeight = MediaQuery.sizeOf(context).height;
+    final resolvedConfig = effectiveSnappingConfig.resolveWith(context);
 
-    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+    final maxExtent = resolvedConfig.maxExtent;
 
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > maxExtent || !draggable) {
@@ -469,11 +458,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       _dragEndVelocity = null;
     } else {
       // Find the target snap point based on position and velocity
-      final targetValue =
-          effectiveSnappingConfig.resolve(sheetHeight).findTargetSnapPoint(
-                currentValue,
-                velocity,
-              );
+      final targetValue = resolvedConfig.findTargetSnapPoint(
+        currentValue,
+        velocity,
+      );
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {

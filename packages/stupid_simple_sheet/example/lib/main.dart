@@ -51,6 +51,9 @@ final stupidSimpleSheetRoutes = [
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleSheetRoute<T>(
         settings: page,
+        snappingConfig: SheetSnappingConfig.relative(
+          [0.5, 1.0],
+        ),
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
         child: child,
@@ -352,9 +355,14 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
                   curve: CupertinoMotion.smooth().toCurve,
                   child: Column(
                     children: [
-                      CupertinoTextField(
-                        autofocus: true,
-                        placeholder: 'Type something...',
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0) +
+                            const EdgeInsets.only(top: 12.0),
+                        child: CupertinoTextField(
+                          decoration: BoxDecoration(),
+                          autofocus: true,
+                          placeholder: 'Type something...',
+                        ),
                       ),
                       for (var i = 0; i < _itemCount; i++)
                         CupertinoListTile(
