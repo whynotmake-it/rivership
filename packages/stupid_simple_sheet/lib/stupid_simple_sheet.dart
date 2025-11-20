@@ -400,11 +400,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     BuildContext context,
   ) {
     if (callNavigatorUserGestureMethods) {
-      Navigator.of(context).didStartUserGesture();
+      navigator?.didStartUserGesture();
     }
   }
 
   void _handleDragUpdate(BuildContext context, double delta, bool wouldScroll) {
+    if (_poppedNotifier.value) return;
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
@@ -442,8 +443,11 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ) {
     final currentValue = controller!.value;
     if (callNavigatorUserGestureMethods) {
-      Navigator.of(context).didStopUserGesture();
+      navigator?.didStopUserGesture();
     }
+
+    // If the route has been popped, don't interfere with the closing animation
+    if (_poppedNotifier.value) return;
 
     _dragEndVelocity = velocity;
 
@@ -477,7 +481,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
-        Navigator.of(context).pop();
+        navigator?.pop();
       } else {
         // Animate to the target snap point
         final snapSim = motion.createSimulation(
