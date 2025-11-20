@@ -288,6 +288,33 @@ void main() {
       await gesture.up();
     });
 
+    testWidgets('can be closed properly while dragging', (tester) async {
+      await tester.pumpWidget(build());
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Now close while dragging
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+
+      await gesture.up();
+    });
+
     group('originateAboveBottomViewInset', () {
       const keyboardHeight = 300.0;
 
