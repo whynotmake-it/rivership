@@ -1,3 +1,7 @@
+## 0.6.2+3
+
+ - **FIX**: don't interfere with `pop()` animation while sheet is being dragged.
+
 ## 0.6.2+2
 
  - **FIX**: stop bounce when scrolling down while sheet is at top.
