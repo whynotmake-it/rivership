@@ -844,10 +844,12 @@ void main() {
       setUp(() {
         final comparator = goldenFileComparator;
 
-        goldenFileComparator = PixelDiffGoldenComparator(
-          (goldenFileComparator as LocalFileComparator).basedir.path,
-          pixelCount: 750,
-        );
+        if (!autoUpdateGoldenFiles) {
+          goldenFileComparator = PixelDiffGoldenComparator(
+            (goldenFileComparator as LocalFileComparator).basedir.path,
+            pixelCount: 750,
+          );
+        }
 
         addTearDown(() {
           goldenFileComparator = comparator;

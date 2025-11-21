@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
@@ -103,9 +104,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   @override
   Widget buildContent(BuildContext context) => DecoratedBox(
         decoration: ShapeDecoration(shape: shape),
-        child: ClipPath(
+        child: OptimizedClip(
           clipBehavior: clipBehavior,
-          clipper: ShapeBorderClipper(shape: shape),
+          shape: shape,
           child: child,
         ),
       );
