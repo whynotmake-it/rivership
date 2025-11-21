@@ -6,6 +6,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
@@ -60,7 +61,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required Animation<double> secondaryAnimation,
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
-    Radius borderRadius = const Radius.circular(12.0),
+    required ShapeBorder primaryShape,
     Widget? child,
   }) {
     final Animatable<Offset> topDownTween = Tween<Offset>(
@@ -77,15 +78,17 @@ abstract class CopiedCupertinoSheetTransitions {
     final bool roundedDeviceCorners =
         deviceCornerRadius > _kRoundedDeviceCornersThreshold;
 
-    final Animatable<BorderRadiusGeometry> decorationTween =
-        Tween<BorderRadiusGeometry>(
-      begin: BorderRadius.vertical(
-        top: Radius.circular(roundedDeviceCorners ? deviceCornerRadius : 0),
-      ),
-      end: BorderRadius.circular(borderRadius.x / 1.5),
+    final deviceShape = _getDeviceShape(
+      sheetShape: primaryShape,
+      deviceCornerRadius: roundedDeviceCorners ? deviceCornerRadius : 0,
     );
 
-    final Animation<BorderRadiusGeometry> radiusAnimation = secondaryAnimation
+    final decorationTween = ShapeBorderTween(
+      begin: deviceShape,
+      end: primaryShape.scale(1 / 1.5),
+    );
+
+    final shapeAnimation = secondaryAnimation
         .remapped(
           start: slideBackRange.$1,
           end: slideBackRange.$2,
@@ -134,14 +137,12 @@ abstract class CopiedCupertinoSheetTransitions {
             filterQuality: FilterQuality.medium,
             alignment: Alignment.topCenter,
             child: AnimatedBuilder(
-              animation: radiusAnimation,
-              child: child,
+              animation: shapeAnimation,
+              child: contrastedChild,
               builder: (BuildContext context, Widget? child) {
-                return ClipRSuperellipse(
-                  borderRadius: !secondaryAnimation.isDismissed
-                      ? radiusAnimation.value
-                      : BorderRadius.circular(0),
-                  child: contrastedChild,
+                return _ClipToShape(
+                  shape: shapeAnimation.value,
+                  child: child!,
                 );
               },
             ),
@@ -204,7 +205,11 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required Color backgroundColor,
-    Radius borderRadius = const Radius.circular(12.0),
+    ShapeBorder shape = const RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(12),
+      ),
+    ),
     Widget? child,
   }) {
     final offsetTween = Tween<Offset>(
@@ -212,9 +217,9 @@ abstract class CopiedCupertinoSheetTransitions {
       end: Offset(0, 0),
     );
 
-    final radiusTween = BorderRadiusTween(
-      begin: BorderRadius.vertical(top: borderRadius),
-      end: BorderRadius.vertical(top: Radius.circular(borderRadius.x / 1.5)),
+    final shapeTween = ShapeBorderTween(
+      begin: shape,
+      end: shape.scale(1 / 1.5),
     );
 
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);
@@ -240,23 +245,24 @@ abstract class CopiedCupertinoSheetTransitions {
                     start: slideBackRange.$1,
                     end: slideBackRange.$2,
                   )
-                  .drive(radiusTween),
+                  .drive(shapeTween),
               builder: (context, value, child) {
+                final content = ColoredBox(
+                  color: CupertinoDynamicColor.resolve(
+                    backgroundColor,
+                    context,
+                  ),
+                  child: child,
+                );
+
                 return ExtendSheetAtBottom(
                   color: CupertinoDynamicColor.resolve(
                     backgroundColor,
                     context,
                   ),
-                  child: ClipRSuperellipse(
-                    clipBehavior: Clip.antiAliasWithSaveLayer,
-                    borderRadius: value!,
-                    child: Container(
-                      color: CupertinoDynamicColor.resolve(
-                        backgroundColor,
-                        context,
-                      ),
-                      child: child,
-                    ),
+                  child: _ClipToShape(
+                    shape: value,
+                    child: content,
                   ),
                 );
               },
@@ -297,5 +303,55 @@ abstract class CopiedCupertinoSheetTransitions {
         ),
       ],
     );
+  }
+
+  static ShapeBorder _getDeviceShape({
+    required ShapeBorder sheetShape,
+    required double deviceCornerRadius,
+  }) {
+    switch (sheetShape) {
+      case RoundedSuperellipseBorder():
+        return RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(deviceCornerRadius),
+          ),
+        );
+      default:
+        return RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(deviceCornerRadius),
+          ),
+        );
+    }
+  }
+}
+
+class _ClipToShape extends StatelessWidget {
+  const _ClipToShape({required this.shape, required this.child});
+
+  final ShapeBorder? shape;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = this.shape;
+    return switch (shape) {
+      null => child,
+      RoundedRectangleBorder(:final borderRadius) => ClipRRect(
+          borderRadius: borderRadius,
+          child: child,
+        ),
+      RoundedSuperellipseBorder(:final borderRadius) => ClipRRect(
+          borderRadius: borderRadius,
+          child: child,
+        ),
+      _ => ClipPath(
+          clipper: ShapeBorderClipper(
+            shape: shape,
+          ),
+          child: child,
+        )
+    };
   }
 }
