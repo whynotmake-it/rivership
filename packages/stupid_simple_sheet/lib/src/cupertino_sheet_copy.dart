@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
+import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
 // to achieve a smoother end to the corner radius animation.  A value of 1.0 would use
@@ -140,7 +141,7 @@ abstract class CopiedCupertinoSheetTransitions {
               animation: shapeAnimation,
               child: contrastedChild,
               builder: (BuildContext context, Widget? child) {
-                return _ClipToShape(
+                return OptimizedClip(
                   shape: shapeAnimation.value,
                   child: child!,
                 );
@@ -156,6 +157,7 @@ abstract class CopiedCupertinoSheetTransitions {
     BuildContext context, {
     required Animation<double> animation,
     required Animation<double> secondaryAnimation,
+    required Animation<ShapeBorder?> shapeAnimation,
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     Widget? child,
@@ -185,14 +187,21 @@ abstract class CopiedCupertinoSheetTransitions {
             .drive(_kScaleTween),
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.medium,
-        child: _getOverlayedChild(
-          context,
-          child,
-          secondaryAnimation.remapped(
-            start: opacityRange.$1,
-            end: opacityRange.$2,
+        child: AnimatedBuilder(
+          animation: shapeAnimation,
+          builder: (context, child) => OptimizedClip(
+            shape: shapeAnimation.value,
+            child: child!,
           ),
-          true,
+          child: _getOverlayedChild(
+            context,
+            child,
+            secondaryAnimation.remapped(
+              start: opacityRange.$1,
+              end: opacityRange.$2,
+            ),
+            true,
+          ),
         ),
       ),
     );
@@ -222,6 +231,13 @@ abstract class CopiedCupertinoSheetTransitions {
       end: shape.scale(1 / 1.5),
     );
 
+    final shapeAnimation = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .drive(shapeTween);
+
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);
 
     return SafeArea(
@@ -231,42 +247,27 @@ abstract class CopiedCupertinoSheetTransitions {
       minimum: EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
       child: Padding(
         padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
-        child: secondarySlideUpTransition(
-          context,
-          animation: animation,
-          secondaryAnimation: secondaryAnimation,
-          opacityRange: opacityRange,
-          slideBackRange: slideBackRange,
-          child: SlideTransition(
-            position: positionAnimation,
-            child: ValueListenableBuilder(
-              valueListenable: secondaryAnimation
-                  .remapped(
-                    start: slideBackRange.$1,
-                    end: slideBackRange.$2,
-                  )
-                  .drive(shapeTween),
-              builder: (context, value, child) {
-                final content = ColoredBox(
-                  color: CupertinoDynamicColor.resolve(
-                    backgroundColor,
-                    context,
-                  ),
-                  child: child,
-                );
-
-                return ExtendSheetAtBottom(
-                  color: CupertinoDynamicColor.resolve(
-                    backgroundColor,
-                    context,
-                  ),
-                  child: _ClipToShape(
-                    shape: value,
-                    child: content,
-                  ),
-                );
-              },
-              child: child,
+        child: SlideTransition(
+          position: positionAnimation,
+          child: secondarySlideUpTransition(
+            context,
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            shapeAnimation: shapeAnimation,
+            opacityRange: opacityRange,
+            slideBackRange: slideBackRange,
+            child: ExtendSheetAtBottom(
+              color: CupertinoDynamicColor.resolve(
+                backgroundColor,
+                context,
+              ),
+              child: ColoredBox(
+                color: CupertinoDynamicColor.resolve(
+                  backgroundColor,
+                  context,
+                ),
+                child: child,
+              ),
             ),
           ),
         ),
@@ -323,35 +324,5 @@ abstract class CopiedCupertinoSheetTransitions {
           ),
         );
     }
-  }
-}
-
-class _ClipToShape extends StatelessWidget {
-  const _ClipToShape({required this.shape, required this.child});
-
-  final ShapeBorder? shape;
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final shape = this.shape;
-    return switch (shape) {
-      null => child,
-      RoundedRectangleBorder(:final borderRadius) => ClipRRect(
-          borderRadius: borderRadius,
-          child: child,
-        ),
-      RoundedSuperellipseBorder(:final borderRadius) => ClipRRect(
-          borderRadius: borderRadius,
-          child: child,
-        ),
-      _ => ClipPath(
-          clipper: ShapeBorderClipper(
-            shape: shape,
-          ),
-          child: child,
-        )
-    };
   }
 }
