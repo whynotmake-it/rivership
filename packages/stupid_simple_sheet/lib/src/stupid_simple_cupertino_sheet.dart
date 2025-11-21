@@ -25,8 +25,23 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
-    this.topRadius = const Radius.circular(12),
-  });
+    ShapeBorder shape = iOS18Shape,
+    @Deprecated('Will be removed in next major release. Use shape instead')
+    Radius? topRadius,
+  }) : shape = topRadius != null
+            ? RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: topRadius,
+                ),
+              )
+            : shape;
+
+  /// The default iOS 18 shape for sheet controllers.
+  static const iOS18Shape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.vertical(
+      top: Radius.circular(12),
+    ),
+  );
 
   @override
   double get overshootResistance => 5000;
@@ -45,11 +60,10 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   /// The widget to display in the sheet.
   final Widget child;
 
-  /// The border radius of the sheet's top corners when it first appears.
+  /// The shape of the sheet.
   ///
-  /// Defaults to `Radius.circular(12.0)`. The radius when another
-  /// sheet is pushed on top\ will be this value divided by 1.5 (8 by default).
-  final Radius topRadius;
+  /// Defaults to [iOS18Shape].
+  final ShapeBorder shape;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
@@ -92,7 +106,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           secondaryAnimation: secondaryAnimation.clamped,
           slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
           opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
-          borderRadius: topRadius,
+          primaryShape: shape,
           child: child,
         );
       };
@@ -124,7 +138,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
         slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
         opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
         backgroundColor: backgroundColor,
-        borderRadius: topRadius,
+        shape: shape,
         child: child,
       ),
     );

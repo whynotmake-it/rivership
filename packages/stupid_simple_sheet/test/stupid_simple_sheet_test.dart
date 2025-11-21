@@ -411,7 +411,7 @@ void main() {
       bool clearBarrierImmediately = true,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
       bool draggable = true,
-      Radius topRadius = const Radius.circular(12),
+      ShapeBorder? shape,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -428,7 +428,8 @@ void main() {
                       motion: motion,
                       snappingConfig: snappingConfig,
                       draggable: draggable,
-                      topRadius: topRadius,
+                      shape:
+                          shape ?? StupidSimpleCupertinoSheetRoute.iOS18Shape,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -862,19 +863,87 @@ void main() {
       });
 
       testWidgets('looks correct with large radius', (tester) async {
-        await tester.pumpWidget(build(topRadius: const Radius.circular(32)));
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
         await snap(name: 'large radius', matchToGolden: true);
       });
 
+      testWidgets('looks correct with rounded rectangle', (tester) async {
+        const shape = RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'large radius rrect', matchToGolden: true);
+      });
+
       testWidgets('looks correct with zero radius', (tester) async {
-        await tester.pumpWidget(build(topRadius: Radius.zero));
+        const shape = LinearBorder.none;
+
+        await tester.pumpWidget(build(shape: shape));
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
         await snap(name: 'zero radius', matchToGolden: true);
+      });
+
+      group('deprecated radius parameter', () {
+        Widget build({
+          required Radius topRadius,
+        }) {
+          return CupertinoApp(
+            home: Scaffold(
+              body: Center(
+                child: Builder(
+                  builder: (context) {
+                    return CupertinoButton.filled(
+                      key: const ValueKey('button'),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(
+                        StupidSimpleCupertinoSheetRoute<void>(
+                          // ignore: deprecated_member_use_from_same_package
+                          topRadius: topRadius,
+                          child: Scaffold(
+                            key: const ValueKey('scaffold'),
+                            body: ListView.builder(
+                              itemCount: 100,
+                              itemBuilder: (context, index) => ListTile(
+                                title: Text('Item $index'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: const Text('Show Stupid Simple Sheet'),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        }
+
+        testWidgets('still works', (tester) async {
+          await tester.pumpWidget(build(topRadius: const Radius.circular(50)));
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          await snap(name: 'deprecated radius 50px', matchToGolden: true);
+        });
       });
     });
   });

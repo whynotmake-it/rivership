@@ -83,6 +83,11 @@ final stupidSimpleSheetRoutes = [
         settings: page,
         draggable: false,
         child: child,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
+        ),
       ),
     ),
   ),
