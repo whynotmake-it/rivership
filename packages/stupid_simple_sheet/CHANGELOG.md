@@ -1,3 +1,23 @@
+## 0.6.2+3
+
+ - **FIX**: don't interfere with `pop()` animation while sheet is being dragged.
+
+## 0.6.2+2
+
+ - **FIX**: stop bounce when scrolling down while sheet is at top.
+
+## 0.6.2+1
+
+ - **DOCS**: fixed an incorrect changelog entry.
+
+## 0.6.2
+
+ - **FEAT**: add `topRadius` to cupertino sheet.
+
+    This allows matching the iOS 26.0 appearance more closely
+
+ - **FEAT**: add `originateAboveBottomViewInset` to `StupidSimpleSheet` and its mixin.
+
 ## 0.6.1
 
  - **FEAT**: add `draggable` parameter to sheets that can be used to disable user drags (#206).

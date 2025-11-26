@@ -26,6 +26,7 @@ void main() {
       Motion motion = motion,
       bool onlyDragWhenScrollWasAtTop = true,
       bool draggable = true,
+      bool originateAboveBottomViewInset = false,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -42,6 +43,8 @@ void main() {
                       motion: motion,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       draggable: draggable,
+                      originateAboveBottomViewInset:
+                          originateAboveBottomViewInset,
                       clipBehavior: Clip.none,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
@@ -240,6 +243,161 @@ void main() {
 
       await gesture.up();
     });
+
+    testWidgets('does not bounce when dragged at the top', (tester) async {
+      await tester.pumpWidget(build());
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final initialTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 5;
+      const dragDownPx = 20.0;
+      const dragUpPx = -40.0;
+
+      // Drag downwards
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragDownPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // And upwards but with some extra distance
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragUpPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final draggedTopLeft = tester.getTopLeft(scaffoldFinder);
+
+      // We did not overshoot
+      expect(draggedTopLeft, equals(initialTopLeft));
+
+      // and we have started scrolling
+      final scrollableState = tester.state<ScrollableState>(
+        find.descendant(
+          of: scaffoldFinder,
+          matching: find.byType(Scrollable),
+        ),
+      );
+
+      expect(scrollableState.position.pixels, greaterThan(0.0));
+
+      await gesture.up();
+    });
+
+    testWidgets('can be closed properly while dragging', (tester) async {
+      await tester.pumpWidget(build());
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      const dragFrames = 10;
+      const dragPx = 30.0;
+
+      for (var i = 0; i < dragFrames; i++) {
+        await gesture.moveBy(const Offset(0, dragPx));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Now close while dragging
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+
+      await gesture.up();
+    });
+
+    group('originateAboveBottomViewInset', () {
+      const keyboardHeight = 300.0;
+
+      void openKeyboard(WidgetTester tester) {
+        tester.view.viewInsets = FakeViewPadding(
+          bottom: keyboardHeight * tester.view.devicePixelRatio,
+        );
+        addTearDown(tester.view.reset);
+      }
+
+      testWidgets('sheet moves up by bottom view inset', (tester) async {
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(build(originateAboveBottomViewInset: true));
+        // Show the sheet without keyboard
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final bottomLeft = tester.getBottomLeft(scaffoldFinder);
+
+        // Close the sheet
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+        await tester.pumpAndSettle();
+
+        // Simulate keyboard appearing
+        openKeyboard(tester);
+
+        // Show the sheet with keyboard
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final withKeyboardBottomLeft = tester.getBottomLeft(scaffoldFinder);
+
+        // The sheet should have moved up by the keyboard height
+        expect(
+          withKeyboardBottomLeft.dy,
+          equals(bottomLeft.dy - keyboardHeight),
+        );
+      });
+
+      testWidgets(
+        'viewInsets inside the sheet are unchaged by default',
+        (tester) async {
+          // Simulate keyboard appearing
+          openKeyboard(tester);
+
+          await tester.pumpWidget(build());
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final element = tester.element(
+            find.byKey(const ValueKey('scaffold')),
+          );
+
+          final insets = MediaQuery.viewInsetsOf(element);
+
+          // The insets should reflect the keyboard height
+          expect(insets.bottom, equals(keyboardHeight));
+        },
+      );
+
+      testWidgets(
+        'viewInsets inside the sheet is 0 when keyboard is opened',
+        (tester) async {
+          // Simulate keyboard appearing
+          openKeyboard(tester);
+
+          await tester.pumpWidget(build(originateAboveBottomViewInset: true));
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final element = tester.element(
+            find.byKey(const ValueKey('scaffold')),
+          );
+
+          final insets = MediaQuery.viewInsetsOf(element);
+
+          // The insets should be zero because they are removed
+          expect(insets.bottom, equals(0.0));
+        },
+      );
+    });
   });
 
   group('StupidSimpleCupertinoSheetRoute', () {
@@ -253,6 +411,7 @@ void main() {
       bool clearBarrierImmediately = true,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
       bool draggable = true,
+      ShapeBorder? shape,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -269,6 +428,8 @@ void main() {
                       motion: motion,
                       snappingConfig: snappingConfig,
                       draggable: draggable,
+                      shape:
+                          shape ?? StupidSimpleCupertinoSheetRoute.iOS18Shape,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -678,5 +839,167 @@ void main() {
 
       await gesture.up();
     });
+
+    group('radius goldens', () {
+      setUp(() {
+        final comparator = goldenFileComparator;
+
+        if (!autoUpdateGoldenFiles) {
+          goldenFileComparator = PixelDiffGoldenComparator(
+            (goldenFileComparator as LocalFileComparator).basedir.path,
+            pixelCount: 750,
+          );
+        }
+
+        addTearDown(() {
+          goldenFileComparator = comparator;
+        });
+      });
+
+      testWidgets('looks correct with default radius', (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'default radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with large radius', (tester) async {
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'large radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with rounded rectangle', (tester) async {
+        const shape = RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'large radius rrect', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with zero radius', (tester) async {
+        const shape = LinearBorder.none;
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'zero radius', matchToGolden: true);
+      });
+
+      group('deprecated radius parameter', () {
+        Widget build({
+          required Radius topRadius,
+        }) {
+          return CupertinoApp(
+            home: Scaffold(
+              body: Center(
+                child: Builder(
+                  builder: (context) {
+                    return CupertinoButton.filled(
+                      key: const ValueKey('button'),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(
+                        StupidSimpleCupertinoSheetRoute<void>(
+                          // ignore: deprecated_member_use_from_same_package
+                          topRadius: topRadius,
+                          child: Scaffold(
+                            key: const ValueKey('scaffold'),
+                            body: ListView.builder(
+                              itemCount: 100,
+                              itemBuilder: (context, index) => ListTile(
+                                title: Text('Item $index'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: const Text('Show Stupid Simple Sheet'),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        }
+
+        testWidgets('still works', (tester) async {
+          await tester.pumpWidget(build(topRadius: const Radius.circular(50)));
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          await snap(name: 'deprecated radius 50px', matchToGolden: true);
+        });
+      });
+    });
   });
+}
+
+/// A golden file comparator that allows a specified number of pixels
+/// to be different between the golden image file and the test image file, and
+/// still pass.
+class PixelDiffGoldenComparator extends LocalFileComparator {
+  PixelDiffGoldenComparator(
+    String testBaseDirectory, {
+    required int pixelCount,
+  })  : _testBaseDirectory = testBaseDirectory,
+        _maxPixelMismatchCount = pixelCount,
+        super(Uri.parse(testBaseDirectory));
+
+  @override
+  Uri get basedir => Uri.parse(_testBaseDirectory);
+
+  /// The file system path to the directory that holds the currently executing
+  /// Dart test file.
+  final String _testBaseDirectory;
+
+  /// The maximum number of mismatched pixels for which this pixel test
+  /// is considered a success/pass.
+  final int _maxPixelMismatchCount;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    // Note: the incoming `golden` Uri is a partial path from the currently
+    // executing test directory to the golden file, e.g., "goldens/my-test.png".
+    final result = await GoldenFileComparator.compareLists(
+      imageBytes,
+      await getGoldenBytes(golden),
+    );
+
+    if (result.passed) {
+      return true;
+    }
+
+    final diffImage = result.diffs!.entries.first.value;
+    final pixelCount = diffImage.width * diffImage.height;
+    final pixelMismatchCount = pixelCount * result.diffPercent;
+
+    if (pixelMismatchCount <= _maxPixelMismatchCount) {
+      return true;
+    }
+
+    // Paint the golden diffs and images to failure files.
+    await generateFailureOutput(result, golden, basedir);
+    throw FlutterError(
+      "Pixel test failed. ${result.diffPercent.toStringAsFixed(2)}% diff, "
+      "$pixelMismatchCount pixel count diff (max allowed pixel mismatch "
+      "count is $_maxPixelMismatchCount)",
+    );
+  }
 }

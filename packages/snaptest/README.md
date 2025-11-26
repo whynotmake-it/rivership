@@ -16,31 +16,6 @@ Snaptest is simple: call `snap()` in any widget test to save a screenshot of wha
 dart pub add dev:snaptest
 ```
 
-### Recommended: Set up font loading
-
-Create a `flutter_test_config.dart` file in your `test/` directory to ensure consistent font rendering:
-
-```dart
-import 'dart:async';
-import 'package:snaptest/snaptest.dart';
-
-Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  // Load fonts before all tests to prevent side effects
-  await loadFontsAndIcons();
-
-  // Optional: Set global settings for all tests
-  SnaptestSettings.global = SnaptestSettings(
-    devices: [
-      Devices.ios.iPhone16Pro,
-    ],
-  );
-
-  await testMain();
-}
-```
-
-**Why this matters**: Flutter can't unload fonts once loaded, so without this setup, your `snap()` calls might influence your test layout later and produce different results depending on test execution order.
-
 ## The Basics 🚀
 
 ### Just call `snap()` to see your screen
@@ -150,8 +125,7 @@ void main() {
 }
 ```
 
-Or create a `flutter_test_config.dart` file to set the global settings, as
-described in the [Installation](#installation) section.
+Or create a `flutter_test_config.dart` file to set the global settings.
 
 ### Dedicated screenshot tests with `snapTest`
 
@@ -283,10 +257,26 @@ testWidgets('Custom directory example', (tester) async {
 
 The helper scripts will work with any custom directory name you specify.
 
-## Font Limitations ⚠️
+## Font Rendering 🔤
+
+### macOS: SF Pro Fonts (Recommended)
+
+For the most accurate iOS screenshot rendering on macOS, install Apple's SF Pro fonts:
+
+1. Download SF Pro fonts from [Apple's developer site](https://developer.apple.com/fonts/)
+2. Install the fonts to `/Library/Fonts` (system-wide installation)
+3. Restart your terminal/IDE if needed
+
+With SF Pro fonts installed, `loadFontsAndIcons()` will automatically use them for Cupertino widgets, making your screenshots match actual iOS rendering more closely.
+
+**Without SF Pro fonts on macOS**: Snaptest automatically falls back to Roboto fonts for consistency. You'll see a debug message during test runs if the fonts aren't found.
+
+**On other platforms (Linux, Windows)**: Cupertino widgets will always use Roboto fonts as a fallback, since Apple's SF Pro fonts cannot be legally redistributed or used outside of macOS.
+
+### Font Limitations
 
 Due to Flutter's test environment limitations:
-- **iOS system fonts** are replaced with Roboto for consistency
+- **iOS system fonts** use SF Pro (if installed on macOS) or Roboto (fallback)
 - **Google Fonts** only work if bundled as local assets (not fetched remotely)
 - **Custom fonts** must be included in your `pubspec.yaml`
 

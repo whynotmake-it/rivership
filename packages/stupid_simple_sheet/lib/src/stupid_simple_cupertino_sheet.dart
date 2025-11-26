@@ -24,7 +24,24 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
-  });
+    this.originateAboveBottomViewInset = false,
+    ShapeBorder shape = iOS18Shape,
+    @Deprecated('Will be removed in next major release. Use shape instead')
+    Radius? topRadius,
+  }) : shape = topRadius != null
+            ? RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: topRadius,
+                ),
+              )
+            : shape;
+
+  /// The default iOS 18 shape for sheet controllers.
+  static const iOS18Shape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.vertical(
+      top: Radius.circular(12),
+    ),
+  );
 
   @override
   double get overshootResistance => 5000;
@@ -42,6 +59,11 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
+
+  /// The shape of the sheet.
+  ///
+  /// Defaults to [iOS18Shape].
+  final ShapeBorder shape;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
@@ -72,6 +94,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   final bool draggable;
 
   @override
+  final bool originateAboveBottomViewInset;
+
+  @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
         final height = MediaQuery.sizeOf(context).height;
@@ -81,6 +106,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           secondaryAnimation: secondaryAnimation.clamped,
           slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
           opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+          primaryShape: shape,
           child: child,
         );
       };
@@ -112,6 +138,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
         slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
         opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
         backgroundColor: backgroundColor,
+        shape: shape,
         child: child,
       ),
     );

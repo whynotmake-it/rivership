@@ -52,6 +52,7 @@ final stupidSimpleSheetRoutes = [
           StupidSimpleSheetRoute<T>(
         settings: page,
         motion: CupertinoMotion.smooth(),
+        originateAboveBottomViewInset: true,
         child: child,
       ),
     ),
@@ -82,6 +83,11 @@ final stupidSimpleSheetRoutes = [
         settings: page,
         draggable: false,
         child: child,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
+        ),
       ),
     ),
   ),
@@ -159,6 +165,11 @@ class _CupertinoSheetContent extends StatelessWidget {
           ),
           SliverSafeArea(
               sliver: SliverMainAxisGroup(slivers: [
+            SliverToBoxAdapter(
+              child: CupertinoTextField(
+                placeholder: 'Type something...',
+              ),
+            ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => CupertinoListTile(
@@ -323,6 +334,7 @@ class _SmallSheetContent extends StatefulWidget {
 
 class _SmallSheetContentState extends State<_SmallSheetContent> {
   int _itemCount = 5;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -345,6 +357,10 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
                   curve: CupertinoMotion.smooth().toCurve,
                   child: Column(
                     children: [
+                      CupertinoTextField(
+                        autofocus: true,
+                        placeholder: 'Type something...',
+                      ),
                       for (var i = 0; i < _itemCount; i++)
                         CupertinoListTile(
                           title: Text('Item #${i + 1}'),

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
@@ -50,6 +51,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
+    this.originateAboveBottomViewInset = false,
   });
 
   @override
@@ -97,11 +99,14 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool draggable;
 
   @override
+  final bool originateAboveBottomViewInset;
+
+  @override
   Widget buildContent(BuildContext context) => DecoratedBox(
         decoration: ShapeDecoration(shape: shape),
-        child: ClipPath(
+        child: OptimizedClip(
           clipBehavior: clipBehavior,
-          clipper: ShapeBorderClipper(shape: shape),
+          shape: shape,
           child: child,
         ),
       );
@@ -120,8 +125,10 @@ class _RelativeGestureDetector extends StatelessWidget {
   final bool scrollableCanMoveBack;
   final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
-  final ValueChanged<double> onRelativeDragUpdate;
-  final ValueChanged<double> onRelativeDragEnd;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragUpdate;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragEnd;
 
   final Widget child;
 
@@ -130,14 +137,18 @@ class _RelativeGestureDetector extends StatelessWidget {
     return ScrollDragDetector(
       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: scrollableCanMoveBack,
-      onVerticalDragStart: (details) => onRelativeDragStart(),
-      onVerticalDragEnd: (details) {
+      onVerticalDragStart: (details, _) => onRelativeDragStart(),
+      onVerticalDragEnd: (details, willScroll) {
         onRelativeDragEnd(
           details.velocity.pixelsPerSecond.dy / context.size!.height,
+          willScroll,
         );
       },
-      onVerticalDragUpdate: (details) {
-        onRelativeDragUpdate(details.primaryDelta! / context.size!.height);
+      onVerticalDragUpdate: (details, wouldScroll) {
+        onRelativeDragUpdate(
+          details.primaryDelta! / context.size!.height,
+          wouldScroll,
+        );
       },
       child: child,
     );
@@ -205,6 +216,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ///
   /// Defaults to false.
   bool get callNavigatorUserGestureMethods => false;
+
+  /// Whether the sheet's origin should be moved up by the bottom view inset of
+  /// the current [MediaQuery].
+  ///
+  /// If this is true, and the keyboard is opened, the sheet will originate from
+  /// above the keyboard.
+  bool get originateAboveBottomViewInset => false;
 
   SheetSnappingConfig? _snappingConfigOverride;
 
@@ -287,14 +305,22 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) => _RelativeGestureDetector(
-        onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-        scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-            effectiveSnappingConfig.resolveWith(context).maxExtent,
-        onRelativeDragStart: () => _handleDragStart(context),
-        onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
-        onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
-        child: child!,
+      builder: (context, child) => MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: originateAboveBottomViewInset,
+        // ^ The sheet is already moved up by the bottom view inset, so we make
+        // sure the content inside the sheet doesn't add extra padding
+        child: _RelativeGestureDetector(
+          onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+          scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
+              effectiveSnappingConfig.resolveWith(context).maxExtent,
+          onRelativeDragStart: () => _handleDragStart(context),
+          onRelativeDragUpdate: (delta, wouldScroll) =>
+              _handleDragUpdate(context, delta, wouldScroll),
+          onRelativeDragEnd: (velocity, willScroll) =>
+              _handleDragEnd(context, velocity, willScroll),
+          child: child!,
+        ),
       ),
       child: buildContent(context),
     );
@@ -339,6 +365,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
                 child: child,
               ),
             ),
+            if (originateAboveBottomViewInset)
+              SizedBox(
+                height: MediaQuery.viewInsetsOf(context).bottom,
+              ),
           ],
         );
       },
@@ -371,20 +401,28 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     BuildContext context,
   ) {
     if (callNavigatorUserGestureMethods) {
-      Navigator.of(context).didStartUserGesture();
+      navigator?.didStartUserGesture();
     }
   }
 
-  void _handleDragUpdate(BuildContext context, double delta) {
+  void _handleDragUpdate(BuildContext context, double delta, bool wouldScroll) {
+    if (_poppedNotifier.value) return;
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    final applyResistance = !draggable || currentValue > 1.0;
+    final maxExtent = effectiveSnappingConfig.resolveWith(context).maxExtent;
 
-    if (applyResistance && delta != 0) {
+    final applyResistance = !draggable || currentValue > maxExtent;
+
+    if (wouldScroll && (currentValue - delta) > maxExtent) {
+      // If the scrollable would scroll, and the sheet will be dragged past its
+      // max, we don't allow that.
+      adjustedDelta = currentValue - maxExtent;
+    } else if (applyResistance && delta != 0) {
+      final stickingPoint = _stickingPoint ?? 1.0;
       // When dragging up past fully open, reduce the delta with diminishing
       // returns
-      final stickingPoint = _stickingPoint ?? 1.0;
+
       final overshoot = (stickingPoint - currentValue).abs();
 
       final resistance = 1.0 /
@@ -394,6 +432,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     }
 
     final newValue = currentValue - adjustedDelta;
+
     controller?.value = newValue;
     _animationTargetValue = newValue;
   }
@@ -401,24 +440,30 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void _handleDragEnd(
     BuildContext context,
     double velocity,
+    bool willScroll,
   ) {
     final currentValue = controller!.value;
     if (callNavigatorUserGestureMethods) {
-      Navigator.of(context).didStopUserGesture();
+      navigator?.didStopUserGesture();
     }
+
+    // If the route has been popped, don't interfere with the closing animation
+    if (_poppedNotifier.value) return;
 
     _dragEndVelocity = velocity;
 
     // Get the sheet height for pixel-based calculations
     final sheetHeight = MediaQuery.sizeOf(context).height;
 
+    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+
     // If dragged past fully open, always snap back to 1.0
-    if (currentValue > 1.0 || !draggable) {
-      final stickingPoint = _stickingPoint ?? 1.0;
+    if (currentValue > maxExtent || !draggable) {
+      final stickingPoint = _stickingPoint ?? maxExtent;
       // Scale the velocity by the same resistance factor that was applied
       //during dragging
       final overshoot = (currentValue - stickingPoint).abs();
-      final resistance = 1.0 / (1.0 + overshoot * overshootResistance);
+      final resistance = 1.0 / (maxExtent + overshoot * overshootResistance);
       final adjustedVelocity = velocity * resistance;
 
       final backSim = motion.createSimulation(
@@ -437,7 +482,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
-        Navigator.of(context).pop();
+        navigator?.pop();
       } else {
         // Animate to the target snap point
         final snapSim = motion.createSimulation(
