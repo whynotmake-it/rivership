@@ -301,10 +301,10 @@ final complexSequence = MotionSequence<AppState, ButtonStyle>.statesWithMotions(
 
 #### Advanced: Phase Motion Controllers
 
-For maximum control, use `PhaseMotionController` directly:
+For maximum control, use `SequenceMotionController` directly:
 
 ```dart
-final controller = PhaseMotionController<ButtonState, Offset>(
+final controller = SequenceMotionController<ButtonState, Offset>(
   motion: .smoothSpring(),
   vsync: this,
   converter: .offset,
