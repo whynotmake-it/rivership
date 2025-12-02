@@ -1,3 +1,11 @@
+## 0.6.3
+
+ - **FIX**: improve clipping of overlayed sheets.
+ - **FEAT**: add `shape` parameter to `StupidSimpleCupertinoSheetRoute`.
+
+    Deprecated `topRadius` parameter in favor of it.
+
+
 ## 0.6.2+3
 
  - **FIX**: don't interfere with `pop()` animation while sheet is being dragged.

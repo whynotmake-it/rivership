@@ -1,3 +1,12 @@
+## 1.1.0
+
+ - **FEAT**: added `MotionPadding`, motors equivalent to `AnimatedPadding` that can handle negative values.
+ - **FEAT**: allow swapping `MotionConverter` on `MotionController` and `MotionBuilder` types.
+
+    This enables animating supertypes (such as `EdgeInsetsGeometry`, as long as you make sure to always set the converter to match the right subtype.
+
+ - **DOCS**: correct `PhaseMotionController` to `SequenceMotionController`.
+
 ## 1.0.1
 
  - **FIX**: velocity scaling when overdragging with resistance.
