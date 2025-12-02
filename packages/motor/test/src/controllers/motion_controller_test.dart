@@ -572,8 +572,13 @@ void main() {
 
         expect(controller.value, isA<EdgeInsetsDirectional>());
         expect(
-            controller.value.horizontal, moreOrLessEquals(0, epsilon: error));
-        expect(controller.value.vertical, moreOrLessEquals(0, epsilon: error));
+          controller.value.horizontal,
+          moreOrLessEquals(0, epsilon: error),
+        );
+        expect(
+          controller.value.vertical,
+          moreOrLessEquals(0, epsilon: error),
+        );
       });
     });
   });
