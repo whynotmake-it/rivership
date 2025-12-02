@@ -1,3 +1,6 @@
+// ignore_for_file: prefer_const_constructors,
+// ignore_for_file: prefer_const_literals_to_create_immutables
+
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/src/motion.dart';
@@ -38,29 +41,45 @@ void main() {
   });
 
   group('StepSequence', () {
-    const seq1 = StepSequence<int>(
+    final seq1 = StepSequence<int>(
       [1, 2, 3],
       motion: motion,
     );
-    const seq2 = StepSequence<int>(
+    final seq2 = StepSequence<int>(
       [1, 2, 3],
       motion: motion,
     );
-    const seq3 = StepSequence<int>(
+    final seq3 = StepSequence<int>(
       [1, 2, 4],
       motion: motion2,
+    );
+
+    final seqTrimmed1 = StepSequence<int>(
+      [1, 2, 4],
+      motion: motion2.trimmed(fromStart: .1),
+    );
+
+    final seqTrimmed2 = StepSequence<int>(
+      [1, 2, 4],
+      motion: motion2.trimmed(fromStart: .2),
     );
 
     test('equality: identical', () {
       expect(seq1, equals(seq2));
       expect(seq1.hashCode, equals(seq2.hashCode));
     });
+
     test('equality: different values', () {
       expect(seq1, isNot(equals(seq3)));
     });
+
     test('phases and valueForPhase', () {
       expect(seq1.phases, [0, 1, 2]);
       expect(seq1.valueForPhase(2), 3);
+    });
+
+    test('equality: different trimmed motions', () {
+      expect(seqTrimmed1, isNot(equals(seqTrimmed2)));
     });
   });
 

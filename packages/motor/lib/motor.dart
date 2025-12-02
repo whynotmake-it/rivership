@@ -9,6 +9,8 @@ export 'src/motion.dart';
 export 'src/motion_converter.dart';
 export 'src/motion_curve.dart';
 export 'src/motion_sequence.dart';
+export 'src/phase_transition.dart';
+export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
 export 'src/widgets/sequence_motion_builder.dart';

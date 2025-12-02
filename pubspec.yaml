@@ -33,7 +33,7 @@ melos:
       workspaceChangelog: false
       changelogCommitBodies:
         include: true
-        onlyBreaking: true
+        onlyBreaking: false
       hooks:
         preCommit: |
           melos run generate

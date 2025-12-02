@@ -52,7 +52,42 @@ final stupidSimpleSheetRoutes = [
           StupidSimpleSheetRoute<T>(
         settings: page,
         motion: CupertinoMotion.smooth(),
+        originateAboveBottomViewInset: true,
         child: child,
+      ),
+    ),
+  ),
+  NamedRouteDef(
+    name: 'Snapping Sheet',
+    path: 'snapping-sheet',
+    builder: (context, data) => _SnappingSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        snappingConfig: SheetSnappingConfig.relative(
+          [0.5, 1.0],
+          initialSnap: .5,
+        ),
+        child: child,
+      ),
+    ),
+  ),
+  NamedRouteDef(
+    name: 'Non-Draggable Sheet',
+    path: 'non-draggable-sheet',
+    builder: (context, data) => _NonDraggableSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        settings: page,
+        draggable: false,
+        child: child,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
+        ),
       ),
     ),
   ),
@@ -96,6 +131,15 @@ class MotorExample extends StatelessWidget {
               child: Text('Resizing Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Small Sheet')),
             ),
+            CupertinoButton.filled(
+              child: Text('Snapping Sheet'),
+              onPressed: () => context.navigateTo(NamedRoute('Snapping Sheet')),
+            ),
+            CupertinoButton.filled(
+              child: Text('Non-Draggable Sheet'),
+              onPressed: () =>
+                  context.navigateTo(NamedRoute('Non-Draggable Sheet')),
+            ),
           ],
         ),
       ),
@@ -119,12 +163,77 @@ class _CupertinoSheetContent extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => CupertinoListTile(
-                title: Text('Item #$index'),
+          SliverSafeArea(
+              sliver: SliverMainAxisGroup(slivers: [
+            SliverToBoxAdapter(
+              child: CupertinoTextField(
+                placeholder: 'Type something...',
               ),
-              childCount: 50,
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => CupertinoListTile(
+                  title: Text('Item #$index'),
+                ),
+                childCount: 50,
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: CupertinoTextField(),
+            ),
+          ]))
+        ],
+      ),
+    );
+  }
+}
+
+class _SnappingSheetContent extends StatefulWidget {
+  const _SnappingSheetContent();
+
+  @override
+  State<_SnappingSheetContent> createState() => _SnappingSheetContentState();
+}
+
+class _SnappingSheetContentState extends State<_SnappingSheetContent> {
+  bool _snapDisabled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Sheet'),
+            trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: Text(_snapDisabled ? 'Enable Snaps' : 'Disable Snaps'),
+                onPressed: () {
+                  final controller =
+                      StupidSimpleSheetController.maybeOf(context);
+                  controller
+                      ?.overrideSnappingConfig(
+                        _snapDisabled ? null : SheetSnappingConfig.full,
+                        animateToComply: true,
+                      )
+                      .ignore();
+                  setState(() {
+                    _snapDisabled = !_snapDisabled;
+                  });
+                }),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: CupertinoButton.tinted(
+                child: Text('Another'),
+                onPressed: () =>
+                    context.pushRoute(NamedRoute('Snapping Sheet')),
+              ),
             ),
           ),
         ],
@@ -164,7 +273,52 @@ class _PagedSheetContent extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonDraggableSheetContent extends StatelessWidget {
+  const _NonDraggableSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Non-Draggable Sheet'),
+            leading: CupertinoButton(
+              child: Text("Close"),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 16,
+                children: [
+                  Text(
+                    'This sheet cannot be dragged!',
+                    style: CupertinoTheme.of(context).textTheme.textStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'Use the Close button to dismiss.',
+                    style: CupertinoTheme.of(context)
+                        .textTheme
+                        .textStyle
+                        .copyWith(color: CupertinoColors.secondaryLabel),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -180,6 +334,7 @@ class _SmallSheetContent extends StatefulWidget {
 
 class _SmallSheetContentState extends State<_SmallSheetContent> {
   int _itemCount = 5;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -202,6 +357,10 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
                   curve: CupertinoMotion.smooth().toCurve,
                   child: Column(
                     children: [
+                      CupertinoTextField(
+                        autofocus: true,
+                        placeholder: 'Type something...',
+                      ),
                       for (var i = 0; i < _itemCount; i++)
                         CupertinoListTile(
                           title: Text('Item #${i + 1}'),

@@ -27,14 +27,8 @@ The sheet works perfectly with:
 
 **❗ In order to start using Stupid Simple Sheet you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
 
-Add it to your pubspec.yaml:
 
-```yaml
-dependencies:
-  stupid_simple_sheet: ^0.3.0-dev.3
-```
-
-Or install via `flutter pub`:
+Install via `flutter pub`:
 
 ```sh
 flutter pub add stupid_simple_sheet
@@ -107,6 +101,52 @@ Navigator.of(context).push(
 );
 ```
 
+### Programmatic Control with StupidSimpleSheetController
+
+You can programmatically control the sheet's position from within its content using the `StupidSimpleSheetController`. This is useful for implementing custom interactions, animations, or responding to user actions.
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleSheetRoute(
+    child: Builder(
+      builder: (context) {
+        // Get the controller from the sheet context
+        final controller = StupidSimpleSheetController.maybeOf<void>(context);
+        
+        return Column(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                // Animate to half-open position
+                controller?.animateToRelative(0.5);
+              },
+              child: Text('Half Open'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Animate to fully open with snapping
+                controller?.animateToRelative(0.8, snap: true);
+              },
+              child: Text('Almost Full (with snap)'),
+            ),
+            // Your other sheet content...
+          ],
+        );
+      },
+    ),
+  ),
+);
+```
+
+#### Controller Methods
+
+- **`maybeOf<T>(BuildContext context)`**: Retrieves the controller from a context within the sheet. Returns `null` if called from outside a sheet.
+- **`animateToRelative(double position, {bool snap = false})`**: Animates the sheet to a relative position between 0.0 (closed) and 1.0 (fully open).
+  - `position`: The target relative position (must be > 0.0 and ≤ 1.0)
+  - `snap`: If true, snaps to the nearest configured snapping point after reaching the target
+
+**Note**: The controller cannot close the sheet programmatically. To close the sheet, use `Navigator.pop(context)`.
+
 ### Custom Routes with Maximum Control
 
 For advanced use cases, you can create your own custom routes using the `StupidSimpleSheetTransitionMixin` for maximum control over the sheet behavior:
@@ -162,6 +202,7 @@ This approach gives you complete control over the sheet's appearance, behavior, 
 
 - **Seamless scroll transitions**: Automatically handles the transition between scrolling content and sheet dragging
 - **Spring physics**: Natural motion using the `motor` package physics engine  
+- **Programmatic control**: Use `StupidSimpleSheetController` to animate the sheet position from within its content
 - **Customizable appearance**: Control shape, clipping, and barrier properties
 - **Cupertino integration**: Works perfectly with Cupertino design components
 - **Gesture coordination**: No need to manually handle gesture conflicts

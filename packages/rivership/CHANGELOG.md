@@ -1,3 +1,28 @@
+## 0.4.0+1
+
+ - Update a dependency to the latest release.
+
+## 0.4.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: update to riverpod 3.0.0.
+
+    - remove `AsyncValue.newestValueOrNull` since we also don't have `valueOrNull` anymore
+
+
+## 0.3.0+1
+
+ - Update a dependency to the latest release.
+
+## 0.3.0
+
+ - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.
+
+## 0.3.0-dev.13
+
+ - Update a dependency to the latest release.
+
 ## 0.3.0-dev.12
 
  - Update a dependency to the latest release.

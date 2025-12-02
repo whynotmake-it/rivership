@@ -188,17 +188,17 @@ MotionBuilder(
 )
 ```
 
-## Sequence Animations 🎬
+### Sequence Animations 🎬
 
 Motor's sequence animations let you create complex, multi-phase animations with smooth transitions between states. Perfect for storytelling, onboarding flows, state machines, and complex UI transitions.
 
 > **Note:** The upcoming examples use the Dart 3.10 dot-shorthand syntax.
 
-### Motion Sequences
+#### Motion Sequences
 
 A `MotionSequence` defines a series of phases that your animation progresses through. Motor provides three types of sequences for different use cases:
 
-#### 1. State Sequences - Named Phases
+##### 1. State Sequences - Named Phases
 
 Perfect for state machines, enums, or any named phase system:
 
@@ -212,7 +212,7 @@ final MotionSequence<ButtonState, Offset> buttonSequence = .states({
 }, motion: .bouncySpring());
 ```
 
-#### 2. Step Sequences - Ordered Progression  
+##### 2. Step Sequences - Ordered Progression  
 
 The most common sequence type for ordered progressions through values:
 
@@ -225,7 +225,7 @@ final MotionSequence<int, Color> colorSequence = MotionSequence.steps([
 ], motion: .smoothSpring(), loop: .seamless);
 ```
 
-#### 3. Spanning Sequences - Proportional Timing
+##### 3. Spanning Sequences - Proportional Timing
 
 For precise timing control where a single motion spans across positioned phases. Think of it like flexbox - phases at higher positions take proportionally more time to reach:
 
@@ -237,7 +237,7 @@ final logoSequence = MotionSequence.spanning({
 }, motion: .linear(Duration(seconds: 2)));
 ```
 
-### Loop Modes
+#### Loop Modes
 
 Control how your sequences repeat:
 
@@ -246,7 +246,7 @@ Control how your sequences repeat:
 - **`LoopMode.seamless`** - Treat first/last phases as identical for smooth circular loops
 - **`LoopMode.pingPong`** - Play forward then backward
 
-### Sequence Animation Widget
+#### Sequence Animation Widget
 
 Use `SequenceMotionBuilder` to bring sequences to life:
 
@@ -262,7 +262,7 @@ SequenceMotionBuilder<LoadingState, double>(
   converter: .single,
   playing: true, // Auto-progress through phases
   currentPhase: currentState, // Or control manually
-  onPhaseChanged: (phase) => print('Now in phase: $phase'),
+  onTransition: (transition) => print('Now in transition: $transition'),
   builder: (context, rotation, phase, child) {
     return Transform.rotate(
       angle: rotation,
@@ -275,7 +275,7 @@ SequenceMotionBuilder<LoadingState, double>(
 )
 ```
 
-### Manual vs Automatic Playback
+#### Manual vs Automatic Playback
 
 **Automatic Playback** (`playing: true`):
 - Progresses through all phases automatically
@@ -287,7 +287,7 @@ SequenceMotionBuilder<LoadingState, double>(
 - Full control over phase transitions
 - Ideal for user-driven state changes, interactive tutorials
 
-### Individual Motion Per Phase
+#### Individual Motion Per Phase
 
 For ultimate control, specify different motions for each phase:
 
@@ -299,12 +299,12 @@ final complexSequence = MotionSequence<AppState, ButtonStyle>.statesWithMotions(
 });
 ```
 
-### Advanced: Phase Motion Controllers
+#### Advanced: Phase Motion Controllers
 
-For maximum control, use `PhaseMotionController` directly:
+For maximum control, use `SequenceMotionController` directly:
 
 ```dart
-final controller = PhaseMotionController<ButtonState, Offset>(
+final controller = SequenceMotionController<ButtonState, Offset>(
   motion: .smoothSpring(),
   vsync: this,
   converter: .offset,
@@ -339,6 +339,7 @@ For often-used Flutter types, these are already implemented:
 - `SizeMotionConverter`
 - `RectMotionConverter`
 - `AlignmentMotionConverter`
+- `ColorRgbMotionConverter`
 
 However, you might want your very custom type to be animated as well. For this, you can implement your own `MotionConverter` and pass it to the `MotionBuilder` constructor.
 
@@ -361,16 +362,14 @@ Widget build(BuildContext context) {
 }
 ```
 
-Or, just use `MotionConverter` directly and pass the converter functions to its constructor:
+Or, just use `MotionConverter.custom` directly and pass the converter functions to its constructor:
 
 ```dart
-final converter = MotionConverter(
+final converter = MotionConverter.custom(
   normalize: (value) => [value.x, value.y, value.z],
   denormalize: (values) => Vector3(values[0], values[1], values[2]),
 );
 ```
-
-
 
 ### Motion Draggable
 
@@ -450,9 +449,9 @@ final customSpring = SpringMotion(
 
 Motor's unified motion system builds upon excellent work from the Flutter community:
 
-- Spring physics implementation was partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations)
+- Inspiration for this package came from [Luke Pighetti on Twitter](https://x.com/luke_pighetti)
+- Initial spring physics implementation was partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations)
 - CupertinoMotion presets are designed to match [Apple's SwiftUI animation system](https://developer.apple.com/documentation/swiftui/animation)
-- The Motion abstraction unifies concepts from Flutter's animation framework with modern physics-based approaches
 
 [dart_install_link]: https://dart.dev/get-dart
 [mason_link]: https://github.com/felangel/mason

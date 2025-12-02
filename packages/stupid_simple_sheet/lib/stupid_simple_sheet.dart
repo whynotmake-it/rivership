@@ -2,8 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/optimized_clip.dart';
+import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
+
+export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 
 /// A modal route that displays a sheet that slides up from the bottom.
@@ -27,7 +31,7 @@ export 'src/stupid_simple_cupertino_sheet.dart';
 ///    behavior for this modal route.
 ///  * [CupertinoModalPopupRoute], for a similar iOS-style modal popup.
 class StupidSimpleSheetRoute<T> extends PopupRoute<T>
-    with StupidSimpleSheetTransitionMixin<T> {
+    with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
   /// Creates a sheet route for displaying modal content.
   ///
   /// The [motion] and [child] arguments must not be null.
@@ -44,7 +48,11 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
-  }) : super();
+    this.callNavigatorUserGestureMethods = false,
+    this.snappingConfig = SheetSnappingConfig.full,
+    this.draggable = true,
+    this.originateAboveBottomViewInset = false,
+  });
 
   @override
   final Motion motion;
@@ -81,11 +89,24 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool onlyDragWhenScrollWasAtTop;
 
   @override
+  final bool callNavigatorUserGestureMethods;
+
+  /// The base snapping configuration for the sheet.
+  @override
+  final SheetSnappingConfig snappingConfig;
+
+  @override
+  final bool draggable;
+
+  @override
+  final bool originateAboveBottomViewInset;
+
+  @override
   Widget buildContent(BuildContext context) => DecoratedBox(
         decoration: ShapeDecoration(shape: shape),
-        child: ClipPath(
+        child: OptimizedClip(
           clipBehavior: clipBehavior,
-          clipper: ShapeBorderClipper(shape: shape),
+          shape: shape,
           child: child,
         ),
       );
@@ -104,8 +125,10 @@ class _RelativeGestureDetector extends StatelessWidget {
   final bool scrollableCanMoveBack;
   final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
-  final ValueChanged<double> onRelativeDragUpdate;
-  final ValueChanged<double> onRelativeDragEnd;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragUpdate;
+  // ignore: avoid_positional_boolean_parameters
+  final void Function(double, bool) onRelativeDragEnd;
 
   final Widget child;
 
@@ -114,14 +137,18 @@ class _RelativeGestureDetector extends StatelessWidget {
     return ScrollDragDetector(
       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: scrollableCanMoveBack,
-      onVerticalDragStart: (details) => onRelativeDragStart(),
-      onVerticalDragEnd: (details) {
+      onVerticalDragStart: (details, _) => onRelativeDragStart(),
+      onVerticalDragEnd: (details, willScroll) {
         onRelativeDragEnd(
           details.velocity.pixelsPerSecond.dy / context.size!.height,
+          willScroll,
         );
       },
-      onVerticalDragUpdate: (details) {
-        onRelativeDragUpdate(details.primaryDelta! / context.size!.height);
+      onVerticalDragUpdate: (details, wouldScroll) {
+        onRelativeDragUpdate(
+          details.primaryDelta! / context.size!.height,
+          wouldScroll,
+        );
       },
       child: child,
     );
@@ -175,26 +202,57 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get onlyDragWhenScrollWasAtTop => true;
 
+  /// Whether the sheet can be dragged.
+  ///
+  /// When false, the sheet cannot be moved by dragging and applies
+  /// resistance in both directions, similar to the resistance applied when
+  /// dragging past 1.0.
+  ///
+  /// Defaults to true.
+  bool get draggable => true;
+
+  /// Whether the navigator's user gesture methods should be called when
+  /// dragging starts and ends.
+  ///
+  /// Defaults to false.
+  bool get callNavigatorUserGestureMethods => false;
+
+  /// Whether the sheet's origin should be moved up by the bottom view inset of
+  /// the current [MediaQuery].
+  ///
+  /// If this is true, and the keyboard is opened, the sheet will originate from
+  /// above the keyboard.
+  bool get originateAboveBottomViewInset => false;
+
+  SheetSnappingConfig? _snappingConfigOverride;
+
+  /// The base snapping configuration for the sheet, as provided by the
+  /// implementing class.
+  ///
+  /// This is used as the fallback when no override is set via
+  /// [StupidSimpleSheetController.overrideSnappingConfig].
+  ///
+  /// Defaults to only containing a relative point at 1.0 (fully open).
+  ///
+  /// A fully closed point of 0.0 is always added implicitly.
+  @protected
+  SheetSnappingConfig get snappingConfig;
+
+  /// The currently active snapping configuration for the sheet.
+  ///
+  /// This will return the override if one has been set via
+  /// [StupidSimpleSheetController.overrideSnappingConfig], otherwise it returns
+  /// [snappingConfig].
+  SheetSnappingConfig get effectiveSnappingConfig =>
+      _snappingConfigOverride ?? snappingConfig;
+
   double? _dragEndVelocity;
 
-  bool _shouldDismiss(double velocity, double currentValue) {
-    // Constants for dismissal logic
-    const dismissThreshold = 0.5; // Dismiss if dragged more than 50% down
-    const velocityThreshold = .5; // Relative velocity threshold
+  double? _animationTargetValue;
 
-    // High downward velocity should dismiss regardless of position
-    if (velocity > velocityThreshold) {
-      return true;
-    }
-
-    // High upward velocity should not dismiss regardless of position
-    if (velocity < -velocityThreshold) {
-      return false;
-    }
-
-    // For low velocities, use position-based logic
-    return currentValue < dismissThreshold;
-  }
+  /// Where the sheet should stick if [draggable] is false, or when
+  /// overshooting.
+  double? _stickingPoint;
 
   @override
   Duration get transitionDuration => switch (motion) {
@@ -214,8 +272,26 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   Simulation? createSimulation({required bool forward}) {
     final v = _dragEndVelocity;
     _dragEndVelocity = null;
+
+    // Get the appropriate end value
+    double endValue;
+    if (forward) {
+      // Opening: use initial snap point or default
+      if (navigator?.context != null) {
+        final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
+        endValue = effectiveSnappingConfig.resolve(sheetHeight).initialSnap;
+      } else {
+        // Fallback if context is not available
+        endValue = 1.0;
+      }
+    } else {
+      // Closing
+      endValue = 0.0;
+    }
+    _animationTargetValue = endValue;
+    _stickingPoint = endValue;
     return motion.createSimulation(
-      end: forward ? 1.0 : 0.0,
+      end: endValue,
       start: animation?.value ?? 0,
       velocity: -(v ?? 0),
     );
@@ -229,13 +305,22 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   ) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) => _RelativeGestureDetector(
-        onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-        scrollableCanMoveBack: animation.value < 1,
-        onRelativeDragStart: () => _handleDragStart(context),
-        onRelativeDragUpdate: (delta) => _handleDragUpdate(context, delta),
-        onRelativeDragEnd: (velocity) => _handleDragEnd(context, velocity),
-        child: child!,
+      builder: (context, child) => MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: originateAboveBottomViewInset,
+        // ^ The sheet is already moved up by the bottom view inset, so we make
+        // sure the content inside the sheet doesn't add extra padding
+        child: _RelativeGestureDetector(
+          onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+          scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
+              effectiveSnappingConfig.resolveWith(context).maxExtent,
+          onRelativeDragStart: () => _handleDragStart(context),
+          onRelativeDragUpdate: (delta, wouldScroll) =>
+              _handleDragUpdate(context, delta, wouldScroll),
+          onRelativeDragEnd: (velocity, willScroll) =>
+              _handleDragEnd(context, velocity, willScroll),
+          child: child!,
+        ),
       ),
       child: buildContent(context),
     );
@@ -280,6 +365,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
                 child: child,
               ),
             ),
+            if (originateAboveBottomViewInset)
+              SizedBox(
+                height: MediaQuery.viewInsetsOf(context).bottom,
+              ),
           ],
         );
       },
@@ -311,55 +400,97 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void _handleDragStart(
     BuildContext context,
   ) {
-    Navigator.of(context).didStartUserGesture();
+    if (callNavigatorUserGestureMethods) {
+      navigator?.didStartUserGesture();
+    }
   }
 
-  void _handleDragUpdate(BuildContext context, double delta) {
+  void _handleDragUpdate(BuildContext context, double delta, bool wouldScroll) {
+    if (_poppedNotifier.value) return;
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    if (currentValue > 1.0 && delta < 0) {
+    final maxExtent = effectiveSnappingConfig.resolveWith(context).maxExtent;
+
+    final applyResistance = !draggable || currentValue > maxExtent;
+
+    if (wouldScroll && (currentValue - delta) > maxExtent) {
+      // If the scrollable would scroll, and the sheet will be dragged past its
+      // max, we don't allow that.
+      adjustedDelta = currentValue - maxExtent;
+    } else if (applyResistance && delta != 0) {
+      final stickingPoint = _stickingPoint ?? 1.0;
       // When dragging up past fully open, reduce the delta with diminishing
       // returns
-      final overshoot = currentValue - 1.0;
+
+      final overshoot = (stickingPoint - currentValue).abs();
+
       final resistance = 1.0 /
           (1.0 + overshoot * overshootResistance); // Exponential resistance
+
       adjustedDelta = delta * resistance;
     }
 
     final newValue = currentValue - adjustedDelta;
+
     controller?.value = newValue;
+    _animationTargetValue = newValue;
   }
 
   void _handleDragEnd(
     BuildContext context,
     double velocity,
+    bool willScroll,
   ) {
     final currentValue = controller!.value;
-    Navigator.of(context).didStopUserGesture();
+    if (callNavigatorUserGestureMethods) {
+      navigator?.didStopUserGesture();
+    }
+
+    // If the route has been popped, don't interfere with the closing animation
+    if (_poppedNotifier.value) return;
 
     _dragEndVelocity = velocity;
 
+    // Get the sheet height for pixel-based calculations
+    final sheetHeight = MediaQuery.sizeOf(context).height;
+
+    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+
     // If dragged past fully open, always snap back to 1.0
-    if (currentValue > 1.0) {
+    if (currentValue > maxExtent || !draggable) {
+      final stickingPoint = _stickingPoint ?? maxExtent;
+      // Scale the velocity by the same resistance factor that was applied
+      //during dragging
+      final overshoot = (currentValue - stickingPoint).abs();
+      final resistance = 1.0 / (maxExtent + overshoot * overshootResistance);
+      final adjustedVelocity = velocity * resistance;
+
       final backSim = motion.createSimulation(
         start: currentValue,
-        velocity: -_dragEndVelocity!,
+        velocity: -adjustedVelocity,
       );
       controller!.animateWith(backSim);
       _dragEndVelocity = null;
     } else {
-      // Determine if we should dismiss based on velocity and position
-      final shouldDismiss = _shouldDismiss(velocity, currentValue);
+      // Find the target snap point based on position and velocity
+      final targetValue =
+          effectiveSnappingConfig.resolve(sheetHeight).findTargetSnapPoint(
+                currentValue,
+                velocity,
+              );
 
-      if (shouldDismiss) {
-        Navigator.of(context).pop();
+      // If target is 0 (closed), dismiss the sheet
+      if (targetValue <= 0.001) {
+        navigator?.pop();
       } else {
-        final backSim = motion.createSimulation(
+        // Animate to the target snap point
+        final snapSim = motion.createSimulation(
           start: currentValue,
+          end: targetValue,
           velocity: -_dragEndVelocity!,
         );
-        controller!.animateWith(backSim);
+        controller!.animateWith(snapSim);
         _dragEndVelocity = null;
       }
     }
@@ -370,5 +501,132 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void dispose() {
     _poppedNotifier.dispose();
     super.dispose();
+  }
+}
+
+/// A mixin that provides imperative control over a sheet's animation.
+///
+/// Mix this into your [PopupRoute] that also uses
+/// [StupidSimpleSheetTransitionMixin] to allow children of the sheet to
+/// imperatively control the sheet's position.
+mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
+  /// Retrieves the current [StupidSimpleSheetController] from the given
+  /// [BuildContext].
+  ///
+  /// This will only work if called from a context that is inside the
+  /// [StupidSimpleSheetRoute].
+  static StupidSimpleSheetController<T>? maybeOf<T>(BuildContext context) {
+    final route = ModalRoute.of(context);
+    if (route case final StupidSimpleSheetController<T> route) {
+      return route;
+    }
+
+    return null;
+  }
+
+  /// Can be used to imperatively animate the sheet to a relative position, but
+  /// can't close it.
+  ///
+  /// The [relativePosition] must be larger than 0.0 (fully closed) and
+  /// lower than or equal to 1.0 (fully open).
+  ///
+  /// If [snap] is true, the sheet will snap to the nearest snapping point
+  /// after reaching the target position.
+  ///
+  /// If you want to close the sheet, use [Navigator.pop] instead.
+  TickerFuture animateToRelative(double relativePosition, {bool snap = false}) {
+    assert(
+      relativePosition > 0.0 && relativePosition <= 1.0,
+      'Relative position must be larger than 0.0 and less than or equal to 1.0',
+    );
+
+    assert(
+      controller != null,
+      'Controller is null. Make sure the route is pushed before calling.',
+    );
+
+    // We only animate if this route is still current
+    if (!isCurrent) return TickerFuture.complete();
+
+    final double target;
+
+    if (snap) {
+      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
+      // Find the closest snapping point that isn't 0.0
+      target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
+        0.0 => config.points.first,
+        final v => v,
+      };
+    } else {
+      target = relativePosition;
+    }
+
+    final simulation = motion.createSimulation(
+      start: controller!.value,
+      end: target,
+      velocity: controller!.velocity,
+    );
+
+    return controller!.animateWith(simulation);
+  }
+
+  /// Updates the snapping configuration to an override for the sheet.
+  ///
+  /// Pass `null` to [newConfig] to reset the configuration to the one
+  /// originally passed to the route constructor.
+  ///
+  /// If [animateToComply] is `true`, the sheet will immediately animate to
+  /// comply with the new snapping configuration. This will snap the sheet to
+  /// the nearest valid snapping point in the new configuration.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Update to a new configuration and animate to comply
+  /// controller.updateSnappingConfig(
+  ///   SheetSnappingConfig.relative([0.3, 0.6, 1.0]),
+  ///   animateToComply: true,
+  /// );
+  ///
+  /// // Reset to the original configuration
+  /// controller.updateSnappingConfig(null);
+  /// ```
+  TickerFuture overrideSnappingConfig(
+    SheetSnappingConfig? newConfig, {
+    bool animateToComply = false,
+  }) {
+    assert(
+      controller != null,
+      'Controller is null. Make sure the route is pushed before calling.',
+    );
+
+    _snappingConfigOverride = newConfig;
+
+    // Only animate to comply if requested and if this route is still current
+    if (animateToComply && isCurrent) {
+      final currentPosition = controller!.value;
+      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
+
+      // Find the nearest snapping point in the new configuration
+      final targetPosition = config.findTargetSnapPoint(
+        currentPosition,
+        controller!.velocity,
+        includeClosed: false,
+      );
+
+      // If the current position is already at a valid snap point, don't animate
+      if ((targetPosition - currentPosition).abs() < 0.001) {
+        return TickerFuture.complete();
+      }
+
+      final simulation = motion.createSimulation(
+        start: currentPosition,
+        end: targetPosition,
+        velocity: controller!.velocity,
+      );
+
+      return controller!.animateWith(simulation);
+    }
+
+    return TickerFuture.complete();
   }
 }

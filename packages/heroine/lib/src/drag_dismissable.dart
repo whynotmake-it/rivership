@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
-import 'package:heroine/src/heroine_velocity.dart';
 import 'package:motor/motor.dart';
 
 /// Allows a [Heroine] (or any other widget for that matter) to be dragged to

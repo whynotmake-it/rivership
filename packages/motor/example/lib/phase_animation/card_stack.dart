@@ -100,7 +100,7 @@ class _DragCardExampleState extends State<_DragCardExample>
         DragCardPhase.clearing: (
           clearance,
           // Only use the very beginning of the spring way before it settles
-          Motion.smoothSpring().subExtent(extent: .1),
+          Motion.smoothSpring().segment(length: .1),
         ),
       DragCardPhase.dismissing: (
         Offset.zero,
@@ -119,9 +119,10 @@ class _DragCardExampleState extends State<_DragCardExample>
     if (phaseController.value.distance > dismissThreshold) {
       phaseController.playSequence(
         buildReturn(phaseController.value, details.velocity),
-        onPhaseChanged: (phase) {
+        onTransition: (t) {
+          print(t);
           // We wait until the flight back to tell the stack to resort
-          if (phase == DragCardPhase.dismissing) {
+          if (t case PhaseTransitioning(to: DragCardPhase.dismissing)) {
             widget.onDismiss();
           }
         },

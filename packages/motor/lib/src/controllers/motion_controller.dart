@@ -8,6 +8,7 @@ import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/phase_transition.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -79,13 +80,14 @@ class MotionController<T extends Object> extends Animation<T>
   MotionController._({
     required List<Motion> motionPerDimension,
     required TickerProvider vsync,
-    required this.converter,
+    required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
-  }) : assert(
+  })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
-        ) {
+        ),
+        _converter = converter {
     _initialValue = initialValue;
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
@@ -106,8 +108,24 @@ class MotionController<T extends Object> extends Animation<T>
 
   late final T _initialValue;
 
+  MotionConverter<T> _converter;
+
+  set converter(MotionConverter<T> value) {
+    if (value == _converter) return;
+
+    final normalized = value.normalize(value.denormalize(_currentValues));
+    assert(
+      normalized.length == _dimensions,
+      'new converter must have the same number of dimensions as the '
+      'previous converter',
+    );
+
+    _converter = value;
+    _internalSetValue(normalized);
+  }
+
   /// Converts the value of type T to a List<double> for internal processing.
-  final MotionConverter<T> converter;
+  MotionConverter<T> get converter => _converter;
 
   /// Number of dimensions being animated
   late final int _dimensions;
@@ -592,8 +610,8 @@ class SequenceMotionController<P, T extends Object>
   /// Direction for ping-pong sequences (1 = forward, -1 = reverse)
   int _sequenceDirection = 1;
 
-  /// Callback for phase changes
-  void Function(P phase)? _onSequencePhaseChanged;
+  /// Callback for phase transition changes
+  void Function(PhaseTransition<P> transition)? _onPhaseTransition;
 
   /// Whether we're currently playing a sequence
   bool _isPlayingSequence = false;
@@ -647,13 +665,13 @@ class SequenceMotionController<P, T extends Object>
   /// Returns a future that completes when non-looping sequences finish.
   /// Looping sequences run indefinitely until stopped.
   ///
-  /// Optionally start [atPhase] and receive [onPhaseChanged] callbacks.
+  /// Optionally start [atPhase] and receive [onTransition] callbacks.
   /// Preserves current velocity unless [withVelocity] is provided.
   TickerFuture playSequence(
     MotionSequence<P, T> sequence, {
     P? atPhase,
     T? withVelocity,
-    void Function(P phase)? onPhaseChanged,
+    void Function(PhaseTransition<P> transition)? onTransition,
   }) {
     // Stop any existing sequence by stopping underlying animation
     _stopSequence();
@@ -664,7 +682,7 @@ class SequenceMotionController<P, T extends Object>
 
     // Initialize sequence state
     _activeSequence = sequence;
-    _onSequencePhaseChanged = onPhaseChanged;
+    _onPhaseTransition = onTransition;
     _isPlayingSequence = true;
     _sequenceDirection = 1;
 
@@ -692,8 +710,16 @@ class SequenceMotionController<P, T extends Object>
     _status = AnimationStatus.forward;
     _checkStatusChanged();
 
-    // Notify phase change
-    _onSequencePhaseChanged?.call(targetPhase);
+    // Notify phase transition (starting animation to target phase)
+    final previousPhase = _previousSequencePhase;
+    if (previousPhase != null) {
+      _onPhaseTransition?.call(
+        PhaseTransitioning(
+          from: previousPhase,
+          to: targetPhase,
+        ),
+      );
+    }
 
     return tickerFuture;
   }
@@ -739,7 +765,7 @@ class SequenceMotionController<P, T extends Object>
     _isPlayingSequence = false;
     _currentSequencePhase = null;
     _previousSequencePhase = null;
-    _onSequencePhaseChanged = null;
+    _onPhaseTransition = null;
     _currentPhaseStartTime = null;
 
     _activeSequence = null;
@@ -832,17 +858,32 @@ class SequenceMotionController<P, T extends Object>
     // Set up next phase simulation and continue
     final nextPhase = sequence.phases[nextIndex];
     _setupPhaseSimulation(nextPhase, velocities);
-    _onSequencePhaseChanged?.call(nextPhase);
+    final previousPhase = _previousSequencePhase;
+    if (previousPhase != null) {
+      _onPhaseTransition?.call(
+        PhaseTransitioning(
+          from: previousPhase,
+          to: nextPhase,
+        ),
+      );
+    }
   }
 
   /// Completes the current sequence and stops playback.
   void _completeSequence() {
+    final finalPhase = _currentSequencePhase;
+
     _isPlayingSequence = false;
     _currentSequencePhase = null;
     _previousSequencePhase = null;
 
     _activeSequence = null;
-    _onSequencePhaseChanged = null;
+
+    // Notify that we've settled at the final phase
+    if (finalPhase != null) {
+      _onPhaseTransition?.call(PhaseSettled(finalPhase));
+    }
+    _onPhaseTransition = null;
 
     // Update status and stop ticker
     _status = _getStatusWhenDone();
@@ -865,7 +906,7 @@ class SequenceMotionController<P, T extends Object>
     _currentSequencePhase = phase;
 
     // Notify phase change
-    _onSequencePhaseChanged?.call(phase);
+    _onPhaseTransition?.call(PhaseSettled(phase));
 
     // Immediately continue with the next phase
     SchedulerBinding.instance.addPostFrameCallback((_) {

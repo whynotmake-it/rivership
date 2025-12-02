@@ -10,9 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/fake_device.dart';
-import 'package:snaptest/src/flutter_sdk_root.dart';
+import 'package:snaptest/src/font_loading.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
-import 'package:spot/spot.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -292,8 +291,6 @@ VoidCallback setTestViewToFakeDevice(
 ///
 /// If [from] is provided, the screenshot will be taken from the given [Finder].
 /// Otherwise, the screenshot will be taken from the whole screen.
-///
-
 Future<ui.Image?> takeDeviceScreenshot({
   required DeviceInfo device,
   required SnaptestSettings settings,
@@ -323,58 +320,6 @@ Future<ui.Image?> takeDeviceScreenshot({
   return image;
 }
 
-bool _fontsLoaded = false;
-
-/// Loads fonts and icons required for consistent screenshot rendering.
-///
-/// This function ensures that all fonts (including system fonts) and icons
-/// are properly loaded before taking screenshots. It should be called once
-/// before running any tests that use [snap] to ensure consistent text
-/// rendering across all screenshots.
-///
-/// **Important**: Once fonts are loaded, they cannot be unloaded due to
-/// Flutter's limitations. This means that if [loadFontsAndIcons] is called
-/// during one test, all subsequent tests in the same test run will use the
-/// loaded fonts, which may cause text to render differently than in a fresh
-/// test environment.
-///
-/// ## Recommended Usage
-///
-/// Add this to your `flutter_test_config.dart` file to ensure fonts are
-/// loaded before all tests:
-///
-/// ```dart
-/// import 'dart:async';
-/// import 'package:snaptest/snaptest.dart';
-///
-/// Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-///   await loadFontsAndIcons();
-///   await testMain();
-/// }
-/// ```
-///
-/// This prevents side effects where [snap] calls might produce different
-/// results depending on whether fonts were loaded in previous tests.
-///
-/// ## What it does
-///
-/// - Loads all application fonts defined in `pubspec.yaml`
-/// - Overrides Cupertino system fonts with Roboto for consistency, since
-/// Cupertino fonts can't be loaded on all platforms
-/// - Ensures icons are properly loaded for rendering
-/// - Sets a flag to prevent duplicate loading in the same test session
-///
-/// The function is idempotent - calling it multiple times has no additional
-/// effect after the first call.
-Future<void> loadFontsAndIcons() async {
-  if (_fontsLoaded) return;
-
-  await loadAppFonts();
-  await _overrideCupertinoFonts();
-
-  _fontsLoaded = true;
-}
-
 Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
   final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
 
@@ -394,37 +339,6 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
     debugDisableShadows = previousShadows;
     restoreImages();
   };
-}
-
-Future<void> _overrideCupertinoFonts() async {
-  final root = flutterSdkRoot().absolute.path;
-
-  final materialFontsDir = Directory(
-    '$root/bin/cache/artifacts/material_fonts/',
-  );
-
-  final fontFormats = ['.ttf', '.otf', '.ttc'];
-  final existingFonts = materialFontsDir
-      .listSync()
-      // dartfmt come on,...
-      .whereType<File>()
-      .where(
-        (font) => fontFormats.any((element) => font.path.endsWith(element)),
-      )
-      .toList();
-
-  final robotoFonts = existingFonts
-      .where((font) {
-        final name = basename(font.path).toLowerCase();
-        return name.startsWith('Roboto-'.toLowerCase());
-      })
-      .map((file) => file.path)
-      .toList();
-  if (robotoFonts.isEmpty) {
-    debugPrint("Warning: No Roboto font found in SDK");
-  }
-  await loadFont('CupertinoSystemText', robotoFonts);
-  await loadFont('CupertinoSystemDisplay', robotoFonts);
 }
 
 /// Pre-caches all images so that they will be rendered correctly when taking
@@ -498,7 +412,9 @@ Future<ui.Image> _captureImage(
   }
   assert(!renderObject.debugNeedsPaint, 'The RenderObject needs painting');
 
-  final layer = renderObject.debugLayer! as OffsetLayer;
+  // RepaintBoundary is guaranteed to have an OffsetLayer
+  // ignore: invalid_use_of_protected_member
+  final layer = renderObject.layer! as OffsetLayer;
 
   if (blockText) {
     BlockedTextPaintingContext(
@@ -610,6 +526,7 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
   );
 
   picture.dispose();
+  image.dispose();
   return framedImage;
 }
 

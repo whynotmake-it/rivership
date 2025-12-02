@@ -1,3 +1,23 @@
+## 0.5.0+3
+
+ - Update a dependency to the latest release.
+
+## 0.5.0+2
+
+ - **FIX**: export `HeroineVelocity` (#199).
+
+## 0.5.0+1
+
+ - Update a dependency to the latest release.
+
+## 0.5.0
+
+ - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.
+
+## 0.5.0-dev.13
+
+ - Update a dependency to the latest release.
+
 ## 0.5.0-dev.12
 
  - Update a dependency to the latest release.

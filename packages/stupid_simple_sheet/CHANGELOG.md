@@ -1,3 +1,77 @@
+## 0.6.3
+
+ - **FIX**: improve clipping of overlayed sheets.
+ - **FEAT**: add `shape` parameter to `StupidSimpleCupertinoSheetRoute`.
+
+    Deprecated `topRadius` parameter in favor of it.
+
+
+## 0.6.2+3
+
+ - **FIX**: don't interfere with `pop()` animation while sheet is being dragged.
+
+## 0.6.2+2
+
+ - **FIX**: stop bounce when scrolling down while sheet is at top.
+
+## 0.6.2+1
+
+ - **DOCS**: fixed an incorrect changelog entry.
+
+## 0.6.2
+
+ - **FEAT**: add `topRadius` to cupertino sheet.
+
+    This allows matching the iOS 26.0 appearance more closely
+
+ - **FEAT**: add `originateAboveBottomViewInset` to `StupidSimpleSheet` and its mixin.
+
+## 0.6.1
+
+ - **FEAT**: add `draggable` parameter to sheets that can be used to disable user drags (#206).
+
+## 0.6.0+1
+
+ - **FIX**: `overrideSnappingConfig` and `animateToRelative` could interrupt sheet dismissal and break Navigator (#205).
+
+## 0.6.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: allow overriding the current sheet's snapping config from its controller (#203).
+
+    For this, `effectiveSnappingConfig` was introduced on `StupidSimpleSheetTransitionMixin`, which should be used for all snapping configuration calculations instead of `snappingConfig`.
+    If you only set `snappingConfig` and didn't do your own calculations with its values, you don't need to change anything.
+
+## 0.5.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FIX**: don't call `Navigator.did[Start|Stop]UserGesture` by default to match Flutter sheets.
+
+    You can restore the old behavior by passing `callNavigatorUserGestureMethods = true` to your sheet route
+
+
+## 0.4.2
+
+ - **FEAT**: add `StupidSimpleSheetController` that can be used from a sheets subtree for imperative control.
+
+## 0.4.1
+
+ - **FIX**: velocity scaling when overdragging with resistance.
+ - **FIX**: secondary animation in cupertino sheet.
+ - **FEAT**: cupertino sheet can now be dragged over its limits with resistance.
+ - **FEAT**: sheets support snapping points now.
+ - **FEAT**: cupertino sheet top padding is based on safe area now.
+
+## 0.4.0+2
+
+ - Update a dependency to the latest release.
+
+## 0.4.0+1
+
+ - Update a dependency to the latest release.
+
 ## 0.4.0
 
 > Note: This release has breaking changes.

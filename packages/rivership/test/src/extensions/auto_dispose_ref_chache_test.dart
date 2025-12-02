@@ -1,4 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:rivership/rivership.dart';
 import 'package:rivership_test/rivership_test.dart';
 
@@ -16,7 +17,7 @@ void main() {
   group('AutoDisposeRefCache', () {
     late ProviderContainer container;
     setUp(() {
-      container = createContainer();
+      container = ProviderContainer.test();
     });
 
     group('cacheFor', () {

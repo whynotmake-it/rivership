@@ -1,6 +1,6 @@
 name: scroll_drag_detector
 description: A drag gesture detector that can deal with scroll views inside of it.
-version: 0.0.3
+version: 0.1.0
 resolution: workspace
 
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/overscroll_gesture_detector

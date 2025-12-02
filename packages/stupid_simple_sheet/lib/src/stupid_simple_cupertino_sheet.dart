@@ -8,7 +8,7 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 /// Simular to [CupertinoSheetRoute] but with the drag gesture improvements from
 /// this package.
 class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
-    with StupidSimpleSheetTransitionMixin<T> {
+    with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
   /// Creates a sheet route for displaying modal content.
   ///
   /// The [motion] and [child] arguments must not be null.
@@ -16,11 +16,35 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     required this.child,
     super.settings,
     this.motion = const CupertinoMotion.smooth(
-      duration: Duration(milliseconds: 400),
+      duration: Duration(milliseconds: 350),
       snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
-  }) : super();
+    this.backgroundColor = CupertinoColors.systemBackground,
+    this.callNavigatorUserGestureMethods = false,
+    this.snappingConfig = SheetSnappingConfig.full,
+    this.draggable = true,
+    this.originateAboveBottomViewInset = false,
+    ShapeBorder shape = iOS18Shape,
+    @Deprecated('Will be removed in next major release. Use shape instead')
+    Radius? topRadius,
+  }) : shape = topRadius != null
+            ? RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.vertical(
+                  top: topRadius,
+                ),
+              )
+            : shape;
+
+  /// The default iOS 18 shape for sheet controllers.
+  static const iOS18Shape = RoundedSuperellipseBorder(
+    borderRadius: BorderRadius.vertical(
+      top: Radius.circular(12),
+    ),
+  );
+
+  @override
+  double get overshootResistance => 5000;
 
   @override
   final Motion motion;
@@ -28,14 +52,28 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   final bool clearBarrierImmediately;
 
+  /// The background color of the sheet.
+  ///
+  /// Will default [CupertinoColors.secondarySystemBackground] if not provided.
+  final Color backgroundColor;
+
   /// The widget to display in the sheet.
   final Widget child;
+
+  /// The shape of the sheet.
+  ///
+  /// Defaults to [iOS18Shape].
+  final ShapeBorder shape;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
 
   @override
-  bool get barrierDismissible => false;
+  bool get barrierDismissible => switch (navigator) {
+        NavigatorState(:final context) =>
+          effectiveSnappingConfig.resolveWith(context).hasInbetweenSnaps,
+        _ => false,
+      };
 
   @override
   String? get barrierLabel => null;
@@ -47,32 +85,38 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   bool get opaque => false;
 
   @override
+  final bool callNavigatorUserGestureMethods;
+
+  @override
+  final SheetSnappingConfig snappingConfig;
+
+  @override
+  final bool draggable;
+
+  @override
+  final bool originateAboveBottomViewInset;
+
+  @override
   DelegatedTransitionBuilder? get delegatedTransition =>
-      (context, animation, secondaryAnimation, canSnapshot, child) =>
-          CopiedCupertinoSheetTransition.delegateTransition(
-            context,
-            animation.clamped,
-            secondaryAnimation.clamped,
-            allowSnapshotting,
-            child,
-          );
+      (context, animation, secondaryAnimation, canSnapshot, child) {
+        final height = MediaQuery.sizeOf(context).height;
+        return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
+          context,
+          animation: animation.clamped,
+          secondaryAnimation: secondaryAnimation.clamped,
+          slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
+          opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+          primaryShape: shape,
+          child: child,
+        );
+      };
 
   @override
   Widget buildContent(BuildContext context) {
-    final topPadding = MediaQuery.heightOf(context) * 0.08;
     return MediaQuery.removePadding(
       context: context,
       removeTop: true,
-      child: Padding(
-        padding: EdgeInsets.only(top: topPadding),
-        child: ClipRSuperellipse(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-          child: CupertinoUserInterfaceLevel(
-            data: CupertinoUserInterfaceLevelData.elevated,
-            child: child,
-          ),
-        ),
-      ),
+      child: child,
     );
   }
 
@@ -83,11 +127,50 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return CupertinoSheetTransition(
-      primaryRouteAnimation: animation.clamped,
-      secondaryRouteAnimation: secondaryAnimation.clamped,
-      linearTransition: true,
-      child: child,
+    final height = MediaQuery.sizeOf(context).height;
+
+    return CupertinoUserInterfaceLevel(
+      data: CupertinoUserInterfaceLevelData.elevated,
+      child: CopiedCupertinoSheetTransitions.fullTransition(
+        context,
+        animation: controller!.view,
+        secondaryAnimation: secondaryAnimation,
+        slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
+        opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+        backgroundColor: backgroundColor,
+        shape: shape,
+        child: child,
+      ),
     );
+  }
+
+  @override
+  bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
+    return nextRoute is StupidSimpleCupertinoSheetRoute ||
+        super.canTransitionTo(nextRoute);
+  }
+
+  @override
+  @mustCallSuper
+  void didChangeNext(Route<dynamic>? nextRoute) {
+    super.didChangeNext(nextRoute);
+
+    // This is a hack for forcing the internal secondary transition instead
+    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+    }
+  }
+
+  @override
+  @mustCallSuper
+  void didPopNext(Route<dynamic> nextRoute) {
+    super.didPopNext(nextRoute);
+
+    // This is a hack for forcing the internal secondary transition instead
+    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+    }
   }
 }

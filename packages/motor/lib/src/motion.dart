@@ -732,38 +732,43 @@ class MaterialSpringMotion extends SpringMotion {
 /// 2. Maps the "middle portion" back to your desired 0→1 output
 /// 3. Finishes early when the trimmed portion is complete
 ///
-/// Example: With `startTrim: 0.2` and `endTrim: 0.2`, your 0→1 motion will
+/// Example: With `fromStart: 0.2` and `fromEnd: 0.2`, your 0→1 motion will
 /// use the middle 60% of the parent motion's characteristic curve.
 /// {@endtemplate}
+///
+/// See also:
+/// * [MotionTrimming.trimmed]
+/// * [MotionTrimming.sliced]
+/// * [MotionTrimming.segment]
 @immutable
 class TrimmedMotion extends Motion {
   /// {@macro TrimmedMotion}
   ///
   /// Parameters:
   ///   * [parent] - The motion to trim
-  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
-  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
+  ///   * [fromStart] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [fromEnd] - Amount to trim from the end (0.0 = no trim)
 
   const TrimmedMotion({
     required this.parent,
-    required this.startTrim,
-    required this.endTrim,
-  })  : assert(startTrim >= 0.0, 'startTrim must be non-negative'),
-        assert(endTrim >= 0.0, 'endTrim must be non-negative'),
+    required this.fromStart,
+    required this.fromEnd,
+  })  : assert(fromStart >= 0.0, 'fromStart must be non-negative'),
+        assert(fromEnd >= 0.0, 'fromEnd must be non-negative'),
         assert(
-          startTrim + endTrim <= 1.0,
-          'startTrim + endTrim must be less than 1.0, '
-          'but received $startTrim + $endTrim',
+          fromStart + fromEnd <= 1.0,
+          'fromStart + fromEnd must be less than 1.0, '
+          'but received $fromStart + $fromEnd',
         );
 
   /// The motion to trim.
   final Motion parent;
 
   /// Amount to trim from the start of the motion curve.
-  final double startTrim;
+  final double fromStart;
 
   /// Amount to trim from the end of the motion curve.
-  final double endTrim;
+  final double fromEnd;
 
   @override
   bool get needsSettle => parent.needsSettle;
@@ -780,11 +785,11 @@ class TrimmedMotion extends Motion {
     double end = 1,
     double velocity = 0,
   }) {
-    final trimmedExtent = 1.0 - startTrim - endTrim;
+    final trimmedExtent = 1.0 - fromStart - fromEnd;
 
     // We simulate the parent over the extended range
-    final parentStart = start - trimmedExtent * startTrim;
-    final parentEnd = end + trimmedExtent * endTrim;
+    final parentStart = start - trimmedExtent * fromStart;
+    final parentEnd = end + trimmedExtent * fromEnd;
 
     final scaledSim = parent.createSimulation(
       start: parentStart,
@@ -794,8 +799,8 @@ class TrimmedMotion extends Motion {
 
     return _TrimmedSimulation(
       parent: scaledSim,
-      startTrim: startTrim,
-      endTrim: endTrim,
+      startTrim: fromStart,
+      endTrim: fromEnd,
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
@@ -806,18 +811,18 @@ class TrimmedMotion extends Motion {
   bool operator ==(Object other) {
     if (other is TrimmedMotion) {
       return parent == other.parent &&
-          startTrim == other.startTrim &&
-          endTrim == other.endTrim;
+          fromStart == other.fromStart &&
+          fromEnd == other.fromEnd;
     }
     return false;
   }
 
   @override
-  int get hashCode => Object.hash(parent, startTrim, endTrim);
+  int get hashCode => Object.hash(parent, fromStart, fromEnd);
 
   @override
   String toString() =>
-      'TrimmedMotion(parent: $parent, trim: $startTrim-$endTrim)';
+      'TrimmedMotion(parent: $parent, trim: $fromStart-$fromEnd)';
 }
 
 class _TrimmedSimulation extends Simulation {
@@ -908,41 +913,55 @@ extension MotionTrimming on Motion {
   /// {@macro TrimmedMotion}
   ///
   /// Parameters:
-  ///   * [startTrim] - Amount to trim from the beginning (0.0 = no trim)
-  ///   * [endTrim] - Amount to trim from the end (0.0 = no trim)
-
+  ///   * [fromStart] - Amount to trim from the beginning (0.0 = no trim)
+  ///   * [fromEnd] - Amount to trim from the end (0.0 = no trim)
   ///
   /// Example:
   /// ```dart
   /// // Exact trimming for curves
   /// final curve = CurvedMotion(Duration(seconds: 1));
-  /// final trimmedCurve = curve.trimmed(startTrim: 0.1, endTrim: 0.1);
+  /// final trimmedCurve = curve.trimmed(fromStart: 0.1, fromEnd: 0.1);
   ///
   /// // Approximate trimming for springs
   /// final spring = CupertinoMotion();
-  /// final trimmedSpring = spring.trimmed(startTrim: 0.1, endTrim: 0.1);
+  /// final trimmedSpring = spring.trimmed(fromStart: 0.1, fromEnd: 0.1);
   /// ```
   TrimmedMotion trimmed({
-    double startTrim = 0.0,
-    double endTrim = 0.0,
+    double fromStart = 0.0,
+    double fromEnd = 0.0,
   }) {
     return TrimmedMotion(
       parent: this,
-      startTrim: startTrim,
-      endTrim: endTrim,
+      fromStart: fromStart,
+      fromEnd: fromEnd,
+    );
+  }
+
+  /// Creates a [TrimmedMotion] that represents a slice of this motion.
+  TrimmedMotion sliced({
+    double from = 0.0,
+    double to = 1.0,
+  }) {
+    assert(from >= 0.0 && from <= 1.0, 'from must be between 0 and 1');
+    assert(to >= 0.0 && to <= 1.0, 'to must be between 0 and 1');
+    assert(from <= to, 'from cannot be greater than to');
+    return TrimmedMotion(
+      parent: this,
+      fromStart: from,
+      fromEnd: 1.0 - to,
     );
   }
 
   /// Creates a [TrimmedMotion] that uses a sub-extent of this motion.
-  TrimmedMotion subExtent({
-    required double extent,
+  TrimmedMotion segment({
+    required double length,
     double start = 0.0,
   }) {
-    assert(start + extent <= 1.0, 'start + extent cannot be larger than 1');
+    assert(start + length <= 1.0, 'start + length cannot be larger than 1');
     return TrimmedMotion(
       parent: this,
-      startTrim: start,
-      endTrim: 1.0 - (start + extent),
+      fromStart: start,
+      fromEnd: 1.0 - (start + length),
     );
   }
 }
