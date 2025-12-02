@@ -1,1 +1,4 @@
 include: package:lintervention/analysis_options.yaml
+analyzer:
+  errors:
+    prefer_int_literals: ignore

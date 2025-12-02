@@ -39,6 +39,12 @@ abstract class MotionConverter<T> {
   /// A motion converter for color values that interpolates in RGB space.
   static const colorRgb = ColorRgbMotionConverter();
 
+  /// A motion converter for [EdgeInsets] values.
+  static const edgeInsets = EdgeInsetsMotionConverter();
+
+  /// A motion converter for [EdgeInsetsDirectional] values.
+  static const edgeInsetsDirectional = EdgeInsetsDirectionalMotionConverter();
+
   /// Converts a value of type [T] to a list of double values.
   List<double> normalize(T value);
 
@@ -135,6 +141,52 @@ class ColorRgbMotionConverter extends MotionConverter<Color> {
         green: values[1].clamp(0, 1),
         blue: values[2].clamp(0, 1),
         alpha: values[3].clamp(0, 1),
+      );
+}
+
+/// A [MotionConverter] for [EdgeInsets] values.
+class EdgeInsetsMotionConverter extends MotionConverter<EdgeInsets> {
+  /// Creates a [EdgeInsetsMotionConverter].
+  const EdgeInsetsMotionConverter();
+
+  @override
+  List<double> normalize(EdgeInsets value) => [
+        value.left,
+        value.top,
+        value.right,
+        value.bottom,
+      ];
+
+  @override
+  EdgeInsets denormalize(List<double> values) => EdgeInsets.fromLTRB(
+        values[0],
+        values[1],
+        values[2],
+        values[3],
+      );
+}
+
+/// A [MotionConverter] for [EdgeInsetsDirectional] values.
+class EdgeInsetsDirectionalMotionConverter
+    extends MotionConverter<EdgeInsetsDirectional> {
+  /// Creates a [EdgeInsetsDirectionalMotionConverter].
+  const EdgeInsetsDirectionalMotionConverter();
+
+  @override
+  List<double> normalize(EdgeInsetsDirectional value) => [
+        value.start,
+        value.top,
+        value.end,
+        value.bottom,
+      ];
+
+  @override
+  EdgeInsetsDirectional denormalize(List<double> values) =>
+      EdgeInsetsDirectional.fromSTEB(
+        values[0],
+        values[1],
+        values[2],
+        values[3],
       );
 }
 
