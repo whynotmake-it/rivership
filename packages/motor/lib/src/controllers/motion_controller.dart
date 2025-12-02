@@ -80,13 +80,14 @@ class MotionController<T extends Object> extends Animation<T>
   MotionController._({
     required List<Motion> motionPerDimension,
     required TickerProvider vsync,
-    required this.converter,
+    required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
-  }) : assert(
+  })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
-        ) {
+        ),
+        _converter = converter {
     _initialValue = initialValue;
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
@@ -107,8 +108,24 @@ class MotionController<T extends Object> extends Animation<T>
 
   late final T _initialValue;
 
+  MotionConverter<T> _converter;
+
+  set converter(MotionConverter<T> value) {
+    if (value == _converter) return;
+
+    final normalized = value.normalize(value.denormalize(_currentValues));
+    assert(
+      normalized.length == _dimensions,
+      'new converter must have the same number of dimensions as the '
+      'previous converter',
+    );
+
+    _converter = value;
+    _internalSetValue(normalized);
+  }
+
   /// Converts the value of type T to a List<double> for internal processing.
-  final MotionConverter<T> converter;
+  MotionConverter<T> get converter => _converter;
 
   /// Number of dimensions being animated
   late final int _dimensions;

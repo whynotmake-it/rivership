@@ -23,32 +23,29 @@ void main() {
   group('MotionController', () {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
-    late MotionController<Offset> controller;
     const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
 
-    tearDown(() {
-      controller.dispose();
-    });
-
     testWidgets('creates with initial value', (tester) async {
-      controller = MotionController<Offset>(
+      final controller = MotionController<Offset>(
         motion: motion,
         vsync: tester,
         converter: converter,
         initialValue: Offset.zero,
       );
+      addTearDown(controller.dispose);
       expect(controller.value, equals(Offset.zero));
       expect(controller.velocity, equals(Offset.zero));
     });
 
     testWidgets('updates motion style', (tester) async {
-      controller = MotionController<Offset>(
+      final controller = MotionController<Offset>(
         motion: motion,
         vsync: tester,
         converter: converter,
         initialValue: Offset.zero,
       );
+      addTearDown(controller.dispose);
       final newSpring = SpringDescription.withDurationAndBounce(
         duration: const Duration(milliseconds: 100),
       );
@@ -66,17 +63,23 @@ void main() {
       when(() => mockTickerProvider.createTicker(any())).thenAnswer((_) {
         return mockTicker;
       });
-      controller = MotionController<Offset>(
+      final controller = MotionController<Offset>(
         motion: motion,
         vsync: mockTickerProvider,
         converter: converter,
         initialValue: Offset.zero,
       );
+      addTearDown(controller.dispose);
 
       verify(() => mockTickerProvider.createTicker(any())).called(1);
     });
 
     group('.animateTo', () {
+      late MotionController<Offset> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
       testWidgets('animates to target value', (tester) async {
         controller = MotionController<Offset>(
           motion: motion,
@@ -296,6 +299,11 @@ void main() {
     });
 
     group('.motion', () {
+      late MotionController<Offset> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
       testWidgets('redirects simulation', (tester) async {
         controller = MotionController<Offset>(
           motion: motion,
@@ -322,6 +330,11 @@ void main() {
     });
 
     group('.stop', () {
+      late MotionController<Offset> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
       testWidgets('stop settles animation by default', (tester) async {
         controller = MotionController<Offset>(
           motion: motion,
@@ -371,6 +384,11 @@ void main() {
     });
 
     group('.resync', () {
+      late MotionController<Offset> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
       testWidgets('resyncs the controller', (tester) async {
         final mockTickerProvider = _MockTickerProvider();
         final mockTicker = _MockTicker();
@@ -395,6 +413,11 @@ void main() {
     });
 
     group('.status', () {
+      late MotionController<Offset> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
       testWidgets('is .dismissed initially', (tester) async {
         controller = MotionController<Offset>(
           motion: motion,
@@ -455,6 +478,102 @@ void main() {
         expect(controller.status, equals(AnimationStatus.forward));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+    });
+
+    group('.converter', () {
+      late MotionController<EdgeInsetsGeometry> controller;
+      tearDown(() {
+        controller.dispose();
+      });
+
+      testWidgets('will throw in constructor if value type does not match',
+          (tester) async {
+        const converter = EdgeInsetsMotionConverter();
+
+        void initializeController() {
+          controller = MotionController<EdgeInsetsGeometry>(
+            motion: const CupertinoMotion.smooth(),
+            vsync: tester,
+            initialValue: EdgeInsetsDirectional.zero,
+            converter: converter,
+          );
+        }
+
+        expect(initializeController, throwsA(isA<TypeError>()));
+
+        controller = MotionController<EdgeInsetsGeometry>(
+          motion: const CupertinoMotion.smooth(),
+          vsync: tester,
+          initialValue: EdgeInsets.zero,
+          converter: converter,
+        );
+      });
+
+      testWidgets('will throw in setter if value type does not match',
+          (tester) async {
+        const converter = EdgeInsetsMotionConverter();
+        controller = MotionController<EdgeInsetsGeometry>(
+          motion: const CupertinoMotion.smooth(),
+          vsync: tester,
+          initialValue: EdgeInsets.zero,
+          converter: converter,
+        );
+
+        void setValue() {
+          controller.value = EdgeInsetsDirectional.zero;
+        }
+
+        expect(setValue, throwsA(isA<TypeError>()));
+      });
+
+      testWidgets('will throw in animateTo if value type does not match',
+          (tester) async {
+        const converter = EdgeInsetsMotionConverter();
+        controller = MotionController<EdgeInsetsGeometry>(
+          motion: const CupertinoMotion.smooth(),
+          vsync: tester,
+          initialValue: EdgeInsets.zero,
+          converter: converter,
+        );
+
+        void animate() {
+          controller.animateTo(EdgeInsetsDirectional.zero);
+        }
+
+        expect(animate, throwsA(isA<TypeError>()));
+      });
+
+      testWidgets('can be swapped mid animation', (tester) async {
+        const converterA = EdgeInsetsMotionConverter();
+        const converterB = EdgeInsetsDirectionalMotionConverter();
+        controller = MotionController<EdgeInsetsGeometry>(
+          motion: const CupertinoMotion.smooth(),
+          vsync: tester,
+          initialValue: EdgeInsets.zero,
+          converter: converterA,
+        );
+
+        addTearDown(controller.dispose);
+
+        controller.animateTo(const EdgeInsets.all(100)).ignore();
+
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(controller.value.horizontal, greaterThan(0));
+
+        controller.converter = converterB;
+        controller.animateTo(EdgeInsetsDirectional.zero).ignore();
+
+        await tester.pump();
+
+        await tester.pumpAndSettle();
+
+        expect(controller.value, isA<EdgeInsetsDirectional>());
+        expect(
+            controller.value.horizontal, moreOrLessEquals(0, epsilon: error));
+        expect(controller.value.vertical, moreOrLessEquals(0, epsilon: error));
       });
     });
   });

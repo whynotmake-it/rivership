@@ -125,6 +125,10 @@ abstract class BaseMotionBuilderState<T extends Object>
 
   @override
   void didUpdateWidget(covariant BaseMotionBuilder<T> oldWidget) {
+    if (widget.converter != oldWidget.converter) {
+      controller.converter = widget.converter;
+    }
+
     if (widget.motion != oldWidget.motion ||
         !motionsEqual(
           widget.motionPerDimension,
