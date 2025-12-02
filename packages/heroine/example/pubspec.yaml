@@ -19,7 +19,7 @@ dependencies:
   lorem_gen: ^2.0.1
   pull_down_button: ^0.10.2
   motor: ^1.0.1
-  heroine: 
+  heroine:
     path: ../
   auto_route: ^10.0.1
 

@@ -209,8 +209,11 @@ class SecondDetailsPage extends StatelessWidget {
         previousPageTitle: DetailsPage.name,
         middle: Text(name),
       ),
-      child: Center(
-        child: Text('This is the end.'),
+      child: ListView.builder(
+        itemBuilder: (context, index) => ListTile(
+          title: Text('Item $index'),
+        ),
+        itemCount: 100,
       ),
     );
   }
@@ -249,7 +252,8 @@ class HeroineZoomRoute<T> extends PageRoute<T>
   Widget buildContent(BuildContext context) => HeroMode(
         // Flutter heroes begone
         enabled: false,
-        child: DragDismissable(
+        child: ScrollDragDismissable(
+          scrollableCanMoveBack: false,
           child: ReactToHeroineDismiss(
             builder: (context, progress, offset, child) => Transform.scale(
               scale: 1 - progress * 0.2,
