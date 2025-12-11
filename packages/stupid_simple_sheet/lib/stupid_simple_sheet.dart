@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
@@ -42,6 +44,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.barrierColor = const Color.fromRGBO(0, 0, 0, 0.2),
     this.barrierDismissible = true,
     this.barrierLabel,
+    this.backgroundColor,
     this.shape = const RoundedSuperellipseBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -66,6 +69,12 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   /// [Clip.none].
   /// Defaults to a rounded superellipse with 24px radius at the top.
   final ShapeBorder shape;
+
+  /// The background color of the sheet.
+  ///
+  /// If null, the default background color from the current [Theme]s
+  /// surface color is used.
+  final Color? backgroundColor;
 
   /// The [Clip] behavior to use for the sheet's content.
   ///
@@ -102,14 +111,20 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool originateAboveBottomViewInset;
 
   @override
-  Widget buildContent(BuildContext context) => DecoratedBox(
-        decoration: ShapeDecoration(shape: shape),
-        child: OptimizedClip(
-          clipBehavior: clipBehavior,
-          shape: shape,
+  Widget buildContent(BuildContext context) {
+    final color = backgroundColor ?? Theme.of(context).colorScheme.surface;
+    return ExtendSheetAtBottom(
+      color: color,
+      child: OptimizedClip(
+        clipBehavior: clipBehavior,
+        shape: shape,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(shape: shape, color: color),
           child: child,
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _RelativeGestureDetector extends StatelessWidget {

@@ -25,7 +25,7 @@ final stupidSimpleSheetRoutes = [
     builder: (context, data) => _CupertinoSheetContent(),
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
-          StupidSimpleSheetRoute<T>(
+          StupidSimpleCupertinoSheetRoute<T>(
         settings: page,
         child: child,
       ),

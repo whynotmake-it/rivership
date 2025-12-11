@@ -45,7 +45,7 @@ void main() {
                       draggable: draggable,
                       originateAboveBottomViewInset:
                           originateAboveBottomViewInset,
-                      clipBehavior: Clip.none,
+                      clipBehavior: Clip.antiAlias,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
