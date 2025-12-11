@@ -131,15 +131,21 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
-      child: CopiedCupertinoSheetTransitions.fullTransition(
-        context,
-        animation: controller!.view,
-        secondaryAnimation: secondaryAnimation,
-        slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
-        opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
-        backgroundColor: backgroundColor,
-        shape: shape,
-        child: child,
+      child: Builder(
+        builder: (context) {
+          return CopiedCupertinoSheetTransitions.fullTransition(
+            context,
+            animation: controller!.view,
+            secondaryAnimation: secondaryAnimation,
+            slideBackRange:
+                effectiveSnappingConfig.resolve(height).topTwoPoints,
+            opacityRange:
+                effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+            backgroundColor: backgroundColor,
+            shape: shape,
+            child: child,
+          );
+        },
       ),
     );
   }
