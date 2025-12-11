@@ -21,7 +21,7 @@ dependencies:
   motor: ^1.1.0
   heroine: 
     path: ../
-  auto_route: ^10.0.1
+  auto_route: ^11.0.0
 
 dev_dependencies:
   flutter_test:

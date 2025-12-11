@@ -26,7 +26,7 @@ dependencies:
 
 
   rivership: ^0.4.0+1
-  auto_route: ^10.0.1
+  auto_route: ^11.0.0
 
   
 
