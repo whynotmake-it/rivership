@@ -1,3 +1,10 @@
+## 0.7.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: clip behavior wasn't respected in sheets.
+ - **BREAKING** **FEAT**: add `backgroundColor` to `StupidSimpleSheetRoute`.
+
 ## 0.6.3
 
  - **FIX**: improve clipping of overlayed sheets.
