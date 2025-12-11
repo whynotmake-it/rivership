@@ -28,16 +28,25 @@ class OptimizedClip extends StatelessWidget {
     return switch (shape) {
       null => child,
       RoundedSuperellipseBorder(:final borderRadius) => ClipRSuperellipse(
+          clipBehavior: clipBehavior,
           borderRadius: borderRadius,
           child: child,
         ),
       RoundedRectangleBorder(:final borderRadius) => ClipRRect(
+          clipBehavior: clipBehavior,
           borderRadius: borderRadius,
           child: child,
         ),
-      OvalBorder() => ClipOval(child: child),
-      LinearBorder() => ClipRect(child: child),
+      OvalBorder() => ClipOval(
+          clipBehavior: clipBehavior,
+          child: child,
+        ),
+      LinearBorder() => ClipRect(
+          clipBehavior: clipBehavior,
+          child: child,
+        ),
       _ => ClipPath(
+          clipBehavior: clipBehavior,
           clipper: ShapeBorderClipper(
             shape: shape,
           ),

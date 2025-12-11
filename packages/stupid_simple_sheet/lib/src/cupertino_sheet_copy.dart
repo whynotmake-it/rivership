@@ -240,38 +240,41 @@ abstract class CopiedCupertinoSheetTransitions {
 
     final Animation<Offset> positionAnimation = animation.drive(offsetTween);
 
-    return SafeArea(
-      left: false,
-      right: false,
-      bottom: false,
-      minimum: EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
-      child: Padding(
-        padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
-        child: SlideTransition(
-          position: positionAnimation,
-          child: secondarySlideUpTransition(
-            context,
-            animation: animation,
-            secondaryAnimation: secondaryAnimation,
-            shapeAnimation: shapeAnimation,
-            opacityRange: opacityRange,
-            slideBackRange: slideBackRange,
-            child: ExtendSheetAtBottom(
-              color: CupertinoDynamicColor.resolve(
-                backgroundColor,
-                context,
-              ),
-              child: ColoredBox(
-                color: CupertinoDynamicColor.resolve(
-                  backgroundColor,
+    return Builder(
+      builder: (context) {
+        final sheetColor = CupertinoDynamicColor.resolve(
+          backgroundColor,
+          context,
+        );
+        return SafeArea(
+          left: false,
+          right: false,
+          bottom: false,
+          minimum:
+              EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
+          child: Padding(
+            padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
+            child: SlideTransition(
+              position: positionAnimation,
+              child: ExtendSheetAtBottom(
+                color: sheetColor,
+                child: secondarySlideUpTransition(
                   context,
+                  animation: animation,
+                  secondaryAnimation: secondaryAnimation,
+                  shapeAnimation: shapeAnimation,
+                  opacityRange: opacityRange,
+                  slideBackRange: slideBackRange,
+                  child: ColoredBox(
+                    color: sheetColor,
+                    child: child,
+                  ),
                 ),
-                child: child,
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
