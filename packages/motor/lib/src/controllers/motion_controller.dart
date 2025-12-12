@@ -273,16 +273,20 @@ class MotionController<T extends Object> extends Animation<T>
   ///
   /// If [withVelocity] is provided, the animation will start with that velocity
   /// instead of [velocity].
+  ///
+  /// If [forward] is false, the animation status will be reversed.
   TickerFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
+    bool forward = true,
   }) =>
       _animateToInternal(
         target: converter.normalize(target),
         from: from != null ? converter.normalize(from) : null,
         velocity:
             withVelocity != null ? converter.normalize(withVelocity) : null,
+        forward: forward,
       );
 
   TickerFuture _animateToInternal({
@@ -930,6 +934,7 @@ class SequenceMotionController<P, T extends Object>
     T target, {
     T? from,
     T? withVelocity,
+    bool forward = true,
   }) {
     // Stop any active sequence when a manual animateTo is called
     _stopSequence();
@@ -939,6 +944,7 @@ class SequenceMotionController<P, T extends Object>
       target,
       from: from,
       withVelocity: withVelocity,
+      forward: forward,
     );
   }
 
