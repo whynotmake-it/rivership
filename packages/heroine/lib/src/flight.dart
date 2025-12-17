@@ -14,6 +14,9 @@ class _HeroineFlight {
 
   OverlayEntry? overlayEntry;
 
+  bool _flightAnimationComplete = false;
+  bool _routeAnimationComplete = false;
+
   MotionController<Offset>? get centerController =>
       manifest.controllingHero._centerController;
   MotionController<Size>? get sizeController =>
@@ -76,6 +79,10 @@ class _HeroineFlight {
 
     manifest = newManifest;
 
+    // Reset completion flags for the new flight
+    _flightAnimationComplete = false;
+    _routeAnimationComplete = false;
+
     startFlight();
   }
 
@@ -114,7 +121,9 @@ class _HeroineFlight {
 
     manifest.routeAnimation
         .removeStatusListener(_onProgressAnimationStatusChanged);
+    _routeAnimationComplete = true;
     handoverFlight();
+    _endFlightIfBothAnimationsComplete();
   }
 
   void _onFlightAnimationStatusChanged(AnimationStatus status) {
@@ -122,7 +131,14 @@ class _HeroineFlight {
 
     if (status.isAnimating) return;
 
-    onEnd();
+    _flightAnimationComplete = true;
+    _endFlightIfBothAnimationsComplete();
+  }
+
+  void _endFlightIfBothAnimationsComplete() {
+    if (_flightAnimationComplete && _routeAnimationComplete) {
+      onEnd();
+    }
   }
 
   Widget _buildOverlay(BuildContext context) {
