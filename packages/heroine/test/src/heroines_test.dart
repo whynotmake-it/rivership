@@ -241,6 +241,100 @@ void main() {
       );
     });
 
+    testWidgets(
+      'overlay stays visible until route transition completes even when '
+      'heroines are in same position',
+      (tester) async {
+        // This test reproduces a bug where if from and to heroines are in
+        // the exact same position, the animation completes immediately,
+        // causing the overlay entry to be removed before the route transition
+        // finishes.
+        await tester.pumpWidget(
+          MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorObservers: [HeroineController()],
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body: Padding(
+                padding: const EdgeInsets.all(padding),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+        final initialHeroineCount = find.heroineWithTag(tag).evaluate().length;
+        expect(initialHeroineCount, 1);
+
+        // Navigate to a page where the heroine is in the SAME position
+        tester
+            .push(
+              Scaffold(
+                backgroundColor: Colors.black,
+                body: Padding(
+                  padding: const EdgeInsets.all(padding),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+            .ignore();
+
+        // Pump one frame to start the transition
+        await tester.pump();
+        await tester.pump();
+
+        // During the transition, we should have at least 3 heroines:
+        // 1. fromHero (offstage)
+        // 2. toHero (offstage)
+        // 3. overlay heroine (visible in flight)
+        final heroineCountDuringTransition1 =
+            find.heroineWithTag(tag).evaluate().length;
+        expect(
+          heroineCountDuringTransition1,
+          greaterThanOrEqualTo(3),
+          reason: 'Should have from, to, and overlay heroines during flight',
+        );
+
+        // Pump halfway through the default transition duration (300ms)
+        await tester.pump(const Duration(milliseconds: 150));
+
+        // Overlay heroine should still be present
+        final heroineCountDuringTransition2 =
+            find.heroineWithTag(tag).evaluate().length;
+        expect(
+          heroineCountDuringTransition2,
+          greaterThanOrEqualTo(3),
+          reason: 'Overlay should remain visible during route transition',
+        );
+
+        // Complete the route transition
+        await tester.pumpAndSettle();
+
+        // After route transition completes, only the destination heroine
+        // remains
+        expect(find.heroineWithTag(tag).evaluate().length, 1);
+      },
+    );
+
     group('z-index', () {
       testWidgets('matches golden', (tester) async {
         final heroines = <Heroine>[
