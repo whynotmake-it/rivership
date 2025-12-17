@@ -24,6 +24,13 @@ class _FlightController {
   /// The current flight specification.
   _FlightSpec _spec;
 
+  /// The current target location, updated on each frame when
+  /// [_FlightSpec.shouldContinuouslyTrackTarget] is true.
+  ///
+  /// This allows the flight to smoothly redirect if the target widget moves
+  /// during the animation (e.g., keyboard appears/disappears).
+  HeroineLocation? _currentTargetLocation;
+
   /// Called when the flight ends (both animations complete).
   final VoidCallback onEnd;
 
@@ -67,6 +74,15 @@ class _FlightController {
     final fromHeroVelocity = HeroineVelocity.of(_spec.fromHero.context);
     _spec.routeAnimation.addStatusListener(_onRouteAnimationStatusChanged);
 
+    // Initialize the current target location
+    _currentTargetLocation = _spec.toHeroLocation;
+
+    // Set up continuous target tracking if enabled
+    if (_spec.shouldContinuouslyTrackTarget) {
+      _spec.controllingHero._motionController
+          ?.addListener(_onMotionControllerUpdate);
+    }
+
     // Animate position and size to the destination
     _spec.controllingHero._motionController
       ?..motion = _spec.motion
@@ -80,6 +96,26 @@ class _FlightController {
       );
   }
 
+  /// Called on every frame when continuous target tracking is enabled.
+  ///
+  /// Checks if the target widget has moved and redirects the animation
+  /// to the new position if needed.
+  void _onMotionControllerUpdate() {
+    if (_routeAnimationComplete) return;
+
+    final newTargetLocation = _FlightSpec._locationFor(
+      _spec.toHero,
+      _spec.toRoute.subtreeContext,
+    );
+
+    // Only redirect if the target has actually moved
+    if (newTargetLocation != _currentTargetLocation &&
+        newTargetLocation.isValid) {
+      _currentTargetLocation = newTargetLocation;
+      _spec.controllingHero._motionController?.animateTo(newTargetLocation);
+    }
+  }
+
   /// Diverts this flight to a new destination.
   ///
   /// This happens when navigation direction changes mid-flight
@@ -87,6 +123,15 @@ class _FlightController {
   void divert(_FlightSpec toSpec) {
     final fromSpec = _spec;
     _spec = toSpec;
+
+    // Clean up continuous target tracking from the previous spec
+    if (fromSpec.shouldContinuouslyTrackTarget) {
+      fromSpec.controllingHero._motionController
+          ?.removeListener(_onMotionControllerUpdate);
+    }
+
+    // Reset the tracked target location for the new flight
+    _currentTargetLocation = null;
 
     fromSpec.dispose();
     fromSpec.routeAnimation
@@ -137,13 +182,23 @@ class _FlightController {
   void _performHandoff() {
     _removeOverlay();
 
+    // Stop listening for target updates
+    if (_spec.shouldContinuouslyTrackTarget) {
+      _spec.controllingHero._motionController
+          ?.removeListener(_onMotionControllerUpdate);
+    }
+
     final controller = _spec.controllingHero._motionController;
 
     if (controller == null) return;
 
+    // Use the tracked target location (which may have been updated during
+    // the flight) to ensure the handoff animates to the correct final position.
+    final targetLocation = _currentTargetLocation ?? _spec.toHeroLocation;
+
     _spec.toHero._performHandoff(
       controller: controller,
-      target: _spec.toHeroLocation,
+      target: targetLocation,
     );
   }
 
@@ -220,6 +275,12 @@ class _FlightController {
 
   /// Disposes of this flight controller and cleans up resources.
   void dispose() {
+    // Clean up continuous target tracking
+    if (_spec.shouldContinuouslyTrackTarget) {
+      _spec.controllingHero._motionController
+          ?.removeListener(_onMotionControllerUpdate);
+    }
+
     _spec.toHero._endFlight();
     _spec.controllingHero._disposeMotionControllers();
 
