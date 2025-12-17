@@ -213,6 +213,27 @@ return Heroine(
 
 ## Advanced Features 🚀
 
+### Continuously Track Target
+
+Enable `continuouslyTrackTarget` to handle dynamic layout changes during hero animations:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  continuouslyTrackTarget: true,
+  child: MyWidget(),
+)
+```
+
+When enabled on the destination `Heroine`, the animation will check the target widget's position on every frame. If the target moves (e.g., keyboard appears/disappears, device rotates, or any layout change occurs), the animation will smoothly redirect to the new position.
+
+This is particularly useful when:
+- Pushing a route with an autofocus text field (keyboard appears mid-animation)
+- Handling device rotation during transitions
+- Any scenario where layout shifts occur during the hero flight
+
+This works best with spring-based motions like `CupertinoMotion` or `SpringMotion` that can dynamically redirect while retaining velocity. Disabled by default for performance reasons.
+
 ### Velocity-Aware Transitions
 
 Provide velocity information for smoother transitions from gestures using `HeroineVelocity`:
