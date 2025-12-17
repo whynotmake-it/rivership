@@ -28,10 +28,8 @@ class _FlightSpec {
     required this.isDiverted,
     required this.motion,
     this.zIndex,
-  })  : fromHeroLocation =
-            _boundingBoxFor(fromHero.context, fromRoute.subtreeContext),
-        toHeroLocation =
-            _boundingBoxFor(toHero.context, toRoute.subtreeContext),
+  })  : fromHeroLocation = _locationFor(fromHero, fromRoute.subtreeContext),
+        toHeroLocation = _locationFor(toHero, toRoute.subtreeContext),
         assert(
           fromHero.widget.tag == toHero.widget.tag,
           'fromHero and toHero must have the same tag',
@@ -129,17 +127,17 @@ class _FlightSpec {
   }
 
   /// The bounding box of [fromHero], in [fromRoute]'s coordinate space.
-  final Rect fromHeroLocation;
+  final HeroineLocation fromHeroLocation;
 
   /// The bounding box of [toHero], in [toRoute]'s coordinate space.
-  final Rect toHeroLocation;
+  final HeroineLocation toHeroLocation;
 
   /// Whether this specification is valid and can be used to start a flight.
   ///
   /// A specification is invalid if the hero locations contain non-finite
   /// coordinates ([double.infinity] or [double.nan]).
   late final bool isValid =
-      toHeroLocation.isFinite && (isDiverted || fromHeroLocation.isFinite);
+      toHeroLocation.isValid && (isDiverted || fromHeroLocation.isValid);
 
   // ---------------------------------------------------------------------------
   // Helper Methods
@@ -147,20 +145,24 @@ class _FlightSpec {
 
   /// Computes the bounding box for a context's render object,
   /// in an ancestor context's coordinate space.
-  static Rect _boundingBoxFor(
-    BuildContext context,
+  static HeroineLocation _locationFor(
+    _HeroineState state,
     BuildContext? ancestorContext,
   ) {
-    final box = context.findRenderObject()! as RenderBox;
+    final box = state.context.findRenderObject()! as RenderBox;
 
     assert(
       box.hasSize && box.size.isFinite,
       'RenderObject must have a finite size to be used as a hero',
     );
-    return MatrixUtils.transformRect(
+
+    final rect = MatrixUtils.transformRect(
       box.getTransformTo(ancestorContext?.findRenderObject()),
       Offset.zero & box.size,
     );
+
+    // TODO(tim): find rotation here
+    return HeroineLocation(boundingBox: rect);
   }
 
   @override

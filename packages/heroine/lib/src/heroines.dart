@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
@@ -5,6 +6,7 @@ import 'package:motor/motor.dart';
 
 part 'flight_controller.dart';
 part 'flight_spec.dart';
+part 'heroine_location.dart';
 
 /// An equivalent of [Hero] that is animated across routes using spring
 /// simulations.
@@ -115,10 +117,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   // ---------------------------------------------------------------------------
 
   /// Controller for animating the center position.
-  MotionController<Offset>? _centerController;
-
-  /// Controller for animating the size.
-  MotionController<Size>? _sizeController;
+  MotionController<HeroineLocation>? _motionController;
 
   /// Initializes motion controllers for this hero's flight.
   ///
@@ -128,40 +127,32 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     AnimationStatusListener onSpringAnimationStatusChanged,
   ) {
     _disposeMotionControllers();
-    _centerController = MotionController(
+    _motionController = MotionController(
       vsync: this,
       motion: spec.motion,
-      initialValue: spec.fromHeroLocation.center,
-      converter: const OffsetMotionConverter(),
+      initialValue: HeroineLocation(
+        boundingBox: spec.fromHeroLocation.boundingBox,
+      ),
+      converter: _HeroineLocationConverter(),
     )..addStatusListener(onSpringAnimationStatusChanged);
-
-    _sizeController = MotionController(
-      vsync: this,
-      motion: spec.motion,
-      initialValue: spec.fromHeroLocation.size,
-      converter: const SizeMotionConverter(),
-    );
   }
 
   void _disposeMotionControllers() {
-    _centerController?.dispose();
-    _sizeController?.dispose();
+    _motionController?.dispose();
+
     _unlinkMotionControllers();
   }
 
   /// Links motion controllers from another hero state (for redirected flights).
-  void _linkRedirectedMotionControllers(
-    MotionController<Offset> centerController,
-    MotionController<Size> sizeController,
+  void _linkRedirectedMotionController(
+    MotionController<HeroineLocation> motionController,
   ) {
-    _centerController = centerController..resync(this);
-    _sizeController = sizeController..resync(this);
+    _motionController = motionController..resync(this);
   }
 
   void _unlinkMotionControllers() {
-    if (_centerController == null && _sizeController == null) return;
-    _centerController = null;
-    _sizeController = null;
+    if (_motionController == null) return;
+    _motionController = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -187,18 +178,14 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   /// current spring position to its final resting position using the provided
   /// controllers. This creates a smooth "landing" effect.
   void _performHandoff({
-    required MotionController<Offset> centerController,
-    required Offset targetCenter,
-    required MotionController<Size> sizeController,
-    required Size targetSize,
+    required MotionController<HeroineLocation> controller,
+    required HeroineLocation target,
   }) {
     if (!mounted) return;
     setState(() {
       _handoff = (
-        centerController: centerController,
-        targetCenter: targetCenter,
-        sizeController: sizeController,
-        targetSize: targetSize,
+        controller: controller,
+        target: target,
       );
     });
   }
@@ -269,19 +256,18 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 /// in progress. This record holds the controllers and target values needed
 /// to continue animating the hero to its final position.
 typedef _FlightHandoff = ({
-  MotionController<Offset> centerController,
-  Offset targetCenter,
-  MotionController<Size> sizeController,
-  Size targetSize,
+  MotionController<HeroineLocation> controller,
+  HeroineLocation target,
 });
 
 extension on _FlightHandoff {
   /// The current offset from the target center.
-  Offset get offset => centerController.value - targetCenter;
+  Offset get offset =>
+      controller.value.boundingBox.center - target.boundingBox.center;
 
-  double get sizeX => sizeController.value.width;
+  double get sizeX => controller.value.boundingBox.width;
 
-  double get sizeY => sizeController.value.height;
+  double get sizeY => controller.value.boundingBox.height;
 }
 
 /// Builds the hero widget during the handoff phase.
@@ -316,7 +302,7 @@ class _HandoffBuilder extends StatelessWidget {
 
     if (placeholderSize case final size?) {
       return AnimatedBuilder(
-        animation: handoff?.centerController ?? const AlwaysStoppedAnimation(0),
+        animation: handoff?.controller ?? const AlwaysStoppedAnimation(0),
         builder: (context, child) {
           return Transform.translate(
             offset: handoff?.offset ?? Offset.zero,

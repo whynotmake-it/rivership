@@ -68,19 +68,15 @@ class _FlightController {
     _spec.routeAnimation.addStatusListener(_onRouteAnimationStatusChanged);
 
     // Animate position and size to the destination
-    _spec.controllingHero._centerController
+    _spec.controllingHero._motionController
       ?..motion = _spec.motion
       ..animateTo(
-        _spec.toHeroLocation.center,
-        from: resetBoundingBox ? _spec.fromHeroLocation.center : null,
-        withVelocity: fromHeroVelocity?.pixelsPerSecond,
-      );
-
-    _spec.controllingHero._sizeController
-      ?..motion = _spec.motion
-      ..animateTo(
-        from: resetBoundingBox ? _spec.fromHeroLocation.size : null,
-        _spec.toHeroLocation.size,
+        _spec.toHeroLocation,
+        from: resetBoundingBox ? _spec.fromHeroLocation : null,
+        withVelocity: switch (fromHeroVelocity) {
+          final v? => HeroineLocation._velocity(v),
+          null => null,
+        },
       );
   }
 
@@ -122,9 +118,8 @@ class _FlightController {
     required _HeroineState to,
   }) {
     if (from == to) return;
-    to._linkRedirectedMotionControllers(
-      from._centerController!,
-      from._sizeController!,
+    to._linkRedirectedMotionController(
+      from._motionController!,
     );
     from._unlinkMotionControllers();
   }
@@ -142,16 +137,13 @@ class _FlightController {
   void _performHandoff() {
     _removeOverlay();
 
-    final centerController = _spec.controllingHero._centerController;
-    final sizeController = _spec.controllingHero._sizeController;
+    final controller = _spec.controllingHero._motionController;
 
-    if (centerController == null || sizeController == null) return;
+    if (controller == null) return;
 
     _spec.toHero._performHandoff(
-      centerController: centerController,
-      targetCenter: _spec.toHeroLocation.center,
-      sizeController: sizeController,
-      targetSize: _spec.toHeroLocation.size,
+      controller: controller,
+      target: _spec.toHeroLocation,
     );
   }
 
@@ -199,18 +191,20 @@ class _FlightController {
       _spec.toHero.context,
     );
 
-    final centerController = _spec.controllingHero._centerController;
-    final sizeController = _spec.controllingHero._sizeController;
+    final controller = _spec.controllingHero._motionController;
 
-    if (centerController == null || sizeController == null) return shuttle;
+    if (controller == null) return shuttle;
 
     return AnimatedBuilder(
       animation: _spec.routeAnimation,
       builder: (context, child) => Positioned(
-        top: centerController.value.dy - sizeController.value.height / 2,
-        left: centerController.value.dx - sizeController.value.width / 2,
-        width: sizeController.value.width,
-        height: sizeController.value.height,
+        top: controller.value.boundingBox.center.dy -
+            controller.value.boundingBox.size.height / 2,
+        left: controller.value.boundingBox.center.dx -
+            controller.value.boundingBox.size.width / 2,
+        width: controller.value.boundingBox.size.width,
+        height: controller.value.boundingBox.size.height,
+        // TODO(timcreatedit): rotate here
         child: child!,
       ),
       child: IgnorePointer(
