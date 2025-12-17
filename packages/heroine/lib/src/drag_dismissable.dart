@@ -190,7 +190,6 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _start(DragStartDetails details) {
-    Navigator.of(context).didStartUserGesture();
     HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
     setState(() {
       _dragStartOffset = details.globalPosition;
@@ -218,7 +217,6 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _cancel() {
     HeroinePageRoute.maybeOf<dynamic>(context)?.cancelDismiss();
-    _stopUserGesturePostFrame();
     setState(() {
       _dragStartOffset = null;
       _offset = Offset.zero;
@@ -239,19 +237,11 @@ class _DragDismissableState extends State<DragDismissable> {
       setState(() {
         _velocity = details.velocity;
         _dragStartOffset = null;
-        onDismiss?.call();
       });
-      _stopUserGesturePostFrame();
+
+      onDismiss?.call();
     } else {
       _cancel();
     }
-  }
-
-  void _stopUserGesturePostFrame() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (Navigator.of(context).userGestureInProgress) {
-        Navigator.of(context).didStopUserGesture();
-      }
-    });
   }
 }

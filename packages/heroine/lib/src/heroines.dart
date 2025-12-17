@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:heroine/src/heroine_velocity.dart';
-import 'package:heroine/src/shuttle_builders.dart';
+import 'package:heroine/heroine.dart';
 import 'package:motor/motor.dart';
 
-part 'flight.dart';
-part 'manifest.dart';
+part 'flight_controller.dart';
+part 'flight_spec.dart';
 
 /// An equivalent of [Hero] that is animated across routes using spring
 /// simulations.
@@ -41,7 +40,7 @@ class Heroine extends StatefulWidget {
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
-  /// The motion to use for transitions towards this hero.
+  /// The motion to use for transitions towards this heroine.
   ///
   /// Defaults to [SpringMotion] with a smooth spring,
   /// which is a smooth default without bounce.
@@ -98,42 +97,60 @@ class Heroine extends StatefulWidget {
 class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   final _key = GlobalKey();
 
-  _FlightManifest? _manifest;
+  // ---------------------------------------------------------------------------
+  // Flight State
+  // ---------------------------------------------------------------------------
+
+  /// The current flight specification, if this heroine is participating in one.
+  _FlightSpec? _flightSpec;
+
+  /// The size of this widget before the flight started (used for placeholder).
   Size? _placeholderSize;
 
-  _SleightOfHand? _sleightOfHand;
+  /// The handoff state for animating to final position after route completes.
+  _FlightHandoff? _handoff;
 
+  // ---------------------------------------------------------------------------
+  // Motion Controllers
+  // ---------------------------------------------------------------------------
+
+  /// Controller for animating the center position.
   MotionController<Offset>? _centerController;
+
+  /// Controller for animating the size.
   MotionController<Size>? _sizeController;
 
-  /// Should be called on the toHero's state.
-  void _initSpringControllers(
-    _FlightManifest manifest,
-    AnimationStatusListener onFlightAnimationStatusChanged,
+  /// Initializes motion controllers for this hero's flight.
+  ///
+  /// Called on the [_FlightSpec.controllingHero]'s state when a flight starts.
+  void _initMotionControllers(
+    _FlightSpec spec,
+    AnimationStatusListener onSpringAnimationStatusChanged,
   ) {
-    _disposeSpringControllers();
+    _disposeMotionControllers();
     _centerController = MotionController(
       vsync: this,
-      motion: manifest.motion,
-      initialValue: manifest.fromHeroLocation.center,
+      motion: spec.motion,
+      initialValue: spec.fromHeroLocation.center,
       converter: const OffsetMotionConverter(),
-    )..addStatusListener(onFlightAnimationStatusChanged);
+    )..addStatusListener(onSpringAnimationStatusChanged);
 
     _sizeController = MotionController(
       vsync: this,
-      motion: manifest.motion,
-      initialValue: manifest.fromHeroLocation.size,
+      motion: spec.motion,
+      initialValue: spec.fromHeroLocation.size,
       converter: const SizeMotionConverter(),
     );
   }
 
-  void _disposeSpringControllers() {
+  void _disposeMotionControllers() {
     _centerController?.dispose();
     _sizeController?.dispose();
-    _unlinkSpringControllers();
+    _unlinkMotionControllers();
   }
 
-  void _linkRedirectedSpringControllers(
+  /// Links motion controllers from another hero state (for redirected flights).
+  void _linkRedirectedMotionControllers(
     MotionController<Offset> centerController,
     MotionController<Size> sizeController,
   ) {
@@ -141,21 +158,75 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     _sizeController = sizeController..resync(this);
   }
 
-  void _unlinkSpringControllers() {
+  void _unlinkMotionControllers() {
     if (_centerController == null && _sizeController == null) return;
     _centerController = null;
     _sizeController = null;
   }
 
-  bool _showsEmptyPlaceholderForFlight(_FlightManifest flight) {
-    return flight.direction == HeroFlightDirection.pop &&
-        flight.fromHero == this;
+  // ---------------------------------------------------------------------------
+  // Flight Lifecycle Methods
+  // ---------------------------------------------------------------------------
+
+  /// Starts a flight for this heroine.
+  void _startFlight(_FlightSpec spec) {
+    _placeholderSize = switch (context.findRenderObject()) {
+      final RenderBox box => box.size,
+      _ => Size.zero,
+    };
+
+    setState(() {
+      _flightSpec = spec;
+      _handoff = null;
+    });
+  }
+
+  /// Performs the handoff animation after the route transition completes.
+  ///
+  /// The overlay is removed and this widget continues animating from the
+  /// current spring position to its final resting position using the provided
+  /// controllers. This creates a smooth "landing" effect.
+  void _performHandoff({
+    required MotionController<Offset> centerController,
+    required Offset targetCenter,
+    required MotionController<Size> sizeController,
+    required Size targetSize,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _handoff = (
+        centerController: centerController,
+        targetCenter: targetCenter,
+        sizeController: sizeController,
+        targetSize: targetSize,
+      );
+    });
+  }
+
+  /// Ends the flight for this heroine.
+  void _endFlight() {
+    _placeholderSize = null;
+    if (!mounted) return;
+
+    if (this == _flightSpec?.toHero) {
+      _flightSpec = null;
+      _handoff = null;
+    } else {
+      setState(() {
+        _flightSpec = null;
+        _handoff = null;
+      });
+    }
+  }
+
+  bool _showsEmptyPlaceholderForFlight(_FlightSpec spec) {
+    return spec.direction == HeroFlightDirection.pop && spec.fromHero == this;
   }
 
   @override
   Widget build(BuildContext context) {
-    final flight = _manifest;
-    if (flight != null &&
+    final spec = _flightSpec;
+    if (spec != null &&
         widget.placeholderBuilder != null &&
         _placeholderSize != null) {
       return widget.placeholderBuilder!(
@@ -165,80 +236,47 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       );
     }
 
-    if (flight != null && _showsEmptyPlaceholderForFlight(flight)) {
+    if (spec != null && _showsEmptyPlaceholderForFlight(spec)) {
       return SizedBox.fromSize(
         size: _placeholderSize,
       );
     }
 
-    return _SleightOfHandBuilder(
+    return _HandoffBuilder(
       globalKey: _key,
       placeholderSize: _placeholderSize,
-      sleightOfHand: _sleightOfHand,
-      manifest: _manifest,
+      handoff: _handoff,
+      flightSpec: _flightSpec,
       child: widget.child,
     );
   }
 
-  void _startFlight(_FlightManifest manifest) {
-    _placeholderSize = switch (context.findRenderObject()) {
-      final RenderBox box => box.size,
-      _ => Size.zero,
-    };
-
-    setState(() {
-      _manifest = manifest;
-      _sleightOfHand = null;
-    });
-  }
-
-  void _performSleightOfHand({
-    required MotionController<Offset> centerController,
-    required Offset targetCenter,
-    required MotionController<Size> sizeController,
-    required Size targetSize,
-  }) {
-    if (!mounted) return;
-    setState(() {
-      _sleightOfHand = (
-        centerController: centerController,
-        targetCenter: targetCenter,
-        sizeController: sizeController,
-        targetSize: targetSize,
-      );
-    });
-  }
-
-  void _endFlight() {
-    _placeholderSize = null;
-    if (!mounted) return;
-
-    if (this == _manifest?.toHero) {
-      _manifest = null;
-      _sleightOfHand = null;
-    } else {
-      setState(() {
-        _manifest = null;
-        _sleightOfHand = null;
-      });
-    }
-  }
-
   @override
   void dispose() {
-    _disposeSpringControllers();
+    _disposeMotionControllers();
     super.dispose();
   }
 }
 
-typedef _SleightOfHand = ({
+// -----------------------------------------------------------------------------
+// Flight Handoff
+// -----------------------------------------------------------------------------
+
+/// State for the handoff animation after the route transition completes.
+///
+/// When a flight's route animation completes, the overlay is removed and the
+/// destination hero takes over. However, the spring animation may still be
+/// in progress. This record holds the controllers and target values needed
+/// to continue animating the hero to its final position.
+typedef _FlightHandoff = ({
   MotionController<Offset> centerController,
   Offset targetCenter,
   MotionController<Size> sizeController,
   Size targetSize,
 });
 
-extension on _SleightOfHand {
+extension on _FlightHandoff {
+  /// The current offset from the target center.
   Offset get offset => centerController.value - targetCenter;
 
   double get sizeX => sizeController.value.width;
@@ -246,12 +284,18 @@ extension on _SleightOfHand {
   double get sizeY => sizeController.value.height;
 }
 
-class _SleightOfHandBuilder extends StatelessWidget {
-  const _SleightOfHandBuilder({
+/// Builds the hero widget during the handoff phase.
+///
+/// Handles three states:
+/// 1. **Normal**: No flight - just renders the child
+/// 2. **In Flight**: Hero is flying - renders offstage (overlay shows the hero)
+/// 3. **Handoff**: Route done, spring continuing - animates to final position
+class _HandoffBuilder extends StatelessWidget {
+  const _HandoffBuilder({
     required this.globalKey,
     required this.placeholderSize,
-    required this.sleightOfHand,
-    required this.manifest,
+    required this.handoff,
+    required this.flightSpec,
     required this.child,
   });
 
@@ -259,23 +303,23 @@ class _SleightOfHandBuilder extends StatelessWidget {
 
   final Size? placeholderSize;
 
-  final _SleightOfHand? sleightOfHand;
+  final _FlightHandoff? handoff;
 
-  final _FlightManifest? manifest;
+  final _FlightSpec? flightSpec;
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final offstage = manifest != null && sleightOfHand == null;
+    // Offstage when in flight but before handoff
+    final offstage = flightSpec != null && handoff == null;
 
     if (placeholderSize case final size?) {
       return AnimatedBuilder(
-        animation:
-            sleightOfHand?.centerController ?? const AlwaysStoppedAnimation(0),
+        animation: handoff?.centerController ?? const AlwaysStoppedAnimation(0),
         builder: (context, child) {
           return Transform.translate(
-            offset: sleightOfHand?.offset ?? Offset.zero,
+            offset: handoff?.offset ?? Offset.zero,
             child: SizedBox.fromSize(
               size: size,
               child: OverflowBox(
@@ -284,17 +328,14 @@ class _SleightOfHandBuilder extends StatelessWidget {
                 child: Center(
                   child: SizedBox.fromSize(
                     size: Size(
-                      sleightOfHand?.sizeX ?? size.width,
-                      sleightOfHand?.sizeY ?? size.height,
+                      handoff?.sizeX ?? size.width,
+                      handoff?.sizeY ?? size.height,
                     ),
                     child: Offstage(
                       offstage: offstage,
                       child: TickerMode(
                         enabled: !offstage,
-                        child: KeyedSubtree(
-                          key: globalKey,
-                          child: child!,
-                        ),
+                        child: child!,
                       ),
                     ),
                   ),
@@ -303,15 +344,23 @@ class _SleightOfHandBuilder extends StatelessWidget {
             ),
           );
         },
-        child: child,
+        child: KeyedSubtree(
+          key: globalKey,
+          child: child,
+        ),
       );
     }
+
     return KeyedSubtree(
       key: globalKey,
       child: child,
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// HeroineController
+// -----------------------------------------------------------------------------
 
 /// The controller for [Heroine] transitions.
 ///
@@ -348,9 +397,8 @@ class HeroineController extends NavigatorObserver {
     }
   }
 
-  // All of the heroines that are currently in the overlay and in motion.
-  // Indexed by the hero tag.
-  final Map<Object, _HeroineFlight> _flights = <Object, _HeroineFlight>{};
+  /// All active flight controllers, indexed by hero tag.
+  final Map<Object, _FlightController> _flights = <Object, _FlightController>{};
 
   @override
   void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
@@ -367,11 +415,13 @@ class HeroineController extends NavigatorObserver {
     }
     // Don't trigger another flight when a pop is committed as a user gesture
     // back swipe is snapped.
-    _maybeStartHeroTransition(
-      fromRoute: previousTopRoute,
-      toRoute: topRoute,
-      isUserGestureTransition: false,
-    );
+    if (!navigator!.userGestureInProgress) {
+      _maybeStartHeroTransition(
+        fromRoute: previousTopRoute,
+        toRoute: topRoute,
+        isUserGestureTransition: false,
+      );
+    }
   }
 
   @override
@@ -412,34 +462,27 @@ class HeroineController extends NavigatorObserver {
     }
     final newRouteAnimation = toRoute.animation!;
     final oldRouteAnimation = fromRoute.animation!;
-    final HeroFlightDirection? flightType;
-    switch ((
+    final flightType = switch ((
       isUserGestureTransition,
       oldRouteAnimation.status,
       newRouteAnimation.status
     )) {
-      case (true, _, _):
-      case (_, AnimationStatus.reverse, _):
-        flightType = HeroFlightDirection.pop;
-      case (_, _, AnimationStatus.forward):
-        flightType = HeroFlightDirection.push;
-      default:
-        flightType = null;
-    }
+      (true, _, _) ||
+      (_, AnimationStatus.reverse, _) =>
+        HeroFlightDirection.pop,
+      (_, _, AnimationStatus.forward) => HeroFlightDirection.push,
+      _ => null,
+    };
 
     // A user gesture may have already completed the pop, or we might be the
     // initial route
-    if (flightType != null) {
-      switch (flightType) {
-        case HeroFlightDirection.pop:
-          if (fromRoute.animation!.value == 0.0) {
-            return;
-          }
-        case HeroFlightDirection.push:
-          if (toRoute.animation!.value == 1.0) {
-            return;
-          }
-      }
+    switch (flightType) {
+      case HeroFlightDirection.pop when fromRoute.animation!.isDismissed:
+        return;
+      case HeroFlightDirection.push when toRoute.animation!.isCompleted:
+        return;
+      case HeroFlightDirection.push || HeroFlightDirection.pop || null:
+        break;
     }
 
     // For pop transitions driven by a user gesture: if the "to" page has
@@ -451,6 +494,7 @@ class HeroineController extends NavigatorObserver {
         toRoute.subtreeContext?.findRenderObject() as RenderBox?;
     final hasValidSize = (fromRouteRenderBox?.hasSize ?? false) &&
         fromRouteRenderBox!.size.isFinite;
+
     if (isUserGestureTransition &&
         flightType == HeroFlightDirection.pop &&
         toRoute.maintainState &&
@@ -461,19 +505,16 @@ class HeroineController extends NavigatorObserver {
         flightType,
         isUserGestureTransition,
       );
+      toRoute.offstage = toRoute.animation!.value == 0.0;
     } else {
       // Otherwise, delay measuring until the end of the next frame to allow
       // the 'to' route to build and layout.
-
-      // This is removed as it caused a flicker. However, I'm scared of side
-      // effects
-      // toRoute.offstage = toRoute.animation!.value == 0.0;
-
       WidgetsBinding.instance.addPostFrameCallback(
         (Duration value) {
           if (fromRoute.navigator == null || toRoute.navigator == null) {
             return;
           }
+          toRoute.offstage = toRoute.animation!.value == 0.0;
           _startHeroTransition(
             fromRoute,
             toRoute,
@@ -503,6 +544,8 @@ class HeroineController extends NavigatorObserver {
     if (navigator == null || overlay == null) {
       return;
     }
+
+    to.offstage = false;
 
     final navigatorRenderObject = navigator.context.findRenderObject();
 
@@ -543,14 +586,12 @@ class HeroineController extends NavigatorObserver {
     final allFromTags = fromHeroes.keys.toList();
     final allToTags = toHeroes.keys.toList();
 
-    // Collect all valid manifests first
-    final manifests = <_FlightManifest>[];
-    final manifestsToExistingFlights = <_FlightManifest, _HeroineFlight>{};
+    // Collect all valid specs first
+    final specs = <_FlightSpec>[];
+    final specsToExistingFlights = <_FlightSpec, _FlightController>{};
     final tagsToAbort = <Object>[];
 
-    for (final fromHeroEntry in fromHeroes.entries) {
-      final tag = fromHeroEntry.key;
-      final fromHero = fromHeroEntry.value;
+    for (final MapEntry(key: tag, value: fromHero) in fromHeroes.entries) {
       final toHero = toHeroes[tag];
 
       assert(
@@ -566,9 +607,9 @@ class HeroineController extends NavigatorObserver {
       );
 
       final existingFlight = _flights[tag];
-      final manifest = toHero == null || flightType == null
+      final spec = toHero == null || flightType == null
           ? null
-          : _FlightManifest(
+          : _FlightSpec(
               direction: flightType,
               overlay: overlay,
               navigatorSize: navigatorRenderObject.size,
@@ -585,13 +626,13 @@ class HeroineController extends NavigatorObserver {
               zIndex: toHero.widget.zIndex ?? fromHero.widget.zIndex,
             );
 
-      // Only proceed with a valid manifest. Otherwise abort the existing
+      // Only proceed with a valid spec. Otherwise abort the existing
       // flight, and call endFlight when this for loop finishes.
-      if (manifest != null && manifest.isValid) {
+      if (spec != null && spec.isValid) {
         toHeroes.remove(tag);
-        manifests.add(manifest);
+        specs.add(spec);
         if (existingFlight != null) {
-          manifestsToExistingFlights[manifest] = existingFlight;
+          specsToExistingFlights[spec] = existingFlight;
         }
       } else {
         existingFlight?.dispose();
@@ -604,30 +645,30 @@ class HeroineController extends NavigatorObserver {
       _flights.remove(tag);
     }
 
-    // Sort manifests by z-index (treating null as 0)
+    // Sort specs by z-index (treating null as 0)
     // Dart's sort is stable, so heroines with the same z-index maintain their
     // original order
-    manifests.sort((a, b) {
+    specs.sort((a, b) {
       final aZIndex = a.zIndex ?? 0;
       final bZIndex = b.zIndex ?? 0;
       return aZIndex.compareTo(bZIndex);
     });
 
     // Create flights in the correct order
-    for (final manifest in manifests) {
-      final existingFlight = manifestsToExistingFlights[manifest];
+    for (final spec in specs) {
+      final existingFlight = specsToExistingFlights[spec];
       if (existingFlight != null) {
-        existingFlight.divert(manifest);
+        existingFlight.divert(spec);
       } else {
-        _flights[manifest.tag!] = _HeroineFlight(
-          manifest,
-          () => _handleFlightEnded(manifest),
+        _flights[spec.tag!] = _FlightController(
+          spec,
+          () => _handleFlightEnded(spec),
         )..startFlight();
       }
     }
 
     // The remaining entries in toHeroes are those failed to participate in a
-    // new flight (for not having a valid manifest).
+    // new flight (for not having a valid spec).
     //
     // This can happen in a route pop transition when a fromHero is no longer
     // mounted, or kept alive by the [KeepAlive] mechanism but no longer
@@ -652,8 +693,8 @@ class HeroineController extends NavigatorObserver {
         otherRouteHeroes.contains(ownTag);
   }
 
-  void _handleFlightEnded(_FlightManifest manifest) {
-    _flights.remove(manifest.tag)?.dispose();
+  void _handleFlightEnded(_FlightSpec spec) {
+    _flights.remove(spec.tag)?.dispose();
   }
 
   /// Releases resources.
@@ -668,6 +709,10 @@ class HeroineController extends NavigatorObserver {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// Hero Discovery
+// -----------------------------------------------------------------------------
 
 extension on BuildContext {
   // Returns a map of all of the heroes in `context` indexed by hero tag that
@@ -705,19 +750,18 @@ extension on BuildContext {
         return true;
       }());
 
-      // TODO(timcreatedit): we ignore transitionOnUserGestures for now, they're
-      // handled differently
-
       // final heroWidget = hero.widget as Heroine;
       final heroState = hero.state as _HeroineState;
-      // if (!isUserGestureTransition || heroWidget._transitionOnUserGestures) {
-      result[tag] = heroState;
-      // } else {
-      //   // If transition is not allowed, we need to make sure hero is not
-      //   // hidden.
-      //   // A hero can be hidden previously due to hero transition.
-      //   heroState._endFlight();
-      // }
+
+      // TODO(timcreatedit): allow heroines to opt into user gesture transitions
+      if (!isUserGestureTransition) {
+        result[tag] = heroState;
+      } else {
+        // If transition is not allowed, we need to make sure hero is not
+        // hidden.
+        // A hero can be hidden previously due to hero transition.
+        heroState._endFlight();
+      }
     }
 
     void visitor(Element element) {
@@ -750,6 +794,10 @@ extension on BuildContext {
     return result;
   }
 }
+
+// -----------------------------------------------------------------------------
+// HeroineMode
+// -----------------------------------------------------------------------------
 
 /// Enables or disables [Heroine]es in the widget subtree.
 ///
