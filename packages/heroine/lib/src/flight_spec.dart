@@ -87,6 +87,9 @@ class _FlightSpec {
   /// Z-index for layering multiple simultaneous flights.
   final int? zIndex;
 
+  bool get shouldContinuouslyTrackTarget =>
+      toHero.widget.continuouslyTrackTarget;
+
   // ---------------------------------------------------------------------------
   // Flight State
   // ---------------------------------------------------------------------------

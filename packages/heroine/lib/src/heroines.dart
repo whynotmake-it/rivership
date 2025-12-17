@@ -23,6 +23,7 @@ class Heroine extends StatefulWidget {
     this.placeholderBuilder,
     this.flightShuttleBuilder,
     this.zIndex,
+    this.continuouslyTrackTarget = false,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -91,6 +92,26 @@ class Heroine extends StatefulWidget {
   /// heroine (toHero) is used. If the destination heroine doesn't have a
   /// z-index, the source heroine's (fromHero) z-index is used instead.
   final int? zIndex;
+
+  /// Whether to continuously track the target widget's position during flight
+  /// and redirect the animation if it moves.
+  ///
+  /// When enabled on the [Heroine] we are transitioning to,
+  /// we will check the target widget's position on every animation frame and if
+  /// it has moved (e.g., keyboard appears/disappears, device rotates, or any
+  /// layout change occurs), the animation will smoothly redirect to the new
+  /// target position.
+  ///
+  /// This works best with [motion]s like [CupertinoMotion] or other
+  /// [SpringMotion]s, that can dynamically redirect while retaining velocity.
+  ///
+  /// It is useful for scenarios like pushing a route with an autofocus text
+  /// field, where the keyboard appears mid-animation and shifts the target
+  /// widget's position.
+  ///
+  /// Defaults to false for performance reasons. Enable this only when you
+  /// need to handle dynamic layout changes during the animation.
+  final bool continuouslyTrackTarget;
 
   @override
   State<Heroine> createState() => _HeroineState();

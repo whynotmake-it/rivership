@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/image_grid.dart';
+import 'package:heroine_example/keyboard.dart';
 import 'package:heroine_example/zoom_transition.dart';
 import 'package:lorem_gen/lorem_gen.dart';
 
@@ -27,6 +28,12 @@ final heroineRoutes = [
     path: ImageGridExample.path,
     type: RouteType.cupertino(),
     builder: (context, _) => ImageGridExample(),
+  ),
+  NamedRouteDef(
+    name: KeyboardCardExample.name,
+    path: KeyboardCardExample.path,
+    type: RouteType.cupertino(),
+    builder: (context, _) => KeyboardCardExample(),
   ),
   ...zoomTransitionRoutes,
 ];
@@ -86,6 +93,13 @@ class HeroineExamplePicker extends StatelessWidget {
                   ),
                   child: const Text(ZoomTransitionExample.name),
                 ),
+                const SizedBox(height: 16),
+                CupertinoButton.filled(
+                  onPressed: () => context.navigateTo(
+                    NamedRoute(KeyboardCardExample.name),
+                  ),
+                  child: const Text(KeyboardCardExample.name),
+                ),
               ],
             ),
           ),
@@ -120,11 +134,18 @@ class MyCustomRoute<T> extends PageRoute<T>
   bool get opaque => false;
 
   @override
+  Duration get transitionDuration =>
+      fullscreenDialog ? Duration(milliseconds: 300) : super.transitionDuration;
+
+  @override
   Widget buildContent(BuildContext context) => builder(context);
 
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation, Widget child) {
+    if (fullscreenDialog) {
+      return FadeTransition(opacity: animation, child: child);
+    }
     return CupertinoRouteTransitionMixin.buildPageTransitions(
       this,
       context,
