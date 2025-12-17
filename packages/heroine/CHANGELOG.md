@@ -1,3 +1,7 @@
+## 0.6.0+1
+
+ - **DOCS**: document `continuouslyTrackTarget` in README.
+
 ## 0.6.0
 
 > Note: This release has breaking changes.
