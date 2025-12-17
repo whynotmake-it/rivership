@@ -1,3 +1,15 @@
+## 0.6.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: transition when both `Heroine`s were in the exact same place.
+ - **FEAT**: add `continuouslyTrackTarget` to `Heroine`.
+
+    With this, a heroine can dynamically update its target position during a flight when things
+    like the current `viewInsets` change.
+
+ - **BREAKING** **FEAT**: `Heroine` will not perform any transition when a route is popped via user gesture.
+
 ## 0.5.0+3
 
  - Update a dependency to the latest release.
