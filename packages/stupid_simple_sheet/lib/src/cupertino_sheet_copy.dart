@@ -9,8 +9,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
-import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
+import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
 // to achieve a smoother end to the corner radius animation.  A value of 1.0 would use
@@ -160,6 +160,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required Animation<ShapeBorder?> shapeAnimation,
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
+    required Color backgroundColor,
     Widget? child,
   }) {
     return SlideTransition(
@@ -189,8 +190,12 @@ abstract class CopiedCupertinoSheetTransitions {
         filterQuality: FilterQuality.medium,
         child: AnimatedBuilder(
           animation: shapeAnimation,
-          builder: (context, child) => OptimizedClip(
-            shape: shapeAnimation.value,
+          builder: (context, child) => SheetBackground(
+            shape: shapeAnimation.value!,
+            backgroundColor: CupertinoDynamicColor.resolve(
+              backgroundColor,
+              context,
+            ),
             child: child!,
           ),
           child: _getOverlayedChild(
@@ -242,10 +247,6 @@ abstract class CopiedCupertinoSheetTransitions {
 
     return Builder(
       builder: (context) {
-        final sheetColor = CupertinoDynamicColor.resolve(
-          backgroundColor,
-          context,
-        );
         return SafeArea(
           left: false,
           right: false,
@@ -256,20 +257,15 @@ abstract class CopiedCupertinoSheetTransitions {
             padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
             child: SlideTransition(
               position: positionAnimation,
-              child: ExtendSheetAtBottom(
-                color: sheetColor,
-                child: secondarySlideUpTransition(
-                  context,
-                  animation: animation,
-                  secondaryAnimation: secondaryAnimation,
-                  shapeAnimation: shapeAnimation,
-                  opacityRange: opacityRange,
-                  slideBackRange: slideBackRange,
-                  child: ColoredBox(
-                    color: sheetColor,
-                    child: child,
-                  ),
-                ),
+              child: secondarySlideUpTransition(
+                context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                shapeAnimation: shapeAnimation,
+                opacityRange: opacityRange,
+                slideBackRange: slideBackRange,
+                backgroundColor: backgroundColor,
+                child: child,
               ),
             ),
           ),
@@ -294,6 +290,7 @@ abstract class CopiedCupertinoSheetTransitions {
       end: secondLayer && isDarkMode ? 0.15 : 0.1,
     ));
     return Stack(
+      clipBehavior: Clip.none,
       children: <Widget>[
         if (child != null) child,
         IgnorePointer(

@@ -1,14 +1,12 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
-import 'package:stupid_simple_sheet/src/extend_sheet_at_bottom.dart';
-import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
 
+export 'src/sheet_background.dart';
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 
@@ -44,11 +42,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.barrierColor = const Color.fromRGBO(0, 0, 0, 0.2),
     this.barrierDismissible = true,
     this.barrierLabel,
-    this.backgroundColor,
-    this.shape = const RoundedSuperellipseBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    this.clipBehavior = Clip.antiAlias,
     this.clearBarrierImmediately = true,
     this.onlyDragWhenScrollWasAtTop = true,
     this.callNavigatorUserGestureMethods = false,
@@ -62,25 +55,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
-
-  /// The shape that the sheet should have.
-  ///
-  /// The child will be clipped to fit that shape, if [clipBehavior] is not
-  /// [Clip.none].
-  /// Defaults to a rounded superellipse with 24px radius at the top.
-  final ShapeBorder shape;
-
-  /// The background color of the sheet.
-  ///
-  /// If null, the default background color from the current [Theme]s
-  /// surface color is used.
-  final Color? backgroundColor;
-
-  /// The [Clip] behavior to use for the sheet's content.
-  ///
-  /// Defaults to [Clip.antiAlias].
-  /// If you set this to [Clip.none], the sheet's content will not be clipped.
-  final Clip clipBehavior;
 
   @override
   final Color? barrierColor;
@@ -112,18 +86,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    final color = backgroundColor ?? Theme.of(context).colorScheme.surface;
-    return ExtendSheetAtBottom(
-      color: color,
-      child: OptimizedClip(
-        clipBehavior: clipBehavior,
-        shape: shape,
-        child: DecoratedBox(
-          decoration: ShapeDecoration(shape: shape, color: color),
-          child: child,
-        ),
-      ),
-    );
+    return child;
   }
 }
 
