@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 final controller = TextEditingController();
 
@@ -56,7 +57,7 @@ class KeyboardCardExample extends StatelessWidget {
                 child: Heroine(
                   tag: 0,
                   continuouslyTrackTarget: true,
-                  child: Cover(
+                  child: Field(
                     index: 0,
                     onPressed: () {
                       Navigator.of(context).push(
@@ -79,8 +80,8 @@ class KeyboardCardExample extends StatelessWidget {
   }
 }
 
-class Cover extends StatelessWidget {
-  const Cover({
+class Field extends StatelessWidget {
+  const Field({
     super.key,
     required this.index,
     this.onPressed,
@@ -96,25 +97,32 @@ class Cover extends StatelessWidget {
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(builder: (context) {
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(32)),
-          child: InkWell(
-            splashFactory: NoSplash.splashFactory,
-            onTap: onPressed,
-            child: Container(
-              color: Colors.transparent,
-              child: CupertinoTextField(
-                placeholder: 'Type something...',
-                textAlignVertical: TextAlignVertical.top,
-                cursorColor: CupertinoTheme.of(context).primaryContrastingColor,
-                controller: controller,
-                autofocus: true,
-                enabled: isFlipped,
-                decoration: BoxDecoration(),
-                padding: const EdgeInsets.all(16.0),
+        return FakeGlass(
+          settings: LiquidGlassSettings(
+            lightIntensity: .6,
+            glassColor: CupertinoColors.systemBackground
+                .resolveFrom(context)
+                .withValues(alpha: .8),
+          ),
+          shape: LiquidRoundedSuperellipse(borderRadius: 32),
+          child: GlassGlowLayer(
+            child: GlassGlow(
+              child: GestureDetector(
+                onTap: onPressed,
+                child: Container(
+                  color: Colors.transparent,
+                  child: CupertinoTextField(
+                    placeholder: 'Type something...',
+                    textAlignVertical: TextAlignVertical.top,
+                    cursorColor:
+                        CupertinoTheme.of(context).primaryContrastingColor,
+                    controller: controller,
+                    autofocus: true,
+                    enabled: isFlipped,
+                    decoration: BoxDecoration(),
+                    padding: const EdgeInsets.all(16.0),
+                  ),
+                ),
               ),
             ),
           ),
@@ -157,7 +165,7 @@ class DetailsPage extends StatelessWidget {
                     Motion.bouncySpring(duration: Duration(milliseconds: 350)),
                 child: AspectRatio(
                   aspectRatio: 2,
-                  child: Cover(
+                  child: Field(
                     index: index,
                     isFlipped: true,
                     onPressed: () => Navigator.pop(context),

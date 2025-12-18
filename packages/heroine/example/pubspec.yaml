@@ -22,6 +22,11 @@ dependencies:
   heroine: 
     path: ../
   auto_route: ^10.0.1
+  liquid_glass_renderer:
+    git:
+      url: https://github.com/whynotmake-it/flutter_liquid_glass
+      path: packages/liquid_glass_renderer
+      ref: 2c5f88acefea99d4d7e22663946b623adc06bc3c
 
 dev_dependencies:
   flutter_test:

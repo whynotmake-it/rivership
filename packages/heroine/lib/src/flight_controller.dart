@@ -196,7 +196,11 @@ class _FlightController {
     // the flight) to ensure the handoff animates to the correct final position.
     final targetLocation = _currentTargetLocation ?? _spec.toHeroLocation;
 
-    _spec.toHero._performHandoff(
+    _spec.fromHero._completeRouteTransition(
+      controller: controller,
+      target: targetLocation,
+    );
+    _spec.toHero._completeRouteTransition(
       controller: controller,
       target: targetLocation,
     );
