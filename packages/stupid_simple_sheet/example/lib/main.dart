@@ -54,6 +54,8 @@ final stupidSimpleSheetRoutes = [
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
         child: child,
+        backgroundColor: Colors.transparent,
+        clipBehavior: Clip.none,
       ),
     ),
   ),

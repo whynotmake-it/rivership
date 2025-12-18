@@ -514,6 +514,46 @@ void main() {
       });
     });
 
+    group('snap and scroll', () {
+      testWidgets('will not scroll at all when dragged up from snap',
+          (tester) async {
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig.relative(
+              [0.5, 1.0],
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scrollableFinder = find.descendant(
+          of: find.byKey(const ValueKey('scaffold')),
+          matching: find.byType(Scrollable),
+        );
+
+        expect(scrollableFinder, findsOneWidget);
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          equals(0.0),
+        );
+
+        // Drag sheet to top quickly
+        final gesture =
+            await tester.startGesture(tester.getTopLeft(scrollableFinder));
+        for (var i = 0; i < 15; i++) {
+          await gesture.moveBy(const Offset(0, -20));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          equals(0.0),
+        );
+      });
+    });
+
     group('controlling imperatively', () {
       testWidgets('can find controller', (tester) async {
         final widget = build();

@@ -170,7 +170,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   var _scrollStartedAtTop = false;
 
   DragStartDetails? _dragStartDetails;
-  late ScrollMetrics _startMetrics;
+  ScrollMetrics? _startMetrics;
 
   bool get hasVertical =>
       widget.onVerticalDragStart != null ||
@@ -246,7 +246,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           valueListenable: _isDragging,
           builder: (context, value, child) {
             return ScrollConfiguration(
-              behavior: value
+              behavior: value || widget.scrollableCanMoveBack
                   ? _DraggingScrollBehavior(
                       parent: ScrollConfiguration.of(context),
                       axes: dragAxes,
@@ -413,7 +413,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
     required this.axes,
   });
 
-  final ScrollMetrics startMetrics;
+  final ScrollMetrics? startMetrics;
 
   final ScrollBehavior parent;
 
@@ -493,7 +493,7 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
 
   final Set<Axis> axes;
 
-  final ScrollMetrics startMetrics;
+  final ScrollMetrics? startMetrics;
 
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
