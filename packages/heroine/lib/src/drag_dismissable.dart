@@ -20,6 +20,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.ignoreWhileKeyboard = true,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
@@ -36,6 +37,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.ignoreWhileKeyboard = true,
   }) : _popAsDismiss = false;
 
   /// The default for [threshold].
@@ -87,6 +89,9 @@ class DragDismissable extends StatefulWidget {
 
   /// The child of the widget.
   final Widget child;
+
+  /// Prevents dismissing the widget while the software keyboard is visible.
+  final bool ignoreWhileKeyboard;
 
   final bool _popAsDismiss;
 
@@ -191,9 +196,11 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _start(DragStartDetails details) {
     ///* [Haşim] added for prevent dismiss if keyboard is open
-    final mediaQuery = MediaQuery.of(context);
-    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-    if (isKeyboardOpen) return;
+    if (widget.ignoreWhileKeyboard) {
+      final mediaQuery = MediaQuery.of(context);
+      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+      if (isKeyboardOpen) return;
+    }
 
     Navigator.of(context).didStartUserGesture();
     HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
@@ -204,9 +211,11 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _update(DragUpdateDetails details) {
     ///* [Haşim] added for prevent dismiss if keyboard is open
-    final mediaQuery = MediaQuery.of(context);
-    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-    if (isKeyboardOpen) return;
+    if (widget.ignoreWhileKeyboard) {
+      final mediaQuery = MediaQuery.of(context);
+      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+      if (isKeyboardOpen) return;
+    }
 
     if (_dragStartOffset case final startOffset?) {
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
@@ -236,9 +245,11 @@ class _DragDismissableState extends State<DragDismissable> {
 
   void _end(DragEndDetails details) {
     ///* [Haşim] added for prevent dismiss if keyboard is open
-    final mediaQuery = MediaQuery.of(context);
-    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-    if (isKeyboardOpen) return;
+    if (widget.ignoreWhileKeyboard) {
+      final mediaQuery = MediaQuery.of(context);
+      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+      if (isKeyboardOpen) return;
+    }
 
     if (ModalRoute.of(context)?.popDisposition ==
             RoutePopDisposition.doNotPop &&
