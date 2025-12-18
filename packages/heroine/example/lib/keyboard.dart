@@ -116,6 +116,7 @@ class Field extends StatelessWidget {
                     textAlignVertical: TextAlignVertical.top,
                     cursorColor:
                         CupertinoTheme.of(context).primaryContrastingColor,
+                    maxLines: isFlipped ? null : 1,
                     controller: controller,
                     autofocus: true,
                     enabled: isFlipped,
