@@ -216,7 +216,6 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
         setState(() {
           _status = _ToLanding(
             spec: spec,
-            placeholderSize: placeholderSize,
             controller: controller,
             target: target,
           );
@@ -397,14 +396,13 @@ class _ToFlyingFrom extends _Status implements _InFlight {
 class _ToLanding extends _Status {
   const _ToLanding({
     required this.spec,
-    required this.placeholderSize,
     required this.controller,
     required this.target,
   });
 
   final _FlightSpec spec;
 
-  final Size placeholderSize;
+  Size get placeholderSize => target.boundingBox.size;
 
   final MotionController<HeroineLocation> controller;
 
