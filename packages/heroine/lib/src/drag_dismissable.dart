@@ -195,12 +195,8 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _start(DragStartDetails details) {
-    ///* [Haşim] added for prevent dismiss if keyboard is open
-    if (widget.ignoreWhileKeyboard) {
-      final mediaQuery = MediaQuery.of(context);
-      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-      if (isKeyboardOpen) return;
-    }
+    final canDismiss = _canDismiss();
+    if (canDismiss == false) return;
 
     Navigator.of(context).didStartUserGesture();
     HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
@@ -210,12 +206,8 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _update(DragUpdateDetails details) {
-    ///* [Haşim] added for prevent dismiss if keyboard is open
-    if (widget.ignoreWhileKeyboard) {
-      final mediaQuery = MediaQuery.of(context);
-      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-      if (isKeyboardOpen) return;
-    }
+    final canDismiss = _canDismiss();
+    if (canDismiss == false) return;
 
     if (_dragStartOffset case final startOffset?) {
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
@@ -244,12 +236,8 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _end(DragEndDetails details) {
-    ///* [Haşim] added for prevent dismiss if keyboard is open
-    if (widget.ignoreWhileKeyboard) {
-      final mediaQuery = MediaQuery.of(context);
-      final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
-      if (isKeyboardOpen) return;
-    }
+    final canDismiss = _canDismiss();
+    if (canDismiss == false) return;
 
     if (ModalRoute.of(context)?.popDisposition ==
             RoutePopDisposition.doNotPop &&
@@ -270,5 +258,15 @@ class _DragDismissableState extends State<DragDismissable> {
     } else {
       _cancel();
     }
+  }
+
+  bool _canDismiss() {
+    if (widget.ignoreWhileKeyboard == false) {
+      return true;
+    }
+
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0.0;
+
+    return !isKeyboardOpen;
   }
 }
