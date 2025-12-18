@@ -15,7 +15,7 @@ part of 'heroines.dart';
 /// The flight ends only when both animations complete.
 class _FlightController {
   _FlightController(this._spec, this.onEnd) {
-    _spec.controllingHero._initMotionControllers(
+    _spec.controllingHero._createMotionController(
       _spec,
       _onSpringAnimationStatusChanged,
     );
@@ -286,7 +286,7 @@ class _FlightController {
     }
 
     _spec.toHero._endFlight();
-    _spec.controllingHero._disposeMotionControllers();
+    _spec.controllingHero._disposeMotionController();
 
     _spec.dispose();
 
