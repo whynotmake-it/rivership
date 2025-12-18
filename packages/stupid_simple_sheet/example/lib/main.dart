@@ -54,8 +54,6 @@ final stupidSimpleSheetRoutes = [
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
         child: child,
-        backgroundColor: Colors.transparent,
-        clipBehavior: Clip.none,
       ),
     ),
   ),
@@ -335,18 +333,32 @@ class _SmallSheetContent extends StatefulWidget {
 }
 
 class _SmallSheetContentState extends State<_SmallSheetContent> {
-  int _itemCount = 5;
+  List<String> items = List.generate(
+    5,
+    (index) => 'Item ${index + 1}',
+  );
+
+  late final textController = TextEditingController();
+  late final focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    textController.dispose();
+    focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Card(
         elevation: 0,
-        margin: EdgeInsets.all(8),
+        margin: EdgeInsets.all(16),
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        color: CupertinoTheme.of(context).scaffoldBackgroundColor,
+        color: CupertinoColors.secondarySystemGroupedBackground
+            .resolveFrom(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -359,13 +371,17 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
                   curve: CupertinoMotion.smooth().toCurve,
                   child: Column(
                     children: [
-                      CupertinoTextField(
+                      CupertinoTextField.borderless(
+                        focusNode: focusNode,
+                        controller: textController,
+                        padding: EdgeInsetsGeometry.all(16),
                         autofocus: true,
                         placeholder: 'Type something...',
+                        onSubmitted: (_) => _addItem(),
                       ),
-                      for (var i = 0; i < _itemCount; i++)
+                      for (var i = 0; i < items.length; i++)
                         CupertinoListTile(
-                          title: Text('Item #${i + 1}'),
+                          title: Text(items[i]),
                         ),
                     ],
                   ),
@@ -373,7 +389,7 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
               ),
             ),
             Divider(
-              color: CupertinoColors.opaqueSeparator,
+              color: CupertinoColors.opaqueSeparator.resolveFrom(context),
               height: 1,
             ),
             Row(
@@ -390,11 +406,7 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
                 Expanded(
                   child: CupertinoButton(
                     child: Text('Add Item'),
-                    onPressed: () {
-                      setState(() {
-                        _itemCount++;
-                      });
-                    },
+                    onPressed: () => _addItem(),
                   ),
                 ),
               ],
@@ -403,5 +415,16 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
         ),
       ),
     );
+  }
+
+  void _addItem() {
+    setState(() {
+      final text = textController.text.isEmpty
+          ? 'Item ${items.length + 1}'
+          : textController.text;
+      items.add(text);
+      textController.clear();
+      focusNode.requestFocus();
+    });
   }
 }
