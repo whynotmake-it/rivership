@@ -190,6 +190,12 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _start(DragStartDetails details) {
+    ///* [Haşim] added for prevent dismiss if keyboard is open
+    final mediaQuery = MediaQuery.of(context);
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+    if (isKeyboardOpen) return;
+
+    Navigator.of(context).didStartUserGesture();
     HeroinePageRoute.maybeOf<dynamic>(context)?.updateDismiss(0, Offset.zero);
     setState(() {
       _dragStartOffset = details.globalPosition;
@@ -197,6 +203,11 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _update(DragUpdateDetails details) {
+    ///* [Haşim] added for prevent dismiss if keyboard is open
+    final mediaQuery = MediaQuery.of(context);
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+    if (isKeyboardOpen) return;
+
     if (_dragStartOffset case final startOffset?) {
       switch ((widget.axisAffinity, widget.constrainToAxis)) {
         case (null, _) || (_, false):
@@ -224,6 +235,11 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _end(DragEndDetails details) {
+    ///* [Haşim] added for prevent dismiss if keyboard is open
+    final mediaQuery = MediaQuery.of(context);
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0.0;
+    if (isKeyboardOpen) return;
+
     if (ModalRoute.of(context)?.popDisposition ==
             RoutePopDisposition.doNotPop &&
         widget._popAsDismiss) {
