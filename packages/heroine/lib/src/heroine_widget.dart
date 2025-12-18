@@ -16,7 +16,7 @@ class Heroine extends StatefulWidget {
     this.flightShuttleBuilder,
     this.zIndex,
     this.continuouslyTrackTarget = false,
-    this.pauseTickersDuringFlight = true,
+    this.pauseTickersDuringFlight = false,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -106,8 +106,22 @@ class Heroine extends StatefulWidget {
   /// need to handle dynamic layout changes during the animation.
   final bool continuouslyTrackTarget;
 
-  /// Whether to pause any active tickers in the heroine's subtree during flight
-  /// animations.
+  /// Whether tickers should be paused while the heroine is in flight, defaults
+  /// to false.
+  ///
+  /// Flutter [Hero]es pause their tickers while they
+  /// are flying from A to B.
+  ///
+  /// By default, [Heroine]s behave differently and keep their tickers running
+  /// during the flight.
+  /// This can be very advantageous, when the [Heroine] contains a button with a
+  /// press  animation for example.
+  /// If we pause that as soon as we start flying, the animation will jankily
+  /// complete after the route is popped.
+  ///
+  /// No matter the setting of this property, tickers will always be paused
+  /// while the heroine is on an inactive route and waiting for a pop
+  /// transition.
   final bool pauseTickersDuringFlight;
 
   @override
@@ -125,11 +139,11 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   /// Initializes motion controllers for this hero's flight.
   ///
   /// Called on the [_FlightSpec.controllingHero]'s state when a flight starts.
-  void _initMotionControllers(
+  void _createMotionController(
     _FlightSpec spec,
     AnimationStatusListener onSpringAnimationStatusChanged,
   ) {
-    _disposeMotionControllers();
+    _disposeMotionController();
     _motionController = MotionController(
       vsync: this,
       motion: spec.motion,
@@ -140,7 +154,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     )..addStatusListener(onSpringAnimationStatusChanged);
   }
 
-  void _disposeMotionControllers() {
+  void _disposeMotionController() {
     _motionController?.dispose();
 
     _unlinkMotionControllers();
@@ -150,11 +164,13 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   void _linkRedirectedMotionController(
     MotionController<HeroineLocation> motionController,
   ) {
+    if (_motionController != null) {
+      _disposeMotionController();
+    }
     _motionController = motionController..resync(this);
   }
 
   void _unlinkMotionControllers() {
-    if (_motionController == null) return;
     _motionController = null;
   }
 
@@ -245,13 +261,17 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       return builder(
         context,
         placeholderSize,
-        widget.child,
+        child,
       );
     }
-    return Offstage(
-      child: TickerMode(
-        enabled: !pauseTickers,
-        child: widget.child,
+
+    return SizedBox.fromSize(
+      size: placeholderSize,
+      child: Offstage(
+        child: TickerMode(
+          enabled: !pauseTickers,
+          child: child,
+        ),
       ),
     );
   }
@@ -267,20 +287,15 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       case _Idle():
         return child;
       case _FromFlyingTo(:final spec, :final placeholderSize) ||
-            _ToFlyingFrom(:final spec, :final placeholderSize):
+            _ToFlyingFrom(:final spec, :final placeholderSize) ||
+            _FromAtCruisingAltitude(:final spec, :final placeholderSize):
         return _buildPlaceholder(
           context,
           placeholderSize,
           spec,
-          pauseTickers: widget.pauseTickersDuringFlight,
+          pauseTickers: _status is _FromAtCruisingAltitude ||
+              widget.pauseTickersDuringFlight,
           child: child,
-        );
-      case _FromAtCruisingAltitude(
-          :final spec,
-          :final placeholderSize,
-        ):
-        return SizedBox.fromSize(
-          size: placeholderSize,
         );
       case final _ToLanding landing:
         return AnimatedBuilder(
@@ -313,7 +328,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _disposeMotionControllers();
+    _disposeMotionController();
     super.dispose();
   }
 }
