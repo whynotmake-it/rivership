@@ -7,7 +7,7 @@
 
 A simple yet powerful sheet widget for Flutter with seamless scroll-to-drag transitions.
 
-## What makes it unique ✨
+## What makes it unique
 
 **Smooth transitioning from any scrolling child to the drag gestures of the mobile sheet.** The sheet automatically detects when scrollable content reaches its bounds and seamlessly transitions to sheet dragging behavior - no complex gesture coordination required.
 
@@ -19,13 +19,13 @@ The sheet works perfectly with:
 - `PageView`
 - Any scrollable widget
 
-## ⚠️ Important Warning
+## Important Warning
 
 **Content inside the sheet should not define any custom `ScrollConfiguration`.** The sheet relies on the default Flutter scroll behavior to properly detect scroll boundaries and transition between scrolling and dragging states.
 
-## Installation 💻
+## Installation
 
-**❗ In order to start using Stupid Simple Sheet you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
+**In order to start using Stupid Simple Sheet you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
 
 
 Install via `flutter pub`:
@@ -34,35 +34,67 @@ Install via `flutter pub`:
 flutter pub add stupid_simple_sheet
 ```
 
-## Usage 🚀
+## Usage
 
-### Basic Sheet
+### Understanding the Base Sheet
 
-The basic sheet comes with very little styling.
-
-You are responsible for wrapping your child in the appropriate shapes, paddings, `SafeArea` etc.
-
-This might seem like a drawback, but it gives you all the freedom you could imagine.
-
-Watch for example, how using a `SingleChildScrollView` effortlessly handles making overflowing content scrollable:
-
-![Resizing Sheet](doc/resizing.gif)
-
+`StupidSimpleSheetRoute` is intentionally minimal - it provides **no background, shape, or SafeArea by default**. This gives you complete freedom to build any style of sheet:
 
 ```dart
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
-
-// Show a basic sheet
 Navigator.of(context).push(
   StupidSimpleSheetRoute(
-    child: YourSheetContent(),
+    child: YourSheetContent(), // You control all styling
   ),
 );
 ```
 
-### Cupertino-style Sheet
+This design lets you create sheets that don't look like traditional sheets at all - floating cards, full-bleed content, custom shapes, or anything else you can imagine.
 
-This library also provides a Cupertino-style modal sheet.
+### Common Use Cases
+
+#### 1. Standard Modal Sheet with Background
+
+For a typical modal sheet with rounded corners and a background, wrap your content in `SheetBackground`:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleSheetRoute(
+    child: SafeArea(
+      // Most sheets should only avoid the top safe area, the rest should be avoided
+      // inside the sheet content as needed.
+      bottom: false,
+      left: false,
+      right: false,
+      child: SheetBackground(
+        child: YourContent(),
+      ),
+    ),
+  ),
+);
+```
+
+`SheetBackground` provides:
+- Rounded superellipse shape (24px radius at top)
+- Theme's surface color as background
+- Anti-aliased clipping
+- Automatic background extension to handle overdrag
+
+You can customize it:
+
+```dart
+SheetBackground(
+  backgroundColor: Colors.blue.shade50,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  ),
+  clipBehavior: Clip.hardEdge,
+  child: YourContent(),
+)
+```
+
+#### 2. Cupertino-style Sheet
+
+For iOS-style modal sheets that push the previous screen back:
 
 ![Cupertino Sheet](doc/cupertino.gif)
 
@@ -74,6 +106,11 @@ Navigator.of(context).push(
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: Text('Sheet'),
+            leading: CupertinoButton(
+              padding: EdgeInsets.zero,
+              child: Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ),
           SliverList(
             delegate: SliverChildBuilderDelegate(
@@ -90,7 +127,88 @@ Navigator.of(context).push(
 );
 ```
 
+#### 3. Small Floating Sheet (Resizing Content)
+
+For sheets that size to fit their content and can grow/shrink dynamically:
+
+![Resizing Sheet](doc/resizing.gif)
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleSheetRoute(
+    motion: CupertinoMotion.smooth(),
+    originateAboveBottomViewInset: true, // Stays above keyboard
+    child: SafeArea(
+      child: Card(
+        margin: EdgeInsets.all(8),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Size to content
+          children: [
+            // Your content here
+            CupertinoTextField(placeholder: 'Type something...'),
+            // Content can grow dynamically
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+```
+
+#### 4. Sheet with Snapping Points
+
+Create sheets that snap to specific positions (e.g., half-open, full):
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    snappingConfig: SheetSnappingConfig.relative(
+      [0.5, 1.0], // Snap at 50% and 100%
+      initialSnap: 0.5, // Start half-open
+    ),
+    child: YourContent(),
+  ),
+);
+```
+
+#### 5. Non-Draggable Sheet
+
+For sheets that can only be closed programmatically:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    draggable: false,
+    child: YourContent(), // Must include a close button
+  ),
+);
+```
+
+#### 6. Sheet with PageView
+
+The sheet handles horizontal paging seamlessly:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    child: CupertinoPageScaffold(
+      child: PageView(
+        children: [
+          CustomScrollView(/* Page 1 content */),
+          CustomScrollView(/* Page 2 content */),
+        ],
+      ),
+    ),
+  ),
+);
+```
+
 ### Customizing Motion
+
+Control the sheet's animation physics:
 
 ```dart
 Navigator.of(context).push(
@@ -103,14 +221,13 @@ Navigator.of(context).push(
 
 ### Programmatic Control with StupidSimpleSheetController
 
-You can programmatically control the sheet's position from within its content using the `StupidSimpleSheetController`. This is useful for implementing custom interactions, animations, or responding to user actions.
+Control the sheet's position from within its content:
 
 ```dart
 Navigator.of(context).push(
   StupidSimpleSheetRoute(
     child: Builder(
       builder: (context) {
-        // Get the controller from the sheet context
         final controller = StupidSimpleSheetController.maybeOf<void>(context);
         
         return Column(
@@ -129,7 +246,6 @@ Navigator.of(context).push(
               },
               child: Text('Almost Full (with snap)'),
             ),
-            // Your other sheet content...
           ],
         );
       },
@@ -142,14 +258,13 @@ Navigator.of(context).push(
 
 - **`maybeOf<T>(BuildContext context)`**: Retrieves the controller from a context within the sheet. Returns `null` if called from outside a sheet.
 - **`animateToRelative(double position, {bool snap = false})`**: Animates the sheet to a relative position between 0.0 (closed) and 1.0 (fully open).
-  - `position`: The target relative position (must be > 0.0 and ≤ 1.0)
-  - `snap`: If true, snaps to the nearest configured snapping point after reaching the target
+- **`overrideSnappingConfig(SheetSnappingConfig? config, {bool animateToComply = false})`**: Dynamically change or disable snapping behavior.
 
 **Note**: The controller cannot close the sheet programmatically. To close the sheet, use `Navigator.pop(context)`.
 
 ### Custom Routes with Maximum Control
 
-For advanced use cases, you can create your own custom routes using the `StupidSimpleSheetTransitionMixin` for maximum control over the sheet behavior:
+For advanced use cases, create custom routes using `StupidSimpleSheetTransitionMixin`:
 
 ```dart
 class MyCustomSheetRoute<T> extends PopupRoute<T>
@@ -166,8 +281,6 @@ class MyCustomSheetRoute<T> extends PopupRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    // Build your custom sheet content with full control
-    // For example you might want to render a background that extends past the bottom of the screen
     return SafeArea(
       bottom: false,
       child: Stack(
@@ -179,44 +292,43 @@ class MyCustomSheetRoute<T> extends PopupRoute<T>
             ),
           ),
           ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              child: child,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            child: child,
           ),
         ],
       ),
     );
   }
 
-  // Override any other properties for complete customization
   @override
-  double get overshootResistance => 50; // Custom resistance
+  double get overshootResistance => 50;
   
   @override
   Color? get barrierColor => Colors.black26;
 }
 ```
 
-This approach gives you complete control over the sheet's appearance, behavior, and physics while still benefiting from the smooth scroll-to-drag transitions.
-
-## Features 🎯
+## Features
 
 - **Seamless scroll transitions**: Automatically handles the transition between scrolling content and sheet dragging
 - **Spring physics**: Natural motion using the `motor` package physics engine  
-- **Programmatic control**: Use `StupidSimpleSheetController` to animate the sheet position from within its content
-- **Customizable appearance**: Control shape, clipping, and barrier properties
-- **Cupertino integration**: Works perfectly with Cupertino design components
+- **Programmatic control**: Use `StupidSimpleSheetController` to animate the sheet position
+- **Flexible styling**: Build any sheet style with `SheetBackground` or custom widgets
+- **Cupertino integration**: Native iOS-style sheets with `StupidSimpleCupertinoSheetRoute`
+- **Snapping**: Configure snap points for multi-stop sheets
 - **Gesture coordination**: No need to manually handle gesture conflicts
 - **Multiple scroll types**: Supports all Flutter scrollable widgets
 - **Extensible architecture**: Use the mixin to create custom routes with full control
 
 
-## Examples 📱
+## Examples
 
 Check out the [example app](./example/) to see the sheet in action with:
-- Scrollable lists
+- Cupertino-style sheets with navigation bars
 - Paged content with PageView
 - Dynamically resizing sheets
-- Different motion configurations
+- Snapping sheets with multiple stops
+- Non-draggable sheets
 
 ---
 
