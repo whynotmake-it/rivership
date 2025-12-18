@@ -20,6 +20,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.ignoreWhileKeyboard = true,
   })  : _popAsDismiss = true,
         onDismiss = null;
 
@@ -36,6 +37,7 @@ class DragDismissable extends StatefulWidget {
     this.axisAffinity,
     this.constrainToAxis = true,
     this.motion = const CupertinoMotion.interactive(),
+    this.ignoreWhileKeyboard = true,
   }) : _popAsDismiss = false;
 
   /// The default for [threshold].
@@ -88,6 +90,9 @@ class DragDismissable extends StatefulWidget {
   /// The child of the widget.
   final Widget child;
 
+  /// Prevents dismissing the widget while the software keyboard is visible.
+  final bool ignoreWhileKeyboard;
+
   final bool _popAsDismiss;
 
   bool get _disabled => _popAsDismiss == false && onDismiss == null;
@@ -101,20 +106,16 @@ class _DragDismissableState extends State<DragDismissable> {
   Offset _offset = Offset.zero;
   Velocity _velocity = Velocity.zero;
 
-  VoidCallback? get onDismiss =>
-      widget.onDismiss ??
-      (widget._popAsDismiss ? () => Navigator.maybePop(context) : null);
+  VoidCallback? get onDismiss => widget.onDismiss ?? (widget._popAsDismiss ? () => Navigator.maybePop(context) : null);
 
-  double get progress =>
-      switch ((widget.axisAffinity, widget.constrainToAxis)) {
+  double get progress => switch ((widget.axisAffinity, widget.constrainToAxis)) {
         (null, _) || (_, false) => _offset.distance / widget.threshold,
         (Axis.horizontal, true) => _offset.dx.abs() / widget.threshold,
         (Axis.vertical, true) => _offset.dy.abs() / widget.threshold,
       }
           .clamp(0, 1);
 
-  double dismissVelocity(Velocity velocity) =>
-      switch ((widget.axisAffinity, widget.constrainToAxis)) {
+  double dismissVelocity(Velocity velocity) => switch ((widget.axisAffinity, widget.constrainToAxis)) {
         (null, _) || (_, false) => velocity.pixelsPerSecond.distance,
         (Axis.horizontal, true) => velocity.pixelsPerSecond.dx.abs(),
         (Axis.vertical, true) => velocity.pixelsPerSecond.dy.abs(),
@@ -131,45 +132,21 @@ class _DragDismissableState extends State<DragDismissable> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onPanStart:
-          widget.axisAffinity == null && !widget._disabled ? _start : null,
-      onPanUpdate:
-          widget.axisAffinity == null && !widget._disabled ? _update : null,
-      onPanCancel:
-          widget.axisAffinity == null && !widget._disabled ? _cancel : null,
-      onPanEnd: widget.axisAffinity == null && !widget._disabled ? _end : null,
-      onVerticalDragStart:
-          widget.axisAffinity == Axis.vertical && !widget._disabled
-              ? _start
-              : null,
-      onVerticalDragUpdate:
-          widget.axisAffinity == Axis.vertical && !widget._disabled
-              ? _update
-              : null,
-      onVerticalDragCancel:
-          widget.axisAffinity == Axis.vertical && !widget._disabled
-              ? _cancel
-              : null,
-      onVerticalDragEnd:
-          widget.axisAffinity == Axis.vertical && !widget._disabled
-              ? _end
-              : null,
+      onPanStart: widget.axisAffinity == null && !widget._disabled && _canDismiss() ? _start : null,
+      onPanUpdate: widget.axisAffinity == null && !widget._disabled && _canDismiss() ? _update : null,
+      onPanCancel: widget.axisAffinity == null && !widget._disabled && _canDismiss() ? _cancel : null,
+      onPanEnd: widget.axisAffinity == null && !widget._disabled && _canDismiss() ? _end : null,
+      onVerticalDragStart: widget.axisAffinity == Axis.vertical && !widget._disabled && _canDismiss() ? _start : null,
+      onVerticalDragUpdate: widget.axisAffinity == Axis.vertical && !widget._disabled && _canDismiss() ? _update : null,
+      onVerticalDragCancel: widget.axisAffinity == Axis.vertical && !widget._disabled && _canDismiss() ? _cancel : null,
+      onVerticalDragEnd: widget.axisAffinity == Axis.vertical && !widget._disabled && _canDismiss() ? _end : null,
       onHorizontalDragStart:
-          widget.axisAffinity == Axis.horizontal && !widget._disabled
-              ? _start
-              : null,
+          widget.axisAffinity == Axis.horizontal && !widget._disabled && _canDismiss() ? _start : null,
       onHorizontalDragUpdate:
-          widget.axisAffinity == Axis.horizontal && !widget._disabled
-              ? _update
-              : null,
+          widget.axisAffinity == Axis.horizontal && !widget._disabled && _canDismiss() ? _update : null,
       onHorizontalDragCancel:
-          widget.axisAffinity == Axis.horizontal && !widget._disabled
-              ? _cancel
-              : null,
-      onHorizontalDragEnd:
-          widget.axisAffinity == Axis.horizontal && !widget._disabled
-              ? _end
-              : null,
+          widget.axisAffinity == Axis.horizontal && !widget._disabled && _canDismiss() ? _cancel : null,
+      onHorizontalDragEnd: widget.axisAffinity == Axis.horizontal && !widget._disabled && _canDismiss() ? _end : null,
       child: MotionBuilder(
         active: _dragStartOffset == null,
         motion: widget.motion,
@@ -224,9 +201,7 @@ class _DragDismissableState extends State<DragDismissable> {
   }
 
   void _end(DragEndDetails details) {
-    if (ModalRoute.of(context)?.popDisposition ==
-            RoutePopDisposition.doNotPop &&
-        widget._popAsDismiss) {
+    if (ModalRoute.of(context)?.popDisposition == RoutePopDisposition.doNotPop && widget._popAsDismiss) {
       _cancel();
 
       return;
@@ -243,5 +218,15 @@ class _DragDismissableState extends State<DragDismissable> {
     } else {
       _cancel();
     }
+  }
+
+  bool _canDismiss() {
+    if (widget.ignoreWhileKeyboard == false) {
+      return true;
+    }
+
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0.0;
+
+    return !isKeyboardOpen;
   }
 }
