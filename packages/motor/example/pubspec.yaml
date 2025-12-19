@@ -12,7 +12,7 @@ environment:
   flutter: ^3.27.0
 
 dependencies:
-  auto_route: ^10.0.1
+  auto_route: ^11.1.0
   flutter:
     sdk: flutter
   pull_down_button: ^0.10.2
