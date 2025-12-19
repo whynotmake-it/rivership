@@ -11,6 +11,7 @@ workspace:
   - apps/example
   - packages/heroine
   - packages/heroine/example
+  - packages/larger
   - packages/motor
   - packages/motor/example
   - packages/rivership
