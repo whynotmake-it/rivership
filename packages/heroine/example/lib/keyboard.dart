@@ -97,13 +97,9 @@ class Field extends StatelessWidget {
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(builder: (context) {
-        return FakeGlass(
-          settings: LiquidGlassSettings(
-            lightIntensity: .6,
-            glassColor: CupertinoColors.systemBackground
-                .resolveFrom(context)
-                .withValues(alpha: .8),
-          ),
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
           shape: LiquidRoundedSuperellipse(borderRadius: 32),
           child: GlassGlowLayer(
             child: GlassGlow(
