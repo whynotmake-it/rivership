@@ -1,3 +1,17 @@
+## 0.8.0
+
+> Note: This release has breaking changes.
+
+ - **FIX**: dragging up from a snap point doesn't perform one frame of scroll before transitioning to dragging anymore.
+ - **DOCS**: updated docs with more cookbooks and all settings.
+ - **BREAKING** **FEAT**: removed clip, background color and shape from `StupidSimpleSheetRoute`.
+
+    Added a `SheetBackground` widget as a replacement.
+    Wrap your content in `SheetBackground` to get the same effect as before.
+    
+    This was done to allow more flexibility in customizing the sheet's appearance.
+
+
 ## 0.7.0
 
 > Note: This release has breaking changes.

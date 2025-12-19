@@ -1,3 +1,21 @@
+## 0.7.0
+
+> Note: This release has breaking changes.
+
+ - **REFACTOR**: greatly simplify the state management of the Heroine widget.
+ - **DOCS**: update readme.
+ - **BREAKING** **REFACTOR**: remove simplifications from `HeroineShuttleBuilder`.
+
+    All convenience methods and standard wrappers have been moved to `SimpleShuttleBuilder`. If you implemented your own custom `HeroineShuttleBuilder`s before, just extend that class instead.
+    This accurately reflects that not all `HeroineShuttleBuilder`s can be chained.
+    Before, if you tried to chain a `HeroineShuttleBuilder.fromHero`, you would get unexpected results.
+
+ - **BREAKING** **FEAT**: keep tickers running during the flight.
+
+    You can set `pauseTickersDuringFlight` to `false` in your
+    `Heroine` to restore the standard Flutter `Hero` behavior.
+
+
 ## 0.6.0+1
 
  - **DOCS**: document `continuouslyTrackTarget` in README.
