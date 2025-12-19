@@ -234,6 +234,20 @@ This is particularly useful when:
 
 This works best with spring-based motions like `CupertinoMotion` or `SpringMotion` that can dynamically redirect while retaining velocity. Disabled by default for performance reasons.
 
+### Ticker Behavior During Flight
+
+By default, `Heroine` keeps tickers running during flight animations. This means any animations inside your heroine (like button press animations) will continue playing during the transition:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  pauseTickersDuringFlight: false, // default - tickers keep running
+  child: MyAnimatedButton(),
+)
+```
+
+If you prefer Flutter's default `Hero` behavior where tickers are paused during flight, set `pauseTickersDuringFlight: true`.
+
 ### Velocity-Aware Transitions
 
 Provide velocity information for smoother transitions from gestures using `HeroineVelocity`:
@@ -274,7 +288,12 @@ For full control however, just pass in a custom `Motion` to the `Heroine` widget
 - **`FadeThroughShuttleBuilder`** - Fade through a specified color
 - **`ChainedShuttleBuilder`** - Combine multiple effects
 - **`HeroineShuttleBuilder.fromHero()`** - Adapter for existing Flutter hero builders
-- **Extension methods** - `.chain()` method for fluent builder chaining
+- **`SimpleShuttleBuilder`** - Base class for chainable shuttle builders
+- **Extension methods** - `.chain()` method for fluent builder chaining (only for `SimpleShuttleBuilder`s)
+
+### User Gesture Pop Behavior
+
+When a route is popped via a user gesture (like iOS back swipe), `Heroine` will not perform any transition animation. This prevents jarring double-animations where both the gesture and the heroine try to animate simultaneously.
 
 ## Best Practices 📝
 
