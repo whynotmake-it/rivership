@@ -25,6 +25,27 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
   /// Defaults to [Curves.fastOutSlowIn].
   final Curve curve;
 
+  /// Builds the shuttle transition.
+  ///
+  /// Compatible with [HeroFlightShuttleBuilder].
+  Widget call(
+    BuildContext flightContext,
+    Animation<double> animation,
+    HeroFlightDirection flightDirection,
+    BuildContext fromHeroContext,
+    BuildContext toHeroContext,
+  );
+}
+
+/// A convenience base class for shuttle builders that build the hero in flight
+/// based on a value that goes from 0 to 1.
+///
+/// Transitions can be chained together using the [ChainedShuttleBuilder] or the
+/// [chain] extension method.
+abstract class SimpleShuttleBuilder extends HeroineShuttleBuilder {
+  /// Creates a new [SimpleShuttleBuilder].
+  const SimpleShuttleBuilder({super.curve = Curves.fastOutSlowIn});
+
   /// Builds the hero in flight.
   ///
   /// This will be called each frame of the transition with a [valueFromTo] that
@@ -41,12 +62,7 @@ abstract class HeroineShuttleBuilder with EquatableMixin {
     required HeroFlightDirection flightDirection,
   });
 
-  /// Builds the shuttle transition by wrapping the hero in a media query
-  /// that transitions the padding around the hero.
-  ///
-  /// Relies on [buildHero] to build the actual content of the hero in flight.
-  ///
-  /// See [HeroFlightShuttleBuilder] for more information.
+  @override
   Widget call(
     BuildContext flightContext,
     Animation<double> animation,
@@ -127,21 +143,11 @@ class _FromHeroFlightShuttleBuilder extends HeroineShuttleBuilder {
       );
 
   @override
-  Widget buildHero({
-    required BuildContext flightContext,
-    required Widget fromHero,
-    required Widget toHero,
-    required double valueFromTo,
-    required HeroFlightDirection flightDirection,
-  }) =>
-      const SizedBox.shrink();
-
-  @override
   List<Object?> get props => [flightShuttleBuilder];
 }
 
 /// A shuttle builder that fades the heroes between each other smoothly.
-class FadeShuttleBuilder extends HeroineShuttleBuilder {
+class FadeShuttleBuilder extends SimpleShuttleBuilder {
   /// Creates a new [FadeShuttleBuilder].
   const FadeShuttleBuilder({
     super.curve = Curves.fastOutSlowIn,
@@ -178,7 +184,7 @@ class FadeShuttleBuilder extends HeroineShuttleBuilder {
 /// A shuttle builder that shows either only the from hero or the to hero.
 ///
 /// With [useFromHero] == false, this matches the default Flutter Hero behavior.
-class SingleShuttleBuilder extends HeroineShuttleBuilder {
+class SingleShuttleBuilder extends SimpleShuttleBuilder {
   /// Creates a new [SingleShuttleBuilder].
   const SingleShuttleBuilder({
     this.useFromHero = false,
@@ -204,7 +210,7 @@ class SingleShuttleBuilder extends HeroineShuttleBuilder {
 }
 
 /// A shuttle builder that flips the hero widget horizontally or vertically.
-class FlipShuttleBuilder extends HeroineShuttleBuilder {
+class FlipShuttleBuilder extends SimpleShuttleBuilder {
   /// Creates a new [FlipShuttleBuilder].
   const FlipShuttleBuilder({
     this.axis = Axis.vertical,
@@ -285,7 +291,7 @@ class FlipShuttleBuilder extends HeroineShuttleBuilder {
 }
 
 /// A shuttle builder that fades through a given color.
-class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
+class FadeThroughShuttleBuilder extends SimpleShuttleBuilder {
   /// Creates a new [FadeThroughShuttleBuilder].
   const FadeThroughShuttleBuilder({
     this.fadeColor = const Color.from(alpha: 1, red: 1, blue: 1, green: 1),
@@ -342,21 +348,21 @@ class FadeThroughShuttleBuilder extends HeroineShuttleBuilder {
 /// In this example, the fade effect will be applied first, and then the result
 /// will be flipped. This creates a combined effect where the hero both fades
 /// and flips during the transition.
-class ChainedShuttleBuilder extends HeroineShuttleBuilder {
+class ChainedShuttleBuilder extends SimpleShuttleBuilder {
   /// Creates a new [ChainedShuttleBuilder] with the given list of builders.
   ///
   /// The [builders] are applied in order, with each builder's output being used
   /// as input for the previous builder. If [builders] is empty, the builder
   /// will simply return the destination hero widget.
   const ChainedShuttleBuilder({
-    required List<HeroineShuttleBuilder> builders,
+    required List<SimpleShuttleBuilder> builders,
   }) : _builders = builders;
 
-  /// The list of [HeroineShuttleBuilder]s to chain together.
+  /// The list of [SimpleShuttleBuilder]s to chain together.
   ///
   /// The builders are applied in order, with the last builder getting the
   /// actual hero widgets as input.
-  final List<HeroineShuttleBuilder> _builders;
+  final List<SimpleShuttleBuilder> _builders;
 
   @override
   Widget buildHero({
@@ -403,7 +409,7 @@ class ChainedShuttleBuilder extends HeroineShuttleBuilder {
 
 /// Provides the [chain] extension method for easy chaining of
 /// [HeroineShuttleBuilder]s.
-extension Chain on HeroineShuttleBuilder {
+extension Chain on SimpleShuttleBuilder {
   /// Chains this builder with another builder.
   ///
   /// This allows for a more fluent API when combining multiple shuttle
@@ -414,7 +420,7 @@ extension Chain on HeroineShuttleBuilder {
   ///   .chain(FadeShuttleBuilder())
   ///   .chain(AnotherShuttleBuilder());
   /// ```
-  HeroineShuttleBuilder chain(HeroineShuttleBuilder builder) => switch (this) {
+  SimpleShuttleBuilder chain(SimpleShuttleBuilder builder) => switch (this) {
         ChainedShuttleBuilder(_builders: final builders) =>
           ChainedShuttleBuilder(builders: [...builders, builder]),
         _ => ChainedShuttleBuilder(builders: [this, builder]),
