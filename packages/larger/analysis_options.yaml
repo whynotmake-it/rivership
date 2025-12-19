@@ -1,2 +1,2 @@
-include: package:lintervention/package.yaml
+include: package:lintervention/analysis_options.yaml
 
