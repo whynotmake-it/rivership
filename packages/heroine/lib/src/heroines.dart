@@ -535,9 +535,8 @@ class HeroineMode extends StatelessWidget {
 class _TransitionBarrier {
   _TransitionBarrier({
     required this.transitionId,
-    required Set<Object> tags,
-  })  : tags = tags,
-        _remaining = Set<Object>.from(tags);
+    required this.tags,
+  })  : _remaining = Set<Object>.from(tags);
 
   final int transitionId;
   final Set<Object> tags;
