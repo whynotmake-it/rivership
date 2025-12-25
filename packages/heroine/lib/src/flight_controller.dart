@@ -106,7 +106,7 @@ class _FlightController {
     _currentTargetLocation = target;
 
     _setTargetTracking(
-        enableTargetTracking && _spec.shouldContinuouslyTrackTarget);
+        enableTargetTracking && _spec.shouldContinuouslyTrackTarget,);
 
     // From this point on, spring completion matters.
     _waitingOnSpring = true;
@@ -378,7 +378,6 @@ class _GestureDriver extends _FlightDriver {
     controller._kickSpring(
       target: target,
       motion: handoffMotion,
-      from: null,
       withVelocity: _velocity?.velocity,
       enableTargetTracking: true,
     );
