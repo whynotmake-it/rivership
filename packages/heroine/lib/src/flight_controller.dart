@@ -40,7 +40,6 @@ class _FlightController {
 
   _FlightDriver? _driver;
 
-
   bool _waitingOnRoute = false;
   bool _waitingOnSpring = false;
 
@@ -94,7 +93,6 @@ class _FlightController {
     startFlight(resetBoundingBox: fromChanged);
   }
 
-
   // Starts or restarts the spring animation towards [target].
   void _kickSpring({
     required HeroineLocation target,
@@ -106,7 +104,8 @@ class _FlightController {
     _currentTargetLocation = target;
 
     _setTargetTracking(
-        enableTargetTracking && _spec.shouldContinuouslyTrackTarget,);
+      enableTargetTracking && _spec.shouldContinuouslyTrackTarget,
+    );
 
     // From this point on, spring completion matters.
     _waitingOnSpring = true;
@@ -189,7 +188,7 @@ class _FlightController {
     );
 
     final controller = _spec.controllingHero._motionController;
-    
+
     if (controller == null) return shuttle;
 
     final listenable = Listenable.merge([_spec.routeAnimation, controller]);
@@ -303,9 +302,9 @@ class _GestureDriver extends _FlightDriver {
       t,
     )!;
 
+    // TODO(Jesper): rotation lerp
     final loc = HeroineLocation(
       boundingBox: currentRect,
-      rotation: 0.0, // TODO: rotation lerp
     );
 
     spec.controllingHero._motionController?.value = loc;
