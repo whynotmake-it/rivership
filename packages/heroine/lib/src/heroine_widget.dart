@@ -5,42 +5,6 @@ part of 'heroines.dart';
 ///
 /// This widget is mostly a drop-in replacement for [Hero], so you can expect
 /// most things to work the same way.
-typedef HeroineHandoffMotionBuilder = Motion Function(
-  HeroineGestureHandoffContext context,
-);
-
-/// Provides context for building a gesture handoff motion.
-@immutable
-class HeroineGestureHandoffContext {
-  /// Creates a [HeroineGestureHandoffContext].
-  const HeroineGestureHandoffContext({
-    required this.progress,
-    required this.remainingFraction,
-    required this.proceeding,
-    required this.motion,
-    required this.direction,
-    required this.velocity,
-  });
-
-  /// The current gesture progress from 0.0 to 1.0.
-  final double progress;
-
-  /// The remaining fraction of progress toward the target.
-  final double remainingFraction;
-
-  /// Whether the gesture is completing (true) or canceling (false).
-  final bool proceeding;
-
-  /// The base motion configured on the heroine.
-  final Motion motion;
-
-  /// The direction of the flight.
-  final HeroFlightDirection direction;
-
-  /// The estimated release velocity for the flight, if available.
-  final HeroineLocation? velocity;
-}
-
 class Heroine extends StatefulWidget {
   /// Creates a new [Heroine] widget.
   const Heroine({
@@ -480,4 +444,40 @@ class _ToLanding extends _Status {
   double get sizeX => controller.value.boundingBox.width;
 
   double get sizeY => controller.value.boundingBox.height;
+}
+
+typedef HeroineHandoffMotionBuilder = Motion Function(
+  HeroineGestureHandoffContext context,
+);
+
+/// Provides context for building a gesture handoff motion.
+@immutable
+class HeroineGestureHandoffContext {
+  /// Creates a [HeroineGestureHandoffContext].
+  const HeroineGestureHandoffContext({
+    required this.progress,
+    required this.remainingFraction,
+    required this.proceeding,
+    required this.motion,
+    required this.direction,
+    required this.velocity,
+  });
+
+  /// The current gesture progress from 0.0 to 1.0.
+  final double progress;
+
+  /// The remaining fraction of progress toward the target.
+  final double remainingFraction;
+
+  /// Whether the gesture is completing (true) or canceling (false).
+  final bool proceeding;
+
+  /// The base motion configured on the heroine.
+  final Motion motion;
+
+  /// The direction of the flight.
+  final HeroFlightDirection direction;
+
+  /// The estimated release velocity for the flight, if available.
+  final HeroineLocation? velocity;
 }
