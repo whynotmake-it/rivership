@@ -293,7 +293,37 @@ For full control however, just pass in a custom `Motion` to the `Heroine` widget
 
 ### User Gesture Pop Behavior
 
-When a route is popped via a user gesture (like iOS back swipe), `Heroine` will not perform any transition animation. This prevents jarring double-animations where both the gesture and the heroine try to animate simultaneously.
+By default, when a route is popped via a user gesture (like iOS back swipe),
+`Heroine` will not perform any transition animation. This prevents jarring
+double-animations where both the gesture and the heroine try to animate
+simultaneously.
+
+To opt into gesture-driven transitions, enable `animateOnUserGestures` on both
+matching `Heroine` widgets:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  animateOnUserGestures: true,
+  child: MyWidget(),
+)
+```
+
+You can also customize the spring handoff used when the gesture ends:
+
+```dart
+Heroine(
+  tag: 'unique-tag',
+  animateOnUserGestures: true,
+  handoffMotionBuilder: (context) {
+    return context.motion;
+  },
+  child: MyWidget(),
+)
+```
+
+If you don't provide a builder, Heroine uses a trimmed
+`CupertinoMotion.smooth` spring for the handoff.
 
 ## Best Practices 📝
 
@@ -312,4 +342,3 @@ When a route is popped via a user gesture (like iOS back swipe), `Heroine` will 
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40
 [flutter_install_link]: https://docs.flutter.dev/get-started/install
-

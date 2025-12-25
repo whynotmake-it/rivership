@@ -7,6 +7,7 @@ import 'package:motor/motor.dart';
 part 'flight_controller.dart';
 part 'flight_spec.dart';
 part 'heroine_location.dart';
+part 'heroine_velocity_tracker.dart';
 part 'heroine_widget.dart';
 
 // -----------------------------------------------------------------------------
@@ -50,6 +51,9 @@ class HeroineController extends NavigatorObserver {
 
   /// All active flight controllers, indexed by hero tag.
   final Map<Object, _FlightController> _flights = <Object, _FlightController>{};
+  final Map<int, _TransitionBarrier> _transitionBarriers =
+      <int, _TransitionBarrier>{};
+  int _nextTransitionId = 0;
 
   @override
   void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
@@ -93,8 +97,8 @@ class HeroineController extends NavigatorObserver {
 
   @override
   void didStopUserGesture() {
-    if (navigator!.userGestureInProgress) {
-      return;
+    for (final flight in _flights.values) {
+      flight.onGestureEnd();
     }
   }
 
@@ -241,6 +245,7 @@ class HeroineController extends NavigatorObserver {
     final specs = <_FlightSpec>[];
     final specsToExistingFlights = <_FlightSpec, _FlightController>{};
     final tagsToAbort = <Object>[];
+    final transitionId = _nextTransitionId++;
 
     for (final MapEntry(key: tag, value: fromHero) in fromHeroes.entries) {
       final toHero = toHeroes[tag];
@@ -274,7 +279,9 @@ class HeroineController extends NavigatorObserver {
               isUserGestureTransition: isUserGestureTransition,
               isDiverted: existingFlight != null,
               motion: toHero.widget.motion,
+              handoffMotionBuilder: toHero.widget.handoffMotionBuilder,
               zIndex: toHero.widget.zIndex ?? fromHero.widget.zIndex,
+              transitionId: transitionId,
             );
 
       // Only proceed with a valid spec. Otherwise abort the existing
@@ -306,14 +313,27 @@ class HeroineController extends NavigatorObserver {
     });
 
     // Create flights in the correct order
+    if (isUserGestureTransition && specs.isNotEmpty) {
+      _transitionBarriers[transitionId] = _TransitionBarrier(
+        transitionId: transitionId,
+        tags: {for (final spec in specs) spec.tag!},
+      );
+    }
     for (final spec in specs) {
       final existingFlight = specsToExistingFlights[spec];
       if (existingFlight != null) {
+        final oldTransitionId = existingFlight._spec.transitionId;
+        if (oldTransitionId != spec.transitionId) {
+          final oldBarrier = _transitionBarriers[oldTransitionId];
+          if (oldBarrier != null && oldBarrier.removeTag(spec.tag!)) {
+            _transitionBarriers.remove(oldTransitionId);
+          }
+        }
         existingFlight.divert(spec);
       } else {
         _flights[spec.tag!] = _FlightController(
           spec,
-          () => _handleFlightEnded(spec),
+          _handleFlightEnded,
         )..startFlight();
       }
     }
@@ -344,8 +364,28 @@ class HeroineController extends NavigatorObserver {
         otherRouteHeroes.contains(ownTag);
   }
 
-  void _handleFlightEnded(_FlightSpec spec) {
-    _flights.remove(spec.tag)?.dispose();
+  void _handleFlightEnded(_FlightController flight) {
+    final spec = flight._spec;
+    final tag = spec.tag;
+    if (tag == null) {
+      flight.dispose();
+      return;
+    }
+    if (!spec.isUserGestureTransition) {
+      _flights.remove(tag)?.dispose();
+      return;
+    }
+    final barrier = _transitionBarriers[spec.transitionId];
+    if (barrier == null) {
+      _flights.remove(tag)?.dispose();
+      return;
+    }
+    if (barrier.markComplete(tag)) {
+      _transitionBarriers.remove(spec.transitionId);
+      for (final barrierTag in barrier.tags) {
+        _flights.remove(barrierTag)?.dispose();
+      }
+    }
   }
 
   /// Releases resources.
@@ -404,8 +444,9 @@ extension on BuildContext {
       // final heroWidget = hero.widget as Heroine;
       final heroState = hero.state as _HeroineState;
 
-      // TODO(timcreatedit): allow heroines to opt into user gesture transitions
-      if (!isUserGestureTransition) {
+      // For user gestures, only include heroes that explicitly opt in.
+      if (!isUserGestureTransition ||
+          (hero.widget as Heroine).animateOnUserGestures) {
         result[tag] = heroState;
       } else {
         // If transition is not allowed, we need to make sure hero is not
@@ -488,5 +529,27 @@ class HeroineMode extends StatelessWidget {
         showName: true,
       ),
     );
+  }
+}
+
+class _TransitionBarrier {
+  _TransitionBarrier({
+    required this.transitionId,
+    required Set<Object> tags,
+  })  : tags = tags,
+        _remaining = Set<Object>.from(tags);
+
+  final int transitionId;
+  final Set<Object> tags;
+  final Set<Object> _remaining;
+
+  bool markComplete(Object tag) {
+    _remaining.remove(tag);
+    return _remaining.isEmpty;
+  }
+
+  bool removeTag(Object tag) {
+    _remaining.remove(tag);
+    return _remaining.isEmpty;
   }
 }

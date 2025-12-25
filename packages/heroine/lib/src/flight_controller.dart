@@ -1,10 +1,14 @@
 part of 'heroines.dart';
 
+enum _FlightPhase { idle, routeDriving, springing, done }
+
 /// Controls the lifecycle of a heroine flight animation.
 ///
 /// A flight has two animations running in parallel:
-/// 1. **Route animation**: The page transition (managed by Navigator)
-/// 2. **Spring animation**: The hero's position/size (managed by MotionControllers)
+/// 1) Route animation (Navigator)
+/// 2) Spring animation (MotionController)
+///
+/// The flight ends only when BOTH complete.
 ///
 /// The controller is responsible for:
 /// - Creating and managing the overlay entry showing the flying hero
@@ -21,7 +25,6 @@ class _FlightController {
     );
   }
 
-  /// The current flight specification.
   _FlightSpec _spec;
 
   /// The current target location, updated on each frame when
@@ -32,14 +35,13 @@ class _FlightController {
   HeroineLocation? _currentTargetLocation;
 
   /// Called when the flight ends (both animations complete).
-  final VoidCallback onEnd;
+  final void Function(_FlightController controller) onEnd;
 
   /// The overlay entry displaying the flying hero.
   OverlayEntry? overlayEntry;
 
-  // ---------------------------------------------------------------------------
-  // Animation Completion Tracking
-  // ---------------------------------------------------------------------------
+  _FlightPhase _phase = _FlightPhase.idle;
+  bool get _isRouteDriving => _phase == _FlightPhase.routeDriving;
 
   /// Whether the spring animation has completed.
   bool _springAnimationComplete = false;
@@ -47,22 +49,56 @@ class _FlightController {
   /// Whether the route animation has completed.
   bool _routeAnimationComplete = false;
 
-  /// Starts the flight animation.
-  ///
-  /// If [resetBoundingBox] is true, the controllers will restart from the
-  /// current hero position/size instead of continuing from their previous
-  /// animation state.
-  /// This is useful when diverting a flight in certain cases, see
-  /// [_FlightController.divert].
-  void startFlight({bool resetBoundingBox = false}) {
-    _spec.toHero._startFlight(_spec);
+  HeroineVelocityTracker? _gestureVelocityTracker;
 
-    // For user gesture transitions, we don't show the overlay yet
-    // (the hero is still being dragged by the user)
-    if (_spec.isUserGestureTransition) {
-      return;
+  Motion _motionForGestureHandoff({
+    required double progress,
+    required double remainingFraction,
+    required bool proceeding,
+  }) {
+    return _spec.handoffMotionBuilder(
+      HeroineGestureHandoffContext(
+        progress: progress,
+        remainingFraction: remainingFraction,
+        proceeding: proceeding,
+        motion: _spec.motion,
+        direction: _spec.direction,
+        velocity: _gestureVelocityTracker?.velocity,
+      ),
+    );
+  }
+
+  void _stopRouteDriving() {
+    if (!_isRouteDriving) return;
+    _spec.routeAnimation.removeListener(_driveFlightFromRoute);
+    _gestureVelocityTracker = null;
+    _phase = _FlightPhase.idle;
+  }
+
+  void _driveFlightFromRoute() {
+    if (!_isRouteDriving) return;
+
+    var t = _spec.routeAnimation.value;
+    if (_spec.direction == HeroFlightDirection.pop) {
+      t = 1.0 - t;
     }
 
+    final fromRect = _spec.fromHeroLocation.boundingBox;
+    final toRect = _spec.toHeroLocation.boundingBox;
+
+    final currentRect = Rect.lerp(fromRect, toRect, t)!;
+
+    final currentLocation = HeroineLocation(
+      boundingBox: currentRect,
+      rotation: 0.0, // TODO(timcreatedit): rotation lerp
+    );
+
+    _spec.controllingHero._motionController?.value = currentLocation;
+    _gestureVelocityTracker?.addSample(currentLocation);
+  }
+  void startFlight({bool resetBoundingBox = false}) {
+    // Prepare both heroes.
+    _spec.toHero._startFlight(_spec);
     _spec.fromHero._startFlight(_spec);
     if (overlayEntry == null) {
       _spec.overlay.insert(
@@ -70,20 +106,34 @@ class _FlightController {
       );
     }
 
-    // Get any velocity from a preceding gesture (e.g., drag-to-dismiss)
-    final fromHeroVelocity = HeroineVelocity.of(_spec.fromHero.context);
+    // Always attach status listener up-front; ignore it while route-driving.
+    _spec.routeAnimation.removeStatusListener(_onRouteAnimationStatusChanged);
     _spec.routeAnimation.addStatusListener(_onRouteAnimationStatusChanged);
 
-    // Initialize the current target location
-    _currentTargetLocation = _spec.toHeroLocation;
+    if (_spec.isUserGestureTransition) {
+      // During gesture, we drive the controller value directly from the route.
+      _currentTargetLocation = null;
+      _phase = _FlightPhase.routeDriving;
+      _gestureVelocityTracker = HeroineVelocityTracker();
 
-    // Set up continuous target tracking if enabled
-    if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.controllingHero._motionController
-          ?.addListener(_onMotionControllerUpdate);
+      _spec.routeAnimation.removeListener(_driveFlightFromRoute);
+      _spec.routeAnimation.addListener(_driveFlightFromRoute);
+      return;
     }
 
-    // Animate position and size to the destination
+    // Non-gesture: run spring immediately.
+    _phase = _FlightPhase.springing;
+
+    _currentTargetLocation = _spec.toHeroLocation;
+
+    if (_spec.shouldContinuouslyTrackTarget) {
+      _spec.controllingHero._motionController?.addListener(
+        _onMotionControllerUpdate,
+      );
+    }
+
+    final fromHeroVelocity = HeroineVelocity.of(_spec.fromHero.context);
+
     _spec.controllingHero._motionController
       ?..motion = _spec.motion
       ..animateTo(
@@ -94,6 +144,66 @@ class _FlightController {
           null => null,
         },
       );
+  }
+
+  void onGestureEnd() {
+    if (!_spec.isUserGestureTransition) return;
+
+    _stopRouteDriving();
+    _phase = _FlightPhase.springing;
+
+    _gestureVelocityTracker ??= HeroineVelocityTracker();
+
+    final status = _spec.routeAnimation.status;
+    final isPush = _spec.direction == HeroFlightDirection.push;
+
+    final proceeding = isPush
+        ? (status == AnimationStatus.forward ||
+            status == AnimationStatus.completed)
+        : (status == AnimationStatus.reverse ||
+            status == AnimationStatus.dismissed);
+
+    final target = proceeding ? _spec.toHeroLocation : _spec.fromHeroLocation;
+
+    final progress = switch (_spec.direction) {
+      HeroFlightDirection.pop => 1.0 - _spec.routeAnimation.value,
+      HeroFlightDirection.push => _spec.routeAnimation.value,
+    }
+        .clamp(0.0, 1.0);
+
+    final remainingFraction = proceeding ? 1.0 - progress : progress;
+    final handoffMotion = _motionForGestureHandoff(
+      progress: progress,
+      remainingFraction: remainingFraction,
+      proceeding: proceeding,
+    );
+
+    _currentTargetLocation = target;
+
+    // Tracking is intentionally disabled during gesture;
+    // enable after gesture end.
+    if (_spec.shouldContinuouslyTrackTarget) {
+      _spec.controllingHero._motionController?.addListener(
+        _onMotionControllerUpdate,
+      );
+    }
+
+    _springAnimationComplete = false;
+    _routeAnimationComplete = false;
+
+    _spec.controllingHero._motionController
+      ?..motion = handoffMotion
+      ..animateTo(
+        target,
+        withVelocity: _gestureVelocityTracker?.velocity,
+      );
+
+    _gestureVelocityTracker = null;
+
+    // If route is already settled, process completion immediately.
+    if (!status.isAnimating) {
+      _onRouteAnimationStatusChanged(status);
+    }
   }
 
   /// Called on every frame when continuous target tracking is enabled.
@@ -126,23 +236,27 @@ class _FlightController {
 
     // Clean up continuous target tracking from the previous spec
     if (fromSpec.shouldContinuouslyTrackTarget) {
-      fromSpec.controllingHero._motionController
-          ?.removeListener(_onMotionControllerUpdate);
+      fromSpec.controllingHero._motionController?.removeListener(
+        _onMotionControllerUpdate,
+      );
     }
+    _stopRouteDriving();
 
     // Reset the tracked target location for the new flight
     _currentTargetLocation = null;
 
-    fromSpec.dispose();
     fromSpec.routeAnimation
         .removeStatusListener(_onRouteAnimationStatusChanged);
+    fromSpec.dispose();
 
-    _transferMotionControllers(
-      from: fromSpec.controllingHero,
-      to: toSpec.controllingHero,
-    );
+    // Transfer motion controller ownership if controlling hero changes.
+    if (fromSpec.controllingHero != toSpec.controllingHero) {
+      toSpec.controllingHero._linkRedirectedMotionController(
+        fromSpec.controllingHero._motionController!,
+      );
+      fromSpec.controllingHero._unlinkMotionControllers();
+    }
 
-    // Reset completion flags for the new flight
     _springAnimationComplete = false;
     _routeAnimationComplete = false;
 
@@ -152,40 +266,50 @@ class _FlightController {
     /// If the position of the new source hero is different from when it was
     /// the toHero in the previous flight, we need to reset the bounding box
     /// of the motion controllers to avoid visual glitches.
-    startFlight(
-      resetBoundingBox: fromChanged,
-    );
+    startFlight(resetBoundingBox: fromChanged);
   }
 
-  /// Transfers motion controller ownership between hero states.
-  void _transferMotionControllers({
-    required _HeroineState from,
-    required _HeroineState to,
-  }) {
-    if (from == to) return;
-    to._linkRedirectedMotionController(
-      from._motionController!,
-    );
-    from._unlinkMotionControllers();
+
+  void _onRouteAnimationStatusChanged(AnimationStatus status) {
+    // Ignore while user is actively dragging.
+    if (_isRouteDriving) return;
+
+    if (status.isAnimating) return;
+    if (_routeAnimationComplete) return;
+
+    _routeAnimationComplete = true;
+
+    // Preserve original behavior: auto-handoff only for non-gesture flights.
+    if (!_spec.isUserGestureTransition) {
+      _performHandoff();
+    }
+
+    _endFlightIfBothAnimationsComplete();
   }
 
-  // ---------------------------------------------------------------------------
-  // Flight Handoff
-  // ---------------------------------------------------------------------------
+  void _onSpringAnimationStatusChanged(AnimationStatus status) {
+    if (_isRouteDriving) return; 
+    if (status.isAnimating) return;
+    if (_springAnimationComplete) return;
 
-  /// Hands off the flight to the destination hero.
-  ///
-  /// This is called when the route animation completes. The overlay is removed,
-  /// but the destination hero continues animating from the current spring
-  /// position to its final resting position. This creates a smooth "landing"
-  /// effect where the hero settles into place.
+    _springAnimationComplete = true;
+    _endFlightIfBothAnimationsComplete();
+  }
+
+  void _endFlightIfBothAnimationsComplete() {
+    if (_springAnimationComplete && _routeAnimationComplete) {
+      _phase = _FlightPhase.done;
+      onEnd(this);
+    }
+  }
+
   void _performHandoff() {
     _removeOverlay();
 
-    // Stop listening for target updates
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.controllingHero._motionController
-          ?.removeListener(_onMotionControllerUpdate);
+      _spec.controllingHero._motionController?.removeListener(
+        _onMotionControllerUpdate,
+      );
     }
 
     final controller = _spec.controllingHero._motionController;
@@ -206,41 +330,7 @@ class _FlightController {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Animation Status Handlers
-  // ---------------------------------------------------------------------------
 
-  void _onRouteAnimationStatusChanged(AnimationStatus status) {
-    if (_spec.isUserGestureTransition) return;
-
-    if (status.isAnimating) return;
-
-    _spec.routeAnimation.removeStatusListener(_onRouteAnimationStatusChanged);
-    _routeAnimationComplete = true;
-    _performHandoff();
-    _endFlightIfBothAnimationsComplete();
-  }
-
-  void _onSpringAnimationStatusChanged(AnimationStatus status) {
-    if (_spec.isUserGestureTransition) return;
-
-    if (status.isAnimating) return;
-
-    _springAnimationComplete = true;
-    _endFlightIfBothAnimationsComplete();
-  }
-
-  void _endFlightIfBothAnimationsComplete() {
-    if (_springAnimationComplete && _routeAnimationComplete) {
-      onEnd();
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Overlay Building
-  // ---------------------------------------------------------------------------
-
-  /// Builds the overlay widget showing the flying hero.
   Widget _buildOverlay(BuildContext context) {
     final shuttle = _spec.shuttleBuilder(
       context,
@@ -251,21 +341,23 @@ class _FlightController {
     );
 
     final controller = _spec.controllingHero._motionController;
-
+    
     if (controller == null) return shuttle;
 
+    final listenable = Listenable.merge([_spec.routeAnimation, controller]);
+
     return AnimatedBuilder(
-      animation: _spec.routeAnimation,
-      builder: (context, child) => Positioned(
-        top: controller.value.boundingBox.center.dy -
-            controller.value.boundingBox.size.height / 2,
-        left: controller.value.boundingBox.center.dx -
-            controller.value.boundingBox.size.width / 2,
-        width: controller.value.boundingBox.size.width,
-        height: controller.value.boundingBox.size.height,
-        // TODO(timcreatedit): rotate here
-        child: child!,
-      ),
+      animation: listenable,
+      builder: (context, child) {
+        final rect = controller.value.boundingBox;
+        return Positioned(
+          top: rect.center.dy - rect.size.height / 2,
+          left: rect.center.dx - rect.size.width / 2,
+          width: rect.size.width,
+          height: rect.size.height,
+          child: child!,
+        );
+      },
       child: IgnorePointer(
         // TODO(timcreatedit): allow configuring this
         child: shuttle,
@@ -273,26 +365,26 @@ class _FlightController {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Disposal
-  // ---------------------------------------------------------------------------
 
   /// Disposes of this flight controller and cleans up resources.
   void dispose() {
-    // Clean up continuous target tracking
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.controllingHero._motionController
-          ?.removeListener(_onMotionControllerUpdate);
+      _spec.controllingHero._motionController?.removeListener(
+        _onMotionControllerUpdate,
+      );
+    }
+
+    _stopRouteDriving();
+    _spec.routeAnimation.removeStatusListener(_onRouteAnimationStatusChanged);
+
+    if (overlayEntry != null) {
+      _removeOverlay();
     }
 
     _spec.toHero._endFlight();
     _spec.controllingHero._disposeMotionController();
 
     _spec.dispose();
-
-    if (overlayEntry != null) {
-      _removeOverlay();
-    }
   }
 
   void _removeOverlay() {
