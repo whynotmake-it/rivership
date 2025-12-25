@@ -446,6 +446,7 @@ class _ToLanding extends _Status {
   double get sizeY => controller.value.boundingBox.height;
 }
 
+/// Signature for building a gesture handoff motion.
 typedef HeroineHandoffMotionBuilder = Motion Function(
   HeroineGestureHandoffContext context,
 );
