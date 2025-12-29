@@ -17,7 +17,5 @@ export 'src/heroine_velocity.dart' show HeroineVelocity;
 export 'src/heroines.dart'
     show
         Heroine,
-        HeroineController,
-        HeroineGestureHandoffContext,
-        HeroineHandoffMotionBuilder;
+        HeroineController;
 export 'src/shuttle_builders.dart';
