@@ -12,7 +12,6 @@ class Heroine extends StatefulWidget {
     required this.tag,
     super.key,
     this.motion = const CupertinoMotion.smooth(),
-    this.handoffMotionBuilder = Heroine.defaultHandoffMotionBuilder,
     this.placeholderBuilder,
     this.flightShuttleBuilder,
     this.zIndex,
@@ -20,22 +19,6 @@ class Heroine extends StatefulWidget {
     this.pauseTickersDuringFlight = false,
     this.animateOnUserGestures = false,
   });
-
-  /// The default gesture handoff motion builder.
-  ///
-  /// This uses a trimmed [CupertinoMotion.smooth] spring based on the remaining
-  /// progress, keeping the finish snappy when the user is close to the target.
-  static Motion defaultHandoffMotionBuilder(
-    HeroineGestureHandoffContext context,
-  ) {
-    final remaining = context.remainingFraction.clamp(0.1, 1.0);
-    const smooth = CupertinoMotion.smooth();
-    final scaledMicros =
-        (smooth.duration.inMicroseconds * remaining).round().clamp(1, 1 << 31);
-    return smooth.copyWith(
-      duration: Duration(microseconds: scaledMicros),
-    );
-  }
 
   /// The identifier for this particular hero. If the tag of this hero matches
   /// the tag of a hero on a [PageRoute] that we're navigating to or from, then
@@ -59,11 +42,6 @@ class Heroine extends StatefulWidget {
   /// Defaults to [SpringMotion] with a smooth spring,
   /// which is a smooth default without bounce.
   final Motion motion;
-
-  /// Builds the motion used to hand off a user gesture to a spring finish.
-  ///
-  /// This is only used for gesture-driven transitions.
-  final HeroineHandoffMotionBuilder handoffMotionBuilder;
 
   /// The placeholder builder to use for this heroine.
   final HeroPlaceholderBuilder? placeholderBuilder;
@@ -168,7 +146,10 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   /// Initializes motion controllers for this hero's flight.
   ///
   /// Called on the [_FlightSpec.controllingHero]'s state when a flight starts.
-  void _createMotionController(_FlightSpec spec) {
+  void _createMotionController(
+    _FlightSpec spec,
+    AnimationStatusListener onSpringAnimationStatusChanged,
+  ) {
     _disposeMotionController();
     _motionController = MotionController(
       vsync: this,
@@ -177,7 +158,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
         boundingBox: spec.fromHeroLocation.boundingBox,
       ),
       converter: _HeroineLocationConverter(),
-    );
+    )..addStatusListener(onSpringAnimationStatusChanged);
   }
 
   void _disposeMotionController() {
@@ -441,41 +422,4 @@ class _ToLanding extends _Status {
   double get sizeX => controller.value.boundingBox.width;
 
   double get sizeY => controller.value.boundingBox.height;
-}
-
-/// Signature for building a gesture handoff motion.
-typedef HeroineHandoffMotionBuilder = Motion Function(
-  HeroineGestureHandoffContext context,
-);
-
-/// Provides context for building a gesture handoff motion.
-@immutable
-class HeroineGestureHandoffContext {
-  /// Creates a [HeroineGestureHandoffContext].
-  const HeroineGestureHandoffContext({
-    required this.progress,
-    required this.remainingFraction,
-    required this.proceeding,
-    required this.motion,
-    required this.direction,
-    required this.velocity,
-  });
-
-  /// The current gesture progress from 0.0 to 1.0.
-  final double progress;
-
-  /// The remaining fraction of progress toward the target.
-  final double remainingFraction;
-
-  /// Whether the gesture is completing (true) or canceling (false).
-  final bool proceeding;
-
-  /// The base motion configured on the heroine.
-  final Motion motion;
-
-  /// The direction of the flight.
-  final HeroFlightDirection direction;
-
-  /// The estimated release velocity for the flight, if available.
-  final HeroineLocation? velocity;
 }
