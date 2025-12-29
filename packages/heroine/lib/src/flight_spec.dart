@@ -27,8 +27,6 @@ class _FlightSpec {
     required this.isUserGestureTransition,
     required this.isDiverted,
     required this.motion,
-    required this.handoffMotionBuilder,
-    required this.transitionId,
     this.zIndex,
   })  : fromHeroLocation = _locationFor(fromHero, fromRoute.subtreeContext),
         toHeroLocation = _locationFor(toHero, toRoute.subtreeContext),
@@ -65,14 +63,10 @@ class _FlightSpec {
 
   /// The hero whose [TickerProvider] owns the animation controllers.
   ///
-  /// For user gesture pop transitions, [toHero] stays alive after the pop,
-  /// so it must own the controller for the spring handoff.
+  /// For user gesture transitions, this is [fromHero] since the gesture
+  /// originates from the source page. Otherwise, it's [toHero].
   _HeroineState get controllingHero =>
-      isUserGestureTransition && direction == HeroFlightDirection.pop
-          ? toHero
-          : isUserGestureTransition
-              ? fromHero
-              : toHero;
+      isUserGestureTransition ? fromHero : toHero;
 
   // ---------------------------------------------------------------------------
   // Visual Configuration
@@ -90,9 +84,6 @@ class _FlightSpec {
   /// The motion (spring/curve) for the position/size animation.
   final Motion motion;
 
-  /// Builds the motion used to finish gesture-driven transitions.
-  final HeroineHandoffMotionBuilder handoffMotionBuilder;
-
   /// Z-index for layering multiple simultaneous flights.
   final int? zIndex;
 
@@ -108,9 +99,6 @@ class _FlightSpec {
 
   /// Whether this flight is a redirect from an existing flight.
   final bool isDiverted;
-
-  /// Identifier for the transition group that owns this flight.
-  final int transitionId;
 
   // ---------------------------------------------------------------------------
   // Computed Properties
@@ -132,15 +120,6 @@ class _FlightSpec {
   /// 1. Animate the shuttle builder's visual transition
   /// 2. Know when the route transition completes
   Animation<double> get routeAnimation {
-    if (isUserGestureTransition) {
-      return _routeAnimation ??= CurvedAnimation(
-        parent: (direction == HeroFlightDirection.push)
-            ? toRoute.animation!
-            : fromRoute.animation!,
-        curve: Curves.linear,
-        reverseCurve: Curves.linear,
-      );
-    }
     return _routeAnimation ??= CurvedAnimation(
       parent: (direction == HeroFlightDirection.push)
           ? toRoute.animation!
