@@ -8,7 +8,6 @@ class _HeroineVelocityTracker {
   /// Creates a new velocity tracker.
   _HeroineVelocityTracker({
     this.historySize = 5,
-    this.horizon = const Duration(milliseconds: 80),
   })  : assert(
           historySize >= 2,
           'historySize must be at least 2 to compute a velocity',
@@ -19,7 +18,7 @@ class _HeroineVelocityTracker {
   final int historySize;
 
   /// The maximum age of samples to consider.
-  final Duration horizon;
+  static const Duration horizon  = Duration(milliseconds: 80);
 
   final List<_HeroineVelocitySample?> _samples;
   int _index = 0;
