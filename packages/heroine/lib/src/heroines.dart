@@ -94,7 +94,8 @@ class HeroineController extends NavigatorObserver {
 
   @override
   void didStopUserGesture() {
-    // toList() avoids mutation during iteration if onGestureEnd completes a flight
+    // toList() avoids mutation during iteration if onGestureEnd completes a 
+    // flight
     for (final flight in _flights.values.toList()) {
       flight.onGestureEnd();
     }
