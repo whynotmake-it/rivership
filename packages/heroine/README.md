@@ -309,22 +309,6 @@ Heroine(
 )
 ```
 
-You can also customize the spring handoff used when the gesture ends:
-
-```dart
-Heroine(
-  tag: 'unique-tag',
-  animateOnUserGestures: true,
-  handoffMotionBuilder: (context) {
-    return context.motion;
-  },
-  child: MyWidget(),
-)
-```
-
-If you don't provide a builder, Heroine uses a trimmed
-`CupertinoMotion.smooth` spring for the handoff.
-
 ## Best Practices 📝
 
 1. Use unique tags for each hero pair
