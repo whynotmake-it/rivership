@@ -15,7 +15,7 @@ part of 'heroines.dart';
 /// The flight ends only when both animations complete.
 class _FlightController {
   _FlightController(this._spec, this.onEnd) {
-    _spec.controllingHero._createMotionController(
+    _spec.toHero._createMotionController(
       _spec,
       _onSpringAnimationStatusChanged,
     );
@@ -96,12 +96,12 @@ class _FlightController {
 
       // Set up continuous target tracking if enabled
       if (_spec.shouldContinuouslyTrackTarget) {
-        _spec.controllingHero._motionController
+        _spec.toHero._motionController
             ?.addListener(_onMotionControllerUpdate);
       }
 
       // Animate position and size to the destination
-      _spec.controllingHero._motionController
+      _spec.toHero._motionController
         ?..motion = _spec.motion
         ..animateTo(
           _spec.toHeroLocation,
@@ -148,11 +148,11 @@ class _FlightController {
       _currentTargetLocation = _spec.toHeroLocation;
 
       if (_spec.shouldContinuouslyTrackTarget) {
-        _spec.controllingHero._motionController
+        _spec.toHero._motionController
             ?.addListener(_onMotionControllerUpdate);
       }
 
-      _spec.controllingHero._motionController
+      _spec.toHero._motionController
         ?..motion = handoffMotion
         ..animateTo(
           _spec.toHeroLocation,
@@ -180,7 +180,7 @@ class _FlightController {
     // TODO(Jesper): rotation lerp
     final loc = HeroineLocation(boundingBox: currentRect);
 
-    _spec.controllingHero._motionController?.value = loc;
+    _spec.toHero._motionController?.value = loc;
     _velocityTracker?.addSample(loc);
   }
 
@@ -200,7 +200,7 @@ class _FlightController {
     if (newTargetLocation != _currentTargetLocation &&
         newTargetLocation.isValid) {
       _currentTargetLocation = newTargetLocation;
-      _spec.controllingHero._motionController?.animateTo(newTargetLocation);
+      _spec.toHero._motionController?.animateTo(newTargetLocation);
     }
   }
 
@@ -210,11 +210,11 @@ class _FlightController {
   /// (e.g., user swipes back during a push transition).
   void divert(_FlightSpec toSpec) {
     final fromSpec = _spec;
-    final fromMotionController = fromSpec.controllingHero._motionController;
+    final fromMotionController = fromSpec.toHero._motionController;
 
     // Clean up continuous target tracking from the previous spec
     if (fromSpec.shouldContinuouslyTrackTarget) {
-      fromSpec.controllingHero._motionController
+      fromSpec.toHero._motionController
           ?.removeListener(_onMotionControllerUpdate);
     }
     fromSpec.routeAnimation
@@ -228,17 +228,17 @@ class _FlightController {
     _spec = toSpec;
 
     // Transfer or create motion controller
-    if (fromSpec.controllingHero != toSpec.controllingHero) {
+    if (fromSpec.toHero != toSpec.toHero) {
       if (fromMotionController == null) {
-        toSpec.controllingHero._createMotionController(
+        toSpec.toHero._createMotionController(
           toSpec,
           _onSpringAnimationStatusChanged,
         );
       } else {
-        toSpec.controllingHero._linkRedirectedMotionController(
+        toSpec.toHero._linkRedirectedMotionController(
           fromMotionController,
         );
-        fromSpec.controllingHero._unlinkMotionControllers();
+        fromSpec.toHero._unlinkMotionControllers();
       }
     }
 
@@ -266,11 +266,11 @@ class _FlightController {
 
     // Stop listening for target updates
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.controllingHero._motionController
+      _spec.toHero._motionController
           ?.removeListener(_onMotionControllerUpdate);
     }
 
-    final controller = _spec.controllingHero._motionController;
+    final controller = _spec.toHero._motionController;
 
     if (controller == null) return;
 
@@ -344,7 +344,7 @@ class _FlightController {
       _spec.toHero.context,
     );
 
-    final controller = _spec.controllingHero._motionController;
+    final controller = _spec.toHero._motionController;
 
     if (controller == null) return shuttle;
 
@@ -375,7 +375,7 @@ class _FlightController {
   void dispose() {
     // Clean up continuous target tracking
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.controllingHero._motionController
+      _spec.toHero._motionController
           ?.removeListener(_onMotionControllerUpdate);
     }
     _spec.routeAnimation
@@ -384,7 +384,7 @@ class _FlightController {
 
     _spec.fromHero._endFlight();
     _spec.toHero._endFlight();
-    _spec.controllingHero._disposeMotionController();
+    _spec.toHero._disposeMotionController();
 
     _spec.dispose();
 
