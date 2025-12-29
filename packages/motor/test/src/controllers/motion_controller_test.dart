@@ -296,6 +296,48 @@ void main() {
           );
         }
       });
+
+      // regression: cancelled gestures at progress=0 with velocity
+      testWidgets(
+          'completes animation when from equals to exactly but with velocity',
+          (tester) async {
+        controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        const targetValue = Offset(100, 100);
+
+        // Track if whenComplete callback is called
+        var completionCallbackCalled = false;
+
+        controller
+            .animateTo(
+              targetValue,
+              from: targetValue, // from == to exactly
+              withVelocity: const Offset(2, 2), // but with velocity
+            )
+            .whenComplete(() {
+          completionCallbackCalled = true;
+        });
+
+        await tester.pump();
+
+        final pumps = await tester.pumpAndSettle();
+
+        // Verify the animation completed
+        expect(controller.isAnimating, isFalse);
+        expect(controller.value.dx, moreOrLessEquals(100, epsilon: error));
+        expect(controller.value.dy, moreOrLessEquals(100, epsilon: error));
+
+        // Should complete quickly (not hang)
+        expect(pumps, lessThan(1000)); // Reasonable upper bound
+
+        // Verify the completion callback was called
+        expect(completionCallbackCalled, isTrue);
+      });
     });
 
     group('.motion', () {

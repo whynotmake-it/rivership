@@ -97,7 +97,8 @@ class HeroineController extends NavigatorObserver {
 
   @override
   void didStopUserGesture() {
-    for (final flight in _flights.values) {
+    // onGestureEnd can synchronously complete a flight and mutate _flights.
+    for (final flight in _flights.values.toList()) {
       flight.onGestureEnd();
     }
   }

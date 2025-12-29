@@ -17,10 +17,7 @@ part of 'heroines.dart';
 /// The flight ends only when both animations complete.
 class _FlightController {
   _FlightController(this._spec, this.onEnd) {
-    _spec.controllingHero._createMotionController(
-      _spec,
-      _onSpringAnimationStatusChanged,
-    );
+    _spec.controllingHero._createMotionController(_spec);
   }
 
   _FlightSpec _spec;
@@ -41,7 +38,6 @@ class _FlightController {
   _FlightDriver? _driver;
 
   bool _waitingOnRoute = false;
-  bool _waitingOnSpring = false;
 
   _FlightDriver _makeDriver(_FlightSpec spec) => spec.isUserGestureTransition
       ? _GestureDriver(this, spec)
@@ -57,9 +53,7 @@ class _FlightController {
       _spec.overlay.insert(overlayEntry!);
     }
 
-    // Route is always required; spring becomes required once we start it.
     _waitingOnRoute = true;
-    _waitingOnSpring = false;
 
     _driver?.dispose();
     _driver = _makeDriver(_spec)..start(resetBoundingBox: resetBoundingBox);
@@ -69,6 +63,7 @@ class _FlightController {
 
   void divert(_FlightSpec toSpec) {
     final fromSpec = _spec;
+    final fromMotionController = fromSpec.controllingHero._motionController;
 
     _driver?.dispose();
     _driver = null;
@@ -81,10 +76,14 @@ class _FlightController {
     _spec = toSpec;
 
     if (fromSpec.controllingHero != toSpec.controllingHero) {
-      toSpec.controllingHero._linkRedirectedMotionController(
-        fromSpec.controllingHero._motionController!,
-      );
-      fromSpec.controllingHero._unlinkMotionControllers();
+      if (fromMotionController == null) {
+        toSpec.controllingHero._createMotionController(toSpec);
+      } else {
+        toSpec.controllingHero._linkRedirectedMotionController(
+          fromMotionController,
+        );
+        fromSpec.controllingHero._unlinkMotionControllers();
+      }
     }
 
     final fromChanged = toSpec.fromHero == fromSpec.toHero &&
@@ -107,36 +106,39 @@ class _FlightController {
       enableTargetTracking && _spec.shouldContinuouslyTrackTarget,
     );
 
-    // From this point on, spring completion matters.
-    _waitingOnSpring = true;
+    final controller = _spec.controllingHero._motionController;
+    if (controller == null) return;
 
-    _spec.controllingHero._motionController
-      ?..motion = motion
-      ..animateTo(target, from: from, withVelocity: withVelocity);
+    controller.motion = motion;
+    _animateToWithEnd(
+      controller,
+      target,
+      from: from,
+      withVelocity: withVelocity,
+    );
   }
 
   void _routeSettled() {
     if (!_waitingOnRoute) return;
     _waitingOnRoute = false;
 
-    // Preserve original behavior: auto-handoff only for non-gesture flights.
-    if (!_spec.isUserGestureTransition) {
+    // Proceeding gestures and non-gesture flights: handoff to hero widget.
+    // Cancelled gestures: skip handoff, let spring finish in overlay.
+    if (_driver?.shouldHandoffOnRouteSettled ?? true) {
       _performHandoff();
     }
 
     _tryEnd();
   }
 
-  void _onSpringAnimationStatusChanged(AnimationStatus status) {
-    if (!_waitingOnSpring) return;
-    if (status.isAnimating) return;
-
-    _waitingOnSpring = false;
-    _tryEnd();
-  }
-
   void _tryEnd() {
-    if (_waitingOnRoute || _waitingOnSpring) return;
+    if (_waitingOnRoute) return;
+
+    final controller = _spec.controllingHero._motionController;
+    if (controller?.status.isAnimating ?? false) {
+      return;
+    }
+
     onEnd(this);
   }
 
@@ -156,10 +158,12 @@ class _FlightController {
       _spec.toRoute.subtreeContext,
     );
 
+    final controller = _spec.controllingHero._motionController;
     if (newTargetLocation != _currentTargetLocation &&
-        newTargetLocation.isValid) {
+        newTargetLocation.isValid &&
+        controller != null) {
       _currentTargetLocation = newTargetLocation;
-      _spec.controllingHero._motionController?.animateTo(newTargetLocation);
+      _animateToWithEnd(controller, newTargetLocation);
     }
   }
 
@@ -170,6 +174,7 @@ class _FlightController {
     final controller = _spec.controllingHero._motionController;
     if (controller == null) return;
 
+    // Normal handoff: transfer the in-progress spring to the hero widgets
     final target = _currentTargetLocation ?? _spec.toHeroLocation;
 
     _spec.fromHero
@@ -220,6 +225,7 @@ class _FlightController {
 
     _removeOverlay();
 
+    _spec.fromHero._endFlight();
     _spec.toHero._endFlight();
     _spec.controllingHero._disposeMotionController();
     _spec.dispose();
@@ -230,6 +236,17 @@ class _FlightController {
     overlayEntry?.dispose();
     overlayEntry = null;
   }
+
+  void _animateToWithEnd(
+    MotionController<HeroineLocation> controller,
+    HeroineLocation target, {
+    HeroineLocation? from,
+    HeroineLocation? withVelocity,
+  }) {
+    controller
+        .animateTo(target, from: from, withVelocity: withVelocity)
+        .whenComplete(_tryEnd);
+  }
 }
 
 /// Flight driver abstraction.
@@ -238,6 +255,8 @@ abstract class _FlightDriver {
 
   final _FlightController controller;
   final _FlightSpec spec;
+
+  bool get shouldHandoffOnRouteSettled => true;
 
   void start({required bool resetBoundingBox});
   void onGestureEnd(); // no-op for non-gesture
@@ -291,6 +310,10 @@ class _GestureDriver extends _FlightDriver {
 
   HeroineVelocityTracker? _velocity;
   bool _gestureEnded = false;
+  bool? _proceeding;
+
+  @override
+  bool get shouldHandoffOnRouteSettled => _proceeding ?? true;
 
   void _driveFromRoute() {
     var t = spec.routeAnimation.value;
@@ -343,8 +366,6 @@ class _GestureDriver extends _FlightDriver {
     if (_gestureEnded) return;
     _gestureEnded = true;
 
-    spec.routeAnimation.removeListener(_driveFromRoute);
-
     final status = spec.routeAnimation.status;
     final isPush = spec.direction == HeroFlightDirection.push;
 
@@ -353,6 +374,7 @@ class _GestureDriver extends _FlightDriver {
             status == AnimationStatus.completed)
         : (status == AnimationStatus.reverse ||
             status == AnimationStatus.dismissed);
+    _proceeding = proceeding;
 
     final progress = switch (spec.direction) {
       HeroFlightDirection.pop => 1.0 - spec.routeAnimation.value,
@@ -360,26 +382,30 @@ class _GestureDriver extends _FlightDriver {
     }
         .clamp(0.0, 1.0);
 
-    final target = proceeding ? spec.toHeroLocation : spec.fromHeroLocation;
-    final remainingFraction = proceeding ? 1.0 - progress : progress;
+    if (proceeding) {
+      spec.routeAnimation.removeListener(_driveFromRoute);
 
-    final handoffMotion = spec.handoffMotionBuilder(
-      HeroineGestureHandoffContext(
-        progress: progress,
-        remainingFraction: remainingFraction,
-        proceeding: proceeding,
-        motion: spec.motion,
-        direction: spec.direction,
-        velocity: _velocity?.velocity,
-      ),
-    );
+      final target = spec.toHeroLocation;
+      final remainingFraction = 1.0 - progress;
 
-    controller._kickSpring(
-      target: target,
-      motion: handoffMotion,
-      withVelocity: _velocity?.velocity,
-      enableTargetTracking: true,
-    );
+      final handoffMotion = spec.handoffMotionBuilder(
+        HeroineGestureHandoffContext(
+          progress: progress,
+          remainingFraction: remainingFraction,
+          proceeding: proceeding,
+          motion: spec.motion,
+          direction: spec.direction,
+          velocity: _velocity?.velocity,
+        ),
+      );
+
+      controller._kickSpring(
+        target: target,
+        motion: handoffMotion,
+        withVelocity: _velocity?.velocity,
+        enableTargetTracking: true,
+      );
+    }
 
     _velocity = null;
 

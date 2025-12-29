@@ -168,10 +168,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   /// Initializes motion controllers for this hero's flight.
   ///
   /// Called on the [_FlightSpec.controllingHero]'s state when a flight starts.
-  void _createMotionController(
-    _FlightSpec spec,
-    AnimationStatusListener onSpringAnimationStatusChanged,
-  ) {
+  void _createMotionController(_FlightSpec spec) {
     _disposeMotionController();
     _motionController = MotionController(
       vsync: this,
@@ -180,7 +177,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
         boundingBox: spec.fromHeroLocation.boundingBox,
       ),
       converter: _HeroineLocationConverter(),
-    )..addStatusListener(onSpringAnimationStatusChanged);
+    );
   }
 
   void _disposeMotionController() {
