@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
 import 'package:motor/motor.dart';
 
-part 'flight_controller_from_main.dart';
+part 'flight_controller.dart';
 part 'heroine_velocity_tracker.dart';
 part 'flight_spec.dart';
 part 'heroine_location.dart';
