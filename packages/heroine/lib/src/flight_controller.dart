@@ -51,7 +51,7 @@ class _FlightController {
   // Gesture Tracking
   // ---------------------------------------------------------------------------
 
-  HeroineVelocityTracker? _velocityTracker;
+  _HeroineVelocityTracker? _velocityTracker;
   bool _gestureEnded = false;
 
   /// null = not a gesture transition, true = proceeding, false = cancelled
@@ -67,7 +67,6 @@ class _FlightController {
   void startFlight({bool resetBoundingBox = false}) {
     _spec.toHero._startFlight(_spec);
     _spec.fromHero._startFlight(_spec);
-
     if (overlayEntry == null) {
       _spec.overlay.insert(
         overlayEntry = OverlayEntry(builder: _buildOverlay),
@@ -87,7 +86,7 @@ class _FlightController {
 
     if (_spec.isUserGestureTransition) {
       // Gesture mode: drive position from route animation value
-      _velocityTracker = HeroineVelocityTracker();
+      _velocityTracker = _HeroineVelocityTracker();
       _spec.routeAnimation.addListener(_driveFromRoute);
       _driveFromRoute();
     } else {
@@ -95,13 +94,13 @@ class _FlightController {
       final fromHeroVelocity = HeroineVelocity.of(_spec.fromHero.context);
       _currentTargetLocation = _spec.toHeroLocation;
 
-    // Set up continuous target tracking if enabled
+      // Set up continuous target tracking if enabled
       if (_spec.shouldContinuouslyTrackTarget) {
         _spec.controllingHero._motionController
             ?.addListener(_onMotionControllerUpdate);
       }
 
-    // Animate position and size to the destination
+      // Animate position and size to the destination
       _spec.controllingHero._motionController
         ?..motion = _spec.motion
         ..animateTo(
@@ -120,15 +119,20 @@ class _FlightController {
     if (!_spec.isUserGestureTransition || _gestureEnded) return;
     _gestureEnded = true;
 
-    final status = _spec.routeAnimation.status;
-    final isPush = _spec.direction == HeroFlightDirection.push;
-
-    final proceeding = isPush
-        ? (status == AnimationStatus.forward ||
-            status == AnimationStatus.completed)
-        : (status == AnimationStatus.reverse ||
-            status == AnimationStatus.dismissed);
-    _gestureProceeding = proceeding;
+    _gestureProceeding =
+        switch ((_spec.direction, _spec.routeAnimation.status)) {
+      (
+        HeroFlightDirection.push,
+        AnimationStatus.forward || AnimationStatus.completed
+      ) =>
+        true,
+      (
+        HeroFlightDirection.pop,
+        AnimationStatus.reverse || AnimationStatus.dismissed
+      ) =>
+        true,
+      _ => false,
+    };
 
     final progress = switch (_spec.direction) {
       HeroFlightDirection.pop => 1.0 - _spec.routeAnimation.value,
@@ -136,7 +140,7 @@ class _FlightController {
     }
         .clamp(0.0, 1.0);
 
-    if (proceeding) {
+    if (_gestureProceeding!) {
       // Stop driving from route, switch to spring animation
       _spec.routeAnimation.removeListener(_driveFromRoute);
 
@@ -156,11 +160,10 @@ class _FlightController {
         );
     }
     // If cancelled (!proceeding), keep driving from route until it settles
-
     _velocityTracker = null;
 
     // Route might already be settled
-    _onRouteAnimationStatusChanged(status);
+    _onRouteAnimationStatusChanged(_spec.routeAnimation.status);
   }
 
   /// Drives the hero position directly from the route animation value.
@@ -209,7 +212,7 @@ class _FlightController {
     final fromSpec = _spec;
     final fromMotionController = fromSpec.controllingHero._motionController;
 
-    // Clean up listeners from the previous spec
+    // Clean up continuous target tracking from the previous spec
     if (fromSpec.shouldContinuouslyTrackTarget) {
       fromSpec.controllingHero._motionController
           ?.removeListener(_onMotionControllerUpdate);
@@ -317,12 +320,14 @@ class _FlightController {
   }
 
   void _endFlightIfComplete() {
-    // For cancelled gestures, spring never runs - only need route complete
-    final needSpring = _gestureProceeding != false;
+    if (!_routeAnimationComplete) return;
 
-    if (_routeAnimationComplete && (!needSpring || _springAnimationComplete)) {
-      onEnd();
-    }
+    final isComplete = switch (_gestureProceeding) {
+      false => true,  // Cancelled gesture: route done is enough
+      _ => _springAnimationComplete,  // All others: need spring too
+    };
+
+    if (isComplete) onEnd();
   }
 
   // ---------------------------------------------------------------------------
@@ -353,7 +358,7 @@ class _FlightController {
         width: controller.value.boundingBox.size.width,
         height: controller.value.boundingBox.size.height,
         // TODO(timcreatedit): rotate here
-          child: child!,
+        child: child!,
       ),
       child: IgnorePointer(
         // TODO(timcreatedit): allow configuring this
