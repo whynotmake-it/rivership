@@ -297,7 +297,6 @@ void main() {
         }
       });
 
-      // regression: cancelled gestures at progress=0 with velocity
       testWidgets(
           'completes animation when from equals to exactly but with velocity',
           (tester) async {

@@ -4,9 +4,9 @@ part of 'heroines.dart';
 ///
 /// This is used for gesture-driven flights where we only need velocity at the
 /// moment the gesture ends.
-class HeroineVelocityTracker {
+class _HeroineVelocityTracker {
   /// Creates a new velocity tracker.
-  HeroineVelocityTracker({
+  _HeroineVelocityTracker({
     this.historySize = 5,
     this.horizon = const Duration(milliseconds: 80),
   })  : assert(
