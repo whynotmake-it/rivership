@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -39,9 +41,12 @@ class CardStackExample extends StatelessWidget {
                     top: i * 8.0,
                     left: i * 4.0,
                   ),
-                  child: _CardGridItem(
-                    index: i,
-                    color: _cardColors[i],
+                  child: Transform.rotate(
+                    angle: pi /32 * i,
+                    child: _CardGridItem(
+                      index: i,
+                      color: _cardColors[i],
+                    ),
                   ),
                 ),
             ],
