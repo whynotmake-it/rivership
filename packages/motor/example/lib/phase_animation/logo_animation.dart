@@ -116,7 +116,7 @@ class LogoState {
   int get hashCode => Object.hash(logoOpacity, textOpacity, textWidth);
 }
 
-class LogoStateConverter implements MotionConverter<LogoState> {
+class LogoStateConverter extends MotionConverter<LogoState> {
   const LogoStateConverter();
 
   @override

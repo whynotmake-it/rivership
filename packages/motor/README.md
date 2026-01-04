@@ -371,6 +371,44 @@ final converter = MotionConverter.custom(
 );
 ```
 
+#### Directionality & Status
+
+Standard spring simulations are physics-based and don't inherently have a "direction" (forward vs reverse) in the same way a timeline-based animation does. This is especially true for multi-dimensional types like `Offset` or `Color`.
+
+However, for UI logic (like driving a `RotationTransition` that spins one way on open and another on close), knowing the direction is crucial.
+
+Motor supports this via `DirectionalMotionConverter`.
+
+**Built-in Support:**
+Simple types like `double` (via `SingleMotionConverter`) are **already directional**.
+- Animating `0 -> 1` reports `AnimationStatus.forward`.
+- Animating `1 -> 0` reports `AnimationStatus.reverse`.
+
+**Custom Directionality:**
+For custom types or ad-hoc usage, you can define how "direction" is calculated.
+
+1. **Using `MotionConverter.customDirectional`:**
+
+```dart
+final converter = MotionConverter.customDirectional(
+  normalize: (Size s) => [s.width, s.height],
+  denormalize: (List<double> v) => Size(v[0], v[1]),
+  // Compare area to determine direction
+  compare: (Size a, Size b) => (a.width * a.height).compareTo(b.width * b.height),
+);
+```
+
+2. **Using the Mixin:**
+If you are implementing your own converter class, mix in `DirectionalMotionConverter`. If your type implements `Comparable`, you can simply mix in `ComparableMotionConverter`.
+
+```dart
+class MyComparableConverter extends MotionConverter<MyComparableType> 
+    with ComparableMotionConverter<MyComparableType> {
+  // ... normalize/denormalize ...
+  // compare() is automatically implemented by the mixin
+}
+```
+
 ### Motion Draggable
 
 Motor includes a `MotionDraggable` widget that demonstrates the power of the unified motion system. You can drag widgets around the screen and watch them return with **any motion type** - from bouncy springs to smooth curves.
