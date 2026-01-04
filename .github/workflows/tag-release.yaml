@@ -1,7 +1,7 @@
 name: Tag release
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   publish-packages:
