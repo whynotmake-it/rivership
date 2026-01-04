@@ -17,7 +17,6 @@ void main() {
   group('StupidSimpleSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
-      snapToEnd: true,
     );
 
     Widget build({
@@ -919,7 +918,6 @@ void main() {
   group('StupidSimpleCupertinoSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
-      snapToEnd: true,
     );
 
     Widget build({

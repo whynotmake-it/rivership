@@ -62,7 +62,7 @@ Motor provides several motion types out of the box, with the ability to create c
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
 - **`NoMotion`** - Holds at the target value for an optional duration.
-- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
+- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.Defaults to snapping to the end value to ensure precise settling.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
 
@@ -322,6 +322,8 @@ if (controller.isPlayingSequence) {
 ```
 
 Sequence animations work with **any motion type** - mix springs, curves, and custom motions within the same sequence for rich, expressive animations.
+
+> **Note:** Spring motions snap to their end value by default (`snapToEnd: true`). This ensures precise settling but may cause visual jumps in sequences if the previous phase's velocity is not preserved or if the target values are not continuous. If you experience jumps, consider setting `snapToEnd: false` on your springs.
 
 ### MotionConverter
 
