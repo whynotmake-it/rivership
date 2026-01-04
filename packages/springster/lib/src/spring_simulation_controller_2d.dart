@@ -93,7 +93,7 @@ extension Value2DGetters on Double2D {
 }
 
 /// A converter for [Double2D] values to and from a list of doubles.
-class Double2DMotionConverter implements MotionConverter<Double2D> {
+class Double2DMotionConverter extends MotionConverter<Double2D> {
   /// Creates a new instance of [Double2DMotionConverter].
   const Double2DMotionConverter();
 

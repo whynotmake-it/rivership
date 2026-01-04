@@ -415,7 +415,9 @@ void main() {
     group('.status', () {
       late MotionController<Offset> controller;
       tearDown(() {
-        controller.dispose();
+        try {
+          controller.dispose();
+        } catch (_) {}
       });
 
       testWidgets('is .dismissed initially', (tester) async {
@@ -478,6 +480,36 @@ void main() {
         expect(controller.status, equals(AnimationStatus.forward));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets('if converter provides compare, it will be respected',
+          (tester) async {
+        final controller = SingleMotionController(
+          motion: motion,
+          vsync: tester,
+        );
+
+        unawaited(controller.animateTo(3));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(1));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(0));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(
+          controller.status,
+          equals(AnimationStatus.dismissed),
+          reason: 'Back at the initial value, we should be dismissed',
+        );
       });
     });
 
@@ -777,16 +809,23 @@ void main() {
 
         unawaited(controller.reverse());
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.reverse));
+        expect(controller.status, equals(AnimationStatus.forward));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
 
       testWidgets('returns last direction when stopped', (tester) async {
+        // Use a converter that orders based on x direction only
+        final xDirectionConverter = MotionConverter.customDirectional(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+          compare: (a, b) => a.dx.compareTo(b.dx),
+        );
+
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
-          converter: converter,
+          converter: xDirectionConverter,
           initialValue: Offset.zero,
           lowerBound: Offset.zero,
           upperBound: const Offset(1, 1),

@@ -163,7 +163,7 @@ class _LetterState extends State<_Letter> {
   }
 }
 
-class FontMotionConverter implements MotionConverter<TextStyle> {
+class FontMotionConverter extends MotionConverter<TextStyle> {
   late TextStyle latestValue;
 
   @override
