@@ -17,15 +17,15 @@ import 'package:motor/src/phase_transition.dart';
 /// differences have been made to make it generalize easier for different types
 /// of motion.
 ///
-/// 1. [status] works differently for unbounded controllers:
-///   - It will always return [AnimationStatus.forward] if the controller is
-///     running.
-///   - It will return [AnimationStatus.dismissed] if the controller is stopped
-///     and at its initial value.
-///   - It will return [AnimationStatus.completed] if the controller is stopped
-///     and not at its initial value.
-///   - Note: [BoundedMotionController]s restore a concept of directionality,
-///     and will return [AnimationStatus.reverse] in certain cases.
+/// 1. [status] behavior depends on the [MotionConverter]:
+///   - If the converter is directional (e.g. [SingleMotionConverter]), [status]
+///     will report [AnimationStatus.forward] or [AnimationStatus.reverse]
+///     appropriately.
+///   - For non-directional converters (common for multi-dimensional types),
+///     [status] will always be [AnimationStatus.forward] while animating.
+///   - When stopped, it generally returns [AnimationStatus.completed] unless
+///     at the initial value (or lower bound), where it returns
+///     [AnimationStatus.dismissed].
 /// 2. [stop] will not stop the animation right away, unless `canceled` is true.
 ///   Instead, it will wait until the simulation is done, and then settle at
 ///   the current value. This allows for a more graceful stop, for example, a
@@ -185,9 +185,11 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// The current status of this [Animation].
   ///
-  /// Spring simulations don't really have a concept of directionality,
-  /// especially in higher dimensions.
-  /// Thus, this will never return [AnimationStatus.reverse].
+  /// This reports [AnimationStatus.forward] or [AnimationStatus.reverse] based
+  /// on the directionality defined by the [converter].
+  ///
+  /// If the [converter] is not a [DirectionalMotionConverter], this will always
+  /// report [AnimationStatus.forward] while animating.
   @override
   AnimationStatus get status => _status;
 
@@ -283,6 +285,7 @@ class MotionController<T extends Object> extends Animation<T>
         from: from != null ? converter.normalize(from) : null,
         velocity:
             withVelocity != null ? converter.normalize(withVelocity) : null,
+        forward: converter.motionIsForward(from: from ?? value, to: target),
       );
 
   TickerFuture _animateToInternal({
@@ -506,8 +509,9 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Animates towards [lowerBound].
   ///
-  /// **Note**: [status] will still return [AnimationStatus.forward] when
-  /// this is called. See [status] for more information.
+  /// **Note**: [status] might still return [AnimationStatus.forward] when
+  /// this is called, depending on the directionality of [converter].
+  /// See [status] for more information.
   TickerFuture reverse({
     T? from,
     T? withVelocity,
@@ -516,7 +520,6 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       lowerBound,
       from: from,
       withVelocity: withVelocity,
-      forward: false,
     );
   }
 
@@ -525,19 +528,49 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     T target, {
     T? from,
     T? withVelocity,
-    bool forward = true,
   }) {
-    _forward = forward;
+    final clamped = _clamp(target);
+
+    _forward = converter.motionIsForward(
+      from: from ?? value,
+      to: clamped,
+    );
+
+    return _animateToDirectional(
+      target,
+      from: from,
+      withVelocity: withVelocity,
+      forward: _forward,
+    );
+  }
+
+  /// Clamps [value] within the bounds of this controller.
+  T _clamp(T value) {
+    final normalized = converter.normalize(value);
+    final clamped = [
+      for (final (i, v) in normalized.indexed)
+        v.clamp(_lowerBound[i], _upperBound[i]),
+    ];
+    return converter.denormalize(clamped);
+  }
+
+  TickerFuture _animateToDirectional(
+    T target, {
+    required bool forward,
+    T? from,
+    T? withVelocity,
+  }) {
     final normalizedTarget = converter.normalize(target);
     final clamped = [
       for (final (i, v) in normalizedTarget.indexed)
         v.clamp(_lowerBound[i], _upperBound[i]),
     ];
+
     return _animateToInternal(
       target: clamped,
       from: from != null ? converter.normalize(from) : null,
       velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
-      forward: forward,
+      forward: _forward,
     );
   }
 
@@ -547,7 +580,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       _stopTicker(canceled: canceled);
       return TickerFuture.complete();
     } else {
-      return animateTo(value, forward: _forward);
+      return _animateToDirectional(_clamp(value), forward: _forward);
     }
   }
 }
@@ -960,4 +993,18 @@ class SequenceMotionController<P, T extends Object>
 
 extension on Duration {
   double toSec() => inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
+}
+
+extension<T> on MotionConverter<T> {
+  bool motionIsForward({required T from, required T to}) {
+    if (this case final DirectionalMotionConverter<T> directional) {
+      return switch (directional.compare(from, to)) {
+        > 0 => false,
+        _ => true,
+      };
+    }
+
+    // Always consider motion forward for non-directional converters
+    return true;
+  }
 }
