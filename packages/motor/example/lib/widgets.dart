@@ -41,8 +41,7 @@ class _WidgetsExampleState extends State<WidgetsExample> {
               padding: EdgeInsets.all(16),
               child: Placeholder(
                 child: MotionPadding(
-                  motion:
-                      CupertinoMotion.bouncy(snapToEnd: true, extraBounce: .1),
+                  motion: CupertinoMotion.bouncy(extraBounce: .1),
                   padding: active
                       ? EdgeInsets.all(0)
                       : EdgeInsetsGeometry.directional(
