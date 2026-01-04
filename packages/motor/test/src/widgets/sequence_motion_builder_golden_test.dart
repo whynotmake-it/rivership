@@ -76,7 +76,7 @@ void main() {
           (tester) async {
         const sequence = MotionSequence.states(
           phaseMap,
-          motion: CupertinoMotion.bouncy(),
+          motion: CupertinoMotion.bouncy(snapToEnd: false),
         );
 
         final widget = animationSheet.record(
