@@ -1,3 +1,7 @@
+## 0.8.0+1
+
+ - **FIX**: immediately start clearing overscroll when letting go.
+
 ## 0.8.0
 
 > Note: This release has breaking changes.

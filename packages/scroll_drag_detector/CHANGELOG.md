@@ -1,3 +1,7 @@
+## 0.1.0+2
+
+ - **FIX**: immediately start clearing overscroll when letting go.
+
 ## 0.1.0+1
 
  - **FIX**: dragging up from a snap point performes one frame of scroll before transitioning to dragging.
