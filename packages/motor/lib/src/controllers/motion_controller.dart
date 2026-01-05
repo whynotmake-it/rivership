@@ -8,6 +8,7 @@ import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
@@ -45,12 +46,16 @@ class MotionController<T extends Object> extends Animation<T>
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
   /// Creates a motion controller with a single motion for all dimensions.
+  ///
+  /// Velocity tracking is enabled by default to track velocity when manually
+  /// setting [value]. Use [VelocityTracking.off] to disable.
   MotionController({
     required Motion motion,
     required TickerProvider vsync,
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   }) : this._(
           motionPerDimension: List.filled(
             converter.normalize(initialValue).length,
@@ -60,6 +65,7 @@ class MotionController<T extends Object> extends Animation<T>
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
         );
 
   /// Creates a motion controller with individual motions per dimension.
@@ -69,12 +75,14 @@ class MotionController<T extends Object> extends Animation<T>
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   }) : this._(
           motionPerDimension: motionPerDimension,
           vsync: vsync,
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
         );
 
   MotionController._({
@@ -83,11 +91,13 @@ class MotionController<T extends Object> extends Animation<T>
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ),
-        _converter = converter {
+        _converter = converter,
+        _velocityTrackerBuilder = velocityTracking.call {
     _initialValue = initialValue;
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
@@ -104,6 +114,9 @@ class MotionController<T extends Object> extends Animation<T>
 
     // Initialize with a dismissed status by default
     _status = AnimationStatus.dismissed;
+
+    // Initialize velocity tracker
+    _velocityTracker = velocityTracking.call(converter);
   }
 
   late final T _initialValue;
@@ -121,6 +134,8 @@ class MotionController<T extends Object> extends Animation<T>
     );
 
     _converter = value;
+    // Recreate velocity tracker with new converter if tracking is enabled
+    _velocityTracker = _velocityTrackerBuilder?.call(value);
     _internalSetValue(normalized);
   }
 
@@ -163,12 +178,20 @@ class MotionController<T extends Object> extends Animation<T>
   T get value => converter.denormalize(_currentValues);
 
   /// Sets the current value of the animation.
+  ///
+  /// When velocity tracking is enabled (the default), this tracks the value
+  /// for velocity estimation. The tracked velocity is used when [animateTo]
+  /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
     _ticker?.stop();
     _status = _getStatusWhenDone();
 
     final normalized = converter.normalize(newValue);
     _internalSetValue(normalized);
+
+    // Track velocity sample if tracker is available
+    _trackVelocitySample(newValue);
+
     notifyListeners();
     _checkStatusChanged();
   }
@@ -203,16 +226,27 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// The current velocity of the simulation in units per second for each
   /// dimension.
+  ///
+  /// When animating, this returns the velocity from the active simulation.
+  /// When not animating, this returns the tracked velocity from user input
+  /// if a velocity tracker is available, otherwise zeros.
   List<double> get velocities {
-    if (!isAnimating) return List.filled(_dimensions, 0);
+    if (isAnimating) {
+      return [
+        for (var i = 0; i < _dimensions; i++)
+          _simulations[i].dx(_lastElapsedDuration!.toSec()),
+      ];
+    }
 
-    return [
-      for (var i = 0; i < _dimensions; i++)
-        _simulations[i].dx(_lastElapsedDuration!.toSec()),
-    ];
+    // Return tracked velocity if available, otherwise zeros
+    return _trackedVelocities;
   }
 
   /// The type-specific velocity representation.
+  ///
+  /// When animating, this returns the velocity from the active simulation.
+  /// When not animating, this returns the tracked velocity from user input
+  /// if a velocity tracker is available, otherwise the zero value for type T.
   T get velocity => converter.denormalize(velocities);
 
   /// The single motion that is used for all dimensions.
@@ -260,6 +294,54 @@ class MotionController<T extends Object> extends Animation<T>
   /// [AnimationBehavior.preserve] for unbounded controllers.
   AnimationBehavior get animationBehavior => _animationBehavior;
 
+  /// Function that creates a [MotionVelocityTracker], or null if disabled.
+  final MotionVelocityTracker<T>? Function(MotionConverter<T> converter)?
+      _velocityTrackerBuilder;
+
+  MotionVelocityTracker<T>? _velocityTracker;
+
+  /// Stopwatch for tracking elapsed time for velocity samples.
+  Stopwatch? _velocityStopwatch;
+
+  Stopwatch get _velocityTime {
+    _velocityStopwatch ??= Stopwatch()..start();
+    return _velocityStopwatch!;
+  }
+
+  /// Tracks a velocity sample for the given value.
+  ///
+  /// Called automatically when [value] is set. No-op if velocity tracking
+  /// is disabled.
+  void _trackVelocitySample(T value) {
+    if (_velocityTracker case final tracker?) {
+      tracker.addPosition(_velocityTime.elapsed, value);
+    }
+  }
+
+  /// Returns the tracked velocity estimate from user input.
+  ///
+  /// Returns `null` if no velocity tracker is available or no samples have
+  /// been recorded.
+  MotionVelocityEstimate<T>? get trackedVelocityEstimate =>
+      _velocityTracker?.getVelocityEstimate();
+
+  /// The tracked velocity in normalized form (List<double>), or zeros if
+  /// no tracked velocity is available.
+  List<double> get _trackedVelocities {
+    if (_velocityTracker?.getVelocityEstimate() case final estimate?) {
+      return converter.normalize(estimate.perSecond);
+    }
+    return List.filled(_dimensions, 0.0);
+  }
+
+  /// Resets the velocity tracker, clearing all tracked samples.
+  ///
+  /// Called automatically when animations start via [animateTo].
+  void _resetVelocityTracking() {
+    _velocityTracker = _velocityTrackerBuilder?.call(converter);
+    _velocityStopwatch?.reset();
+  }
+
   /// Recreates the [Ticker] with the new [TickerProvider].
   void resync(TickerProvider vsync) {
     final oldTicker = _ticker!;
@@ -297,7 +379,13 @@ class MotionController<T extends Object> extends Animation<T>
     _target = target;
 
     final fromValue = from ?? List.of(_currentValues);
+    // Use provided velocity, or fall back to current velocities (which may
+    // include tracked velocity from user input when not animating)
     final velocityValue = velocity ?? velocities;
+
+    // Reset velocity tracking since we're starting an animation
+    // This ensures fresh tracking when the animation ends
+    _resetVelocityTracking();
 
     // Stop any existing animations
     _stopTicker(canceled: true);
@@ -429,6 +517,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
 
@@ -442,6 +531,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound),
         super.motionPerDimension();
@@ -469,7 +559,8 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Sets the current value of the animation.
   ///
-  /// This will clamp the value to be within the bounds.
+  /// The value is clamped to be within bounds. When velocity tracking is
+  /// enabled (the default), this also tracks the value for velocity estimation.
   @override
   set value(T newValue) {
     final normalized = converter.normalize(newValue);
@@ -479,6 +570,10 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
         v.clamp(_lowerBound[i], _upperBound[i]),
     ];
     _internalSetValue(clamped);
+
+    // Track velocity sample if tracker is available
+    _trackVelocitySample(newValue);
+
     notifyListeners();
   }
 
@@ -623,6 +718,7 @@ class SequenceMotionController<P, T extends Object>
     required super.converter,
     required super.initialValue,
     super.behavior,
+    super.velocityTracking,
   });
 
   /// Creates a seequence motion controller with motion per dimension.
@@ -632,6 +728,7 @@ class SequenceMotionController<P, T extends Object>
     required super.converter,
     required super.initialValue,
     super.behavior,
+    super.velocityTracking,
   }) : super.motionPerDimension();
 
   /// Active phase sequence being played

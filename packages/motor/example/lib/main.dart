@@ -7,6 +7,7 @@ import 'package:motor_example/one_dimension.dart';
 import 'package:motor_example/phase_animation/phase_animation.dart';
 import 'package:motor_example/pip.dart';
 import 'package:motor_example/title_slide.dart';
+import 'package:motor_example/velocity_tracking.dart';
 import 'package:motor_example/widgets.dart';
 
 void main() async {
@@ -65,6 +66,12 @@ final motorRoutes = [
     path: SequenceAnimationExamples.path,
     type: RouteType.cupertino(),
     builder: (context, state) => const SequenceAnimationExamples(),
+  ),
+  NamedRouteDef(
+    name: VelocityTrackingExample.name,
+    path: VelocityTrackingExample.path,
+    type: RouteType.cupertino(),
+    builder: (context, state) => const VelocityTrackingExample(),
   ),
   NamedRouteDef(
     name: WidgetsExample.name,
