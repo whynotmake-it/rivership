@@ -551,6 +551,49 @@ void main() {
           equals(0.0),
         );
       });
+
+      testWidgets('will clear overscroll immediately when let go',
+          (tester) async {
+        await tester.pumpWidget(
+          build(),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scrollableFinder = find.descendant(
+          of: find.byKey(const ValueKey('scaffold')),
+          matching: find.byType(Scrollable),
+        );
+
+        expect(scrollableFinder, findsOneWidget);
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          equals(0.0),
+        );
+
+        // Drag sheet to bottom quickly
+        final gesture =
+            await tester.startGesture(tester.getTopLeft(scrollableFinder));
+        for (var i = 0; i < 15; i++) {
+          await gesture.moveBy(const Offset(0, 20));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        final scrollPixels =
+            tester.state<ScrollableState>(scrollableFinder).position.pixels;
+
+        expect(scrollPixels, lessThan(0.0));
+
+        await gesture.up();
+
+        await tester.pumpFrames(build(), const Duration(milliseconds: 200));
+
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          greaterThan(scrollPixels),
+        );
+      });
     });
 
     group('controlling imperatively', () {
