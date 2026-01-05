@@ -9,6 +9,8 @@ export 'src/motion.dart';
 export 'src/motion_converter.dart';
 export 'src/motion_curve.dart';
 export 'src/motion_sequence.dart';
+export 'src/motion_velocity_tracker.dart'
+    show MotionVelocityEstimate, MotionVelocityTracker, VelocityTracking;
 export 'src/phase_transition.dart';
 export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
