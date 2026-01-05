@@ -31,7 +31,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  motor: ^1.0.0-dev.0
+  motor: ^2.0.0
 ```
 
 Or install via `dart pub`:
@@ -446,6 +446,59 @@ Motion controllers work similarly to Flutter's `AnimationController` but with ke
 - **Motion-agnostic**: Switch between springs and curves without changing controller code
 - **Velocity preservation**: Maintains velocity when changing targets (crucial for natural motion)
 - **Multi-dimensional**: Each dimension can have independent physics simulation
+
+#### Velocity Tracking
+
+Velocity tracking is **enabled by default** for smooth motion continuity when manually setting controller values.
+
+**When to use it:** Most useful for interactions that don't provide velocity, like:
+- Sliders (discrete value changes without velocity data)
+- Mouse tracking or custom input
+- Programmatic transitions without velocity information
+
+**When to skip it:** If your gesture already provides velocity (like `DragEndDetails.velocity`), use that directly via `withVelocity` - it's more accurate and has no overhead.
+
+```dart
+final controller = MotionController(
+  motion: CupertinoMotion.bouncy(),
+  vsync: this,
+  converter: MotionConverter.offset,
+  initialValue: Offset.zero,
+  // Velocity tracking enabled by default
+);
+
+// During interaction, controller tracks velocity automatically
+void onPanUpdate(DragUpdateDetails details) {
+  controller.value = details.localPosition;
+}
+
+// When interaction ends, use tracked velocity
+void onPanEnd(DragEndDetails details) {
+  // Best: Use gesture velocity if available
+  controller.animateTo(target, withVelocity: details.velocity);
+
+  // Or: Let tracked velocity provide continuity
+  controller.animateTo(targetPosition);
+}
+```
+
+To disable velocity tracking:
+
+```dart
+final controller = MotionController(
+  motion: CupertinoMotion.bouncy(),
+  vsync: this,
+  converter: MotionConverter.offset,
+  initialValue: Offset.zero,
+  velocityTracking: VelocityTracking.off(),
+);
+```
+
+When enabled:
+- Setting `controller.value` automatically tracks velocity
+- `animateTo()` without `withVelocity` uses tracked velocity
+- Access current estimate via `controller.velocity`
+- Automatically resets when animations start
 
 #### Bounded vs. Unbounded Motion
 
