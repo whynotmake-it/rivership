@@ -152,13 +152,29 @@ class _FlightSpec {
       'RenderObject must have a finite size to be used as a hero',
     );
 
-    final rect = MatrixUtils.transformRect(
-      box.getTransformTo(ancestorContext?.findRenderObject()),
-      Offset.zero & box.size,
+    final transform = box.getTransformTo(ancestorContext?.findRenderObject());
+
+    // Transform the center point to get position in ancestor coordinates.
+    final localCenter = box.size.center(Offset.zero);
+    final transformedCenter = MatrixUtils.transformPoint(
+      transform,
+      localCenter,
     );
 
-    // TODO(tim): find rotation here
-    return HeroineLocation(boundingBox: rect);
+    // Store center + original size (NOT the axis-aligned bounding box).
+    final rect = Rect.fromCenter(
+      center: transformedCenter,
+      width: box.size.width,
+      height: box.size.height,
+    );
+
+    // Extract Z-rotation from the 2D rotation component of the matrix.
+    final rotation = atan2(
+      transform.entry(1, 0),
+      transform.entry(0, 0),
+    );
+
+    return HeroineLocation(boundingBox: rect, rotation: rotation);
   }
 
   @override

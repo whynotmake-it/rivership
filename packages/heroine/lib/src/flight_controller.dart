@@ -96,8 +96,7 @@ class _FlightController {
 
       // Set up continuous target tracking if enabled
       if (_spec.shouldContinuouslyTrackTarget) {
-        _spec.toHero._motionController
-            ?.addListener(_onMotionControllerUpdate);
+        _spec.toHero._motionController?.addListener(_onMotionControllerUpdate);
       }
 
       // Animate position and size to the destination
@@ -148,8 +147,7 @@ class _FlightController {
       _currentTargetLocation = _spec.toHeroLocation;
 
       if (_spec.shouldContinuouslyTrackTarget) {
-        _spec.toHero._motionController
-            ?.addListener(_onMotionControllerUpdate);
+        _spec.toHero._motionController?.addListener(_onMotionControllerUpdate);
       }
 
       _spec.toHero._motionController
@@ -177,8 +175,13 @@ class _FlightController {
       t,
     )!;
 
-    // TODO(Jesper): rotation lerp
-    final loc = HeroineLocation(boundingBox: currentRect);
+    final currentRotation = _lerpAngle(
+      _spec.fromHeroLocation.rotation,
+      _spec.toHeroLocation.rotation,
+      t,
+    );
+    final loc =
+        HeroineLocation(boundingBox: currentRect, rotation: currentRotation);
 
     _spec.toHero._motionController?.value = loc;
     _velocityTracker?.addSample(loc);
@@ -266,8 +269,7 @@ class _FlightController {
 
     // Stop listening for target updates
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.toHero._motionController
-          ?.removeListener(_onMotionControllerUpdate);
+      _spec.toHero._motionController?.removeListener(_onMotionControllerUpdate);
     }
 
     final controller = _spec.toHero._motionController;
@@ -323,8 +325,8 @@ class _FlightController {
     if (!_routeAnimationComplete) return;
 
     final isComplete = switch (_gestureProceeding) {
-      false => true,  // Cancelled gesture: route done is enough
-      _ => _springAnimationComplete,  // All others: need spring too
+      false => true, // Cancelled gesture: route done is enough
+      _ => _springAnimationComplete, // All others: need spring too
     };
 
     if (isComplete) onEnd();
@@ -357,8 +359,10 @@ class _FlightController {
             controller.value.boundingBox.size.width / 2,
         width: controller.value.boundingBox.size.width,
         height: controller.value.boundingBox.size.height,
-        // TODO(timcreatedit): rotate here
-        child: child!,
+        child: Transform.rotate(
+          angle: controller.value.rotation,
+          child: child,
+        ),
       ),
       child: IgnorePointer(
         // TODO(timcreatedit): allow configuring this
@@ -375,8 +379,7 @@ class _FlightController {
   void dispose() {
     // Clean up continuous target tracking
     if (_spec.shouldContinuouslyTrackTarget) {
-      _spec.toHero._motionController
-          ?.removeListener(_onMotionControllerUpdate);
+      _spec.toHero._motionController?.removeListener(_onMotionControllerUpdate);
     }
     _spec.routeAnimation
       ..removeStatusListener(_onRouteAnimationStatusChanged)
@@ -400,4 +403,12 @@ class _FlightController {
     overlayEntry?.dispose();
     overlayEntry = null;
   }
+}
+
+/// Linearly interpolates between two angles, taking the shortest path.
+double _lerpAngle(double from, double to, double t) {
+  var delta = (to - from) % (2 * pi);
+  if (delta > pi) delta -= 2 * pi;
+  if (delta < -pi) delta += 2 * pi;
+  return from + delta * t;
 }

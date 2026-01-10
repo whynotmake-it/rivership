@@ -156,6 +156,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
       motion: spec.motion,
       initialValue: HeroineLocation(
         boundingBox: spec.fromHeroLocation.boundingBox,
+        rotation: spec.fromHeroLocation.rotation,
       ),
       converter: _HeroineLocationConverter(),
     )..addStatusListener(onSpringAnimationStatusChanged);
@@ -307,20 +308,25 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
         return AnimatedBuilder(
           animation: landing.controller,
           builder: (context, child) {
-            return Transform.translate(
-              offset: landing.offset,
-              child: SizedBox.fromSize(
-                size: landing.placeholderSize,
-                child: OverflowBox(
-                  maxHeight: double.infinity,
-                  maxWidth: double.infinity,
-                  child: Center(
-                    child: SizedBox.fromSize(
-                      size: Size(
-                        landing.sizeX,
-                        landing.sizeY,
+            return Transform.rotate(
+              angle: landing.rotation,
+              child: Transform.translate(
+                offset: landing.offset,
+                child: SizedBox.fromSize(
+                  child: SizedBox.fromSize(
+                    size: landing.placeholderSize,
+                    child: OverflowBox(
+                      maxHeight: double.infinity,
+                      maxWidth: double.infinity,
+                      child: Center(
+                        child: SizedBox.fromSize(
+                          size: Size(
+                            landing.sizeX,
+                            landing.sizeY,
+                          ),
+                          child: child,
+                        ),
                       ),
-                      child: child,
                     ),
                   ),
                 ),
@@ -414,6 +420,9 @@ class _ToLanding extends _Status {
   final MotionController<HeroineLocation> controller;
 
   final HeroineLocation target;
+
+  /// The current rotation relative to the target rotation.
+  double get rotation => controller.value.rotation - target.rotation;
 
   /// The current offset from the target center.
   Offset get offset =>
