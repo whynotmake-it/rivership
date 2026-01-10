@@ -382,7 +382,9 @@ class _FlightController {
       ..removeStatusListener(_onRouteAnimationStatusChanged)
       ..removeListener(_driveFromRoute);
 
-    _spec.fromHero._endFlight();
+    if (_gestureProceeding == false) {
+      _spec.fromHero._endFlight();
+    }
     _spec.toHero._endFlight();
     _spec.toHero._disposeMotionController();
 
