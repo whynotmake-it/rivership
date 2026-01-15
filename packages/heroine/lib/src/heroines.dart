@@ -5,6 +5,7 @@ import 'package:heroine/heroine.dart';
 import 'package:motor/motor.dart';
 
 part 'flight_controller.dart';
+part 'heroine_velocity_tracker.dart';
 part 'flight_spec.dart';
 part 'heroine_location.dart';
 part 'heroine_widget.dart';
@@ -93,8 +94,10 @@ class HeroineController extends NavigatorObserver {
 
   @override
   void didStopUserGesture() {
-    if (navigator!.userGestureInProgress) {
-      return;
+    // toList() avoids mutation during iteration if onGestureEnd completes a 
+    // flight
+    for (final flight in _flights.values.toList()) {
+      flight.onGestureEnd();
     }
   }
 
@@ -404,13 +407,9 @@ extension on BuildContext {
       // final heroWidget = hero.widget as Heroine;
       final heroState = hero.state as _HeroineState;
 
-      // TODO(timcreatedit): allow heroines to opt into user gesture transitions
-      if (!isUserGestureTransition) {
+      if (!isUserGestureTransition || heroState.widget.animateOnUserGestures) {
         result[tag] = heroState;
       } else {
-        // If transition is not allowed, we need to make sure hero is not
-        // hidden.
-        // A hero can be hidden previously due to hero transition.
         heroState._endFlight();
       }
     }

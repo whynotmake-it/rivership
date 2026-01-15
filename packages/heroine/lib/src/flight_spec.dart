@@ -61,13 +61,6 @@ class _FlightSpec {
   /// The shared tag identifying this hero pair.
   Object? get tag => fromHero.widget.tag;
 
-  /// The hero whose [TickerProvider] owns the animation controllers.
-  ///
-  /// For user gesture transitions, this is [fromHero] since the gesture
-  /// originates from the source page. Otherwise, it's [toHero].
-  _HeroineState get controllingHero =>
-      isUserGestureTransition ? fromHero : toHero;
-
   // ---------------------------------------------------------------------------
   // Visual Configuration
   // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:heroine/heroine.dart';
+import 'package:heroine_example/card_stack_example.dart';
 import 'package:heroine_example/image_grid.dart';
 import 'package:heroine_example/keyboard.dart';
 import 'package:heroine_example/zoom_transition.dart';
@@ -34,6 +35,18 @@ final heroineRoutes = [
     path: KeyboardCardExample.path,
     type: RouteType.cupertino(),
     builder: (context, _) => KeyboardCardExample(),
+  ),
+  NamedRouteDef(
+    name: CardStackExample.name,
+    path: CardStackExample.path,
+    type: RouteType.cupertino(),
+    builder: (context, _) => CardStackExample(),
+  ),
+  NamedRouteDef(
+    name: CardGridPage.name,
+    path: CardGridPage.path,
+    type: RouteType.cupertino(),
+    builder: (context, _) => CardGridPage(),
   ),
   ...zoomTransitionRoutes,
 ];
@@ -99,6 +112,13 @@ class HeroineExamplePicker extends StatelessWidget {
                     NamedRoute(KeyboardCardExample.name),
                   ),
                   child: const Text(KeyboardCardExample.name),
+                ),
+                const SizedBox(height: 16),
+                CupertinoButton.filled(
+                  onPressed: () => context.navigateTo(
+                    NamedRoute(CardStackExample.name),
+                  ),
+                  child: const Text(CardStackExample.name),
                 ),
               ],
             ),
