@@ -257,7 +257,6 @@ VoidCallback setTestViewToFakeDevice(
   }
 
   if (device is WidgetTesterDevice) {
-    restore();
     return () {};
   }
 

@@ -8,3 +8,4 @@ export 'src/font_loading.dart' show loadFontsAndIcons;
 export 'src/screenshot_test_function.dart' show snapTest;
 export 'src/snap.dart' show setTestViewToFakeDevice, snap;
 export 'src/snaptest_settings.dart' show SnaptestSettings;
+export 'src/test_on_devices.dart' show TestOnDevices;
