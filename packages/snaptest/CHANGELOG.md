@@ -1,3 +1,7 @@
+## 0.2.3
+
+ - **FEAT**: add `TestOnDevice` variant, so you can quickly simulate multiple devices in widget tests.
+
 ## 0.2.2+1
 
  - **DOCS**: remove outdated font loading section from README.
