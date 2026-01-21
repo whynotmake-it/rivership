@@ -276,7 +276,8 @@ void main() {
           expect(
             files1.first.path,
             contains(
-              'counter works with device and orientation suffixes_iPhone 16 Pro.png',
+              'counter works with device and orientation suffixes_iPhone 16 '
+              'Pro.png',
             ),
           );
 
@@ -290,7 +291,8 @@ void main() {
           expect(
             files2.first.path,
             contains(
-              'counter works with device and orientation suffixes_2_iPhone 16 Pro.png',
+              'counter works with device and orientation suffixes_2_iPhone 16 '
+              'Pro.png',
             ),
           );
         },
