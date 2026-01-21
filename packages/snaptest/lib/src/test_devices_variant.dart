@@ -4,30 +4,32 @@ import 'package:snaptest/snaptest.dart';
 
 /// A [TestVariant] that will use [setTestViewToFakeDevice] to set the test view
 /// to each of the given [DeviceInfo] values.
-class TestOnDevices extends TestVariant<(DeviceInfo, Orientation)> {
-  /// Creates a new [TestOnDevices] variant.
-  TestOnDevices(
+class TestDevicesVariant extends ValueVariant<(DeviceInfo, Orientation)> {
+  /// Creates a new [TestDevicesVariant] variant.
+  TestDevicesVariant(
     this.devices, {
     this.orientations = const {Orientation.portrait},
-  });
+  }) : super({
+         for (final device in devices)
+           for (final orientation in orientations) (device, orientation),
+       });
 
   /// The list of devices to test on.
-  final List<DeviceInfo> devices;
+  final Set<DeviceInfo> devices;
 
   /// The orientations to test each device with.
   ///
   /// By default, only [Orientation.portrait] is used.
   final Set<Orientation> orientations;
 
-  @override
-  List<(DeviceInfo, Orientation)> get values => [
-    for (final device in devices)
-      for (final orientation in orientations) (device, orientation),
-  ];
+  VoidCallback? _restore;
 
   @override
-  Future<VoidCallback> setUp((DeviceInfo, Orientation) value) async {
-    return setTestViewToFakeDevice(value.$1, value.$2);
+  Future<(DeviceInfo, Orientation)> setUp(
+    (DeviceInfo, Orientation) value,
+  ) async {
+    _restore = setTestViewToFakeDevice(value.$1, value.$2);
+    return super.setUp(value);
   }
 
   @override
@@ -39,8 +41,8 @@ class TestOnDevices extends TestVariant<(DeviceInfo, Orientation)> {
   @override
   Future<void> tearDown(
     (DeviceInfo, Orientation) value,
-    VoidCallback memento,
+    (DeviceInfo, Orientation) memento,
   ) async {
-    memento.call();
+    _restore?.call();
   }
 }
