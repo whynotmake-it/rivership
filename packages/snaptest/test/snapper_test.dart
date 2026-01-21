@@ -28,7 +28,7 @@ void main() {
         );
 
         await snap(
-          settings: SnaptestSettings.rendered(devices: [Devices.ios.iPhone16]),
+          settings: SnaptestSettings.rendered(devices: {Devices.ios.iPhone16}),
         );
       });
 
@@ -54,11 +54,11 @@ void main() {
         final files = await snap(
           name: 'multi_device',
           settings: SnaptestSettings(
-            devices: [
-              const WidgetTesterDevice(),
+            devices: {
+              null,
               Devices.ios.iPhone16Pro,
               Devices.android.samsungGalaxyS20,
-            ],
+            },
           ),
           matchToGolden: true,
         );
@@ -122,16 +122,18 @@ void main() {
         final filesWithDeviceName = await snap(
           name: 'with_device_name',
           settings: SnaptestSettings(
-            devices: [
+            devices: {
               Devices.ios.iPhone16Pro,
               Devices.android.samsungGalaxyS20,
-            ],
+            },
           ),
         );
 
         final filesWithoutDeviceName = await snap(
           name: 'without_device_name',
-          settings: SnaptestSettings(devices: [Devices.ios.iPhone16Pro]),
+          settings: SnaptestSettings(
+            devices: {Devices.ios.iPhone16Pro},
+          ),
         );
 
         expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
@@ -141,7 +143,7 @@ void main() {
         );
       });
 
-      snapTest('orientation is not appended for widget tester only', (
+      snapTest('orientation is not appended for no device only', (
         tester,
       ) async {
         await tester.pumpWidget(
@@ -151,8 +153,11 @@ void main() {
         );
         final files = await snap(
           settings: const SnaptestSettings(
-            devices: [WidgetTesterDevice()],
-            orientations: {Orientation.portrait, Orientation.landscape},
+            devices: {null},
+            orientations: {
+              Orientation.portrait,
+              Orientation.landscape,
+            },
           ),
         );
 
@@ -186,14 +191,14 @@ void main() {
         expect(SnaptestSettings.global.devices, hasLength(1));
         expect(
           SnaptestSettings.global.devices.first,
-          isA<WidgetTesterDevice>(),
+          isNull,
         );
       });
 
       test('can modify global settings', () {
         SnaptestSettings.global = SnaptestSettings(
           renderShadows: false,
-          devices: [Devices.ios.iPhone16Pro],
+          devices: {Devices.ios.iPhone16Pro},
         );
 
         expect(SnaptestSettings.global.renderShadows, isFalse);
@@ -207,7 +212,7 @@ void main() {
       test('reset restores default values', () {
         SnaptestSettings.global = SnaptestSettings(
           renderShadows: false,
-          devices: [Devices.ios.iPhone16Pro],
+          devices: {Devices.ios.iPhone16Pro},
         );
 
         SnaptestSettings.resetGlobal();
@@ -258,7 +263,7 @@ void main() {
         final originalPixelRatio = implicitView.devicePixelRatio;
 
         final restore = setTestViewToFakeDevice(
-          const WidgetTesterDevice(),
+          null,
           Orientation.portrait,
         );
 
@@ -292,11 +297,11 @@ void main() {
           await snap(name: 'real_rendering');
         },
         settings: SnaptestSettings.rendered(
-          devices: [
-            const WidgetTesterDevice(),
+          devices: {
+            null,
             Devices.ios.iPhone16Pro,
             Devices.android.samsungGalaxyS20,
-          ],
+          },
         ),
       );
 
@@ -315,7 +320,7 @@ void main() {
         },
         settings: const SnaptestSettings(
           includeDeviceFrame: true,
-          devices: [WidgetTesterDevice()],
+          devices: {null},
         ),
       );
 
@@ -347,8 +352,13 @@ void main() {
         },
         settings: SnaptestSettings(
           includeDeviceFrame: true,
-          devices: [Devices.ios.iPhone16Pro],
-          orientations: {Orientation.portrait, Orientation.landscape},
+          devices: {
+            Devices.ios.iPhone16Pro,
+          },
+          orientations: {
+            Orientation.portrait,
+            Orientation.landscape,
+          },
         ),
       );
     });
@@ -378,14 +388,18 @@ void main() {
         SnaptestSettings.global = SnaptestSettings(
           blockText: false,
           includeDeviceFrame: true,
-          devices: [Devices.ios.iPhone16],
+          devices: {
+            Devices.ios.iPhone16,
+          },
         );
 
         final files = await snap(name: 'global_settings_1');
         expect(files, hasLength(1));
 
         SnaptestSettings.global = SnaptestSettings(
-          devices: [Devices.ios.iPhone16],
+          devices: {
+            Devices.ios.iPhone16,
+          },
         );
 
         final files2 = await snap(
