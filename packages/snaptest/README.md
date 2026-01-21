@@ -262,6 +262,17 @@ Clean screenshots from a custom directory:
 dart run snaptest:clean my_custom_dir
 ```
 
+You can also add `cleanSnaps()` to your `flutter_test_config.dart` to automatically clean snapshots before each test run:
+```dart
+// flutter_test_config.dart
+import 'package:snaptest/snaptest.dart';
+
+Future<void> testExecutable(Future<void> Function() testMain) async {
+  await cleanSnaps();
+  await testMain();
+}
+```
+
 Assemble screenshots into a single directory:
 ```sh
 dart run snaptest:assemble
