@@ -10,7 +10,7 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 void main() {
   setUp(() {
     SnaptestSettings.global = SnaptestSettings.rendered(
-      devices: [Devices.ios.iPhone16],
+      devices: {Devices.ios.iPhone16},
     );
   });
 
