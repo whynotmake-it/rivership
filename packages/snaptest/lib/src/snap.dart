@@ -105,7 +105,8 @@ Future<List<File>> snap({
   }
 
   // Track the number of times snap has been called for this test
-  final callCount = _snapCallCounts[testName] = (_snapCallCounts[testName] ?? 0) + 1;
+  final callCount = _snapCallCounts[testName] =
+      (_snapCallCounts[testName] ?? 0) + 1;
   final counterSuffix = callCount > 1 ? '_$callCount' : '';
 
   if (s.devices.isEmpty) {
