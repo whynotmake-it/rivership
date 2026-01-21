@@ -9,7 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
-import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/font_loading.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
 // ignore: implementation_imports
@@ -109,7 +108,7 @@ Future<List<File>> snap({
 
   final goldens = <(String, ui.Image)>[];
 
-  final rotatedDevices = s.devices.where((device) => device.canRotate);
+  final rotatedDevices = s.devices.nonNulls.where((device) => device.canRotate);
 
   final appendDeviceName = alwaysAppendDeviceName || s.devices.length > 1;
   final appendOrientation =
@@ -118,7 +117,8 @@ Future<List<File>> snap({
 
   for (final device in s.devices) {
     for (final orientation in s.orientations) {
-      if (!device.canRotate && orientation == Orientation.landscape) {
+      if ((device == null || !device.canRotate) &&
+          orientation == Orientation.landscape) {
         continue;
       }
 
@@ -138,7 +138,8 @@ Future<List<File>> snap({
         false => null,
       };
 
-      final deviceAppendix = appendDeviceName && device.name.isNotEmpty
+      final deviceAppendix =
+          appendDeviceName && device != null && device.name.isNotEmpty
           ? '_${device.name.toValidFilename()}'
           : '';
 
@@ -242,7 +243,7 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 /// The [snap] function handles this automatically, so prefer using [snap] with
 /// [SnaptestSettings] instead of calling this directly.
 VoidCallback setTestViewToFakeDevice(
-  DeviceInfo device,
+  DeviceInfo? device,
   Orientation orientation,
 ) {
   final implicitView =
@@ -256,7 +257,7 @@ VoidCallback setTestViewToFakeDevice(
       ..resetDevicePixelRatio();
   }
 
-  if (device is WidgetTesterDevice) {
+  if (device == null) {
     return () {};
   }
 
@@ -291,7 +292,7 @@ VoidCallback setTestViewToFakeDevice(
 /// If [from] is provided, the screenshot will be taken from the given [Finder].
 /// Otherwise, the screenshot will be taken from the whole screen.
 Future<ui.Image?> takeDeviceScreenshot({
-  required DeviceInfo device,
+  required DeviceInfo? device,
   required SnaptestSettings settings,
   required Orientation orientation,
   Finder? from,
@@ -370,7 +371,7 @@ Future<void> precacheImages([Finder? from]) async {
 /// Resets the testers view to the previous state after the function has
 /// finished.
 Future<T?> _runInFakeDevice<T>(
-  DeviceInfo device,
+  DeviceInfo? device,
   Orientation orientation,
   Future<T> Function() fn,
 ) async {
@@ -396,7 +397,7 @@ Future<T?> _runInFakeDevice<T>(
 Future<ui.Image> _captureImage(
   Element element, {
   required bool blockText,
-  required DeviceInfo device,
+  required DeviceInfo? device,
   required Orientation orientation,
   required bool includeDeviceFrame,
 }) async {
@@ -440,7 +441,7 @@ Future<ui.Image> _captureImage(
     }
   }
 
-  if (includeDeviceFrame && device is! WidgetTesterDevice) {
+  if (includeDeviceFrame && device != null) {
     return _wrapImageWithDeviceFrame(image, device, orientation);
   }
 
