@@ -216,6 +216,151 @@ void main() {
           expect(files.first.existsSync(), isTrue);
         });
       });
+
+      snapTest(
+        'appends counter when snap is called multiple times',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Test 1'),
+                ),
+              ),
+            ),
+          );
+
+          // First call - no counter
+          final files1 = await snap();
+          expect(files1, hasLength(1));
+          expect(
+            files1.first.path,
+            contains('appends counter when snap is called multiple times.png'),
+          );
+
+          // Update the widget
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Test 2'),
+                ),
+              ),
+            ),
+          );
+
+          // Second call - counter suffix _2
+          final files2 = await snap();
+          expect(files2, hasLength(1));
+          expect(
+            files2.first.path,
+            contains(
+              'appends counter when snap is called multiple times_2.png',
+            ),
+          );
+
+          // Update the widget again
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Test 3'),
+                ),
+              ),
+            ),
+          );
+
+          // Third call - counter suffix _3
+          final files3 = await snap();
+          expect(files3, hasLength(1));
+          expect(
+            files3.first.path,
+            contains(
+              'appends counter when snap is called multiple times_3.png',
+            ),
+          );
+
+          // Verify all files exist and are different
+          expect(files1.first.existsSync(), isTrue);
+          expect(files2.first.existsSync(), isTrue);
+          expect(files3.first.existsSync(), isTrue);
+          expect(files1.first.path, isNot(equals(files2.first.path)));
+          expect(files2.first.path, isNot(equals(files3.first.path)));
+        },
+      );
+
+      snapTest(
+        'counter works with device and orientation suffixes',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Multi-device test'),
+                ),
+              ),
+            ),
+          );
+
+          // First call with multiple devices
+          final files1 = await snap(
+            settings: SnaptestSettings.rendered(
+              devices: {Devices.ios.iPhone16Pro, Devices.ios.iPhone16},
+            ),
+          );
+          expect(files1, hasLength(2));
+          expect(
+            files1.first.path,
+            contains(
+              'counter works with device and orientation suffixes_iPhone 16 Pro.png',
+            ),
+          );
+
+          // Second call - counter should come before device name
+          final files2 = await snap(
+            settings: SnaptestSettings.rendered(
+              devices: {Devices.ios.iPhone16Pro, Devices.ios.iPhone16},
+            ),
+          );
+          expect(files2, hasLength(2));
+          expect(
+            files2.first.path,
+            contains(
+              'counter works with device and orientation suffixes_2_iPhone 16 Pro.png',
+            ),
+          );
+        },
+      );
+
+      snapTest(
+        'counter does not affect named snaps',
+        (tester) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Named snap'),
+                ),
+              ),
+            ),
+          );
+
+          // First call with custom name
+          final files1 = await snap(name: 'custom_name');
+          expect(files1, hasLength(1));
+          expect(files1.first.path, contains('custom_name.png'));
+
+          // Second call with the same custom name
+          final files2 = await snap(name: 'custom_name');
+          expect(files2, hasLength(1));
+          expect(files2.first.path, contains('custom_name_2.png'));
+
+          // Third call with different name - should not have counter
+          final files3 = await snap(name: 'another_name');
+          expect(files3, hasLength(1));
+          expect(files3.first.path, contains('another_name.png'));
+        },
+      );
     });
 
     group('SnaptestSettings', () {

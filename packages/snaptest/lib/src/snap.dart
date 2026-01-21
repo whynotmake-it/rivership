@@ -14,6 +14,10 @@ import 'package:snaptest/src/snaptest_settings.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
+/// Tracks the number of times snap has been called per test name.
+/// Maps test name to call count.
+final Map<String, int> _snapCallCounts = {};
+
 /// Saves a screenshot of the current state of the widget test as if it was
 /// rendered on each device in [settings].devices and each orientation in
 /// [settings].orientations to the file system.
@@ -25,6 +29,18 @@ import 'package:test_api/src/backend/invoker.dart';
 /// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default),
 /// optionally appending the device name and orientation to the file name.
 /// If no [name] is provided, the name of the current test is used.
+///
+/// ## Multiple Calls Per Test
+///
+/// When [snap] is called multiple times in the same test without providing a
+/// [name], a counter suffix is automatically added to prevent overwriting:
+/// ```dart
+/// testWidgets('my test', (tester) async {
+///   await snap(); // Creates: my_test.png
+///   await snap(); // Creates: my_test_2.png
+///   await snap(); // Creates: my_test_3.png
+/// });
+/// ```
 ///
 /// ## Multiple Devices and Orientations
 ///
@@ -88,6 +104,10 @@ Future<List<File>> snap({
     throw Exception('Could not determine a name for the screenshot.');
   }
 
+  // Track the number of times snap has been called for this test
+  final callCount = _snapCallCounts[testName] = (_snapCallCounts[testName] ?? 0) + 1;
+  final counterSuffix = callCount > 1 ? '_$callCount' : '';
+
   if (s.devices.isEmpty) {
     throw ArgumentError.value(
       s.devices,
@@ -149,7 +169,7 @@ Future<List<File>> snap({
 
       final fileName =
           '${testName.toValidFilename()}'
-          '$deviceAppendix$orientationAppendix.png';
+          '$counterSuffix$deviceAppendix$orientationAppendix.png';
 
       await maybeRunAsync(() async {
         final byteData = await image?.toByteData(
