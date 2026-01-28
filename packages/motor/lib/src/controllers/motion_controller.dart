@@ -4,6 +4,7 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart' show objectRuntimeType;
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/motor.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -117,6 +118,8 @@ class MotionController<T extends Object> extends Animation<T>
 
     // Initialize velocity tracker
     _velocityTracker = velocityTracking.call(converter);
+
+    DebugMotorRegistry.instance?.registerController(this);
   }
 
   late final T _initialValue;
@@ -480,6 +483,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// Frees any resources used by this object.
   @override
   void dispose() {
+    DebugMotorRegistry.instance?.unregisterController(this);
     _ticker?.dispose();
     _ticker = null;
     super.dispose();

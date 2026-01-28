@@ -7,6 +7,7 @@ import 'package:springster_example/main.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
 
 void main() async {
+  debugMotor = true;
   await WidgetsFlutterBinding.ensureInitialized();
   final router = RootStackRouter.build(
     routes: [
@@ -40,13 +41,15 @@ void main() async {
   );
 
   runApp(
-    CupertinoApp.router(
-      debugShowCheckedModeBanner: false,
-      routerConfig: router.config(
-        navigatorObservers: () => [
-          HeroineController(),
-          HeroController(),
-        ],
+    MotorDebug(
+      child: CupertinoApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router.config(
+          navigatorObservers: () => [
+            HeroineController(),
+            HeroController(),
+          ],
+        ),
       ),
     ),
   );
