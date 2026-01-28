@@ -16,43 +16,95 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 // to achieve a smoother end to the corner radius animation.  A value of 1.0 would use
 // the full top padding. Values less than 1.0 reduce the effective corner radius, improving
 // the animation's appearance.  Determined through empirical testing.
-const double _kDeviceCornerRadiusSmoothingFactor = 0.9;
+const double kDeviceCornerRadiusSmoothingFactor = 0.9;
 
 // Threshold in logical pixels. If the calculated device corner radius (after applying
 // the smoothing factor) is below this value, the corner radius transition animation will
 // start from zero. This prevents abrupt transitions for devices with small or negligible
 // corner radii.  This value, combined with the smoothing factor, corresponds roughly
 // to double the targeted radius of 12.  Determined through testing and visual inspection.
-const double _kRoundedDeviceCornersThreshold = 20.0;
+const double kRoundedDeviceCornersThreshold = 20.0;
 
 // Amount the sheet in the background scales down. Found by measuring the width
 // of the sheet in the background and comparing against the screen width on the
 // iOS simulator showing an iPhone 16 pro running iOS 18.0. The scale transition
 // will go from a default of 1.0 to 1.0 - _kSheetScaleFactor.
-const double _kSheetScaleFactor = 0.0835;
+const double kSheetScaleFactor = 0.0835;
 
-const _kSheetPaddingToPrevious = 11.0;
+const kSheetPaddingToPrevious = 11.0;
 
-final Animatable<double> _kScaleTween =
-    Tween<double>(begin: 1.0, end: 1.0 - _kSheetScaleFactor);
+final Animatable<double> kScaleTween =
+    Tween<double>(begin: 1.0, end: 1.0 - kSheetScaleFactor);
+
+double getRelativeTopPadding(
+  BuildContext context, {
+  double extraPadding = 0,
+  double minFraction = 0.05,
+}) {
+  final safeArea = MediaQuery.paddingOf(context);
+  final height = MediaQuery.sizeOf(context).height;
+
+  if (height == 0) {
+    return minFraction;
+  }
+  // Ensure that the sheet moves down by at least 5% of the screen height if
+  // the safe area is very small (e.g. no notch).
+  return max((safeArea.top + extraPadding) / height, minFraction);
+}
+
+Widget getOverlayedChild(
+  BuildContext context,
+  Widget? child,
+  Animation<double> animation,
+  bool secondLayer,
+) {
+  final bool isDarkMode =
+      CupertinoTheme.brightnessOf(context) == Brightness.dark;
+  final overlayColor = isDarkMode && !secondLayer
+      ? const Color(0xFFc8c8c8)
+      : const Color(0xFF000000);
+  final opacity = animation.drive(Tween(
+    begin: 0.0,
+    end: secondLayer && isDarkMode ? 0.15 : 0.1,
+  ));
+  return Stack(
+    clipBehavior: Clip.none,
+    children: <Widget>[
+      if (child != null) child,
+      IgnorePointer(
+        child: FadeTransition(
+          opacity: opacity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: overlayColor),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+ShapeBorder getDeviceShape({
+  required ShapeBorder sheetShape,
+  required double deviceCornerRadius,
+}) {
+  switch (sheetShape) {
+    case RoundedSuperellipseBorder():
+      return RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(deviceCornerRadius),
+        ),
+      );
+    default:
+      return RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(deviceCornerRadius),
+        ),
+      );
+  }
+}
 
 abstract class CopiedCupertinoSheetTransitions {
-  static double _getRelativeTopPadding(
-    BuildContext context, {
-    double extraPadding = 0,
-    double minFraction = 0.05,
-  }) {
-    final safeArea = MediaQuery.paddingOf(context);
-    final height = MediaQuery.sizeOf(context).height;
-
-    if (height == 0) {
-      return minFraction;
-    }
-    // Ensure that the sheet moves down by at least 5% of the screen height if
-    // the safe area is very small (e.g. no notch).
-    return max((safeArea.top + extraPadding) / height, minFraction);
-  }
-
   /// The primary delegated transition. Will slide a non [CupertinoSheetRoute] page down.
   ///
   /// Provided to the previous route to coordinate transitions between routes.
@@ -69,17 +121,17 @@ abstract class CopiedCupertinoSheetTransitions {
       begin: Offset.zero,
       end: Offset(
         0,
-        _getRelativeTopPadding(context),
+        getRelativeTopPadding(context),
       ),
     );
 
     final double deviceCornerRadius =
         (MediaQuery.maybeViewPaddingOf(context)?.top ?? 0) *
-            _kDeviceCornerRadiusSmoothingFactor;
+            kDeviceCornerRadiusSmoothingFactor;
     final bool roundedDeviceCorners =
-        deviceCornerRadius > _kRoundedDeviceCornersThreshold;
+        deviceCornerRadius > kRoundedDeviceCornersThreshold;
 
-    final deviceShape = _getDeviceShape(
+    final deviceShape = getDeviceShape(
       sheetShape: primaryShape,
       deviceCornerRadius: roundedDeviceCorners ? deviceCornerRadius : 0,
     );
@@ -107,9 +159,9 @@ abstract class CopiedCupertinoSheetTransitions {
           start: slideBackRange.$1,
           end: slideBackRange.$2,
         )
-        .drive(_kScaleTween);
+        .drive(kScaleTween);
 
-    final Widget? contrastedChild = _getOverlayedChild(
+    final Widget? contrastedChild = getOverlayedChild(
       context,
       child,
       secondaryAnimation.remapped(
@@ -120,7 +172,7 @@ abstract class CopiedCupertinoSheetTransitions {
     );
 
     final double topGapHeight =
-        MediaQuery.sizeOf(context).height * _getRelativeTopPadding(context);
+        MediaQuery.sizeOf(context).height * getRelativeTopPadding(context);
 
     return Stack(
       children: <Widget>[
@@ -174,7 +226,7 @@ abstract class CopiedCupertinoSheetTransitions {
               begin: Offset(0, 0),
               end: Offset(
                 0,
-                -_kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
+                -kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
               ),
             ),
           ),
@@ -185,7 +237,7 @@ abstract class CopiedCupertinoSheetTransitions {
               start: slideBackRange.$1,
               end: slideBackRange.$2,
             )
-            .drive(_kScaleTween),
+            .drive(kScaleTween),
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.medium,
         child: AnimatedBuilder(
@@ -198,7 +250,7 @@ abstract class CopiedCupertinoSheetTransitions {
             ),
             child: child!,
           ),
-          child: _getOverlayedChild(
+          child: getOverlayedChild(
             context,
             child,
             secondaryAnimation.remapped(
@@ -254,7 +306,7 @@ abstract class CopiedCupertinoSheetTransitions {
           minimum:
               EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
           child: Padding(
-            padding: const EdgeInsets.only(top: _kSheetPaddingToPrevious),
+            padding: const EdgeInsets.only(top: kSheetPaddingToPrevious),
             child: SlideTransition(
               position: positionAnimation,
               child: secondarySlideUpTransition(
@@ -272,57 +324,5 @@ abstract class CopiedCupertinoSheetTransitions {
         );
       },
     );
-  }
-
-  static Widget? _getOverlayedChild(
-    BuildContext context,
-    Widget? child,
-    Animation<double> animation,
-    bool secondLayer,
-  ) {
-    final bool isDarkMode =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final overlayColor = isDarkMode && !secondLayer
-        ? const Color(0xFFc8c8c8)
-        : const Color(0xFF000000);
-    final opacity = animation.drive(Tween(
-      begin: 0.0,
-      end: secondLayer && isDarkMode ? 0.15 : 0.1,
-    ));
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        if (child != null) child,
-        IgnorePointer(
-          child: FadeTransition(
-            opacity: opacity,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: overlayColor),
-              child: const SizedBox.expand(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  static ShapeBorder _getDeviceShape({
-    required ShapeBorder sheetShape,
-    required double deviceCornerRadius,
-  }) {
-    switch (sheetShape) {
-      case RoundedSuperellipseBorder():
-        return RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(deviceCornerRadius),
-          ),
-        );
-      default:
-        return RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(deviceCornerRadius),
-          ),
-        );
-    }
   }
 }

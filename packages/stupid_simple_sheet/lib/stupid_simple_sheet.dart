@@ -9,6 +9,7 @@ export 'package:motor/src/motion.dart';
 export 'src/sheet_background.dart';
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
+export 'src/stupid_simple_glass_sheet.dart';
 
 /// A modal route that displays a sheet that slides up from the bottom.
 ///
