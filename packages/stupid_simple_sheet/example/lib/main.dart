@@ -78,7 +78,7 @@ final stupidSimpleSheetRoutes = [
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
         settings: page,
-        snappingConfig: SheetSnappingConfig.relative(
+        snappingConfig: SheetSnappingConfig(
           [0.5, 1.0],
           initialSnap: .5,
         ),

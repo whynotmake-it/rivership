@@ -518,7 +518,7 @@ void main() {
           (tester) async {
         await tester.pumpWidget(
           build(
-            snappingConfig: const SheetSnappingConfig.relative(
+            snappingConfig: const SheetSnappingConfig(
               [0.5, 1.0],
             ),
           ),
@@ -636,7 +636,7 @@ void main() {
 
       testWidgets('will snap to snap point', (tester) async {
         final widget = build(
-          snappingConfig: const SheetSnappingConfig.relative([0.5, 1.0]),
+          snappingConfig: const SheetSnappingConfig([0.5, 1.0]),
         );
 
         await tester.pumpWidget(widget);
@@ -677,7 +677,7 @@ void main() {
       });
     });
 
-    group('updateSnappingConfig', () {
+    group('updateSheetSnappingConfig', () {
       testWidgets('updates the snapping configuration', (tester) async {
         final widget = build();
 
@@ -697,7 +697,7 @@ void main() {
         );
 
         // Update to a new configuration
-        const newConfig = SheetSnappingConfig.relative([0.3, 0.6, 1.0]);
+        const newConfig = SheetSnappingConfig([0.3, 0.6, 1.0]);
         await controller.overrideSnappingConfig(newConfig);
 
         expect(controller.effectiveSnappingConfig, equals(newConfig));
@@ -734,7 +734,7 @@ void main() {
         expect(route.controller!.value, closeTo(0.8, 0.01));
 
         // Update config with animateToComply - should snap to nearest point
-        const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+        const newConfig = SheetSnappingConfig([0.5, 1.0]);
         controller
             .overrideSnappingConfig(newConfig, animateToComply: true)
             .ignore();
@@ -763,7 +763,7 @@ void main() {
           Navigator.of(tester.element(scaffold)).pop();
 
           // Before any animation frames, try to override config
-          const newConfig = SheetSnappingConfig.relative([0.3, 0.7]);
+          const newConfig = SheetSnappingConfig([0.3, 0.7]);
           controller!
               .overrideSnappingConfig(newConfig, animateToComply: true)
               .ignore();
@@ -807,7 +807,7 @@ void main() {
           expect(valueDuringDismissal, lessThan(1.0));
 
           // Try to override config mid-dismissal
-          const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+          const newConfig = SheetSnappingConfig([0.5, 1.0]);
           controller!
               .overrideSnappingConfig(newConfig, animateToComply: true)
               .ignore();
