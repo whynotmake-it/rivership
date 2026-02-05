@@ -165,7 +165,7 @@ Create sheets that snap to specific positions (e.g., half-open, full):
 ```dart
 Navigator.of(context).push(
   StupidSimpleCupertinoSheetRoute(
-    snappingConfig: SheetSnappingConfig.relative(
+    snappingConfig: SheetSnappingConfig(
       [0.5, 1.0], // Snap at 50% and 100%
       initialSnap: 0.5, // Start half-open
     ),

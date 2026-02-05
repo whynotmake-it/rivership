@@ -256,13 +256,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double endValue;
     if (forward) {
       // Opening: use initial snap point or default
-      if (navigator?.context != null) {
-        final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
-        endValue = effectiveSnappingConfig.resolve(sheetHeight).initialSnap;
-      } else {
-        // Fallback if context is not available
-        endValue = 1.0;
-      }
+      endValue = effectiveSnappingConfig.initialSnap;
     } else {
       // Closing
       endValue = 0.0;
@@ -292,7 +286,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         child: _RelativeGestureDetector(
           onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-              effectiveSnappingConfig.resolveWith(context).maxExtent,
+              effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
           onRelativeDragUpdate: (delta, wouldScroll) =>
               _handleDragUpdate(context, delta, wouldScroll),
@@ -389,7 +383,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    final maxExtent = effectiveSnappingConfig.resolveWith(context).maxExtent;
+    final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final applyResistance = !draggable || currentValue > maxExtent;
 
@@ -431,10 +425,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     _dragEndVelocity = velocity;
 
-    // Get the sheet height for pixel-based calculations
-    final sheetHeight = MediaQuery.sizeOf(context).height;
-
-    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+    final maxExtent = effectiveSnappingConfig.maxExtent;
 
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > maxExtent || !draggable) {
@@ -453,11 +444,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       _dragEndVelocity = null;
     } else {
       // Find the target snap point based on position and velocity
-      final targetValue =
-          effectiveSnappingConfig.resolve(sheetHeight).findTargetSnapPoint(
-                currentValue,
-                velocity,
-              );
+      final targetValue = effectiveSnappingConfig.findTargetSnapPoint(
+        currentValue,
+        velocity,
+      );
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
@@ -530,8 +520,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     final double target;
 
     if (snap) {
-      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
       // Find the closest snapping point that isn't 0.0
+      final config = effectiveSnappingConfig;
       target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
         0.0 => config.points.first,
         final v => v,
@@ -561,13 +551,13 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// Example:
   /// ```dart
   /// // Update to a new configuration and animate to comply
-  /// controller.updateSnappingConfig(
-  ///   SheetSnappingConfig.relative([0.3, 0.6, 1.0]),
+  /// controller.updateSheetSnappingConfig(
+  ///   SheetSnappingConfig([0.3, 0.6, 1.0]),
   ///   animateToComply: true,
   /// );
   ///
   /// // Reset to the original configuration
-  /// controller.updateSnappingConfig(null);
+  /// controller.updateSheetSnappingConfig(null);
   /// ```
   TickerFuture overrideSnappingConfig(
     SheetSnappingConfig? newConfig, {
@@ -583,10 +573,9 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     // Only animate to comply if requested and if this route is still current
     if (animateToComply && isCurrent) {
       final currentPosition = controller!.value;
-      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
 
       // Find the nearest snapping point in the new configuration
-      final targetPosition = config.findTargetSnapPoint(
+      final targetPosition = effectiveSnappingConfig.findTargetSnapPoint(
         currentPosition,
         controller!.velocity,
         includeClosed: false,

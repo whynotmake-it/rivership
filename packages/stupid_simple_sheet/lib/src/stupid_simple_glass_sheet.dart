@@ -64,11 +64,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
       _secondSheet ? null : const Color(0xFF000000).withValues(alpha: .15);
 
   @override
-  bool get barrierDismissible => switch (navigator) {
-        NavigatorState(:final context) =>
-          effectiveSnappingConfig.resolveWith(context).hasInbetweenSnaps,
-        _ => false,
-      };
+  bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
 
   @override
   String? get barrierLabel => null;
@@ -109,8 +105,6 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final height = MediaQuery.sizeOf(context).height;
-
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(
@@ -119,10 +113,8 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
             context,
             animation: controller!.view,
             secondaryAnimation: secondaryAnimation,
-            slideBackRange:
-                effectiveSnappingConfig.resolve(height).topTwoPoints,
-            opacityRange:
-                effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+            slideBackRange: effectiveSnappingConfig.topTwoPoints,
+            opacityRange: effectiveSnappingConfig.bottomTwoPoints,
             backgroundColor: backgroundColor,
             secondSheet: _secondSheet,
             shape: shape,

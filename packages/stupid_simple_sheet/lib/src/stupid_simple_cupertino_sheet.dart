@@ -61,11 +61,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   Color? get barrierColor => CupertinoColors.transparent;
 
   @override
-  bool get barrierDismissible => switch (navigator) {
-        NavigatorState(:final context) =>
-          effectiveSnappingConfig.resolveWith(context).hasInbetweenSnaps,
-        _ => false,
-      };
+  bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
 
   @override
   String? get barrierLabel => null;
@@ -91,13 +87,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
-        final height = MediaQuery.sizeOf(context).height;
         return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
           context,
           animation: animation.clamped,
           secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: effectiveSnappingConfig.resolve(height).topTwoPoints,
-          opacityRange: effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+          slideBackRange: effectiveSnappingConfig.topTwoPoints,
+          opacityRange: effectiveSnappingConfig.bottomTwoPoints,
           primaryShape: shape,
           child: child,
         );
@@ -119,8 +114,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final height = MediaQuery.sizeOf(context).height;
-
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(
@@ -129,10 +122,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
             context,
             animation: controller!.view,
             secondaryAnimation: secondaryAnimation,
-            slideBackRange:
-                effectiveSnappingConfig.resolve(height).topTwoPoints,
-            opacityRange:
-                effectiveSnappingConfig.resolve(height).bottomTwoPoints,
+            slideBackRange: effectiveSnappingConfig.topTwoPoints,
+            opacityRange: effectiveSnappingConfig.bottomTwoPoints,
             backgroundColor: backgroundColor,
             shape: shape,
             child: child,
