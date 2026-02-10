@@ -5,7 +5,6 @@ import 'package:device_frame/device_frame.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:snaptest/src/constants.dart';
-import 'package:snaptest/src/fake_device.dart';
 
 /// Controls how screenshots are rendered and which devices to test on.
 ///
@@ -56,9 +55,9 @@ class SnaptestSettings with EquatableMixin {
     this.renderImages = false,
     this.includeDeviceFrame = false,
     this.pathPrefix = kDefaultPathPrefix,
-    this.devices = const [
-      WidgetTesterDevice(),
-    ],
+    this.devices = const {
+      null,
+    },
     this.orientations = const {
       Orientation.portrait,
     },
@@ -155,13 +154,13 @@ class SnaptestSettings with EquatableMixin {
   /// Each device creates a separate screenshot file. Use multiple devices
   /// to test responsive design:
   /// ```dart
-  /// devices: [
-  ///   const WidgetTesterDevice(),     // Default test size
-  ///   Devices.ios.iPhone16Pro,       // iPhone
+  /// devices: {
+  ///   null,                             // leave view unchanged
+  ///   Devices.ios.iPhone16Pro,          // iPhone
   ///   Devices.android.samsungGalaxyS20, // Android
-  /// ]
+  /// }
   /// ```
-  final List<DeviceInfo> devices;
+  final Set<DeviceInfo?> devices;
 
   /// Set of orientations to generate screenshots for.
   ///
@@ -176,7 +175,7 @@ class SnaptestSettings with EquatableMixin {
   /// ```
   ///
   /// Note: Landscape orientation is automatically skipped for devices that
-  /// don't support rotation (like [WidgetTesterDevice]).
+  /// don't support rotation).
   final Set<Orientation> orientations;
 
   /// Directory path prefix where screenshots are saved.
