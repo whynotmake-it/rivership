@@ -985,6 +985,102 @@ void main() {
       });
     });
   });
+
+  group('StupidSimpleGlassSheetRoute', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({
+      ShapeBorder? shape,
+    }) {
+      return CupertinoApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return CupertinoButton.filled(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(
+                    StupidSimpleGlassSheetRoute<void>(
+                      motion: motion,
+                      shape: shape ?? StupidSimpleGlassSheetRoute.glassShape,
+                      child: Scaffold(
+                        key: const ValueKey('scaffold'),
+                        body: ListView.builder(
+                          itemCount: 100,
+                          itemBuilder: (context, index) => ListTile(
+                            title: Text('Item $index'),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Show Stupid Simple Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    group('radius goldens', () {
+      setUp(() {
+        final comparator = goldenFileComparator;
+
+        if (!autoUpdateGoldenFiles) {
+          goldenFileComparator = PixelDiffGoldenComparator(
+            (goldenFileComparator as LocalFileComparator).basedir.path,
+            pixelCount: 750,
+          );
+        }
+
+        addTearDown(() {
+          goldenFileComparator = comparator;
+        });
+      });
+
+      testWidgets('looks correct with default glass shape', (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass default radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with large radius', (tester) async {
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(48),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass large radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with small radius', (tester) async {
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(12),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass small radius', matchToGolden: true);
+      });
+    });
+  });
 }
 
 /// A golden file comparator that allows a specified number of pixels
