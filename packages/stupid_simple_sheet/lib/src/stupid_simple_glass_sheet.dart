@@ -1,22 +1,25 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
 import 'package:flutter/cupertino.dart';
-import 'package:stupid_simple_sheet/src/clamped_animation.dart';
-import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
+import 'package:stupid_simple_sheet/src/glass_sheet_transitions.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
-/// Simular to [CupertinoSheetRoute] but with the drag gesture improvements from
-/// this package.
-class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
+/// A sheet route styled after the iOS 26 liquid glass aesthetic.
+///
+/// Similar to [StupidSimpleCupertinoSheetRoute] but uses the newer glass-style
+/// transitions with a larger default corner radius and no delegated transition
+/// to the previous route.
+class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
-  /// Creates a sheet route for displaying modal content.
+  /// Creates a glass-style sheet route for displaying modal content.
   ///
-  /// The [motion] and [child] arguments must not be null.
-  StupidSimpleCupertinoSheetRoute({
+  /// The [child] argument must not be null.
+  StupidSimpleGlassSheetRoute({
     required this.child,
     super.settings,
     this.motion = const CupertinoMotion.smooth(
       duration: Duration(milliseconds: 350),
+      snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
@@ -25,13 +28,13 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
-    this.shape = iOS18Shape,
+    this.shape = glassShape,
   });
 
-  /// The default iOS 18 shape for sheet controllers.
-  static const iOS18Shape = RoundedSuperellipseBorder(
+  /// The default glass shape with a 36px superellipse corner radius.
+  static const glassShape = RoundedSuperellipseBorder(
     borderRadius: BorderRadius.vertical(
-      top: Radius.circular(12),
+      top: Radius.circular(36),
     ),
   );
 
@@ -46,7 +49,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The background color of the sheet.
   ///
-  /// Will default [CupertinoColors.secondarySystemBackground] if not provided.
+  /// Defaults to [CupertinoColors.systemBackground].
   final Color backgroundColor;
 
   /// The widget to display in the sheet.
@@ -54,11 +57,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The shape of the sheet.
   ///
-  /// Defaults to [iOS18Shape].
+  /// Defaults to [glassShape].
   final ShapeBorder shape;
 
   @override
-  Color? get barrierColor => CupertinoColors.transparent;
+  Color? get barrierColor =>
+      _secondSheet ? null : const Color(0xFF000000).withValues(alpha: .15);
 
   @override
   bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
@@ -89,22 +93,18 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
-      (context, animation, secondaryAnimation, canSnapshot, child) {
-        return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
-          context,
-          animation: animation.clamped,
-          secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: effectiveSnappingConfig.topTwoPoints,
-          opacityRange: effectiveSnappingConfig.bottomTwoPoints,
-          primaryShape: shape,
-          child: SnapshotWidget(
-            controller: backgroundSnapshotController,
-            mode: SnapshotMode.permissive,
-            autoresize: true,
-            child: child,
-          ),
-        );
-      };
+      backgroundSnapshotMode == RouteSnapshotMode.never
+          ? null
+          : (context, animation, secondaryAnimation, canSnapshot, child) {
+              return SnapshotWidget(
+                controller: backgroundSnapshotController,
+                mode: SnapshotMode.permissive,
+                autoresize: true,
+                child: child,
+              );
+            };
+
+  bool _secondSheet = false;
 
   @override
   Widget buildContent(BuildContext context) {
@@ -126,13 +126,14 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(
         builder: (context) {
-          return CopiedCupertinoSheetTransitions.fullTransition(
+          return GlassSheetTransitions.fullTransition(
             context,
             animation: controller!.view,
             secondaryAnimation: secondaryAnimation,
             slideBackRange: effectiveSnappingConfig.topTwoPoints,
             opacityRange: effectiveSnappingConfig.bottomTwoPoints,
             backgroundColor: backgroundColor,
+            secondSheet: _secondSheet,
             shape: shape,
             child: maybeSnapshotChild(child),
           );
@@ -143,7 +144,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
-    return nextRoute is StupidSimpleCupertinoSheetRoute ||
+    return nextRoute is StupidSimpleGlassSheetRoute ||
         super.canTransitionTo(nextRoute);
   }
 
@@ -151,10 +152,10 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
-
-    // Force the internal secondary transition instead of the delegated one,
-    // so this sheet's own scale-down/slide-up animation plays correctly.
-    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+    if (nextRoute is StupidSimpleGlassSheetRoute) {
+      nextRoute._secondSheet = true;
+      // Force the internal secondary transition instead of the delegated one,
+      // so this sheet's own scale-down/slide-up animation plays correctly.
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;
     }
@@ -164,8 +165,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @mustCallSuper
   void didPopNext(Route<dynamic> nextRoute) {
     super.didPopNext(nextRoute);
-
-    if (nextRoute is StupidSimpleCupertinoSheetRoute) {
+    if (nextRoute is StupidSimpleGlassSheetRoute) {
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;
     }

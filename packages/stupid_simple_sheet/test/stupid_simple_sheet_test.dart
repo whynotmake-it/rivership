@@ -516,7 +516,7 @@ void main() {
           (tester) async {
         await tester.pumpWidget(
           build(
-            snappingConfig: const SheetSnappingConfig.relative(
+            snappingConfig: const SheetSnappingConfig(
               [0.5, 1.0],
             ),
           ),
@@ -547,6 +547,49 @@ void main() {
         expect(
           tester.state<ScrollableState>(scrollableFinder).position.pixels,
           equals(0.0),
+        );
+      });
+
+      testWidgets('will clear overscroll immediately when let go',
+          (tester) async {
+        await tester.pumpWidget(
+          build(),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scrollableFinder = find.descendant(
+          of: find.byKey(const ValueKey('scaffold')),
+          matching: find.byType(Scrollable),
+        );
+
+        expect(scrollableFinder, findsOneWidget);
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          equals(0.0),
+        );
+
+        // Drag sheet to bottom quickly
+        final gesture =
+            await tester.startGesture(tester.getTopLeft(scrollableFinder));
+        for (var i = 0; i < 15; i++) {
+          await gesture.moveBy(const Offset(0, 20));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        final scrollPixels =
+            tester.state<ScrollableState>(scrollableFinder).position.pixels;
+
+        expect(scrollPixels, lessThan(0.0));
+
+        await gesture.up();
+
+        await tester.pumpFrames(build(), const Duration(milliseconds: 200));
+
+        expect(
+          tester.state<ScrollableState>(scrollableFinder).position.pixels,
+          greaterThan(scrollPixels),
         );
       });
     });
@@ -591,7 +634,7 @@ void main() {
 
       testWidgets('will snap to snap point', (tester) async {
         final widget = build(
-          snappingConfig: const SheetSnappingConfig.relative([0.5, 1.0]),
+          snappingConfig: const SheetSnappingConfig([0.5, 1.0]),
         );
 
         await tester.pumpWidget(widget);
@@ -632,7 +675,7 @@ void main() {
       });
     });
 
-    group('updateSnappingConfig', () {
+    group('updateSheetSnappingConfig', () {
       testWidgets('updates the snapping configuration', (tester) async {
         final widget = build();
 
@@ -652,7 +695,7 @@ void main() {
         );
 
         // Update to a new configuration
-        const newConfig = SheetSnappingConfig.relative([0.3, 0.6, 1.0]);
+        const newConfig = SheetSnappingConfig([0.3, 0.6, 1.0]);
         await controller.overrideSnappingConfig(newConfig);
 
         expect(controller.effectiveSnappingConfig, equals(newConfig));
@@ -689,7 +732,7 @@ void main() {
         expect(route.controller!.value, closeTo(0.8, 0.01));
 
         // Update config with animateToComply - should snap to nearest point
-        const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+        const newConfig = SheetSnappingConfig([0.5, 1.0]);
         controller
             .overrideSnappingConfig(newConfig, animateToComply: true)
             .ignore();
@@ -718,7 +761,7 @@ void main() {
           Navigator.of(tester.element(scaffold)).pop();
 
           // Before any animation frames, try to override config
-          const newConfig = SheetSnappingConfig.relative([0.3, 0.7]);
+          const newConfig = SheetSnappingConfig([0.3, 0.7]);
           controller!
               .overrideSnappingConfig(newConfig, animateToComply: true)
               .ignore();
@@ -762,7 +805,7 @@ void main() {
           expect(valueDuringDismissal, lessThan(1.0));
 
           // Try to override config mid-dismissal
-          const newConfig = SheetSnappingConfig.relative([0.5, 1.0]);
+          const newConfig = SheetSnappingConfig([0.5, 1.0]);
           controller!
               .overrideSnappingConfig(newConfig, animateToComply: true)
               .ignore();
@@ -938,51 +981,101 @@ void main() {
 
         await snap(name: 'zero radius', matchToGolden: true);
       });
+    });
+  });
 
-      group('deprecated radius parameter', () {
-        Widget build({
-          required Radius topRadius,
-        }) {
-          return CupertinoApp(
-            home: Scaffold(
-              body: Center(
-                child: Builder(
-                  builder: (context) {
-                    return CupertinoButton.filled(
-                      key: const ValueKey('button'),
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).push(
-                        StupidSimpleCupertinoSheetRoute<void>(
-                          // ignore: deprecated_member_use_from_same_package
-                          topRadius: topRadius,
-                          child: Scaffold(
-                            key: const ValueKey('scaffold'),
-                            body: ListView.builder(
-                              itemCount: 100,
-                              itemBuilder: (context, index) => ListTile(
-                                title: Text('Item $index'),
-                              ),
-                            ),
+  group('StupidSimpleGlassSheetRoute', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({
+      ShapeBorder? shape,
+    }) {
+      return CupertinoApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return CupertinoButton.filled(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(
+                    StupidSimpleGlassSheetRoute<void>(
+                      motion: motion,
+                      shape: shape ?? StupidSimpleGlassSheetRoute.glassShape,
+                      child: Scaffold(
+                        key: const ValueKey('scaffold'),
+                        body: ListView.builder(
+                          itemCount: 100,
+                          itemBuilder: (context, index) => ListTile(
+                            title: Text('Item $index'),
                           ),
                         ),
                       ),
-                      child: const Text('Show Stupid Simple Sheet'),
-                    );
-                  },
-                ),
-              ),
+                    ),
+                  ),
+                  child: const Text('Show Stupid Simple Sheet'),
+                );
+              },
             ),
+          ),
+        ),
+      );
+    }
+
+    group('radius goldens', () {
+      setUp(() {
+        final comparator = goldenFileComparator;
+
+        if (!autoUpdateGoldenFiles) {
+          goldenFileComparator = PixelDiffGoldenComparator(
+            (goldenFileComparator as LocalFileComparator).basedir.path,
+            pixelCount: 750,
           );
         }
 
-        testWidgets('still works', (tester) async {
-          await tester.pumpWidget(build(topRadius: const Radius.circular(50)));
-          await tester.tap(find.byKey(const ValueKey('button')));
-          await tester.pumpAndSettle();
-
-          await snap(name: 'deprecated radius 50px', matchToGolden: true);
+        addTearDown(() {
+          goldenFileComparator = comparator;
         });
+      });
+
+      testWidgets('looks correct with default glass shape', (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass default radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with large radius', (tester) async {
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(48),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass large radius', matchToGolden: true);
+      });
+
+      testWidgets('looks correct with small radius', (tester) async {
+        const shape = RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(12),
+          ),
+        );
+
+        await tester.pumpWidget(build(shape: shape));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        await snap(name: 'glass small radius', matchToGolden: true);
       });
     });
   });

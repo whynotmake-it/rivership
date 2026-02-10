@@ -78,5 +78,8 @@ jobs:
         run: melos run generate
 
       - name: 🔎 Check there are no uncommitted changes
-        run: git add . && git diff --cached --exit-code
+        run: |
+          git add .
+          git diff --cached --exit-code -- . \
+            ':!**/GeneratedPluginRegistrant.swift'
   

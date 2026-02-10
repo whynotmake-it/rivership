@@ -190,6 +190,40 @@ This automatically creates separate screenshots for each orientation:
 - `my_page_iPhone16Pro_portrait.png`
 - `my_page_iPhone16Pro_landscape.png`
 
+### Test variants with `TestOnDevices`
+
+For running the same test across multiple devices and orientations, use the `TestOnDevices` variant. This is perfect for testing responsive layouts or platform-specific behavior:
+
+```dart
+testWidgets(
+  'Responsive layout test',
+  variant: TestOnDevices(
+    [
+      Devices.ios.iPhone16Pro,
+      Devices.ios.iPad,
+      Devices.android.googlePixel9,
+      Devices.android.largeTablet,
+    ],
+    orientations: {
+      Orientation.portrait,
+      Orientation.landscape,
+    },
+  ),
+  (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: MyPage()));
+    await snap(matchToGolden: true);
+  },
+);
+```
+
+This runs your test once for each device/orientation combination (8 times in this example). Each test run:
+- Sets the test view to the specified device size
+- Configures the correct platform (iOS/Android)
+- Runs in the specified orientation
+- Labels the test with the device and orientation name
+
+Great for ensuring your UI works across different screen sizes and platforms.
+
 ### All `snap()` parameters
 ```dart
 await snap(

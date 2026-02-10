@@ -1,6 +1,6 @@
 name: snaptest
 description: Snap photos in your widget tests.
-version: 0.2.2+1
+version: 0.2.3
 resolution: workspace
 topics: ["testing", "golden", "screenshots", "automation"]
 

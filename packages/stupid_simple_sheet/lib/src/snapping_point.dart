@@ -1,97 +1,29 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 
 /// Configuration for sheet snapping behavior.
 ///
-/// Provides a type-safe way to define snapping points for sheets, preventing
-/// mixing of relative and absolute positioning values. The 0 point (closed)
-/// is always implicit.
+/// Values are normalized between 0.0 and 1.0, where 0.0 is closed and 1.0
+/// is fully open. The 0.0 point is always implicit and doesn't need to be
+/// specified.
+///
+/// Example:
+/// ```dart
+/// SheetSnappingConfig([0.5, 1.0]) // Half and full height
+/// ```
 @immutable
-sealed class SheetSnappingConfig {
-  const SheetSnappingConfig._();
-
-  /// Creates a relative snapping configuration.
+class SheetSnappingConfig {
+  /// Creates a snapping configuration.
   ///
   /// Values are normalized between 0.0 and 1.0, where 0.0 is closed and 1.0
   /// is fully open. The 0.0 point is always implicit and doesn't need to be
   /// specified.
-  ///
-  /// Example:
-  /// ```dart
-  /// SheetSnappingConfig.relative({0.5, 1.0}) // Half and full height
-  /// ```
-  const factory SheetSnappingConfig.relative(
-    List<double> points, {
-    double? initialSnap,
-  }) = RelativeSnappingConfig;
-
-  /// Creates an absolute (pixel-based) snapping configuration.
-  ///
-  /// Values are in logical pixels from the bottom of the screen. The 0 point
-  /// (closed) is always implicit and doesn't need to be specified.
-  ///
-  /// Example:
-  /// ```dart
-  /// SheetSnappingConfig.pixels({400.0, 800.0}) // 400px and 800px heights
-  /// ```
-  const factory SheetSnappingConfig.pixels(
-    List<double> points, {
-    double? initialSnap,
-  }) = _AbsoluteSnappingConfig;
+  const SheetSnappingConfig(this.points, {double? initialSnap})
+      : _initialSnap = initialSnap;
 
   /// A snapping configuration that only includes the fully open state (1.0).
-  static const SheetSnappingConfig full = SheetSnappingConfig.relative([1.0]);
+  static const SheetSnappingConfig full = SheetSnappingConfig([1.0]);
 
   /// The raw snapping points as provided to the constructor.
-  List<double> get points;
-
-  /// Resolves the snapping configuration to a [RelativeSnappingConfig]
-  RelativeSnappingConfig resolve(double sheetHeight) {
-    return switch (this) {
-      final RelativeSnappingConfig r => r,
-      final _AbsoluteSnappingConfig abs => abs._resolve(sheetHeight),
-    };
-  }
-
-  /// Resolves the snapping configuration to a [RelativeSnappingConfig]
-  RelativeSnappingConfig resolveWith(BuildContext context) {
-    return resolve(MediaQuery.sizeOf(context).height);
-  }
-
-  double _findClosestPoint(List<double> points, double target) {
-    var minDistance = double.infinity;
-    var closest = points.first;
-
-    for (final point in points) {
-      final distance = (target - point).abs();
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = point;
-      }
-    }
-
-    return closest;
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SheetSnappingConfig &&
-          runtimeType == other.runtimeType &&
-          listEquals(points, other.points);
-
-  @override
-  int get hashCode => Object.hashAll([runtimeType, ...points.toList()..sort()]);
-}
-
-/// A snapping configuration using relative values between 0.0 and 1.0.
-class RelativeSnappingConfig extends SheetSnappingConfig {
-  /// Creates a relative snapping configuration.
-  const RelativeSnappingConfig(this.points, {double? initialSnap})
-      : _initialSnap = initialSnap,
-        super._();
-
-  @override
   final List<double> points;
 
   final double? _initialSnap;
@@ -130,6 +62,21 @@ class RelativeSnappingConfig extends SheetSnappingConfig {
       // Low velocity - snap to the closest point based on current position
       return _findClosestPoint(allPoints, currentRelativePosition);
     }
+  }
+
+  double _findClosestPoint(List<double> points, double target) {
+    var minDistance = double.infinity;
+    var closest = points.first;
+
+    for (final point in points) {
+      final distance = (target - point).abs();
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = point;
+      }
+    }
+
+    return closest;
   }
 
   /// Gets the initial snap point as a relative value.
@@ -189,31 +136,15 @@ class RelativeSnappingConfig extends SheetSnappingConfig {
   }
 
   @override
-  String toString() => 'SheetSnappingConfig.relative($points)';
-}
-
-class _AbsoluteSnappingConfig extends SheetSnappingConfig {
-  const _AbsoluteSnappingConfig(this.points, {this.initialSnap}) : super._();
-
-  @override
-  final List<double> points;
-
-  final double? initialSnap;
-
-  RelativeSnappingConfig _resolve(double sheetHeight) {
-    assert(sheetHeight > 0, 'Sheet height must be greater than zero.');
-    final resolved = [
-      for (final p in points) (p / sheetHeight).clamp(0.0, 1.0),
-    ];
-    return RelativeSnappingConfig(
-      resolved,
-      initialSnap: switch (initialSnap) {
-        final p? => (p / sheetHeight).clamp(0.0, 1.0),
-        null => null,
-      },
-    );
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SheetSnappingConfig &&
+          runtimeType == other.runtimeType &&
+          listEquals(points, other.points);
 
   @override
-  String toString() => 'SheetSnappingConfig.pixels($points)';
+  int get hashCode => Object.hashAll([runtimeType, ...points.toList()..sort()]);
+
+  @override
+  String toString() => 'SheetSnappingConfig($points)';
 }

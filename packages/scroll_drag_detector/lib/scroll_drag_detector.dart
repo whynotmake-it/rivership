@@ -251,6 +251,10 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
                       parent: ScrollConfiguration.of(context),
                       axes: dragAxes,
                       startMetrics: _startMetrics,
+                      // If we aren't currently dragging, but the scrollable can
+                      // still move back, only block forward scrolls.
+                      onlyBlockForwardScroll:
+                          !value && widget.scrollableCanMoveBack,
                     )
                   : ScrollConfiguration.of(context),
               child: child!,
@@ -411,6 +415,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
     required this.startMetrics,
     required this.parent,
     required this.axes,
+    required this.onlyBlockForwardScroll,
   });
 
   final ScrollMetrics? startMetrics;
@@ -418,6 +423,16 @@ class _DraggingScrollBehavior extends ScrollBehavior {
   final ScrollBehavior parent;
 
   final Set<Axis> axes;
+
+  /// If this is set to true, only forward scrolls (towards the trailing edge)
+  /// will be blocked and turned into overscrolls.
+  ///
+  /// Use this while the scrollable can still move back, but isn't actively
+  /// being dragged to make sure that backwards scrolls are still possible.
+  ///
+  /// This will not block forward scrolls from outside the bounds, to make sure
+  /// the scrollable can return to its bounds.
+  final bool onlyBlockForwardScroll;
 
   bool doesApplyToDetails(ScrollableDetails details) {
     return switch (details.direction) {
@@ -430,7 +445,12 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) =>
-      _OverscrollScrollPhysics(axes: axes, startMetrics: startMetrics);
+      _OverscrollScrollPhysics(
+        axes: axes,
+        startMetrics: startMetrics,
+        onlyBlockForwardScroll: onlyBlockForwardScroll,
+        parent: parent.getScrollPhysics(context),
+      );
 
   @override
   Widget buildOverscrollIndicator(
@@ -479,7 +499,11 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 
   @override
   bool shouldNotify(covariant ScrollBehavior oldDelegate) =>
-      parent.shouldNotify(oldDelegate);
+      parent.shouldNotify(oldDelegate) ||
+      (oldDelegate is _DraggingScrollBehavior &&
+          (oldDelegate.axes != axes ||
+              oldDelegate.onlyBlockForwardScroll != onlyBlockForwardScroll ||
+              oldDelegate.startMetrics != startMetrics));
 }
 
 /// Scroll physics that don't allow moving from the current position and just
@@ -488,8 +512,11 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
   const _OverscrollScrollPhysics({
     required this.axes,
     required this.startMetrics,
+    required this.onlyBlockForwardScroll,
     super.parent,
   });
+
+  final bool onlyBlockForwardScroll;
 
   final Set<Axis> axes;
 
@@ -500,6 +527,7 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
     return _OverscrollScrollPhysics(
       axes: axes,
       startMetrics: startMetrics,
+      onlyBlockForwardScroll: onlyBlockForwardScroll,
       parent: buildParent(ancestor),
     );
   }
@@ -509,8 +537,19 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
     ScrollMetrics position,
     double value,
   ) {
-    if (axes.contains(position.axis)) return value - position.pixels;
+    if (!axes.contains(position.axis)) {
+      return super.applyBoundaryConditions(position, value);
+    }
 
-    return super.applyBoundaryConditions(position, value);
+    final forwards = value > position.pixels;
+    final beforeStart = position.pixels < position.minScrollExtent;
+
+    // If we only block forward scrolls, allow backwards scrolls and scrolls
+    // when we are before the start.
+    if (onlyBlockForwardScroll && (!forwards || beforeStart)) {
+      return super.applyBoundaryConditions(position, value);
+    }
+
+    return value - position.pixels;
   }
 }

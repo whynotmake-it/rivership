@@ -2,13 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/route_snapshot_mode.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
 
+export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
+export 'src/stupid_simple_glass_sheet.dart';
 
 /// A modal route that displays a sheet that slides up from the bottom.
 ///
@@ -48,6 +51,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.backgroundSnapshotMode = RouteSnapshotMode.never,
   });
 
   @override
@@ -83,6 +87,22 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool originateAboveBottomViewInset;
+
+  @override
+  final RouteSnapshotMode backgroundSnapshotMode;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      backgroundSnapshotMode == RouteSnapshotMode.never
+          ? null
+          : (context, animation, secondaryAnimation, canSnapshot, child) {
+              return SnapshotWidget(
+                controller: backgroundSnapshotController,
+                mode: SnapshotMode.permissive,
+                autoresize: true,
+                child: child,
+              );
+            };
 
   @override
   Widget buildContent(BuildContext context) {
@@ -202,6 +222,43 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// above the keyboard.
   bool get originateAboveBottomViewInset => false;
 
+  /// Controls when the route behind this sheet is rasterized to a GPU texture.
+  ///
+  /// When enabled, the previous route's widget tree is replaced with a frozen
+  /// image during the configured phases, eliminating rebuild/paint costs.
+  ///
+  /// Defaults to [RouteSnapshotMode.never].
+  ///
+  /// To use this, subclasses must also provide a [delegatedTransition] that
+  /// wraps the previous route's child in a [SnapshotWidget] using
+  /// [backgroundSnapshotController]. See [StupidSimpleSheetRoute] for an
+  /// example.
+  RouteSnapshotMode get backgroundSnapshotMode => RouteSnapshotMode.never;
+
+  /// The [SnapshotController] that toggles snapshotting of the background
+  /// route.
+  ///
+  /// Subclasses should pass this to a [SnapshotWidget] wrapping the previous
+  /// route's child inside their [delegatedTransition].
+  @protected
+  SnapshotController get backgroundSnapshotController =>
+      _backgroundSnapshotController;
+
+  late final SnapshotController _backgroundSnapshotController =
+      SnapshotController();
+
+  /// The [SnapshotController] from the sheet route stacked on top of this one.
+  ///
+  /// Set automatically when another [StupidSimpleSheetTransitionMixin] route
+  /// pushes on top. Used by [maybeSnapshotChild] to wrap this route's content.
+  SnapshotController? _coveredBySnapshotController;
+
+  bool _isUserDragging = false;
+
+  @override
+  bool get allowSnapshotting =>
+      backgroundSnapshotMode != RouteSnapshotMode.never;
+
   SheetSnappingConfig? _snappingConfigOverride;
 
   /// The base snapping configuration for the sheet, as provided by the
@@ -232,6 +289,43 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// overshooting.
   double? _stickingPoint;
 
+  /// Updates [_backgroundSnapshotController] based on the current
+  /// [backgroundSnapshotMode], animation state, and drag state.
+  void _updateSnapshotState() {
+    final mode = backgroundSnapshotMode;
+
+    if (mode == RouteSnapshotMode.never) {
+      _backgroundSnapshotController.allowSnapshotting = false;
+      return;
+    }
+    if (mode == RouteSnapshotMode.always) {
+      _backgroundSnapshotController.allowSnapshotting = true;
+      return;
+    }
+
+    final isAnimating = controller?.isAnimating ?? false;
+    final value = controller?.value ?? 0.0;
+    final isVisible = value > 0.001;
+    final isSettled = !isAnimating && !_isUserDragging && isVisible;
+    final maxExtent = effectiveSnappingConfig.maxExtent;
+    final isFullyOpen = (value - maxExtent).abs() < 0.001;
+
+    final isTargetingMax = _animationTargetValue != null &&
+        (_animationTargetValue! - maxExtent).abs() < 0.001;
+
+    final isMovingForward = isTargetingMax &&
+        ((controller?.status.isAnimating ?? false) ||
+            (_animationTargetValue! > value));
+
+    _backgroundSnapshotController.allowSnapshotting = switch (mode) {
+      RouteSnapshotMode.animating => isAnimating || _isUserDragging,
+      RouteSnapshotMode.settled => isSettled,
+      RouteSnapshotMode.openAndForward => (isSettled && isFullyOpen) ||
+          (isAnimating && isMovingForward && !_isUserDragging),
+      _ => false, // never/always handled above
+    };
+  }
+
   @override
   Duration get transitionDuration => switch (motion) {
         CurvedMotion(:final duration) => duration,
@@ -255,19 +349,14 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double endValue;
     if (forward) {
       // Opening: use initial snap point or default
-      if (navigator?.context != null) {
-        final sheetHeight = MediaQuery.sizeOf(navigator!.context).height;
-        endValue = effectiveSnappingConfig.resolve(sheetHeight).initialSnap;
-      } else {
-        // Fallback if context is not available
-        endValue = 1.0;
-      }
+      endValue = effectiveSnappingConfig.initialSnap;
     } else {
       // Closing
       endValue = 0.0;
     }
     _animationTargetValue = endValue;
     _stickingPoint = endValue;
+    _updateSnapshotState();
     return motion.createSimulation(
       end: endValue,
       start: animation?.value ?? 0,
@@ -291,7 +380,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         child: _RelativeGestureDetector(
           onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
-              effectiveSnappingConfig.resolveWith(context).maxExtent,
+              effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
           onRelativeDragUpdate: (delta, wouldScroll) =>
               _handleDragUpdate(context, delta, wouldScroll),
@@ -312,12 +401,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     );
     final duration = transitionDuration;
     final reverseDuration = reverseTransitionDuration;
-    return AnimationController.unbounded(
+    final animationController = AnimationController.unbounded(
       duration: duration,
       reverseDuration: reverseDuration,
       debugLabel: debugLabel,
       vsync: navigator!,
-    );
+    )..addStatusListener((_) => _updateSnapshotState());
+    return animationController;
   }
 
   @override
@@ -372,12 +462,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   @mustCallSuper
   bool didPop(T? result) {
     _poppedNotifier.value = true;
+    _updateSnapshotState();
     return super.didPop(result);
   }
 
   void _handleDragStart(
     BuildContext context,
   ) {
+    _isUserDragging = true;
+    _updateSnapshotState();
     if (callNavigatorUserGestureMethods) {
       navigator?.didStartUserGesture();
     }
@@ -388,7 +481,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    final maxExtent = effectiveSnappingConfig.resolveWith(context).maxExtent;
+    final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final applyResistance = !draggable || currentValue > maxExtent;
 
@@ -420,6 +513,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     double velocity,
     bool willScroll,
   ) {
+    _isUserDragging = false;
     final currentValue = controller!.value;
     if (callNavigatorUserGestureMethods) {
       navigator?.didStopUserGesture();
@@ -430,10 +524,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     _dragEndVelocity = velocity;
 
-    // Get the sheet height for pixel-based calculations
-    final sheetHeight = MediaQuery.sizeOf(context).height;
-
-    final maxExtent = effectiveSnappingConfig.resolve(sheetHeight).maxExtent;
+    final maxExtent = effectiveSnappingConfig.maxExtent;
 
     // If dragged past fully open, always snap back to 1.0
     if (currentValue > maxExtent || !draggable) {
@@ -453,10 +544,10 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     } else {
       // Find the target snap point based on position and velocity
       final targetValue =
-          effectiveSnappingConfig.resolve(sheetHeight).findTargetSnapPoint(
-                currentValue,
-                velocity,
-              );
+          _animationTargetValue = effectiveSnappingConfig.findTargetSnapPoint(
+        currentValue,
+        velocity,
+      );
 
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
@@ -472,11 +563,49 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         _dragEndVelocity = null;
       }
     }
+    _updateSnapshotState();
+  }
+
+  /// Wraps [child] in a [SnapshotWidget] if another sheet route with
+  /// snapshotting is stacked on top of this one.
+  ///
+  /// Call this in [buildTransitions] around the content that should be
+  /// snapshotted when covered by another sheet. Returns [child] unchanged
+  /// when no snapshotting is active.
+  @protected
+  Widget maybeSnapshotChild(Widget child) {
+    final controller = _coveredBySnapshotController;
+    if (controller == null) return child;
+    return SnapshotWidget(
+      controller: controller,
+      mode: SnapshotMode.permissive,
+      autoresize: true,
+      child: child,
+    );
+  }
+
+  @override
+  @mustCallSuper
+  void didChangeNext(Route<dynamic>? nextRoute) {
+    super.didChangeNext(nextRoute);
+    if (nextRoute is StupidSimpleSheetTransitionMixin) {
+      _coveredBySnapshotController = nextRoute._backgroundSnapshotController;
+    } else {
+      _coveredBySnapshotController = null;
+    }
+  }
+
+  @override
+  @mustCallSuper
+  void didPopNext(Route<dynamic> nextRoute) {
+    super.didPopNext(nextRoute);
+    _coveredBySnapshotController = null;
   }
 
   @override
   @mustCallSuper
   void dispose() {
+    _backgroundSnapshotController.dispose();
     _poppedNotifier.dispose();
     super.dispose();
   }
@@ -529,8 +658,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     final double target;
 
     if (snap) {
-      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
       // Find the closest snapping point that isn't 0.0
+      final config = effectiveSnappingConfig;
       target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
         0.0 => config.points.first,
         final v => v,
@@ -545,6 +674,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       velocity: controller!.velocity,
     );
 
+    _animationTargetValue = target;
     return controller!.animateWith(simulation);
   }
 
@@ -560,13 +690,13 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// Example:
   /// ```dart
   /// // Update to a new configuration and animate to comply
-  /// controller.updateSnappingConfig(
-  ///   SheetSnappingConfig.relative([0.3, 0.6, 1.0]),
+  /// controller.updateSheetSnappingConfig(
+  ///   SheetSnappingConfig([0.3, 0.6, 1.0]),
   ///   animateToComply: true,
   /// );
   ///
   /// // Reset to the original configuration
-  /// controller.updateSnappingConfig(null);
+  /// controller.updateSheetSnappingConfig(null);
   /// ```
   TickerFuture overrideSnappingConfig(
     SheetSnappingConfig? newConfig, {
@@ -582,10 +712,9 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     // Only animate to comply if requested and if this route is still current
     if (animateToComply && isCurrent) {
       final currentPosition = controller!.value;
-      final config = effectiveSnappingConfig.resolveWith(navigator!.context);
 
       // Find the nearest snapping point in the new configuration
-      final targetPosition = config.findTargetSnapPoint(
+      final targetPosition = effectiveSnappingConfig.findTargetSnapPoint(
         currentPosition,
         controller!.velocity,
         includeClosed: false,
@@ -601,6 +730,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
         end: targetPosition,
         velocity: controller!.velocity,
       );
+
+      _animationTargetValue = targetPosition;
 
       return controller!.animateWith(simulation);
     }
