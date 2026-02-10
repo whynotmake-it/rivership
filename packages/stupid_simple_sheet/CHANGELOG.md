@@ -1,3 +1,15 @@
+## 0.9.0
+
+> Note: This release has breaking changes.
+
+ - **FEAT**: add `RouteSnapshotMode` that can be used to improve performance.
+ - **FEAT**: Add `StupidSimpleGlassSheetRoute` which uses the iOS 26 style.
+ - **BREAKING** **REFACTOR**: remove deprecated `topRadius` parameter.
+ - **BREAKING** **FEAT**: simplify `SheetSnappingConfig` to only support relative values.
+
+    Remove absolute pixel-based snapping which didn't work correctly.
+
+
 ## 0.8.0+1
 
  - **FIX**: immediately start clearing overscroll when letting go.
