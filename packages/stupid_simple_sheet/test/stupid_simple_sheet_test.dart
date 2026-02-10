@@ -983,52 +983,6 @@ void main() {
 
         await snap(name: 'zero radius', matchToGolden: true);
       });
-
-      group('deprecated radius parameter', () {
-        Widget build({
-          required Radius topRadius,
-        }) {
-          return CupertinoApp(
-            home: Scaffold(
-              body: Center(
-                child: Builder(
-                  builder: (context) {
-                    return CupertinoButton.filled(
-                      key: const ValueKey('button'),
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).push(
-                        StupidSimpleCupertinoSheetRoute<void>(
-                          // ignore: deprecated_member_use_from_same_package
-                          topRadius: topRadius,
-                          child: Scaffold(
-                            key: const ValueKey('scaffold'),
-                            body: ListView.builder(
-                              itemCount: 100,
-                              itemBuilder: (context, index) => ListTile(
-                                title: Text('Item $index'),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      child: const Text('Show Stupid Simple Sheet'),
-                    );
-                  },
-                ),
-              ),
-            ),
-          );
-        }
-
-        testWidgets('still works', (tester) async {
-          await tester.pumpWidget(build(topRadius: const Radius.circular(50)));
-          await tester.tap(find.byKey(const ValueKey('button')));
-          await tester.pumpAndSettle();
-
-          await snap(name: 'deprecated radius 50px', matchToGolden: true);
-        });
-      });
     });
   });
 }

@@ -25,16 +25,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
-    ShapeBorder shape = iOS18Shape,
-    @Deprecated('Will be removed in next major release. Use shape instead')
-    Radius? topRadius,
-  }) : shape = topRadius != null
-            ? RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.vertical(
-                  top: topRadius,
-                ),
-              )
-            : shape;
+    this.shape = iOS18Shape,
+  });
 
   /// The default iOS 18 shape for sheet controllers.
   static const iOS18Shape = RoundedSuperellipseBorder(
