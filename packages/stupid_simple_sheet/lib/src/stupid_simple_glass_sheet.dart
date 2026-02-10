@@ -27,6 +27,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
   });
 
@@ -87,6 +88,22 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   @override
   final bool originateAboveBottomViewInset;
 
+  @override
+  final RouteSnapshotMode backgroundSnapshotMode;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      backgroundSnapshotMode == RouteSnapshotMode.never
+          ? null
+          : (context, animation, secondaryAnimation, canSnapshot, child) {
+              return SnapshotWidget(
+                controller: backgroundSnapshotController,
+                mode: SnapshotMode.permissive,
+                autoresize: true,
+                child: child,
+              );
+            };
+
   bool _secondSheet = false;
 
   @override
@@ -118,7 +135,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
             backgroundColor: backgroundColor,
             secondSheet: _secondSheet,
             shape: shape,
-            child: child,
+            child: maybeSnapshotChild(child),
           );
         },
       ),
@@ -137,6 +154,10 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     super.didChangeNext(nextRoute);
     if (nextRoute is StupidSimpleGlassSheetRoute) {
       nextRoute._secondSheet = true;
+      // Force the internal secondary transition instead of the delegated one,
+      // so this sheet's own scale-down/slide-up animation plays correctly.
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
     }
   }
 
@@ -144,5 +165,9 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   @mustCallSuper
   void didPopNext(Route<dynamic> nextRoute) {
     super.didPopNext(nextRoute);
+    if (nextRoute is StupidSimpleGlassSheetRoute) {
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+    }
   }
 }

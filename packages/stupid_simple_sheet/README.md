@@ -308,6 +308,29 @@ class MyCustomSheetRoute<T> extends PopupRoute<T>
 }
 ```
 
+### Background Snapshotting
+
+Improve transition performance by rasterizing the route behind the sheet into a GPU texture via `backgroundSnapshotMode`:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+    child: YourContent(),
+  ),
+);
+```
+
+| Mode             | Snapshots when                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `never`          | Never (default). Background is always painted live.                                                                                                  |
+| `always`         | Entire lifetime of the sheet. Best for static backgrounds.                                                                                           |
+| `animating`      | During animations and drags only. Live when settled.                                                                                                 |
+| `settled`        | When settled only. Live during animations and drags.                                                                                                 |
+| `openAndForward` | During the opening animation to the max snap point, and while settled there. Live during drags, closing, and animations to intermediate snap points. |
+
+When sheets stack (e.g. glass-on-glass), the mixin automatically wires up snapshotting between them via `maybeSnapshotChild`.
+
 ## Features
 
 - **Seamless scroll transitions**: Automatically handles the transition between scrolling content and sheet dragging
@@ -316,6 +339,7 @@ class MyCustomSheetRoute<T> extends PopupRoute<T>
 - **Flexible styling**: Build any sheet style with `SheetBackground` or custom widgets
 - **Cupertino integration**: Native iOS-style sheets with `StupidSimpleCupertinoSheetRoute`
 - **Snapping**: Configure snap points for multi-stop sheets
+- **Background snapshotting**: Rasterize the background route for better transition performance
 - **Gesture coordination**: No need to manually handle gesture conflicts
 - **Multiple scroll types**: Supports all Flutter scrollable widgets
 - **Extensible architecture**: Use the mixin to create custom routes with full control
