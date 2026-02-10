@@ -25,6 +25,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
   });
 
@@ -85,6 +86,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   final bool originateAboveBottomViewInset;
 
   @override
+  final RouteSnapshotMode backgroundSnapshotMode;
+
+  @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
         return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
@@ -94,7 +98,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           slideBackRange: effectiveSnappingConfig.topTwoPoints,
           opacityRange: effectiveSnappingConfig.bottomTwoPoints,
           primaryShape: shape,
-          child: child,
+          child: SnapshotWidget(
+            controller: backgroundSnapshotController,
+            mode: SnapshotMode.permissive,
+            autoresize: true,
+            child: child,
+          ),
         );
       };
 
@@ -126,7 +135,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
             opacityRange: effectiveSnappingConfig.bottomTwoPoints,
             backgroundColor: backgroundColor,
             shape: shape,
-            child: child,
+            child: maybeSnapshotChild(child),
           );
         },
       ),
@@ -144,7 +153,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
 
-    // This is a hack for forcing the internal secondary transition instead
+    // Force the internal secondary transition instead of the delegated one,
+    // so this sheet's own scale-down/slide-up animation plays correctly.
     if (nextRoute is StupidSimpleCupertinoSheetRoute) {
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;
@@ -156,7 +166,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   void didPopNext(Route<dynamic> nextRoute) {
     super.didPopNext(nextRoute);
 
-    // This is a hack for forcing the internal secondary transition instead
     if (nextRoute is StupidSimpleCupertinoSheetRoute) {
       // ignore: invalid_use_of_visible_for_testing_member
       receivedTransition = null;

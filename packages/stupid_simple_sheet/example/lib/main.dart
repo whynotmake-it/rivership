@@ -27,6 +27,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleGlassSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         child: child,
       ),
@@ -39,6 +40,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         child: child,
       ),
@@ -51,6 +53,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         child: child,
       ),
@@ -63,6 +66,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
@@ -77,6 +81,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         snappingConfig: SheetSnappingConfig(
           [0.5, 1.0],
@@ -93,6 +98,7 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleCupertinoSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         settings: page,
         draggable: false,
         child: child,
