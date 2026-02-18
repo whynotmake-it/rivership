@@ -1,10 +1,19 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/glass_sheet_transitions.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// A sheet route styled after the iOS 26 liquid glass aesthetic.
+///
+/// The first sheet of this kind that is pushed will blur the backdrop (if
+/// [blurBehindBarrier] is true) and apply [barrierColor] to the route behind.
+///
+/// Any subsequent sheet of this kind will not apply a barrier color or blur,
+/// since the previous sheet will transition using its own internal secondary
+/// transition.
 ///
 /// Similar to [StupidSimpleCupertinoSheetRoute] but uses the newer glass-style
 /// transitions with a larger default corner radius and no delegated transition
@@ -29,7 +38,10 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.originateAboveBottomViewInset = false,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
-  });
+    this.blurBehindBarrier = true,
+    Color barrierColor =
+        const Color.from(alpha: .15, red: 0, green: 0, blue: 0),
+  }) : _barrierColor = barrierColor;
 
   /// The default glass shape with a 36px superellipse corner radius.
   static const glassShape = RoundedSuperellipseBorder(
@@ -60,9 +72,15 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   /// Defaults to [glassShape].
   final ShapeBorder shape;
 
+  /// Whether the first sheet will blur the backdrop when it appears.
+  ///
+  /// Defaults to true.
+  final bool blurBehindBarrier;
+
+  final Color _barrierColor;
+
   @override
-  Color? get barrierColor =>
-      _secondSheet ? null : const Color(0xFF000000).withValues(alpha: .15);
+  Color? get barrierColor => _secondSheet ? null : _barrierColor;
 
   @override
   bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
@@ -107,6 +125,28 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   bool _secondSheet = false;
 
   @override
+  Widget buildModalBarrier() {
+    return Stack(
+      children: [
+        super.buildModalBarrier(),
+        if (blurBehindBarrier && !_secondSheet)
+          Positioned.fill(
+            child: ValueListenableBuilder(
+              valueListenable: animation ?? kAlwaysDismissedAnimation,
+              builder: (context, value, child) {
+                final sigma = value * 10;
+                return BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                  child: const SizedBox.expand(),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
   Widget buildContent(BuildContext context) {
     return MediaQuery.removePadding(
       context: context,
@@ -149,11 +189,16 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   }
 
   @override
+  void didChangePrevious(Route<dynamic>? previousRoute) {
+    _secondSheet = previousRoute is StupidSimpleGlassSheetRoute;
+    super.didChangePrevious(previousRoute);
+  }
+
+  @override
   @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
     if (nextRoute is StupidSimpleGlassSheetRoute) {
-      nextRoute._secondSheet = true;
       // Force the internal secondary transition instead of the delegated one,
       // so this sheet's own scale-down/slide-up animation plays correctly.
       // ignore: invalid_use_of_visible_for_testing_member
