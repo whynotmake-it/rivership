@@ -1080,6 +1080,64 @@ void main() {
         await snap(name: 'glass small radius', matchToGolden: true);
       });
     });
+
+    testWidgets('transition looks correct when snapping', (tester) async {
+      const key = Key('');
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Scaffold(
+            body: Center(
+              child: Container(
+                key: key,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final context = tester.element(find.byKey(key));
+
+      // Push a full screen sheet
+      Navigator.of(context)
+          .push(
+            StupidSimpleGlassSheetRoute<void>(
+              child: const Scaffold(),
+              blurBehindBarrier: false,
+            ),
+          )
+          .ignore();
+
+      await tester.pumpAndSettle();
+
+      const topSheetKey = Key('top sheet');
+
+      // Now push a second sheet with snapping points
+      Navigator.of(context)
+          .push(
+            StupidSimpleGlassSheetRoute<void>(
+              child: const Scaffold(
+                key: topSheetKey,
+              ),
+              snappingConfig: const SheetSnappingConfig([0.5, 1.0]),
+            ),
+          )
+          .ignore();
+
+      await tester.pumpAndSettle();
+
+      await snap(name: 'glass snap transition', matchToGolden: true);
+
+      // Now snap the sheet to full
+      StupidSimpleSheetController.maybeOf<dynamic>(
+        tester.element(find.byKey(topSheetKey)),
+      )!
+          .animateToRelative(1)
+          .ignore();
+
+      await tester.pumpAndSettle();
+
+      await snap(name: 'glass snap transition full', matchToGolden: true);
+    });
   });
 }
 

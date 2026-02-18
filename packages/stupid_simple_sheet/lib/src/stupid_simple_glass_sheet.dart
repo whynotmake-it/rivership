@@ -80,7 +80,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   final Color _barrierColor;
 
   @override
-  Color? get barrierColor => _secondSheet ? null : _barrierColor;
+  Color? get barrierColor => _isSecondGlassSheet ? null : _barrierColor;
 
   @override
   bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
@@ -122,14 +122,16 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
               );
             };
 
-  bool _secondSheet = false;
+  bool _isSecondGlassSheet = false;
+
+  StupidSimpleSheetTransitionMixin<dynamic>? _nextSheet;
 
   @override
   Widget buildModalBarrier() {
     return Stack(
       children: [
         super.buildModalBarrier(),
-        if (blurBehindBarrier && !_secondSheet)
+        if (blurBehindBarrier && !_isSecondGlassSheet)
           Positioned.fill(
             child: ValueListenableBuilder(
               valueListenable: animation ?? kAlwaysDismissedAnimation,
@@ -166,14 +168,16 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(
         builder: (context) {
+          final snappingConfigForTransition =
+              _nextSheet?.effectiveSnappingConfig ?? effectiveSnappingConfig;
           return GlassSheetTransitions.fullTransition(
             context,
             animation: controller!.view,
             secondaryAnimation: secondaryAnimation,
-            slideBackRange: effectiveSnappingConfig.topTwoPoints,
-            opacityRange: effectiveSnappingConfig.bottomTwoPoints,
+            slideBackRange: snappingConfigForTransition.topTwoPoints,
+            opacityRange: snappingConfigForTransition.bottomTwoPoints,
             backgroundColor: backgroundColor,
-            secondSheet: _secondSheet,
+            secondSheet: _isSecondGlassSheet,
             shape: shape,
             child: maybeSnapshotChild(child),
           );
@@ -190,7 +194,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
 
   @override
   void didChangePrevious(Route<dynamic>? previousRoute) {
-    _secondSheet = previousRoute is StupidSimpleGlassSheetRoute;
+    _isSecondGlassSheet = previousRoute is StupidSimpleGlassSheetRoute;
     super.didChangePrevious(previousRoute);
   }
 
@@ -198,6 +202,13 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
+
+    if (nextRoute is StupidSimpleSheetTransitionMixin) {
+      _nextSheet = nextRoute;
+    } else {
+      _nextSheet = null;
+    }
+
     if (nextRoute is StupidSimpleGlassSheetRoute) {
       // Force the internal secondary transition instead of the delegated one,
       // so this sheet's own scale-down/slide-up animation plays correctly.
