@@ -1081,6 +1081,56 @@ void main() {
       });
     });
 
+    testWidgets('barrierColor can be set', (tester) async {
+      const key = Key('');
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: Scaffold(
+            body: Center(
+              child: Container(
+                key: key,
+                child: const SizedBox.expand(child: GridPaper()),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final context = tester.element(find.byKey(key));
+
+      // Push a full screen sheet
+      Navigator.of(context)
+          .push(
+            StupidSimpleGlassSheetRoute<void>(
+              child: const Scaffold(),
+              blurBehindBarrier: true,
+              barrierColor: Colors.red.withValues(alpha: .1),
+            ),
+          )
+          .ignore();
+
+      await tester.pumpAndSettle();
+      await snap(name: 'glass barrier color and blur', matchToGolden: true);
+
+      await Navigator.of(context).maybePop();
+
+      await tester.pumpAndSettle();
+
+      // Push a full screen sheet
+      Navigator.of(context)
+          .push(
+            StupidSimpleGlassSheetRoute<void>(
+              child: const Scaffold(),
+              blurBehindBarrier: false,
+              barrierColor: Colors.blue.withValues(alpha: .1),
+            ),
+          )
+          .ignore();
+
+      await tester.pumpAndSettle();
+      await snap(name: 'glass barrier color no blur', matchToGolden: true);
+    });
+
     testWidgets('transition looks correct when snapping', (tester) async {
       const key = Key('');
       await tester.pumpWidget(
