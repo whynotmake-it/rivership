@@ -39,6 +39,14 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
     this.blurBehindBarrier = true,
+
+    /// The color applied to the route behind the first glass sheet.
+    ///
+    /// This barrier color is only used for the first pushed glass sheet; any
+    /// subsequent sheets rely on the previous sheet's internal transition and
+    /// do not apply an additional barrier.
+    ///
+    /// Defaults to black with 15% opacity.
     Color barrierColor =
         const Color.from(alpha: .15, red: 0, green: 0, blue: 0),
   }) : _barrierColor = barrierColor;
