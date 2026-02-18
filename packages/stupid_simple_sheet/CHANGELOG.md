@@ -1,3 +1,8 @@
+## 0.9.1
+
+ - **FIX**: incorrect snapping points used for cupertino secondary transitions in some cases.
+ - **FEAT**: add option to blur route behind `StupidSimpleGlassSheet` and customize `barrierColor`.
+
 ## 0.9.0
 
 > Note: This release has breaking changes.
