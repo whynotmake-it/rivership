@@ -88,15 +88,20 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
+  StupidSimpleSheetTransitionMixin<dynamic>? _nextSheet;
+
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
+        final snappingConfigForTransition =
+            _nextSheet?.effectiveSnappingConfig ?? effectiveSnappingConfig;
+
         return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
           context,
           animation: animation.clamped,
           secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: effectiveSnappingConfig.topTwoPoints,
-          opacityRange: effectiveSnappingConfig.bottomTwoPoints,
+          slideBackRange: snappingConfigForTransition.topTwoPoints,
+          opacityRange: snappingConfigForTransition.bottomTwoPoints,
           primaryShape: shape,
           child: SnapshotWidget(
             controller: backgroundSnapshotController,
@@ -152,6 +157,12 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
+
+    if (nextRoute is StupidSimpleSheetTransitionMixin) {
+      _nextSheet = nextRoute;
+    } else {
+      _nextSheet = null;
+    }
 
     // Force the internal secondary transition instead of the delegated one,
     // so this sheet's own scale-down/slide-up animation plays correctly.
