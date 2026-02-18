@@ -153,6 +153,7 @@ class _ImplicitTweenHookState<T> extends HookState<T, _TweenAnimationHook<T>> {
       TweenConstructor<dynamic> constructor,
     ) {
       if (targetValue != null) {
+        // ignore: parameter_assignments
         tween ??= constructor(targetValue);
         if (_shouldAnimateTween(tween, targetValue)) {
           shouldStartAnimation = true;
@@ -160,6 +161,7 @@ class _ImplicitTweenHookState<T> extends HookState<T, _TweenAnimationHook<T>> {
           tween.end ??= tween.begin;
         }
       } else {
+        // ignore: parameter_assignments
         tween = null;
       }
       return tween;
