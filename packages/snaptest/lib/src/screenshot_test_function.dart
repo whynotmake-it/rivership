@@ -58,9 +58,11 @@ void snapTest(
 
       SnaptestSettings.global = settings ?? previousSettings;
 
-      await callback(tester);
-
-      SnaptestSettings.global = previousSettings;
+      try {
+        await callback(tester);
+      } finally {
+        SnaptestSettings.global = previousSettings;
+      }
     },
     skip: skip,
     timeout: timeout,

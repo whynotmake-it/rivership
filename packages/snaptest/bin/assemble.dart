@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:snaptest/src/constants.dart';
 
-import 'util/util.dart';
+import 'package:snaptest/src/util.dart';
 
 Future<void> main(List<String> args) async {
   try {
