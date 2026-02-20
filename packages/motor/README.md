@@ -31,7 +31,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  motor: ^1.0.0-dev.0
+  motor: ^2.0.0
 ```
 
 Or install via `dart pub`:
@@ -62,7 +62,7 @@ Motor provides several motion types out of the box, with the ability to create c
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
 - **`NoMotion`** - Holds at the target value for an optional duration.
-- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.
+- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.Defaults to snapping to the end value to ensure precise settling.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
 
@@ -323,6 +323,8 @@ if (controller.isPlayingSequence) {
 
 Sequence animations work with **any motion type** - mix springs, curves, and custom motions within the same sequence for rich, expressive animations.
 
+> **Note:** Spring motions snap to their end value by default (`snapToEnd: true`). This ensures precise settling but may cause visual jumps in sequences if the previous phase's velocity is not preserved or if the target values are not continuous. If you experience jumps, consider setting `snapToEnd: false` on your springs.
+
 ### MotionConverter
 
 One of Motor's key advantages is its ability to animate complex types with **independent motion per dimension**. While Flutter's basic animation system typically uses single animations with `Tween`s, Motor's unified motion system can simulate each dimension independently.
@@ -371,6 +373,44 @@ final converter = MotionConverter.custom(
 );
 ```
 
+#### Directionality & Status
+
+Standard spring simulations are physics-based and don't inherently have a "direction" (forward vs reverse) in the same way a timeline-based animation does. This is especially true for multi-dimensional types like `Offset` or `Color`.
+
+However, for UI logic (like driving a `RotationTransition` that spins one way on open and another on close), knowing the direction is crucial.
+
+Motor supports this via `DirectionalMotionConverter`.
+
+**Built-in Support:**
+Simple types like `double` (via `SingleMotionConverter`) are **already directional**.
+- Animating `0 -> 1` reports `AnimationStatus.forward`.
+- Animating `1 -> 0` reports `AnimationStatus.reverse`.
+
+**Custom Directionality:**
+For custom types or ad-hoc usage, you can define how "direction" is calculated.
+
+1. **Using `MotionConverter.customDirectional`:**
+
+```dart
+final converter = MotionConverter.customDirectional(
+  normalize: (Size s) => [s.width, s.height],
+  denormalize: (List<double> v) => Size(v[0], v[1]),
+  // Compare area to determine direction
+  compare: (Size a, Size b) => (a.width * a.height).compareTo(b.width * b.height),
+);
+```
+
+2. **Using the Mixin:**
+If you are implementing your own converter class, mix in `DirectionalMotionConverter`. If your type implements `Comparable`, you can simply mix in `ComparableMotionConverter`.
+
+```dart
+class MyComparableConverter extends MotionConverter<MyComparableType> 
+    with ComparableMotionConverter<MyComparableType> {
+  // ... normalize/denormalize ...
+  // compare() is automatically implemented by the mixin
+}
+```
+
 ### Motion Draggable
 
 Motor includes a `MotionDraggable` widget that demonstrates the power of the unified motion system. You can drag widgets around the screen and watch them return with **any motion type** - from bouncy springs to smooth curves.
@@ -406,6 +446,59 @@ Motion controllers work similarly to Flutter's `AnimationController` but with ke
 - **Motion-agnostic**: Switch between springs and curves without changing controller code
 - **Velocity preservation**: Maintains velocity when changing targets (crucial for natural motion)
 - **Multi-dimensional**: Each dimension can have independent physics simulation
+
+#### Velocity Tracking
+
+Velocity tracking is **enabled by default** for smooth motion continuity when manually setting controller values.
+
+**When to use it:** Most useful for interactions that don't provide velocity, like:
+- Sliders (discrete value changes without velocity data)
+- Mouse tracking or custom input
+- Programmatic transitions without velocity information
+
+**When to skip it:** If your gesture already provides velocity (like `DragEndDetails.velocity`), use that directly via `withVelocity` - it's more accurate and has no overhead.
+
+```dart
+final controller = MotionController(
+  motion: CupertinoMotion.bouncy(),
+  vsync: this,
+  converter: MotionConverter.offset,
+  initialValue: Offset.zero,
+  // Velocity tracking enabled by default
+);
+
+// During interaction, controller tracks velocity automatically
+void onPanUpdate(DragUpdateDetails details) {
+  controller.value = details.localPosition;
+}
+
+// When interaction ends, use tracked velocity
+void onPanEnd(DragEndDetails details) {
+  // Best: Use gesture velocity if available
+  controller.animateTo(target, withVelocity: details.velocity);
+
+  // Or: Let tracked velocity provide continuity
+  controller.animateTo(targetPosition);
+}
+```
+
+To disable velocity tracking:
+
+```dart
+final controller = MotionController(
+  motion: CupertinoMotion.bouncy(),
+  vsync: this,
+  converter: MotionConverter.offset,
+  initialValue: Offset.zero,
+  velocityTracking: VelocityTracking.off(),
+);
+```
+
+When enabled:
+- Setting `controller.value` automatically tracks velocity
+- `animateTo()` without `withVelocity` uses tracked velocity
+- Access current estimate via `controller.velocity`
+- Automatically resets when animations start
 
 #### Bounded vs. Unbounded Motion
 

@@ -8,6 +8,7 @@ import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
@@ -17,15 +18,15 @@ import 'package:motor/src/phase_transition.dart';
 /// differences have been made to make it generalize easier for different types
 /// of motion.
 ///
-/// 1. [status] works differently for unbounded controllers:
-///   - It will always return [AnimationStatus.forward] if the controller is
-///     running.
-///   - It will return [AnimationStatus.dismissed] if the controller is stopped
-///     and at its initial value.
-///   - It will return [AnimationStatus.completed] if the controller is stopped
-///     and not at its initial value.
-///   - Note: [BoundedMotionController]s restore a concept of directionality,
-///     and will return [AnimationStatus.reverse] in certain cases.
+/// 1. [status] behavior depends on the [MotionConverter]:
+///   - If the converter is directional (e.g. [SingleMotionConverter]), [status]
+///     will report [AnimationStatus.forward] or [AnimationStatus.reverse]
+///     appropriately.
+///   - For non-directional converters (common for multi-dimensional types),
+///     [status] will always be [AnimationStatus.forward] while animating.
+///   - When stopped, it generally returns [AnimationStatus.completed] unless
+///     at the initial value (or lower bound), where it returns
+///     [AnimationStatus.dismissed].
 /// 2. [stop] will not stop the animation right away, unless `canceled` is true.
 ///   Instead, it will wait until the simulation is done, and then settle at
 ///   the current value. This allows for a more graceful stop, for example, a
@@ -45,12 +46,16 @@ class MotionController<T extends Object> extends Animation<T>
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
   /// Creates a motion controller with a single motion for all dimensions.
+  ///
+  /// Velocity tracking is enabled by default to track velocity when manually
+  /// setting [value]. Use [VelocityTracking.off] to disable.
   MotionController({
     required Motion motion,
     required TickerProvider vsync,
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   }) : this._(
           motionPerDimension: List.filled(
             converter.normalize(initialValue).length,
@@ -60,6 +65,7 @@ class MotionController<T extends Object> extends Animation<T>
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
         );
 
   /// Creates a motion controller with individual motions per dimension.
@@ -69,12 +75,14 @@ class MotionController<T extends Object> extends Animation<T>
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   }) : this._(
           motionPerDimension: motionPerDimension,
           vsync: vsync,
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
         );
 
   MotionController._({
@@ -83,11 +91,13 @@ class MotionController<T extends Object> extends Animation<T>
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
   })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ),
-        _converter = converter {
+        _converter = converter,
+        _velocityTrackerBuilder = velocityTracking.call {
     _initialValue = initialValue;
     final normalized = converter.normalize(initialValue);
     _motionPerDimension = motionPerDimension;
@@ -104,6 +114,9 @@ class MotionController<T extends Object> extends Animation<T>
 
     // Initialize with a dismissed status by default
     _status = AnimationStatus.dismissed;
+
+    // Initialize velocity tracker
+    _velocityTracker = velocityTracking.call(converter);
   }
 
   late final T _initialValue;
@@ -121,6 +134,8 @@ class MotionController<T extends Object> extends Animation<T>
     );
 
     _converter = value;
+    // Recreate velocity tracker with new converter if tracking is enabled
+    _velocityTracker = _velocityTrackerBuilder?.call(value);
     _internalSetValue(normalized);
   }
 
@@ -163,12 +178,20 @@ class MotionController<T extends Object> extends Animation<T>
   T get value => converter.denormalize(_currentValues);
 
   /// Sets the current value of the animation.
+  ///
+  /// When velocity tracking is enabled (the default), this tracks the value
+  /// for velocity estimation. The tracked velocity is used when [animateTo]
+  /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
     _ticker?.stop();
     _status = _getStatusWhenDone();
 
     final normalized = converter.normalize(newValue);
     _internalSetValue(normalized);
+
+    // Track velocity sample if tracker is available
+    _trackVelocitySample(newValue);
+
     notifyListeners();
     _checkStatusChanged();
   }
@@ -185,9 +208,11 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// The current status of this [Animation].
   ///
-  /// Spring simulations don't really have a concept of directionality,
-  /// especially in higher dimensions.
-  /// Thus, this will never return [AnimationStatus.reverse].
+  /// This reports [AnimationStatus.forward] or [AnimationStatus.reverse] based
+  /// on the directionality defined by the [converter].
+  ///
+  /// If the [converter] is not a [DirectionalMotionConverter], this will always
+  /// report [AnimationStatus.forward] while animating.
   @override
   AnimationStatus get status => _status;
 
@@ -201,16 +226,27 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// The current velocity of the simulation in units per second for each
   /// dimension.
+  ///
+  /// When animating, this returns the velocity from the active simulation.
+  /// When not animating, this returns the tracked velocity from user input
+  /// if a velocity tracker is available, otherwise zeros.
   List<double> get velocities {
-    if (!isAnimating) return List.filled(_dimensions, 0);
+    if (isAnimating) {
+      return [
+        for (var i = 0; i < _dimensions; i++)
+          _simulations[i].dx(_lastElapsedDuration!.toSec()),
+      ];
+    }
 
-    return [
-      for (var i = 0; i < _dimensions; i++)
-        _simulations[i].dx(_lastElapsedDuration!.toSec()),
-    ];
+    // Return tracked velocity if available, otherwise zeros
+    return _trackedVelocities;
   }
 
   /// The type-specific velocity representation.
+  ///
+  /// When animating, this returns the velocity from the active simulation.
+  /// When not animating, this returns the tracked velocity from user input
+  /// if a velocity tracker is available, otherwise the zero value for type T.
   T get velocity => converter.denormalize(velocities);
 
   /// The single motion that is used for all dimensions.
@@ -258,6 +294,54 @@ class MotionController<T extends Object> extends Animation<T>
   /// [AnimationBehavior.preserve] for unbounded controllers.
   AnimationBehavior get animationBehavior => _animationBehavior;
 
+  /// Function that creates a [MotionVelocityTracker], or null if disabled.
+  final MotionVelocityTracker<T>? Function(MotionConverter<T> converter)?
+      _velocityTrackerBuilder;
+
+  MotionVelocityTracker<T>? _velocityTracker;
+
+  /// Stopwatch for tracking elapsed time for velocity samples.
+  Stopwatch? _velocityStopwatch;
+
+  Stopwatch get _velocityTime {
+    _velocityStopwatch ??= Stopwatch()..start();
+    return _velocityStopwatch!;
+  }
+
+  /// Tracks a velocity sample for the given value.
+  ///
+  /// Called automatically when [value] is set. No-op if velocity tracking
+  /// is disabled.
+  void _trackVelocitySample(T value) {
+    if (_velocityTracker case final tracker?) {
+      tracker.addPosition(_velocityTime.elapsed, value);
+    }
+  }
+
+  /// Returns the tracked velocity estimate from user input.
+  ///
+  /// Returns `null` if no velocity tracker is available or no samples have
+  /// been recorded.
+  MotionVelocityEstimate<T>? get trackedVelocityEstimate =>
+      _velocityTracker?.getVelocityEstimate();
+
+  /// The tracked velocity in normalized form (List<double>), or zeros if
+  /// no tracked velocity is available.
+  List<double> get _trackedVelocities {
+    if (_velocityTracker?.getVelocityEstimate() case final estimate?) {
+      return converter.normalize(estimate.perSecond);
+    }
+    return List.filled(_dimensions, 0.0);
+  }
+
+  /// Resets the velocity tracker, clearing all tracked samples.
+  ///
+  /// Called automatically when animations start via [animateTo].
+  void _resetVelocityTracking() {
+    _velocityTracker = _velocityTrackerBuilder?.call(converter);
+    _velocityStopwatch?.reset();
+  }
+
   /// Recreates the [Ticker] with the new [TickerProvider].
   void resync(TickerProvider vsync) {
     final oldTicker = _ticker!;
@@ -283,6 +367,7 @@ class MotionController<T extends Object> extends Animation<T>
         from: from != null ? converter.normalize(from) : null,
         velocity:
             withVelocity != null ? converter.normalize(withVelocity) : null,
+        forward: converter.motionIsForward(from: from ?? value, to: target),
       );
 
   TickerFuture _animateToInternal({
@@ -294,7 +379,13 @@ class MotionController<T extends Object> extends Animation<T>
     _target = target;
 
     final fromValue = from ?? List.of(_currentValues);
+    // Use provided velocity, or fall back to current velocities (which may
+    // include tracked velocity from user input when not animating)
     final velocityValue = velocity ?? velocities;
+
+    // Reset velocity tracking since we're starting an animation
+    // This ensures fresh tracking when the animation ends
+    _resetVelocityTracking();
 
     // Stop any existing animations
     _stopTicker(canceled: true);
@@ -426,6 +517,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
 
@@ -439,6 +531,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound),
         super.motionPerDimension();
@@ -466,7 +559,8 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Sets the current value of the animation.
   ///
-  /// This will clamp the value to be within the bounds.
+  /// The value is clamped to be within bounds. When velocity tracking is
+  /// enabled (the default), this also tracks the value for velocity estimation.
   @override
   set value(T newValue) {
     final normalized = converter.normalize(newValue);
@@ -476,6 +570,10 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
         v.clamp(_lowerBound[i], _upperBound[i]),
     ];
     _internalSetValue(clamped);
+
+    // Track velocity sample if tracker is available
+    _trackVelocitySample(newValue);
+
     notifyListeners();
   }
 
@@ -506,8 +604,9 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Animates towards [lowerBound].
   ///
-  /// **Note**: [status] will still return [AnimationStatus.forward] when
-  /// this is called. See [status] for more information.
+  /// **Note**: [status] might still return [AnimationStatus.forward] when
+  /// this is called, depending on the directionality of [converter].
+  /// See [status] for more information.
   TickerFuture reverse({
     T? from,
     T? withVelocity,
@@ -516,7 +615,6 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       lowerBound,
       from: from,
       withVelocity: withVelocity,
-      forward: false,
     );
   }
 
@@ -525,19 +623,49 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     T target, {
     T? from,
     T? withVelocity,
-    bool forward = true,
   }) {
-    _forward = forward;
+    final clamped = _clamp(target);
+
+    _forward = converter.motionIsForward(
+      from: from ?? value,
+      to: clamped,
+    );
+
+    return _animateToDirectional(
+      target,
+      from: from,
+      withVelocity: withVelocity,
+      forward: _forward,
+    );
+  }
+
+  /// Clamps [value] within the bounds of this controller.
+  T _clamp(T value) {
+    final normalized = converter.normalize(value);
+    final clamped = [
+      for (final (i, v) in normalized.indexed)
+        v.clamp(_lowerBound[i], _upperBound[i]),
+    ];
+    return converter.denormalize(clamped);
+  }
+
+  TickerFuture _animateToDirectional(
+    T target, {
+    required bool forward,
+    T? from,
+    T? withVelocity,
+  }) {
     final normalizedTarget = converter.normalize(target);
     final clamped = [
       for (final (i, v) in normalizedTarget.indexed)
         v.clamp(_lowerBound[i], _upperBound[i]),
     ];
+
     return _animateToInternal(
       target: clamped,
       from: from != null ? converter.normalize(from) : null,
       velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
-      forward: forward,
+      forward: _forward,
     );
   }
 
@@ -547,7 +675,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       _stopTicker(canceled: canceled);
       return TickerFuture.complete();
     } else {
-      return animateTo(value, forward: _forward);
+      return _animateToDirectional(_clamp(value), forward: _forward);
     }
   }
 }
@@ -590,6 +718,7 @@ class SequenceMotionController<P, T extends Object>
     required super.converter,
     required super.initialValue,
     super.behavior,
+    super.velocityTracking,
   });
 
   /// Creates a seequence motion controller with motion per dimension.
@@ -599,6 +728,7 @@ class SequenceMotionController<P, T extends Object>
     required super.converter,
     required super.initialValue,
     super.behavior,
+    super.velocityTracking,
   }) : super.motionPerDimension();
 
   /// Active phase sequence being played
@@ -960,4 +1090,18 @@ class SequenceMotionController<P, T extends Object>
 
 extension on Duration {
   double toSec() => inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
+}
+
+extension<T> on MotionConverter<T> {
+  bool motionIsForward({required T from, required T to}) {
+    if (this case final DirectionalMotionConverter<T> directional) {
+      return switch (directional.compare(from, to)) {
+        > 0 => false,
+        _ => true,
+      };
+    }
+
+    // Always consider motion forward for non-directional converters
+    return true;
+  }
 }

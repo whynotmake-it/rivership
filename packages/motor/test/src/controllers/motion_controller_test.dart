@@ -415,7 +415,9 @@ void main() {
     group('.status', () {
       late MotionController<Offset> controller;
       tearDown(() {
-        controller.dispose();
+        try {
+          controller.dispose();
+        } catch (_) {}
       });
 
       testWidgets('is .dismissed initially', (tester) async {
@@ -478,6 +480,36 @@ void main() {
         expect(controller.status, equals(AnimationStatus.forward));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets('if converter provides compare, it will be respected',
+          (tester) async {
+        final controller = SingleMotionController(
+          motion: motion,
+          vsync: tester,
+        );
+
+        unawaited(controller.animateTo(3));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(1));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(0));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(
+          controller.status,
+          equals(AnimationStatus.dismissed),
+          reason: 'Back at the initial value, we should be dismissed',
+        );
       });
     });
 
@@ -777,16 +809,23 @@ void main() {
 
         unawaited(controller.reverse());
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.reverse));
+        expect(controller.status, equals(AnimationStatus.forward));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
 
       testWidgets('returns last direction when stopped', (tester) async {
+        // Use a converter that orders based on x direction only
+        final xDirectionConverter = MotionConverter.customDirectional(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+          compare: (a, b) => a.dx.compareTo(b.dx),
+        );
+
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
-          converter: converter,
+          converter: xDirectionConverter,
           initialValue: Offset.zero,
           lowerBound: Offset.zero,
           upperBound: const Offset(1, 1),
@@ -813,6 +852,279 @@ void main() {
         unawaited(controller.reverse());
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+    });
+  });
+
+  group('MotionController velocity tracking', () {
+    setUp(TestWidgetsFlutterBinding.ensureInitialized);
+
+    const motion = CupertinoMotion.smooth();
+    const converter = OffsetMotionConverter();
+
+    group('with velocity tracking disabled', () {
+      testWidgets('velocity returns zero when not animating', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          velocityTracking: const VelocityTracking.off(),
+        );
+        addTearDown(controller.dispose);
+
+        expect(controller.velocity, equals(Offset.zero));
+
+        // Setting value should not change velocity (no tracker)
+        controller.value = const Offset(10, 20);
+        expect(controller.velocity, equals(Offset.zero));
+      });
+
+      testWidgets('trackedVelocityEstimate returns null', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          velocityTracking: const VelocityTracking.off(),
+        );
+        addTearDown(controller.dispose);
+
+        expect(controller.trackedVelocityEstimate, isNull);
+      });
+    });
+
+    group('with velocity tracking enabled (default)', () {
+      testWidgets('tracks velocity when value is set', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Set multiple values - velocity tracker will use real time
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20)
+          ..value = const Offset(20, 40)
+          ..value = const Offset(30, 60);
+
+        // Velocity estimate should exist (values were tracked)
+        final estimate = controller.trackedVelocityEstimate;
+        expect(estimate, isNotNull);
+        // Since we're using real time and samples are very close together,
+        // velocity will be very high. We just verify tracking occurred.
+        expect(estimate!.perSecond, isNot(Offset.zero));
+      });
+
+      testWidgets('velocity getter returns tracked velocity when not animating',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Set values to track
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20)
+          ..value = const Offset(20, 40);
+
+        // Velocity getter should return non-zero tracked velocity
+        final velocity = controller.velocity;
+        expect(velocity, isNot(Offset.zero));
+      });
+
+      testWidgets('animateTo uses tracked velocity when no velocity provided',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Build up tracked velocity
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20)
+          ..value = const Offset(20, 40);
+
+        // Capture tracked velocity before animation
+        final trackedVelocity = controller.velocity;
+        expect(trackedVelocity, isNot(Offset.zero));
+
+        // Start animation - should use tracked velocity
+        controller.animateTo(const Offset(100, 200));
+        await tester.pump();
+
+        // Animation velocity should match what was tracked
+        final animationVelocity = controller.velocity;
+        expect(
+          animationVelocity.dx,
+          moreOrLessEquals(trackedVelocity.dx, epsilon: 1),
+        );
+        expect(
+          animationVelocity.dy,
+          moreOrLessEquals(trackedVelocity.dy, epsilon: 1),
+        );
+
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('animateTo with explicit velocity ignores tracked velocity',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Build up tracked velocity
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20)
+          ..value = const Offset(20, 40)
+
+          // Start animation with explicit velocity (should ignore tracked)
+          ..animateTo(
+            const Offset(100, 200),
+            withVelocity: const Offset(500, 500),
+          );
+        await tester.pump();
+
+        // Initial velocity should be the explicit one, not tracked
+        final initialVelocity = controller.velocity;
+        expect(initialVelocity.dx, moreOrLessEquals(500.0, epsilon: error));
+        expect(initialVelocity.dy, moreOrLessEquals(500.0, epsilon: error));
+
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('animateTo resets velocity tracking', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Add samples
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20);
+
+        // Verify we have tracked velocity
+        expect(controller.trackedVelocityEstimate, isNotNull);
+
+        // Start animation
+        controller.animateTo(const Offset(100, 200));
+        await tester.pump();
+
+        // Tracking should be reset (no samples in new tracker)
+        expect(controller.trackedVelocityEstimate, isNull);
+
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('velocity returns simulation velocity while animating',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Start animation with known initial velocity
+        controller.animateTo(
+          const Offset(100, 100),
+          withVelocity: const Offset(500, 500),
+        );
+        await tester.pump();
+
+        expect(controller.isAnimating, isTrue);
+
+        // Velocity should come from simulation, not tracker
+        final velocity = controller.velocity;
+        expect(velocity.dx, moreOrLessEquals(500.0, epsilon: error));
+        expect(velocity.dy, moreOrLessEquals(500.0, epsilon: error));
+
+        // Let it settle
+        await tester.pumpAndSettle();
+        expect(controller.isAnimating, isFalse);
+
+        // Now velocity should be zero (no tracked samples after reset)
+        expect(controller.velocity, equals(Offset.zero));
+      });
+
+      testWidgets('changing converter recreates velocity tracker',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Add samples
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20);
+
+        // Verify we have tracked velocity
+        expect(controller.trackedVelocityEstimate, isNotNull);
+
+        // Change converter to a different (non-const) instance
+        // Using a custom converter that behaves the same way
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+        );
+
+        // Tracker should be recreated, so no samples
+        expect(controller.trackedVelocityEstimate, isNull);
+      });
+    });
+
+    group('with SingleMotionController', () {
+      testWidgets('tracks velocity for single dimension', (tester) async {
+        final controller = SingleMotionController(
+          motion: motion,
+          vsync: tester,
+          // Velocity tracking enabled by default
+        );
+        addTearDown(controller.dispose);
+
+        // Add samples
+        controller
+          ..value = 0.0
+          ..value = 10.0
+          ..value = 20.0
+          ..value = 30.0;
+
+        // Get velocity estimate - should be non-zero
+        final estimate = controller.trackedVelocityEstimate;
+        expect(estimate, isNotNull);
+        expect(estimate!.perSecond, isNot(0.0));
       });
     });
   });
