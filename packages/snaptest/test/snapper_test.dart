@@ -457,5 +457,38 @@ void main() {
         expect(files2, hasLength(1));
       });
     });
+
+    group('snap from', () {
+      testWidgets('snaps closest repaint boundary', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(child: Text('Hello Snapper!')),
+                  Center(
+                    child: RepaintBoundary(
+                      child: Padding(
+                        key: Key('check-icon'),
+                        padding: EdgeInsets.all(16),
+                        child: Icon(Icons.check),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        final files = await snap(
+          name: 'snap_from',
+          from: find.byKey(const Key('check-icon')),
+          matchToGolden: true,
+        );
+        expect(files, hasLength(1));
+      });
+    });
   });
 }

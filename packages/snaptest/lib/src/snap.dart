@@ -134,6 +134,7 @@ Future<List<File>> snap({
           device: device,
           orientation: orientation,
           settings: const SnaptestSettings(),
+          from: from,
         ),
         false => null,
       };
