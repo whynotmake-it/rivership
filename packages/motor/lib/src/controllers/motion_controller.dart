@@ -382,7 +382,6 @@ class MotionController<T extends Object> extends Animation<T>
     // Use provided velocity, or fall back to current velocities (which may
     // include tracked velocity from user input when not animating)
     final velocityValue = velocity ?? velocities;
-
     // Reset velocity tracking since we're starting an animation
     // This ensures fresh tracking when the animation ends
     _resetVelocityTracking();
@@ -721,7 +720,7 @@ class SequenceMotionController<P, T extends Object>
     super.velocityTracking,
   });
 
-  /// Creates a seequence motion controller with motion per dimension.
+  /// Creates a sequence motion controller with motion per dimension.
   SequenceMotionController.motionPerDimension({
     required super.motionPerDimension,
     required super.vsync,
