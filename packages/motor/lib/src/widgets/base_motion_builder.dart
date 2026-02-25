@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 
 /// Base class for motion builders that provides shared functionality.
 abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
@@ -10,6 +11,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     required this.value,
     required Motion this.motion,
     required this.converter,
+    this.velocityTracking = const VelocityTracking.on(),
     this.active = true,
     this.onAnimationStatusChanged,
     this.from,
@@ -22,6 +24,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     required this.value,
     required List<Motion> this.motionPerDimension,
     required this.converter,
+    this.velocityTracking = const VelocityTracking.on(),
     this.active = true,
     this.onAnimationStatusChanged,
     this.from,
@@ -69,6 +72,16 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// {@endtemplate}
   final MotionConverter<T> converter;
 
+  /// {@template motor.velocityTracking}
+  /// Controls velocity tracking behavior for this motion builder.
+  ///
+  /// When enabled (the default), the controller tracks velocity when its value
+  /// is set manually, allowing animations to maintain momentum.
+  ///
+  /// Use [VelocityTracking.off] to disable velocity tracking.
+  /// {@endtemplate}
+  final VelocityTracking velocityTracking;
+
   /// {@template motor.simulate}
   /// Whether the motion is active.
   ///
@@ -106,12 +119,14 @@ abstract class BaseMotionBuilderState<T extends Object>
           vsync: this,
           initialValue: widget.from ?? widget.value,
           converter: widget.converter,
+          velocityTracking: widget.velocityTracking,
         ),
       null => MotionController.motionPerDimension(
           motionPerDimension: widget.motionPerDimension!,
           vsync: this,
           initialValue: widget.from ?? widget.value,
           converter: widget.converter,
+          velocityTracking: widget.velocityTracking,
         ),
     };
 
@@ -141,7 +156,7 @@ abstract class BaseMotionBuilderState<T extends Object>
           controller.motionPerDimension = widget.motionPerDimension!;
       }
     }
-    if (!widget.active) {
+    if (!widget.active && oldWidget.active) {
       controller
         ..stop()
         ..value = widget.value;
