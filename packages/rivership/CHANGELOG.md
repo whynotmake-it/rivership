@@ -1,3 +1,7 @@
+## 0.4.0+5
+
+ - **FIX**: incorrect dependency constraint.
+
 ## 0.4.0+4
 
  - Update a dependency to the latest release.
