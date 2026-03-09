@@ -32,180 +32,139 @@ void main() {
         );
       });
 
-      snapTest(
-        'captures basic widget snapshot',
-        (tester) async {
-          await tester.pumpWidget(
-            const MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Hello Snapper!'),
-                ),
-              ),
-            ),
-          );
+      snapTest('captures basic widget snapshot', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(body: Center(child: Text('Hello Snapper!'))),
+          ),
+        );
 
-          final files = await snap(matchToGolden: true);
-          expect(files, hasLength(1));
-          expect(files.first.existsSync(), isTrue);
-        },
-      );
+        final files = await snap(matchToGolden: true);
+        expect(files, hasLength(1));
+        expect(files.first.existsSync(), isTrue);
+      });
 
-      snapTest(
-        'captures widget with multiple devices',
-        (tester) async {
-          await tester.pumpWidget(
-            const MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Multi Device Test'),
-                ),
-              ),
-            ),
-          );
+      snapTest('captures widget with multiple devices', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(body: Center(child: Text('Multi Device Test'))),
+          ),
+        );
 
-          final files = await snap(
-            name: 'multi_device',
-            settings: SnaptestSettings(
-              devices: [
-                const WidgetTesterDevice(),
-                Devices.ios.iPhone16Pro,
-                Devices.android.samsungGalaxyS20,
-              ],
-            ),
-            matchToGolden: true,
-          );
+        final files = await snap(
+          name: 'multi_device',
+          settings: SnaptestSettings(
+            devices: [
+              const WidgetTesterDevice(),
+              Devices.ios.iPhone16Pro,
+              Devices.android.samsungGalaxyS20,
+            ],
+          ),
+          matchToGolden: true,
+        );
 
-          expect(files, hasLength(3));
-        },
-      );
+        expect(files, hasLength(3));
+      });
 
-      snapTest(
-        'captures specific widget using finder',
-        (tester) async {
-          await tester.pumpWidget(
-            MaterialApp(
-              home: Scaffold(
-                appBar: AppBar(title: const Text('App Bar')),
-                body: const Center(
-                  child: RepaintBoundary(
-                    child: Card(
-                      key: Key('test-card'),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text('Card Content'),
-                      ),
+      snapTest('captures specific widget using finder', (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: AppBar(title: const Text('App Bar')),
+              body: const Center(
+                child: RepaintBoundary(
+                  child: Card(
+                    key: Key('test-card'),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Card Content'),
                     ),
                   ),
                 ),
               ),
             ),
-          );
+          ),
+        );
 
-          final files = await snap(
-            name: 'specific_widget',
-            from: find.byKey(const Key('test-card')),
-          );
+        final files = await snap(
+          name: 'specific_widget',
+          from: find.byKey(const Key('test-card')),
+        );
 
-          expect(files, hasLength(1));
-          expect(files.first.existsSync(), isTrue);
-        },
-      );
+        expect(files, hasLength(1));
+        expect(files.first.existsSync(), isTrue);
+      });
 
-      snapTest(
-        'handles custom path prefix',
-        (tester) async {
-          await tester.pumpWidget(
-            const MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Custom Path Test'),
-                ),
-              ),
-            ),
-          );
+      snapTest('handles custom path prefix', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(body: Center(child: Text('Custom Path Test'))),
+          ),
+        );
 
-          final files = await snap(
-            name: 'custom_path',
-            settings: const SnaptestSettings(pathPrefix: 'custom_screenshots/'),
-          );
+        final files = await snap(
+          name: 'custom_path',
+          settings: const SnaptestSettings(pathPrefix: 'custom_screenshots/'),
+        );
 
-          expect(files, hasLength(1));
-          expect(files.first.path, contains('custom_screenshots'));
-          expect(files.first.existsSync(), isTrue);
-        },
-      );
+        expect(files, hasLength(1));
+        expect(files.first.path, contains('custom_screenshots'));
+        expect(files.first.existsSync(), isTrue);
+      });
 
-      snapTest(
-        'respects appendDeviceName setting',
-        (tester) async {
-          await tester.pumpWidget(
-            const MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Device Name Test'),
-                ),
-              ),
-            ),
-          );
+      snapTest('respects appendDeviceName setting', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(body: Center(child: Text('Device Name Test'))),
+          ),
+        );
 
-          final filesWithDeviceName = await snap(
-            name: 'with_device_name',
-            settings: SnaptestSettings(
-              devices: [
-                Devices.ios.iPhone16Pro,
-                Devices.android.samsungGalaxyS20,
-              ],
-            ),
-          );
+        final filesWithDeviceName = await snap(
+          name: 'with_device_name',
+          settings: SnaptestSettings(
+            devices: [
+              Devices.ios.iPhone16Pro,
+              Devices.android.samsungGalaxyS20,
+            ],
+          ),
+        );
 
-          final filesWithoutDeviceName = await snap(
-            name: 'without_device_name',
-            settings: SnaptestSettings(
-              devices: [Devices.ios.iPhone16Pro],
-            ),
-          );
+        final filesWithoutDeviceName = await snap(
+          name: 'without_device_name',
+          settings: SnaptestSettings(devices: [Devices.ios.iPhone16Pro]),
+        );
 
-          expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
-          expect(
-            filesWithoutDeviceName.first.path,
-            isNot(contains('iPhone 16 Pro')),
-          );
-        },
-      );
+        expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
+        expect(
+          filesWithoutDeviceName.first.path,
+          isNot(contains('iPhone 16 Pro')),
+        );
+      });
 
-      snapTest(
-        'orientation is not appended for widget tester only',
-        (tester) async {
-          await tester.pumpWidget(
-            const MaterialApp(
-              home: Scaffold(body: Center(child: Text('Hello Snapper!'))),
-            ),
-          );
-          final files = await snap(
-            settings: const SnaptestSettings(
-              devices: [WidgetTesterDevice()],
-              orientations: {
-                Orientation.portrait,
-                Orientation.landscape,
-              },
-            ),
-          );
+      snapTest('orientation is not appended for widget tester only', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(body: Center(child: Text('Hello Snapper!'))),
+          ),
+        );
+        final files = await snap(
+          settings: const SnaptestSettings(
+            devices: [WidgetTesterDevice()],
+            orientations: {Orientation.portrait, Orientation.landscape},
+          ),
+        );
 
-          expect(files, hasLength(1));
-          expect(files.first.path, isNot(contains('portrait')));
-          expect(files.first.path, isNot(contains('landscape')));
-        },
-      );
+        expect(files, hasLength(1));
+        expect(files.first.path, isNot(contains('portrait')));
+        expect(files.first.path, isNot(contains('landscape')));
+      });
 
       testWidgets('works from within runAsync', (tester) async {
         await tester.pumpWidget(
           const MaterialApp(
-            home: Scaffold(
-              body: Center(
-                child: Text('Async Snap Test'),
-              ),
-            ),
+            home: Scaffold(body: Center(child: Text('Async Snap Test'))),
           ),
         );
 
@@ -283,10 +242,7 @@ void main() {
           implicitView.physicalSize,
           equals(newDevice.screenSize * newDevice.pixelRatio),
         );
-        expect(
-          implicitView.devicePixelRatio,
-          equals(newDevice.pixelRatio),
-        );
+        expect(implicitView.devicePixelRatio, equals(newDevice.pixelRatio));
 
         restore();
 
@@ -324,10 +280,7 @@ void main() {
                   children: [
                     Text(
                       'Custom Font Text',
-                      style: TextStyle(
-                        fontFamily: 'Roboto',
-                        fontSize: 24,
-                      ),
+                      style: TextStyle(fontFamily: 'Roboto', fontSize: 24),
                     ),
                     Icon(Icons.check),
                   ],
@@ -352,11 +305,7 @@ void main() {
         (tester) async {
           await tester.pumpWidget(
             const MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Device Frame Test'),
-                ),
-              ),
+              home: Scaffold(body: Center(child: Text('Device Frame Test'))),
             ),
           );
 
@@ -366,9 +315,7 @@ void main() {
         },
         settings: const SnaptestSettings(
           includeDeviceFrame: true,
-          devices: [
-            WidgetTesterDevice(),
-          ],
+          devices: [WidgetTesterDevice()],
         ),
       );
 
@@ -400,13 +347,8 @@ void main() {
         },
         settings: SnaptestSettings(
           includeDeviceFrame: true,
-          devices: [
-            Devices.ios.iPhone16Pro,
-          ],
-          orientations: {
-            Orientation.portrait,
-            Orientation.landscape,
-          },
+          devices: [Devices.ios.iPhone16Pro],
+          orientations: {Orientation.portrait, Orientation.landscape},
         ),
       );
     });
@@ -436,18 +378,14 @@ void main() {
         SnaptestSettings.global = SnaptestSettings(
           blockText: false,
           includeDeviceFrame: true,
-          devices: [
-            Devices.ios.iPhone16,
-          ],
+          devices: [Devices.ios.iPhone16],
         );
 
         final files = await snap(name: 'global_settings_1');
         expect(files, hasLength(1));
 
         SnaptestSettings.global = SnaptestSettings(
-          devices: [
-            Devices.ios.iPhone16,
-          ],
+          devices: [Devices.ios.iPhone16],
         );
 
         final files2 = await snap(
@@ -472,7 +410,10 @@ void main() {
                       child: Padding(
                         key: Key('check-icon'),
                         padding: EdgeInsets.all(16),
-                        child: Icon(Icons.check),
+                        child: SizedBox.square(
+                          dimension: 24,
+                          child: ColoredBox(color: Colors.green),
+                        ),
                       ),
                     ),
                   ),
