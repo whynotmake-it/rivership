@@ -44,6 +44,15 @@ jobs:
 
       - name: 📝 Run Test
         run: melos run coverage
+      
+      - name: Upload golden test failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures-${{ steps.pkg.outputs.basename }}
+          path: |
+            **/test/**/failures/**
+          if-no-files-found: ignore
 
       - name: 📊 Generate Coverage
         id: coverage-report
