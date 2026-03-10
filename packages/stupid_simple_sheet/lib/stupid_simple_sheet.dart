@@ -537,6 +537,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
       final backSim = motion.createSimulation(
         start: currentValue,
+        end: maxExtent,
         velocity: -adjustedVelocity,
       );
       controller!.animateWith(backSim);
