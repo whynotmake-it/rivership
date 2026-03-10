@@ -411,6 +411,7 @@ void main() {
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
       bool draggable = true,
       ShapeBorder? shape,
+      Widget? child,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -429,15 +430,16 @@ void main() {
                       draggable: draggable,
                       shape:
                           shape ?? StupidSimpleCupertinoSheetRoute.iOS18Shape,
-                      child: Scaffold(
-                        key: const ValueKey('scaffold'),
-                        body: ListView.builder(
-                          itemCount: 100,
-                          itemBuilder: (context, index) => ListTile(
-                            title: Text('Item $index'),
+                      child: child ??
+                          Scaffold(
+                            key: const ValueKey('scaffold'),
+                            body: ListView.builder(
+                              itemCount: 100,
+                              itemBuilder: (context, index) => ListTile(
+                                title: Text('Item $index'),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                     ),
                   ),
                   child: const Text('Show Stupid Simple Sheet'),
@@ -514,6 +516,55 @@ void main() {
     });
 
     group('snap and scroll', () {
+      testWidgets(
+        'sheet with only [0.5] snap settles at .5 when dragged up',
+        (tester) async {
+          await tester.pumpWidget(
+            build(
+              snappingConfig: const SheetSnappingConfig([0.5]),
+              child: Container(
+                key: const ValueKey('sheet-content'),
+                height: 200,
+                color: Colors.blue,
+              ),
+            ),
+          );
+
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final contentFinder = find.byKey(const ValueKey('sheet-content'));
+          final route = ModalRoute.of(tester.element(contentFinder))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          // Sheet should be at 0.5 (the initial snap)
+          expect(route.animation!.value, equals(0.5));
+
+          final gesture =
+              await tester.startGesture(tester.getCenter(contentFinder));
+          for (var i = 0; i < 20; i++) {
+            await gesture.moveBy(const Offset(0, -30));
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+
+          expect(route.animation!.value, greaterThan(0.5));
+
+          await gesture.up();
+          await tester.pumpAndSettle();
+
+          // The sheet must not settle at 1.0 — it should snap back to 0.5
+          // since that is the only defined snap point.
+          // ignore: invalid_use_of_protected_member
+          final settledValue = route.controller!.value;
+          expect(
+            settledValue,
+            closeTo(0.5, 0.01),
+            reason: 'Sheet should snap back to 0.5 (the only defined snap '
+                'point), not 1.0. Settled at $settledValue.',
+          );
+        },
+      );
+
       testWidgets('will not scroll at all when dragged up from snap',
           (tester) async {
         await tester.pumpWidget(
@@ -532,11 +583,15 @@ void main() {
           matching: find.byType(Scrollable),
         );
 
+        final sheetRoute = ModalRoute.of(tester.element(scrollableFinder))!
+            as StupidSimpleCupertinoSheetRoute;
+
         expect(scrollableFinder, findsOneWidget);
         expect(
           tester.state<ScrollableState>(scrollableFinder).position.pixels,
           equals(0.0),
         );
+        expect(sheetRoute.animation!.value, equals(0.5));
 
         // Drag sheet to top quickly
         final gesture =
@@ -545,6 +600,8 @@ void main() {
           await gesture.moveBy(const Offset(0, -20));
           await tester.pump(const Duration(milliseconds: 16));
         }
+
+        expect(sheetRoute.animation!.value, greaterThan(0.5));
 
         expect(
           tester.state<ScrollableState>(scrollableFinder).position.pixels,
