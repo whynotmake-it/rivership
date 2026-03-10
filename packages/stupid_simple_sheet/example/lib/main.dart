@@ -66,7 +66,8 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleSheetRoute<T>(
-        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+        backgroundSnapshotMode: RouteSnapshotMode.settled,
+        dismissalMode: DismissalMode.shrink,
         settings: page,
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
@@ -107,6 +108,21 @@ final stupidSimpleSheetRoutes = [
             top: Radius.circular(28),
           ),
         ),
+      ),
+    ),
+  ),
+  NamedRouteDef(
+    name: 'Shrink Sheet',
+    path: 'shrink-sheet',
+    builder: (context, data) => _ShrinkSheetContent(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleGlassSheetRoute<T>(
+        snappingConfig: SheetSnappingConfig([.5, 1]),
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+        settings: page,
+        dismissalMode: DismissalMode.shrink,
+        child: child,
       ),
     ),
   ),
@@ -162,6 +178,10 @@ class MotorExample extends StatelessWidget {
               child: Text('Non-Draggable Sheet'),
               onPressed: () =>
                   context.navigateTo(NamedRoute('Non-Draggable Sheet')),
+            ),
+            CupertinoButton.filled(
+              child: Text('Shrink Sheet'),
+              onPressed: () => context.navigateTo(NamedRoute('Shrink Sheet')),
             ),
           ],
         ),
@@ -608,3 +628,176 @@ class _SmallSheetContentState extends State<_SmallSheetContent> {
     });
   }
 }
+
+class _ShrinkSheetContent extends StatelessWidget {
+  const _ShrinkSheetContent();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = CupertinoTheme.of(context).textTheme;
+
+    return SheetBackground(
+      backgroundColor: CupertinoTheme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 4),
+                child: Container(
+                  width: 36,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey3.resolveFrom(context),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Share with...',
+                style: textTheme.navTitleTextStyle,
+              ),
+            ),
+
+            // Scrollable contact list
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final contacts = _contacts;
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: contacts[index].color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      contacts[index].initials,
+                                      style: textTheme.textStyle.copyWith(
+                                        color: CupertinoColors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        contacts[index].name,
+                                        style: textTheme.textStyle,
+                                      ),
+                                      Text(
+                                        contacts[index].subtitle,
+                                        style: textTheme.tabLabelTextStyle
+                                            .copyWith(
+                                          color: CupertinoColors.secondaryLabel
+                                              .resolveFrom(context),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        childCount: _contacts.length,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Sticky footer — stays visible during shrink dismissal
+            Divider(
+              color: CupertinoColors.opaqueSeparator.resolveFrom(context),
+              height: 1,
+            ),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      color: CupertinoColors.systemGrey5.resolveFrom(context),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Text(
+                        'Copy Link',
+                        style: textTheme.textStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: CupertinoButton.filled(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Text(
+                        'Send',
+                        style: textTheme.textStyle.copyWith(
+                          color: CupertinoColors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Contact {
+  const _Contact(this.name, this.subtitle, this.initials, this.color);
+  final String name;
+  final String subtitle;
+  final String initials;
+  final Color color;
+}
+
+const _contacts = [
+  _Contact('Alice Martin', 'Last seen 2m ago', 'AM', Color(0xFF5856D6)),
+  _Contact('Bob Chen', 'Online', 'BC', Color(0xFF34C759)),
+  _Contact('Carol Davis', 'Last seen 1h ago', 'CD', Color(0xFFFF9500)),
+  _Contact('David Kim', 'Online', 'DK', Color(0xFFFF2D55)),
+  _Contact('Eva Rodriguez', 'Last seen 3h ago', 'ER', Color(0xFF007AFF)),
+  _Contact('Frank O\'Brien', 'Last seen yesterday', 'FO', Color(0xFFAF52DE)),
+  _Contact('Grace Lee', 'Online', 'GL', Color(0xFF30B0C7)),
+  _Contact('Henry Patel', 'Last seen 30m ago', 'HP', Color(0xFFFF3B30)),
+  _Contact('Iris Wang', 'Online', 'IW', Color(0xFF5AC8FA)),
+  _Contact('James Taylor', 'Last seen 5m ago', 'JT', Color(0xFFFFCC00)),
+  _Contact('Karen Nguyen', 'Last seen 2h ago', 'KN', Color(0xFF4CD964)),
+  _Contact('Liam Brown', 'Online', 'LB', Color(0xFF5856D6)),
+];

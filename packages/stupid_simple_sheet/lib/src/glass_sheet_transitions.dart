@@ -100,6 +100,7 @@ abstract class GlassSheetTransitions {
     required (double, double) slideBackRange,
     required Color backgroundColor,
     required bool secondSheet,
+    DismissalMode dismissalMode = DismissalMode.slide,
     ShapeBorder shape = const RoundedSuperellipseBorder(
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(36),
@@ -107,12 +108,17 @@ abstract class GlassSheetTransitions {
     ),
     Widget? child,
   }) {
-    final offsetTween = Tween<Offset>(
-      begin: Offset(0, 1),
-      end: Offset(0, 0),
+    final secondaryChild = secondarySlideUpTransition(
+      context,
+      animation: animation,
+      secondaryAnimation: secondaryAnimation,
+      shape: shape,
+      opacityRange: opacityRange,
+      slideBackRange: slideBackRange,
+      backgroundColor: backgroundColor,
+      secondSheet: secondSheet,
+      child: child,
     );
-
-    final Animation<Offset> positionAnimation = animation.drive(offsetTween);
 
     return Builder(
       builder: (context) {
@@ -125,19 +131,10 @@ abstract class GlassSheetTransitions {
           child: Padding(
             padding:
                 EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
-            child: SlideTransition(
-              position: positionAnimation,
-              child: secondarySlideUpTransition(
-                context,
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                shape: shape,
-                opacityRange: opacityRange,
-                slideBackRange: slideBackRange,
-                backgroundColor: backgroundColor,
-                secondSheet: secondSheet,
-                child: child,
-              ),
+            child: SheetDismissalTransition(
+              animation: animation,
+              dismissalMode: dismissalMode,
+              child: secondaryChild,
             ),
           ),
         );

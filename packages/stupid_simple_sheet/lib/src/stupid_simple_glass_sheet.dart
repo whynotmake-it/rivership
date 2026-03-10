@@ -36,6 +36,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
     this.blurBehindBarrier = true,
@@ -115,6 +116,9 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   final bool originateAboveBottomViewInset;
 
   @override
+  final DismissalMode dismissalMode;
+
+  @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
   @override
@@ -186,6 +190,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
             opacityRange: snappingConfigForTransition.bottomTwoPoints,
             backgroundColor: backgroundColor,
             secondSheet: _isSecondGlassSheet,
+            dismissalMode: dismissalMode,
             shape: shape,
             child: maybeSnapshotChild(child),
           );
