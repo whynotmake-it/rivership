@@ -2,13 +2,19 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
+import 'package:stupid_simple_sheet/src/dismissal_mode.dart';
 import 'package:stupid_simple_sheet/src/route_snapshot_mode.dart';
+import 'package:stupid_simple_sheet/src/sheet_dismissal_transition.dart';
+import 'package:stupid_simple_sheet/src/shrink_transition.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
 
+export 'src/dismissal_mode.dart';
 export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
+export 'src/sheet_dismissal_transition.dart';
+export 'src/shrink_transition.dart';
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 export 'src/stupid_simple_glass_sheet.dart';
@@ -51,6 +57,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
   });
 
@@ -89,6 +96,9 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool originateAboveBottomViewInset;
 
   @override
+  final DismissalMode dismissalMode;
+
+  @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
   @override
@@ -110,13 +120,14 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   }
 }
 
-class _RelativeGestureDetector extends StatelessWidget {
+class _RelativeGestureDetector extends StatefulWidget {
   const _RelativeGestureDetector({
     required this.scrollableCanMoveBack,
     required this.onlyDragWhenScrollWasAtTop,
     required this.onRelativeDragStart,
     required this.onRelativeDragUpdate,
     required this.onRelativeDragEnd,
+    required this.dismissalMode,
     required this.child,
   });
 
@@ -127,28 +138,49 @@ class _RelativeGestureDetector extends StatelessWidget {
   final void Function(double, bool) onRelativeDragUpdate;
   // ignore: avoid_positional_boolean_parameters
   final void Function(double, bool) onRelativeDragEnd;
+  final DismissalMode dismissalMode;
 
   final Widget child;
 
   @override
+  State<_RelativeGestureDetector> createState() =>
+      _RelativeGestureDetectorState();
+}
+
+class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
+  double? _referenceHeight;
+
+  @override
   Widget build(BuildContext context) {
     return ScrollDragDetector(
-      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-      scrollableCanMoveBack: scrollableCanMoveBack,
-      onVerticalDragStart: (details, _) => onRelativeDragStart(),
+      onlyDragWhenScrollWasAtTop: widget.onlyDragWhenScrollWasAtTop,
+      scrollableCanMoveBack: widget.scrollableCanMoveBack,
+      onVerticalDragStart: (details, _) {
+        _referenceHeight = switch (widget.dismissalMode) {
+          DismissalMode.shrink => ShrinkTransition.referenceHeightOf(context),
+          DismissalMode.slide =>
+            (context.size ?? MediaQuery.sizeOf(context)).height,
+        };
+        widget.onRelativeDragStart();
+      },
       onVerticalDragEnd: (details, willScroll) {
-        onRelativeDragEnd(
-          details.velocity.pixelsPerSecond.dy / context.size!.height,
-          willScroll,
-        );
+        if (_referenceHeight case final height?) {
+          widget.onRelativeDragEnd(
+            details.velocity.pixelsPerSecond.dy / height,
+            willScroll,
+          );
+        }
+        _referenceHeight = null;
       },
       onVerticalDragUpdate: (details, wouldScroll) {
-        onRelativeDragUpdate(
-          details.primaryDelta! / context.size!.height,
-          wouldScroll,
-        );
+        if (_referenceHeight case final height?) {
+          widget.onRelativeDragUpdate(
+            details.primaryDelta! / height,
+            wouldScroll,
+          );
+        }
       },
-      child: child,
+      child: widget.child,
     );
   }
 }
@@ -221,6 +253,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// If this is true, and the keyboard is opened, the sheet will originate from
   /// above the keyboard.
   bool get originateAboveBottomViewInset => false;
+
+  /// The mode used to animate the sheet's dismissal.
+  ///
+  /// [DismissalMode.slide] translates the sheet downward (the default).
+  /// [DismissalMode.shrink] shrinks the sheet vertically, clipping overflow
+  /// once the child's minimum intrinsic height is reached.
+  ///
+  /// Defaults to [DismissalMode.slide].
+  DismissalMode get dismissalMode => DismissalMode.slide;
 
   /// Controls when the route behind this sheet is rasterized to a GPU texture.
   ///
@@ -378,6 +419,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         // ^ The sheet is already moved up by the bottom view inset, so we make
         // sure the content inside the sheet doesn't add extra padding
         child: _RelativeGestureDetector(
+          dismissalMode: dismissalMode,
           onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.maxExtent,
@@ -417,29 +459,23 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return AnimatedBuilder(
-      animation: controller!,
-      builder: (context, _) {
-        final value = controller!.value;
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Flexible(
-              child: FractionalTranslation(
-                translation: Offset(0, 1 - value),
-                child: child,
-              ),
-            ),
-            if (originateAboveBottomViewInset)
-              SizedBox(
-                height: MediaQuery.viewInsetsOf(context).bottom,
-              ),
-          ],
-        );
-      },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Flexible(
+          child: SheetDismissalTransition(
+            animation: controller!,
+            dismissalMode: dismissalMode,
+            child: child,
+          ),
+        ),
+        if (originateAboveBottomViewInset)
+          SizedBox(
+            height: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+      ],
     );
   }
 

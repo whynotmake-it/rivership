@@ -399,6 +399,82 @@ void main() {
     });
   });
 
+  group('DismissalMode', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget buildWithDismissalMode({
+      DismissalMode dismissalMode = DismissalMode.slide,
+      Widget? sheetChild,
+    }) {
+      return MaterialApp(
+        theme: ThemeData(useMaterial3: false),
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return TextButton(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(context).push(
+                    StupidSimpleSheetRoute<void>(
+                      motion: motion,
+                      dismissalMode: dismissalMode,
+                      child: sheetChild ??
+                          const ColoredBox(
+                            key: ValueKey('sheet'),
+                            color: Color(0xFF2196F3),
+                            child: SizedBox(
+                              height: 300,
+                              child: Center(
+                                child: Text('Sheet Content'),
+                              ),
+                            ),
+                          ),
+                    ),
+                  ),
+                  child: const Text('Show Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('shrink mode opens and displays content', (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(dismissalMode: DismissalMode.shrink),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sheet Content'), findsOneWidget);
+      expect(find.byKey(const ValueKey('sheet')), findsOneWidget);
+    });
+
+    testWidgets('slide mode behavior is unchanged', (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(dismissalMode: DismissalMode.slide),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sheet Content'), findsOneWidget);
+
+      // Verify ShrinkTransition is NOT used in slide mode.
+      expect(find.byType(ShrinkTransition), findsNothing);
+
+      // Verify the sheet content is at the bottom with no vertical offset
+      // (i.e. FractionalTranslation with Offset(0, 0) at value=1.0).
+      final sheetTopLeft = tester.getTopLeft(
+        find.byKey(const ValueKey('sheet')),
+      );
+      expect(sheetTopLeft.dy, greaterThanOrEqualTo(0));
+    });
+  });
+
   group('StupidSimpleCupertinoSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
