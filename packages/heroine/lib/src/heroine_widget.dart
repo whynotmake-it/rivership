@@ -17,6 +17,7 @@ class Heroine extends StatefulWidget {
     this.zIndex,
     this.continuouslyTrackTarget = false,
     this.pauseTickersDuringFlight = false,
+    this.animateOnUserGestures = false,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -124,6 +125,12 @@ class Heroine extends StatefulWidget {
   /// transition.
   final bool pauseTickersDuringFlight;
 
+  /// Whether the heroine should animate during user gesture transitions (e.g.
+  /// back swipe).
+  ///
+  /// Defaults to false.
+  final bool animateOnUserGestures;
+
   @override
   State<Heroine> createState() => _HeroineState();
 }
@@ -138,7 +145,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   /// Initializes motion controllers for this hero's flight.
   ///
-  /// Called on the [_FlightSpec.controllingHero]'s state when a flight starts.
+  /// Called on toHero's [_HeroineState] when a flight starts.
   void _createMotionController(
     _FlightSpec spec,
     AnimationStatusListener onSpringAnimationStatusChanged,
