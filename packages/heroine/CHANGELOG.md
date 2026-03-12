@@ -1,3 +1,7 @@
+## 0.7.0+1
+
+ - **FIX**: don't throw in some cases when `DragDismissable.custom` is disabled.
+
 ## 0.7.0
 
 > Note: This release has breaking changes.
