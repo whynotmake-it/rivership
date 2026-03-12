@@ -1,3 +1,9 @@
+## 0.3.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: disable anti-aliasing on blocked text painting for better consistency.
+
 ## 0.2.3+1
 
  - **FIX**: `snap` with `from:` did not work in goldens.

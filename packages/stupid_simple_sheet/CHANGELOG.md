@@ -1,3 +1,7 @@
+## 0.9.1+1
+
+ - **FIX**: dragging up a sheet whose highest snapping point was lower than 1.0 would incorrectly snap it to 1.0.
+
 ## 0.9.1
 
  - **FIX**: incorrect snapping points used for cupertino secondary transitions in some cases.

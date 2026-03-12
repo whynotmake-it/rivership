@@ -1,6 +1,6 @@
 name: stupid_simple_sheet
 description: A simple sheet widget for Flutter.
-version: 0.9.1
+version: 0.9.1+1
 resolution: workspace
 
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/stupid_simple_sheet
@@ -24,5 +24,5 @@ dev_dependencies:
     sdk: flutter
   lintervention: ^0.3.1
   mocktail: ^1.0.3
-  snaptest: ^0.2.3+1
+  snaptest: ^0.3.0
   spot: ^0.18.0
