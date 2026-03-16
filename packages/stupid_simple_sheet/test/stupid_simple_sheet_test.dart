@@ -399,6 +399,195 @@ void main() {
     });
   });
 
+  group('resistance when route cannot pop', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+    }) {
+      return MaterialApp(
+        theme: ThemeData(useMaterial3: false),
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return TextButton(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(
+                    StupidSimpleSheetRoute<void>(
+                      motion: motion,
+                      snappingConfig: snappingConfig,
+                      child: const PopScope(
+                        canPop: false,
+                        child: Scaffold(
+                          key: ValueKey('scaffold'),
+                          body: Center(child: Text('Sheet Content')),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Show Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets(
+      'applies resistance when dragged below min snap point',
+      (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+
+        final topLeft = tester.getTopLeft(scaffoldFinder);
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        const dragFrames = 10;
+        const dragPx = 30.0;
+        const expectedDelta = dragFrames * dragPx;
+
+        for (var i = 0; i < dragFrames; i++) {
+          await gesture.moveBy(const Offset(0, dragPx));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        final delta = tester.getTopLeft(scaffoldFinder).dy - topLeft.dy;
+
+        // The value should have moved less than 30% of what it would
+        // without resistance.
+        expect(delta, lessThan(expectedDelta * 0.3));
+
+        await gesture.up();
+      },
+    );
+
+    testWidgets(
+      'snaps back to min snap point after drag release',
+      (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final topLeft = tester.getTopLeft(scaffoldFinder);
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        expect(tester.getTopLeft(scaffoldFinder).dy, greaterThan(topLeft.dy));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(tester.getTopLeft(scaffoldFinder), topLeft);
+      },
+    );
+
+    testWidgets(
+      'applies resistance with multi-snap config',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1.0],
+              initialSnap: 0.5,
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleSheetRoute;
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+
+        // Sheet should start at 0.5
+        expect(controller.value, equals(0.5));
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        // Drag downward significantly
+        for (var i = 0; i < 15; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        // Should have moved very little below 0.5 due to resistance
+        final valueDelta = 0.5 - controller.value;
+        expect(valueDelta, lessThan(0.1));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // Should snap back to 0.5 (the min snap point)
+        expect(controller.value, closeTo(0.5, 0.01));
+      },
+    );
+
+    testWidgets(
+      'does not apply resistance when dragging between snap points',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1.0],
+              initialSnap: 1,
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleSheetRoute;
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+
+        expect(controller.value, equals(1.0));
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        // Drag down a moderate amount (should move freely between 1.0 and 0.5)
+        // We lose 2 frames to scroll detection, so use more frames.
+        for (var i = 0; i < 20; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        // Should have moved significantly (no resistance between snap points)
+        final valueDelta = 1.0 - controller.value;
+        expect(valueDelta, greaterThan(0.1));
+
+        // And the sheet should still be above 0.5 (min snap) since we
+        // are just verifying free movement, not that it passes through.
+        expect(controller.value, lessThan(1.0));
+
+        await gesture.up();
+      },
+    );
+  });
+
   group('DismissalMode', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
