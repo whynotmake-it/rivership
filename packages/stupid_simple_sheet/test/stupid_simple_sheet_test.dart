@@ -410,6 +410,7 @@ void main() {
       Widget? sheetChild,
       bool draggable = true,
       bool onlyDragWhenScrollWasAtTop = true,
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -424,6 +425,7 @@ void main() {
                       motion: motion,
                       dismissalMode: dismissalMode,
                       draggable: draggable,
+                      snappingConfig: snappingConfig,
                       onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       child: sheetChild ??
                           const ColoredBox(
@@ -457,6 +459,52 @@ void main() {
       expect(find.text('Sheet Content'), findsOneWidget);
       expect(find.byKey(const ValueKey('sheet')), findsOneWidget);
     });
+
+    testWidgets(
+      'shrink mode sizes down a child shorter than the route',
+      (tester) async {
+        // Use a large screen so that 0.5 * screenHeight > childMax.
+        // Default test env is 800x600 which is too small; use a
+        // phone-sized surface instead.
+        tester.view.physicalSize = const Size(1170, 2532);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        const childKey = ValueKey('modal-child');
+
+        await tester.pumpWidget(
+          buildWithDismissalMode(
+            dismissalMode: DismissalMode.shrink,
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1],
+              initialSnap: 0.5,
+            ),
+            sheetChild: Container(
+              key: childKey,
+              constraints: const BoxConstraints(
+                minHeight: 50,
+                maxHeight: 400,
+              ),
+              color: const Color(0xFF2196F3),
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        // At 0.5 extent on a 2532px screen the target height is
+        // ~1266px — well above the child's 400px max. Without the
+        // fix the child stays at 400px because the shrink window
+        // is still larger than it.
+        final childHeight = tester.getSize(find.byKey(childKey)).height;
+        expect(
+          childHeight,
+          lessThan(400),
+          reason: 'At 0.5 extent the child should have shrunk '
+              'below its natural 400px. Got $childHeight.',
+        );
+      },
+    );
 
     testWidgets('slide mode opens and displays content', (tester) async {
       await tester.pumpWidget(
@@ -964,9 +1012,10 @@ void main() {
           expect(
             draggedOvershoot,
             closeTo(directOvershoot, directOvershoot * 0.3),
-            reason:
-                'Overshoot should be comparable regardless of the initial snap '
-                'point. Direct: $directOvershoot, After drag: $draggedOvershoot',
+            reason: 'Overshoot should be comparable regardless '
+                'of initial snap. '
+                'Direct: $directOvershoot, '
+                'After drag: $draggedOvershoot',
           );
         },
       );

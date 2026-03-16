@@ -105,24 +105,49 @@ class RenderShrinkTransition extends RenderBox
       return;
     }
 
-    _referenceHeight = constraints.maxHeight;
-    final targetHeight = _sizeFactor * constraints.maxHeight;
+    // First, lay out at the full available height to learn the child's
+    // natural height.  Most children (Scaffold, Column, etc.) will expand
+    // to fill; short children (Container with maxHeight) will be smaller.
+    child.layout(
+      constraints.copyWith(minHeight: 0),
+      parentUsesSize: true,
+    );
+    final naturalHeight = child.size.height;
+
+    // The reference height is the child's natural height so that drag
+    // deltas are normalised against the actual content, not the route.
+    _referenceHeight = naturalHeight;
+
+    // Scale from the child's natural height so that a 400 px child
+    // inside a 1000 px route already shrinks at sizeFactor = 0.5
+    // (→ 200 px) instead of remaining unchanged.
+    final targetHeight = _sizeFactor * naturalHeight;
+
+    // Don't let the child go below its minimum intrinsic height.
     final minHeight = _illegallyComputeMinIntrinsicHeight(constraints.maxWidth);
     final childMaxHeight = math.max(targetHeight, minHeight);
 
-    child.layout(
-      constraints.copyWith(
-        minHeight: 0,
-        maxHeight: childMaxHeight,
-      ),
-      parentUsesSize: true,
-    );
+    // Re-layout only when the tighter constraint actually differs.
+    if (childMaxHeight < naturalHeight) {
+      child.layout(
+        constraints.copyWith(
+          minHeight: 0,
+          maxHeight: childMaxHeight,
+        ),
+        parentUsesSize: true,
+      );
+    }
 
-    final visibleHeight = math.min(child.size.height, childMaxHeight);
-    size = constraints.constrain(Size(child.size.width, visibleHeight));
+    // When targetHeight > child height (overshoot), report the larger
+    // target so the parent can position us further down, creating a
+    // visual gap above the sheet.  constraints.constrain clamps to the
+    // available space so we never exceed the parent bounds.
+    size = constraints.constrain(Size(child.size.width, targetHeight));
 
-    (child.parentData! as BoxParentData).offset =
-        Offset(0, constraints.maxHeight - targetHeight);
+    // Child is top-aligned: its top matches ours. Any overflow past our
+    // bottom edge is clipped by paint, producing the "push out towards
+    // bottom" effect once the child hits its minimum intrinsic height.
+    (child.parentData! as BoxParentData).offset = Offset.zero;
   }
 
   // FIXME: Hey! this feels illegal https://github.com/flutter/flutter/issues/183443
