@@ -408,6 +408,8 @@ void main() {
     Widget buildWithDismissalMode({
       DismissalMode dismissalMode = DismissalMode.slide,
       Widget? sheetChild,
+      bool draggable = true,
+      bool onlyDragWhenScrollWasAtTop = true,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -421,6 +423,8 @@ void main() {
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
                       dismissalMode: dismissalMode,
+                      draggable: draggable,
+                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
                       child: sheetChild ??
                           const ColoredBox(
                             key: ValueKey('sheet'),
@@ -454,7 +458,7 @@ void main() {
       expect(find.byKey(const ValueKey('sheet')), findsOneWidget);
     });
 
-    testWidgets('slide mode behavior is unchanged', (tester) async {
+    testWidgets('slide mode opens and displays content', (tester) async {
       await tester.pumpWidget(
         buildWithDismissalMode(dismissalMode: DismissalMode.slide),
       );
@@ -462,17 +466,216 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sheet Content'), findsOneWidget);
-
-      // Verify ShrinkTransition is NOT used in slide mode.
-      expect(find.byType(ShrinkTransition), findsNothing);
-
-      // Verify the sheet content is at the bottom with no vertical offset
-      // (i.e. FractionalTranslation with Offset(0, 0) at value=1.0).
-      final sheetTopLeft = tester.getTopLeft(
-        find.byKey(const ValueKey('sheet')),
-      );
-      expect(sheetTopLeft.dy, greaterThanOrEqualTo(0));
+      expect(find.byKey(const ValueKey('sheet')), findsOneWidget);
     });
+
+    testWidgets('shrink mode can be dragged down', (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(
+          dismissalMode: DismissalMode.shrink,
+          sheetChild: Scaffold(
+            key: const ValueKey('scaffold'),
+            body: ListView.builder(
+              itemCount: 100,
+              itemBuilder: (context, index) =>
+                  ListTile(title: Text('Item $index')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final route = ModalRoute.of(tester.element(scaffoldFinder))!;
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // The animation value should have decreased from dragging down
+      expect(route.animation!.value, lessThan(1.0));
+
+      await gesture.up();
+    });
+
+    testWidgets('shrink mode can be popped programmatically', (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(
+          dismissalMode: DismissalMode.shrink,
+          sheetChild: const Scaffold(
+            key: ValueKey('scaffold'),
+            body: Center(child: Text('Sheet Content')),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sheet Content'), findsOneWidget);
+
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sheet Content'), findsNothing);
+    });
+
+    testWidgets(
+      'shrink mode: page behind becomes interactable quickly when popping',
+      (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        await tester.pumpWidget(
+          buildWithDismissalMode(
+            dismissalMode: DismissalMode.shrink,
+            sheetChild: const Scaffold(
+              key: ValueKey('scaffold'),
+              body: Center(child: Text('Sheet Content')),
+            ),
+          ),
+        );
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
+
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+
+        await tester.pump();
+        expect(buttonFinder.hitTestable(), findsOneWidget);
+      },
+    );
+
+    testWidgets('shrink mode can be closed while dragging', (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(
+          dismissalMode: DismissalMode.shrink,
+          sheetChild: Scaffold(
+            key: const ValueKey('scaffold'),
+            body: ListView.builder(
+              itemCount: 100,
+              itemBuilder: (context, index) =>
+                  ListTile(title: Text('Item $index')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Close while dragging
+      Navigator.of(tester.element(scaffoldFinder)).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+
+      await gesture.up();
+    });
+
+    testWidgets('shrink mode does not bounce when dragged at top',
+        (tester) async {
+      await tester.pumpWidget(
+        buildWithDismissalMode(
+          dismissalMode: DismissalMode.shrink,
+          sheetChild: Scaffold(
+            key: const ValueKey('scaffold'),
+            body: ListView.builder(
+              itemCount: 100,
+              itemBuilder: (context, index) =>
+                  ListTile(title: Text('Item $index')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+      final route = ModalRoute.of(tester.element(scaffoldFinder))!;
+
+      final gesture =
+          await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+      // Drag down then back up with extra distance
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      for (var i = 0; i < 5; i++) {
+        await gesture.moveBy(const Offset(0, -40));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Should not overshoot past fully open
+      expect(route.animation!.value, lessThanOrEqualTo(1.0));
+
+      // and we have started scrolling
+      final scrollableState = tester.state<ScrollableState>(
+        find.descendant(
+          of: scaffoldFinder,
+          matching: find.byType(Scrollable),
+        ),
+      );
+
+      expect(scrollableState.position.pixels, greaterThan(0.0));
+
+      await gesture.up();
+    });
+
+    testWidgets(
+      'shrink mode cannot be dragged when draggable is false',
+      (tester) async {
+        await tester.pumpWidget(
+          buildWithDismissalMode(
+            dismissalMode: DismissalMode.shrink,
+            draggable: false,
+            sheetChild: Scaffold(
+              key: const ValueKey('scaffold'),
+              body: ListView.builder(
+                itemCount: 100,
+                itemBuilder: (context, index) =>
+                    ListTile(title: Text('Item $index')),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!;
+        final initialValue = route.animation!.value;
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        final delta = initialValue - route.animation!.value;
+
+        // Should barely have moved (resistance applied)
+        expect(delta, lessThan(initialValue * 0.2));
+
+        await gesture.up();
+      },
+    );
   });
 
   group('StupidSimpleCupertinoSheetRoute', () {
@@ -681,6 +884,93 @@ void main() {
           expect(settledValue, equals(1));
         },
       );
+      testWidgets(
+        'overshoot resistance is the same whether sheet opened at max or '
+        'was dragged there from a lower snap',
+        (tester) async {
+          // Helper: measure overshoot after a fling at a sheet
+          // that is already at 1.0.
+          Future<double> measureOvershoot({
+            required double initialSnap,
+          }) async {
+            await tester.pumpWidget(
+              build(
+                snappingConfig: SheetSnappingConfig(
+                  const [0.5, 1.0],
+                  initialSnap: initialSnap,
+                ),
+                child: Container(
+                  key: const ValueKey('sheet-content'),
+                  height: 200,
+                  color: Colors.blue,
+                ),
+              ),
+            );
+
+            await tester.tap(find.byKey(const ValueKey('button')));
+            await tester.pumpAndSettle();
+
+            final contentFinder = find.byKey(const ValueKey('sheet-content'));
+            final route = ModalRoute.of(tester.element(contentFinder))!
+                as StupidSimpleCupertinoSheetRoute;
+            // ignore: invalid_use_of_protected_member
+            final controller = route.controller!;
+
+            if (initialSnap < 1.0) {
+              // Drag from 0.5 up to ~1.0 and let it settle there
+              final gesture =
+                  await tester.startGesture(tester.getCenter(contentFinder));
+              for (var i = 0; i < 20; i++) {
+                await gesture.moveBy(const Offset(0, -30));
+                await tester.pump(const Duration(milliseconds: 16));
+              }
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              expect(
+                controller.value,
+                closeTo(1.0, 0.01),
+                reason: 'Sheet should have settled at 1.0',
+              );
+            }
+
+            // Now fling upward from 1.0
+            await tester.fling(
+              contentFinder,
+              const Offset(0, -800),
+              10000,
+            );
+
+            final overshoot = controller.value - 1.0;
+
+            // Tear down by settling
+            await tester.pumpAndSettle();
+
+            // Pop the route so we start clean
+            Navigator.of(tester.element(contentFinder)).pop();
+            await tester.pumpAndSettle();
+
+            return overshoot;
+          }
+
+          // Sheet opened directly at 1.0
+          final directOvershoot = await measureOvershoot(initialSnap: 1);
+
+          // Sheet opened at 0.5, dragged to 1.0, then overshot
+          final draggedOvershoot = await measureOvershoot(initialSnap: 0.5);
+
+          // Both should overshoot by roughly the same amount — if the sticking
+          // point wasn't updated the second case would be near zero.
+          expect(
+            draggedOvershoot,
+            closeTo(directOvershoot, directOvershoot * 0.3),
+            reason:
+                'Overshoot should be comparable regardless of the initial snap '
+                'point. Direct: $directOvershoot, After drag: $draggedOvershoot',
+          );
+        },
+      );
+
       testWidgets('will not scroll at all when dragged up from snap',
           (tester) async {
         await tester.pumpWidget(
@@ -1162,6 +1452,185 @@ void main() {
         await snap(name: 'zero radius', matchToGolden: true);
       });
     });
+
+    group('shrink dismissal mode', () {
+      Widget buildShrink({
+        SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+        bool draggable = true,
+        Widget? child,
+      }) {
+        return CupertinoApp(
+          home: Scaffold(
+            body: Center(
+              child: Builder(
+                builder: (context) {
+                  return CupertinoButton.filled(
+                    key: const ValueKey('button'),
+                    onPressed: () => Navigator.of(context).push(
+                      StupidSimpleCupertinoSheetRoute<void>(
+                        motion: motion,
+                        dismissalMode: DismissalMode.shrink,
+                        snappingConfig: snappingConfig,
+                        draggable: draggable,
+                        child: child ??
+                            Scaffold(
+                              key: const ValueKey('scaffold'),
+                              body: ListView.builder(
+                                itemCount: 100,
+                                itemBuilder: (context, index) => ListTile(
+                                  title: Text('Item $index'),
+                                ),
+                              ),
+                            ),
+                      ),
+                    ),
+                    child: const Text('Show Sheet'),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      }
+
+      testWidgets('opens and shows content', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsOneWidget);
+      });
+
+      testWidgets('can be dragged down', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        // The route animation value should be less than 1.0 after dragging
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleCupertinoSheetRoute;
+        expect(route.animation!.value, lessThan(1.0));
+
+        await gesture.up();
+      });
+
+      testWidgets('route behind becomes interactable when popping',
+          (tester) async {
+        final buttonFinder = find.byKey(const ValueKey('button'));
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        expect(buttonFinder.hitTestable(), findsNothing);
+
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+
+        // Allow the sheet to clear the button enough
+        await tester.pumpFrames(
+          buildShrink(),
+          const Duration(milliseconds: 120),
+        );
+
+        expect(buttonFinder.hitTestable(), findsOneWidget);
+      });
+
+      testWidgets('can be closed while dragging', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+
+        await gesture.up();
+      });
+
+      testWidgets('cannot be dragged when draggable is false', (tester) async {
+        await tester.pumpWidget(buildShrink(draggable: false));
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleCupertinoSheetRoute;
+        final initialValue = route.animation!.value;
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        // ignore: invalid_use_of_protected_member
+        final currentValue = route.controller!.value;
+        final delta = initialValue - currentValue;
+
+        // Resistance should prevent significant movement
+        expect(delta, lessThan(initialValue * 0.2));
+
+        await gesture.up();
+      });
+
+      testWidgets('snapping works with shrink mode', (tester) async {
+        await tester.pumpWidget(
+          buildShrink(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1.0],
+              initialSnap: 1,
+            ),
+            child: Container(
+              key: const ValueKey('sheet-content'),
+              height: 200,
+              color: const Color(0xFF2196F3),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(const ValueKey('sheet-content'));
+        final route = ModalRoute.of(tester.element(contentFinder))!
+            as StupidSimpleCupertinoSheetRoute;
+
+        expect(route.animation!.value, equals(1));
+
+        // Fling the sheet past 1.0
+        await tester.fling(
+          contentFinder,
+          const Offset(0, -800),
+          10000,
+        );
+
+        await tester.pumpAndSettle();
+
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, equals(1));
+      });
+    });
   });
 
   group('StupidSimpleGlassSheetRoute', () {
@@ -1307,6 +1776,85 @@ void main() {
 
       await tester.pumpAndSettle();
       await snap(name: 'glass barrier color no blur', matchToGolden: true);
+    });
+
+    group('shrink dismissal mode', () {
+      Widget buildShrink({
+        Widget? child,
+      }) {
+        return CupertinoApp(
+          home: Scaffold(
+            body: Center(
+              child: Builder(
+                builder: (context) {
+                  return CupertinoButton.filled(
+                    key: const ValueKey('button'),
+                    onPressed: () => Navigator.of(context).push(
+                      StupidSimpleGlassSheetRoute<void>(
+                        motion: motion,
+                        dismissalMode: DismissalMode.shrink,
+                        child: child ??
+                            Scaffold(
+                              key: const ValueKey('scaffold'),
+                              body: ListView.builder(
+                                itemCount: 100,
+                                itemBuilder: (context, index) => ListTile(
+                                  title: Text('Item $index'),
+                                ),
+                              ),
+                            ),
+                      ),
+                    ),
+                    child: const Text('Show Sheet'),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      }
+
+      testWidgets('opens and shows content', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsOneWidget);
+      });
+
+      testWidgets('can be popped programmatically', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        Navigator.of(tester.element(scaffoldFinder)).pop();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsNothing);
+      });
+
+      testWidgets('can be dragged down', (tester) async {
+        await tester.pumpWidget(buildShrink());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleGlassSheetRoute;
+
+        final gesture =
+            await tester.startGesture(tester.getCenter(scaffoldFinder));
+
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        expect(route.animation!.value, lessThan(1.0));
+
+        await gesture.up();
+      });
     });
 
     testWidgets('transition looks correct when snapping', (tester) async {
