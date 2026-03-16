@@ -519,7 +519,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
-    final applyResistance = !draggable || currentValue > maxExtent;
+    final minSnap = effectiveSnappingConfig.initialSnap;
+    final cannotPop = popDisposition != RoutePopDisposition.pop;
+    final belowMinAndCannotPop =
+        cannotPop && currentValue < minSnap && delta > 0;
+
+    final applyResistance =
+        !draggable || currentValue > maxExtent || belowMinAndCannotPop;
 
     if (wouldScroll && (currentValue - delta) > maxExtent) {
       // If the scrollable would scroll, and the sheet will be dragged past its
@@ -527,8 +533,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       adjustedDelta = currentValue - maxExtent;
     } else if (applyResistance && delta != 0) {
       final stickingPoint = _stickingPoint ?? 1.0;
-      // When dragging up past fully open, reduce the delta with diminishing
-      // returns
+      // Reduce the delta with diminishing returns (resistance)
 
       final overshoot = (stickingPoint - currentValue).abs();
 
@@ -562,18 +567,24 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
-    // If dragged past fully open, always snap back to 1.0
-    if (currentValue > maxExtent || !draggable) {
+    final minSnap = effectiveSnappingConfig.initialSnap;
+    final cannotPop = popDisposition != RoutePopDisposition.pop;
+    final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
+
+    // If dragged past fully open, or below min snap when route can't pop,
+    // snap back to the appropriate point
+    if (currentValue > maxExtent || !draggable || belowMinAndCannotPop) {
       final stickingPoint = _stickingPoint ?? maxExtent;
+      final snapTarget = currentValue > maxExtent ? maxExtent : stickingPoint;
       // Scale the velocity by the same resistance factor that was applied
-      //during dragging
+      // during dragging
       final overshoot = (currentValue - stickingPoint).abs();
       final resistance = 1.0 / (maxExtent + overshoot * overshootResistance);
       final adjustedVelocity = velocity * resistance;
 
       final backSim = motion.createSimulation(
         start: currentValue,
-        end: maxExtent,
+        end: snapTarget,
         velocity: -adjustedVelocity,
       );
       controller!.animateWith(backSim);
@@ -584,6 +595,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           _animationTargetValue = effectiveSnappingConfig.findTargetSnapPoint(
         currentValue,
         velocity,
+        includeClosed: popDisposition == RoutePopDisposition.pop,
       );
 
       _stickingPoint = targetValue;
