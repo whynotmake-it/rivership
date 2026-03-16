@@ -31,6 +31,7 @@ class SheetSnappingConfig {
   /// Gets all snapping points including the implicit 0, resolved as relative
   /// values (0.0-1.0) for the given sheet height.
   List<double> getAllPoints() {
+    assert(points.isNotEmpty, 'At least one snap point must be provided');
     final resolved = <double>{
       0.0, // Always include the implicit 0 point
       ...points,
@@ -123,10 +124,10 @@ class SheetSnappingConfig {
     return allPoints.isNotEmpty ? allPoints.last : 1.0;
   }
 
-  /// Gets the minimum extent as a relative value.
+  /// Gets the minimum extent that is not 0.0 as a relative value.
   double get minExtent {
-    final allPoints = getAllPoints();
-    return allPoints.isNotEmpty ? allPoints.first : 0.0;
+    assert(points.isNotEmpty, 'At least one snap point must be provided');
+    return points.isNotEmpty ? points.first : 0.0;
   }
 
   /// Whether this configuration has any in-between snap points

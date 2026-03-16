@@ -519,7 +519,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
-    final minSnap = effectiveSnappingConfig.initialSnap;
+    final minSnap = effectiveSnappingConfig.minExtent;
     final cannotPop = popDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop =
         cannotPop && currentValue < minSnap && delta > 0;
@@ -567,7 +567,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
-    final minSnap = effectiveSnappingConfig.initialSnap;
+    final minSnap = effectiveSnappingConfig.minExtent;
     final cannotPop = popDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
 
