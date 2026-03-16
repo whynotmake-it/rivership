@@ -138,16 +138,17 @@ class RenderShrinkTransition extends RenderBox
       );
     }
 
-    // When targetHeight > child height (overshoot), report the larger
-    // target so the parent can position us further down, creating a
-    // visual gap above the sheet.  constraints.constrain clamps to the
-    // available space so we never exceed the parent bounds.
+    // Clamp our reported size to the constraints — we can never be taller
+    // than the parent allows.
     size = constraints.constrain(Size(child.size.width, targetHeight));
 
-    // Child is top-aligned: its top matches ours. Any overflow past our
-    // bottom edge is clipped by paint, producing the "push out towards
-    // bottom" effect once the child hits its minimum intrinsic height.
-    (child.parentData! as BoxParentData).offset = Offset.zero;
+    // When sizeFactor > 1.0 (spring overshoot), targetHeight exceeds the
+    // child's natural height but constraints.constrain clamps our size to
+    // at most naturalHeight.  To visualise the overshoot we translate the
+    // child *upward* by the excess pixels so it appears to push up.
+    final overshootPx = targetHeight - child.size.height;
+    final dy = overshootPx > 0 ? -overshootPx : 0.0;
+    (child.parentData! as BoxParentData).offset = Offset(0, dy);
   }
 
   // FIXME: Hey! this feels illegal https://github.com/flutter/flutter/issues/183443
