@@ -586,6 +586,8 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         velocity,
       );
 
+      _stickingPoint = targetValue;
+
       // If target is 0 (closed), dismiss the sheet
       if (targetValue <= 0.001) {
         navigator?.pop();
@@ -712,6 +714,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     );
 
     _animationTargetValue = target;
+    _stickingPoint = target;
     return controller!.animateWith(simulation);
   }
 
@@ -769,6 +772,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       );
 
       _animationTargetValue = targetPosition;
+      _stickingPoint = targetPosition;
 
       return controller!.animateWith(simulation);
     }
