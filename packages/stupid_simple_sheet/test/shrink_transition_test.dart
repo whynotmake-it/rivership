@@ -402,6 +402,66 @@ void main() {
       },
     );
 
+    testWidgets(
+      'sizeFactor > 1.0 translates the child upward when '
+      'constrained to natural height',
+      (tester) async {
+        const child = SizedBox.expand(
+          child: Placeholder(key: childKey),
+        );
+
+        // Bottom-aligned layout mirrors how the sheet route works.
+        Widget buildBottomAligned({double sizeFactor = 1.0}) {
+          return MaterialApp(
+            home: Scaffold(
+              body: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: ShrinkTransition(
+                      sizeFactor: sizeFactor,
+                      child: child,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // At sizeFactor 1.0 the child fills the available space (600 px)
+        // and its top sits at 0.
+        await tester.pumpWidget(buildBottomAligned());
+        final normalRect = tester.getRect(find.byKey(childKey));
+        expect(normalRect.top, equals(0));
+        expect(normalRect.bottom, equals(600));
+
+        // At sizeFactor 1.2, targetHeight = 720 but the constraint
+        // clamps the ShrinkTransition to 600 px.  The child (600 px)
+        // must be translated up by 120 px so it appears to push
+        // above the top of the screen.
+        await tester.pumpWidget(buildBottomAligned(sizeFactor: 1.2));
+        await tester.pumpAndSettle();
+
+        final overshootRect = tester.getRect(find.byKey(childKey));
+        expect(
+          overshootRect.top,
+          equals(-120),
+          reason: 'Child should be translated upward by the overshoot amount',
+        );
+        expect(
+          overshootRect.bottom,
+          equals(480),
+          reason: 'Bottom should shift up by the same overshoot amount',
+        );
+
+        // The ShrinkTransition itself is still clamped to 600 px.
+        final shrinkSize = tester.getSize(find.byType(ShrinkTransition));
+        expect(shrinkSize.height, equals(600));
+      },
+    );
+
     testWidgets('referenceHeightOf returns null outside a ShrinkTransition',
         (tester) async {
       double? capturedHeight;
