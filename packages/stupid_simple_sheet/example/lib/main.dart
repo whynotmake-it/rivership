@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
+import 'package:stupid_simple_sheet_example/shrinking_modal_example.dart';
 
 import 'cupertino_sheet_example.dart';
 import 'glass_sheet_example.dart';
@@ -24,7 +25,7 @@ final stupidSimpleSheetRoutes = [
     name: 'Stupid Simple Sheet Examples',
     path: '',
     type: RouteType.cupertino(),
-    builder: (context, state) => const MotorExample(),
+    builder: (context, state) => const ExampleApp(),
   ),
   NamedRouteDef(
     name: 'Glass Sheet',
@@ -131,6 +132,17 @@ final stupidSimpleSheetRoutes = [
       ),
     ),
   ),
+  NamedRouteDef(
+    name: 'Shrink Modal',
+    path: 'shrink-modal',
+    builder: (context, data) => ShrinkingModalExample(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) => ShrinkingModalRoute<T>(
+        settings: page,
+        child: child,
+      ),
+    ),
+  ),
 ];
 
 final router = RootStackRouter.build(
@@ -144,8 +156,8 @@ final router = RootStackRouter.build(
   ],
 );
 
-class MotorExample extends StatelessWidget {
-  const MotorExample({super.key});
+class ExampleApp extends StatelessWidget {
+  const ExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +200,10 @@ class MotorExample extends StatelessWidget {
               child: Text('Shrink Sheet'),
               onPressed: () => context.navigateTo(NamedRoute('Shrink Sheet')),
             ),
+            CupertinoButton.filled(
+              child: Text('Shrink Modal'),
+              onPressed: () => context.navigateTo(NamedRoute('Shrink Modal')),
+            )
           ],
         ),
       ),

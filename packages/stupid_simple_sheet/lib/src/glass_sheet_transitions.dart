@@ -131,10 +131,13 @@ abstract class GlassSheetTransitions {
           child: Padding(
             padding:
                 EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
-            child: SheetDismissalTransition(
-              animation: animation,
-              dismissalMode: dismissalMode,
-              child: secondaryChild,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SheetDismissalTransition(
+                animation: animation,
+                dismissalMode: dismissalMode,
+                child: secondaryChild,
+              ),
             ),
           ),
         );

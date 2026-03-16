@@ -312,10 +312,13 @@ abstract class CopiedCupertinoSheetTransitions {
               EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
           child: Padding(
             padding: const EdgeInsets.only(top: kSheetPaddingToPrevious),
-            child: SheetDismissalTransition(
-              animation: animation,
-              dismissalMode: dismissalMode,
-              child: secondaryChild,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SheetDismissalTransition(
+                animation: animation,
+                dismissalMode: dismissalMode,
+                child: secondaryChild,
+              ),
             ),
           ),
         );
