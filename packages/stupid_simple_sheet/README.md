@@ -47,7 +47,7 @@ Each recipe below is a self-contained pattern you can copy into your project. Fu
 
 The modern iOS sheet style with liquid glass blur. Glass sheets stack seamlessly -- only the first sheet blurs the backdrop.
 
-> [Full example](./example/lib/glass_sheet_example.dart)
+> [Full example](./example/lib/presets/glass_sheet_preset.dart)
 
  ![Glass Sheet](doc/glass.gif)
 
@@ -65,7 +65,7 @@ Navigator.of(context).push(
 
 The classic iOS modal sheet with push-back transitions on the route behind.
 
-> [Full example](./example/lib/cupertino_sheet_example.dart)
+> [Full example](./example/lib/presets/cupertino_sheet_preset.dart)
 
 ![Cupertino Sheet](doc/cupertino.gif)
 
@@ -100,11 +100,29 @@ Navigator.of(context).push(
 
 ---
 
+### Customizing preset routes
+
+Both `StupidSimpleCupertinoSheetRoute` and `StupidSimpleGlassSheetRoute` accept
+`shape` and `backgroundColor` to tweak their appearance without building a
+custom route:
+
+```dart
+StupidSimpleCupertinoSheetRoute(
+  backgroundColor: CupertinoColors.systemGroupedBackground,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  ),
+  child: YourContent(),
+)
+```
+
+---
+
 ### Non-draggable sheet
 
 A sheet that can only be closed programmatically. Useful for confirmation dialogs or critical flows.
 
-> [Full example](./example/lib/non_draggable_sheet_example.dart)
+> [Full example](./example/lib/recipes/non_draggable.dart)
 
 ```dart
 Navigator.of(context).push(
@@ -117,14 +135,36 @@ Navigator.of(context).push(
 
 ---
 
+### Preventing dismiss with PopScope
+
+Wrap content in Flutter's `PopScope` to prevent drag-to-dismiss while still
+allowing the user to drag the sheet between snap points. The sheet automatically
+applies rubber-band resistance when dragged below the lowest snap.
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    snappingConfig: SheetSnappingConfig([0.5, 1.0]),
+    child: PopScope(
+      canPop: false, // prevents drag-to-dismiss
+      child: YourContent(),
+    ),
+  ),
+);
+```
+
+> This differs from `draggable: false`, which disables all drag gestures
+> entirely. `PopScope` only prevents the dismiss -- the sheet is still
+> draggable between its snap points.
+
+---
+
 ### Snapping sheet (multi-stop)
 
 A sheet that snaps to specific positions. Combine `SheetSnappingConfig` with
 `initialSnap` to control where the sheet opens.
 
-> [Full example](./example/lib/snapping_sheet_example.dart)
-
-![Cupertino Sheet](doc/cupertino.gif)
+> [Full example](./example/lib/recipes/snapping_recipe.dart)
 
 ```dart
 Navigator.of(context).push(
@@ -160,7 +200,7 @@ sliding down. Because `ShrinkTransition` pins content to the **bottom**, any
 footer stays visible as the sheet shrinks -- perfect for share sheets, action
 bars, or confirmation buttons.
 
-> [Full example](./example/lib/shrink_sheet_example.dart)
+> [Full example](./example/lib/recipes/sticky_footer_recipe.dart)
 
 ![Shrink Sheet](doc/shrink.gif)
 
@@ -204,7 +244,7 @@ top, so bottom-aligned content (footers, buttons) remains on screen the longest.
 A small floating card that sizes to fit its content. Use
 `originateAboveBottomViewInset` to keep the sheet above the keyboard at all times.
 
-> [Full example](./example/lib/resizing_sheet_example.dart)
+> [Full example](./example/lib/recipes/content_sized_above_keyboard.dart)
 
 ![Resizing Sheet](doc/resizing.gif)
 
