@@ -28,6 +28,20 @@ class SheetDismissalTransition extends StatelessWidget {
     super.key,
   });
 
+  /// Returns the reference height for the given [dismissalMode], which is
+  /// used to normalize drag deltas consistently regardless of the actual
+  /// child's size.
+  static double? referenceHeightOf(
+    BuildContext context,
+    DismissalMode dismissalMode,
+  ) {
+    return switch (dismissalMode) {
+      DismissalMode.shrink => ShrinkTransition.referenceHeightOf(context),
+      DismissalMode.slide =>
+        (context.size ?? MediaQuery.sizeOf(context)).height,
+    };
+  }
+
   /// The animation driving the transition.
   ///
   /// A value of 0.0 means fully dismissed; 1.0 means fully presented.
