@@ -2153,6 +2153,184 @@ void main() {
       await snap(name: 'glass snap transition full', matchToGolden: true);
     });
   });
+
+  group('SnapPhysics integration', () {
+    const motion = CupertinoMotion.smooth(
+      duration: Duration(milliseconds: 400),
+      snapToEnd: true,
+    );
+
+    Widget build({
+      required SheetSnappingConfig snappingConfig,
+      bool canPop = true,
+    }) {
+      return MaterialApp(
+        theme: ThemeData(useMaterial3: false),
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return TextButton(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(context).push(
+                    StupidSimpleSheetRoute<void>(
+                      motion: motion,
+                      snappingConfig: snappingConfig,
+                      child: PopScope(
+                        canPop: canPop,
+                        child: const SizedBox.expand(
+                          key: ValueKey('sheet-content'),
+                          child: ColoredBox(
+                            color: Color(0xFF2196F3),
+                            child: Center(child: Text('Sheet')),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Show Sheet'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets(
+      'FlingSnapPhysics: fling down from 1.0 settles at adjacent snap, '
+      'not further',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            canPop: false,
+            snappingConfig: const SheetSnappingConfig(
+              [0.3, 0.6, 1.0],
+              initialSnap: 1,
+              // FlingSnapPhysics is the default
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(const ValueKey('sheet-content'));
+        final route = ModalRoute.of(tester.element(contentFinder))!
+            as StupidSimpleSheetRoute;
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+
+        expect(controller.value, equals(1.0));
+
+        // Short, fast drag to produce fling velocity while keeping the
+        // position still above 0.6 at release time.
+        await tester.timedDragFrom(
+          tester.getCenter(contentFinder),
+          const Offset(0, 100),
+          const Duration(milliseconds: 100),
+        );
+        expect(controller.value, greaterThan(0.6));
+        await tester.pumpAndSettle();
+
+        // FlingSnapPhysics should stop at 0.6 (the adjacent snap below 1.0),
+        // not skip to 0.3
+        expect(
+          controller.value,
+          equals(.6),
+          reason: 'FlingSnapPhysics should snap to adjacent point (0.6), '
+              'not skip past it. Got ${controller.value}.',
+        );
+      },
+    );
+
+    testWidgets(
+      'FrictionSnapPhysics: fling down from 1.0 can skip intermediate snaps',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            canPop: false,
+            snappingConfig: const SheetSnappingConfig(
+              [0.3, 0.6, 1.0],
+              initialSnap: 1,
+              physics: FrictionSnapPhysics(),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(const ValueKey('sheet-content'));
+        final route = ModalRoute.of(tester.element(contentFinder))!
+            as StupidSimpleSheetRoute;
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+
+        expect(controller.value, equals(1.0));
+
+        // Same physical fling gesture — friction physics should project further
+        await tester.timedDragFrom(
+          tester.getCenter(contentFinder),
+          const Offset(0, 100),
+          const Duration(milliseconds: 100),
+        );
+        expect(controller.value, greaterThan(0.6));
+        await tester.pumpAndSettle();
+
+        // FrictionSnapPhysics projects using a friction simulation, so with
+        // enough velocity it should skip past 0.6 to 0.3
+        expect(
+          controller.value,
+          equals(.3),
+          reason: 'FrictionSnapPhysics should skip intermediate '
+              'snap points with a fling. Got ${controller.value}.',
+        );
+      },
+    );
+
+    testWidgets(
+      'slow drag release snaps to closest point',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            canPop: false,
+            snappingConfig: const SheetSnappingConfig(
+              [0.3, 0.6, 1.0],
+              initialSnap: 1,
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(const ValueKey('sheet-content'));
+        final route = ModalRoute.of(tester.element(contentFinder))!
+            as StupidSimpleSheetRoute;
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+
+        expect(controller.value, equals(1.0));
+
+        // Very slow drag — should produce negligible velocity
+        await tester.timedDragFrom(
+          tester.getCenter(contentFinder),
+          const Offset(0, 150),
+          const Duration(milliseconds: 1500),
+        );
+        await tester.pumpAndSettle();
+
+        // Should snap to nearest point (0.6 or 1.0), not skip to 0.3
+        expect(
+          controller.value,
+          anyOf(closeTo(0.6, 0.05), closeTo(1.0, 0.05)),
+          reason: 'Slow drag should snap to nearest point. '
+              'Got ${controller.value}.',
+        );
+      },
+    );
+  });
 }
 
 /// A golden file comparator that allows a specified number of pixels
