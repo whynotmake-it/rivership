@@ -4,6 +4,7 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/widgets/example_card.dart';
 import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
 import 'package:stupid_simple_sheet_example/widgets/section_header.dart';
+import 'package:stupid_simple_sheet_example/widgets/sheet_logo.dart';
 import 'advanced/custom_route_example.dart';
 import 'advanced/dynamic_content_example.dart';
 import 'advanced/share_sheet_example.dart';
@@ -146,8 +147,7 @@ class _HomePage extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: const SectionHeader(
-                        icon: CupertinoIcons.square_split_1x2,
-                        iconColor: Color(0xFFE4B363),
+                        logo: SheetLogo(),
                         title: 'Stupid Simple Sheet',
                         subtitle:
                             'Interactive examples for Flutter\'s most flexible bottom sheet package.',

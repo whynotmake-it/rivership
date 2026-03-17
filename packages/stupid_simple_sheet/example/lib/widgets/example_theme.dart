@@ -77,7 +77,7 @@ class ExampleTheme {
   /// Resolve all tokens for the current brightness.
   static ExampleTheme of(BuildContext context) {
     final brightness = MediaQuery.platformBrightnessOf(context);
-    return brightness == Brightness.dark ? _dark : _light;
+    return brightness == Brightness.dark ? dark : light;
   }
 
   // Radii (shared, not brightness-dependent)
@@ -89,7 +89,7 @@ class ExampleTheme {
   // ---------------------------------------------------------------------------
   // Dark palette
   // ---------------------------------------------------------------------------
-  static final _dark = ExampleTheme._(
+  static final dark = ExampleTheme._(
     canvas: const Color(0xFF1A1A1D),
     surface: const Color(0xFF2B2B30),
     previewBg: const Color(0xFF1A1A1D),
@@ -121,7 +121,7 @@ class ExampleTheme {
   // ---------------------------------------------------------------------------
   // Light palette
   // ---------------------------------------------------------------------------
-  static final _light = ExampleTheme._(
+  static final light = ExampleTheme._(
     canvas: const Color(0xFFFAFAFC),
     surface: const Color(0xFFFFFFFF),
     previewBg: const Color(0xFFF2F2F7),
