@@ -3,8 +3,8 @@ import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
 
 /// A centered header section inspired by the "Sheet Recipes" design.
 ///
-/// Displays an icon in a bordered rounded-square, a title, a subtitle,
-/// and a mono-spaced hint below.
+/// Displays either a custom [logo] widget or an [icon] in a bordered
+/// rounded-square, followed by a title, a subtitle, and a mono-spaced hint.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     required this.title,
@@ -12,6 +12,7 @@ class SectionHeader extends StatelessWidget {
     this.hint,
     this.icon,
     this.iconColor,
+    this.logo,
     super.key,
   });
 
@@ -21,21 +22,24 @@ class SectionHeader extends StatelessWidget {
   final IconData? icon;
   final Color? iconColor;
 
+  /// An arbitrary widget displayed in the icon badge position.
+  /// When set, [icon] and [iconColor] are ignored.
+  final Widget? logo;
+
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
+    final hasVisual = logo != null || icon != null;
+
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Icon badge
-          if (icon != null) ...[
+          if (hasVisual) ...[
             Transform.rotate(
-              angle: 0.05, // ~3 degrees, subtle tilt like the design
+              angle: 0.05,
               child: Container(
-                width: 56,
-                height: 56,
                 decoration: BoxDecoration(
                   color: t.surface,
                   borderRadius: BorderRadius.circular(16),
@@ -48,17 +52,16 @@ class SectionHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: iconColor ?? t.accentGold,
-                ),
+                child: logo ??
+                    Icon(
+                      icon,
+                      size: 24,
+                      color: iconColor ?? t.accentGold,
+                    ),
               ),
             ),
             const SizedBox(height: 20),
           ],
-
-          // Title
           Text(
             title,
             textAlign: TextAlign.center,
@@ -69,8 +72,6 @@ class SectionHeader extends StatelessWidget {
               color: t.textPrimary,
             ),
           ),
-
-          // Subtitle
           if (subtitle != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -84,8 +85,6 @@ class SectionHeader extends StatelessWidget {
               ),
             ),
           ],
-
-          // Mono hint
           if (hint != null) ...[
             const SizedBox(height: 10),
             Text(

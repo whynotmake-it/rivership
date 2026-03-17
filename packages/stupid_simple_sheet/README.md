@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="doc/logo.png" width="128" alt="Stupid Simple Sheet logo" />
+</p>
+
 # Stupid Simple Sheet
 
 [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet)
