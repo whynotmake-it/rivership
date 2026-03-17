@@ -5,7 +5,6 @@ import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/dismissal_mode.dart';
 import 'package:stupid_simple_sheet/src/route_snapshot_mode.dart';
 import 'package:stupid_simple_sheet/src/sheet_dismissal_transition.dart';
-import 'package:stupid_simple_sheet/src/shrink_transition.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
@@ -135,9 +134,11 @@ class _RelativeGestureDetector extends StatefulWidget {
   final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
   // ignore: avoid_positional_boolean_parameters
-  final void Function(double, bool) onRelativeDragUpdate;
+  final void Function(double delta, double referenceHeight, bool wouldScroll)
+      onRelativeDragUpdate;
   // ignore: avoid_positional_boolean_parameters
-  final void Function(double, bool) onRelativeDragEnd;
+  final void Function(double velocity, double referenceHeight, bool wouldScroll)
+      onRelativeDragEnd;
   final DismissalMode dismissalMode;
 
   final Widget child;
@@ -156,17 +157,17 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
       onlyDragWhenScrollWasAtTop: widget.onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: widget.scrollableCanMoveBack,
       onVerticalDragStart: (details, _) {
-        _referenceHeight = switch (widget.dismissalMode) {
-          DismissalMode.shrink => ShrinkTransition.referenceHeightOf(context),
-          DismissalMode.slide =>
-            (context.size ?? MediaQuery.sizeOf(context)).height,
-        };
+        _referenceHeight = SheetDismissalTransition.referenceHeightOf(
+          context,
+          widget.dismissalMode,
+        );
         widget.onRelativeDragStart();
       },
       onVerticalDragEnd: (details, willScroll) {
         if (_referenceHeight case final height?) {
           widget.onRelativeDragEnd(
             details.velocity.pixelsPerSecond.dy / height,
+            height,
             willScroll,
           );
         }
@@ -176,6 +177,7 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
         if (_referenceHeight case final height?) {
           widget.onRelativeDragUpdate(
             details.primaryDelta! / height,
+            height,
             wouldScroll,
           );
         }
@@ -424,10 +426,20 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
-          onRelativeDragUpdate: (delta, wouldScroll) =>
-              _handleDragUpdate(context, delta, wouldScroll),
-          onRelativeDragEnd: (velocity, willScroll) =>
-              _handleDragEnd(context, velocity, willScroll),
+          onRelativeDragUpdate: (relativeDelta, referenceHeight, wouldScroll) =>
+              _handleDragUpdate(
+            context,
+            relativeDelta,
+            referenceHeight,
+            wouldScroll,
+          ),
+          onRelativeDragEnd: (relativeVelocity, referenceHeight, willScroll) =>
+              _handleDragEnd(
+            context,
+            relativeVelocity,
+            referenceHeight,
+            willScroll,
+          ),
           child: child!,
         ),
       ),
@@ -512,7 +524,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     }
   }
 
-  void _handleDragUpdate(BuildContext context, double delta, bool wouldScroll) {
+  void _handleDragUpdate(
+    BuildContext context,
+    double delta,
+    double referenceHeight,
+    bool wouldScroll,
+  ) {
     if (_poppedNotifier.value) return;
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
@@ -552,6 +569,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void _handleDragEnd(
     BuildContext context,
     double velocity,
+    double referenceHeight,
     bool willScroll,
   ) {
     _isUserDragging = false;
@@ -593,8 +611,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // Find the target snap point based on position and velocity
       final targetValue =
           _animationTargetValue = effectiveSnappingConfig.findTargetSnapPoint(
-        currentValue,
-        velocity,
+        position: currentValue,
+        relativeVelocity: -velocity,
+        absoluteVelocity: -velocity * referenceHeight,
         includeClosed: popDisposition == RoutePopDisposition.pop,
       );
 
@@ -711,7 +730,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     if (snap) {
       // Find the closest snapping point that isn't 0.0
       final config = effectiveSnappingConfig;
-      target = switch (config.findTargetSnapPoint(relativePosition, 0)) {
+
+      target = switch (config.findClosestSnapPoint(relativePosition)) {
         0.0 => config.points.first,
         final v => v,
       };
@@ -766,11 +786,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       final currentPosition = controller!.value;
 
       // Find the nearest snapping point in the new configuration
-      final targetPosition = effectiveSnappingConfig.findTargetSnapPoint(
-        currentPosition,
-        controller!.velocity,
-        includeClosed: false,
-      );
+      final targetPosition =
+          effectiveSnappingConfig.findClosestSnapPoint(currentPosition);
 
       // If the current position is already at a valid snap point, don't animate
       if ((targetPosition - currentPosition).abs() < 0.001) {
