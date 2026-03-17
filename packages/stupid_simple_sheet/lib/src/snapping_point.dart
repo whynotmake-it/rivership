@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/widgets.dart';
 
 /// Configuration for sheet snapping behavior.
 ///
@@ -17,8 +20,11 @@ class SheetSnappingConfig {
   /// Values are normalized between 0.0 and 1.0, where 0.0 is closed and 1.0
   /// is fully open. The 0.0 point is always implicit and doesn't need to be
   /// specified.
-  const SheetSnappingConfig(this.points, {double? initialSnap})
-      : _initialSnap = initialSnap;
+  const SheetSnappingConfig(
+    this.points, {
+    double? initialSnap,
+    this.physics = const FlingSnapPhysics(),
+  }) : _initialSnap = initialSnap;
 
   /// A snapping configuration that only includes the fully open state (1.0).
   static const SheetSnappingConfig full = SheetSnappingConfig([1.0]);
@@ -26,11 +32,24 @@ class SheetSnappingConfig {
   /// The raw snapping points as provided to the constructor.
   final List<double> points;
 
+  /// The physics model to use for finding the target snap point based on
+  /// velocity and position.
+  ///
+  /// Defaults to [FlingSnapPhysics], which is a simple model that discerns
+  /// between a fling and a drag and projects the fling to the next snap point
+  /// in the direction of the fling.
+  ///
+  /// See also [FrictionSnapPhysics], which uses a [FrictionSimulation]
+  /// to predict the natural settling point based on velocity and position,
+  /// and can skip intermediate snap points if the fling is strong enough.
+  final SnapPhysics physics;
+
   final double? _initialSnap;
 
   /// Gets all snapping points including the implicit 0, resolved as relative
   /// values (0.0-1.0) for the given sheet height.
   List<double> getAllPoints() {
+    assert(points.isNotEmpty, 'At least one snap point must be provided');
     final resolved = <double>{
       0.0, // Always include the implicit 0 point
       ...points,
@@ -39,44 +58,44 @@ class SheetSnappingConfig {
     return resolved.toList()..sort();
   }
 
-  /// Gets the closest snapping point to the given relative position and
-  /// velocity.
-  double findTargetSnapPoint(
-    double currentRelativePosition,
-    double velocity, {
-    bool includeClosed = true,
-  }) {
-    final allPoints = getAllPoints()
-        .where((p) => includeClosed || p > 0) // Exclude 0 if needed
-        .toList();
-
-    // For high velocity, predict where the sheet would naturally settle
-    const velocityThreshold = 0.5;
-
-    if (velocity.abs() > velocityThreshold) {
-      // High velocity - predict the natural settling position
-      final projectedPosition = currentRelativePosition - (velocity * 0.3);
-
-      return _findClosestPoint(allPoints, projectedPosition);
-    } else {
-      // Low velocity - snap to the closest point based on current position
-      return _findClosestPoint(allPoints, currentRelativePosition);
-    }
+  /// Finds the closest snapping point to the given target position by distance
+  /// alone, ignoring velocity.
+  ///
+  /// If you want to find the target snap point based on velocity and position,
+  /// use [findTargetSnapPoint] instead.
+  double findClosestSnapPoint(double target) {
+    final allPoints = getAllPoints();
+    return physics.findClosestPoint(allPoints, target);
   }
 
-  double _findClosestPoint(List<double> points, double target) {
-    var minDistance = double.infinity;
-    var closest = points.first;
+  /// Gets the closest snapping point to the given relative position and
+  /// velocity.
+  double findTargetSnapPoint({
+    required double position,
+    required double relativeVelocity,
+    required double absoluteVelocity,
+    bool includeClosed = true,
+  }) {
+    final allPoints = getAllPoints();
 
-    for (final point in points) {
-      final distance = (target - point).abs();
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = point;
-      }
+    // If the closed point (0.0) should be excluded, filter it out.
+    final effectivePoints =
+        includeClosed ? allPoints : allPoints.where((p) => p > 0.001).toList();
+
+    switch (physics) {
+      case final RelativeSnapPhysics p:
+        return p.findTargetSnapPoint(
+          position: position,
+          velocity: relativeVelocity,
+          snapPoints: effectivePoints,
+        );
+      case final AbsoluteSnapPhysics p:
+        return p.findTargetSnapPoint(
+          position: position,
+          absoluteVelocity: absoluteVelocity,
+          snapPoints: effectivePoints,
+        );
     }
-
-    return closest;
   }
 
   /// Gets the initial snap point as a relative value.
@@ -123,10 +142,10 @@ class SheetSnappingConfig {
     return allPoints.isNotEmpty ? allPoints.last : 1.0;
   }
 
-  /// Gets the minimum extent as a relative value.
+  /// Gets the minimum extent that is not 0.0 as a relative value.
   double get minExtent {
-    final allPoints = getAllPoints();
-    return allPoints.isNotEmpty ? allPoints.first : 0.0;
+    assert(points.isNotEmpty, 'At least one snap point must be provided');
+    return points.isNotEmpty ? points.first : 0.0;
   }
 
   /// Whether this configuration has any in-between snap points
@@ -147,4 +166,158 @@ class SheetSnappingConfig {
 
   @override
   String toString() => 'SheetSnappingConfig($points)';
+}
+
+/// Provides heuristics for finding a target snap point based on drag velocity
+/// and position.
+sealed class SnapPhysics {
+  /// Creates a [SnapPhysics] instance.
+  const SnapPhysics();
+
+  /// Finds the closest snap point to the [target] position by distance alone.
+  @protected
+  double findClosestPoint(List<double> points, double target) {
+    var minDistance = double.infinity;
+    var closest = points.first;
+
+    for (final point in points) {
+      final distance = (target - point).abs();
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = point;
+      }
+    }
+
+    return closest;
+  }
+}
+
+/// A [SnapPhysics] implementation that needs the current sheet height to
+/// calculate the target snap point based on absolute position and velocity.
+abstract class AbsoluteSnapPhysics extends SnapPhysics {
+  /// Creates an [AbsoluteSnapPhysics] instance.
+  const AbsoluteSnapPhysics();
+
+  /// Finds the target snap point based on the current position and velocity,
+  /// using absolute values (e.g. pixels) rather than normalized values.
+  double findTargetSnapPoint({
+    required double position,
+    required double absoluteVelocity,
+    required List<double> snapPoints,
+  });
+}
+
+/// A [SnapPhysics] implementation that calculates the target snap point based
+/// on normalized position and velocity, without needing the current sheet
+/// height.
+abstract class RelativeSnapPhysics extends SnapPhysics {
+  /// Creates a [RelativeSnapPhysics] instance.
+  const RelativeSnapPhysics();
+
+  /// Finds the target snap point based on the current position and velocity,
+  /// using normalized values (0.0-1.0) rather than absolute values.
+  double findTargetSnapPoint({
+    required double position,
+    required double velocity,
+    required List<double> snapPoints,
+  });
+}
+
+/// A simple [SnapPhysics] implementation that discerns between a fling and a
+/// drag based on velocity, and if it's a fling, projects the position forward
+/// to the next snap point in the direction of the fling.
+///
+/// Snapping points can never be overshot with a fling.
+class FlingSnapPhysics extends AbsoluteSnapPhysics {
+  /// Creates a [FlingSnapPhysics] instance a minimum fling velocity threshold.
+  const FlingSnapPhysics({this.minFlingVelocity = kMinFlingVelocity});
+
+  /// The minimum velocity that distinguishes a fling from a drag, in pixels per
+  /// second.
+  ///
+  /// Defaults to [kMinFlingVelocity].
+  final double minFlingVelocity;
+
+  @override
+  double findTargetSnapPoint({
+    required double position,
+    required double absoluteVelocity,
+    required List<double> snapPoints,
+  }) {
+    final v = absoluteVelocity;
+
+    // If velocity is below the fling threshold, snap to the closest point.
+    if (v.abs() < minFlingVelocity) {
+      return findClosestPoint(snapPoints, position);
+    }
+
+    // Otherwise, find the next snap point in the direction of the fling.
+    if (v > 0) {
+      // Flinging downwards, find the next snap point below the current
+      // position.
+      for (final point in snapPoints) {
+        if (point > position) {
+          return point;
+        }
+      }
+    } else {
+      // Flinging upwards, find the next snap point above the current position.
+      for (final point in snapPoints.reversed) {
+        if (point < position) {
+          return point;
+        }
+      }
+    }
+
+    // If no snap point is found in the direction of the fling, snap to the
+    // closest point.
+    return findClosestPoint(snapPoints, position);
+  }
+}
+
+/// A [SnapPhysics] implementation that uses a [FrictionSimulation] to predict
+/// the natural settling point based on the current velocity and position, and
+/// then finds the closest snap point to that projected position.
+class FrictionSnapPhysics extends RelativeSnapPhysics {
+  /// Creates a [FrictionSnapPhysics] with the given parameters.
+  ///
+  /// Default parameters are based on [BouncingScrollSimulation].
+  const FrictionSnapPhysics({
+    this.dragCoefficient = 0.135,
+    this.constantDeceleration = 0.0,
+  });
+
+  /// The fluid drag coefficient, a unitless value.
+  ///
+  /// See also [FrictionSimulation] for more details on how this value affects
+  /// the simulation.
+  final double dragCoefficient;
+
+  /// The constant deceleration to apply, in the same units as the position.
+  ///
+  /// This can be used to model additional friction or resistance that isn't
+  /// captured by the drag coefficient alone. F
+  ///
+  /// See also [FrictionSimulation] for more details on how this value affects
+  /// the simulation.
+  final double constantDeceleration;
+
+  @override
+  double findTargetSnapPoint({
+    required double position,
+    required double velocity,
+    required List<double> snapPoints,
+  }) {
+    final currentRelativePosition = position.clamp(0.0, 1.0);
+    final sim = FrictionSimulation(
+      dragCoefficient,
+      currentRelativePosition,
+      velocity,
+      constantDeceleration: constantDeceleration,
+    );
+
+    final projectedPosition = sim.finalX.clamp(0.0, 1.0);
+
+    return findClosestPoint(snapPoints, projectedPosition);
+  }
 }

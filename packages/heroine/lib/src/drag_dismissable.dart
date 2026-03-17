@@ -123,7 +123,9 @@ class _DragDismissableState extends State<DragDismissable> {
   @override
   void didUpdateWidget(covariant DragDismissable oldWidget) {
     if (widget._disabled && !oldWidget._disabled) {
-      _cancel();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _cancel();
+      });
     }
     super.didUpdateWidget(oldWidget);
   }

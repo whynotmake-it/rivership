@@ -24,6 +24,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
+    this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
   });
@@ -85,6 +86,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   final bool originateAboveBottomViewInset;
 
   @override
+  final DismissalMode dismissalMode;
+
+  @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
   StupidSimpleSheetTransitionMixin<dynamic>? _nextSheet;
@@ -138,6 +142,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
             slideBackRange: effectiveSnappingConfig.topTwoPoints,
             opacityRange: effectiveSnappingConfig.bottomTwoPoints,
             backgroundColor: backgroundColor,
+            dismissalMode: dismissalMode,
             shape: shape,
             child: maybeSnapshotChild(child),
           );

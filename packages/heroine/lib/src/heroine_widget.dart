@@ -17,6 +17,7 @@ class Heroine extends StatefulWidget {
     this.zIndex,
     this.continuouslyTrackTarget = false,
     this.pauseTickersDuringFlight = false,
+    this.duplicatePolicy = DuplicateHeroinePolicy.forbidden,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -105,6 +106,13 @@ class Heroine extends StatefulWidget {
   /// Defaults to false for performance reasons. Enable this only when you
   /// need to handle dynamic layout changes during the animation.
   final bool continuouslyTrackTarget;
+
+  /// How to handle duplicate [Heroine] widgets with the same [tag] in a single
+  /// route subtree.
+  ///
+  /// Defaults to [DuplicateHeroinePolicy.forbidden], which throws in debug
+  /// mode when duplicates are found.
+  final DuplicateHeroinePolicy duplicatePolicy;
 
   /// Whether tickers should be paused while the heroine is in flight, defaults
   /// to false.

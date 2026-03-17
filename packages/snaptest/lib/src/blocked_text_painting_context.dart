@@ -33,6 +33,7 @@ class BlockedTextPaintingContext extends PaintingContext {
   void paintChild(RenderObject child, Offset offset) {
     if (child is RenderParagraph) {
       final paint = Paint()
+        ..isAntiAlias = false
         ..color = child.text.style?.color ?? const Color(0xFF000000);
       canvas.drawRect(offset & child.size, paint);
     } else {
