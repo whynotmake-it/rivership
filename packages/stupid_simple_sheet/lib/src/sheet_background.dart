@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
@@ -16,6 +17,7 @@ class SheetBackground extends StatelessWidget {
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     this.clipBehavior = Clip.antiAlias,
+    this.elevateCupertinoUserInterfaceLevel = true,
     this.extensionAtBottom,
   });
 
@@ -28,8 +30,12 @@ class SheetBackground extends StatelessWidget {
 
   /// The background color of the sheet.
   ///
-  /// If null, the default background color from the current [Theme]s
-  /// surface color is used.
+  /// If null, the sheet will try to use the scaffoldBackgroundColor from
+  /// the current [CupertinoTheme] if one exists in the context and will resolve
+  /// that color with the current interface level.
+  ///
+  /// If there is no [CupertinoTheme], it will fall back to using the material
+  /// [Theme].
   final Color? backgroundColor;
 
   /// The [Clip] behavior to use for the sheet's content.
@@ -46,6 +52,17 @@ class SheetBackground extends StatelessWidget {
   /// If null (default), it will extend by the full height of the screen.
   final double? extensionAtBottom;
 
+  /// Whether the sheet should live on the elevated Cupertino user interface
+  /// level, which some [CupertinoDynamicColor]s will respond to.
+  ///
+  /// If you set this to false, the sheet will inherit the current user
+  /// interface level from the context, or default to
+  /// [CupertinoUserInterfaceLevelData.base] if there is no level in the
+  /// context.
+  ///
+  /// Defaults to `true`.
+  final bool elevateCupertinoUserInterfaceLevel;
+
   /// The content of the sheet.
   final Widget? child;
 
@@ -53,20 +70,45 @@ class SheetBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomExtension =
         extensionAtBottom ?? MediaQuery.sizeOf(context).height;
-    final color = backgroundColor ?? Theme.of(context).colorScheme.surface;
-    return PaddingExtended(
-      padding: EdgeInsets.only(bottom: -bottomExtension),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(shape: shape, color: color),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomExtension),
-          child: OptimizedClip(
-            clipBehavior: clipBehavior,
-            shape: shape,
-            child: child ?? const SizedBox.shrink(),
-          ),
-        ),
+    return CupertinoUserInterfaceLevel(
+      data: elevateCupertinoUserInterfaceLevel
+          ? CupertinoUserInterfaceLevelData.elevated
+          : CupertinoUserInterfaceLevel.maybeOf(context) ??
+              CupertinoUserInterfaceLevelData.base,
+      child: Builder(
+        builder: (context) {
+          final color = backgroundColor ?? _getDefaultBackgroundColor(context);
+          return PaddingExtended(
+            padding: EdgeInsets.only(bottom: -bottomExtension),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(shape: shape, color: color),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomExtension),
+                child: OptimizedClip(
+                  clipBehavior: clipBehavior,
+                  shape: shape,
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  Color _getDefaultBackgroundColor(BuildContext context) {
+    final cupertinoTheme = context
+        .dependOnInheritedWidgetOfExactType<InheritedCupertinoTheme>()
+        ?.theme
+        .data;
+    if (cupertinoTheme != null) {
+      return CupertinoDynamicColor.resolve(
+        cupertinoTheme.scaffoldBackgroundColor,
+        context,
+      );
+    } else {
+      return Theme.of(context).colorScheme.surface;
+    }
   }
 }
