@@ -59,28 +59,17 @@ This ensures consistent text layout across all test runs and CI environments, ev
 **/.snaptest/     # Screenshots (usually not committed)
 ```
 
-## Real Rendering
+## Settings
 
-By default, snaptest creates simplified screenshots (blocked text, no images/shadows) for consistency. But you can enable **real rendering** to see exactly what users see:
+By default, `snap()` uses `SnaptestSettings.rendered()` which produces beautiful screenshots with real text, images, shadows, and device frames. Perfect for debugging and documentation.
+
+For simpler, more deterministic screenshots (e.g. for faster tests or when you don't need visual fidelity), use `SnaptestSettings()`:
 
 ```dart
-testWidgets('Real rendering example', (tester) async {
-  await tester.pumpWidget(const MaterialApp(home: MyPage()));
-
-  await snap(
-    device: Devices.ios.iPhone16Pro,
-    settings: SnaptestSettings.rendered(),
-  );
-});
+await snap(settings: const SnaptestSettings());
 ```
 
-This creates beautiful screenshots with:
-- Real text rendering
-- Actual images
-- Shadows and effects
-- Device frames around the content
-
-Perfect for documentation, design reviews, or showing stakeholders what the app actually looks like.
+This blocks text (colored rectangles), disables images, shadows, and device frames.
 
 ## Golden File Testing
 
@@ -168,16 +157,15 @@ await snap(name: 'after_tap');
 await snap(from: find.byKey(const Key('my-card')));
 ```
 
-### Global settings for all tests
+### Override global settings
 ```dart
 void main() {
   setUpAll(() {
-    SnaptestSettings.global = SnaptestSettings.rendered();
+    // Use simplified screenshots for this test file
+    SnaptestSettings.global = const SnaptestSettings();
   });
 
   tearDownAll(SnaptestSettings.resetGlobal);
-
-  // All snap() calls now use real rendering
 }
 ```
 
@@ -199,7 +187,6 @@ snapTest('Login screen looks correct', (tester) async {
 snapTest(
   'Multi-device homepage',
   devices: {Devices.ios.iPhone16Pro, Devices.android.samsungGalaxyS20},
-  settings: SnaptestSettings.rendered(),
   (tester) async {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
     await snap();
@@ -287,8 +274,8 @@ await snap.andGolden(
 - **`pathPrefix`**: Directory where screenshots are saved (default: `'.snaptest/'`)
 
 ### Convenience constructors:
-- **`SnaptestSettings()`**: Default — blocked text, no images/shadows/frames
-- **`SnaptestSettings.rendered()`**: Full rendering — actual text, images, shadows, and device frames
+- **`SnaptestSettings.rendered()`**: The default — actual text, images, shadows, and device frames
+- **`SnaptestSettings()`**: Simplified — blocked text, no images/shadows/frames
 
 ## Golden Tools
 

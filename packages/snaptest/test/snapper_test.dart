@@ -135,7 +135,10 @@ void main() {
         );
 
         await tester.runAsync(() async {
-          final file = await snap(name: 'run_async_snap');
+          final file = await snap(
+            name: 'run_async_snap',
+            settings: const SnaptestSettings(),
+          );
 
           expect(file.existsSync(), isTrue);
         });
@@ -274,9 +277,9 @@ void main() {
     group('SnaptestSettings', () {
       test('has correct default values', () {
         SnaptestSettings.resetGlobal();
-        expect(SnaptestSettings.global.renderShadows, isFalse);
-        expect(SnaptestSettings.global.renderImages, isFalse);
-        expect(SnaptestSettings.global.blockText, isTrue);
+        expect(SnaptestSettings.global.renderShadows, isTrue);
+        expect(SnaptestSettings.global.renderImages, isTrue);
+        expect(SnaptestSettings.global.blockText, isFalse);
       });
 
       test('can modify global settings', () {
@@ -294,7 +297,10 @@ void main() {
 
         SnaptestSettings.resetGlobal();
 
-        expect(SnaptestSettings.global, equals(const SnaptestSettings()));
+        expect(
+          SnaptestSettings.global,
+          equals(const SnaptestSettings.rendered()),
+        );
       });
     });
 

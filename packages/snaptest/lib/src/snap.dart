@@ -144,7 +144,7 @@ class Snap {
   /// Does **not** save a visual debugging screenshot. Use [andGolden] if you
   /// want both.
   ///
-  /// By default the golden is rendered with [SnaptestSettings] defaults
+  /// By default the golden is rendered with [SnaptestSettings.goldens]
   /// (blocked text, no shadows, no images, no device frame) for cross-platform
   /// consistency. Pass [settings] to override.
   Future<void> golden({
@@ -155,7 +155,7 @@ class Snap {
     Orientation? orientation,
     String prefix = 'goldens/',
   }) async {
-    final goldenSettings = settings ?? const SnaptestSettings();
+    final goldenSettings = settings ?? SnaptestSettings.goldens;
     final resolved = _resolve(
       name: name,
       device: device,
@@ -185,7 +185,7 @@ class Snap {
   /// screenshot.
   ///
   /// The visual snap uses [settings] (or [SnaptestSettings.global]), and the
-  /// golden uses [goldenSettings] (or default [SnaptestSettings]).
+  /// golden uses [goldenSettings] (or [SnaptestSettings.goldens]).
   ///
   /// Returns the saved visual debugging [File].
   Future<File> andGolden({
@@ -198,7 +198,7 @@ class Snap {
     String prefix = 'goldens/',
   }) async {
     final s = settings ?? SnaptestSettings.global;
-    final gs = goldenSettings ?? const SnaptestSettings();
+    final gs = goldenSettings ?? SnaptestSettings.goldens;
     final resolved = _resolve(
       name: name,
       device: device,
@@ -304,16 +304,15 @@ _Resolved _resolve({
   // in the test name.
   final deviceAppendix =
       deviceFromExplicitParam &&
-              resolvedDevice != null &&
-              resolvedDevice.name.isNotEmpty
-          ? '_${resolvedDevice.name.toValidFilename()}'
-          : '';
+          resolvedDevice != null &&
+          resolvedDevice.name.isNotEmpty
+      ? '_${resolvedDevice.name.toValidFilename()}'
+      : '';
 
   final orientationAppendix =
-      deviceFromExplicitParam &&
-              resolvedOrientation == Orientation.landscape
-          ? '_landscape'
-          : '';
+      deviceFromExplicitParam && resolvedOrientation == Orientation.landscape
+      ? '_landscape'
+      : '';
 
   final fileName =
       '${testName.toValidFilename()}'

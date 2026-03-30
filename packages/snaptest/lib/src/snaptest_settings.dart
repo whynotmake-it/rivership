@@ -14,16 +14,10 @@ import 'package:snaptest/src/constants.dart';
 /// ## Quick Start
 ///
 /// ```dart
-/// // Default: Simple screenshots for debugging
-/// await snap(); // Uses SnaptestSettings()
+/// // Screenshots use SnaptestSettings.rendered() by default
+/// await snap();
 ///
-/// // Beautiful screenshots with device frames
-/// await snap(
-///   device: Devices.ios.iPhone16Pro,
-///   settings: SnaptestSettings.rendered(),
-/// );
-///
-/// // Golden comparison (uses default settings for consistency)
+/// // Golden comparison uses SnaptestSettings.golden by default
 /// await snap.golden();
 ///
 /// // Both visual debugging + golden comparison
@@ -108,9 +102,16 @@ class SnaptestSettings with EquatableMixin {
   ///
   /// Change this to set defaults for your entire test suite:
   /// ```dart
-  /// SnaptestSettings.global = SnaptestSettings.rendered();
+  /// SnaptestSettings.global = SnaptestSettings(
+  ///   blockText: true,
+  /// );
   /// ```
-  static SnaptestSettings global = const SnaptestSettings();
+  static SnaptestSettings global = const SnaptestSettings.rendered();
+
+  /// Default settings used by [Snap.golden] and [Snap.andGolden].
+  ///
+  /// Defaults to blocking text, no images, no shadows, no device frame.
+  static SnaptestSettings goldens = const SnaptestSettings();
 
   /// Resets global settings back to defaults.
   ///
@@ -121,7 +122,7 @@ class SnaptestSettings with EquatableMixin {
   /// });
   /// ```
   static void resetGlobal() {
-    global = const SnaptestSettings();
+    global = const SnaptestSettings.rendered();
   }
 
   /// Whether to replace text with gray rectangles for consistency.
