@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:characters/characters.dart';
 import 'package:flutter/rendering.dart';
 
 /// {@template blocked_text_painting_context}
@@ -32,10 +33,50 @@ class BlockedTextPaintingContext extends PaintingContext {
   @override
   void paintChild(RenderObject child, Offset offset) {
     if (child is RenderParagraph) {
-      final paint = Paint()
-        ..isAntiAlias = false
-        ..color = child.text.style?.color ?? const Color(0xFF000000);
-      canvas.drawRect(offset & child.size, paint);
+      final defaultColor = child.text.style?.color ?? const Color(0xFF000000);
+      final plainText = child.text.toPlainText();
+      final colors = <Color>[];
+      _visitSpan(child.text, defaultColor, colors);
+
+      var charOffset = 0;
+      for (final char in plainText.characters) {
+        final charLength = char.length;
+
+        if (char.trim().isEmpty || char == '\uFFFC') {
+          charOffset += charLength;
+          continue;
+        }
+
+        final boxes = child.getBoxesForSelection(
+          TextSelection(
+            baseOffset: charOffset,
+            extentOffset: charOffset + charLength,
+          ),
+        );
+
+        if (boxes.isNotEmpty) {
+          final color = charOffset < colors.length
+              ? colors[charOffset]
+              : defaultColor;
+          final paint = Paint()
+            ..isAntiAlias = false
+            ..color = color;
+
+          for (final box in boxes) {
+            canvas.drawRect(
+              Rect.fromLTRB(
+                box.left,
+                box.top,
+                box.right,
+                box.bottom,
+              ).shift(offset),
+              paint,
+            );
+          }
+        }
+
+        charOffset += charLength;
+      }
     } else {
       return child.paint(this, offset);
     }
@@ -262,4 +303,25 @@ class BlockedTextCanvasAdapter implements Canvas {
   @override
   void drawRSuperellipse(ui.RSuperellipse rse, ui.Paint paint) =>
       parent.drawRSuperellipse(rse, paint);
+}
+
+/// Recursively walks an [InlineSpan] tree and builds a list mapping each
+/// UTF-16 code unit index to its resolved [Color].
+void _visitSpan(InlineSpan span, Color inheritedColor, List<Color> colors) {
+  if (span is TextSpan) {
+    final color = span.style?.color ?? inheritedColor;
+    if (span.text != null) {
+      for (var i = 0; i < span.text!.length; i++) {
+        colors.add(color);
+      }
+    }
+    if (span.children != null) {
+      for (final child in span.children!) {
+        _visitSpan(child, color, colors);
+      }
+    }
+  } else {
+    // WidgetSpan etc. contribute a \uFFFC replacement character.
+    colors.add(inheritedColor);
+  }
 }
