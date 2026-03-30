@@ -28,7 +28,8 @@ void main() {
         );
 
         await snap(
-          settings: SnaptestSettings.rendered(devices: {Devices.ios.iPhone16}),
+          device: Devices.ios.iPhone16,
+          settings: const SnaptestSettings.rendered(),
         );
       });
 
@@ -39,31 +40,24 @@ void main() {
           ),
         );
 
-        final files = await snap(matchToGolden: true);
-        expect(files, hasLength(1));
-        expect(files.first.existsSync(), isTrue);
+        final file = await snap(matchToGolden: true);
+        expect(file.existsSync(), isTrue);
       });
 
-      snapTest('captures widget with multiple devices', (tester) async {
+      snapTest('captures widget with explicit device', (tester) async {
         await tester.pumpWidget(
           const MaterialApp(
-            home: Scaffold(body: Center(child: Text('Multi Device Test'))),
+            home: Scaffold(body: Center(child: Text('Device Test'))),
           ),
         );
 
-        final files = await snap(
-          name: 'multi_device',
-          settings: SnaptestSettings(
-            devices: {
-              null,
-              Devices.ios.iPhone16Pro,
-              Devices.android.samsungGalaxyS20,
-            },
-          ),
-          matchToGolden: true,
+        final file = await snap(
+          name: 'explicit_device',
+          device: Devices.ios.iPhone16Pro,
         );
 
-        expect(files, hasLength(3));
+        expect(file.existsSync(), isTrue);
+        expect(file.path, contains('iPhone 16 Pro'));
       });
 
       snapTest('captures specific widget using finder', (tester) async {
@@ -86,13 +80,12 @@ void main() {
           ),
         );
 
-        final files = await snap(
+        final file = await snap(
           name: 'specific_widget',
           from: find.byKey(const Key('test-card')),
         );
 
-        expect(files, hasLength(1));
-        expect(files.first.existsSync(), isTrue);
+        expect(file.existsSync(), isTrue);
       });
 
       snapTest('handles custom path prefix', (tester) async {
@@ -102,68 +95,36 @@ void main() {
           ),
         );
 
-        final files = await snap(
+        final file = await snap(
           name: 'custom_path',
           settings: const SnaptestSettings(pathPrefix: 'custom_screenshots/'),
         );
 
-        expect(files, hasLength(1));
-        expect(files.first.path, contains('custom_screenshots'));
-        expect(files.first.existsSync(), isTrue);
+        expect(file.path, contains('custom_screenshots'));
+        expect(file.existsSync(), isTrue);
       });
 
-      snapTest('respects appendDeviceName setting', (tester) async {
+      snapTest('appends device name when device is explicit', (tester) async {
         await tester.pumpWidget(
           const MaterialApp(
             home: Scaffold(body: Center(child: Text('Device Name Test'))),
           ),
         );
 
-        final filesWithDeviceName = await snap(
+        final fileWithDevice = await snap(
           name: 'with_device_name',
-          settings: SnaptestSettings(
-            devices: {
-              Devices.ios.iPhone16Pro,
-              Devices.android.samsungGalaxyS20,
-            },
-          ),
+          device: Devices.ios.iPhone16Pro,
         );
 
-        final filesWithoutDeviceName = await snap(
+        final fileWithoutDevice = await snap(
           name: 'without_device_name',
-          settings: SnaptestSettings(
-            devices: {Devices.ios.iPhone16Pro},
-          ),
         );
 
-        expect(filesWithDeviceName.first.path, contains('iPhone 16 Pro'));
+        expect(fileWithDevice.path, contains('iPhone 16 Pro'));
         expect(
-          filesWithoutDeviceName.first.path,
+          fileWithoutDevice.path,
           isNot(contains('iPhone 16 Pro')),
         );
-      });
-
-      snapTest('orientation is not appended for no device only', (
-        tester,
-      ) async {
-        await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(body: Center(child: Text('Hello Snapper!'))),
-          ),
-        );
-        final files = await snap(
-          settings: const SnaptestSettings(
-            devices: {null},
-            orientations: {
-              Orientation.portrait,
-              Orientation.landscape,
-            },
-          ),
-        );
-
-        expect(files, hasLength(1));
-        expect(files.first.path, isNot(contains('portrait')));
-        expect(files.first.path, isNot(contains('landscape')));
       });
 
       testWidgets('works from within runAsync', (tester) async {
@@ -174,10 +135,9 @@ void main() {
         );
 
         await tester.runAsync(() async {
-          final files = await snap(name: 'run_async_snap');
+          final file = await snap(name: 'run_async_snap');
 
-          expect(files, hasLength(1));
-          expect(files.first.existsSync(), isTrue);
+          expect(file.existsSync(), isTrue);
         });
       });
 
@@ -195,10 +155,9 @@ void main() {
           );
 
           // First call - no counter
-          final files1 = await snap();
-          expect(files1, hasLength(1));
+          final file1 = await snap();
           expect(
-            files1.first.path,
+            file1.path,
             contains('appends counter when snap is called multiple times.png'),
           );
 
@@ -214,10 +173,9 @@ void main() {
           );
 
           // Second call - counter suffix _2
-          final files2 = await snap();
-          expect(files2, hasLength(1));
+          final file2 = await snap();
           expect(
-            files2.first.path,
+            file2.path,
             contains(
               'appends counter when snap is called multiple times_2.png',
             ),
@@ -235,26 +193,25 @@ void main() {
           );
 
           // Third call - counter suffix _3
-          final files3 = await snap();
-          expect(files3, hasLength(1));
+          final file3 = await snap();
           expect(
-            files3.first.path,
+            file3.path,
             contains(
               'appends counter when snap is called multiple times_3.png',
             ),
           );
 
           // Verify all files exist and are different
-          expect(files1.first.existsSync(), isTrue);
-          expect(files2.first.existsSync(), isTrue);
-          expect(files3.first.existsSync(), isTrue);
-          expect(files1.first.path, isNot(equals(files2.first.path)));
-          expect(files2.first.path, isNot(equals(files3.first.path)));
+          expect(file1.existsSync(), isTrue);
+          expect(file2.existsSync(), isTrue);
+          expect(file3.existsSync(), isTrue);
+          expect(file1.path, isNot(equals(file2.path)));
+          expect(file2.path, isNot(equals(file3.path)));
         },
       );
 
       snapTest(
-        'counter works with device and orientation suffixes',
+        'counter works with explicit device suffix',
         (tester) async {
           await tester.pumpWidget(
             const MaterialApp(
@@ -266,33 +223,21 @@ void main() {
             ),
           );
 
-          // First call with multiple devices
-          final files1 = await snap(
-            settings: SnaptestSettings.rendered(
-              devices: {Devices.ios.iPhone16Pro, Devices.ios.iPhone16},
-            ),
-          );
-          expect(files1, hasLength(2));
+          // First call with explicit device
+          final file1 = await snap(device: Devices.ios.iPhone16Pro);
           expect(
-            files1.first.path,
+            file1.path,
             contains(
-              'counter works with device and orientation suffixes_iPhone 16 '
-              'Pro.png',
+              'counter works with explicit device suffix_iPhone 16 Pro.png',
             ),
           );
 
           // Second call - counter should come before device name
-          final files2 = await snap(
-            settings: SnaptestSettings.rendered(
-              devices: {Devices.ios.iPhone16Pro, Devices.ios.iPhone16},
-            ),
-          );
-          expect(files2, hasLength(2));
+          final file2 = await snap(device: Devices.ios.iPhone16Pro);
           expect(
-            files2.first.path,
+            file2.path,
             contains(
-              'counter works with device and orientation suffixes_2_iPhone 16 '
-              'Pro.png',
+              'counter works with explicit device suffix_2_iPhone 16 Pro.png',
             ),
           );
         },
@@ -312,19 +257,16 @@ void main() {
           );
 
           // First call with custom name
-          final files1 = await snap(name: 'custom_name');
-          expect(files1, hasLength(1));
-          expect(files1.first.path, contains('custom_name.png'));
+          final file1 = await snap(name: 'custom_name');
+          expect(file1.path, contains('custom_name.png'));
 
           // Second call with the same custom name
-          final files2 = await snap(name: 'custom_name');
-          expect(files2, hasLength(1));
-          expect(files2.first.path, contains('custom_name_2.png'));
+          final file2 = await snap(name: 'custom_name');
+          expect(file2.path, contains('custom_name_2.png'));
 
           // Third call with different name - should not have counter
-          final files3 = await snap(name: 'another_name');
-          expect(files3, hasLength(1));
-          expect(files3.first.path, contains('another_name.png'));
+          final file3 = await snap(name: 'another_name');
+          expect(file3.path, contains('another_name.png'));
         },
       );
     });
@@ -335,31 +277,19 @@ void main() {
         expect(SnaptestSettings.global.renderShadows, isFalse);
         expect(SnaptestSettings.global.renderImages, isFalse);
         expect(SnaptestSettings.global.blockText, isTrue);
-        expect(SnaptestSettings.global.devices, hasLength(1));
-        expect(
-          SnaptestSettings.global.devices.first,
-          isNull,
-        );
       });
 
       test('can modify global settings', () {
-        SnaptestSettings.global = SnaptestSettings(
+        SnaptestSettings.global = const SnaptestSettings(
           renderShadows: false,
-          devices: {Devices.ios.iPhone16Pro},
         );
 
         expect(SnaptestSettings.global.renderShadows, isFalse);
-        expect(SnaptestSettings.global.devices, hasLength(1));
-        expect(
-          SnaptestSettings.global.devices.first,
-          equals(Devices.ios.iPhone16Pro),
-        );
       });
 
       test('reset restores default values', () {
-        SnaptestSettings.global = SnaptestSettings(
+        SnaptestSettings.global = const SnaptestSettings(
           renderShadows: false,
-          devices: {Devices.ios.iPhone16Pro},
         );
 
         SnaptestSettings.resetGlobal();
@@ -402,7 +332,7 @@ void main() {
         expect(implicitView.devicePixelRatio, equals(originalPixelRatio));
       });
 
-      testWidgets('handles WidgetTesterDevice specially', (tester) async {
+      testWidgets('handles null device specially', (tester) async {
         final binding = TestWidgetsFlutterBinding.instance;
         final implicitView = binding.platformDispatcher.implicitView!;
 
@@ -424,6 +354,7 @@ void main() {
     group('real rendering', () {
       snapTest(
         'enables real rendering for fonts and images',
+        devices: {Devices.ios.iPhone16Pro, Devices.android.samsungGalaxyS20},
         (tester) async {
           await tester.pumpWidget(
             const MaterialApp(
@@ -443,13 +374,7 @@ void main() {
 
           await snap(name: 'real_rendering');
         },
-        settings: SnaptestSettings.rendered(
-          devices: {
-            null,
-            Devices.ios.iPhone16Pro,
-            Devices.android.samsungGalaxyS20,
-          },
-        ),
+        settings: const SnaptestSettings.rendered(),
       );
 
       snapTest(
@@ -461,18 +386,16 @@ void main() {
             ),
           );
 
-          final files = await snap(name: 'device_frame_test');
-          expect(files, hasLength(1));
-          expect(files.first.existsSync(), isTrue);
+          final file = await snap(name: 'device_frame_test');
+          expect(file.existsSync(), isTrue);
         },
-        settings: const SnaptestSettings(
-          includeDeviceFrame: true,
-          devices: {null},
-        ),
+        settings: const SnaptestSettings(includeDeviceFrame: true),
       );
 
       snapTest(
         'captures widget with device frame for real devices',
+        devices: {Devices.ios.iPhone16Pro},
+        orientations: {Orientation.portrait, Orientation.landscape},
         (tester) async {
           await tester.pumpWidget(
             const MaterialApp(
@@ -490,23 +413,13 @@ void main() {
             ),
           );
 
-          final files = await snap(
+          final file = await snap(
             name: 'real_device_frame_test',
             matchToGolden: true,
           );
-          expect(files, hasLength(2));
-          expect(files.first.existsSync(), isTrue);
+          expect(file.existsSync(), isTrue);
         },
-        settings: SnaptestSettings(
-          includeDeviceFrame: true,
-          devices: {
-            Devices.ios.iPhone16Pro,
-          },
-          orientations: {
-            Orientation.portrait,
-            Orientation.landscape,
-          },
-        ),
+        settings: const SnaptestSettings(includeDeviceFrame: true),
       );
     });
 
@@ -526,34 +439,31 @@ void main() {
           ),
         );
 
-        final defaultFiles = await snap(
+        final defaultFile = await snap(
           name: 'global_settings_0',
           matchToGolden: true,
         );
-        expect(defaultFiles, hasLength(1));
+        expect(defaultFile.existsSync(), isTrue);
 
-        SnaptestSettings.global = SnaptestSettings(
+        SnaptestSettings.global = const SnaptestSettings(
           blockText: false,
           includeDeviceFrame: true,
-          devices: {
-            Devices.ios.iPhone16,
-          },
         );
 
-        final files = await snap(name: 'global_settings_1');
-        expect(files, hasLength(1));
-
-        SnaptestSettings.global = SnaptestSettings(
-          devices: {
-            Devices.ios.iPhone16,
-          },
+        final file1 = await snap(
+          name: 'global_settings_1',
+          device: Devices.ios.iPhone16,
         );
+        expect(file1.existsSync(), isTrue);
 
-        final files2 = await snap(
+        SnaptestSettings.global = const SnaptestSettings();
+
+        final file2 = await snap(
           name: 'global_settings_2',
+          device: Devices.ios.iPhone16,
           matchToGolden: true,
         );
-        expect(files2, hasLength(1));
+        expect(file2.existsSync(), isTrue);
       });
     });
 
@@ -584,12 +494,12 @@ void main() {
           ),
         );
 
-        final files = await snap(
+        final file = await snap(
           name: 'snap_from',
           from: find.byKey(const Key('check-icon')),
           matchToGolden: true,
         );
-        expect(files, hasLength(1));
+        expect(file.existsSync(), isTrue);
       });
     });
   });
