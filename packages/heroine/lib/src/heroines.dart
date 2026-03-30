@@ -7,6 +7,7 @@ import 'package:motor/motor.dart';
 part 'flight_controller.dart';
 part 'flight_spec.dart';
 part 'heroine_location.dart';
+part 'heroine_transition_details.dart';
 part 'heroine_widget.dart';
 
 /// Defines how to handle multiple [Heroine] widgets with the same [Heroine.tag]
@@ -280,7 +281,28 @@ class HeroineController extends NavigatorObserver {
       );
 
       final existingFlight = _flights[tag];
-      final spec = toHero == null || flightType == null
+
+      // Check if both heroines agree to transition.
+      final shouldTransition = toHero != null &&
+          flightType != null &&
+          (fromHero.widget.shouldTransition?.call(
+                HeroineTransitionDetails(
+                  currentRoute: from,
+                  otherRoute: to,
+                  direction: flightType,
+                ),
+              ) ??
+              true) &&
+          (toHero.widget.shouldTransition?.call(
+                HeroineTransitionDetails(
+                  currentRoute: to,
+                  otherRoute: from,
+                  direction: flightType,
+                ),
+              ) ??
+              true);
+
+      final spec = !shouldTransition
           ? null
           : _FlightSpec(
               direction: flightType,

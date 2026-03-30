@@ -15,5 +15,9 @@ export 'src/heroine_route_mixin.dart'
     show HeroinePageRoute, HeroinePageRouteMixin, ReactToHeroineDismiss;
 export 'src/heroine_velocity.dart' show HeroineVelocity;
 export 'src/heroines.dart'
-    show DuplicateHeroinePolicy, Heroine, HeroineController;
+    show
+        DuplicateHeroinePolicy,
+        Heroine,
+        HeroineController,
+        HeroineTransitionDetails;
 export 'src/shuttle_builders.dart';
