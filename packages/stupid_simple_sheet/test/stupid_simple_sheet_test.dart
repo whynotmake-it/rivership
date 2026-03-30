@@ -80,10 +80,9 @@ void main() {
       final gesture =
           await tester.startGesture(tester.getCenter(scaffoldFinder));
 
-      await snap(
+      await snap.golden(
         name: 'fully extended',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
 
       const dragFrames = 10;
@@ -104,10 +103,9 @@ void main() {
 
       expect(draggedTopLeft.dy, moreOrLessEquals(expected));
 
-      await snap(
+      await snap.golden(
         name: 'dragged down',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
 
       await gesture.up();
@@ -1652,10 +1650,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'default radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
 
@@ -1670,10 +1667,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'large radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
 
@@ -1688,10 +1684,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'large radius rrect',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
 
@@ -1702,10 +1697,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'zero radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
     });
@@ -1953,10 +1947,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'glass default radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
 
@@ -1971,10 +1964,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'glass large radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
 
@@ -1989,10 +1981,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(
+        await snap.golden(
           name: 'glass small radius',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
       });
     });
@@ -2026,10 +2017,9 @@ void main() {
           .ignore();
 
       await tester.pumpAndSettle();
-      await snap(
+      await snap.golden(
         name: 'glass barrier color and blur',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
 
       await Navigator.of(context).maybePop();
@@ -2048,10 +2038,9 @@ void main() {
           .ignore();
 
       await tester.pumpAndSettle();
-      await snap(
+      await snap.golden(
         name: 'glass barrier color no blur',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
     });
 
@@ -2178,10 +2167,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await snap(
+      await snap.golden(
         name: 'glass snap transition',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
 
       // Now snap the sheet to full
@@ -2193,10 +2181,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await snap(
+      await snap.golden(
         name: 'glass snap transition full',
         device: Devices.ios.iPhone16,
-        matchToGolden: true,
       );
     });
   });
