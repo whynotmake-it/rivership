@@ -40,7 +40,7 @@ void main() {
           ),
         );
 
-        final file = await snap(matchToGolden: true);
+        final file = await snap.andGolden();
         expect(file.existsSync(), isTrue);
       });
 
@@ -298,7 +298,7 @@ void main() {
       });
     });
 
-    group('setTestViewToFakeDevice', () {
+    group('setTestViewForDevice', () {
       testWidgets('sets and restores device view', (tester) async {
         final binding = TestWidgetsFlutterBinding.instance;
         final implicitView = binding.platformDispatcher.implicitView!;
@@ -315,7 +315,7 @@ void main() {
           pixelRatio: originalPixelRatio * 2,
         );
 
-        final restore = setTestViewToFakeDevice(
+        final restore = setTestViewForDevice(
           newDevice,
           Orientation.portrait,
         );
@@ -339,7 +339,7 @@ void main() {
         final originalSize = implicitView.physicalSize;
         final originalPixelRatio = implicitView.devicePixelRatio;
 
-        final restore = setTestViewToFakeDevice(
+        final restore = setTestViewForDevice(
           null,
           Orientation.portrait,
         );
@@ -413,9 +413,8 @@ void main() {
             ),
           );
 
-          final file = await snap(
+          final file = await snap.andGolden(
             name: 'real_device_frame_test',
-            matchToGolden: true,
           );
           expect(file.existsSync(), isTrue);
         },
@@ -448,9 +447,8 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final file = await snap.andGolden(
           name: 'blocked_text_fonts',
-          matchToGolden: true,
           settings: const SnaptestSettings.rendered(),
         );
 
@@ -492,9 +490,8 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final file = await snap.andGolden(
           name: 'blocked_text_rich',
-          matchToGolden: true,
           settings: const SnaptestSettings.rendered(),
         );
         expect(file.existsSync(), isTrue);
@@ -517,9 +514,8 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final file = await snap.andGolden(
           name: 'blocked_text_sizes',
-          matchToGolden: true,
         );
         expect(file.existsSync(), isTrue);
       });
@@ -541,9 +537,8 @@ void main() {
           ),
         );
 
-        final defaultFile = await snap(
+        final defaultFile = await snap.andGolden(
           name: 'global_settings_0',
-          matchToGolden: true,
         );
         expect(defaultFile.existsSync(), isTrue);
 
@@ -560,10 +555,9 @@ void main() {
 
         SnaptestSettings.global = const SnaptestSettings();
 
-        final file2 = await snap(
+        final file2 = await snap.andGolden(
           name: 'global_settings_2',
           device: Devices.ios.iPhone16,
-          matchToGolden: true,
         );
         expect(file2.existsSync(), isTrue);
       });
@@ -596,10 +590,9 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final file = await snap.andGolden(
           name: 'snap_from',
           from: find.byKey(const Key('check-icon')),
-          matchToGolden: true,
         );
         expect(file.existsSync(), isTrue);
       });

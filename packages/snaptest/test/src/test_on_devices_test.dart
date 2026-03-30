@@ -35,9 +35,8 @@ void main() {
         ),
       );
       tested.add(variant.currentValue!);
-      await snap(
+      await snap.andGolden(
         settings: const SnaptestSettings.rendered(),
-        matchToGolden: true,
       );
     },
   );

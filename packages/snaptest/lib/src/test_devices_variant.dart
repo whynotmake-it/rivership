@@ -9,7 +9,7 @@ import 'package:snaptest/snaptest.dart';
 /// Used by [snap] to resolve the device without requiring explicit parameters.
 (DeviceInfo, Orientation)? activeDeviceVariant;
 
-/// A [TestVariant] that will use [setTestViewToFakeDevice] to set the test view
+/// A [TestVariant] that will use [setTestViewForDevice] to set the test view
 /// to each of the given [DeviceInfo] values.
 ///
 /// Landscape orientation is automatically skipped for devices that don't
@@ -44,7 +44,7 @@ class TestDevicesVariant extends ValueVariant<(DeviceInfo, Orientation)> {
     (DeviceInfo, Orientation) value,
   ) async {
     activeDeviceVariant = value;
-    _restore = setTestViewToFakeDevice(value.$1, value.$2);
+    _restore = setTestViewForDevice(value.$1, value.$2);
     return super.setUp(value);
   }
 

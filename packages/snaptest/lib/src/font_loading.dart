@@ -22,14 +22,14 @@ bool _fontsLoaded = false;
 /// rendering across all screenshots.
 ///
 /// **Important**: Once fonts are loaded, they cannot be unloaded due to
-/// Flutter's limitations. This means that if [loadFontsAndIcons] is called
+/// Flutter's limitations. This means that if [loadFonts] is called
 /// during one test, all subsequent tests in the same test run will use the
 /// loaded fonts, which may cause text to render differently than in a fresh
 /// test environment.
 ///
-/// You can work around this limitation by using [snap] with `matchToGolden`
-/// set to `true`, instead of [matchesGoldenFile], which will block out all
-/// text independent of the loaded fonts.
+/// You can work around this limitation by using [Snap.golden], instead of
+/// [matchesGoldenFile], which will block out all text independent of the
+/// loaded fonts.
 ///
 /// ## What it does
 ///
@@ -44,7 +44,7 @@ bool _fontsLoaded = false;
 ///
 /// The function is idempotent - calling it multiple times has no additional
 /// effect after the first call.
-Future<void> loadFontsAndIcons() async {
+Future<void> loadFonts() async {
   if (_fontsLoaded) return;
 
   await _loadMaterialFontsFromSdk();
