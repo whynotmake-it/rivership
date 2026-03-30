@@ -45,8 +45,7 @@ void main() {
     ));
     final logoFile = (await snap(
       from: find.byKey(key),
-    ))
-        .single;
+    ));
 
     // Move file to docs
     final dir = Directory('../doc/');
