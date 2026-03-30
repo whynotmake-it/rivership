@@ -11,6 +11,7 @@ import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/font_loading.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
+import 'package:snaptest/src/test_devices_variant.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -18,17 +19,36 @@ import 'package:test_api/src/backend/invoker.dart';
 /// Maps test name to call count.
 final Map<String, int> _snapCallCounts = {};
 
-/// Saves a screenshot of the current state of the widget test as if it was
-/// rendered on each device in [settings].devices and each orientation in
-/// [settings].orientations to the file system.
+/// Saves a screenshot of the current state of the widget test to the file
+/// system.
 ///
 /// If [settings] is not provided, the global default settings are used,
 /// which you can also set globally via [SnaptestSettings.global].
 ///
 /// The screenshot is saved as a PNG file with the given [name] in the directory
-/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default),
-/// optionally appending the device name and orientation to the file name.
+/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default).
 /// If no [name] is provided, the name of the current test is used.
+///
+/// ## Device
+///
+/// The [device] and [orientation] parameters control which device to simulate.
+/// If not provided, they are resolved from the active [TestDevicesVariant]
+/// (if any), or default to no device (unchanged test view) and
+/// [Orientation.portrait].
+///
+/// ```dart
+/// // Explicit device
+/// await snap(device: Devices.ios.iPhone16Pro);
+///
+/// // Or use TestDevicesVariant to test multiple devices
+/// testWidgets(
+///   'my test',
+///   variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+///   (tester) async {
+///     await snap(); // device resolved from variant
+///   },
+/// );
+/// ```
 ///
 /// ## Multiple Calls Per Test
 ///
@@ -41,29 +61,6 @@ final Map<String, int> _snapCallCounts = {};
 ///   await snap(); // Creates: my_test_3.png
 /// });
 /// ```
-///
-/// ## Multiple Devices and Orientations
-///
-/// When multiple devices and orientations are specified, separate screenshots
-/// are created for each device and orientation with suffixes like
-/// `_iPhone16Pro_portrait` and `_samsungGalaxyS20_landscape`:
-/// ```dart
-/// await snap(
-///   settings: SnaptestSettings.rendered(
-///     devices: [
-///       Devices.ios.iPhone16Pro,
-///       Devices.android.samsungGalaxyS20,
-///     ],
-///     orientations: {Orientation.portrait, Orientation.landscape},
-///   ),
-/// );
-/// // Creates: my_test_iPhone16Pro_portrait.png, my_test_iPhone16Pro_landscape.png
-/// ```
-///
-/// Note: Device names and orientations are only appended if there are multiple
-/// devices or orientations.
-/// If you want to always append the device name or orientation, set
-/// [alwaysAppendDeviceName] or [alwaysAppendOrientation] to `true`.
 ///
 /// The Screenshot will be taken from the [from] [Finder] and if none is
 /// provided, the screenshot will be taken from the whole screen.
@@ -81,19 +78,19 @@ final Map<String, int> _snapCallCounts = {};
 ///
 /// When [matchToGolden] is set to `true`, the function performs golden file
 /// comparison testing in addition to saving screenshots. This creates a
-/// reference image for each device in [settings] with golden-friendly settings.
+/// reference image with golden-friendly settings.
 ///
 /// It will then invoke the [matchesGoldenFile] matcher.
 ///
 /// See the documentation for this matcher to learn more about golden testing.
-Future<List<File>> snap({
+Future<File> snap({
   String? name,
   Finder? from,
   SnaptestSettings? settings,
   bool matchToGolden = false,
   String goldenPrefix = 'goldens/',
-  bool alwaysAppendDeviceName = false,
-  bool alwaysAppendOrientation = false,
+  DeviceInfo? device,
+  Orientation? orientation,
 }) async {
   final s = settings ?? SnaptestSettings.global;
   final testName = name ?? Invoker.current?.liveTest.test.name;
@@ -109,117 +106,93 @@ Future<List<File>> snap({
       (_snapCallCounts[testName] ?? 0) + 1;
   final counterSuffix = callCount > 1 ? '_$callCount' : '';
 
-  if (s.devices.isEmpty) {
-    throw ArgumentError.value(
-      s.devices,
-      'devices',
-      'No devices to screenshot.',
-    );
-  }
+  // Resolve device and orientation: explicit param > variant > defaults
+  final resolvedDevice = device ?? activeDeviceVariant?.$1;
+  final resolvedOrientation =
+      orientation ?? activeDeviceVariant?.$2 ?? Orientation.portrait;
+  final deviceFromExplicitParam = device != null;
 
-  if (s.orientations.isEmpty) {
-    throw ArgumentError.value(
-      s.orientations,
-      'orientations',
-      'No orientations to screenshot.',
-    );
-  }
+  final image = await takeDeviceScreenshot(
+    device: resolvedDevice,
+    orientation: resolvedOrientation,
+    from: from,
+    settings: s,
+  );
 
-  final files = <File>[];
+  final goldenImage = switch (matchToGolden) {
+    true => await takeDeviceScreenshot(
+      device: resolvedDevice,
+      orientation: resolvedOrientation,
+      settings: const SnaptestSettings(),
+      from: from,
+    ),
+    false => null,
+  };
 
-  final goldens = <(String, ui.Image)>[];
-
-  final rotatedDevices = s.devices.nonNulls.where((device) => device.canRotate);
-
-  final appendDeviceName = alwaysAppendDeviceName || s.devices.length > 1;
-  final appendOrientation =
-      alwaysAppendOrientation ||
-      (s.orientations.length > 1 && rotatedDevices.isNotEmpty);
-
-  for (final device in s.devices) {
-    for (final orientation in s.orientations) {
-      if ((device == null || !device.canRotate) &&
-          orientation == Orientation.landscape) {
-        continue;
-      }
-
-      final image = await takeDeviceScreenshot(
-        device: device,
-        orientation: orientation,
-        from: from,
-        settings: s,
-      );
-
-      final goldenImage = switch (matchToGolden) {
-        true => await takeDeviceScreenshot(
-          device: device,
-          orientation: orientation,
-          settings: const SnaptestSettings(),
-          from: from,
-        ),
-        false => null,
-      };
-
-      final deviceAppendix =
-          appendDeviceName && device != null && device.name.isNotEmpty
-          ? '_${device.name.toValidFilename()}'
+  // Only append device/orientation to filename when explicitly passed,
+  // since the variant framework already includes the variant description
+  // in the test name.
+  final deviceAppendix =
+      deviceFromExplicitParam &&
+              resolvedDevice != null &&
+              resolvedDevice.name.isNotEmpty
+          ? '_${resolvedDevice.name.toValidFilename()}'
           : '';
 
-      final orientationAppendix = appendOrientation
-          ? '_${orientation.name}'
+  final orientationAppendix =
+      deviceFromExplicitParam &&
+              resolvedOrientation == Orientation.landscape
+          ? '_landscape'
           : '';
 
-      final fileName =
-          '${testName.toValidFilename()}'
-          '$counterSuffix$deviceAppendix$orientationAppendix.png';
+  final fileName =
+      '${testName.toValidFilename()}'
+      '$counterSuffix$deviceAppendix$orientationAppendix.png';
 
-      await maybeRunAsync(() async {
-        final byteData = await image?.toByteData(
-          format: ui.ImageByteFormat.png,
-        );
-        final bytes = byteData?.buffer.asUint8List();
+  late final File file;
 
-        if (bytes == null) {
-          throw Exception('Could not encode screenshot.');
-        }
+  await maybeRunAsync(() async {
+    final byteData = await image?.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    final bytes = byteData?.buffer.asUint8List();
 
-        final String? path;
-
-        if (goldenFileComparator case LocalFileComparator(:final basedir)) {
-          path = goldenFileComparator
-              .getTestUri(
-                basedir.resolve(join(s.pathPrefix, fileName)),
-                null,
-              )
-              .toFilePath();
-        } else {
-          throw Exception('Could not determine a path for the screenshot.');
-        }
-
-        final file = File(path);
-
-        if (!file.existsSync()) {
-          file.createSync(recursive: true);
-        }
-
-        await file.writeAsBytes(bytes);
-
-        files.add(file);
-      });
-
-      if (goldenImage != null) {
-        goldens.add((join(goldenPrefix, fileName), goldenImage));
-      }
+    if (bytes == null) {
+      throw Exception('Could not encode screenshot.');
     }
-  }
+
+    final String? path;
+
+    if (goldenFileComparator case LocalFileComparator(:final basedir)) {
+      path = goldenFileComparator
+          .getTestUri(
+            basedir.resolve(join(s.pathPrefix, fileName)),
+            null,
+          )
+          .toFilePath();
+    } else {
+      throw Exception('Could not determine a path for the screenshot.');
+    }
+
+    file = File(path);
+
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
+
+    await file.writeAsBytes(bytes);
+  });
 
   restore();
 
-  for (final (key, image) in goldens) {
-    await expectLater(image, matchesGoldenFile(key));
+  if (goldenImage != null) {
+    await expectLater(
+      goldenImage,
+      matchesGoldenFile(join(goldenPrefix, fileName)),
+    );
   }
 
-  return files;
+  return file;
 }
 
 /// Runs a given function [fn] in a runAsync block.
