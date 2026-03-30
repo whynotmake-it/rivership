@@ -5,12 +5,11 @@ import 'package:characters/characters.dart';
 import 'package:flutter/rendering.dart';
 
 /// {@template blocked_text_painting_context}
-/// A painting context used to replace all text blocks with colored rectangles.
+/// A painting context that replaces all text with colored rectangles.
 ///
-/// This is used in golden tests to circumvent inconsistencies with font
-/// rendering between operating systems.
-///
-/// Only used internally and should not be used by consumers.
+/// Used in golden tests to circumvent inconsistencies with font rendering
+/// between operating systems. Available via
+/// `import 'package:snaptest/golden_tools.dart'`.
 /// {@endtemplate}
 class BlockedTextPaintingContext extends PaintingContext {
   /// {@macro blocked_text_painting_context}
@@ -90,14 +89,11 @@ class BlockedTextPaintingContext extends PaintingContext {
 }
 
 /// {@template blocked_text_canvas_adapter}
-/// An adapter used to change how a canvas draws text
+/// A [Canvas] adapter that delegates all drawing operations to [parent],
+/// except it skips drawing paragraphs entirely.
 ///
-/// This class delegates all drawing operations to the [parent] canvas,
-/// except it replaces all text with rectangles. It is used along with
-/// [BlockedTextPaintingContext] to circumvent font rendering inconsistencies
-/// between platforms.
-///
-/// Only used internally and should not be used by consumers.
+/// Used together with [BlockedTextPaintingContext] to circumvent font
+/// rendering inconsistencies between platforms.
 /// {@endtemplate}
 class BlockedTextCanvasAdapter implements Canvas {
   /// {@macro blocked_text_canvas_adapter}

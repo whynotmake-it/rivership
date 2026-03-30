@@ -16,7 +16,7 @@ Snaptest is simple: call `snap()` in any widget test to save a screenshot of wha
 dart pub add dev:snaptest
 ```
 
-## The Basics 🚀
+## The Basics
 
 ### Just call `snap()` to see your screen
 
@@ -28,7 +28,7 @@ import 'package:snaptest/snaptest.dart';
 
 testWidgets('My widget test', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: MyPage()));
-  
+
   // That's it! Screenshot saved to .snaptest/
   await snap();
 });
@@ -42,69 +42,108 @@ The screenshot gets saved as a PNG file in `.snaptest/` using your test name. Gr
 **/.snaptest/     # Screenshots (usually not committed)
 ```
 
-## Level Up: Real Rendering 📱
+## Real Rendering
 
 By default, snaptest creates simplified screenshots (blocked text, no images/shadows) for consistency. But you can enable **real rendering** to see exactly what users see:
 
 ```dart
 testWidgets('Real rendering example', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: MyPage()));
-  
+
   await snap(
-    settings: SnaptestSettings.rendered([
-      Devices.ios.iPhone16Pro,
-      Devices.android.samsungGalaxyS20,
-    ]),
+    device: Devices.ios.iPhone16Pro,
+    settings: SnaptestSettings.rendered(),
   );
 });
 ```
 
 This creates beautiful screenshots with:
-- ✅ Real text rendering
-- ✅ Actual images  
-- ✅ Shadows and effects
-- ✅ Device frames around the content
-- ✅ Multiple device sizes
-- ✅ Multiple orientations (portrait and landscape)
+- Real text rendering
+- Actual images
+- Shadows and effects
+- Device frames around the content
 
 Perfect for documentation, design reviews, or showing stakeholders what the app actually looks like.
 
-## Level Up: Golden File Testing 🎯
+## Golden File Testing
 
-Want automated visual regression testing? Enable golden comparison to catch unintended UI changes:
+Snaptest provides three distinct methods for different use cases:
+
+### `snap.golden()` — golden comparison only
+
+Takes a golden comparison screenshot without saving a visual debugging file. The golden is rendered with default `SnaptestSettings()` (blocked text, no shadows) for cross-platform consistency.
 
 ```dart
-testWidgets('Golden comparison test', (tester) async {
+testWidgets('Golden only', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
-  
-  await snap(
-    matchToGolden: true,
-    settings: SnaptestSettings.rendered([Devices.ios.iPhone16Pro]),
+
+  await snap.golden(device: Devices.ios.iPhone16Pro);
+});
+```
+
+### `snap.andGolden()` — visual debugging + golden comparison
+
+Takes both a visual debugging screenshot (saved to `.snaptest/`) and a golden comparison screenshot. Returns the saved file.
+
+```dart
+testWidgets('Both snap and golden', (tester) async {
+  await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+  await snap.andGolden(
+    device: Devices.ios.iPhone16Pro,
+    settings: SnaptestSettings.rendered(), // for the visual snap
   );
 });
 ```
 
-This does **both**:
-1. **Saves a beautiful screenshot** with real rendering and device frames to `.snaptest/`
-2. **Compares against golden files** to fail the test if UI changes unexpectedly
+The visual snap uses your `settings` (or `SnaptestSettings.global`), while the golden uses `goldenSettings` (or the default `SnaptestSettings()`).
+
+### Updating goldens
 
 When golden tests fail due to intentional changes, update them:
 ```sh
 flutter test --update-goldens
 ```
 
-## All the Options 🛠️
+## Getting an `Image` directly
+
+Use `snap.image()` to get an `Image` without saving to disk. Same pipeline as `snap()` but returns the image for custom processing:
+
+```dart
+testWidgets('Get image', (tester) async {
+  await tester.pumpWidget(const MaterialApp(home: MyPage()));
+
+  final image = await snap.image(
+    device: Devices.ios.iPhone16Pro,
+    settings: SnaptestSettings.rendered(),
+  );
+
+  // Use the image for custom processing...
+});
+```
+
+## All the Options
 
 ### Multiple screenshots per test
+
+When `snap()` is called multiple times in the same test, a counter suffix is automatically added:
+
 ```dart
 testWidgets('User flow', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: MyPage()));
-  await snap('initial_state');
-  
+  await snap();  // my_test.png
+
   await tester.tap(find.byType(FloatingActionButton));
   await tester.pumpAndSettle();
-  await snap('after_tap');
+  await snap();  // my_test_2.png
 });
+```
+
+You can also provide explicit names:
+
+```dart
+await snap(name: 'initial_state');
+await snap(name: 'after_tap');
 ```
 
 ### Capture specific widgets
@@ -116,16 +155,14 @@ await snap(from: find.byKey(const Key('my-card')));
 ```dart
 void main() {
   setUpAll(() {
-    SnaptestSettings.global = SnaptestSettings.rendered([
-      Devices.ios.iPhone16Pro,
-    ]);
+    SnaptestSettings.global = SnaptestSettings.rendered();
   });
-  
-  // All snap() calls now use iPhone 16 Pro with real rendering
+
+  tearDownAll(SnaptestSettings.resetGlobal);
+
+  // All snap() calls now use real rendering
 }
 ```
-
-Or create a `flutter_test_config.dart` file to set the global settings.
 
 ### Dedicated screenshot tests with `snapTest`
 
@@ -139,23 +176,17 @@ import 'package:snaptest/snaptest.dart';
 
 snapTest('Login screen looks correct', (tester) async {
   await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
-  await snap(); // Uses the settings from snapTest
+  await snap();
 });
 
 snapTest(
   'Multi-device homepage',
+  devices: {Devices.ios.iPhone16Pro, Devices.android.samsungGalaxyS20},
+  settings: SnaptestSettings.rendered(),
   (tester) async {
     await tester.pumpWidget(const MaterialApp(home: HomePage()));
-    await snap('initial');
-    
-    await tester.tap(find.byIcon(Icons.menu));
-    await tester.pumpAndSettle();
-    await snap('menu_open');
+    await snap();
   },
-  settings: SnaptestSettings.rendered([
-    Devices.ios.iPhone16Pro,
-    Devices.android.samsungGalaxyS20,
-  ]),
 );
 ```
 
@@ -169,41 +200,20 @@ Or exclude them from regular test runs:
 flutter test --exclude-tags snaptest
 ```
 
-### Test multiple orientations
-```dart
-testWidgets('Responsive design test', (tester) async {
-  await tester.pumpWidget(const MaterialApp(home: MyPage()));
-  
-  await snap(
-    settings: SnaptestSettings.rendered(
-      devices: [Devices.ios.iPhone16Pro],
-      orientations: {
-        Orientation.portrait,
-        Orientation.landscape,
-      },
-    ),
-  );
-});
-```
+### Test multiple devices and orientations with `TestDevicesVariant`
 
-This automatically creates separate screenshots for each orientation:
-- `my_page_iPhone16Pro_portrait.png`
-- `my_page_iPhone16Pro_landscape.png`
-
-### Test variants with `TestOnDevices`
-
-For running the same test across multiple devices and orientations, use the `TestOnDevices` variant. This is perfect for testing responsive layouts or platform-specific behavior:
+For running the same test across multiple devices and orientations:
 
 ```dart
 testWidgets(
   'Responsive layout test',
-  variant: TestOnDevices(
-    [
+  variant: TestDevicesVariant(
+    {
       Devices.ios.iPhone16Pro,
       Devices.ios.iPad,
       Devices.android.googlePixel9,
       Devices.android.largeTablet,
-    ],
+    },
     orientations: {
       Orientation.portrait,
       Orientation.landscape,
@@ -211,7 +221,7 @@ testWidgets(
   ),
   (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MyPage()));
-    await snap(matchToGolden: true);
+    await snap.golden();
   },
 );
 ```
@@ -222,35 +232,63 @@ This runs your test once for each device/orientation combination (8 times in thi
 - Runs in the specified orientation
 - Labels the test with the device and orientation name
 
-Great for ensuring your UI works across different screen sizes and platforms.
+### `snap()` parameters
 
-### All `snap()` parameters
+All methods on `snap` accept these common parameters:
+
 ```dart
 await snap(
   name: 'custom_name',           // Custom filename
   from: find.byKey(key),         // Specific widget to capture
   settings: SnaptestSettings(),  // Override global settings
-  goldenPrefix: 'goldens/',      // Golden files directory (default: 'goldens/')
-  matchToGolden: true,           // Enable golden file comparison
+  device: Devices.ios.iPhone16,  // Device to simulate
+  orientation: Orientation.portrait,
 );
 ```
 
-## Settings Reference 📋
+`snap.golden()` and `snap.andGolden()` additionally accept:
+
+```dart
+await snap.golden(
+  prefix: 'goldens/',            // Golden files directory (default)
+);
+
+await snap.andGolden(
+  settings: SnaptestSettings.rendered(), // For the visual snap
+  goldenSettings: SnaptestSettings(),    // For the golden (default)
+  prefix: 'goldens/',
+);
+```
+
+## Settings Reference
 
 ### `SnaptestSettings` options:
-- **`devices`**: List of devices to test on (default: `[WidgetTesterDevice()]`)
-- **`orientations`**: Set of orientations to test (default: `{Orientation.portrait}`)
-- **`blockText`**: Whether to block text rendering for consistency (default: `true`)
-- **`renderImages`**: Whether to render actual images (default: `false`)
-- **`renderShadows`**: Whether to render shadows (default: `false`)
-- **`includeDeviceFrame`**: Whether to include device frame around content (default: `false`)
+- **`blockText`**: Replace text with colored rectangles for consistency (default: `true`)
+- **`renderImages`**: Render actual images (default: `false`)
+- **`renderShadows`**: Render shadows and elevation effects (default: `false`)
+- **`includeDeviceFrame`**: Include device frame around content (default: `false`)
 - **`pathPrefix`**: Directory where screenshots are saved (default: `'.snaptest/'`)
 
 ### Convenience constructors:
-- **`SnaptestSettings()`**: Default settings - blocked text, no images/shadows/frames
-- **`SnaptestSettings.rendered(devices)`**: Real rendering - actual text, images, shadows, and device frames
+- **`SnaptestSettings()`**: Default — blocked text, no images/shadows/frames
+- **`SnaptestSettings.rendered()`**: Full rendering — actual text, images, shadows, and device frames
 
-## Helper Scripts 🔧
+## Golden Tools
+
+For advanced use cases, import `golden_tools.dart` to access lower-level utilities:
+
+```dart
+import 'package:snaptest/golden_tools.dart';
+```
+
+This exports:
+- **`captureImage()`** — render an Element to a `ui.Image` with optional blocked text and device frame
+- **`BlockedTextPaintingContext`** / **`BlockedTextCanvasAdapter`** — replace text rendering with colored rectangles
+- **`loadFont()`** / **`loadFonts()`** — load fonts into the test environment
+- **`precacheImages()`** — pre-cache images for accurate rendering
+- **`setTestViewForDevice()`** — simulate a device's screen size and safe areas
+
+## Helper Scripts
 
 Clean all screenshots:
 ```sh
@@ -278,31 +316,19 @@ Assemble screenshots into a single directory:
 dart run snaptest:assemble
 ```
 
-Assemble screenshots from a custom directory:
-```sh
-dart run snaptest:assemble my_custom_dir
-```
-
 ### Custom Screenshot Directories
 
 You can customize where screenshots are saved by setting the `pathPrefix` in your settings:
 
 ```dart
-testWidgets('Custom directory example', (tester) async {
-  await tester.pumpWidget(const MaterialApp(home: MyPage()));
-  
-  await snap(
-    settings: SnaptestSettings(
-      pathPrefix: 'my_screenshots/',
-      // ... other settings
-    ),
-  );
-});
+await snap(
+  settings: SnaptestSettings(pathPrefix: 'my_screenshots/'),
+);
 ```
 
 The helper scripts will work with any custom directory name you specify.
 
-## Font Rendering 🔤
+## Font Rendering
 
 ### macOS: SF Pro Fonts (Recommended)
 
@@ -312,7 +338,7 @@ For the most accurate iOS screenshot rendering on macOS, install Apple's SF Pro 
 2. Install the fonts to `/Library/Fonts` (system-wide installation)
 3. Restart your terminal/IDE if needed
 
-With SF Pro fonts installed, `loadFontsAndIcons()` will automatically use them for Cupertino widgets, making your screenshots match actual iOS rendering more closely.
+With SF Pro fonts installed, `loadFonts()` will automatically use them for Cupertino widgets, making your screenshots match actual iOS rendering more closely.
 
 **Without SF Pro fonts on macOS**: Snaptest automatically falls back to Roboto fonts for consistency. You'll see a debug message during test runs if the fonts aren't found.
 

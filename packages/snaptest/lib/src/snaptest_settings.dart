@@ -1,3 +1,4 @@
+/// @docImport 'package:snaptest/snaptest.dart';
 /// @docImport 'package:snaptest/src/snap.dart';
 /// @docImport 'package:snaptest/src/test_devices_variant.dart';
 library;
@@ -21,6 +22,12 @@ import 'package:snaptest/src/constants.dart';
 ///   device: Devices.ios.iPhone16Pro,
 ///   settings: SnaptestSettings.rendered(),
 /// );
+///
+/// // Golden comparison (uses default settings for consistency)
+/// await snap.golden();
+///
+/// // Both visual debugging + golden comparison
+/// await snap.andGolden();
 /// ```
 ///
 /// ## Global Settings
