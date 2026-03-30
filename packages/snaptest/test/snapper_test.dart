@@ -423,6 +423,108 @@ void main() {
       );
     });
 
+    group('blocked text', () {
+      snapTest('blocks text with different fonts', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 12,
+                  children: [
+                    Text(
+                      'Roboto',
+                      style: TextStyle(fontFamily: 'Roboto', fontSize: 32),
+                    ),
+                    Text(
+                      'Serif',
+                      style: TextStyle(fontFamily: 'RobotoSerif', fontSize: 32),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final file = await snap(
+          name: 'blocked_text_fonts',
+          matchToGolden: true,
+          settings: const SnaptestSettings.rendered(),
+        );
+
+        expect(file.existsSync(), isTrue);
+      });
+
+      snapTest('blocks rich text with colors and special characters', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Red',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      TextSpan(
+                        text: ' Blue',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                      TextSpan(
+                        text:
+                            ' Ñoño café über '
+                            'Ελληνικά Кириллица '
+                            '© ® ™ € £ ¥ '
+                            '¼ ½ ¾ ± × ÷ '
+                            'ÆØÅ ñ ß þ ð',
+                        style: TextStyle(color: Colors.green),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final file = await snap(
+          name: 'blocked_text_rich',
+          matchToGolden: true,
+          settings: const SnaptestSettings.rendered(),
+        );
+        expect(file.existsSync(), isTrue);
+      });
+
+      snapTest('blocks text with different font sizes', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Small', style: TextStyle(fontSize: 12)),
+                    Text('Large', style: TextStyle(fontSize: 32)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final file = await snap(
+          name: 'blocked_text_sizes',
+          matchToGolden: true,
+        );
+        expect(file.existsSync(), isTrue);
+      });
+    });
+
     group('global settings', () {
       testWidgets('works back and forth', (tester) async {
         await tester.pumpWidget(

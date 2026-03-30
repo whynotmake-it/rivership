@@ -21,6 +21,7 @@ dev_dependencies:
 
 dependencies:
   args: ^2.4.0
+  characters: # will be pinned by SDK
   device_frame: ">=1.0.0 <2.0.0"
   equatable: ">=2.0.0 <3.0.0"
   flutter:
