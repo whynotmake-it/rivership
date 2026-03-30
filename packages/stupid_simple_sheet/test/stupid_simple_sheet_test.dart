@@ -9,9 +9,7 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 void main() {
   setUp(() {
-    SnaptestSettings.global = SnaptestSettings.rendered(
-      devices: {Devices.ios.iPhone16},
-    );
+    SnaptestSettings.global = const SnaptestSettings.rendered();
   });
 
   tearDown(SnaptestSettings.resetGlobal);
@@ -84,6 +82,7 @@ void main() {
 
       await snap(
         name: 'fully extended',
+        device: Devices.ios.iPhone16,
         matchToGolden: true,
       );
 
@@ -105,7 +104,11 @@ void main() {
 
       expect(draggedTopLeft.dy, moreOrLessEquals(expected));
 
-      await snap(name: 'dragged down', matchToGolden: true);
+      await snap(
+        name: 'dragged down',
+        device: Devices.ios.iPhone16,
+        matchToGolden: true,
+      );
 
       await gesture.up();
     });
@@ -157,7 +160,7 @@ void main() {
 
       final finalTopLeft = tester.getTopLeft(scaffoldFinder);
 
-      await snap();
+      await snap(device: Devices.ios.iPhone16);
 
       // Sheet should not have moved down (should be overscrolling instead)
       expect(finalTopLeft.dy, equals(initialTopLeft.dy));
@@ -1003,7 +1006,7 @@ void main() {
 
         await tester.pump(motion.duration);
 
-        await snap();
+        await snap(device: Devices.ios.iPhone16);
 
         expect(buttonFinder.hitTestable(), findsOneWidget);
         expect(find.byType(ModalBarrier).hitTestable(), findsNothing);
@@ -1649,7 +1652,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'default radius', matchToGolden: true);
+        await snap(
+          name: 'default radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
 
       testWidgets('looks correct with large radius', (tester) async {
@@ -1663,7 +1670,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'large radius', matchToGolden: true);
+        await snap(
+          name: 'large radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
 
       testWidgets('looks correct with rounded rectangle', (tester) async {
@@ -1677,7 +1688,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'large radius rrect', matchToGolden: true);
+        await snap(
+          name: 'large radius rrect',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
 
       testWidgets('looks correct with zero radius', (tester) async {
@@ -1687,7 +1702,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'zero radius', matchToGolden: true);
+        await snap(
+          name: 'zero radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
     });
 
@@ -1934,7 +1953,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'glass default radius', matchToGolden: true);
+        await snap(
+          name: 'glass default radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
 
       testWidgets('looks correct with large radius', (tester) async {
@@ -1948,7 +1971,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'glass large radius', matchToGolden: true);
+        await snap(
+          name: 'glass large radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
 
       testWidgets('looks correct with small radius', (tester) async {
@@ -1962,7 +1989,11 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('button')));
         await tester.pumpAndSettle();
 
-        await snap(name: 'glass small radius', matchToGolden: true);
+        await snap(
+          name: 'glass small radius',
+          device: Devices.ios.iPhone16,
+          matchToGolden: true,
+        );
       });
     });
 
@@ -1995,7 +2026,11 @@ void main() {
           .ignore();
 
       await tester.pumpAndSettle();
-      await snap(name: 'glass barrier color and blur', matchToGolden: true);
+      await snap(
+        name: 'glass barrier color and blur',
+        device: Devices.ios.iPhone16,
+        matchToGolden: true,
+      );
 
       await Navigator.of(context).maybePop();
 
@@ -2013,7 +2048,11 @@ void main() {
           .ignore();
 
       await tester.pumpAndSettle();
-      await snap(name: 'glass barrier color no blur', matchToGolden: true);
+      await snap(
+        name: 'glass barrier color no blur',
+        device: Devices.ios.iPhone16,
+        matchToGolden: true,
+      );
     });
 
     group('shrink dismissal mode', () {
@@ -2139,7 +2178,11 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await snap(name: 'glass snap transition', matchToGolden: true);
+      await snap(
+        name: 'glass snap transition',
+        device: Devices.ios.iPhone16,
+        matchToGolden: true,
+      );
 
       // Now snap the sheet to full
       StupidSimpleSheetController.maybeOf<dynamic>(
@@ -2150,7 +2193,11 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await snap(name: 'glass snap transition full', matchToGolden: true);
+      await snap(
+        name: 'glass snap transition full',
+        device: Devices.ios.iPhone16,
+        matchToGolden: true,
+      );
     });
   });
 
