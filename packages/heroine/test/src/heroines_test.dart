@@ -863,6 +863,280 @@ void main() {
         },
       );
     });
+
+    group('shouldTransition', () {
+      testWidgets(
+        'flight proceeds when callback is null (default)',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // During the transition, overlay heroine should be present
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            greaterThanOrEqualTo(3),
+            reason: 'Flight should proceed when shouldTransition is null',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight is skipped when fromHero callback returns false',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      shouldTransition: (_) => false,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // No overlay heroine — flight was skipped
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            lessThan(3),
+            reason: 'Flight should be skipped when fromHero vetoes',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight is skipped when toHero callback returns false',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        shouldTransition: (_) => false,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // No overlay heroine — flight was skipped
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            lessThan(3),
+            reason: 'Flight should be skipped when toHero vetoes',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight proceeds when both callbacks return true',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      shouldTransition: (_) => true,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        shouldTransition: (_) => true,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            greaterThanOrEqualTo(3),
+            reason: 'Flight should proceed when both callbacks return true',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'callback receives correct details',
+        (tester) async {
+          final receivedDetails = <HeroineTransitionDetails>[];
+
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Heroine(
+                  tag: tag,
+                  shouldTransition: (details) {
+                    receivedDetails.add(details);
+                    return true;
+                  },
+                  child: Container(color: Colors.red),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Heroine(
+                    tag: tag,
+                    child: Container(color: Colors.green),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpAndSettle();
+
+          expect(receivedDetails, hasLength(1));
+          expect(
+            receivedDetails.first.direction,
+            HeroFlightDirection.push,
+          );
+          // currentRoute is the home route (where this heroine lives)
+          expect(
+            receivedDetails.first.currentRoute,
+            isA<PageRoute<dynamic>>(),
+          );
+          // otherRoute is the pushed route
+          expect(
+            receivedDetails.first.otherRoute,
+            isA<PageRoute<dynamic>>(),
+          );
+          expect(
+            receivedDetails.first.currentRoute,
+            isNot(receivedDetails.first.otherRoute),
+          );
+        },
+      );
+    });
   });
 }
 
