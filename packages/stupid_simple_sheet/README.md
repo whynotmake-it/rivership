@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="doc/logo.png" width="128" alt="Stupid Simple Sheet logo" />
+</p>
+
 # Stupid Simple Sheet
 
 [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet)
@@ -5,96 +9,63 @@
 [![lintervention_badge]]([lintervention_link])
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
-A simple yet powerful sheet widget for Flutter with seamless scroll-to-drag transitions.
+The only Flutter sheet that **seamlessly transitions between scrolling content and sheet dragging** -- with real spring physics.
 
-## What makes it unique
-
-**Smooth transitioning from any scrolling child to the drag gestures of the mobile sheet.** The sheet automatically detects when scrollable content reaches its bounds and seamlessly transitions to sheet dragging behavior - no complex gesture coordination required.
-
-**Powered by Motor physics simulations** to make the sheet feel incredibly natural and responsive. The spring physics create smooth, realistic motion that feels right at home on any device.
-
-The sheet works perfectly with:
-- `ListView`
-- `CustomScrollView` 
-- `PageView`
-- Any scrollable widget
-
-## Important Warning
-
-**Content inside the sheet should not define any custom `ScrollConfiguration`.** The sheet relies on the default Flutter scroll behavior to properly detect scroll boundaries and transition between scrolling and dragging states.
+Put a `ListView`, `CustomScrollView`, `PageView`, or any scrollable inside the sheet. When the user scrolls to the edge, the gesture hands off to the sheet drag automatically. You don't need to worry about stuff like `DraggableScrollableSheet`. Just smooth, physics-driven motion powered by [motor](https://pub.dev/packages/motor).
 
 ## Installation
-
-**In order to start using Stupid Simple Sheet you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
-
-
-Install via `flutter pub`:
 
 ```sh
 flutter pub add stupid_simple_sheet
 ```
 
-## Usage
+## Quick start
 
-### Understanding the Base Sheet
-
-`StupidSimpleSheetRoute` is intentionally minimal - it provides **no background, shape, or SafeArea by default**. This gives you complete freedom to build any style of sheet:
+Push a sheet like you push any route:
 
 ```dart
 Navigator.of(context).push(
-  StupidSimpleSheetRoute(
-    child: YourSheetContent(), // You control all styling
+  StupidSimpleGlassSheetRoute(
+    child: YourContent(),
   ),
 );
 ```
 
-This design lets you create sheets that don't look like traditional sheets at all - floating cards, full-bleed content, custom shapes, or anything else you can imagine.
+That gives you an iOS 26 glass sheet with spring physics and seamless scroll-to-drag transitions out of the box.
 
-### Common Use Cases
+## Important
 
-#### 1. Standard Modal Sheet with Background
+Content inside the sheet should **not** define any custom `ScrollConfiguration`. The sheet relies on default scroll behavior to detect scroll boundaries and transition between scrolling and dragging.
 
-For a typical modal sheet with rounded corners and a background, wrap your content in `SheetBackground`:
+## Cookbook
+
+Each recipe below is a self-contained pattern you can copy into your project. Full runnable examples live in the [`example/`](./example/lib/) directory.
+
+---
+
+### Glass sheet (iOS 26)
+
+The modern iOS sheet style with liquid glass blur. Glass sheets stack seamlessly -- only the first sheet blurs the backdrop.
+
+> [Full example](./example/lib/presets/glass_sheet_preset.dart)
+
+ ![Glass Sheet](doc/glass.gif)
 
 ```dart
 Navigator.of(context).push(
-  StupidSimpleSheetRoute(
-    child: SafeArea(
-      // Most sheets should only avoid the top safe area, the rest should be avoided
-      // inside the sheet content as needed.
-      bottom: false,
-      left: false,
-      right: false,
-      child: SheetBackground(
-        child: YourContent(),
-      ),
-    ),
+  StupidSimpleGlassSheetRoute(
+    child: YourContent(),
   ),
 );
 ```
 
-`SheetBackground` provides:
-- Rounded superellipse shape (24px radius at top)
-- Theme's surface color as background
-- Anti-aliased clipping
-- Automatic background extension to handle overdrag
+---
 
-You can customize it:
+### Cupertino sheet
 
-```dart
-SheetBackground(
-  backgroundColor: Colors.blue.shade50,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-  ),
-  clipBehavior: Clip.hardEdge,
-  child: YourContent(),
-)
-```
+The classic iOS modal sheet with push-back transitions on the route behind.
 
-#### 2. Cupertino-style Sheet
-
-For iOS-style modal sheets that push the previous screen back:
+> [Full example](./example/lib/presets/cupertino_sheet_preset.dart)
 
 ![Cupertino Sheet](doc/cupertino.gif)
 
@@ -127,56 +98,31 @@ Navigator.of(context).push(
 );
 ```
 
-#### 3. Small Floating Sheet (Resizing Content)
+---
 
-For sheets that size to fit their content and can grow/shrink dynamically:
+### Customizing preset routes
 
-![Resizing Sheet](doc/resizing.gif)
-
-```dart
-Navigator.of(context).push(
-  StupidSimpleSheetRoute(
-    motion: CupertinoMotion.smooth(),
-    originateAboveBottomViewInset: true, // Stays above keyboard
-    child: SafeArea(
-      child: Card(
-        margin: EdgeInsets.all(8),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min, // Size to content
-          children: [
-            // Your content here
-            CupertinoTextField(placeholder: 'Type something...'),
-            // Content can grow dynamically
-          ],
-        ),
-      ),
-    ),
-  ),
-);
-```
-
-#### 4. Sheet with Snapping Points
-
-Create sheets that snap to specific positions (e.g., half-open, full):
+Both `StupidSimpleCupertinoSheetRoute` and `StupidSimpleGlassSheetRoute` accept
+`shape` and `backgroundColor` to tweak their appearance without building a
+custom route:
 
 ```dart
-Navigator.of(context).push(
-  StupidSimpleCupertinoSheetRoute(
-    snappingConfig: SheetSnappingConfig(
-      [0.5, 1.0], // Snap at 50% and 100%
-      initialSnap: 0.5, // Start half-open
-    ),
-    child: YourContent(),
+StupidSimpleCupertinoSheetRoute(
+  backgroundColor: CupertinoColors.systemGroupedBackground,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
   ),
-);
+  child: YourContent(),
+)
 ```
 
-#### 5. Non-Draggable Sheet
+---
 
-For sheets that can only be closed programmatically:
+### Non-draggable sheet
+
+A sheet that can only be closed programmatically. Useful for confirmation dialogs or critical flows.
+
+> [Full example](./example/lib/recipes/non_draggable.dart)
 
 ```dart
 Navigator.of(context).push(
@@ -187,172 +133,270 @@ Navigator.of(context).push(
 );
 ```
 
-#### 6. Sheet with PageView
+---
 
-The sheet handles horizontal paging seamlessly:
+### Preventing dismiss with PopScope
+
+Wrap content in Flutter's `PopScope` to prevent drag-to-dismiss while still
+allowing the user to drag the sheet between snap points. The sheet automatically
+applies rubber-band resistance when dragged below the lowest snap.
 
 ```dart
 Navigator.of(context).push(
   StupidSimpleCupertinoSheetRoute(
-    child: CupertinoPageScaffold(
-      child: PageView(
-        children: [
-          CustomScrollView(/* Page 1 content */),
-          CustomScrollView(/* Page 2 content */),
-        ],
-      ),
+    snappingConfig: SheetSnappingConfig([0.5, 1.0]),
+    child: PopScope(
+      canPop: false, // prevents drag-to-dismiss
+      child: YourContent(),
     ),
   ),
 );
 ```
 
-### Customizing Motion
+> This differs from `draggable: false`, which disables all drag gestures
+> entirely. `PopScope` only prevents the dismiss -- the sheet is still
+> draggable between its snap points.
 
-Control the sheet's animation physics:
+---
+
+### Snapping sheet (multi-stop)
+
+A sheet that snaps to specific positions. Combine `SheetSnappingConfig` with
+`initialSnap` to control where the sheet opens.
+
+> [Full example](./example/lib/recipes/snapping_recipe.dart)
 
 ```dart
 Navigator.of(context).push(
-  StupidSimpleSheetRoute(
-    motion: CupertinoMotion.bouncy(snapToEnd: true),
+  StupidSimpleCupertinoSheetRoute(
+    snappingConfig: SheetSnappingConfig(
+      [0.5, 1.0], // half-open and full
+      initialSnap: 0.5,
+    ),
     child: YourContent(),
   ),
 );
 ```
 
-### Programmatic Control with StupidSimpleSheetController
+You can dynamically change snapping at runtime from inside the sheet:
 
-Control the sheet's position from within its content:
+```dart
+final controller = StupidSimpleSheetController.maybeOf(context);
+// Remove intermediate snaps, animate to comply
+controller?.overrideSnappingConfig(
+  SheetSnappingConfig.full,
+  animateToComply: true,
+);
+// Reset back to original config
+controller?.overrideSnappingConfig(null);
+```
+
+---
+
+### Sheet with a persistent footer (shrink dismissal)
+
+Use `DismissalMode.shrink` to make the sheet collapse from the top instead of
+sliding down. Because `ShrinkTransition` pins content to the **bottom**, any
+footer stays visible as the sheet shrinks -- perfect for share sheets, action
+bars, or confirmation buttons.
+
+> [Full example](./example/lib/recipes/sticky_footer_recipe.dart)
+
+![Shrink Sheet](doc/shrink.gif)
 
 ```dart
 Navigator.of(context).push(
-  StupidSimpleSheetRoute(
-    child: Builder(
-      builder: (context) {
-        final controller = StupidSimpleSheetController.maybeOf<void>(context);
-        
-        return Column(
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                // Animate to half-open position
-                controller?.animateToRelative(0.5);
-              },
-              child: Text('Half Open'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Animate to fully open with snapping
-                controller?.animateToRelative(0.8, snap: true);
-              },
-              child: Text('Almost Full (with snap)'),
-            ),
-          ],
-        );
-      },
+  StupidSimpleCupertinoSheetRoute(
+    dismissalMode: DismissalMode.shrink,
+    snappingConfig: SheetSnappingConfig([0.5, 1.0]),
+    child: SafeArea(
+      child: Column(
+        children: [
+          // Header
+          Text('Share with...'),
+
+          // Scrollable content — shrinks away first
+          Expanded(child: ListView(...)),
+
+          // Footer — stays pinned at bottom during shrink
+          Row(
+            children: [
+              Expanded(child: CupertinoButton(child: Text('Copy Link'), ...)),
+              Expanded(child: CupertinoButton.filled(child: Text('Send'), ...)),
+            ],
+          ),
+        ],
+      ),
     ),
   ),
 );
 ```
 
-#### Controller Methods
+**How it works:** With `DismissalMode.slide` (the default), the entire sheet
+translates downward. With `DismissalMode.shrink`, the visible height of the
+sheet decreases instead. The child is laid out at full size and clipped from the
+top, so bottom-aligned content (footers, buttons) remains on screen the longest.
 
-- **`maybeOf<T>(BuildContext context)`**: Retrieves the controller from a context within the sheet. Returns `null` if called from outside a sheet.
-- **`animateToRelative(double position, {bool snap = false})`**: Animates the sheet to a relative position between 0.0 (closed) and 1.0 (fully open).
-- **`overrideSnappingConfig(SheetSnappingConfig? config, {bool animateToComply = false})`**: Dynamically change or disable snapping behavior.
+---
 
-**Note**: The controller cannot close the sheet programmatically. To close the sheet, use `Navigator.pop(context)`.
+### Resizing sheet (content-sized)
 
-### Custom Routes with Maximum Control
+A small floating card that sizes to fit its content. Use
+`originateAboveBottomViewInset` to keep the sheet above the keyboard at all times.
 
-For advanced use cases, create custom routes using `StupidSimpleSheetTransitionMixin`:
+> [Full example](./example/lib/recipes/content_sized_above_keyboard.dart)
+
+![Resizing Sheet](doc/resizing.gif)
 
 ```dart
-class MyCustomSheetRoute<T> extends PopupRoute<T>
+Navigator.of(context).push(
+  StupidSimpleSheetRoute(
+    originateAboveBottomViewInset: true,
+    motion: CupertinoMotion.smooth(),
+    child: SafeArea(
+      child: Card(
+        margin: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // size to content
+          children: [
+            CupertinoTextField(placeholder: 'Type something...'),
+            // Content can grow dynamically
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+```
+
+Note: `StupidSimpleSheetRoute` provides **no background, shape, or SafeArea by
+default** -- you style everything yourself. This is what lets you build floating
+cards, full-bleed layouts, or anything else.
+
+---
+
+### Unstyled sheet (`StupidSimpleSheetRoute`)
+
+`StupidSimpleSheetRoute` is the bare-bones base. It provides no background,
+shape, or safe area -- giving you total control. Wrap content in
+`SheetBackground` if you want the standard look:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleSheetRoute(
+    child: SafeArea(
+      bottom: false,
+      left: false,
+      right: false,
+      child: SheetBackground(
+        child: YourContent(),
+      ),
+    ),
+  ),
+);
+```
+
+`SheetBackground` gives you:
+- Rounded superellipse shape (24px radius)
+- Theme surface color
+- Anti-aliased clipping
+- Automatic background extension to cover overdrag
+
+Customize it:
+
+```dart
+SheetBackground(
+  backgroundColor: Colors.blue.shade50,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  ),
+  child: YourContent(),
+)
+```
+
+---
+
+### Programmatic control
+
+Use `StupidSimpleSheetController` from inside the sheet to animate position or
+change snapping:
+
+```dart
+Builder(
+  builder: (context) {
+    final controller = StupidSimpleSheetController.maybeOf<void>(context);
+
+    return ElevatedButton(
+      onPressed: () => controller?.animateToRelative(0.5),
+      child: Text('Half Open'),
+    );
+  },
+)
+```
+
+| Method                                              | Description                                                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `animateToRelative(position, {snap})`               | Animate to a position between 0.0-1.0. Pass `snap: true` to snap to the nearest snap point. |
+| `overrideSnappingConfig(config, {animateToComply})` | Change or reset (`null`) snapping at runtime.                                               |
+
+To **close** the sheet, use `Navigator.pop(context)`.
+
+---
+
+### Background snapshotting
+
+Rasterize the route behind the sheet into a GPU texture for smoother transitions:
+
+```dart
+StupidSimpleCupertinoSheetRoute(
+  backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+  child: YourContent(),
+)
+```
+
+| Mode             | Snapshots when                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| `never`          | Never (default). Background is always painted live.                                        |
+| `always`         | Entire lifetime. Best for static backgrounds.                                              |
+| `animating`      | During animations and drags only. Live when settled.                                       |
+| `settled`        | When settled only. Live during animations.                                                 |
+| `openAndForward` | During the opening animation and while settled at max snap. Live during drags and closing. |
+
+---
+
+### Custom routes (maximum control)
+
+For full control, create a custom route using `StupidSimpleSheetTransitionMixin`:
+
+```dart
+class MySheetRoute<T> extends PopupRoute<T>
     with StupidSimpleSheetTransitionMixin<T> {
-  MyCustomSheetRoute({
-    required this.child,
-    this.motion = const CupertinoMotion.smooth(snapToEnd: true),
-  });
+  MySheetRoute({required this.child});
 
   final Widget child;
-  
-  @override
-  final Motion motion;
 
   @override
-  Widget buildContent(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            bottom: -1000,
-            child: Material(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-          ),
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
+  final Motion motion = CupertinoMotion.smooth(snapToEnd: true);
+
+  @override
+  final SheetSnappingConfig snappingConfig = SheetSnappingConfig.full;
+
+  @override
+  Widget buildContent(BuildContext context) => child;
 
   @override
   double get overshootResistance => 50;
-  
+
   @override
   Color? get barrierColor => Colors.black26;
+
+  @override
+  bool get barrierDismissible => true;
+
+  @override
+  String? get barrierLabel => null;
 }
 ```
-
-### Background Snapshotting
-
-Improve transition performance by rasterizing the route behind the sheet into a GPU texture via `backgroundSnapshotMode`:
-
-```dart
-Navigator.of(context).push(
-  StupidSimpleCupertinoSheetRoute(
-    backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
-    child: YourContent(),
-  ),
-);
-```
-
-| Mode             | Snapshots when                                                                                                                                       |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `never`          | Never (default). Background is always painted live.                                                                                                  |
-| `always`         | Entire lifetime of the sheet. Best for static backgrounds.                                                                                           |
-| `animating`      | During animations and drags only. Live when settled.                                                                                                 |
-| `settled`        | When settled only. Live during animations and drags.                                                                                                 |
-| `openAndForward` | During the opening animation to the max snap point, and while settled there. Live during drags, closing, and animations to intermediate snap points. |
-
-When sheets stack (e.g. glass-on-glass), the mixin automatically wires up snapshotting between them via `maybeSnapshotChild`.
-
-## Features
-
-- **Seamless scroll transitions**: Automatically handles the transition between scrolling content and sheet dragging
-- **Spring physics**: Natural motion using the `motor` package physics engine  
-- **Programmatic control**: Use `StupidSimpleSheetController` to animate the sheet position
-- **Flexible styling**: Build any sheet style with `SheetBackground` or custom widgets
-- **Cupertino integration**: Native iOS-style sheets with `StupidSimpleCupertinoSheetRoute`
-- **Snapping**: Configure snap points for multi-stop sheets
-- **Background snapshotting**: Rasterize the background route for better transition performance
-- **Gesture coordination**: No need to manually handle gesture conflicts
-- **Multiple scroll types**: Supports all Flutter scrollable widgets
-- **Extensible architecture**: Use the mixin to create custom routes with full control
-
-
-## Examples
-
-Check out the [example app](./example/) to see the sheet in action with:
-- Cupertino-style sheets with navigation bars
-- Paged content with PageView
-- Dynamically resizing sheets
-- Snapping sheets with multiple stops
-- Non-draggable sheets
 
 ---
 

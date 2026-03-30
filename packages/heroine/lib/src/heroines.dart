@@ -7,7 +7,30 @@ import 'package:motor/motor.dart';
 part 'flight_controller.dart';
 part 'flight_spec.dart';
 part 'heroine_location.dart';
+part 'heroine_transition_details.dart';
 part 'heroine_widget.dart';
+
+/// Defines how to handle multiple [Heroine] widgets with the same [Heroine.tag]
+/// within a single route subtree.
+///
+/// By default, having duplicate tags is [forbidden] and will throw in debug
+/// mode. Use [first] or [last] to silently resolve duplicates instead.
+enum DuplicateHeroinePolicy {
+  /// Throws an error in debug mode when duplicate tags are found.
+  ///
+  /// This is the default behavior, matching [Hero]'s behavior.
+  forbidden,
+
+  /// Uses the first [Heroine] encountered in the subtree for a given tag.
+  ///
+  /// Subsequent duplicates are ignored.
+  first,
+
+  /// Uses the last [Heroine] encountered in the subtree for a given tag.
+  ///
+  /// Each duplicate overwrites the previous one.
+  last,
+}
 
 // -----------------------------------------------------------------------------
 // HeroineController
@@ -258,7 +281,28 @@ class HeroineController extends NavigatorObserver {
       );
 
       final existingFlight = _flights[tag];
-      final spec = toHero == null || flightType == null
+
+      // Check if both heroines agree to transition.
+      final shouldTransition = toHero != null &&
+          flightType != null &&
+          (fromHero.widget.shouldTransition?.call(
+                HeroineTransitionDetails(
+                  currentRoute: from,
+                  otherRoute: to,
+                  direction: flightType,
+                ),
+              ) ??
+              true) &&
+          (toHero.widget.shouldTransition?.call(
+                HeroineTransitionDetails(
+                  currentRoute: to,
+                  otherRoute: from,
+                  direction: flightType,
+                ),
+              ) ??
+              true);
+
+      final spec = !shouldTransition
           ? null
           : _FlightSpec(
               direction: flightType,
@@ -376,33 +420,52 @@ extension on BuildContext {
     final result = <Object, _HeroineState>{};
 
     void inviteHero(StatefulElement hero, Object tag) {
-      // ignore: prefer_asserts_with_message
-      assert(() {
-        if (result.containsKey(tag)) {
-          throw FlutterError.fromParts(<DiagnosticsNode>[
-            ErrorSummary(
-              'There are multiple heroines that share the same tag within a '
-              'subtree.',
-            ),
-            ErrorDescription(
-              'Within each subtree for which heroes are to be animated (i.e. a '
-              'PageRoute subtree), each Heroine must have a unique non-null '
-              'tag.\n'
-              'In this case, multiple heroines had the following tag: $tag',
-            ),
-            DiagnosticsProperty<StatefulElement>(
-              'Here is the subtree for one of the offending heroes',
-              hero,
-              linePrefix: '# ',
-              style: DiagnosticsTreeStyle.dense,
-            ),
-          ]);
-        }
-        return true;
-      }());
-
-      // final heroWidget = hero.widget as Heroine;
+      final heroWidget = hero.widget as Heroine;
       final heroState = hero.state as _HeroineState;
+      final policy = heroWidget.duplicatePolicy;
+
+      if (result.containsKey(tag)) {
+        switch (policy) {
+          case DuplicateHeroinePolicy.forbidden:
+            // ignore: prefer_asserts_with_message
+            assert(() {
+              throw FlutterError.fromParts(<DiagnosticsNode>[
+                ErrorSummary(
+                  'There are multiple heroines that share the '
+                  'same tag within a subtree.',
+                ),
+                ErrorDescription(
+                  'Within each subtree for which heroes are to '
+                  'be animated (i.e. a PageRoute subtree), each '
+                  'Heroine must have a unique non-null tag.\n'
+                  'In this case, multiple heroines had the '
+                  'following tag: $tag\n'
+                  '\n'
+                  'To allow duplicates, set '
+                  'Heroine.duplicatePolicy to '
+                  'DuplicateHeroinePolicy.first or '
+                  'DuplicateHeroinePolicy.last.',
+                ),
+                DiagnosticsProperty<StatefulElement>(
+                  'Here is the subtree for one of the offending '
+                  'heroes',
+                  hero,
+                  linePrefix: '# ',
+                  style: DiagnosticsTreeStyle.dense,
+                ),
+              ]);
+            }());
+          case DuplicateHeroinePolicy.first:
+            // Already have one for this tag — skip this duplicate and ensure
+            // it is not left hidden from a previous flight.
+            heroState._endFlight();
+            return;
+          case DuplicateHeroinePolicy.last:
+            // Overwrite the previous entry. End the previous hero's flight so
+            // it is not left hidden.
+            result[tag]?._endFlight();
+        }
+      }
 
       // TODO(timcreatedit): allow heroines to opt into user gesture transitions
       if (!isUserGestureTransition) {

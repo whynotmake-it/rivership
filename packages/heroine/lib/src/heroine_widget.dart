@@ -17,6 +17,8 @@ class Heroine extends StatefulWidget {
     this.zIndex,
     this.continuouslyTrackTarget = false,
     this.pauseTickersDuringFlight = false,
+    this.duplicatePolicy = DuplicateHeroinePolicy.forbidden,
+    this.shouldTransition,
   });
 
   /// The identifier for this particular hero. If the tag of this hero matches
@@ -105,6 +107,29 @@ class Heroine extends StatefulWidget {
   /// Defaults to false for performance reasons. Enable this only when you
   /// need to handle dynamic layout changes during the animation.
   final bool continuouslyTrackTarget;
+
+  /// How to handle duplicate [Heroine] widgets with the same [tag] in a single
+  /// route subtree.
+  ///
+  /// Defaults to [DuplicateHeroinePolicy.forbidden], which throws in debug
+  /// mode when duplicates are found.
+  final DuplicateHeroinePolicy duplicatePolicy;
+
+  /// Optional callback to control whether this heroine should participate in
+  /// a flight transition.
+  ///
+  /// Both the source and destination heroines must agree for a flight to
+  /// happen. If either heroine's callback returns `false`, the flight is
+  /// skipped.
+  ///
+  /// When `null` (the default), this heroine always participates in
+  /// transitions.
+  ///
+  /// See also:
+  ///
+  /// * [HeroineTransitionDetails], which contains the details about the
+  ///   transition.
+  final bool Function(HeroineTransitionDetails details)? shouldTransition;
 
   /// Whether tickers should be paused while the heroine is in flight, defaults
   /// to false.

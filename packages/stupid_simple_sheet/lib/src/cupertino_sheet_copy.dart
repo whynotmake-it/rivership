@@ -271,6 +271,7 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required Color backgroundColor,
+    DismissalMode dismissalMode = DismissalMode.slide,
     ShapeBorder shape = const RoundedSuperellipseBorder(
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(12),
@@ -278,11 +279,6 @@ abstract class CopiedCupertinoSheetTransitions {
     ),
     Widget? child,
   }) {
-    final offsetTween = Tween<Offset>(
-      begin: Offset(0, 1),
-      end: Offset(0, 0),
-    );
-
     final shapeTween = ShapeBorderTween(
       begin: shape,
       end: shape.scale(1 / 1.5),
@@ -295,7 +291,16 @@ abstract class CopiedCupertinoSheetTransitions {
         )
         .drive(shapeTween);
 
-    final Animation<Offset> positionAnimation = animation.drive(offsetTween);
+    final secondaryChild = secondarySlideUpTransition(
+      context,
+      animation: animation,
+      secondaryAnimation: secondaryAnimation,
+      shapeAnimation: shapeAnimation,
+      opacityRange: opacityRange,
+      slideBackRange: slideBackRange,
+      backgroundColor: backgroundColor,
+      child: child,
+    );
 
     return Builder(
       builder: (context) {
@@ -307,17 +312,12 @@ abstract class CopiedCupertinoSheetTransitions {
               EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
           child: Padding(
             padding: const EdgeInsets.only(top: kSheetPaddingToPrevious),
-            child: SlideTransition(
-              position: positionAnimation,
-              child: secondarySlideUpTransition(
-                context,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SheetDismissalTransition(
                 animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                shapeAnimation: shapeAnimation,
-                opacityRange: opacityRange,
-                slideBackRange: slideBackRange,
-                backgroundColor: backgroundColor,
-                child: child,
+                dismissalMode: dismissalMode,
+                child: secondaryChild,
               ),
             ),
           ),

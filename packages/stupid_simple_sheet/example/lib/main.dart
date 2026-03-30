@@ -1,16 +1,28 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
+import 'package:stupid_simple_sheet_example/widgets/example_card.dart';
+import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
+import 'package:stupid_simple_sheet_example/widgets/section_header.dart';
+import 'package:stupid_simple_sheet_example/widgets/sheet_logo.dart';
+import 'advanced/custom_route_example.dart';
+import 'advanced/dynamic_content_example.dart';
+import 'advanced/share_sheet_example.dart';
+import 'playground/playground_page.dart';
+import 'presets/cupertino_sheet_preset.dart';
+import 'presets/glass_sheet_preset.dart';
+import 'recipes/basic_sheet.dart';
+import 'recipes/content_sized.dart';
+import 'recipes/content_sized_above_keyboard.dart';
+import 'recipes/non_draggable.dart';
+import 'recipes/programmatic_control_recipe.dart';
+import 'recipes/slide_vs_shrink_recipe.dart';
+import 'recipes/snapping_recipe.dart';
+import 'recipes/sticky_footer_recipe.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    CupertinoApp.router(
-      routerConfig: router.config(),
-    ),
-  );
+  runApp(CupertinoApp.router(routerConfig: router.config()));
 }
 
 final stupidSimpleSheetRoutes = [
@@ -18,12 +30,37 @@ final stupidSimpleSheetRoutes = [
     name: 'Stupid Simple Sheet Examples',
     path: '',
     type: RouteType.cupertino(),
-    builder: (context, state) => const MotorExample(),
+    builder: (context, state) => const _HomePage(),
+  ),
+  NamedRouteDef(
+    name: 'Slide vs Shrink',
+    path: 'slide-vs-shrink',
+    type: RouteType.cupertino(),
+    builder: (context, data) => const SlideVsShrinkRecipe(),
+  ),
+  NamedRouteDef(
+    name: 'Playground',
+    path: 'playground',
+    type: RouteType.cupertino(),
+    builder: (context, data) => const PlaygroundPage(),
+  ),
+  NamedRouteDef(
+    name: 'Cupertino Sheet',
+    path: 'cupertino-preset',
+    builder: (context, data) => const CupertinoSheetPreset(),
+    type: RouteType.custom(
+      customRouteBuilder: <T>(context, child, page) =>
+          StupidSimpleCupertinoSheetRoute<T>(
+        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+        settings: page,
+        child: child,
+      ),
+    ),
   ),
   NamedRouteDef(
     name: 'Glass Sheet',
-    path: 'glass-sheet',
-    builder: (context, data) => _GlassSheetContent(),
+    path: 'glass-preset',
+    builder: (context, data) => const GlassSheetPreset(),
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleGlassSheetRoute<T>(
@@ -34,79 +71,43 @@ final stupidSimpleSheetRoutes = [
     ),
   ),
   NamedRouteDef(
-    name: 'Cupertino Sheet',
-    path: 'cupertino-sheet',
-    builder: (context, data) => _CupertinoSheetContent(),
+    name: 'Share Sheet',
+    path: 'share-sheet',
+    builder: (context, data) => const ShareSheetExample(),
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
-          StupidSimpleCupertinoSheetRoute<T>(
+          StupidSimpleGlassSheetRoute<T>(
+        snappingConfig: SheetSnappingConfig([.5, 1]),
         backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+        dismissalMode: DismissalMode.shrink,
         settings: page,
         child: child,
       ),
     ),
   ),
   NamedRouteDef(
-    name: 'Paged Sheet',
-    path: 'paged-sheet',
-    builder: (context, data) => _PagedSheetContent(),
+    name: 'Custom Route',
+    path: 'custom-route',
+    builder: (context, data) => const CustomRouteExample(),
     type: RouteType.custom(
-      customRouteBuilder: <T>(context, child, page) =>
-          StupidSimpleCupertinoSheetRoute<T>(
-        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+      customRouteBuilder: <T>(context, child, page) => CustomSheetRoute<T>(
         settings: page,
         child: child,
       ),
     ),
   ),
   NamedRouteDef(
-    name: 'Small Sheet',
-    path: 'small-sheet',
-    builder: (context, data) => _SmallSheetContent(),
+    name: 'Dynamic Content',
+    path: 'dynamic-content',
+    builder: (context, data) => const DynamicContentExample(),
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleSheetRoute<T>(
-        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+        backgroundSnapshotMode: RouteSnapshotMode.settled,
         settings: page,
         motion: CupertinoMotion.smooth(),
         originateAboveBottomViewInset: true,
         child: child,
-      ),
-    ),
-  ),
-  NamedRouteDef(
-    name: 'Snapping Sheet',
-    path: 'snapping-sheet',
-    builder: (context, data) => _SnappingSheetContent(),
-    type: RouteType.custom(
-      customRouteBuilder: <T>(context, child, page) =>
-          StupidSimpleCupertinoSheetRoute<T>(
-        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
-        settings: page,
-        snappingConfig: SheetSnappingConfig(
-          [0.5, 1.0],
-          initialSnap: .5,
-        ),
-        child: child,
-      ),
-    ),
-  ),
-  NamedRouteDef(
-    name: 'Non-Draggable Sheet',
-    path: 'non-draggable-sheet',
-    builder: (context, data) => _NonDraggableSheetContent(),
-    type: RouteType.custom(
-      customRouteBuilder: <T>(context, child, page) =>
-          StupidSimpleCupertinoSheetRoute<T>(
-        backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
-        settings: page,
-        draggable: false,
-        child: child,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28),
-          ),
-        ),
       ),
     ),
   ),
@@ -123,377 +124,59 @@ final router = RootStackRouter.build(
   ],
 );
 
-class MotorExample extends StatelessWidget {
-  const MotorExample({super.key});
+const _cardMaxWidth = 340.0;
+const _cardSpacing = 36.0;
+
+class _HomePage extends StatelessWidget {
+  const _HomePage();
 
   @override
   Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar.large(
-        largeTitle: Text('Stupid Simple Sheet'),
-      ),
-      child: Center(
-        child: Column(
-          spacing: 16,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CupertinoButton.filled(
-              child: Text('Glass Sheet'),
-              onPressed: () => context.navigateTo(NamedRoute('Glass Sheet')),
-            ),
-            CupertinoButton.filled(
-              child: Text('Cupertino Sheet'),
-              onPressed: () =>
-                  context.navigateTo(NamedRoute('Cupertino Sheet')),
-            ),
-            CupertinoButton.filled(
-              child: Text('Paged Sheet'),
-              onPressed: () => context.navigateTo(NamedRoute('Paged Sheet')),
-            ),
-            CupertinoButton.filled(
-              child: Text('Resizing Sheet'),
-              onPressed: () => context.navigateTo(NamedRoute('Small Sheet')),
-            ),
-            CupertinoButton.filled(
-              child: Text('Snapping Sheet'),
-              onPressed: () => context.navigateTo(NamedRoute('Snapping Sheet')),
-            ),
-            CupertinoButton.filled(
-              child: Text('Non-Draggable Sheet'),
-              onPressed: () =>
-                  context.navigateTo(NamedRoute('Non-Draggable Sheet')),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassSheetContent extends StatelessWidget {
-  const _GlassSheetContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
+      backgroundColor: t.canvas,
       child: CustomScrollView(
         slivers: [
-          PinnedHeaderSliver(
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: _GlassSurface(
-                          inLayer: false,
-                          borderRadius: BorderRadius.circular(200),
-                          child: Padding(
-                            padding: EdgeInsetsGeometry.all(10),
-                            child: Icon(
-                              CupertinoIcons.xmark,
-                            ),
-                          ),
-                        ),
+          SliverSafeArea(
+            bottom: false,
+            sliver: SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: const SectionHeader(
+                        logo: SheetLogo(),
+                        title: 'Stupid Simple Sheet',
+                        subtitle:
+                            'Interactive examples for Flutter\'s most flexible bottom sheet package.',
+                        hint: '(tap to view pattern)',
                       ),
-                      GestureDetector(
-                        onTap: () => context.pushRoute(
-                          NamedRoute('Glass Sheet'),
-                        ),
-                        child: _GlassSurface(
-                          color: CupertinoColors.activeBlue,
-                          inLayer: false,
-                          borderRadius: BorderRadius.circular(200),
-                          child: Padding(
-                            padding: EdgeInsetsGeometry.symmetric(
-                                vertical: 10, horizontal: 16),
-                            child: Center(
-                              child: Text(
-                                'Another',
-                                style: CupertinoTheme.of(context)
-                                    .textTheme
-                                    .actionTextStyle
-                                    .copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: CupertinoColors.white.withValues(),
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-          ),
-          SliverSafeArea(
-              sliver: SliverMainAxisGroup(slivers: [
-            SliverToBoxAdapter(
-              child: CupertinoTextField(
-                placeholder: 'Type something...',
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => CupertinoListTile(
-                  title: Text('Item #$index'),
-                ),
-                childCount: 50,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: CupertinoTextField(),
-            ),
-          ]))
-        ],
-      ),
-    );
-  }
-}
-
-class _CupertinoSheetContent extends StatelessWidget {
-  const _CupertinoSheetContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Sheet'),
-            leading: CupertinoButton(
-              child: Text("Close"),
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          SliverSafeArea(
-              sliver: SliverMainAxisGroup(slivers: [
-            SliverToBoxAdapter(
-              child: CupertinoTextField(
-                placeholder: 'Type something...',
-              ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => CupertinoListTile(
-                  title: Text('Item #$index'),
-                ),
-                childCount: 50,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: CupertinoTextField(),
-            ),
-          ]))
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassSurface extends StatelessWidget {
-  const _GlassSurface({
-    required this.borderRadius,
-    required this.inLayer,
-    required this.child,
-    this.color,
-  });
-
-  final BorderRadius borderRadius;
-  final bool inLayer;
-  final Color? color;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LiquidStretch(
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
-          shadows: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: 0.1),
-              blurStyle: BlurStyle.outer,
-              blurRadius: 8,
-              offset: Offset(0, 0),
-            ),
-          ],
-        ),
-        child: _buildContent(context),
-      ),
-    );
-  }
-
-  Widget _buildContent(
-    BuildContext context,
-  ) {
-    if (inLayer) {
-      return LiquidGlass(
-        shape: LiquidRoundedSuperellipse(
-          borderRadius: borderRadius.topLeft.x,
-        ),
-        child: GlassGlow(child: child),
-      );
-    }
-    return LiquidGlass.withOwnLayer(
-      fake: true,
-      settings: LiquidGlassSettings(
-        glassColor: color ??
-            CupertinoTheme.of(context).barBackgroundColor.withValues(alpha: .7),
-        thickness: 30,
-        ambientStrength: .1,
-        saturation: 4,
-        lightIntensity: .4,
-        blur: 4,
-      ),
-      shape: LiquidRoundedSuperellipse(
-        borderRadius: borderRadius.topLeft.x,
-      ),
-      child: GlassGlow(
-        child: IconTheme(
-          data: IconThemeData(
-              color: CupertinoTheme.of(context).textTheme.textStyle.color),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _SnappingSheetContent extends StatefulWidget {
-  const _SnappingSheetContent();
-
-  @override
-  State<_SnappingSheetContent> createState() => _SnappingSheetContentState();
-}
-
-class _SnappingSheetContentState extends State<_SnappingSheetContent> {
-  bool _snapDisabled = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Sheet'),
-            trailing: CupertinoButton(
-                padding: EdgeInsets.zero,
-                child: Text(_snapDisabled ? 'Enable Snaps' : 'Disable Snaps'),
-                onPressed: () {
-                  final controller =
-                      StupidSimpleSheetController.maybeOf(context);
-                  controller
-                      ?.overrideSnappingConfig(
-                        _snapDisabled ? null : SheetSnappingConfig.full,
-                        animateToComply: true,
-                      )
-                      .ignore();
-                  setState(() {
-                    _snapDisabled = !_snapDisabled;
-                  });
-                }),
-            leading: CupertinoButton(
-              child: Text("Close"),
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          SliverFillRemaining(
-            child: Center(
-              child: CupertinoButton.tinted(
-                child: Text('Another'),
-                onPressed: () =>
-                    context.pushRoute(NamedRoute('Snapping Sheet')),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PagedSheetContent extends StatelessWidget {
-  const _PagedSheetContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: PageView(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => CupertinoListTile(
-                    title: Text('Item #$index'),
+                  _cardSection(
+                    label: 'RECIPES',
+                    prefix: 'RCP',
+                    cards: _recipeCards(context, t),
                   ),
-                  childCount: 50,
-                ),
-              ),
-            ],
-          ),
-          CustomScrollView(
-            slivers: [
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => CupertinoListTile(
-                    title: Text('Item #$index'),
+                  _cardSection(
+                    label: 'PLAYGROUND',
+                    prefix: 'PLY',
+                    cards: _playgroundCards(context, t),
                   ),
-                  childCount: 50,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NonDraggableSheetContent extends StatelessWidget {
-  const _NonDraggableSheetContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Non-Draggable Sheet'),
-            leading: CupertinoButton(
-              child: Text("Close"),
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 16,
-                children: [
-                  Text(
-                    'This sheet cannot be dragged!',
-                    style: CupertinoTheme.of(context).textTheme.textStyle,
-                    textAlign: TextAlign.center,
+                  _cardSection(
+                    label: 'BUNDLED PRESETS',
+                    prefix: 'PRE',
+                    cards: _presetCards(context, t),
                   ),
-                  Text(
-                    'Use the Close button to dismiss.',
-                    style: CupertinoTheme.of(context)
-                        .textTheme
-                        .textStyle
-                        .copyWith(color: CupertinoColors.secondaryLabel),
-                    textAlign: TextAlign.center,
+                  _cardSection(
+                    label: 'ADVANCED',
+                    prefix: 'ADV',
+                    cards: _advancedCards(context, t),
+                  ),
+                  const SliverPadding(
+                    padding: EdgeInsets.only(bottom: 64),
                   ),
                 ],
               ),
@@ -503,108 +186,248 @@ class _NonDraggableSheetContent extends StatelessWidget {
       ),
     );
   }
-}
 
-class _SmallSheetContent extends StatefulWidget {
-  const _SmallSheetContent();
-
-  @override
-  State<_SmallSheetContent> createState() => _SmallSheetContentState();
-}
-
-class _SmallSheetContentState extends State<_SmallSheetContent> {
-  List<String> items = List.generate(
-    5,
-    (index) => 'Item ${index + 1}',
-  );
-
-  late final textController = TextEditingController();
-  late final focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    textController.dispose();
-    focusNode.dispose();
-    super.dispose();
+  static Widget _cardSection({
+    required String label,
+    required String prefix,
+    required List<Widget> cards,
+  }) {
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(child: _SubsectionLabel(label)),
+        SliverToBoxAdapter(
+          child: CardSection(
+            prefix: prefix,
+            child: _CardGrid(children: cards),
+          ),
+        ),
+      ],
+    );
   }
+
+  List<Widget> _recipeCards(BuildContext context, ExampleTheme t) => [
+        ExampleCard(
+          index: 0,
+          pillLabel: 'Scroll + Drag',
+          pillIcon: CupertinoIcons.arrow_up_arrow_down,
+          pillColor: t.accentGreen,
+          codeHint: 'StupidSimpleSheetRoute(child: ...)',
+          preview: const BasicSheetPreview(),
+          title: 'Basic Sheet',
+          description: 'Scrollable content with drag-to-dismiss.',
+          onTap: () => showBasicSheet(context),
+        ),
+        ExampleCard(
+          index: 1,
+          pillLabel: 'How to hide',
+          pillIcon: CupertinoIcons.arrow_turn_down_right,
+          pillColor: t.accentBlue,
+          codeHint: 'dismissalMode: DismissalMode.shrink',
+          preview: const SlideVsShrinkPreview(),
+          title: 'Slide vs Shrink',
+          description: 'Compare slide (translate) and shrink (collapse).',
+          onTap: () => context.navigateTo(const NamedRoute('Slide vs Shrink')),
+        ),
+        ExampleCard(
+          index: 2,
+          pillLabel: 'Detents',
+          pillIcon: CupertinoIcons.line_horizontal_3,
+          pillColor: t.accentGold,
+          codeHint: 'SheetSnappingConfig([0.33, 0.66, 1.0])',
+          preview: const SnappingPreview(),
+          title: 'Snapping',
+          description: 'Configurable detents at 33%, 66%, 100%.',
+          onTap: () => showSnappingSheet(context),
+        ),
+        ExampleCard(
+          index: 3,
+          pillLabel: 'Intrinsic Height',
+          pillIcon: CupertinoIcons.crop,
+          pillColor: t.accentIndigo,
+          codeHint: 'Size',
+          preview: const ContentSizedPreview(),
+          title: 'Content-Sized Sheet',
+          description:
+              'The child dictates the sheet height. You have full control.',
+          onTap: () => showContentSizedSheet(context),
+        ),
+        ExampleCard(
+          index: 4,
+          pillLabel: 'View Inset',
+          pillIcon: CupertinoIcons.keyboard,
+          pillColor: t.accentOrange,
+          codeHint: 'originateAboveBottomViewInset: true',
+          preview: const ContentSizedKeyboardPreview(),
+          title: 'Above Keyboard',
+          description: 'Sheet origin moves up with the software keyboard.',
+          onTap: () => showContentSizedKeyboardSheet(context),
+        ),
+        ExampleCard(
+          index: 5,
+          pillLabel: 'Drag Resistance',
+          pillIcon: CupertinoIcons.lock_fill,
+          pillColor: t.accentPurple,
+          codeHint: 'draggable: false',
+          preview: const NonDraggablePreview(),
+          title: 'Non-Draggable',
+          description: 'Drag gestures resisted. Dismiss programmatically.',
+          onTap: () => showNonDraggableSheet(context),
+        ),
+        ExampleCard(
+          index: 6,
+          pillLabel: 'Shrink + Footer',
+          pillIcon: CupertinoIcons.pin_fill,
+          pillColor: t.accentGreen,
+          codeHint: 'DismissalMode.shrink',
+          preview: const StickyFooterPreview(),
+          title: 'Sticky Footer',
+          description: 'Scrollable list with a footer that stays visible.',
+          onTap: () => showStickyFooterSheet(context),
+        ),
+        ExampleCard(
+          index: 7,
+          pillLabel: 'SheetController',
+          pillIcon: CupertinoIcons.slider_horizontal_3,
+          pillColor: t.accentBlue,
+          codeHint: 'controller.animateToRelative(0.5)',
+          preview: const ProgrammaticControlPreview(),
+          title: 'Programmatic Control',
+          description: 'Drive the sheet position from code.',
+          onTap: () => showProgrammaticControlSheet(context),
+        ),
+      ];
+
+  List<Widget> _playgroundCards(BuildContext context, ExampleTheme t) => [
+        ExampleCard(
+          index: 0,
+          pillLabel: 'Configurator',
+          pillIcon: CupertinoIcons.slider_horizontal_below_rectangle,
+          pillColor: t.accentOrange,
+          codeHint: 'Toggle every setting live',
+          preview: const PlaygroundPreview(),
+          title: 'Playground',
+          description: 'Configure and test every sheet parameter.',
+          onTap: () => context.navigateTo(const NamedRoute('Playground')),
+        ),
+      ];
+
+  List<Widget> _presetCards(BuildContext context, ExampleTheme t) => [
+        ExampleCard(
+          index: 0,
+          pillLabel: 'iOS 18',
+          pillIcon: CupertinoIcons.layers,
+          pillColor: t.accentIndigo,
+          codeHint: 'StupidSimpleCupertinoSheetRoute(...)',
+          preview: const CupertinoSheetPreview(),
+          title: 'Cupertino Sheet',
+          description: 'iOS 18 push-back style with cascading stacks.',
+          onTap: () => context.navigateTo(const NamedRoute('Cupertino Sheet')),
+        ),
+        ExampleCard(
+          index: 1,
+          pillLabel: 'iOS 26',
+          pillIcon: CupertinoIcons.sparkles,
+          pillColor: t.accentPurple,
+          codeHint: 'StupidSimpleGlassSheetRoute(...)',
+          preview: const GlassSheetPreview(),
+          title: 'Glass Sheet',
+          description:
+              'The first sheet blurs and fades the background. Subsequent sheets stack on top of each other.',
+          onTap: () => context.navigateTo(const NamedRoute('Glass Sheet')),
+        ),
+      ];
+
+  List<Widget> _advancedCards(BuildContext context, ExampleTheme t) => [
+        ExampleCard(
+          index: 0,
+          pillLabel: 'Shrink + Snap',
+          pillIcon: CupertinoIcons.share,
+          pillColor: t.accentGold,
+          codeHint: 'DismissalMode.shrink + snapping',
+          preview: const ShareSheetPreview(),
+          title: 'Share Sheet',
+          description: 'Shrink dismissal with scrollable contacts.',
+          onTap: () => context.navigateTo(const NamedRoute('Share Sheet')),
+        ),
+        ExampleCard(
+          index: 1,
+          pillLabel: 'AnimatedSize',
+          pillIcon: CupertinoIcons.text_badge_plus,
+          pillColor: t.accentOrange,
+          codeHint: 'AnimatedSize + originateAboveKeyboard',
+          preview: const DynamicContentPreview(),
+          title: 'Dynamic Content',
+          description: 'Growing list with text input above keyboard.',
+          onTap: () => context.navigateTo(const NamedRoute('Dynamic Content')),
+        ),
+        ExampleCard(
+          index: 2,
+          pillLabel: 'TransitionMixin',
+          pillIcon: CupertinoIcons.hammer,
+          pillColor: t.accentGreen,
+          codeHint: 'StupidSimpleSheetTransitionMixin',
+          preview: const CustomRoutePreview(),
+          title: 'Custom Route',
+          description: 'Build your own PopupRoute with the sheet mixin.',
+          onTap: () => context.navigateTo(const NamedRoute('Custom Route')),
+        ),
+      ];
+}
+
+class _SubsectionLabel extends StatelessWidget {
+  const _SubsectionLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Card(
-        elevation: 0,
-        margin: EdgeInsets.all(16),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        color: CupertinoColors.secondarySystemGroupedBackground
-            .resolveFrom(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: SingleChildScrollView(
-                child: AnimatedSize(
-                  alignment: Alignment.topCenter,
-                  duration: CupertinoMotion.smooth().duration,
-                  curve: CupertinoMotion.smooth().toCurve,
-                  child: Column(
-                    children: [
-                      CupertinoTextField.borderless(
-                        focusNode: focusNode,
-                        controller: textController,
-                        padding: EdgeInsetsGeometry.all(16),
-                        autofocus: true,
-                        placeholder: 'Type something...',
-                        onSubmitted: (_) => _addItem(),
-                      ),
-                      for (var i = 0; i < items.length; i++)
-                        CupertinoListTile(
-                          title: Text(items[i]),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Divider(
-              color: CupertinoColors.opaqueSeparator.resolveFrom(context),
-              height: 1,
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: CupertinoButton(
-                    foregroundColor: CupertinoColors.destructiveRed,
-                    child: Text('Close'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: CupertinoButton(
-                    child: Text('Add Item'),
-                    onPressed: () => _addItem(),
-                  ),
-                ),
-              ],
-            ),
-          ],
+    final t = ExampleTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 32, bottom: 20),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.0,
+            color: t.textTertiary,
+          ),
         ),
       ),
     );
   }
+}
 
-  void _addItem() {
-    setState(() {
-      final text = textController.text.isEmpty
-          ? 'Item ${items.length + 1}'
-          : textController.text;
-      items.add(text);
-      textController.clear();
-      focusNode.requestFocus();
-    });
+/// Lays out [ExampleCard] children in a responsive wrap grid.
+///
+/// On narrow screens (phone) this produces a single column of centered cards.
+/// On wider screens (tablet / desktop) cards flow into multiple columns
+/// with consistent spacing.
+class _CardGrid extends StatelessWidget {
+  const _CardGrid({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / (_cardMaxWidth + _cardSpacing))
+            .floor()
+            .clamp(1, 4);
+        final itemWidth = columns == 1
+            ? constraints.maxWidth.clamp(0.0, _cardMaxWidth)
+            : (constraints.maxWidth - (columns - 1) * _cardSpacing) / columns;
+
+        return Wrap(
+          spacing: _cardSpacing,
+          runSpacing: _cardSpacing,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final child in children)
+              SizedBox(width: itemWidth, child: child),
+          ],
+        );
+      },
+    );
   }
 }

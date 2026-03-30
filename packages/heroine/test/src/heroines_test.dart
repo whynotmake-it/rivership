@@ -459,6 +459,684 @@ void main() {
         expect(heroine2.zIndex, isNull);
       });
     });
+
+    group('DuplicateHeroinePolicy', () {
+      testWidgets(
+        'forbidden throws when duplicates exist',
+        (tester) async {
+          await TestAsyncUtils.guard(() async {
+            await tester.pumpWidget(
+              MaterialApp(
+                debugShowCheckedModeBanner: false,
+                navigatorObservers: [HeroineController()],
+                home: Scaffold(
+                  body: Column(
+                    children: [
+                      Heroine(
+                        tag: 'dup',
+                        child: Container(
+                          color: Colors.red,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                      Heroine(
+                        tag: 'dup',
+                        child: Container(
+                          color: Colors.blue,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+
+            await tester.pumpAndSettle();
+
+            tester
+                .push(
+                  Scaffold(
+                    body: Heroine(
+                      tag: 'dup',
+                      child: Container(
+                        color: Colors.green,
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
+                  ),
+                )
+                .ignore();
+
+            await tester.pumpAndSettle();
+
+            expect(
+              tester.takeException(),
+              isA<FlutterError>().having(
+                (e) => e.message,
+                'message',
+                contains('multiple heroines'),
+              ),
+            );
+          });
+        },
+      );
+
+      testWidgets(
+        'first uses the first heroine found',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Heroine(
+                        tag: 'dup',
+                        duplicatePolicy: DuplicateHeroinePolicy.first,
+                        child: Container(
+                          key: const ValueKey('first'),
+                          color: Colors.red,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Heroine(
+                        tag: 'dup',
+                        duplicatePolicy: DuplicateHeroinePolicy.first,
+                        child: Container(
+                          key: const ValueKey('second'),
+                          color: Colors.blue,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          await tester.pumpAndSettle();
+
+          // Both heroines should be visible
+          expect(
+            find.byKey(const ValueKey('first')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const ValueKey('second')),
+            findsOneWidget,
+          );
+
+          // Navigate — first heroine should fly
+          tester
+              .push(
+                Scaffold(
+                  body: Center(
+                    child: Heroine(
+                      tag: 'dup',
+                      duplicatePolicy: DuplicateHeroinePolicy.first,
+                      child: Container(
+                        key: const ValueKey('destination'),
+                        color: Colors.green,
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpAndSettle();
+
+          // No assertion errors
+          expect(tester.takeException(), isNull);
+
+          // Destination should be visible
+          expect(
+            find.byKey(const ValueKey('destination')),
+            findsOneWidget,
+          );
+        },
+      );
+
+      testWidgets(
+        'last uses the last heroine found',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Heroine(
+                        tag: 'dup',
+                        duplicatePolicy: DuplicateHeroinePolicy.last,
+                        child: Container(
+                          key: const ValueKey('first'),
+                          color: Colors.red,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Heroine(
+                        tag: 'dup',
+                        duplicatePolicy: DuplicateHeroinePolicy.last,
+                        child: Container(
+                          key: const ValueKey('second'),
+                          color: Colors.blue,
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          await tester.pumpAndSettle();
+
+          // Both heroines should be visible
+          expect(
+            find.byKey(const ValueKey('first')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const ValueKey('second')),
+            findsOneWidget,
+          );
+
+          // Navigate — last heroine should fly
+          tester
+              .push(
+                Scaffold(
+                  body: Center(
+                    child: Heroine(
+                      tag: 'dup',
+                      duplicatePolicy: DuplicateHeroinePolicy.last,
+                      child: Container(
+                        key: const ValueKey('destination'),
+                        color: Colors.green,
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpAndSettle();
+
+          // No assertion errors
+          expect(tester.takeException(), isNull);
+
+          // Destination should be visible
+          expect(
+            find.byKey(const ValueKey('destination')),
+            findsOneWidget,
+          );
+        },
+      );
+
+      testWidgets(
+        'first animation matches golden',
+        (tester) async {
+          final sheet = AnimationSheetBuilder(frameSize: frameSize);
+
+          final app = MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorObservers: [HeroineController()],
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body: Padding(
+                padding: const EdgeInsets.all(padding),
+                child: Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        duplicatePolicy: DuplicateHeroinePolicy.first,
+                        child: Container(color: Colors.red),
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox.square(
+                      dimension: heroSize / 2,
+                      child: Heroine(
+                        tag: tag,
+                        duplicatePolicy: DuplicateHeroinePolicy.first,
+                        child: Container(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          final widget = sheet.record(app);
+          await tester.pumpWidget(widget);
+
+          tester
+              .push(
+                Scaffold(
+                  backgroundColor: Colors.black,
+                  body: Padding(
+                    padding: const EdgeInsets.all(padding),
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: SizedBox.square(
+                        dimension: heroSize,
+                        child: Heroine(
+                          tag: tag,
+                          duplicatePolicy: DuplicateHeroinePolicy.first,
+                          child: Container(
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpFrames(widget, pumpDuration);
+
+          await expectLater(
+            sheet.collate(1),
+            matchesGoldenFile(
+              'golden/duplicate_policy_first.png',
+            ),
+          );
+        },
+      );
+
+      testWidgets(
+        'last animation matches golden',
+        (tester) async {
+          final sheet = AnimationSheetBuilder(frameSize: frameSize);
+
+          final app = MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorObservers: [HeroineController()],
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body: Padding(
+                padding: const EdgeInsets.all(padding),
+                child: Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        duplicatePolicy: DuplicateHeroinePolicy.last,
+                        child: Container(color: Colors.red),
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox.square(
+                      dimension: heroSize / 2,
+                      child: Heroine(
+                        tag: tag,
+                        duplicatePolicy: DuplicateHeroinePolicy.last,
+                        child: Container(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          final widget = sheet.record(app);
+          await tester.pumpWidget(widget);
+
+          tester
+              .push(
+                Scaffold(
+                  backgroundColor: Colors.black,
+                  body: Padding(
+                    padding: const EdgeInsets.all(padding),
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: SizedBox.square(
+                        dimension: heroSize,
+                        child: Heroine(
+                          tag: tag,
+                          duplicatePolicy: DuplicateHeroinePolicy.last,
+                          child: Container(
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpFrames(widget, pumpDuration);
+
+          await expectLater(
+            sheet.collate(1),
+            matchesGoldenFile(
+              'golden/duplicate_policy_last.png',
+            ),
+          );
+        },
+      );
+
+      testWidgets(
+        'defaults to forbidden',
+        (tester) async {
+          const heroine = Heroine(
+            tag: 'test',
+            child: SizedBox(),
+          );
+          expect(
+            heroine.duplicatePolicy,
+            DuplicateHeroinePolicy.forbidden,
+          );
+        },
+      );
+    });
+
+    group('shouldTransition', () {
+      testWidgets(
+        'flight proceeds when callback is null (default)',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // During the transition, overlay heroine should be present
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            greaterThanOrEqualTo(3),
+            reason: 'Flight should proceed when shouldTransition is null',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight is skipped when fromHero callback returns false',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      shouldTransition: (_) => false,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // No overlay heroine — flight was skipped
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            lessThan(3),
+            reason: 'Flight should be skipped when fromHero vetoes',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight is skipped when toHero callback returns false',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        shouldTransition: (_) => false,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          // No overlay heroine — flight was skipped
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            lessThan(3),
+            reason: 'Flight should be skipped when toHero vetoes',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'flight proceeds when both callbacks return true',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.square(
+                    dimension: heroSize,
+                    child: Heroine(
+                      tag: tag,
+                      shouldTransition: (_) => true,
+                      child: Container(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox.square(
+                      dimension: heroSize,
+                      child: Heroine(
+                        tag: tag,
+                        shouldTransition: (_) => true,
+                        child: Container(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pump();
+          await tester.pump();
+
+          expect(
+            find.heroineWithTag(tag).evaluate().length,
+            greaterThanOrEqualTo(3),
+            reason: 'Flight should proceed when both callbacks return true',
+          );
+
+          await tester.pumpAndSettle();
+        },
+      );
+
+      testWidgets(
+        'callback receives correct details',
+        (tester) async {
+          final receivedDetails = <HeroineTransitionDetails>[];
+
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorObservers: [HeroineController()],
+              home: Scaffold(
+                body: Heroine(
+                  tag: tag,
+                  shouldTransition: (details) {
+                    receivedDetails.add(details);
+                    return true;
+                  },
+                  child: Container(color: Colors.red),
+                ),
+              ),
+            ),
+          );
+
+          tester
+              .push(
+                Scaffold(
+                  body: Heroine(
+                    tag: tag,
+                    child: Container(color: Colors.green),
+                  ),
+                ),
+              )
+              .ignore();
+
+          await tester.pumpAndSettle();
+
+          expect(receivedDetails, hasLength(1));
+          expect(
+            receivedDetails.first.direction,
+            HeroFlightDirection.push,
+          );
+          // currentRoute is the home route (where this heroine lives)
+          expect(
+            receivedDetails.first.currentRoute,
+            isA<PageRoute<dynamic>>(),
+          );
+          // otherRoute is the pushed route
+          expect(
+            receivedDetails.first.otherRoute,
+            isA<PageRoute<dynamic>>(),
+          );
+          expect(
+            receivedDetails.first.currentRoute,
+            isNot(receivedDetails.first.otherRoute),
+          );
+        },
+      );
+    });
   });
 }
 
