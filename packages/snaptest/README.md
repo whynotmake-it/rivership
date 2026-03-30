@@ -36,6 +36,23 @@ testWidgets('My widget test', (tester) async {
 
 The screenshot gets saved as a PNG file in `.snaptest/` using your test name. Great for debugging failing tests or documenting what your widgets actually look like.
 
+### Set up font loading
+
+Snaptest blocks text by default, replacing characters with colored rectangles for cross-platform consistency. However, the **layout** of text still depends on which fonts are loaded. To avoid golden churn when fonts change between environments, load fonts upfront in your `flutter_test_config.dart`:
+
+```dart
+// flutter_test_config.dart
+import 'dart:async';
+import 'package:snaptest/snaptest.dart';
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  await loadFonts();
+  await testMain();
+}
+```
+
+This ensures consistent text layout across all test runs and CI environments, even though the actual glyphs are blocked out.
+
 ### Configure your `.gitignore`
 
 ```gitignore
@@ -300,16 +317,7 @@ Clean screenshots from a custom directory:
 dart run snaptest:clean my_custom_dir
 ```
 
-You can also add `cleanSnaps()` to your `flutter_test_config.dart` to automatically clean snapshots before each test run:
-```dart
-// flutter_test_config.dart
-import 'package:snaptest/snaptest.dart';
-
-Future<void> testExecutable(Future<void> Function() testMain) async {
-  await cleanSnaps();
-  await testMain();
-}
-```
+You can also call `cleanSnaps()` programmatically. Note that it deletes **all** `.snaptest/` directories, so run it once before your full test suite (e.g. in a script), not inside `flutter_test_config.dart` — that runs per test file and would wipe snapshots from earlier files.
 
 Assemble screenshots into a single directory:
 ```sh
