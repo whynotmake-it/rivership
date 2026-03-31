@@ -46,6 +46,7 @@ bool _fontsLoaded = false;
 /// effect after the first call.
 Future<void> loadFonts() async {
   if (_fontsLoaded) return;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   await _loadMaterialFontsFromSdk();
   await _loadFontsFromFontManifest();
