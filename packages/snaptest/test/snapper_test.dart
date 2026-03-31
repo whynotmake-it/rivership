@@ -401,7 +401,7 @@ void main() {
 
       snapTest(
         'captures widget with device frame for real devices',
-        devices: {Devices.ios.iPhone16Pro},
+        devices: {Devices.android.googlePixel9},
         orientations: {Orientation.portrait, Orientation.landscape},
         (tester) async {
           await tester.pumpWidget(
@@ -412,7 +412,11 @@ void main() {
                   child: SafeArea(
                     child: ColoredBox(
                       color: Colors.yellow,
-                      child: Center(child: Text('Real Device Frame Test')),
+                      child: Center(
+                        child: Text(
+                          'Real Device Frame Test',
+                        ),
+                      ),
                     ),
                   ),
                 ),
