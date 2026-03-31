@@ -42,6 +42,7 @@ void main() {
 
         final ([file], [goldenFile]) = await snap.andGolden();
         expect(file.existsSync(), isTrue);
+        expect(goldenFile.existsSync(), isTrue);
       });
 
       snapTest('captures widget with explicit device', (tester) async {
@@ -544,7 +545,7 @@ void main() {
         );
 
         final ([defaultFile], _) = await snap.andGolden(
-          name: 'global_settings_0',
+          name: 'global_settings_default',
         );
         expect(defaultFile.existsSync(), isTrue);
 
@@ -554,7 +555,7 @@ void main() {
         );
 
         final [file1] = await snap(
-          name: 'global_settings_1',
+          name: 'global_settings_real_text_and_device_frame',
           device: Devices.ios.iPhone16,
         );
         expect(file1.existsSync(), isTrue);
@@ -562,7 +563,7 @@ void main() {
         SnaptestSettings.global = const SnaptestSettings();
 
         final ([file2], _) = await snap.andGolden(
-          name: 'global_settings_2',
+          name: 'global_settings_default',
           device: Devices.ios.iPhone16,
         );
         expect(file2.existsSync(), isTrue);

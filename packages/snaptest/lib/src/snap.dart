@@ -147,7 +147,7 @@ class Snap {
   /// By default the golden is rendered with [SnaptestSettings.goldens]
   /// (blocked text, no shadows, no images, no device frame) for cross-platform
   /// consistency. Pass [settings] to override.
-  Future<void> golden({
+  Future<List<File>> golden({
     String? name,
     Finder? from,
     SnaptestSettings? settings,
@@ -173,12 +173,22 @@ class Snap {
 
     restore();
 
-    if (goldenImage != null) {
-      await expectLater(
-        goldenImage,
-        matchesGoldenFile(join(prefix, resolved.fileName)),
-      );
+    if (goldenImage == null) {
+      throw Exception('Could not take golden screenshot.');
     }
+
+    final goldenFile = await _saveScreenshot(
+      image: goldenImage,
+      fileName: resolved.fileName,
+      pathPrefix: goldenSettings.pathPrefix,
+    );
+
+    await expectLater(
+      goldenImage,
+      matchesGoldenFile(join(prefix, resolved.fileName)),
+    );
+
+    return [goldenFile];
   }
 
   /// Takes a visual debugging screenshot **and** a golden comparison
