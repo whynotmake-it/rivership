@@ -518,14 +518,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
 }
 
 Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
-  final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
-
-  if (settings.renderImages) {
-    await precacheImages();
-  } else {
-    restoreImages();
-  }
-
+  // final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
   await loadFonts();
 
   final previousShadows = debugDisableShadows;
@@ -534,7 +527,6 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 
   return () {
     debugDisableShadows = previousShadows;
-    restoreImages();
   };
 }
 
