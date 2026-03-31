@@ -499,16 +499,13 @@ Future<ui.Image?> _takeDeviceScreenshot({
 }) async {
   final finder = from ?? find.byType(View);
 
-  final element = finder.evaluate().single;
-
   final image = await _runInFakeDevice(
     device,
     orientation,
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
-      return captureImage(
-        element,
+      return finder.captureImage(
         blockText: settings.blockText,
         device: device,
         orientation: orientation,
@@ -587,6 +584,58 @@ Future<T?> _runInFakeDevice<T>(
   return result;
 }
 
+/// Allows capturing the closest [RepaintBoundary] of a [Finder] into an image.
+extension CaptureFinder on Finder {
+  /// Captures this finder's closest [RepaintBoundary] into an image.
+  ///
+  /// Will throw if this finder doesn't evaluate to exactly one element.
+  ///
+  /// See also:
+  /// - [CaptureImage] to capture an element that contains a
+  /// [RepaintBoundary].
+  Future<ui.Image> captureImage({
+    bool blockText = false,
+    DeviceInfo? device,
+    Orientation orientation = Orientation.portrait,
+    bool includeDeviceFrame = false,
+  }) {
+    return evaluate().single.captureImage(
+      blockText: blockText,
+      device: device,
+      orientation: orientation,
+      includeDeviceFrame: includeDeviceFrame,
+    );
+  }
+}
+
+/// Allows capturing the closest [RepaintBoundary] of an element into an image.
+extension CaptureImage on Element {
+  /// Renders the closest [RepaintBoundary] of this element into an image.
+  ///
+  /// Set [blockText] to `true` to replace text with colored rectangles for
+  /// cross-platform consistency in golden tests.
+  ///
+  /// If [includeDeviceFrame] is `true` and a [device] is provided, the image
+  /// will be wrapped with the device's frame.
+  ///
+  /// See also:
+  /// - [CaptureFinder] to capture a finder that contains a [RepaintBoundary].
+  Future<ui.Image> captureImage({
+    bool blockText = false,
+    DeviceInfo? device,
+    Orientation orientation = Orientation.portrait,
+    bool includeDeviceFrame = false,
+  }) async {
+    return _captureImage(
+      this,
+      blockText: blockText,
+      device: device,
+      orientation: orientation,
+      includeDeviceFrame: includeDeviceFrame,
+    );
+  }
+}
+
 /// Renders the closest [RepaintBoundary] of the [element] into an image.
 ///
 /// Set [blockText] to `true` to replace text with colored rectangles for
@@ -598,7 +647,7 @@ Future<T?> _runInFakeDevice<T>(
 /// See also:
 ///
 ///  * [OffsetLayer.toImage] which is the actual method being called.
-Future<ui.Image> captureImage(
+Future<ui.Image> _captureImage(
   Element element, {
   bool blockText = false,
   DeviceInfo? device,
