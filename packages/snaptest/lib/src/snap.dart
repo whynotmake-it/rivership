@@ -447,9 +447,10 @@ VoidCallback setTestViewForDevice(
 ) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+  final previousTargetPlatform = debugDefaultTargetPlatformOverride;
 
   void restore() {
-    debugDefaultTargetPlatformOverride = null;
+    debugDefaultTargetPlatformOverride = previousTargetPlatform;
     implicitView
       ..resetPhysicalSize()
       ..resetPadding()
