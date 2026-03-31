@@ -1,3 +1,10 @@
+## 1.0.0-dev.2
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **REFACTOR**: remove `renderImages` from snaptest settings, always precache and render them.
+ - **BREAKING** **REFACTOR**: move `captureImage` into extensions on `Finder` and `Element`.
+
 ## 1.0.0-dev.1
 
 > Note: This release has breaking changes.
