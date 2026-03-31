@@ -1,3 +1,7 @@
+## 0.7.2
+
+ - **FEAT**: add `shouldTransition` callback to `Heroine` for route-based filtering.
+
 ## 0.7.1
 
  - **FEAT**(heroine): add `DuplicateHeroinePolicy` to control duplicate tag behavior.

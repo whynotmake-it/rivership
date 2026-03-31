@@ -1,3 +1,7 @@
+## 1.0.0-dev.2
+
+ - **DOCS**: update logo.
+
 ## 1.0.0-dev.1
 
 > Note: This release has breaking changes.

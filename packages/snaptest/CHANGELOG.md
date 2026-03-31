@@ -1,3 +1,46 @@
+## 1.0.0-dev.1
+
+> Note: This release has breaking changes.
+
+ - **FIX**: make sure `loadFonts` can be called before test execution.
+ - **FIX**: don't force reset platform override to null after test.
+ - **FIX**: always tear down global settings correctly.
+ - **FEAT**: `snap.andGolden` now returns both files separately in a record.
+ - **FEAT**: export cleanSnaps function for programmatic snapshot cleanup.
+
+    Add cleanSnaps() as a public API to allow users to clean screenshots
+    programmatically from their tests.
+
+ - **FEAT**: add automatic counter to prevent overwriting snapshots.
+
+    When snap() is called multiple times without a name, filenames now include
+    a counter suffix (_2, _3, etc.) to prevent overwriting.
+
+ - **DOCS**: document font loading.
+ - **BREAKING** **REFACTOR**: remove devices and orientations from SnaptestSettings.
+
+    Move device iteration responsibility to TestDevicesVariant and add
+    explicit device/orientation parameters to snap(). This eliminates the
+    duplicate concept of device configuration in both settings and variant.
+    
+    
+    orientations. Use TestDevicesVariant for multi-device testing or pass
+    device/orientation directly to snap(). snap() now returns Future<File>
+    instead of Future<List<File>>.
+
+ - **BREAKING** **REFACTOR**: replace WidgetTesterDevice with null to leave view unchanged.
+
+    - The devices parameter is now a Set<DeviceInfo?> instead of List<DeviceInfo>
+    - Remove any imports of WidgetTesterDevice
+    
+    Unlike the previous WidgetTesterDevice which represented a default test environment, null now simply leaves the view in whatever state it's currently in without any modifications. This allows for more flexible testing scenarios where users have pre-configured their view.
+
+ - **BREAKING** **REFACTOR**: rename TestOnDevices to TestDevicesVariant and extend ValueVariant.
+ - **BREAKING** **FEAT**: make Cupertino font loading on macOS opt-in.
+ - **BREAKING** **FEAT**: default `SnaptestSettings.global` to be fully rendered and add `SnaptestSettings.goldens`.
+ - **BREAKING** **FEAT**: simplify syntax from `snap(matchToGolden: true)` to `snap.golden()` and `snap.andGolden()`.
+ - **BREAKING** **FEAT**: render blocked text with tighter boxes and paragraphs.
+
 ## 0.3.0
 
 > Note: This release has breaking changes.
