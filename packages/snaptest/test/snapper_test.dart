@@ -40,7 +40,7 @@ void main() {
           ),
         );
 
-        final file = await snap.andGolden();
+        final ([file], [goldenFile]) = await snap.andGolden();
         expect(file.existsSync(), isTrue);
       });
 
@@ -51,7 +51,7 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final [file] = await snap(
           name: 'explicit_device',
           device: Devices.ios.iPhone16Pro,
         );
@@ -80,7 +80,7 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final [file] = await snap(
           name: 'specific_widget',
           from: find.byKey(const Key('test-card')),
         );
@@ -95,7 +95,7 @@ void main() {
           ),
         );
 
-        final file = await snap(
+        final [file] = await snap(
           name: 'custom_path',
           settings: const SnaptestSettings(pathPrefix: 'custom_screenshots/'),
         );
@@ -111,12 +111,12 @@ void main() {
           ),
         );
 
-        final fileWithDevice = await snap(
+        final [fileWithDevice] = await snap(
           name: 'with_device_name',
           device: Devices.ios.iPhone16Pro,
         );
 
-        final fileWithoutDevice = await snap(
+        final [fileWithoutDevice] = await snap(
           name: 'without_device_name',
         );
 
@@ -135,7 +135,7 @@ void main() {
         );
 
         await tester.runAsync(() async {
-          final file = await snap(
+          final [file] = await snap(
             name: 'run_async_snap',
             settings: const SnaptestSettings(),
           );
@@ -158,7 +158,7 @@ void main() {
           );
 
           // First call - no counter
-          final file1 = await snap();
+          final [file1] = await snap();
           expect(
             file1.path,
             contains('appends counter when snap is called multiple times.png'),
@@ -176,7 +176,7 @@ void main() {
           );
 
           // Second call - counter suffix _2
-          final file2 = await snap();
+          final [file2] = await snap();
           expect(
             file2.path,
             contains(
@@ -196,7 +196,7 @@ void main() {
           );
 
           // Third call - counter suffix _3
-          final file3 = await snap();
+          final [file3] = await snap();
           expect(
             file3.path,
             contains(
@@ -227,7 +227,7 @@ void main() {
           );
 
           // First call with explicit device
-          final file1 = await snap(device: Devices.ios.iPhone16Pro);
+          final [file1] = await snap(device: Devices.ios.iPhone16Pro);
           expect(
             file1.path,
             contains(
@@ -236,7 +236,7 @@ void main() {
           );
 
           // Second call - counter should come before device name
-          final file2 = await snap(device: Devices.ios.iPhone16Pro);
+          final [file2] = await snap(device: Devices.ios.iPhone16Pro);
           expect(
             file2.path,
             contains(
@@ -260,15 +260,15 @@ void main() {
           );
 
           // First call with custom name
-          final file1 = await snap(name: 'custom_name');
+          final [file1] = await snap(name: 'custom_name');
           expect(file1.path, contains('custom_name.png'));
 
           // Second call with the same custom name
-          final file2 = await snap(name: 'custom_name');
+          final [file2] = await snap(name: 'custom_name');
           expect(file2.path, contains('custom_name_2.png'));
 
           // Third call with different name - should not have counter
-          final file3 = await snap(name: 'another_name');
+          final [file3] = await snap(name: 'another_name');
           expect(file3.path, contains('another_name.png'));
         },
       );
@@ -392,7 +392,7 @@ void main() {
             ),
           );
 
-          final file = await snap(name: 'device_frame_test');
+          final [file] = await snap(name: 'device_frame_test');
           expect(file.existsSync(), isTrue);
         },
         settings: const SnaptestSettings(includeDeviceFrame: true),
@@ -419,7 +419,7 @@ void main() {
             ),
           );
 
-          final file = await snap.andGolden(
+          final ([file], _) = await snap.andGolden(
             name: 'real_device_frame_test',
           );
           expect(file.existsSync(), isTrue);
@@ -453,7 +453,7 @@ void main() {
           ),
         );
 
-        final file = await snap.andGolden(
+        final ([file], _) = await snap.andGolden(
           name: 'blocked_text_fonts',
           settings: const SnaptestSettings.rendered(),
         );
@@ -496,7 +496,7 @@ void main() {
           ),
         );
 
-        final file = await snap.andGolden(
+        final ([file], _) = await snap.andGolden(
           name: 'blocked_text_rich',
           settings: const SnaptestSettings.rendered(),
         );
@@ -520,7 +520,7 @@ void main() {
           ),
         );
 
-        final file = await snap.andGolden(
+        final ([file], _) = await snap.andGolden(
           name: 'blocked_text_sizes',
         );
         expect(file.existsSync(), isTrue);
@@ -543,7 +543,7 @@ void main() {
           ),
         );
 
-        final defaultFile = await snap.andGolden(
+        final ([defaultFile], _) = await snap.andGolden(
           name: 'global_settings_0',
         );
         expect(defaultFile.existsSync(), isTrue);
@@ -553,7 +553,7 @@ void main() {
           includeDeviceFrame: true,
         );
 
-        final file1 = await snap(
+        final [file1] = await snap(
           name: 'global_settings_1',
           device: Devices.ios.iPhone16,
         );
@@ -561,7 +561,7 @@ void main() {
 
         SnaptestSettings.global = const SnaptestSettings();
 
-        final file2 = await snap.andGolden(
+        final ([file2], _) = await snap.andGolden(
           name: 'global_settings_2',
           device: Devices.ios.iPhone16,
         );
@@ -596,7 +596,7 @@ void main() {
           ),
         );
 
-        final file = await snap.andGolden(
+        final ([file], _) = await snap.andGolden(
           name: 'snap_from',
           from: find.byKey(const Key('check-icon')),
         );
