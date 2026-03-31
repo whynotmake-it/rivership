@@ -279,7 +279,6 @@ void main() {
       test('has correct default values', () {
         SnaptestSettings.resetGlobal();
         expect(SnaptestSettings.global.renderShadows, isTrue);
-        expect(SnaptestSettings.global.renderImages, isTrue);
         expect(SnaptestSettings.global.blockText, isFalse);
       });
 

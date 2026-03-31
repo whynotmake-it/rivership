@@ -69,7 +69,6 @@ class SnaptestSettings with EquatableMixin {
   const SnaptestSettings({
     this.blockText = true,
     this.renderShadows = false,
-    this.renderImages = false,
     this.includeDeviceFrame = false,
     this.pathPrefix = kDefaultPathPrefix,
   });
@@ -94,7 +93,6 @@ class SnaptestSettings with EquatableMixin {
   const SnaptestSettings.rendered({
     this.pathPrefix = kDefaultPathPrefix,
   }) : blockText = false,
-       renderImages = true,
        renderShadows = true,
        includeDeviceFrame = true;
 
@@ -131,12 +129,6 @@ class SnaptestSettings with EquatableMixin {
   /// - `false`: Shows real text as it appears in your app
   final bool blockText;
 
-  /// Whether to render actual images in screenshots.
-  ///
-  /// - `false` (default): Images appear as placeholders
-  /// - `true`: Shows real images (slower but more realistic)
-  final bool renderImages;
-
   /// Whether to include shadows and elevation effects.
   ///
   /// - `false` (default): No shadows (faster, more consistent)
@@ -171,7 +163,6 @@ class SnaptestSettings with EquatableMixin {
   @override
   List<Object?> get props => [
     blockText,
-    renderImages,
     renderShadows,
     includeDeviceFrame,
     pathPrefix,
