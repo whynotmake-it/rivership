@@ -43,7 +43,7 @@ void main() {
         ),
       ),
     ));
-    final logoFile = (await snap(
+    final [logoFile] = (await snap(
       from: find.byKey(key),
     ));
 
