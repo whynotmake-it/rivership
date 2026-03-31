@@ -401,7 +401,7 @@ void main() {
 
       snapTest(
         'captures widget with device frame for real devices',
-        devices: {Devices.android.googlePixel9},
+        devices: {Devices.ios.iPhone16Pro},
         orientations: {Orientation.portrait, Orientation.landscape},
         (tester) async {
           await tester.pumpWidget(
