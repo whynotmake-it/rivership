@@ -8,4 +8,4 @@ export 'src/blocked_text_painting_context.dart'
     show BlockedTextCanvasAdapter, BlockedTextPaintingContext;
 export 'src/font_loading.dart' show loadFont, loadFonts;
 export 'src/snap.dart'
-    show captureImage, precacheImages, setTestViewForDevice;
+    show CaptureFinder, CaptureImage, precacheImages, setTestViewForDevice;
