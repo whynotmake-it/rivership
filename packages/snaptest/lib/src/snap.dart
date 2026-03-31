@@ -106,7 +106,7 @@ class Snap {
   ///
   /// The screenshot will be taken from the [from] [Finder] and if none is
   /// provided, the screenshot will be taken from the whole screen.
-  Future<File> call({
+  Future<List<File>> call({
     String? name,
     Finder? from,
     SnaptestSettings? settings,
@@ -136,7 +136,7 @@ class Snap {
     );
 
     restore();
-    return file;
+    return [file];
   }
 
   /// Takes a golden comparison screenshot and runs [matchesGoldenFile].
@@ -187,8 +187,8 @@ class Snap {
   /// The visual snap uses [settings] (or [SnaptestSettings.global]), and the
   /// golden uses [goldenSettings] (or [SnaptestSettings.goldens]).
   ///
-  /// Returns the saved visual debugging [File].
-  Future<File> andGolden({
+  /// Returns a record of (snapshots, goldens) file lists.
+  Future<(List<File> snapshots, List<File> goldens)> andGolden({
     String? name,
     Finder? from,
     SnaptestSettings? settings,
@@ -234,14 +234,23 @@ class Snap {
 
     goldenRestore();
 
+    final File? goldenFile;
     if (goldenImage != null) {
+      goldenFile = await _saveScreenshot(
+        image: goldenImage,
+        fileName: resolved.fileName,
+        pathPrefix: gs.pathPrefix,
+      );
+
       await expectLater(
         goldenImage,
         matchesGoldenFile(join(prefix, resolved.fileName)),
       );
+    } else {
+      throw Exception('Could not take golden screenshot.');
     }
 
-    return file;
+    return ([file], [goldenFile]);
   }
 
   /// Same as [call] but returns a [ui.Image] instead of saving to disk.
