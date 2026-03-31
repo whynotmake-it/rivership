@@ -4,7 +4,7 @@ library;
 export 'package:device_frame/device_frame.dart' show DeviceInfo, Devices;
 
 export 'src/clean.dart' show cleanSnaps;
-export 'src/font_loading.dart' show loadFonts;
+export 'src/font_loading.dart' show CupertinoFontConfig, loadFonts;
 export 'src/screenshot_test_function.dart' show snapTest;
 export 'src/snap.dart' show Snap, setTestViewForDevice, snap;
 export 'src/snaptest_settings.dart' show SnaptestSettings;

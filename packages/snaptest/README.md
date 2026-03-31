@@ -51,7 +51,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
 }
 ```
 
-This ensures consistent text layout across all test runs and CI environments, even though the actual glyphs are blocked out.
+This loads Roboto from the Flutter SDK and uses it for Cupertino system fonts, ensuring consistent text layout across macOS, Linux, and Windows. See [Font Rendering](#font-rendering) for customization options.
 
 ### Configure your `.gitignore`
 
@@ -325,24 +325,49 @@ The helper scripts will work with any custom directory name you specify.
 
 ## Font Rendering
 
-### macOS: SF Pro Fonts (Recommended)
+### Cupertino Fonts
 
-For the most accurate iOS screenshot rendering on macOS, install Apple's SF Pro fonts:
+Flutter's iOS/Cupertino typography uses the `CupertinoSystemText` and `CupertinoSystemDisplay` font families. By default, `loadFonts()` overrides these with **Roboto** from the Flutter SDK, ensuring identical text metrics on macOS, Linux, and Windows. This is the recommended setup for golden tests that run on CI.
+
+You can customize this behavior with `CupertinoFontConfig`:
+
+```dart
+// Default: Roboto for cross-platform consistency (recommended for goldens)
+await loadFonts();
+
+// Use a custom font (must be declared in pubspec.yaml)
+await loadFonts(
+  cupertinoFonts: CupertinoFontConfig.override(fontFamily: 'Inter'),
+);
+
+// Use SF Pro on macOS for visual debugging (not recommended for goldens)
+// Throws if not on macOS or SF Pro is not installed.
+await loadFonts(
+  cupertinoFonts: CupertinoFontConfig.fromMacOsSystemFonts(),
+);
+
+// Use SF Pro on macOS, fall back to Roboto elsewhere
+// WARNING: can lead to inconsistencies in goldens between platforms
+await loadFonts(
+  cupertinoFonts: CupertinoFontConfig.fromMacOsSystemFonts(
+    fallbackOverride: 'Roboto',
+  ),
+);
+```
+
+### macOS: SF Pro Fonts
+
+For the most accurate iOS rendering on macOS, install Apple's SF Pro fonts:
 
 1. Download SF Pro fonts from [Apple's developer site](https://developer.apple.com/fonts/)
 2. Install the fonts to `/Library/Fonts` (system-wide installation)
-3. Restart your terminal/IDE if needed
+3. Use `CupertinoFontConfig.fromMacOsSystemFonts()` in your `loadFonts()` call
 
-With SF Pro fonts installed, `loadFonts()` will automatically use them for Cupertino widgets, making your screenshots match actual iOS rendering more closely.
-
-**Without SF Pro fonts on macOS**: Snaptest automatically falls back to Roboto fonts for consistency. You'll see a debug message during test runs if the fonts aren't found.
-
-**On other platforms (Linux, Windows)**: Cupertino widgets will always use Roboto fonts as a fallback, since Apple's SF Pro fonts cannot be legally redistributed or used outside of macOS.
+Note that SF Pro is licensed by Apple for creating mock-ups of iOS, iPadOS, macOS, and tvOS interfaces only. It cannot be redistributed or used on non-Apple platforms.
 
 ### Font Limitations
 
 Due to Flutter's test environment limitations:
-- **iOS system fonts** use SF Pro (if installed on macOS) or Roboto (fallback)
 - **Google Fonts** only work if bundled as local assets (not fetched remotely)
 - **Custom fonts** must be included in your `pubspec.yaml`
 
