@@ -1,0 +1,31 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+.mason/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Files and directories created by pub
+.dart_tool/
+.packages
+build/
+pubspec_overrides.yaml
+
+# Screenshots
+**/.snaptest/
+
+# Doc assets (gifs are referenced in README via relative paths,
+# but they bloat the pub.dev package archive)
+doc/

@@ -1,3 +1,43 @@
+## 1.0.0-dev.2
+
+ - **DOCS**: update logo.
+
+## 1.0.0-dev.1
+
+> Note: This release has breaking changes.
+
+ - **FIX**: snapping sheets can now be dragged past fully open correctly.
+ - **FEAT**: add `DismissalMode` to all sheets which unlocks more complex layouts.
+
+    You can set `DismissalMode` to `.shrink` on a sheet to make it shrink
+    instead of slide out while being dismissed or dragged down.
+    
+    Use this to implement things like a persistant footer that remains
+    anchored to the bottom of the screen while the sheet is being dismissed.
+
+ - **DOCS**: document new features in example.
+ - **DOCS**: add logo.
+ - **DOCS**: redesign entire example.
+ - **DOCS**: add example for a glass style shrinking modal.
+ - **DOCS**: improve examples and README significantly.
+ - **BREAKING** **FIX**: `SheetSnappingConfig.minExtent` now correctly returns the minimum extent that is not zero.
+ - **BREAKING** **FEAT**: add `SheetBackground.withTopMargin` constructor and elevate cupertino user interface level in `SheetBackground` by default.
+ - **BREAKING** **FEAT**: `SheetBackground` elevates cupertino user interface level.
+
+    by default
+
+ - **BREAKING** **FEAT**: support `SnapPhysics` as part of `SheetShappingConfig`.
+
+    BREAKING CHANGES:
+    - the signature of`findTargetSnapPoint` changed. It now requires both a relative and an absolute velocity.
+    - the default snap physics have changed to match behavior on mobile platforms better. Snapping points cannot be skipped anymore. Set your `SnappingConfig` to use `FrictionSnapPhysics` to revert to the old behavior
+
+ - **BREAKING** **FEAT**: sheet routes that contain `PopScope.canPop == false` cannot be dragged to close anymore.
+
+## 0.9.1+1
+
+ - **FIX**: dragging up a sheet whose highest snapping point was lower than 1.0 would incorrectly snap it to 1.0.
+
 ## 0.9.1
 
  - **FIX**: incorrect snapping points used for cupertino secondary transitions in some cases.

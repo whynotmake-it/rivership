@@ -1,3 +1,29 @@
+## 0.7.2
+
+ - **FEAT**: add `shouldTransition` callback to `Heroine` for route-based filtering.
+
+## 0.7.1
+
+ - **FEAT**(heroine): add `DuplicateHeroinePolicy` to control duplicate tag behavior.
+
+    Previously, having multiple Heroine widgets with the same tag in a
+    single route subtree would always throw in debug mode. This adds a
+    duplicatePolicy parameter to Heroine with three options:
+    
+    - `forbidden` (default): preserves the existing behavior, throwing in
+      debug mode when duplicates are found.
+    - `first`: silently uses the first Heroine encountered for a given tag
+      and ignores subsequent duplicates.
+    - `last`: uses the last Heroine encountered, overwriting previous ones.
+    
+    Both `first` and `last` call `_endFlight` on the discarded heroine to prevent
+    it from being left hidden after a previous flight.
+
+
+## 0.7.0+1
+
+ - **FIX**: don't throw in some cases when `DragDismissable.custom` is disabled.
+
 ## 0.7.0
 
 > Note: This release has breaking changes.

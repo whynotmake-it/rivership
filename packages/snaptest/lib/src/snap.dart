@@ -9,194 +9,400 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
-import 'package:snaptest/src/fake_device.dart';
 import 'package:snaptest/src/font_loading.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
+import 'package:snaptest/src/test_devices_variant.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
-/// Saves a screenshot of the current state of the widget test as if it was
-/// rendered on each device in [settings].devices and each orientation in
-/// [settings].orientations to the file system.
+/// Tracks the number of times snap has been called per test name.
+/// Maps test name to call count.
+final Map<String, int> _snapCallCounts = {};
+
+/// The global [Snap] instance.
 ///
-/// If [settings] is not provided, the global default settings are used,
-/// which you can also set globally via [SnaptestSettings.global].
+/// Use `snap()` for visual debugging screenshots, `snap.golden()` for golden
+/// file comparison only, and `snap.andGolden()` for both.
 ///
-/// The screenshot is saved as a PNG file with the given [name] in the directory
-/// specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by default),
-/// optionally appending the device name and orientation to the file name.
-/// If no [name] is provided, the name of the current test is used.
-///
-/// ## Multiple Devices and Orientations
-///
-/// When multiple devices and orientations are specified, separate screenshots
-/// are created for each device and orientation with suffixes like
-/// `_iPhone16Pro_portrait` and `_samsungGalaxyS20_landscape`:
 /// ```dart
-/// await snap(
-///   settings: SnaptestSettings.rendered(
-///     devices: [
-///       Devices.ios.iPhone16Pro,
-///       Devices.android.samsungGalaxyS20,
-///     ],
-///     orientations: {Orientation.portrait, Orientation.landscape},
-///   ),
-/// );
-/// // Creates: my_test_iPhone16Pro_portrait.png, my_test_iPhone16Pro_landscape.png
+/// // Visual debugging screenshot
+/// await snap();
+///
+/// // Golden comparison only (no .snaptest/ file)
+/// await snap.golden();
+///
+/// // Both visual debugging + golden comparison
+/// await snap.andGolden();
+///
+/// // Get a ui.Image without saving to disk
+/// final image = await snap.image();
+/// ```
+const Snap snap = Snap._();
+
+/// A callable class that provides methods for taking screenshots in widget
+/// tests.
+///
+/// The primary instance is the top-level [snap] constant. Use it as a function
+/// for visual debugging screenshots, or call its methods for golden file
+/// comparison and image capture.
+///
+/// ## Usage
+///
+/// ```dart
+/// // Visual debugging screenshot (saves to .snaptest/)
+/// await snap();
+///
+/// // Golden file comparison only (no .snaptest/ file)
+/// await snap.golden();
+///
+/// // Both visual debugging + golden comparison
+/// await snap.andGolden();
+///
+/// // Get a ui.Image without saving to disk
+/// final image = await snap.image();
 /// ```
 ///
-/// Note: Device names and orientations are only appended if there are multiple
-/// devices or orientations.
-/// If you want to always append the device name or orientation, set
-/// [alwaysAppendDeviceName] or [alwaysAppendOrientation] to `true`.
+/// ## Device Simulation
 ///
-/// The Screenshot will be taken from the [from] [Finder] and if none is
-/// provided, the screenshot will be taken from the whole screen.
+/// All methods accept `device` and `orientation` parameters:
+/// ```dart
+/// await snap(device: Devices.ios.iPhone16Pro);
+/// await snap.golden(device: Devices.ios.iPhone16Pro);
+/// ```
 ///
-/// You can decide whether shadows should be rendered or not by setting
-/// [SnaptestSettings.renderShadows] to `true` or `false`. If not provided, the
-/// global default is used, which you can also set globally via
-/// [SnaptestSettings.global].
-///
-/// The directory where screenshots are saved can be customized by setting
-/// [SnaptestSettings.pathPrefix]. By default, screenshots are saved to
-/// `.snaptest/`.
-///
-/// ## Golden File Comparison
-///
-/// When [matchToGolden] is set to `true`, the function performs golden file
-/// comparison testing in addition to saving screenshots. This creates a
-/// reference image for each device in [settings] with golden-friendly settings.
-///
-/// It will then invoke the [matchesGoldenFile] matcher.
-///
-/// See the documentation for this matcher to learn more about golden testing.
-Future<List<File>> snap({
-  String? name,
-  Finder? from,
-  SnaptestSettings? settings,
-  bool matchToGolden = false,
-  String goldenPrefix = 'goldens/',
-  bool alwaysAppendDeviceName = false,
-  bool alwaysAppendOrientation = false,
-}) async {
-  final s = settings ?? SnaptestSettings.global;
-  final testName = name ?? Invoker.current?.liveTest.test.name;
+/// Or use [TestDevicesVariant] to test multiple devices:
+/// ```dart
+/// testWidgets(
+///   'my test',
+///   variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+///   (tester) async {
+///     await snap(); // device resolved from variant
+///   },
+/// );
+/// ```
+class Snap {
+  const Snap._();
 
-  final restore = await _setUpForSettings(s);
+  /// Takes a visual debugging screenshot and saves it to the file system.
+  ///
+  /// If [settings] is not provided, the global default settings are used,
+  /// which you can also set globally via [SnaptestSettings.global].
+  ///
+  /// The screenshot is saved as a PNG file with the given [name] in the
+  /// directory specified by [SnaptestSettings.pathPrefix] (`.snaptest/` by
+  /// default). If no [name] is provided, the name of the current test is used.
+  ///
+  /// ## Multiple Calls Per Test
+  ///
+  /// When called multiple times in the same test without providing a [name],
+  /// a counter suffix is automatically added to prevent overwriting:
+  /// ```dart
+  /// testWidgets('my test', (tester) async {
+  ///   await snap(); // Creates: my_test.png
+  ///   await snap(); // Creates: my_test_2.png
+  ///   await snap(); // Creates: my_test_3.png
+  /// });
+  /// ```
+  ///
+  /// The screenshot will be taken from the [from] [Finder] and if none is
+  /// provided, the screenshot will be taken from the whole screen.
+  Future<List<File>> call({
+    String? name,
+    Finder? from,
+    SnaptestSettings? settings,
+    DeviceInfo? device,
+    Orientation? orientation,
+  }) async {
+    final s = settings ?? SnaptestSettings.global;
+    final resolved = _resolve(
+      name: name,
+      device: device,
+      orientation: orientation,
+    );
+
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
+
+    final image = await _takeDeviceScreenshot(
+      device: resolved.device,
+      orientation: resolved.orientation,
+      from: from,
+      settings: s,
+    );
+
+    final file = await _saveScreenshot(
+      image: image,
+      fileName: resolved.fileName,
+      pathPrefix: s.pathPrefix,
+    );
+
+    restore();
+    return [file];
+  }
+
+  /// Takes a golden comparison screenshot and runs [matchesGoldenFile].
+  ///
+  /// Does **not** save a visual debugging screenshot. Use [andGolden] if you
+  /// want both.
+  ///
+  /// By default the golden is rendered with [SnaptestSettings.goldens]
+  /// (blocked text, no shadows, no images, no device frame) for cross-platform
+  /// consistency. Pass [settings] to override.
+  Future<List<File>> golden({
+    String? name,
+    Finder? from,
+    SnaptestSettings? settings,
+    DeviceInfo? device,
+    Orientation? orientation,
+    String prefix = 'goldens/',
+  }) async {
+    final goldenSettings = settings ?? SnaptestSettings.goldens;
+    final resolved = _resolve(
+      name: name,
+      device: device,
+      orientation: orientation,
+    );
+
+    final restore = await _setUpForSettings(
+      settings: goldenSettings,
+      from: from,
+    );
+
+    final goldenImage = await _takeDeviceScreenshot(
+      device: resolved.device,
+      orientation: resolved.orientation,
+      from: from,
+      settings: goldenSettings,
+    );
+
+    restore();
+
+    if (goldenImage == null) {
+      throw Exception('Could not take golden screenshot.');
+    }
+
+    final goldenFile = await _saveScreenshot(
+      image: goldenImage,
+      fileName: resolved.fileName,
+      pathPrefix: goldenSettings.pathPrefix,
+    );
+
+    await expectLater(
+      goldenImage,
+      matchesGoldenFile(join(prefix, resolved.fileName)),
+    );
+
+    return [goldenFile];
+  }
+
+  /// Takes a visual debugging screenshot **and** a golden comparison
+  /// screenshot.
+  ///
+  /// The visual snap uses [settings] (or [SnaptestSettings.global]), and the
+  /// golden uses [goldenSettings] (or [SnaptestSettings.goldens]).
+  ///
+  /// Returns a record of (snapshots, goldens) file lists.
+  Future<(List<File> snapshots, List<File> goldens)> andGolden({
+    String? name,
+    Finder? from,
+    SnaptestSettings? settings,
+    SnaptestSettings? goldenSettings,
+    DeviceInfo? device,
+    Orientation? orientation,
+    String prefix = 'goldens/',
+  }) async {
+    final s = settings ?? SnaptestSettings.global;
+    final gs = goldenSettings ?? SnaptestSettings.goldens;
+    final resolved = _resolve(
+      name: name,
+      device: device,
+      orientation: orientation,
+    );
+
+    final restore = await _setUpForSettings(settings: s, from: from);
+
+    final image = await _takeDeviceScreenshot(
+      device: resolved.device,
+      orientation: resolved.orientation,
+      from: from,
+      settings: s,
+    );
+
+    final file = await _saveScreenshot(
+      image: image,
+      fileName: resolved.fileName,
+      pathPrefix: s.pathPrefix,
+    );
+
+    restore();
+
+    // Take golden screenshot (potentially with different settings)
+    final goldenRestore = await _setUpForSettings(settings: gs, from: from);
+
+    final goldenImage = await _takeDeviceScreenshot(
+      device: resolved.device,
+      orientation: resolved.orientation,
+      settings: gs,
+      from: from,
+    );
+
+    goldenRestore();
+
+    final File? goldenFile;
+    if (goldenImage != null) {
+      goldenFile = await _saveScreenshot(
+        image: goldenImage,
+        fileName: resolved.fileName,
+        pathPrefix: gs.pathPrefix,
+      );
+
+      await expectLater(
+        goldenImage,
+        matchesGoldenFile(join(prefix, resolved.fileName)),
+      );
+    } else {
+      throw Exception('Could not take golden screenshot.');
+    }
+
+    return ([file], [goldenFile]);
+  }
+
+  /// Same as [call] but returns a [ui.Image] instead of saving to disk.
+  ///
+  /// Useful for custom image processing workflows, generating assets, or
+  /// compositing screenshots programmatically.
+  Future<ui.Image?> image({
+    String? name,
+    Finder? from,
+    SnaptestSettings? settings,
+    DeviceInfo? device,
+    Orientation? orientation,
+  }) async {
+    final s = settings ?? SnaptestSettings.global;
+    final resolved = _resolve(
+      name: name,
+      device: device,
+      orientation: orientation,
+    );
+
+    final restore = await _setUpForSettings(settings: s, from: from);
+
+    final result = await _takeDeviceScreenshot(
+      device: resolved.device,
+      orientation: resolved.orientation,
+      from: from,
+      settings: s,
+    );
+
+    restore();
+    return result;
+  }
+}
+
+/// Resolves name, device, orientation, and builds the filename.
+_Resolved _resolve({
+  String? name,
+  DeviceInfo? device,
+  Orientation? orientation,
+}) {
+  final testName = name ?? Invoker.current?.liveTest.test.name;
 
   if (testName == null) {
     throw Exception('Could not determine a name for the screenshot.');
   }
 
-  if (s.devices.isEmpty) {
-    throw ArgumentError.value(
-      s.devices,
-      'devices',
-      'No devices to screenshot.',
+  // Track the number of times snap has been called for this test
+  final callCount = _snapCallCounts[testName] =
+      (_snapCallCounts[testName] ?? 0) + 1;
+  final counterSuffix = callCount > 1 ? '_$callCount' : '';
+
+  // Resolve device and orientation: explicit param > variant > defaults
+  final resolvedDevice = device ?? activeDeviceVariant?.$1;
+  final resolvedOrientation =
+      orientation ?? activeDeviceVariant?.$2 ?? Orientation.portrait;
+  final deviceFromExplicitParam = device != null;
+
+  // Only append device/orientation to filename when explicitly passed,
+  // since the variant framework already includes the variant description
+  // in the test name.
+  final deviceAppendix =
+      deviceFromExplicitParam &&
+          resolvedDevice != null &&
+          resolvedDevice.name.isNotEmpty
+      ? '_${resolvedDevice.name.toValidFilename()}'
+      : '';
+
+  final orientationAppendix =
+      deviceFromExplicitParam && resolvedOrientation == Orientation.landscape
+      ? '_landscape'
+      : '';
+
+  final fileName =
+      '${testName.toValidFilename()}'
+      '$counterSuffix$deviceAppendix$orientationAppendix.png';
+
+  return _Resolved(
+    device: resolvedDevice,
+    orientation: resolvedOrientation,
+    fileName: fileName,
+  );
+}
+
+class _Resolved {
+  const _Resolved({
+    required this.device,
+    required this.orientation,
+    required this.fileName,
+  });
+
+  final DeviceInfo? device;
+  final Orientation orientation;
+  final String fileName;
+}
+
+/// Saves a screenshot image to disk.
+Future<File> _saveScreenshot({
+  required ui.Image? image,
+  required String fileName,
+  required String pathPrefix,
+}) async {
+  late final File file;
+
+  await maybeRunAsync(() async {
+    final byteData = await image?.toByteData(
+      format: ui.ImageByteFormat.png,
     );
-  }
+    final bytes = byteData?.buffer.asUint8List();
 
-  if (s.orientations.isEmpty) {
-    throw ArgumentError.value(
-      s.orientations,
-      'orientations',
-      'No orientations to screenshot.',
-    );
-  }
-
-  final files = <File>[];
-
-  final goldens = <(String, ui.Image)>[];
-
-  final rotatedDevices = s.devices.where((device) => device.canRotate);
-
-  final appendDeviceName = alwaysAppendDeviceName || s.devices.length > 1;
-  final appendOrientation =
-      alwaysAppendOrientation ||
-      (s.orientations.length > 1 && rotatedDevices.isNotEmpty);
-
-  for (final device in s.devices) {
-    for (final orientation in s.orientations) {
-      if (!device.canRotate && orientation == Orientation.landscape) {
-        continue;
-      }
-
-      final image = await takeDeviceScreenshot(
-        device: device,
-        orientation: orientation,
-        from: from,
-        settings: s,
-      );
-
-      final goldenImage = switch (matchToGolden) {
-        true => await takeDeviceScreenshot(
-          device: device,
-          orientation: orientation,
-          settings: const SnaptestSettings(),
-        ),
-        false => null,
-      };
-
-      final deviceAppendix = appendDeviceName && device.name.isNotEmpty
-          ? '_${device.name.toValidFilename()}'
-          : '';
-
-      final orientationAppendix = appendOrientation
-          ? '_${orientation.name}'
-          : '';
-
-      final fileName =
-          '${testName.toValidFilename()}'
-          '$deviceAppendix$orientationAppendix.png';
-
-      await maybeRunAsync(() async {
-        final byteData = await image?.toByteData(
-          format: ui.ImageByteFormat.png,
-        );
-        final bytes = byteData?.buffer.asUint8List();
-
-        if (bytes == null) {
-          throw Exception('Could not encode screenshot.');
-        }
-
-        final String? path;
-
-        if (goldenFileComparator case LocalFileComparator(:final basedir)) {
-          path = goldenFileComparator
-              .getTestUri(
-                basedir.resolve(join(s.pathPrefix, fileName)),
-                null,
-              )
-              .toFilePath();
-        } else {
-          throw Exception('Could not determine a path for the screenshot.');
-        }
-
-        final file = File(path);
-
-        if (!file.existsSync()) {
-          file.createSync(recursive: true);
-        }
-
-        await file.writeAsBytes(bytes);
-
-        files.add(file);
-      });
-
-      if (goldenImage != null) {
-        goldens.add((join(goldenPrefix, fileName), goldenImage));
-      }
+    if (bytes == null) {
+      throw Exception('Could not encode screenshot.');
     }
-  }
 
-  restore();
+    final String? path;
 
-  for (final (key, image) in goldens) {
-    await expectLater(image, matchesGoldenFile(key));
-  }
+    if (goldenFileComparator case LocalFileComparator(:final basedir)) {
+      path = goldenFileComparator
+          .getTestUri(
+            basedir.resolve(join(pathPrefix, fileName)),
+            null,
+          )
+          .toFilePath();
+    } else {
+      throw Exception('Could not determine a path for the screenshot.');
+    }
 
-  return files;
+    file = File(path);
+
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
+
+    await file.writeAsBytes(bytes);
+  });
+
+  return file;
 }
 
 /// Runs a given function [fn] in a runAsync block.
@@ -230,7 +436,7 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 ///
 /// Returns a callback to restore the original test environment:
 /// ```dart
-/// final restore = setTestViewToFakeDevice(Devices.ios.iPhone16Pro);
+/// final restore = setTestViewForDevice(Devices.ios.iPhone16Pro);
 ///
 /// // Test environment now simulates iPhone 16 Pro
 /// await tester.pumpWidget(MyApp());
@@ -241,22 +447,23 @@ Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
 ///
 /// The [snap] function handles this automatically, so prefer using [snap] with
 /// [SnaptestSettings] instead of calling this directly.
-VoidCallback setTestViewToFakeDevice(
-  DeviceInfo device,
+VoidCallback setTestViewForDevice(
+  DeviceInfo? device,
   Orientation orientation,
 ) {
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+  final previousTargetPlatform = debugDefaultTargetPlatformOverride;
 
   void restore() {
-    debugDefaultTargetPlatformOverride = null;
+    debugDefaultTargetPlatformOverride = previousTargetPlatform;
     implicitView
       ..resetPhysicalSize()
       ..resetPadding()
       ..resetDevicePixelRatio();
   }
 
-  if (device is WidgetTesterDevice) {
+  if (device == null) {
     return () {};
   }
 
@@ -290,15 +497,13 @@ VoidCallback setTestViewToFakeDevice(
 ///
 /// If [from] is provided, the screenshot will be taken from the given [Finder].
 /// Otherwise, the screenshot will be taken from the whole screen.
-Future<ui.Image?> takeDeviceScreenshot({
-  required DeviceInfo device,
+Future<ui.Image?> _takeDeviceScreenshot({
+  required DeviceInfo? device,
   required SnaptestSettings settings,
   required Orientation orientation,
   Finder? from,
 }) async {
   final finder = from ?? find.byType(View);
-
-  final element = finder.evaluate().single;
 
   final image = await _runInFakeDevice(
     device,
@@ -306,8 +511,7 @@ Future<ui.Image?> takeDeviceScreenshot({
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
-      return _captureImage(
-        element,
+      return finder.captureImage(
         blockText: settings.blockText,
         device: device,
         orientation: orientation,
@@ -319,16 +523,13 @@ Future<ui.Image?> takeDeviceScreenshot({
   return image;
 }
 
-Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
-  final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
-
-  if (settings.renderImages) {
-    await precacheImages();
-  } else {
-    restoreImages();
-  }
-
-  await loadFontsAndIcons();
+Future<VoidCallback> _setUpForSettings({
+  required SnaptestSettings settings,
+  required Finder? from,
+}) async {
+  // final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
+  await loadFonts();
+  await precacheImages(from);
 
   final previousShadows = debugDisableShadows;
 
@@ -336,7 +537,6 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 
   return () {
     debugDisableShadows = previousShadows;
-    restoreImages();
   };
 }
 
@@ -345,11 +545,9 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 ///
 /// An optional [Finder] can be provided to limit the scope of the precaching to
 /// matching descendants of that [Finder].
-///
-/// {@macro snaptest.fake_device.renderingUndoDisclaimer}
 Future<void> precacheImages([Finder? from]) async {
   final finder = from ?? find.byType(View);
-  await TestWidgetsFlutterBinding.instance.runAsync(() async {
+  await maybeRunAsync(() async {
     final children = find.descendant(
       of: finder,
       matching: find.bySubtype<Image>(),
@@ -370,14 +568,14 @@ Future<void> precacheImages([Finder? from]) async {
 /// Resets the testers view to the previous state after the function has
 /// finished.
 Future<T?> _runInFakeDevice<T>(
-  DeviceInfo device,
+  DeviceInfo? device,
   Orientation orientation,
   Future<T> Function() fn,
 ) async {
   final binding = TestWidgetsFlutterBinding.instance;
   await binding.pump(Duration.zero);
 
-  final restoreView = setTestViewToFakeDevice(device, orientation);
+  final restoreView = setTestViewForDevice(device, orientation);
 
   final result = await maybeRunAsync(fn);
 
@@ -388,17 +586,75 @@ Future<T?> _runInFakeDevice<T>(
   return result;
 }
 
-/// Render the closest [RepaintBoundary] of the [element] into an image.
+/// Allows capturing the closest [RepaintBoundary] of a [Finder] into an image.
+extension CaptureFinder on Finder {
+  /// Captures this finder's closest [RepaintBoundary] into an image.
+  ///
+  /// Will throw if this finder doesn't evaluate to exactly one element.
+  ///
+  /// See also:
+  /// - [CaptureImage] to capture an element that contains a
+  /// [RepaintBoundary].
+  Future<ui.Image> captureImage({
+    bool blockText = false,
+    DeviceInfo? device,
+    Orientation orientation = Orientation.portrait,
+    bool includeDeviceFrame = false,
+  }) {
+    return evaluate().single.captureImage(
+      blockText: blockText,
+      device: device,
+      orientation: orientation,
+      includeDeviceFrame: includeDeviceFrame,
+    );
+  }
+}
+
+/// Allows capturing the closest [RepaintBoundary] of an element into an image.
+extension CaptureImage on Element {
+  /// Renders the closest [RepaintBoundary] of this element into an image.
+  ///
+  /// Set [blockText] to `true` to replace text with colored rectangles for
+  /// cross-platform consistency in golden tests.
+  ///
+  /// If [includeDeviceFrame] is `true` and a [device] is provided, the image
+  /// will be wrapped with the device's frame.
+  ///
+  /// See also:
+  /// - [CaptureFinder] to capture a finder that contains a [RepaintBoundary].
+  Future<ui.Image> captureImage({
+    bool blockText = false,
+    DeviceInfo? device,
+    Orientation orientation = Orientation.portrait,
+    bool includeDeviceFrame = false,
+  }) async {
+    return _captureImage(
+      this,
+      blockText: blockText,
+      device: device,
+      orientation: orientation,
+      includeDeviceFrame: includeDeviceFrame,
+    );
+  }
+}
+
+/// Renders the closest [RepaintBoundary] of the [element] into an image.
+///
+/// Set [blockText] to `true` to replace text with colored rectangles for
+/// cross-platform consistency in golden tests.
+///
+/// If [includeDeviceFrame] is `true` and a [device] is provided, the image
+/// will be wrapped with the device's frame.
 ///
 /// See also:
 ///
 ///  * [OffsetLayer.toImage] which is the actual method being called.
 Future<ui.Image> _captureImage(
   Element element, {
-  required bool blockText,
-  required DeviceInfo device,
-  required Orientation orientation,
-  required bool includeDeviceFrame,
+  bool blockText = false,
+  DeviceInfo? device,
+  Orientation orientation = Orientation.portrait,
+  bool includeDeviceFrame = false,
 }) async {
   assert(
     element.renderObject != null,
@@ -440,7 +696,7 @@ Future<ui.Image> _captureImage(
     }
   }
 
-  if (includeDeviceFrame && device is! WidgetTesterDevice) {
+  if (includeDeviceFrame && device != null) {
     return _wrapImageWithDeviceFrame(image, device, orientation);
   }
 

@@ -3,20 +3,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 
 void main() {
+  final tested = <(DeviceInfo, Orientation)>{};
+
+  final variant = TestDevicesVariant(
+    {
+      Devices.ios.iPhone16Pro,
+      Devices.ios.iPad,
+      Devices.android.googlePixel9,
+      Devices.android.largeTablet,
+    },
+    orientations: {
+      Orientation.portrait,
+      Orientation.landscape,
+    },
+  );
+
+  tearDownAll(() {
+    expect(tested, containsAllInOrder(variant.values));
+  });
+
   testWidgets(
     'tests all devices and orientations',
-    variant: TestOnDevices(
-      [
-        Devices.ios.iPhone16Pro,
-        Devices.ios.iPad,
-        Devices.android.googlePixel9,
-        Devices.android.largeTablet,
-      ],
-      orientations: {
-        Orientation.portrait,
-        Orientation.landscape,
-      },
-    ),
+    variant: variant,
     (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -26,7 +34,10 @@ void main() {
           ),
         ),
       );
-      await snap(matchToGolden: true);
+      tested.add(variant.currentValue!);
+      await snap.andGolden(
+        settings: const SnaptestSettings.rendered(),
+      );
     },
   );
 }
