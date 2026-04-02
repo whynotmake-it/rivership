@@ -120,7 +120,10 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(s);
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
 
     final image = await _takeDeviceScreenshot(
       device: resolved.device,
@@ -162,7 +165,10 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(goldenSettings);
+    final restore = await _setUpForSettings(
+      settings: goldenSettings,
+      from: from,
+    );
 
     final goldenImage = await _takeDeviceScreenshot(
       device: resolved.device,
@@ -215,7 +221,7 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(s);
+    final restore = await _setUpForSettings(settings: s, from: from);
 
     final image = await _takeDeviceScreenshot(
       device: resolved.device,
@@ -233,7 +239,7 @@ class Snap {
     restore();
 
     // Take golden screenshot (potentially with different settings)
-    final goldenRestore = await _setUpForSettings(gs);
+    final goldenRestore = await _setUpForSettings(settings: gs, from: from);
 
     final goldenImage = await _takeDeviceScreenshot(
       device: resolved.device,
@@ -281,7 +287,7 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(s);
+    final restore = await _setUpForSettings(settings: s, from: from);
 
     final result = await _takeDeviceScreenshot(
       device: resolved.device,
@@ -517,9 +523,13 @@ Future<ui.Image?> _takeDeviceScreenshot({
   return image;
 }
 
-Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
+Future<VoidCallback> _setUpForSettings({
+  required SnaptestSettings settings,
+  required Finder? from,
+}) async {
   // final restoreImages = TestWidgetsFlutterBinding.instance.imageCache.clear;
   await loadFonts();
+  await precacheImages(from);
 
   final previousShadows = debugDisableShadows;
 
@@ -537,7 +547,7 @@ Future<VoidCallback> _setUpForSettings(SnaptestSettings settings) async {
 /// matching descendants of that [Finder].
 Future<void> precacheImages([Finder? from]) async {
   final finder = from ?? find.byType(View);
-  await TestWidgetsFlutterBinding.instance.runAsync(() async {
+  await maybeRunAsync(() async {
     final children = find.descendant(
       of: finder,
       matching: find.bySubtype<Image>(),
