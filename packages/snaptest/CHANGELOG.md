@@ -1,3 +1,9 @@
+## 1.0.0-dev.3
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FIX**: always load all images.
+
 ## 1.0.0-dev.2
 
 > Note: This release has breaking changes.

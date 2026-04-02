@@ -27,7 +27,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  snaptest: ^1.0.0-dev.2
+  snaptest: ^1.0.0-dev.3
 
 flutter:
   uses-material-design: true
