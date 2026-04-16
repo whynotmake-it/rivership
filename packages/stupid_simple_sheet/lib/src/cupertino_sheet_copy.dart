@@ -32,6 +32,10 @@ const double kRoundedDeviceCornersThreshold = 20.0;
 const double kSheetScaleFactor = 0.0835;
 
 const kSheetPaddingToPrevious = 11.0;
+const kFormSheetPaddingToPrevious = 20.0;
+
+/// Extra bottom padding applied to form sheets
+const kFormSheetBottomInset = 12.0;
 
 final Animatable<double> kScaleTween =
     Tween<double>(begin: 1.0, end: 1.0 - kSheetScaleFactor);
