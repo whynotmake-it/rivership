@@ -97,8 +97,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   Color? get barrierColor => _isSecondGlassSheet ? null : _barrierColor;
 
   @override
-  bool get barrierDismissible =>
-      enableFormSheet || effectiveSnappingConfig.hasInbetweenSnaps;
+  bool get barrierDismissible => effectiveSnappingConfig.hasInbetweenSnaps;
 
   @override
   String? get barrierLabel => null;

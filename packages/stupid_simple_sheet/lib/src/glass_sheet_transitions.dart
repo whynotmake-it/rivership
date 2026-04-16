@@ -179,7 +179,7 @@ abstract class GlassSheetTransitions {
           minimum:
               EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
           child: Padding(
-            padding: EdgeInsets.only(top: secondSheet ? 0 : 0),
+            padding: EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
             child: Align(
               alignment: Alignment.bottomCenter,
               child: SheetDismissalTransition(
