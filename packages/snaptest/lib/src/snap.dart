@@ -104,11 +104,30 @@ class Snap {
   /// });
   /// ```
   ///
-  /// The screenshot will be taken from the [from] [Finder] and if none is
-  /// provided, the screenshot will be taken from the whole screen.
+  /// Use [from] when you want to change what snaptest captures. If it is
+  /// omitted, snaptest captures from the whole screen.
+  ///
+  /// Use [crop] when you want to trim the captured image to the given rect in
+  /// logical pixels.
+  ///
+  /// In practice:
+  /// - Use [from] to say "snap this widget or boundary instead of the whole
+  ///   screen."
+  /// - Use [crop] to say "after snapping, keep only this area."
+  /// - Use both when you want to snap one source but crop to a smaller area
+  ///   inside it.
+  ///
+  /// A common pattern is `crop: tester.getRect(finder)`, which keeps the full
+  /// screen capture behavior but trims the result to a widget's bounds so
+  /// overlays can still appear in the image.
+  ///
+  /// If device framing is enabled, [crop] is applied after the frame is added.
+  /// The framed image is larger than the raw screen, so the same [Rect] may
+  /// behave differently than it would on an unframed snap.
   Future<List<File>> call({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -129,6 +148,7 @@ class Snap {
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -153,6 +173,7 @@ class Snap {
   Future<List<File>> golden({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -174,6 +195,7 @@ class Snap {
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: goldenSettings,
     );
 
@@ -207,6 +229,7 @@ class Snap {
   Future<(List<File> snapshots, List<File> goldens)> andGolden({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     SnaptestSettings? goldenSettings,
     DeviceInfo? device,
@@ -221,12 +244,16 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(settings: s, from: from);
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
 
     final image = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -239,13 +266,17 @@ class Snap {
     restore();
 
     // Take golden screenshot (potentially with different settings)
-    final goldenRestore = await _setUpForSettings(settings: gs, from: from);
+    final goldenRestore = await _setUpForSettings(
+      settings: gs,
+      from: from,
+    );
 
     final goldenImage = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       settings: gs,
       from: from,
+      crop: crop,
     );
 
     goldenRestore();
@@ -276,6 +307,7 @@ class Snap {
   Future<ui.Image?> image({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -287,12 +319,16 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(settings: s, from: from);
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
 
     final result = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -502,6 +538,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
   required SnaptestSettings settings,
   required Orientation orientation,
   Finder? from,
+  Rect? crop,
 }) async {
   final finder = from ?? find.byType(View);
 
@@ -511,12 +548,27 @@ Future<ui.Image?> _takeDeviceScreenshot({
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
-      return finder.captureImage(
+      final captured = await _captureImage(
+        finder.evaluate().single,
         blockText: settings.blockText,
         device: device,
         orientation: orientation,
         includeDeviceFrame: settings.includeDeviceFrame,
       );
+
+      if (crop == null) {
+        return captured.image;
+      }
+
+      final cropBounds = settings.includeDeviceFrame && device != null
+          ? _imageBounds(captured.image)
+          : captured.bounds;
+
+      try {
+        return _cropImage(captured.image, crop, cropBounds);
+      } finally {
+        captured.image.dispose();
+      }
     },
   );
 
@@ -628,13 +680,15 @@ extension CaptureImage on Element {
     Orientation orientation = Orientation.portrait,
     bool includeDeviceFrame = false,
   }) async {
-    return _captureImage(
+    final captured = await _captureImage(
       this,
       blockText: blockText,
       device: device,
       orientation: orientation,
       includeDeviceFrame: includeDeviceFrame,
     );
+
+    return captured.image;
   }
 }
 
@@ -649,13 +703,14 @@ extension CaptureImage on Element {
 /// See also:
 ///
 ///  * [OffsetLayer.toImage] which is the actual method being called.
-Future<ui.Image> _captureImage(
+Future<_CapturedImage> _captureImage(
   Element element, {
   bool blockText = false,
   DeviceInfo? device,
   Orientation orientation = Orientation.portrait,
   bool includeDeviceFrame = false,
 }) async {
+  final isViewCapture = element.widget is View;
   assert(
     element.renderObject != null,
     'The given element $element does not have a RenderObject',
@@ -679,6 +734,12 @@ Future<ui.Image> _captureImage(
   }
 
   final image = await layer.toImage(renderObject.paintBounds);
+  final bounds = isViewCapture
+      ? _viewLogicalBounds()
+      : MatrixUtils.transformRect(
+          renderObject.getTransformTo(null),
+          renderObject.paintBounds,
+        );
 
   if (element.renderObject is RenderBox) {
     final expectedSize = (element.renderObject as RenderBox?)!.size;
@@ -697,10 +758,80 @@ Future<ui.Image> _captureImage(
   }
 
   if (includeDeviceFrame && device != null) {
-    return _wrapImageWithDeviceFrame(image, device, orientation);
+    return _CapturedImage(
+      image: await _wrapImageWithDeviceFrame(image, device, orientation),
+      bounds: bounds,
+    );
   }
 
-  return image;
+  return _CapturedImage(image: image, bounds: bounds);
+}
+
+Rect _imageBounds(ui.Image image) =>
+    Offset.zero & Size(image.width.toDouble(), image.height.toDouble());
+
+Rect _viewLogicalBounds() {
+  final implicitView =
+      TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+  final logicalSize = implicitView.physicalSize / implicitView.devicePixelRatio;
+  return Offset.zero & logicalSize;
+}
+
+Future<ui.Image> _cropImage(
+  ui.Image image,
+  Rect crop,
+  Rect captureBounds,
+) async {
+  final croppedBounds = crop.intersect(captureBounds);
+  if (croppedBounds.isEmpty) {
+    throw ArgumentError.value(
+      crop,
+      'crop',
+      'Crop rect must intersect the snapped bounds.',
+    );
+  }
+
+  final cropRectInBounds = croppedBounds.translate(
+    -captureBounds.left,
+    -captureBounds.top,
+  );
+  final scaleX = image.width / captureBounds.width;
+  final scaleY = image.height / captureBounds.height;
+  final sourceRect = Rect.fromLTWH(
+    cropRectInBounds.left * scaleX,
+    cropRectInBounds.top * scaleY,
+    cropRectInBounds.width * scaleX,
+    cropRectInBounds.height * scaleY,
+  );
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final outputSize = croppedBounds.size;
+
+  canvas.drawImageRect(
+    image,
+    sourceRect,
+    Offset.zero & outputSize,
+    Paint(),
+  );
+
+  final picture = recorder.endRecording();
+  final croppedImage = await picture.toImage(
+    outputSize.width.ceil(),
+    outputSize.height.ceil(),
+  );
+
+  picture.dispose();
+  return croppedImage;
+}
+
+class _CapturedImage {
+  const _CapturedImage({
+    required this.image,
+    required this.bounds,
+  });
+
+  final ui.Image image;
+  final Rect bounds;
 }
 
 /// Wraps the given [image] with a device frame for the specified [device].

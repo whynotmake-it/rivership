@@ -581,15 +581,15 @@ void main() {
               body: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Center(child: Text('Hello Snapper!')),
+                  Center(child: Text('Messages')),
                   Center(
                     child: RepaintBoundary(
                       child: Padding(
-                        key: Key('check-icon'),
-                        padding: EdgeInsets.all(16),
-                        child: SizedBox.square(
-                          dimension: 24,
-                          child: ColoredBox(color: Colors.green),
+                        key: Key('avatar'),
+                        padding: EdgeInsets.all(8),
+                        child: CircleAvatar(
+                          radius: 20,
+                          child: Icon(Icons.person, size: 20),
                         ),
                       ),
                     ),
@@ -600,12 +600,199 @@ void main() {
           ),
         );
 
-        final ([file], _) = await snap.andGolden(
-          name: 'snap_from',
-          from: find.byKey(const Key('check-icon')),
+        final image = await snap.image(
+          from: find.byKey(const Key('avatar')),
+          settings: const SnaptestSettings(blockText: true),
         );
-        expect(file.existsSync(), isTrue);
+
+        expect(image, isNotNull);
+        expect(image!.width, 56);
+        expect(image.height, 56);
+
+        await expectLater(
+          image,
+          matchesGoldenFile('goldens/snap_from_repaint_boundary.png'),
+        );
       });
+    });
+
+    group('snap crop', () {
+      testWidgets('crops from the root view so overlays are included', (
+        tester,
+      ) async {
+        const tileKey = Key('message-tile');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: RepaintBoundary(
+                  child: ListTile(
+                    key: tileKey,
+                    leading: CircleAvatar(child: Text('JD')),
+                    title: Text('Jane Doe'),
+                    subtitle: Text('See you tomorrow!'),
+                    trailing: Text('2m'),
+                  ),
+                ),
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: null,
+                child: Icon(Icons.edit),
+              ),
+            ),
+          ),
+        );
+
+        final tileFinder = find.byKey(tileKey);
+        final tileRect = tester.getRect(tileFinder);
+        final [fromFile] = await snap.golden(
+          name: 'message_tile_from',
+          from: tileFinder,
+          settings: const SnaptestSettings(blockText: true),
+        );
+        final [cropFile] = await snap.golden(
+          name: 'message_tile_crop',
+          crop: tileRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(
+          fromFile.readAsBytesSync(),
+          isNot(orderedEquals(cropFile.readAsBytesSync())),
+        );
+      });
+
+      testWidgets('crop still respects from when both are provided', (
+        tester,
+      ) async {
+        const cardKey = Key('product-card');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: Stack(
+                    children: [
+                      RepaintBoundary(
+                        child: Card(
+                          key: cardKey,
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Premium Plan',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(r'$9.99/month'),
+                                SizedBox(height: 8),
+                                Text('Unlimited access to all features'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.only(
+                              topRight: Radius.circular(12),
+                              bottomLeft: Radius.circular(12),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              'SALE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final cardRect = tester.getRect(find.byKey(cardKey));
+        final [fileFromScreen] = await snap.golden(
+          name: 'product_card_from_screen',
+          crop: cardRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+        final [fileFromCard] = await snap.golden(
+          name: 'product_card_from_card',
+          from: find.byKey(cardKey),
+          crop: cardRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(
+          fileFromScreen.readAsBytesSync(),
+          isNot(orderedEquals(fileFromCard.readAsBytesSync())),
+        );
+      });
+
+      testWidgets(
+        'crops the final framed image when device frames are enabled',
+        (
+          tester,
+        ) async {
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    onPressed: null,
+                    child: Text('Subscribe'),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          final image = await snap.image(
+            crop: const Rect.fromLTWH(0, 0, 80, 40),
+            device: Devices.ios.iPhone16,
+            settings: const SnaptestSettings(
+              blockText: true,
+              includeDeviceFrame: true,
+            ),
+          );
+
+          expect(image, isNotNull);
+          expect(image!.width, 80);
+          expect(image.height, 40);
+
+          await expectLater(
+            image,
+            matchesGoldenFile('goldens/crop_framed_image.png'),
+          );
+        },
+      );
     });
   });
 }
