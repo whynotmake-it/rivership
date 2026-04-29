@@ -390,13 +390,19 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     }
 
     if (context.findRenderObject() case final RenderBox box) {
+      final targetPosition = box.localToGlobal(Offset.zero);
+
+      if ((offset - targetPosition).distanceSquared <
+          controller.motion.tolerance.distance *
+              controller.motion.tolerance.distance) {
+        return;
+      }
+
       setState(() {
         isReturning = true;
       });
 
       final overlay = Overlay.of(context);
-
-      final targetPosition = box.localToGlobal(Offset.zero);
 
       currentEntry = OverlayEntry(
         builder: (context) => Stack(
@@ -422,6 +428,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
 
       overlay.insert(currentEntry!);
 
+      _targetPosition = targetPosition;
       final adjustedVelocity = velocity.pixelsPerSecond;
 
       controller

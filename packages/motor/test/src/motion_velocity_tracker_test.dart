@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
+import 'util.dart';
+
 void main() {
   group('MotionVelocityTracker', () {
     test('tracks single double value velocity', () {
@@ -33,7 +35,7 @@ void main() {
       // sum = 1000 * (0.6 + 0.35 + 0.05) = 1000.
 
       final estimate = tracker.getVelocityEstimate();
-      expect(estimate!.perSecond, closeTo(1000.0, 0.1));
+      expect(estimate!.perSecond, closeTo(1000.0, error));
     });
 
     test('tracks Offset velocity', () {
@@ -44,8 +46,8 @@ void main() {
         ..addPosition(const Duration(milliseconds: 30), const Offset(30, 60));
 
       final estimate = tracker.getVelocityEstimate();
-      expect(estimate!.perSecond.dx, closeTo(1000.0, 0.1));
-      expect(estimate.perSecond.dy, closeTo(2000.0, 0.1));
+      expect(estimate!.perSecond.dx, closeTo(1000.0, error));
+      expect(estimate.perSecond.dy, closeTo(2000.0, error));
     });
 
     test('returns zero if stopped for too long', () async {
@@ -80,7 +82,7 @@ void main() {
       // Total = 950
 
       final estimate = tracker.getVelocityEstimate();
-      expect(estimate!.perSecond, closeTo(950.0, 0.1));
+      expect(estimate!.perSecond, closeTo(950.0, error));
     });
   });
 }

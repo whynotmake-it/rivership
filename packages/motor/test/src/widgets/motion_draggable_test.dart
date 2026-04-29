@@ -212,6 +212,48 @@ void main() {
       feedback.doesNotExist();
     });
 
+    testWidgets('completes return when released without moving', (tester) async {
+      var dragEnded = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: MotionDraggable<String>(
+              motion: const CupertinoMotion.smooth(),
+              data: 'test',
+              onDragEnd: (_) => dragEnded = true,
+              feedback: buildFeedback(),
+              child: buildChild(),
+            ),
+          ),
+        ),
+      );
+
+      final child = spotKey(childKey)..existsOnce();
+      final center = tester.getCenter(child.finder);
+
+      // Start a drag, move minimally to activate the recognizer, then
+      // move back to the original position and release. This simulates
+      // a tap-and-release where the feedback ends at the child's position.
+      final gesture = await tester.startGesture(center);
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+      await gesture.moveTo(center);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+
+      expect(dragEnded, isTrue);
+
+      // The return animation should complete since from ≈ target
+      await tester.pumpAndSettle();
+
+      // Feedback should be gone and child should be visible again
+      spotKey(feedbackKey).doesNotExist();
+      spotKey(childKey).existsOnce();
+    });
+
     testWidgets('feedback does not animate if onlyReturnWhenCanceled is true',
         (tester) async {
       String? acceptedData;

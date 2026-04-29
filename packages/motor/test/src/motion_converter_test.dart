@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
+import 'util.dart';
+
 void main() {
   group('ColorRgbMotionConverter', () {
     const converter = ColorRgbMotionConverter();
@@ -13,9 +15,9 @@ void main() {
         final result = converter.normalize(color);
 
         expect(result, hasLength(4));
-        expect(result[0], closeTo(0.0706, 0.001)); // Red: 0x12 / 255 ≈ 0.0706
-        expect(result[1], closeTo(0.2039, 0.001)); // Green: 0x34 / 255 ≈ 0.2039
-        expect(result[2], closeTo(0.3373, 0.001)); // Blue: 0x56 / 255 ≈ 0.3373
+        expect(result[0], closeTo(0.0706, error)); // Red: 0x12 / 255 ≈ 0.0706
+        expect(result[1], closeTo(0.2039, error)); // Green: 0x34 / 255 ≈ 0.2039
+        expect(result[2], closeTo(0.3373, error)); // Blue: 0x56 / 255 ≈ 0.3373
         expect(result[3], equals(1.0)); // Alpha: 0xFF / 255 = 1.0
       });
 
@@ -40,7 +42,7 @@ void main() {
         expect(result[0], equals(1.0)); // Red
         expect(result[1], equals(0.0)); // Green
         expect(result[2], equals(0.0)); // Blue
-        expect(result[3], closeTo(0.502, 0.001)); // Alpha: 0x80 / 255 ≈ 0.502
+        expect(result[3], closeTo(0.502, error)); // Alpha: 0x80 / 255 ≈ 0.502
       });
     });
 
@@ -126,10 +128,10 @@ void main() {
         final denormalized = converter.denormalize(normalized);
 
         // Due to floating point precision, we use closeTo for comparison
-        expect(denormalized.r, closeTo(originalColor.r, 0.001));
-        expect(denormalized.g, closeTo(originalColor.g, 0.001));
-        expect(denormalized.b, closeTo(originalColor.b, 0.001));
-        expect(denormalized.a, closeTo(originalColor.a, 0.001));
+        expect(denormalized.r, closeTo(originalColor.r, error));
+        expect(denormalized.g, closeTo(originalColor.g, error));
+        expect(denormalized.b, closeTo(originalColor.b, error));
+        expect(denormalized.a, closeTo(originalColor.a, error));
       });
 
       test('roundtrip with transparent color', () {
@@ -138,10 +140,10 @@ void main() {
         final normalized = converter.normalize(originalColor);
         final denormalized = converter.denormalize(normalized);
 
-        expect(denormalized.r, closeTo(originalColor.r, 0.001));
-        expect(denormalized.g, closeTo(originalColor.g, 0.001));
-        expect(denormalized.b, closeTo(originalColor.b, 0.001));
-        expect(denormalized.a, closeTo(originalColor.a, 0.001));
+        expect(denormalized.r, closeTo(originalColor.r, error));
+        expect(denormalized.g, closeTo(originalColor.g, error));
+        expect(denormalized.b, closeTo(originalColor.b, error));
+        expect(denormalized.a, closeTo(originalColor.a, error));
       });
 
       test('multiple colors roundtrip correctly', () {
@@ -161,22 +163,22 @@ void main() {
 
           expect(
             denormalized.r,
-            closeTo(color.r, 0.001),
+            closeTo(color.r, error),
             reason: 'Red component failed for $color',
           );
           expect(
             denormalized.g,
-            closeTo(color.g, 0.001),
+            closeTo(color.g, error),
             reason: 'Green component failed for $color',
           );
           expect(
             denormalized.b,
-            closeTo(color.b, 0.001),
+            closeTo(color.b, error),
             reason: 'Blue component failed for $color',
           );
           expect(
             denormalized.a,
-            closeTo(color.a, 0.001),
+            closeTo(color.a, error),
             reason: 'Alpha component failed for $color',
           );
         }
