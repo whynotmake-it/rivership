@@ -10,6 +10,8 @@ import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
+import 'package:motor/src/simulations/step_playback.dart';
+import 'package:motor/src/step.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -167,6 +169,11 @@ class MotionController<T extends Object> extends Animation<T>
   /// List of simulations, one for each dimension
   List<Simulation> _simulations = [];
 
+  StepPlayback<T>? _stepPlayback;
+
+  void Function(int stepIndex)? _onStep;
+  int? _lastStepIndex;
+
   /// The current status of the animation
   late AnimationStatus _status;
 
@@ -183,6 +190,9 @@ class MotionController<T extends Object> extends Animation<T>
   /// for velocity estimation. The tracked velocity is used when [animateTo]
   /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
+    _onStep = null;
+    _lastStepIndex = null;
+    _stepPlayback = null;
     _ticker?.stop();
     _status = _getStatusWhenDone();
 
@@ -232,6 +242,9 @@ class MotionController<T extends Object> extends Animation<T>
   /// if a velocity tracker is available, otherwise zeros.
   List<double> get velocities {
     if (isAnimating) {
+      if (_stepPlayback case final playback?) {
+        return playback.velocities;
+      }
       return [
         for (var i = 0; i < _dimensions; i++)
           _simulations[i].dx(_lastElapsedDuration!.toSec()),
@@ -370,12 +383,52 @@ class MotionController<T extends Object> extends Animation<T>
         forward: converter.motionIsForward(from: from ?? value, to: target),
       );
 
+  /// Plays [steps] from the current value.
+  ///
+  /// Non-looping playback completes when all chained simulations finish.
+  /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
+  TickerFuture play(
+    List<Step<T>> steps, {
+    LoopMode? loop,
+    void Function(int stepIndex)? onStep,
+  }) {
+    if (steps.isEmpty) return TickerFuture.complete();
+
+    _target = null;
+    final startValue = value;
+    final velocityValue = velocity;
+    _resetVelocityTracking();
+    _stopTicker(canceled: true);
+
+    final loopMode = loop ?? LoopMode.none;
+    _stepPlayback = StepPlayback<T>(
+      steps: steps,
+      converter: converter,
+      start: startValue,
+      velocity: velocityValue,
+      loop: loopMode,
+    );
+
+    _onStep = onStep;
+    _lastStepIndex = null;
+    _simulations = [];
+    _internalSetValue(_stepPlayback!.values);
+    _lastElapsedDuration = Duration.zero;
+    final result = _ticker!.start();
+    _status = AnimationStatus.forward;
+    _notifyStepChanged();
+    _checkStatusChanged();
+    return result;
+  }
+
   TickerFuture _animateToInternal({
     required List<double> target,
     List<double>? from,
     List<double>? velocity,
     bool forward = true,
   }) {
+    _onStep = null;
+    _lastStepIndex = null;
     _target = target;
 
     final fromValue = from ?? List.of(_currentValues);
@@ -387,6 +440,7 @@ class MotionController<T extends Object> extends Animation<T>
     _resetVelocityTracking();
 
     // Stop any existing animations
+    _stepPlayback = null;
     _stopTicker(canceled: true);
 
     _simulations = [
@@ -421,18 +475,42 @@ class MotionController<T extends Object> extends Animation<T>
 
     assert(elapsedInSeconds >= 0, 'elapsed must be non-negative');
 
-    _currentValues = [
-      for (var i = 0; i < _dimensions; i++) _simulations[i].x(elapsedInSeconds),
-    ];
+    if (_stepPlayback case final playback?) {
+      final done = playback.advanceTo(elapsedInSeconds);
+      _internalSetValue(playback.values);
+      _notifyStepChanged();
+      if (done) {
+        _stepPlayback = null;
+        _status = _getStatusWhenDone();
+        _stopTicker();
+      }
+    } else {
+      _currentValues = [
+        for (var i = 0; i < _dimensions; i++)
+          _simulations[i].x(elapsedInSeconds),
+      ];
 
-    // Check if all simulations are done
-    if (_simulations.every((e) => e.isDone(elapsedInSeconds))) {
-      _status = _getStatusWhenDone();
-      _stopTicker();
+      // Check if all simulations are done
+      if (_simulations.every((e) => e.isDone(elapsedInSeconds))) {
+        _status = _getStatusWhenDone();
+        _stopTicker();
+      }
     }
 
     notifyListeners();
     _checkStatusChanged();
+  }
+
+  void _notifyStepChanged() {
+    final onStep = _onStep;
+    final playback = _stepPlayback;
+    if (onStep == null || playback == null) return;
+
+    final stepIndex = playback.currentStepIndex;
+    if (stepIndex < 0 || stepIndex == _lastStepIndex) return;
+
+    _lastStepIndex = stepIndex;
+    onStep(stepIndex);
   }
 
   /// Redirect a motion when the [motionPerDimension] changes.
@@ -461,7 +539,10 @@ class MotionController<T extends Object> extends Animation<T>
   /// Otherwise, the simulation will redirect to settle at the current value, if
   /// [Motion.needsSettle] is true for any [motionPerDimension].
   TickerFuture stop({bool canceled = false}) {
+    _onStep = null;
+    _lastStepIndex = null;
     if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
+      _stepPlayback = null;
       _stopTicker(canceled: canceled);
       return TickerFuture.complete();
     } else {
@@ -1068,6 +1149,20 @@ class SequenceMotionController<P, T extends Object>
       target,
       from: from,
       withVelocity: withVelocity,
+    );
+  }
+
+  @override
+  TickerFuture play(
+    List<Step<T>> steps, {
+    LoopMode? loop,
+    void Function(int stepIndex)? onStep,
+  }) {
+    _stopSequence();
+    return super.play(
+      steps,
+      loop: loop,
+      onStep: onStep,
     );
   }
 
