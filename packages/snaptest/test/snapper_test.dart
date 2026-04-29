@@ -581,15 +581,15 @@ void main() {
               body: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Center(child: Text('Hello Snapper!')),
+                  Center(child: Text('Messages')),
                   Center(
                     child: RepaintBoundary(
                       child: Padding(
-                        key: Key('check-icon'),
-                        padding: EdgeInsets.all(16),
-                        child: SizedBox.square(
-                          dimension: 24,
-                          child: ColoredBox(color: Colors.green),
+                        key: Key('avatar'),
+                        padding: EdgeInsets.all(8),
+                        child: CircleAvatar(
+                          radius: 20,
+                          child: Icon(Icons.person, size: 20),
                         ),
                       ),
                     ),
@@ -600,12 +600,188 @@ void main() {
           ),
         );
 
-        final ([file], _) = await snap.andGolden(
-          name: 'snap_from',
-          from: find.byKey(const Key('check-icon')),
+        final image = await snap.image(
+          from: find.byKey(const Key('avatar')),
+          settings: const SnaptestSettings(blockText: true),
         );
-        expect(file.existsSync(), isTrue);
+
+        expect(image, isNotNull);
+        expect(image!.width, 56);
+        expect(image.height, 56);
+
+        await expectLater(
+          image,
+          matchesGoldenFile('goldens/snap_from_repaint_boundary.png'),
+        );
       });
+    });
+
+    group('snap crop', () {
+      testWidgets('crops from the root view so foreground is included', (
+        tester,
+      ) async {
+        const boxKey = Key('foreground-box');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 200,
+                height: 200,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 40,
+                      top: 60,
+                      child: RepaintBoundary(
+                        child: SizedBox(
+                          key: boxKey,
+                          width: 80,
+                          height: 60,
+                          child: ColoredBox(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 100,
+                      top: 80,
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: ColoredBox(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final boxFinder = find.byKey(boxKey);
+        final boxRect = tester.getRect(boxFinder);
+        final [fromFile] = await snap.golden(
+          name: 'foreground_overlay_from',
+          from: boxFinder,
+          settings: const SnaptestSettings(blockText: true),
+        );
+        final [cropFile] = await snap.golden(
+          name: 'foreground_overlay_crop',
+          crop: boxRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(
+          fromFile.readAsBytesSync(),
+          isNot(orderedEquals(cropFile.readAsBytesSync())),
+        );
+      });
+
+      testWidgets('crops from the root view so background is included', (
+        tester,
+      ) async {
+        const boxKey = Key('background-box');
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 200,
+                height: 200,
+                child: Center(
+                  child: SizedBox(
+                    width: 120,
+                    height: 80,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ColoredBox(color: Colors.yellow),
+                        ),
+                        RepaintBoundary(
+                          child: SizedBox(
+                            key: boxKey,
+                            width: 120,
+                            height: 80,
+                            child: Center(
+                              child: SizedBox(
+                                width: 80,
+                                height: 40,
+                                child: ColoredBox(color: Colors.green),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final boxRect = tester.getRect(find.byKey(boxKey));
+        final [fileFromScreen] = await snap.golden(
+          name: 'background_crop_from_screen',
+          crop: boxRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+        final [fileFromSource] = await snap.golden(
+          name: 'background_crop_from_source',
+          from: find.byKey(boxKey),
+          crop: boxRect,
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(
+          fileFromScreen.readAsBytesSync(),
+          isNot(orderedEquals(fileFromSource.readAsBytesSync())),
+        );
+      });
+
+      snapTest(
+        'crops logical rects into framed screenshots',
+        (tester) async {
+          const buttonKey = Key('subscribe-button');
+
+          await tester.pumpWidget(
+            const MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 160,
+                    height: 48,
+                    child: ElevatedButton(
+                      key: buttonKey,
+                      onPressed: null,
+                      child: Text('Subscribe'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          final buttonRect = tester.getRect(find.byKey(buttonKey));
+          final image = await snap.image(
+            crop: buttonRect,
+            settings: const SnaptestSettings(
+              blockText: true,
+              includeDeviceFrame: true,
+            ),
+          );
+
+          expect(image, isNotNull);
+          expect(image!.width, buttonRect.width);
+          expect(image.height, buttonRect.height);
+
+          await expectLater(
+            image,
+            matchesGoldenFile('goldens/crop_framed_image.png'),
+          );
+        },
+        devices: {Devices.ios.iPhone16},
+      );
     });
   });
 }
