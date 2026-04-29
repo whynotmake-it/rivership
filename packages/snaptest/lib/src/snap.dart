@@ -39,6 +39,28 @@ final Map<String, int> _snapCallCounts = {};
 /// ```
 const Snap snap = Snap._();
 
+/// {@template snaptest_from_and_crop}
+/// Use `from` when you want to change what snaptest captures. If it is
+/// omitted, snaptest captures from the whole screen.
+///
+/// Use `crop` when you want to trim the captured image to the given rect in
+/// Flutter logical coordinates.
+///
+/// In practice:
+/// - Use `from` to say "snap this widget or boundary instead of the whole
+///   screen."
+/// - Use `crop` to say "after snapping, keep only this logical area."
+/// - Use both when you want to snap one source but crop to a smaller area
+///   inside it.
+///
+/// A common pattern is `crop: tester.getRect(finder)`, which keeps the full
+/// screen capture behavior but trims the result to a widget's bounds so
+/// backgrounds, ancestors, and overlays can still appear in the image.
+///
+/// If device framing is enabled, `crop` still uses the same logical coordinate
+/// space. snaptest maps the logical crop into the device frame's screen area.
+/// {@endtemplate}
+///
 /// A callable class that provides methods for taking screenshots in widget
 /// tests.
 ///
@@ -104,11 +126,11 @@ class Snap {
   /// });
   /// ```
   ///
-  /// The screenshot will be taken from the [from] [Finder] and if none is
-  /// provided, the screenshot will be taken from the whole screen.
+  /// {@macro snaptest_from_and_crop}
   Future<List<File>> call({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -129,6 +151,7 @@ class Snap {
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -150,9 +173,12 @@ class Snap {
   /// By default the golden is rendered with [SnaptestSettings.goldens]
   /// (blocked text, no shadows, no images, no device frame) for cross-platform
   /// consistency. Pass [settings] to override.
+  ///
+  /// {@macro snaptest_from_and_crop}
   Future<List<File>> golden({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -174,6 +200,7 @@ class Snap {
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: goldenSettings,
     );
 
@@ -204,9 +231,12 @@ class Snap {
   /// golden uses [goldenSettings] (or [SnaptestSettings.goldens]).
   ///
   /// Returns a record of (snapshots, goldens) file lists.
+  ///
+  /// {@macro snaptest_from_and_crop}
   Future<(List<File> snapshots, List<File> goldens)> andGolden({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     SnaptestSettings? goldenSettings,
     DeviceInfo? device,
@@ -221,12 +251,16 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(settings: s, from: from);
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
 
     final image = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -239,13 +273,17 @@ class Snap {
     restore();
 
     // Take golden screenshot (potentially with different settings)
-    final goldenRestore = await _setUpForSettings(settings: gs, from: from);
+    final goldenRestore = await _setUpForSettings(
+      settings: gs,
+      from: from,
+    );
 
     final goldenImage = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       settings: gs,
       from: from,
+      crop: crop,
     );
 
     goldenRestore();
@@ -273,9 +311,12 @@ class Snap {
   ///
   /// Useful for custom image processing workflows, generating assets, or
   /// compositing screenshots programmatically.
+  ///
+  /// {@macro snaptest_from_and_crop}
   Future<ui.Image?> image({
     String? name,
     Finder? from,
+    Rect? crop,
     SnaptestSettings? settings,
     DeviceInfo? device,
     Orientation? orientation,
@@ -287,12 +328,16 @@ class Snap {
       orientation: orientation,
     );
 
-    final restore = await _setUpForSettings(settings: s, from: from);
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
 
     final result = await _takeDeviceScreenshot(
       device: resolved.device,
       orientation: resolved.orientation,
       from: from,
+      crop: crop,
       settings: s,
     );
 
@@ -502,6 +547,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
   required SnaptestSettings settings,
   required Orientation orientation,
   Finder? from,
+  Rect? crop,
 }) async {
   final finder = from ?? find.byType(View);
 
@@ -511,12 +557,23 @@ Future<ui.Image?> _takeDeviceScreenshot({
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
-      return finder.captureImage(
+      final captured = await _captureImage(
+        finder.evaluate().single,
         blockText: settings.blockText,
         device: device,
         orientation: orientation,
         includeDeviceFrame: settings.includeDeviceFrame,
       );
+
+      if (crop == null) {
+        return captured.image;
+      }
+
+      try {
+        return _cropImage(captured.image, crop, captured);
+      } finally {
+        captured.image.dispose();
+      }
     },
   );
 
@@ -628,13 +685,15 @@ extension CaptureImage on Element {
     Orientation orientation = Orientation.portrait,
     bool includeDeviceFrame = false,
   }) async {
-    return _captureImage(
+    final captured = await _captureImage(
       this,
       blockText: blockText,
       device: device,
       orientation: orientation,
       includeDeviceFrame: includeDeviceFrame,
     );
+
+    return captured.image;
   }
 }
 
@@ -649,13 +708,14 @@ extension CaptureImage on Element {
 /// See also:
 ///
 ///  * [OffsetLayer.toImage] which is the actual method being called.
-Future<ui.Image> _captureImage(
+Future<_CapturedImage> _captureImage(
   Element element, {
   bool blockText = false,
   DeviceInfo? device,
   Orientation orientation = Orientation.portrait,
   bool includeDeviceFrame = false,
 }) async {
+  final isViewCapture = element.widget is View;
   assert(
     element.renderObject != null,
     'The given element $element does not have a RenderObject',
@@ -679,6 +739,12 @@ Future<ui.Image> _captureImage(
   }
 
   final image = await layer.toImage(renderObject.paintBounds);
+  final bounds = isViewCapture
+      ? _viewLogicalBounds()
+      : MatrixUtils.transformRect(
+          renderObject.getTransformTo(null),
+          renderObject.paintBounds,
+        );
 
   if (element.renderObject is RenderBox) {
     final expectedSize = (element.renderObject as RenderBox?)!.size;
@@ -697,17 +763,113 @@ Future<ui.Image> _captureImage(
   }
 
   if (includeDeviceFrame && device != null) {
-    return _wrapImageWithDeviceFrame(image, device, orientation);
+    final framedImage = await _wrapImageWithDeviceFrame(
+      image,
+      device,
+      orientation,
+    );
+    return _CapturedImage(
+      image: framedImage.image,
+      logicalBounds: bounds,
+      imageContentBounds: framedImage.screenBounds,
+    );
   }
 
-  return image;
+  return _CapturedImage(
+    image: image,
+    logicalBounds: bounds,
+    imageContentBounds: _imageBounds(image),
+  );
+}
+
+Rect _imageBounds(ui.Image image) =>
+    Offset.zero & Size(image.width.toDouble(), image.height.toDouble());
+
+Rect _viewLogicalBounds() {
+  final implicitView =
+      TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+  final logicalSize = implicitView.physicalSize / implicitView.devicePixelRatio;
+  return Offset.zero & logicalSize;
+}
+
+Future<ui.Image> _cropImage(
+  ui.Image image,
+  Rect crop,
+  _CapturedImage captured,
+) async {
+  final croppedBounds = crop.intersect(captured.logicalBounds);
+  if (croppedBounds.isEmpty) {
+    throw ArgumentError.value(
+      crop,
+      'crop',
+      'Crop rect must intersect the snapped bounds.',
+    );
+  }
+
+  final cropRectInBounds = croppedBounds.translate(
+    -captured.logicalBounds.left,
+    -captured.logicalBounds.top,
+  );
+  final scaleX =
+      captured.imageContentBounds.width / captured.logicalBounds.width;
+  final scaleY =
+      captured.imageContentBounds.height / captured.logicalBounds.height;
+  final sourceRect = Rect.fromLTWH(
+    captured.imageContentBounds.left + cropRectInBounds.left * scaleX,
+    captured.imageContentBounds.top + cropRectInBounds.top * scaleY,
+    cropRectInBounds.width * scaleX,
+    cropRectInBounds.height * scaleY,
+  );
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final outputWidth = croppedBounds.width.ceil();
+  final outputHeight = croppedBounds.height.ceil();
+  final outputSize = Size(
+    outputWidth.toDouble(),
+    outputHeight.toDouble(),
+  );
+
+  canvas.drawImageRect(
+    image,
+    sourceRect,
+    Offset.zero & outputSize,
+    Paint(),
+  );
+
+  final picture = recorder.endRecording();
+  final croppedImage = await picture.toImage(outputWidth, outputHeight);
+
+  picture.dispose();
+  return croppedImage;
+}
+
+class _CapturedImage {
+  const _CapturedImage({
+    required this.image,
+    required this.logicalBounds,
+    required this.imageContentBounds,
+  });
+
+  final ui.Image image;
+  final Rect logicalBounds;
+  final Rect imageContentBounds;
+}
+
+class _FramedImage {
+  const _FramedImage({
+    required this.image,
+    required this.screenBounds,
+  });
+
+  final ui.Image image;
+  final Rect screenBounds;
 }
 
 /// Wraps the given [image] with a device frame for the specified [device].
 ///
 /// This creates a new image that includes the device frame around the content
 /// without modifying the original widget tree.
-Future<ui.Image> _wrapImageWithDeviceFrame(
+Future<_FramedImage> _wrapImageWithDeviceFrame(
   ui.Image image,
   DeviceInfo device,
   Orientation orientation,
@@ -782,7 +944,7 @@ Future<ui.Image> _wrapImageWithDeviceFrame(
 
   picture.dispose();
   image.dispose();
-  return framedImage;
+  return _FramedImage(image: framedImage, screenBounds: screenRect);
 }
 
 extension on String {
