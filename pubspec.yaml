@@ -18,6 +18,8 @@ workspace:
   - packages/scroll_drag_detector
   - packages/stupid_simple_sheet
   - packages/stupid_simple_sheet/example
+  - packages/fixed_ticker
+  - packages/fixed_ticker/example
   - packages/snaptest
   - packages/springster
   - packages/springster/example

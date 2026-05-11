@@ -1,0 +1,24 @@
+name: fixed_ticker
+description: A drop-in Ticker replacement that uses Timer.periodic at a fixed interval with clock.now()-based elapsed tracking.
+version: 0.1.0
+resolution: workspace
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/fixed_ticker
+homepage: https://whynotmake.it
+
+topics: [animation, ticker, fixed-rate, timer]
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  clock: ">=1.1.1 <2.0.0"
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  meta: ">=1.15.0 <2.0.0"
+
+dev_dependencies:
+  fake_async: ">=1.3.0 <2.0.0"
+  lintervention: ^0.3.1
