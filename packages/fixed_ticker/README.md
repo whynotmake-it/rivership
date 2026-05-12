@@ -34,17 +34,16 @@ class _MyState extends State<MyWidget>
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  Duration? get tickerInterval =>
-      const Duration(milliseconds: 33); // ~30fps
+  TickerRate get tickerRate => TickerRate.fps(30);
   // ...
 }
 ```
 
-By default, `tickerInterval` returns `null`, which means the ticker behaves exactly like a normal `Ticker` — full vsync refresh rate. Override it with a `Duration` to opt into fixed-rate ticking.
+By default, `tickerRate` returns the nearest `TickerRateScope` rate, falling back to `TickerRate.vsync()`, which means the ticker behaves exactly like a normal `Ticker` — full vsync refresh rate. Override it with a `TickerRate` to opt into fixed-rate ticking.
 
-### Changing the interval at runtime
+### Changing the rate at runtime
 
-The interval is mutable. Update whatever state drives `tickerInterval` and call `updateTickerInterval()`:
+The rate is mutable. Update whatever state drives `tickerRate` and call `updateTickerRate()`:
 
 ```dart
 class _MyState extends State<MyWidget>
@@ -52,12 +51,11 @@ class _MyState extends State<MyWidget>
   int _fps = 30;
 
   @override
-  Duration? get tickerInterval =>
-      Duration(milliseconds: 1000 ~/ _fps);
+  TickerRate get tickerRate => TickerRate.fps(_fps);
 
   void _onFpsChanged(int fps) {
     setState(() => _fps = fps);
-    updateTickerInterval(); // applies the new interval immediately
+    updateTickerRate(); // applies the new rate immediately
   }
   // ...
 }
@@ -65,7 +63,7 @@ class _MyState extends State<MyWidget>
 
 The animation continues seamlessly — no ticker recreation, no lost animation state.
 
-You can also set the interval to `null` to switch back to normal vsync-driven ticking, or from `null` to a `Duration` to switch into fixed-rate mode.
+You can also return `TickerRate.vsync()` to switch back to normal vsync-driven ticking, or return `TickerRate.interval(...)` / `TickerRate.fps(...)` to switch into fixed-rate mode.
 
 ### Subtree-wide rate control with TickerRateScope
 
@@ -78,7 +76,7 @@ TickerRateScope(
 )
 ```
 
-Any widget using `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin` will automatically pick up the rate from the nearest scope — no need to override `tickerInterval` or call `updateTickerInterval()`.
+Any widget using `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin` will automatically pick up the rate from the nearest scope — no need to override `tickerRate` or call `updateTickerRate()`.
 
 The rate syncs automatically when the scope changes:
 
@@ -91,18 +89,17 @@ TickerRateScope(
 )
 ```
 
-You can also override `tickerInterval` in a specific widget to ignore the scope:
+You can also override `tickerRate` in a specific widget to ignore the scope:
 
 ```dart
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  Duration? get tickerInterval =>
-      const Duration(milliseconds: 100); // always 10fps, ignores scope
+  TickerRate get tickerRate => TickerRate.fps(10); // ignores scope
 }
 ```
 
-**Precedence:** an overridden `tickerInterval` getter always wins over `TickerRateScope`. If neither is set, the ticker runs at normal vsync.
+**Precedence:** an overridden `tickerRate` getter always wins over `TickerRateScope`. If neither is set, the ticker runs at normal vsync.
 
 `TickerRate` constructors:
 
@@ -130,9 +127,8 @@ class _MyState extends State<MyWidget>
   late final AnimationController _slideController;
 
   @override
-  Duration? get tickerInterval =>
-      const Duration(milliseconds: 33);
-  // Both tick at the mixin's tickerInterval
+  TickerRate get tickerRate => TickerRate.fps(30);
+  // Both tick at the mixin's tickerRate
 }
 ```
 
@@ -155,7 +151,7 @@ ticker.dispose();
 
 ## Testing
 
-`FixedTicker` works in both `fakeAsync` and `testWidgets` with zero setup. The `clock.now()` calls are automatically faked by Flutter's test infrastructure.
+`FixedTicker` works in widget tests with the normal `tester.pump()` flow. In fixed-rate mode, timer ticks schedule frame callbacks, so tests need to pump frames rather than only advancing timers.
 
 One thing to watch out for: **`tester.pumpAndSettle()` doesn't know about `FixedTicker`**. It only checks for scheduled frames, and `FixedTicker` uses `Timer.periodic` instead. Import the testing utilities and use `pumpAndSettleFixedTickers()` instead:
 
@@ -174,16 +170,16 @@ testWidgets('my animation completes', (tester) async {
 
 ## How it works
 
-`FixedTicker` extends Flutter's `Ticker` and overrides `scheduleTick` / `unscheduleTick` to use `Timer.periodic` when an `interval` is set. When `interval` is `null`, it delegates entirely to the parent — behaving like a normal `Ticker`.
+`FixedTicker` extends Flutter's `Ticker` and overrides `scheduleTick` / `unscheduleTick` to use `Timer.periodic` as a rate limiter when an `interval` is set. When `interval` is `null`, it delegates entirely to the parent — behaving like a normal `Ticker`.
 
-Elapsed time is always computed as `clock.now() - startTime`, never by adding up intervals. This means:
+In fixed-rate mode, the periodic timer does not compute elapsed time itself. Each timer tick schedules a frame callback through the parent `Ticker`, and the parent computes elapsed from Flutter's monotonic frame timestamp. This means:
 
-- **No drift** — each tick reports the true elapsed time, not an approximation
-- **`TickerMode` works seamlessly** — wrapping a subtree in `TickerMode(enabled: false)` mutes `FixedTicker` the same way it mutes a normal `Ticker`. The timer stops but elapsed time keeps counting, so animations may complete instantly when re-enabled.
-- **Tests are deterministic** — `clock.now()` is faked automatically
+- **No mode-switch clock drift** — fixed and vsync modes use the same frame timestamp clock
+- **`TickerMode` works seamlessly** — wrapping a subtree in `TickerMode(enabled: false)` mutes `FixedTicker` the same way it mutes a normal `Ticker`. The timer stops but elapsed time keeps advancing on the frame clock, so animations may jump ahead when re-enabled.
+- **Tests follow Flutter frame semantics** — use `tester.pump()` to advance timers and deliver the scheduled frame callbacks
 
 ## Known limitations
 
 - **`pumpAndSettle()`** doesn't work with fixed-rate tickers — use `pumpAndSettleFixedTickers()` from `package:fixed_ticker/testing.dart`
-- **Timer jitter** — `Timer.periodic` doesn't guarantee exact intervals under load. Elapsed values are always accurate, but frame spacing may vary slightly.
+- **Timer jitter** — `Timer.periodic` doesn't guarantee exact intervals under load. Fixed-rate ticks can be delayed or coalesced before the next frame callback is delivered.
 - **Sub-interval durations** — if your animation duration is shorter than the tick interval, it completes on the first tick.

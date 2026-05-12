@@ -7,10 +7,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _interval = Duration(milliseconds: 33);
 
+TickerRate _rateFromInterval(Duration? interval) {
+  return interval == null
+      ? const TickerRate.vsync()
+      : TickerRate.interval(interval);
+}
+
 void main() {
   group('AnimationController lifecycle', () {
-    testWidgets('forward animation: value progresses from 0.0 to 1.0',
-        (tester) async {
+    testWidgets('forward animation: value progresses from 0.0 to 1.0', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -28,8 +35,9 @@ void main() {
       expect(controller.value, 1.0);
     });
 
-    testWidgets('reverse animation: value progresses from 1.0 to 0.0',
-        (tester) async {
+    testWidgets('reverse animation: value progresses from 1.0 to 0.0', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -71,8 +79,9 @@ void main() {
       controller.stop();
     });
 
-    testWidgets('animateTo(): reaches intermediate target and completes',
-        (tester) async {
+    testWidgets('animateTo(): reaches intermediate target and completes', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -85,8 +94,9 @@ void main() {
       expect(controller.value, 0.5);
     });
 
-    testWidgets('stop() mid-animation: freezes at current value',
-        (tester) async {
+    testWidgets('stop() mid-animation: freezes at current value', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -105,8 +115,9 @@ void main() {
   });
 
   group('animation value accuracy', () {
-    testWidgets('at 50% of duration, value is approximately 0.5 (linear)',
-        (tester) async {
+    testWidgets('at 50% of duration, value is approximately 0.5 (linear)', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -119,8 +130,9 @@ void main() {
       expect(controller.value, closeTo(0.5, 0.05));
     });
 
-    testWidgets('at 100% of duration, value is exactly 1.0 (clamped)',
-        (tester) async {
+    testWidgets('at 100% of duration, value is exactly 1.0 (clamped)', (
+      tester,
+    ) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _TestApp(
@@ -133,8 +145,9 @@ void main() {
       expect(controller.value, 1.0);
     });
 
-    testWidgets('with CurvedAnimation: value follows curve correctly',
-        (tester) async {
+    testWidgets('with CurvedAnimation: value follows curve correctly', (
+      tester,
+    ) async {
       late Animation<double> curved;
       await tester.pumpWidget(
         _TestApp(
@@ -154,8 +167,9 @@ void main() {
       expect(curved.value, 1.0);
     });
 
-    testWidgets('with Tween: interpolates correctly at each tick',
-        (tester) async {
+    testWidgets('with Tween: interpolates correctly at each tick', (
+      tester,
+    ) async {
       late Animation<double> tweened;
       await tester.pumpWidget(
         _TestApp(
@@ -220,8 +234,9 @@ void main() {
   });
 
   group('status listeners', () {
-    testWidgets('receives forward, completed, reverse, dismissed',
-        (tester) async {
+    testWidgets('receives forward, completed, reverse, dismissed', (
+      tester,
+    ) async {
       late AnimationController controller;
       final statuses = <AnimationStatus>[];
       await tester.pumpWidget(
@@ -314,8 +329,9 @@ void main() {
   });
 
   group('TickerMode integration', () {
-    testWidgets('TickerMode(enabled: false) pauses the animation',
-        (tester) async {
+    testWidgets('TickerMode(enabled: false) pauses the animation', (
+      tester,
+    ) async {
       late AnimationController controller;
       final tickerModeEnabled = ValueNotifier(true);
       await tester.pumpWidget(
@@ -338,8 +354,7 @@ void main() {
       expect(controller.value, valueBeforePause);
     });
 
-    testWidgets(
-        're-enabling TickerMode: animation resumes '
+    testWidgets('re-enabling TickerMode: animation resumes '
         '(elapsed includes paused time)', (tester) async {
       late AnimationController controller;
       final tickerModeEnabled = ValueNotifier(true);
@@ -367,7 +382,7 @@ void main() {
   });
 
   group('configurable interval', () {
-    testWidgets('custom tickerInterval fires at that rate', (tester) async {
+    testWidgets('custom tickerRate fires at that rate', (tester) async {
       var tickCount = 0;
       late AnimationController controller;
       await tester.pumpWidget(
@@ -380,8 +395,9 @@ void main() {
       );
 
       tickCount = 0;
-      await tester.pump(const Duration(milliseconds: 500));
-      // 500ms / 100ms = 5 timer ticks, plus the initial frame sync tick
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(tickCount, greaterThanOrEqualTo(5));
 
       controller.stop();
@@ -404,8 +420,9 @@ void main() {
   });
 
   group('absorbTicker', () {
-    testWidgets('absorbing a started FixedTicker transfers animation state',
-        (tester) async {
+    testWidgets('absorbing a started FixedTicker transfers animation state', (
+      tester,
+    ) async {
       final elapsed1 = <Duration>[];
       final ticker1 = FixedTicker(
         elapsed1.add,
@@ -433,9 +450,9 @@ void main() {
         ..dispose();
     });
 
-    testWidgets(
-        'absorbed FixedTicker preserves elapsed continuity',
-        (tester) async {
+    testWidgets('absorbed FixedTicker preserves elapsed continuity', (
+      tester,
+    ) async {
       final elapsed1 = <Duration>[];
       final ticker1 = FixedTicker(
         elapsed1.add,
@@ -465,8 +482,9 @@ void main() {
   });
 
   group('dynamic interval via mixin', () {
-    testWidgets('updateTickerInterval changes rate without recreating widget',
-        (tester) async {
+    testWidgets('updateTickerRate changes rate without recreating widget', (
+      tester,
+    ) async {
       late AnimationController controller;
       late _DynamicIntervalTestAppState state;
       await tester.pumpWidget(
@@ -495,13 +513,12 @@ void main() {
 
   group('mode switch elapsed continuity', () {
     // Verify that switching between normal (null) and fixed-rate modes
-    // mid-animation preserves elapsed time continuity. FixedTicker's
-    // DateTime _startTime is initialised on the first scheduleTick()
-    // regardless of mode, so both time bases stay in sync.
+    // mid-animation preserves elapsed time continuity. Both modes route
+    // callbacks through the parent Ticker's frame timestamp clock.
 
-    testWidgets(
-        'normal → fixed: value progresses forward after switch',
-        (tester) async {
+    testWidgets('normal → fixed: value progresses forward after switch', (
+      tester,
+    ) async {
       late AnimationController controller;
       late _DynamicIntervalTestAppState state;
       await tester.pumpWidget(
@@ -525,31 +542,27 @@ void main() {
       // Switch to fixed mode.
       state.setInterval(const Duration(milliseconds: 33));
 
-      // First pump: the parent's sync frame callback fires last and
-      // "corrects" the value (because it uses the original start time).
       await tester.pump(const Duration(milliseconds: 33));
       final valueAfterFirstPump = controller.value;
 
-      // Second pump: only the timer drives the animation. Since
-      // _startTime (DateTime) was set to clock.now() at switch time,
-      // the timer computes elapsed from the switch moment, not from
-      // the animation start. The value should continue forward.
+      // Second pump: the timer schedules a parent frame callback, and
+      // elapsed should still be based on the original frame start time.
       await tester.pump(const Duration(milliseconds: 33));
       final valueAfterSecondPump = controller.value;
 
       expect(
         valueAfterSecondPump,
         greaterThan(valueAfterFirstPump),
-        reason: 'Value should progress forward on second pump '
+        reason:
+            'Value should progress forward on second pump '
             'after normal→fixed switch, but went from '
-            '$valueAfterFirstPump to $valueAfterSecondPump '
-            '(elapsed reset to ~0 at switch time)',
+            '$valueAfterFirstPump to $valueAfterSecondPump',
       );
     });
 
-    testWidgets(
-        'fixed → normal: value progresses forward after switch',
-        (tester) async {
+    testWidgets('fixed → normal: value progresses forward after switch', (
+      tester,
+    ) async {
       late AnimationController controller;
       late _DynamicIntervalTestAppState state;
       await tester.pumpWidget(
@@ -580,15 +593,16 @@ void main() {
       expect(
         valueAfterSwitch,
         greaterThan(valueBeforeSwitch),
-        reason: 'Value should progress forward after '
+        reason:
+            'Value should progress forward after '
             'fixed→normal switch, but went from '
             '$valueBeforeSwitch to $valueAfterSwitch',
       );
     });
 
-    testWidgets(
-        'normal → fixed → normal round-trip: value never decreases',
-        (tester) async {
+    testWidgets('normal → fixed → normal round-trip: value never decreases', (
+      tester,
+    ) async {
       late AnimationController controller;
       late _DynamicIntervalTestAppState state;
       await tester.pumpWidget(
@@ -625,13 +639,15 @@ void main() {
       expect(
         phase2Value,
         greaterThan(phase1Value),
-        reason: 'Phase 2 value ($phase2Value) should be '
+        reason:
+            'Phase 2 value ($phase2Value) should be '
             '> phase 1 ($phase1Value)',
       );
       expect(
         phase3Value,
         greaterThan(phase2Value),
-        reason: 'Phase 3 value ($phase3Value) should be '
+        reason:
+            'Phase 3 value ($phase3Value) should be '
             '> phase 2 ($phase2Value)',
       );
     });
@@ -688,8 +704,9 @@ void main() {
       );
     });
 
-    testWidgets('works correctly when no FixedTickers are active',
-        (tester) async {
+    testWidgets('works correctly when no FixedTickers are active', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(home: Text('Hello')),
       );
@@ -724,7 +741,7 @@ class _TestAppState extends State<_TestApp>
   late final AnimationController _controller;
 
   @override
-  Duration? get tickerInterval => _interval;
+  TickerRate get tickerRate => const TickerRate.interval(_interval);
 
   @override
   void initState() {
@@ -779,7 +796,7 @@ class _MultiControllerTestAppState extends State<_MultiControllerTestApp>
   late final AnimationController _controller2;
 
   @override
-  Duration? get tickerInterval => _interval;
+  TickerRate get tickerRate => const TickerRate.interval(_interval);
 
   @override
   void initState() {
@@ -855,7 +872,7 @@ class _CustomIntervalTestAppState extends State<_CustomIntervalTestApp>
   late final AnimationController _controller;
 
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => TickerRate.interval(widget.interval);
 
   @override
   void initState() {
@@ -901,11 +918,11 @@ class _DynamicIntervalTestAppState extends State<_DynamicIntervalTestApp>
   Duration? _currentInterval;
 
   @override
-  Duration? get tickerInterval => _currentInterval;
+  TickerRate get tickerRate => _rateFromInterval(_currentInterval);
 
   void setInterval(Duration? interval) {
     setState(() => _currentInterval = interval);
-    updateTickerInterval();
+    updateTickerRate();
   }
 
   @override

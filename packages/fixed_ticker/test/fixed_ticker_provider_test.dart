@@ -7,6 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _interval = Duration(milliseconds: 33);
 
+TickerRate _rateFromInterval(Duration? interval) {
+  return interval == null
+      ? const TickerRate.vsync()
+      : TickerRate.interval(interval);
+}
+
 void main() {
   group('SingleFixedTickerProviderStateMixin', () {
     testWidgets('createTicker returns a FixedTicker with null interval '
@@ -22,8 +28,9 @@ void main() {
       expect((ticker! as FixedTicker).interval, isNull);
     });
 
-    testWidgets('createTicker returns a FixedTicker with custom interval',
-        (tester) async {
+    testWidgets('createTicker returns a FixedTicker with custom interval', (
+      tester,
+    ) async {
       Ticker? ticker;
       await tester.pumpWidget(
         _CustomIntervalSingleTickerWidget(
@@ -51,8 +58,10 @@ void main() {
       expect(error, isNotNull);
       expect(
         error!.message,
-        contains('SingleFixedTickerProviderStateMixin.createTicker '
-            'was called twice'),
+        contains(
+          'SingleFixedTickerProviderStateMixin.createTicker '
+          'was called twice',
+        ),
       );
     });
 
@@ -107,7 +116,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('updateTickerInterval applies new interval', (tester) async {
+    testWidgets('updateTickerRate applies new interval', (tester) async {
       late _UpdateIntervalSingleTickerWidgetState state;
       await tester.pumpWidget(
         _UpdateIntervalSingleTickerWidget(
@@ -128,8 +137,9 @@ void main() {
       state.controller.stop();
     });
 
-    testWidgets('updateTickerInterval can switch to null (normal mode)',
-        (tester) async {
+    testWidgets('updateTickerRate can switch to null (normal mode)', (
+      tester,
+    ) async {
       late _UpdateIntervalSingleTickerWidgetState state;
       await tester.pumpWidget(
         _UpdateIntervalSingleTickerWidget(
@@ -245,8 +255,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('activate() re-subscribes to TickerMode notifier',
-        (tester) async {
+    testWidgets('activate() re-subscribes to TickerMode notifier', (
+      tester,
+    ) async {
       late AnimationController controller;
       final tickerModeEnabled = ValueNotifier(true);
       await tester.pumpWidget(
@@ -273,8 +284,7 @@ void main() {
       controller.stop();
     });
 
-    testWidgets('updateTickerInterval applies to all tickers',
-        (tester) async {
+    testWidgets('updateTickerRate applies to all tickers', (tester) async {
       late _UpdateIntervalMultiTickerWidgetState state;
       await tester.pumpWidget(
         _UpdateIntervalMultiTickerWidget(
@@ -298,8 +308,9 @@ void main() {
   });
 
   group('TickerRateScope + SingleFixedTickerProviderStateMixin', () {
-    testWidgets('reads interval from TickerRateScope by default',
-        (tester) async {
+    testWidgets('reads interval from TickerRateScope by default', (
+      tester,
+    ) async {
       Ticker? ticker;
       await tester.pumpWidget(
         TickerRateScope(
@@ -317,8 +328,9 @@ void main() {
       );
     });
 
-    testWidgets('changing TickerRateScope rate auto-syncs the ticker',
-        (tester) async {
+    testWidgets('changing TickerRateScope rate auto-syncs the ticker', (
+      tester,
+    ) async {
       late _TickerRateScopeWrapperState scopeState;
       Ticker? ticker;
       await tester.pumpWidget(
@@ -345,8 +357,9 @@ void main() {
       );
     });
 
-    testWidgets('changing scope to vsync sets interval to null',
-        (tester) async {
+    testWidgets('changing scope to vsync sets interval to null', (
+      tester,
+    ) async {
       late _TickerRateScopeWrapperState scopeState;
       Ticker? ticker;
       await tester.pumpWidget(
@@ -367,8 +380,9 @@ void main() {
       expect((ticker! as FixedTicker).interval, isNull);
     });
 
-    testWidgets('overriding tickerInterval takes precedence over scope',
-        (tester) async {
+    testWidgets('overriding tickerRate takes precedence over scope', (
+      tester,
+    ) async {
       Ticker? ticker;
       await tester.pumpWidget(
         TickerRateScope(
@@ -387,8 +401,7 @@ void main() {
       );
     });
 
-    testWidgets('no scope defaults to null interval (vsync)',
-        (tester) async {
+    testWidgets('no scope defaults to null interval (vsync)', (tester) async {
       Ticker? ticker;
       await tester.pumpWidget(
         _ScopeAwareSingleTickerWidget(
@@ -402,8 +415,9 @@ void main() {
   });
 
   group('TickerRateScope + FixedTickerProviderStateMixin', () {
-    testWidgets('reads interval from TickerRateScope by default',
-        (tester) async {
+    testWidgets('reads interval from TickerRateScope by default', (
+      tester,
+    ) async {
       final tickers = <Ticker>[];
       await tester.pumpWidget(
         TickerRateScope(
@@ -423,8 +437,9 @@ void main() {
       }
     });
 
-    testWidgets('changing TickerRateScope rate auto-syncs all tickers',
-        (tester) async {
+    testWidgets('changing TickerRateScope rate auto-syncs all tickers', (
+      tester,
+    ) async {
       late _TickerRateScopeWrapperState scopeState;
       final tickers = <Ticker>[];
       await tester.pumpWidget(
@@ -455,8 +470,7 @@ void main() {
       }
     });
 
-    testWidgets('no scope defaults to null interval (vsync)',
-        (tester) async {
+    testWidgets('no scope defaults to null interval (vsync)', (tester) async {
       final tickers = <Ticker>[];
       await tester.pumpWidget(
         _ScopeAwareMultiTickerWidget(
@@ -537,7 +551,7 @@ class _SingleTickerAnimationWidgetState
   late final AnimationController _controller;
 
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => _rateFromInterval(widget.interval);
 
   @override
   void initState() {
@@ -612,7 +626,7 @@ class _CustomIntervalSingleTickerWidgetState
     extends State<_CustomIntervalSingleTickerWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => TickerRate.interval(widget.interval);
 
   @override
   void initState() {
@@ -648,7 +662,7 @@ class _CustomIntervalMultiTickerWidgetState
   final _tickers = <Ticker>[];
 
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => TickerRate.interval(widget.interval);
 
   @override
   void initState() {
@@ -696,7 +710,7 @@ class _MultiControllerAnimationWidgetState
   late final AnimationController _c2;
 
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => _rateFromInterval(widget.interval);
 
   @override
   void initState() {
@@ -758,11 +772,11 @@ class _UpdateIntervalSingleTickerWidgetState
   Duration? _currentInterval;
 
   @override
-  Duration? get tickerInterval => _currentInterval;
+  TickerRate get tickerRate => _rateFromInterval(_currentInterval);
 
   void setInterval(Duration? interval) {
     setState(() => _currentInterval = interval);
-    updateTickerInterval();
+    updateTickerRate();
   }
 
   @override
@@ -808,11 +822,11 @@ class _UpdateIntervalMultiTickerWidgetState
   Duration? _currentInterval;
 
   @override
-  Duration? get tickerInterval => _currentInterval;
+  TickerRate get tickerRate => _rateFromInterval(_currentInterval);
 
   void setInterval(Duration? interval) {
     setState(() => _currentInterval = interval);
-    updateTickerInterval();
+    updateTickerRate();
   }
 
   @override
@@ -935,7 +949,7 @@ class _ScopeOverrideSingleTickerWidgetState
   late final Ticker _ticker;
 
   @override
-  Duration? get tickerInterval => widget.interval;
+  TickerRate get tickerRate => _rateFromInterval(widget.interval);
 
   @override
   void initState() {

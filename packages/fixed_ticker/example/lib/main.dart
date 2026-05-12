@@ -8,7 +8,7 @@ void main() => runApp(const FixedTickerExample());
 ///
 /// Two independent animations live under a single [TickerRateScope].
 /// Changing the rate in the parent automatically syncs both — no
-/// `updateTickerInterval()` needed.
+/// `updateTickerRate()` needed.
 class FixedTickerExample extends StatelessWidget {
   /// Creates the example app.
   const FixedTickerExample({super.key});
@@ -208,9 +208,6 @@ class _BouncingBallState extends State<_BouncingBall>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-    _controller.addListener(() {
-      debugPrint('ball value: ${_controller.value}');
-    });
   }
 
   @override

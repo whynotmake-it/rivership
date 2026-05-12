@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
@@ -16,24 +15,24 @@ import 'package:meta/meta.dart';
 /// and fixed-rate modes (or between different fixed rates) without recreating
 /// the ticker or losing animation state.
 ///
-/// ## Drift guarantees (fixed-rate mode)
+/// ## Elapsed time in fixed-rate mode
 ///
-/// Elapsed time is computed as `clock.now().difference(_startTime)` on every
-/// tick, so there is **zero drift accumulation** regardless of timer jitter.
-/// Each callback always receives the true wall-clock elapsed time since the
-/// animation started.
+/// The periodic timer does not compute elapsed time itself. Instead, each
+/// timer tick schedules a frame callback through the parent [Ticker]. The
+/// parent computes elapsed from Flutter's monotonic frame timestamp, so fixed
+/// and normal modes use the same time source across mode switches.
 ///
 /// ## Muting semantics
 ///
 /// When muted (e.g. via `TickerMode`), the periodic timer is cancelled and no
 /// callbacks fire. However, elapsed time **includes** the muted period — this
-/// matches the behavior of the [Ticker] class, meaning an animation may
-/// complete instantly when unmuted if enough wall-clock time has passed.
+/// matches the behavior of the [Ticker] class, meaning an animation may jump
+/// ahead when unmuted if enough frame time has passed.
 ///
 /// ## Testing
 ///
-/// [FixedTicker] works automatically in both `fakeAsync` and `testWidgets`
-/// without any extra setup. Elapsed values are deterministic in tests.
+/// In fixed-rate mode, timer ticks schedule frame callbacks. Widget tests
+/// should use `tester.pump()` to advance both timers and frames.
 ///
 /// **Important:** When using a fixed [interval], the standard
 /// `tester.pumpAndSettle()` does **not** detect active [FixedTicker] timers.
@@ -49,11 +48,10 @@ class FixedTicker extends Ticker {
     super.onTick, {
     Duration? interval,
     super.debugLabel,
-  })  : assert(
+  }) : assert(
          interval == null || interval > Duration.zero,
          'interval must be positive when non-null, got $interval.',
        ),
-       _onTick = onTick,
        _interval = interval;
 
   /// The fixed interval between ticks, or `null` for normal vsync-driven
@@ -76,41 +74,20 @@ class FixedTicker extends Ticker {
     final wasFixed = _interval != null;
     _interval = value;
 
-    if (_startTime != null) {
-      debugPrint(
-        '[FixedTicker] interval setter: switching to $value, '
-        'elapsed=${clock.now().difference(_startTime!)}',
-      );
-    }
-
     if (!isActive || muted) return;
 
     if (value != null) {
-      if (_timer != null && _timer!.isActive) {
-        _timer!.cancel();
-        _timer = Timer.periodic(value, _handleTimerTick);
-      } else {
-        _startTime ??= clock.now();
-        if (!super.scheduled) {
-          super.scheduleTick();
-        }
-        _timer = Timer.periodic(value, _handleTimerTick);
-        _activeCount++;
-      }
+      _restartTimer(value);
     } else if (wasFixed) {
-      _timer!.cancel();
-      _timer = null;
-      _activeCount--;
-      if (!super.scheduled) {
-        super.scheduleTick();
-      }
+      _stopTimer();
+    }
+
+    if (shouldScheduleTick) {
+      super.scheduleTick();
     }
   }
 
-  final TickerCallback _onTick;
   Timer? _timer;
-  DateTime? _startTime;
-  bool _needsParentSync = false;
 
   static int _activeCount = 0;
 
@@ -122,40 +99,15 @@ class FixedTicker extends Ticker {
   static bool get hasActiveTimers => _activeCount > 0;
 
   @override
-  bool get scheduled => _interval != null
-      ? ((_timer?.isActive ?? false) || super.scheduled)
-      : super.scheduled;
-
-  @override
-  bool get isTicking =>
-      _interval != null ? (isActive && !muted) : super.isTicking;
-
-  @override
-  TickerFuture start() {
-    _startTime = null;
-    _needsParentSync = true;
-    return super.start();
-  }
-
-  @override
   void scheduleTick({bool rescheduling = false}) {
-    if (_startTime == null) {
-      _startTime = clock.now();
-      debugPrint('[FixedTicker] scheduleTick: _startTime set to $_startTime');
-    }
     if (_interval != null) {
-      assert(!scheduled, 'Cannot schedule a tick while already scheduled.');
-      if (_needsParentSync) {
-        // Register a frame callback so the parent's _tick fires and sets its
-        // private _startTime (needed for absorbTicker). The parent's _tick
-        // calls the real callback with elapsed ≈ 0, then checks
-        // shouldScheduleTick — which returns false because our scheduled
-        // override reports the timer as active — preventing re-entry.
-        _needsParentSync = false;
+      if (rescheduling) {
+        return;
+      }
+      _startTimer(_interval!);
+      if (shouldScheduleTick) {
         super.scheduleTick(rescheduling: rescheduling);
       }
-      _timer = Timer.periodic(_interval!, _handleTimerTick);
-      _activeCount++;
     } else {
       super.scheduleTick(rescheduling: rescheduling);
     }
@@ -163,29 +115,36 @@ class FixedTicker extends Ticker {
 
   @override
   void unscheduleTick() {
-    if (_timer != null && _timer!.isActive) {
-      _timer!.cancel();
-      _timer = null;
-      _activeCount--;
-    }
-    if (super.scheduled) {
-      _needsParentSync = true;
-    }
+    _stopTimer();
     super.unscheduleTick();
   }
 
-  @override
-  void absorbTicker(Ticker originalTicker) {
-    if (originalTicker is FixedTicker) {
-      _startTime = originalTicker._startTime;
+  void _startTimer(Duration interval) {
+    if (_timer?.isActive ?? false) return;
+    _timer = Timer.periodic(interval, _handleTimerTick);
+    _activeCount++;
+  }
+
+  void _restartTimer(Duration interval) {
+    if (_timer?.isActive ?? false) {
+      _timer!.cancel();
+      _timer = Timer.periodic(interval, _handleTimerTick);
+    } else {
+      _startTimer(interval);
     }
-    _needsParentSync = false;
-    super.absorbTicker(originalTicker);
+  }
+
+  void _stopTimer() {
+    if (_timer?.isActive ?? false) {
+      _timer!.cancel();
+      _activeCount--;
+    }
+    _timer = null;
   }
 
   void _handleTimerTick(Timer timer) {
-    final elapsed = clock.now().difference(_startTime!);
-    debugPrint('[FixedTicker] _handleTimerTick: elapsed=$elapsed');
-    _onTick(elapsed);
+    if (shouldScheduleTick) {
+      super.scheduleTick();
+    }
   }
 }

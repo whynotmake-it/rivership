@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 /// Widgets using `SingleFixedTickerProviderStateMixin` or
 /// `FixedTickerProviderStateMixin` automatically pick up the rate from the
 /// nearest [TickerRateScope] ancestor (unless they override
-/// `tickerInterval`).
+/// `tickerRate`).
 ///
 /// ```dart
 /// TickerRateScope(
@@ -28,9 +28,7 @@ class TickerRateScope extends InheritedWidget {
   /// Returns the [TickerRate] from the nearest [TickerRateScope] ancestor,
   /// or `null` if none exists.
   static TickerRate? maybeOf(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<TickerRateScope>()
-        ?.rate;
+    return context.dependOnInheritedWidgetOfExactType<TickerRateScope>()?.rate;
   }
 
   /// Returns the [TickerRate] from the nearest [TickerRateScope] ancestor,
@@ -40,6 +38,5 @@ class TickerRateScope extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(TickerRateScope oldWidget) =>
-      rate != oldWidget.rate;
+  bool updateShouldNotify(TickerRateScope oldWidget) => rate != oldWidget.rate;
 }

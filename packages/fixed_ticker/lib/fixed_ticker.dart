@@ -1,5 +1,5 @@
 /// A drop-in Ticker replacement that optionally uses Timer.periodic at a fixed
-/// interval with clock.now()-based elapsed tracking.
+/// interval to gate frame callbacks.
 library fixed_ticker;
 
 export 'src/fixed_ticker.dart';
