@@ -1,16 +1,19 @@
-# fixed_ticker_example
+# Fixed Ticker Example
 
-A new Flutter project.
+Example app for `package:fixed_ticker`.
 
-## Getting Started
+The app shows how changing `TickerRate` affects an animation at runtime. Use it when checking that fixed-rate ticking, vsync ticking, and `TickerRateScope` changes behave as expected.
 
-This project is a starting point for a Flutter application.
+## Running
 
-A few resources to get you started if this is your first Flutter project:
+From this directory:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```sh
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Or from the repository root:
+
+```sh
+flutter run -d macos --project packages/fixed_ticker/example
+```
