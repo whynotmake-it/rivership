@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _interval = Duration(milliseconds: 33);
+
 void main() {
   group('SingleFixedTickerProviderStateMixin', () {
-    testWidgets('createTicker returns a FixedTicker with the mixin interval',
-        (tester) async {
+    testWidgets('createTicker returns a FixedTicker with null interval '
+        'by default', (tester) async {
       Ticker? ticker;
       await tester.pumpWidget(
         _SingleTickerTestWidget(
@@ -15,8 +19,24 @@ void main() {
       );
 
       expect(ticker, isA<FixedTicker>());
-      expect((ticker! as FixedTicker).interval,
-          const Duration(milliseconds: 33));
+      expect((ticker! as FixedTicker).interval, isNull);
+    });
+
+    testWidgets('createTicker returns a FixedTicker with custom interval',
+        (tester) async {
+      Ticker? ticker;
+      await tester.pumpWidget(
+        _CustomIntervalSingleTickerWidget(
+          interval: const Duration(milliseconds: 100),
+          onTicker: (t) => ticker = t,
+        ),
+      );
+
+      expect(ticker, isA<FixedTicker>());
+      expect(
+        (ticker! as FixedTicker).interval,
+        const Duration(milliseconds: 100),
+      );
     });
 
     testWidgets('throws on second createTicker call', (tester) async {
@@ -43,6 +63,7 @@ void main() {
         _TickerModeWrapper(
           tickerModeEnabled: tickerModeEnabled,
           child: _SingleTickerAnimationWidget(
+            interval: _interval,
             onInit: (c) => controller = c..forward(),
             duration: const Duration(milliseconds: 330),
           ),
@@ -69,26 +90,11 @@ void main() {
       expect(controller.value, greaterThan(valueBeforePause));
     });
 
-    testWidgets('custom interval via override', (tester) async {
-      Ticker? ticker;
-      await tester.pumpWidget(
-        _CustomIntervalSingleTickerWidget(
-          interval: const Duration(milliseconds: 100),
-          onTicker: (t) => ticker = t,
-        ),
-      );
-
-      expect(ticker, isA<FixedTicker>());
-      expect(
-        (ticker! as FixedTicker).interval,
-        const Duration(milliseconds: 100),
-      );
-    });
-
     testWidgets('dispose asserts ticker not active', (tester) async {
       late AnimationController controller;
       await tester.pumpWidget(
         _SingleTickerAnimationWidget(
+          interval: _interval,
           onInit: (c) => controller = c..forward(),
           duration: const Duration(milliseconds: 3300),
         ),
@@ -97,10 +103,49 @@ void main() {
       await tester.pump(const Duration(milliseconds: 33));
       expect(controller.isAnimating, isTrue);
 
-      // Removing widget from tree while ticker is active should assert
-      // (the State.dispose will be called, which disposes the controller first)
       await tester.pumpWidget(const SizedBox());
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('updateTickerInterval applies new interval', (tester) async {
+      late _UpdateIntervalSingleTickerWidgetState state;
+      await tester.pumpWidget(
+        _UpdateIntervalSingleTickerWidget(
+          initialInterval: _interval,
+          onState: (s) => state = s,
+        ),
+      );
+
+      unawaited(state.controller.forward());
+      await tester.pump(const Duration(milliseconds: 33));
+      expect(state.controller.isAnimating, isTrue);
+
+      // Switch to a different interval
+      state.setInterval(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(state.controller.value, greaterThan(0));
+
+      state.controller.stop();
+    });
+
+    testWidgets('updateTickerInterval can switch to null (normal mode)',
+        (tester) async {
+      late _UpdateIntervalSingleTickerWidgetState state;
+      await tester.pumpWidget(
+        _UpdateIntervalSingleTickerWidget(
+          initialInterval: _interval,
+          onState: (s) => state = s,
+        ),
+      );
+
+      unawaited(state.controller.forward());
+      await tester.pump(const Duration(milliseconds: 33));
+
+      state.setInterval(null);
+      expect(FixedTicker.hasActiveTimers, isFalse);
+      expect(state.controller.isAnimating, isTrue);
+
+      state.controller.stop();
     });
   });
 
@@ -120,6 +165,18 @@ void main() {
       }
     });
 
+    testWidgets('tickers have null interval by default', (tester) async {
+      final tickers = <Ticker>[];
+      await tester.pumpWidget(
+        _MultiTickerTestWidget(
+          tickerCount: 1,
+          onTickers: tickers.addAll,
+        ),
+      );
+
+      expect((tickers.first as FixedTicker).interval, isNull);
+    });
+
     testWidgets('TickerMode disables/enables all tickers', (tester) async {
       late AnimationController c1;
       late AnimationController c2;
@@ -128,6 +185,7 @@ void main() {
         _TickerModeWrapper(
           tickerModeEnabled: tickerModeEnabled,
           child: _MultiControllerAnimationWidget(
+            interval: _interval,
             onInit: (ctrl1, ctrl2) {
               c1 = ctrl1..forward();
               c2 = ctrl2..forward();
@@ -171,6 +229,7 @@ void main() {
     testWidgets('dispose cleans up all tickers', (tester) async {
       await tester.pumpWidget(
         _MultiControllerAnimationWidget(
+          interval: _interval,
           onInit: (ctrl1, ctrl2) {
             ctrl1.forward();
             ctrl2.forward();
@@ -190,12 +249,12 @@ void main() {
         (tester) async {
       late AnimationController controller;
       final tickerModeEnabled = ValueNotifier(true);
-      // Test that moving the widget in the tree re-subscribes
       await tester.pumpWidget(
         _TickerModeWrapper(
           tickerModeEnabled: tickerModeEnabled,
           child: _SingleTickerAnimationWidget(
             key: const GlobalObjectKey('test-widget'),
+            interval: _interval,
             onInit: (c) => controller = c..forward(),
             duration: const Duration(milliseconds: 1000),
           ),
@@ -205,7 +264,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 99));
       expect(controller.value, greaterThan(0.0));
 
-      // Disable ticker mode, verify it still works after re-subscribe
       tickerModeEnabled.value = false;
       await tester.pump();
       final frozenValue = controller.value;
@@ -213,6 +271,203 @@ void main() {
       expect(controller.value, frozenValue);
 
       controller.stop();
+    });
+
+    testWidgets('updateTickerInterval applies to all tickers',
+        (tester) async {
+      late _UpdateIntervalMultiTickerWidgetState state;
+      await tester.pumpWidget(
+        _UpdateIntervalMultiTickerWidget(
+          initialInterval: _interval,
+          onState: (s) => state = s,
+        ),
+      );
+
+      unawaited(state.c1.forward());
+      unawaited(state.c2.forward());
+      await tester.pump(const Duration(milliseconds: 33));
+
+      state.setInterval(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(state.c1.value, greaterThan(0));
+      expect(state.c2.value, greaterThan(0));
+
+      state.c1.stop();
+      state.c2.stop();
+    });
+  });
+
+  group('TickerRateScope + SingleFixedTickerProviderStateMixin', () {
+    testWidgets('reads interval from TickerRateScope by default',
+        (tester) async {
+      Ticker? ticker;
+      await tester.pumpWidget(
+        TickerRateScope(
+          rate: TickerRate.fps(30),
+          child: _ScopeAwareSingleTickerWidget(
+            onTicker: (t) => ticker = t,
+          ),
+        ),
+      );
+
+      expect(ticker, isA<FixedTicker>());
+      expect(
+        (ticker! as FixedTicker).interval!.inMicroseconds,
+        closeTo(33333, 1),
+      );
+    });
+
+    testWidgets('changing TickerRateScope rate auto-syncs the ticker',
+        (tester) async {
+      late _TickerRateScopeWrapperState scopeState;
+      Ticker? ticker;
+      await tester.pumpWidget(
+        _TickerRateScopeWrapper(
+          initialRate: TickerRate.fps(30),
+          onState: (s) => scopeState = s,
+          child: _ScopeAwareSingleTickerWidget(
+            onTicker: (t) => ticker = t,
+          ),
+        ),
+      );
+
+      expect(
+        (ticker! as FixedTicker).interval!.inMicroseconds,
+        closeTo(33333, 1),
+      );
+
+      scopeState.setRate(TickerRate.fps(10));
+      await tester.pump();
+
+      expect(
+        (ticker! as FixedTicker).interval!.inMicroseconds,
+        closeTo(100000, 1),
+      );
+    });
+
+    testWidgets('changing scope to vsync sets interval to null',
+        (tester) async {
+      late _TickerRateScopeWrapperState scopeState;
+      Ticker? ticker;
+      await tester.pumpWidget(
+        _TickerRateScopeWrapper(
+          initialRate: TickerRate.fps(30),
+          onState: (s) => scopeState = s,
+          child: _ScopeAwareSingleTickerWidget(
+            onTicker: (t) => ticker = t,
+          ),
+        ),
+      );
+
+      expect((ticker! as FixedTicker).interval, isNotNull);
+
+      scopeState.setRate(const TickerRate.vsync());
+      await tester.pump();
+
+      expect((ticker! as FixedTicker).interval, isNull);
+    });
+
+    testWidgets('overriding tickerInterval takes precedence over scope',
+        (tester) async {
+      Ticker? ticker;
+      await tester.pumpWidget(
+        TickerRateScope(
+          rate: TickerRate.fps(30),
+          child: _ScopeOverrideSingleTickerWidget(
+            interval: const Duration(milliseconds: 100),
+            onTicker: (t) => ticker = t,
+          ),
+        ),
+      );
+
+      expect(ticker, isA<FixedTicker>());
+      expect(
+        (ticker! as FixedTicker).interval,
+        const Duration(milliseconds: 100),
+      );
+    });
+
+    testWidgets('no scope defaults to null interval (vsync)',
+        (tester) async {
+      Ticker? ticker;
+      await tester.pumpWidget(
+        _ScopeAwareSingleTickerWidget(
+          onTicker: (t) => ticker = t,
+        ),
+      );
+
+      expect(ticker, isA<FixedTicker>());
+      expect((ticker! as FixedTicker).interval, isNull);
+    });
+  });
+
+  group('TickerRateScope + FixedTickerProviderStateMixin', () {
+    testWidgets('reads interval from TickerRateScope by default',
+        (tester) async {
+      final tickers = <Ticker>[];
+      await tester.pumpWidget(
+        TickerRateScope(
+          rate: TickerRate.fps(30),
+          child: _ScopeAwareMultiTickerWidget(
+            onTickers: tickers.addAll,
+          ),
+        ),
+      );
+
+      for (final ticker in tickers) {
+        expect(ticker, isA<FixedTicker>());
+        expect(
+          (ticker as FixedTicker).interval!.inMicroseconds,
+          closeTo(33333, 1),
+        );
+      }
+    });
+
+    testWidgets('changing TickerRateScope rate auto-syncs all tickers',
+        (tester) async {
+      late _TickerRateScopeWrapperState scopeState;
+      final tickers = <Ticker>[];
+      await tester.pumpWidget(
+        _TickerRateScopeWrapper(
+          initialRate: TickerRate.fps(30),
+          onState: (s) => scopeState = s,
+          child: _ScopeAwareMultiTickerWidget(
+            onTickers: tickers.addAll,
+          ),
+        ),
+      );
+
+      for (final ticker in tickers) {
+        expect(
+          (ticker as FixedTicker).interval!.inMicroseconds,
+          closeTo(33333, 1),
+        );
+      }
+
+      scopeState.setRate(TickerRate.fps(10));
+      await tester.pump();
+
+      for (final ticker in tickers) {
+        expect(
+          (ticker as FixedTicker).interval!.inMicroseconds,
+          closeTo(100000, 1),
+        );
+      }
+    });
+
+    testWidgets('no scope defaults to null interval (vsync)',
+        (tester) async {
+      final tickers = <Ticker>[];
+      await tester.pumpWidget(
+        _ScopeAwareMultiTickerWidget(
+          onTickers: tickers.addAll,
+        ),
+      );
+
+      for (final ticker in tickers) {
+        expect(ticker, isA<FixedTicker>());
+        expect((ticker as FixedTicker).interval, isNull);
+      }
     });
   });
 }
@@ -263,11 +518,13 @@ class _SingleTickerAnimationWidget extends StatefulWidget {
   const _SingleTickerAnimationWidget({
     required this.onInit,
     required this.duration,
+    this.interval,
     super.key,
   });
 
   final void Function(AnimationController) onInit;
   final Duration duration;
+  final Duration? interval;
 
   @override
   State<_SingleTickerAnimationWidget> createState() =>
@@ -278,6 +535,9 @@ class _SingleTickerAnimationWidgetState
     extends State<_SingleTickerAnimationWidget>
     with SingleFixedTickerProviderStateMixin {
   late final AnimationController _controller;
+
+  @override
+  Duration? get tickerInterval => widget.interval;
 
   @override
   void initState() {
@@ -352,7 +612,7 @@ class _CustomIntervalSingleTickerWidgetState
     extends State<_CustomIntervalSingleTickerWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  Duration get tickerInterval => widget.interval;
+  Duration? get tickerInterval => widget.interval;
 
   @override
   void initState() {
@@ -388,7 +648,7 @@ class _CustomIntervalMultiTickerWidgetState
   final _tickers = <Ticker>[];
 
   @override
-  Duration get tickerInterval => widget.interval;
+  Duration? get tickerInterval => widget.interval;
 
   @override
   void initState() {
@@ -416,11 +676,13 @@ class _MultiControllerAnimationWidget extends StatefulWidget {
     required this.onInit,
     required this.duration1,
     required this.duration2,
+    this.interval,
   });
 
   final void Function(AnimationController, AnimationController) onInit;
   final Duration duration1;
   final Duration duration2;
+  final Duration? interval;
 
   @override
   State<_MultiControllerAnimationWidget> createState() =>
@@ -432,6 +694,9 @@ class _MultiControllerAnimationWidgetState
     with FixedTickerProviderStateMixin {
   late final AnimationController _c1;
   late final AnimationController _c2;
+
+  @override
+  Duration? get tickerInterval => widget.interval;
 
   @override
   void initState() {
@@ -470,4 +735,259 @@ class _TickerModeWrapper extends StatelessWidget {
       },
     );
   }
+}
+
+class _UpdateIntervalSingleTickerWidget extends StatefulWidget {
+  const _UpdateIntervalSingleTickerWidget({
+    required this.initialInterval,
+    required this.onState,
+  });
+
+  final Duration? initialInterval;
+  final void Function(_UpdateIntervalSingleTickerWidgetState) onState;
+
+  @override
+  State<_UpdateIntervalSingleTickerWidget> createState() =>
+      _UpdateIntervalSingleTickerWidgetState();
+}
+
+class _UpdateIntervalSingleTickerWidgetState
+    extends State<_UpdateIntervalSingleTickerWidget>
+    with SingleFixedTickerProviderStateMixin {
+  late final AnimationController controller;
+  Duration? _currentInterval;
+
+  @override
+  Duration? get tickerInterval => _currentInterval;
+
+  void setInterval(Duration? interval) {
+    setState(() => _currentInterval = interval);
+    updateTickerInterval();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _currentInterval = widget.initialInterval;
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    widget.onState(this);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
+}
+
+class _UpdateIntervalMultiTickerWidget extends StatefulWidget {
+  const _UpdateIntervalMultiTickerWidget({
+    required this.initialInterval,
+    required this.onState,
+  });
+
+  final Duration? initialInterval;
+  final void Function(_UpdateIntervalMultiTickerWidgetState) onState;
+
+  @override
+  State<_UpdateIntervalMultiTickerWidget> createState() =>
+      _UpdateIntervalMultiTickerWidgetState();
+}
+
+class _UpdateIntervalMultiTickerWidgetState
+    extends State<_UpdateIntervalMultiTickerWidget>
+    with FixedTickerProviderStateMixin {
+  late final AnimationController c1;
+  late final AnimationController c2;
+  Duration? _currentInterval;
+
+  @override
+  Duration? get tickerInterval => _currentInterval;
+
+  void setInterval(Duration? interval) {
+    setState(() => _currentInterval = interval);
+    updateTickerInterval();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _currentInterval = widget.initialInterval;
+    c1 = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    c2 = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    widget.onState(this);
+  }
+
+  @override
+  void dispose() {
+    c1.dispose();
+    c2.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
+}
+
+// ---------------------------------------------------------------------------
+// TickerRateScope test helpers
+// ---------------------------------------------------------------------------
+
+class _TickerRateScopeWrapper extends StatefulWidget {
+  const _TickerRateScopeWrapper({
+    required this.initialRate,
+    required this.child,
+    this.onState,
+  });
+
+  final TickerRate initialRate;
+  final Widget child;
+  final void Function(_TickerRateScopeWrapperState)? onState;
+
+  @override
+  State<_TickerRateScopeWrapper> createState() =>
+      _TickerRateScopeWrapperState();
+}
+
+class _TickerRateScopeWrapperState extends State<_TickerRateScopeWrapper> {
+  late TickerRate _rate;
+
+  void setRate(TickerRate rate) {
+    setState(() => _rate = rate);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _rate = widget.initialRate;
+    widget.onState?.call(this);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TickerRateScope(rate: _rate, child: widget.child);
+  }
+}
+
+class _ScopeAwareSingleTickerWidget extends StatefulWidget {
+  const _ScopeAwareSingleTickerWidget({
+    this.onTicker,
+  });
+
+  final void Function(Ticker)? onTicker;
+
+  @override
+  State<_ScopeAwareSingleTickerWidget> createState() =>
+      _ScopeAwareSingleTickerWidgetState();
+}
+
+class _ScopeAwareSingleTickerWidgetState
+    extends State<_ScopeAwareSingleTickerWidget>
+    with SingleFixedTickerProviderStateMixin {
+  late final Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((_) {});
+    widget.onTicker?.call(_ticker);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
+}
+
+class _ScopeOverrideSingleTickerWidget extends StatefulWidget {
+  const _ScopeOverrideSingleTickerWidget({
+    required this.interval,
+    this.onTicker,
+  });
+
+  final Duration? interval;
+  final void Function(Ticker)? onTicker;
+
+  @override
+  State<_ScopeOverrideSingleTickerWidget> createState() =>
+      _ScopeOverrideSingleTickerWidgetState();
+}
+
+class _ScopeOverrideSingleTickerWidgetState
+    extends State<_ScopeOverrideSingleTickerWidget>
+    with SingleFixedTickerProviderStateMixin {
+  late final Ticker _ticker;
+
+  @override
+  Duration? get tickerInterval => widget.interval;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((_) {});
+    widget.onTicker?.call(_ticker);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
+}
+
+class _ScopeAwareMultiTickerWidget extends StatefulWidget {
+  const _ScopeAwareMultiTickerWidget({
+    this.onTickers,
+  });
+
+  final void Function(List<Ticker>)? onTickers;
+
+  @override
+  State<_ScopeAwareMultiTickerWidget> createState() =>
+      _ScopeAwareMultiTickerWidgetState();
+}
+
+class _ScopeAwareMultiTickerWidgetState
+    extends State<_ScopeAwareMultiTickerWidget>
+    with FixedTickerProviderStateMixin {
+  final _tickers = <Ticker>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _tickers
+      ..add(createTicker((_) {}))
+      ..add(createTicker((_) {}));
+    widget.onTickers?.call(_tickers);
+  }
+
+  @override
+  void dispose() {
+    for (final ticker in _tickers) {
+      ticker.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
 }

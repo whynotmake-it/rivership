@@ -1,25 +1,22 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
-/// A [Ticker] that fires callbacks at a fixed interval using
+/// A [Ticker] that optionally fires callbacks at a fixed interval using
 /// [Timer.periodic], rather than being driven by the framework's vsync signal.
 ///
-/// ## When to use FixedTicker vs regular Ticker
+/// When [interval] is `null`, this behaves exactly like a normal [Ticker] —
+/// callbacks fire every frame at the display's refresh rate. When [interval] is
+/// set, callbacks fire at that fixed rate instead.
 ///
-/// Use [FixedTicker] when you want animations to run at a **lower, fixed
-/// frame rate** (e.g. 30fps or 10fps) instead of the display's native refresh
-/// rate. This is useful for:
-/// - Reducing CPU/GPU load for non-critical animations
-/// - Achieving a specific visual cadence (e.g. retro-style animation)
-/// - Background or secondary animations that don't need 60/120fps
+/// The [interval] is mutable: changing it at runtime switches between normal
+/// and fixed-rate modes (or between different fixed rates) without recreating
+/// the ticker or losing animation state.
 ///
-/// Use a regular [Ticker] (via `SingleTickerProviderStateMixin`) when you need
-/// the smoothest possible animation tied to the display refresh rate.
-///
-/// ## Drift guarantees
+/// ## Drift guarantees (fixed-rate mode)
 ///
 /// Elapsed time is computed as `clock.now().difference(_startTime)` on every
 /// tick, so there is **zero drift accumulation** regardless of timer jitter.
@@ -30,36 +27,85 @@ import 'package:meta/meta.dart';
 ///
 /// When muted (e.g. via `TickerMode`), the periodic timer is cancelled and no
 /// callbacks fire. However, elapsed time **includes** the muted period — this
-/// matches the behavior of the parent [Ticker] class, meaning an animation may
+/// matches the behavior of the [Ticker] class, meaning an animation may
 /// complete instantly when unmuted if enough wall-clock time has passed.
 ///
 /// ## Testing
 ///
 /// [FixedTicker] works automatically in both `fakeAsync` and `testWidgets`
-/// without any extra setup. `clock.now()` from `package:clock` is
-/// automatically faked by both `FakeAsync.run` and the Flutter test binding's
-/// internal `FakeAsync`, so elapsed values are deterministic in tests.
+/// without any extra setup. Elapsed values are deterministic in tests.
 ///
-/// **Important:** The standard `tester.pumpAndSettle()` does **not** detect
-/// active [FixedTicker] timers. Use `tester.pumpAndSettleFixedTickers()` from
+/// **Important:** When using a fixed [interval], the standard
+/// `tester.pumpAndSettle()` does **not** detect active [FixedTicker] timers.
+/// Use `tester.pumpAndSettleFixedTickers()` from
 /// `package:fixed_ticker/testing.dart` instead.
 class FixedTicker extends Ticker {
-  /// Creates a [FixedTicker] that fires [onTick] every [interval].
+  /// Creates a [FixedTicker].
   ///
-  /// The default [interval] of 33ms corresponds to approximately 30fps.
+  /// When [interval] is `null` (the default), this behaves like a normal
+  /// [Ticker]. When set to a [Duration], callbacks fire at that fixed rate
+  /// using [Timer.periodic].
   FixedTicker(
-    TickerCallback onTick, {
-    this.interval = const Duration(milliseconds: 33),
-    String? debugLabel,
-  }) : _onTick = onTick,
-       // Pass a no-op to the parent so that when the framework's frame
-       // callback fires (_tick), it sets the parent's private _startTime
-       // (needed for absorbTicker) without invoking the real animation
-       // callback. Our Timer.periodic is the sole source of onTick calls.
-       super((_) {}, debugLabel: debugLabel);
+    super.onTick, {
+    Duration? interval,
+    super.debugLabel,
+  })  : assert(
+         interval == null || interval > Duration.zero,
+         'interval must be positive when non-null, got $interval.',
+       ),
+       _onTick = onTick,
+       _interval = interval;
 
-  /// The fixed interval between ticks.
-  final Duration interval;
+  /// The fixed interval between ticks, or `null` for normal vsync-driven
+  /// ticking.
+  ///
+  /// Changing this while the ticker is active switches modes immediately:
+  /// - `null` -> [Duration]: starts a periodic timer, parent frame callbacks
+  ///   stop driving the animation.
+  /// - [Duration] -> `null`: cancels the timer, parent frame callbacks resume.
+  /// - [Duration] -> [Duration]: restarts the timer with the new interval.
+  Duration? get interval => _interval;
+  Duration? _interval;
+
+  set interval(Duration? value) {
+    assert(
+      value == null || value > Duration.zero,
+      'interval must be positive when non-null, got $value.',
+    );
+    if (_interval == value) return;
+    final wasFixed = _interval != null;
+    _interval = value;
+
+    if (_startTime != null) {
+      debugPrint(
+        '[FixedTicker] interval setter: switching to $value, '
+        'elapsed=${clock.now().difference(_startTime!)}',
+      );
+    }
+
+    if (!isActive || muted) return;
+
+    if (value != null) {
+      if (_timer != null && _timer!.isActive) {
+        _timer!.cancel();
+        _timer = Timer.periodic(value, _handleTimerTick);
+      } else {
+        _startTime ??= clock.now();
+        if (!super.scheduled) {
+          super.scheduleTick();
+        }
+        _timer = Timer.periodic(value, _handleTimerTick);
+        _activeCount++;
+      }
+    } else if (wasFixed) {
+      _timer!.cancel();
+      _timer = null;
+      _activeCount--;
+      if (!super.scheduled) {
+        super.scheduleTick();
+      }
+    }
+  }
 
   final TickerCallback _onTick;
   Timer? _timer;
@@ -76,10 +122,13 @@ class FixedTicker extends Ticker {
   static bool get hasActiveTimers => _activeCount > 0;
 
   @override
-  bool get scheduled => _timer?.isActive ?? false;
+  bool get scheduled => _interval != null
+      ? ((_timer?.isActive ?? false) || super.scheduled)
+      : super.scheduled;
 
   @override
-  bool get isTicking => isActive && !muted;
+  bool get isTicking =>
+      _interval != null ? (isActive && !muted) : super.isTicking;
 
   @override
   TickerFuture start() {
@@ -90,40 +139,53 @@ class FixedTicker extends Ticker {
 
   @override
   void scheduleTick({bool rescheduling = false}) {
-    assert(!scheduled, 'Cannot schedule a tick while already scheduled.');
-    _startTime ??= clock.now();
-    if (_needsParentSync) {
-      // On the first scheduleTick of each animation cycle, register a frame
-      // callback so the parent's _tick fires and sets its private _startTime.
-      // This keeps the invariant that
-      // (_future == null) == (_startTime == null),
-      // which absorbTicker checks. The parent's _tick calls the no-op we
-      // passed to super(), so the real animation callback is not invoked.
-      // After _tick fires, shouldScheduleTick returns false (because our
-      // scheduled override returns true), preventing re-entry.
-      //
-      // We only do this once per start() cycle — not on mute/unmute — because
-      // a frame callback that fires after the animation completes would hit
-      // the parent's assert(isTicking).
-      _needsParentSync = false;
+    if (_startTime == null) {
+      _startTime = clock.now();
+      debugPrint('[FixedTicker] scheduleTick: _startTime set to $_startTime');
+    }
+    if (_interval != null) {
+      assert(!scheduled, 'Cannot schedule a tick while already scheduled.');
+      if (_needsParentSync) {
+        // Register a frame callback so the parent's _tick fires and sets its
+        // private _startTime (needed for absorbTicker). The parent's _tick
+        // calls the real callback with elapsed ≈ 0, then checks
+        // shouldScheduleTick — which returns false because our scheduled
+        // override reports the timer as active — preventing re-entry.
+        _needsParentSync = false;
+        super.scheduleTick(rescheduling: rescheduling);
+      }
+      _timer = Timer.periodic(_interval!, _handleTimerTick);
+      _activeCount++;
+    } else {
       super.scheduleTick(rescheduling: rescheduling);
     }
-    _timer = Timer.periodic(interval, _handleTimerTick);
-    _activeCount++;
   }
 
   @override
   void unscheduleTick() {
-    if (scheduled) {
+    if (_timer != null && _timer!.isActive) {
       _timer!.cancel();
       _timer = null;
       _activeCount--;
     }
-    // Cancel any pending frame callback from the parent.
+    if (super.scheduled) {
+      _needsParentSync = true;
+    }
     super.unscheduleTick();
   }
 
+  @override
+  void absorbTicker(Ticker originalTicker) {
+    if (originalTicker is FixedTicker) {
+      _startTime = originalTicker._startTime;
+    }
+    _needsParentSync = false;
+    super.absorbTicker(originalTicker);
+  }
+
   void _handleTimerTick(Timer timer) {
-    _onTick(clock.now().difference(_startTime!));
+    final elapsed = clock.now().difference(_startTime!);
+    debugPrint('[FixedTicker] _handleTimerTick: elapsed=$elapsed');
+    _onTick(elapsed);
   }
 }

@@ -15,7 +15,7 @@ dependencies:
   clock: ">=1.1.1 <2.0.0"
   flutter:
     sdk: flutter
-  flutter_test:
+  flutter_test: # Required by lib/testing.dart (pumpAndSettleFixedTickers)
     sdk: flutter
   meta: ">=1.15.0 <2.0.0"
 

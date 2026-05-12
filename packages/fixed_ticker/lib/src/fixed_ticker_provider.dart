@@ -1,22 +1,33 @@
 import 'package:fixed_ticker/src/fixed_ticker.dart';
+import 'package:fixed_ticker/src/ticker_rate_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-/// A mixin on [State] that creates a single [FixedTicker] at a configurable
+/// A mixin on [State] that creates a single [FixedTicker] with a configurable
 /// [tickerInterval].
 ///
-/// This is the fixed-rate equivalent of [SingleTickerProviderStateMixin]. Use
-/// it as a drop-in replacement when you want your [AnimationController] to tick
-/// at a fixed interval (e.g. 30fps) instead of the display refresh rate.
-///
-/// Override [tickerInterval] to customize the tick rate:
+/// By default, [tickerInterval] reads from the nearest [TickerRateScope]
+/// ancestor (if any), falling back to `null` (normal vsync ticking). Override
+/// it to set a fixed rate regardless of the scope:
 ///
 /// ```dart
 /// class _MyState extends State<MyWidget>
 ///     with SingleFixedTickerProviderStateMixin {
 ///   @override
-///   Duration get tickerInterval => const Duration(milliseconds: 100); // 10fps
+///   Duration? get tickerInterval =>
+///       const Duration(milliseconds: 100); // 10fps
+/// }
+/// ```
+///
+/// When using [TickerRateScope], the interval syncs automatically via
+/// [didChangeDependencies]. For state-driven changes, call
+/// [updateTickerInterval] after [setState]:
+///
+/// ```dart
+/// void _onFpsChanged(int fps) {
+///   setState(() => _fps = fps);
+///   updateTickerInterval();
 /// }
 /// ```
 ///
@@ -24,12 +35,24 @@ import 'package:flutter/widgets.dart';
 /// tickers, use [FixedTickerProviderStateMixin] instead.
 mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     implements TickerProvider {
-  /// The interval at which the created [FixedTicker] fires.
+  /// The interval at which the created [FixedTicker] fires, or `null` for
+  /// normal vsync-driven ticking.
   ///
-  /// Defaults to 33ms (~30fps). Override to change the tick rate.
-  Duration get tickerInterval => const Duration(milliseconds: 33);
+  /// By default, reads from the nearest [TickerRateScope] ancestor. If no
+  /// scope exists, returns `null` (vsync). Override to set a fixed rate
+  /// that ignores the scope.
+  Duration? get tickerInterval =>
+      TickerRateScope.maybeOf(context)?.interval;
 
   FixedTicker? _ticker;
+  Duration? _lastSyncedInterval;
+
+  void _syncTickerInterval() {
+    final desired = tickerInterval;
+    if (desired == _lastSyncedInterval) return;
+    _lastSyncedInterval = desired;
+    _ticker?.interval = desired;
+  }
 
   @override
   Ticker createTicker(TickerCallback onTick) {
@@ -59,11 +82,28 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     );
     _ticker = FixedTicker(
       onTick,
-      interval: tickerInterval,
+      interval: _lastSyncedInterval,
       debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
     );
     _updateTickerModeNotifier();
     return _ticker!;
+  }
+
+  /// Applies the current [tickerInterval] to the existing ticker.
+  ///
+  /// Call this after changing the state that drives [tickerInterval]
+  /// via [setState]. Not needed when the interval comes from a
+  /// [TickerRateScope] — that syncs automatically via
+  /// [didChangeDependencies].
+  void updateTickerInterval() {
+    _syncTickerInterval();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncTickerInterval();
+    _updateTickerModeNotifier();
   }
 
   @override
@@ -102,10 +142,10 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     super.dispose();
   }
 
-  ValueListenable<TickerModeData>? _tickerModeNotifier;
+  ValueListenable<bool>? _tickerModeNotifier;
 
   void _updateTickerModeNotifier() {
-    final newNotifier = TickerMode.getValuesNotifier(context);
+    final newNotifier = TickerMode.getNotifier(context);
     if (newNotifier == _tickerModeNotifier) return;
     _tickerModeNotifier?.removeListener(_onTickerModeChange);
     _tickerModeNotifier = newNotifier;
@@ -115,7 +155,7 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
 
   void _onTickerModeChange() {
     if (_ticker != null) {
-      _ticker!.muted = !_tickerModeNotifier!.value.enabled;
+      _ticker!.muted = !_tickerModeNotifier!.value;
     }
   }
 
@@ -146,30 +186,55 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
   }
 }
 
-/// A mixin on [State] that can create multiple [FixedTicker]s at a
+/// A mixin on [State] that can create multiple [FixedTicker]s with a
 /// configurable [tickerInterval].
 ///
-/// This is the fixed-rate equivalent of [TickerProviderStateMixin]. Use it
-/// when you need multiple [AnimationController]s on the same [State] and want
-/// them all to tick at a fixed interval.
-///
-/// Override [tickerInterval] to customize the tick rate:
+/// By default, [tickerInterval] reads from the nearest [TickerRateScope]
+/// ancestor (if any), falling back to `null` (normal vsync ticking). Override
+/// it to set a fixed rate regardless of the scope:
 ///
 /// ```dart
 /// class _MyState extends State<MyWidget>
 ///     with FixedTickerProviderStateMixin {
 ///   @override
-///   Duration get tickerInterval => const Duration(milliseconds: 100); // 10fps
+///   Duration? get tickerInterval =>
+///       const Duration(milliseconds: 100); // 10fps
+/// }
+/// ```
+///
+/// When using [TickerRateScope], the interval syncs automatically via
+/// [didChangeDependencies]. For state-driven changes, call
+/// [updateTickerInterval] after [setState]:
+///
+/// ```dart
+/// void _onFpsChanged(int fps) {
+///   setState(() => _fps = fps);
+///   updateTickerInterval();
 /// }
 /// ```
 mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     implements TickerProvider {
-  /// The interval at which created [FixedTicker]s fire.
+  /// The interval at which created [FixedTicker]s fire, or `null` for normal
+  /// vsync-driven ticking.
   ///
-  /// Defaults to 33ms (~30fps). Override to change the tick rate.
-  Duration get tickerInterval => const Duration(milliseconds: 33);
+  /// By default, reads from the nearest [TickerRateScope] ancestor. If no
+  /// scope exists, returns `null` (vsync). Override to set a fixed rate
+  /// that ignores the scope.
+  Duration? get tickerInterval =>
+      TickerRateScope.maybeOf(context)?.interval;
 
   Set<Ticker>? _tickers;
+  Duration? _lastSyncedInterval;
+
+  void _syncTickerInterval() {
+    final desired = tickerInterval;
+    if (desired == _lastSyncedInterval) return;
+    _lastSyncedInterval = desired;
+    if (_tickers == null) return;
+    for (final ticker in _tickers!) {
+      (ticker as _WidgetFixedTicker).interval = desired;
+    }
+  }
 
   @override
   Ticker createTicker(TickerCallback onTick) {
@@ -179,12 +244,22 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     _tickers ??= <_WidgetFixedTicker>{};
     final result = _WidgetFixedTicker(
       onTick,
-      interval: tickerInterval,
+      interval: _lastSyncedInterval,
       creator: this,
       debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
     );
     _tickers!.add(result);
     return result;
+  }
+
+  /// Applies the current [tickerInterval] to all existing tickers.
+  ///
+  /// Call this after changing the state that drives [tickerInterval]
+  /// via [setState]. Not needed when the interval comes from a
+  /// [TickerRateScope] — that syncs automatically via
+  /// [didChangeDependencies].
+  void updateTickerInterval() {
+    _syncTickerInterval();
   }
 
   void _removeTicker(_WidgetFixedTicker ticker) {
@@ -194,6 +269,13 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
       'Ticker must be in the set when removing.',
     );
     _tickers!.remove(ticker);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncTickerInterval();
+    _updateTickerModeNotifier();
   }
 
   @override
@@ -240,10 +322,10 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     super.dispose();
   }
 
-  ValueListenable<TickerModeData>? _tickerModeNotifier;
+  ValueListenable<bool>? _tickerModeNotifier;
 
   void _updateTickerModeNotifier() {
-    final newNotifier = TickerMode.getValuesNotifier(context);
+    final newNotifier = TickerMode.getNotifier(context);
     if (newNotifier == _tickerModeNotifier) return;
     _tickerModeNotifier?.removeListener(_onTickerModeChange);
     _tickerModeNotifier = newNotifier;
@@ -253,7 +335,7 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
 
   void _onTickerModeChange() {
     if (_tickers != null) {
-      final muted = !_tickerModeNotifier!.value.enabled;
+      final muted = !_tickerModeNotifier!.value;
       for (final ticker in _tickers!) {
         ticker.muted = muted;
       }

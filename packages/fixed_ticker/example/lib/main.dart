@@ -4,7 +4,11 @@ import 'package:flutter/cupertino.dart';
 /// Launches the example app.
 void main() => runApp(const FixedTickerExample());
 
-/// Demonstrates [FixedTicker] by showing a blinking cursor at different fps.
+/// Demonstrates [FixedTicker] with [TickerRateScope]-driven tick rates.
+///
+/// Two independent animations live under a single [TickerRateScope].
+/// Changing the rate in the parent automatically syncs both — no
+/// `updateTickerInterval()` needed.
 class FixedTickerExample extends StatelessWidget {
   /// Creates the example app.
   const FixedTickerExample({super.key});
@@ -27,6 +31,7 @@ class _Home extends StatefulWidget {
 
 class _HomeState extends State<_Home> {
   int _fps = 30;
+  bool _useFixedRate = true;
 
   static const _options = [2, 5, 10, 30, 60];
 
@@ -43,23 +48,53 @@ class _HomeState extends State<_Home> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'A blinking cursor driven by AnimationController, '
-                'ticking at a fixed frame rate instead of vsync.',
+                'Two independent animations under one '
+                'TickerRateScope. Both auto-sync when the '
+                'rate changes.',
               ),
               const SizedBox(height: 32),
-              _BlinkingCursor(key: ValueKey(_fps), fps: _fps),
+              TickerRateScope(
+                rate: _useFixedRate
+                    ? TickerRate.fps(_fps.toDouble())
+                    : const TickerRate.vsync(),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RateLabel(),
+                    SizedBox(height: 16),
+                    _BlinkingCursor(),
+                    SizedBox(height: 24),
+                    _BouncingBall(),
+                  ],
+                ),
+              ),
               const SizedBox(height: 32),
-              const Text('Frame rate'),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoSlidingSegmentedControl<int>(
-                  groupValue: _fps,
-                  onValueChanged: (v) => setState(() => _fps = v!),
-                  children: {
-                    for (final fps in _options)
-                      fps: Text('$fps fps'),
-                  },
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Fixed frame rate'),
+                  CupertinoSwitch(
+                    value: _useFixedRate,
+                    onChanged: (v) => setState(() => _useFixedRate = v),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              IgnorePointer(
+                ignoring: !_useFixedRate,
+                child: AnimatedOpacity(
+                  opacity: _useFixedRate ? 1.0 : 0.4,
+                  duration: const Duration(milliseconds: 200),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CupertinoSlidingSegmentedControl<int>(
+                      groupValue: _fps,
+                      onValueChanged: (v) => setState(() => _fps = v!),
+                      children: {
+                        for (final fps in _options) fps: Text('$fps fps'),
+                      },
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -70,10 +105,33 @@ class _HomeState extends State<_Home> {
   }
 }
 
-class _BlinkingCursor extends StatefulWidget {
-  const _BlinkingCursor({required this.fps, super.key});
+/// Reads the current [TickerRate] from the scope and displays it using
+/// pattern matching.
+class _RateLabel extends StatelessWidget {
+  const _RateLabel();
 
-  final int fps;
+  @override
+  Widget build(BuildContext context) {
+    final rate = TickerRateScope.of(context);
+    final label = switch (rate) {
+      VsyncTickerRate() => 'vsync',
+      FixedTickerRate(:final interval) =>
+        '${(1000000 / interval.inMicroseconds).round()} fps '
+            '(${interval.inMilliseconds}ms)',
+    };
+    return Text(
+      'Current rate: $label',
+      style: TextStyle(
+        fontSize: 13,
+        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+      ),
+    );
+  }
+}
+
+/// A blinking text cursor driven by [AnimationController].
+class _BlinkingCursor extends StatefulWidget {
+  const _BlinkingCursor();
 
   @override
   State<_BlinkingCursor> createState() => _BlinkingCursorState();
@@ -82,10 +140,6 @@ class _BlinkingCursor extends StatefulWidget {
 class _BlinkingCursorState extends State<_BlinkingCursor>
     with SingleFixedTickerProviderStateMixin {
   late final AnimationController _controller;
-
-  @override
-  Duration get tickerInterval =>
-      Duration(milliseconds: 1000 ~/ widget.fps);
 
   @override
   void initState() {
@@ -128,6 +182,58 @@ class _BlinkingCursorState extends State<_BlinkingCursor>
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+/// A ball bouncing left-to-right, independently animated but sharing the
+/// same [TickerRateScope] as [_BlinkingCursor].
+class _BouncingBall extends StatefulWidget {
+  const _BouncingBall();
+
+  @override
+  State<_BouncingBall> createState() => _BouncingBallState();
+}
+
+class _BouncingBallState extends State<_BouncingBall>
+    with SingleFixedTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _controller.addListener(() {
+      debugPrint('ball value: ${_controller.value}');
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Align(
+          alignment: Alignment(-1 + 2 * _controller.value, 0),
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: CupertinoColors.activeOrange.resolveFrom(context),
+            ),
+          ),
         );
       },
     );
