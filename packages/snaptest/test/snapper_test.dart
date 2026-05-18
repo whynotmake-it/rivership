@@ -616,6 +616,94 @@ void main() {
       });
     });
 
+    group('snap pixel', () {
+      testWidgets('returns the color at a logical offset', (tester) async {
+        const boxKey = Key('pixel-box');
+        const color = Color.fromARGB(255, 10, 20, 30);
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                key: boxKey,
+                width: 50,
+                height: 50,
+                child: ColoredBox(color: color),
+              ),
+            ),
+          ),
+        );
+
+        final sampled = await snap.pixel(
+          tester.getCenter(find.byKey(boxKey)),
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(sampled, isSameColorAs(color));
+      });
+
+      testWidgets('samples cropped images using logical coordinates', (
+        tester,
+      ) async {
+        const boxKey = Key('cropped-pixel-box');
+        const color = Color.fromARGB(255, 1, 2, 3);
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Stack(
+              children: [
+                Positioned.fill(
+                  child: ColoredBox(color: Color.fromARGB(255, 4, 5, 6)),
+                ),
+                Positioned(
+                  left: 40,
+                  top: 60,
+                  child: SizedBox(
+                    key: boxKey,
+                    width: 80,
+                    height: 60,
+                    child: ColoredBox(color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final boxFinder = find.byKey(boxKey);
+        final sampled = await snap.pixel(
+          tester.getCenter(boxFinder),
+          crop: tester.getRect(boxFinder),
+          settings: const SnaptestSettings(blockText: true),
+        );
+
+        expect(sampled, isSameColorAs(color));
+      });
+
+      testWidgets('throws when the logical offset is outside the image', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: SizedBox(
+              width: 20,
+              height: 20,
+              child: ColoredBox(color: Colors.red),
+            ),
+          ),
+        );
+
+        await expectLater(
+          snap.pixel(
+            const Offset(1000, 1000),
+            settings: const SnaptestSettings(blockText: true),
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+    });
+
     group('snap crop', () {
       testWidgets('crops from the root view so foreground is included', (
         tester,

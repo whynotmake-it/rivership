@@ -344,6 +344,47 @@ class Snap {
     restore();
     return result;
   }
+
+  /// Returns the color of a single pixel in the snapped image.
+  ///
+  /// The [offset] is in the same Flutter logical coordinate space as [crop].
+  ///
+  /// ```dart
+  /// final color = await snap.pixel(tester.getCenter(find.byKey(key)));
+  /// expect(color, equals(Colors.red));
+  /// ```
+  ///
+  /// {@macro snaptest_from_and_crop}
+  Future<Color> pixel(
+    Offset offset, {
+    Finder? from,
+    Rect? crop,
+    SnaptestSettings? settings,
+    DeviceInfo? device,
+    Orientation? orientation,
+  }) async {
+    final s = settings ?? SnaptestSettings.global;
+    final resolvedDevice = device ?? activeDeviceVariant?.$1;
+    final resolvedOrientation =
+        orientation ?? activeDeviceVariant?.$2 ?? Orientation.portrait;
+
+    final restore = await _setUpForSettings(
+      settings: s,
+      from: from,
+    );
+
+    final color = await _takeDeviceScreenshotPixel(
+      offset: offset,
+      device: resolvedDevice,
+      orientation: resolvedOrientation,
+      from: from,
+      crop: crop,
+      settings: s,
+    );
+
+    restore();
+    return color;
+  }
 }
 
 /// Resolves name, device, orientation, and builds the filename.
@@ -578,6 +619,104 @@ Future<ui.Image?> _takeDeviceScreenshot({
   );
 
   return image;
+}
+
+Future<Color> _takeDeviceScreenshotPixel({
+  required Offset offset,
+  required DeviceInfo? device,
+  required SnaptestSettings settings,
+  required Orientation orientation,
+  Finder? from,
+  Rect? crop,
+}) async {
+  final finder = from ?? find.byType(View);
+
+  final pixel = await _runInFakeDevice(
+    device,
+    orientation,
+    () async {
+      await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
+
+      final captured = await _captureImage(
+        finder.evaluate().single,
+        blockText: settings.blockText,
+        device: device,
+        orientation: orientation,
+        includeDeviceFrame: settings.includeDeviceFrame,
+      );
+
+      try {
+        final color = await _samplePixel(captured, offset, crop: crop);
+        return _PixelSample.color(color);
+      } catch (error, stackTrace) {
+        return _PixelSample.error(error, stackTrace);
+      } finally {
+        captured.image.dispose();
+      }
+    },
+  );
+
+  if (pixel == null) {
+    throw Exception('Could not sample pixel.');
+  }
+
+  if (pixel.error case final error?) {
+    Error.throwWithStackTrace(error, pixel.stackTrace!);
+  }
+
+  return pixel.color!;
+}
+
+Future<Color> _samplePixel(
+  _CapturedImage captured,
+  Offset offset, {
+  Rect? crop,
+}) async {
+  final bounds = captured.logicalBounds;
+  final sampledBounds = crop == null ? bounds : crop.intersect(bounds);
+  if (sampledBounds.isEmpty) {
+    throw ArgumentError.value(
+      crop,
+      'crop',
+      'Crop rect must intersect the snapped bounds.',
+    );
+  }
+
+  if (!sampledBounds.contains(offset)) {
+    throw ArgumentError.value(
+      offset,
+      'offset',
+      'Pixel offset must be inside the snapped bounds.',
+    );
+  }
+
+  final scaleX = captured.imageContentBounds.width / bounds.width;
+  final scaleY = captured.imageContentBounds.height / bounds.height;
+  final sourceX =
+      captured.imageContentBounds.left + (offset.dx - bounds.left) * scaleX;
+  final sourceY =
+      captured.imageContentBounds.top + (offset.dy - bounds.top) * scaleY;
+
+  return _readImagePixel(
+    captured.image,
+    sourceX.floor(),
+    sourceY.floor(),
+  );
+}
+
+Future<Color> _readImagePixel(ui.Image image, int x, int y) async {
+  final byteData = await image.toByteData();
+  if (byteData == null) {
+    throw Exception('Could not read screenshot pixels.');
+  }
+
+  final pixelOffset = (y * image.width + x) * 4;
+  return Color.fromARGB(
+    byteData.getUint8(pixelOffset + 3),
+    byteData.getUint8(pixelOffset),
+    byteData.getUint8(pixelOffset + 1),
+    byteData.getUint8(pixelOffset + 2),
+  );
 }
 
 Future<VoidCallback> _setUpForSettings({
@@ -853,6 +992,17 @@ class _CapturedImage {
   final ui.Image image;
   final Rect logicalBounds;
   final Rect imageContentBounds;
+}
+
+class _PixelSample {
+  const _PixelSample.color(Color this.color) : error = null, stackTrace = null;
+
+  const _PixelSample.error(Object this.error, StackTrace this.stackTrace)
+    : color = null;
+
+  final Color? color;
+  final Object? error;
+  final StackTrace? stackTrace;
 }
 
 class _FramedImage {
