@@ -705,7 +705,7 @@ Future<Color> _samplePixel(
 }
 
 Future<Color> _readImagePixel(ui.Image image, int x, int y) async {
-  final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+  final byteData = await image.toByteData();
   if (byteData == null) {
     throw Exception('Could not read screenshot pixels.');
   }
