@@ -1,4 +1,5 @@
 import 'package:flutter/physics.dart';
+import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -21,6 +22,10 @@ class StepPlayback<T extends Object> {
     LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
   })  : assert(steps.isNotEmpty, 'steps must not be empty'),
+        assert(
+          _validateStepTiming(steps),
+          'steps must have non-decreasing absolute times',
+        ),
         _steps = List.of(steps),
         _converter = converter,
         _loop = loop,
@@ -30,7 +35,6 @@ class StepPlayback<T extends Object> {
           null => List<double>.filled(converter.normalize(start).length, 0),
           final value => converter.normalize(value),
         } {
-    assert(_validateStepTiming(steps));
     _buildWaypoints();
     _reset();
   }
@@ -316,9 +320,8 @@ class StepPlayback<T extends Object> {
   ///
   /// The target is the previous step's waypoint (or initial values for step 0).
   void _startReverseStep() {
-    final targets = _stepIndex > 0
-        ? _waypoints[_stepIndex - 1]
-        : _initialValues;
+    final targets =
+        _stepIndex > 0 ? _waypoints[_stepIndex - 1] : _initialValues;
     final step = _steps[_stepIndex];
     final motion = switch (step) {
       StepTo<T>(:final motion) => motion ?? _fallbackMotion,

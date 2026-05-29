@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 import 'package:motor/src/track_timeline.dart';
@@ -14,6 +15,10 @@ import 'package:motor/src/track_timeline.dart';
 ///   animations.
 /// - [currentPhase] reports the phase currently being played or settled.
 ///
+/// Phase changes are reported through a [PhaseTransition] callback:
+/// [PhaseTransitioning] when a new phase begins animating, and [PhaseSettled]
+/// when playback for the active phase comes to rest.
+///
 /// Because [TrackPhaseTimeline] extends [TrackTimeline], the standard [play]
 /// method also works for non-phase playback.
 class PhaseTrackController<P extends Object> extends TrackController {
@@ -27,9 +32,10 @@ class PhaseTrackController<P extends Object> extends TrackController {
   }
 
   TrackPhaseTimeline<P>? _activeTimeline;
-  void Function(P phase)? _onPhaseChanged;
+  void Function(PhaseTransition<P> transition)? _onTransition;
   P? _currentPhase;
   bool _isPlayingPhases = false;
+  bool _seededFrom = false;
 
   /// The active phase timeline, if any.
   TrackPhaseTimeline<P>? get activeTimeline => _activeTimeline;
@@ -43,10 +49,10 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// [playPhases] to begin auto-advancing through all phases.
   void setTimeline(
     TrackPhaseTimeline<P> timeline, {
-    void Function(P phase)? onPhaseChanged,
+    void Function(PhaseTransition<P> transition)? onTransition,
   }) {
     _activeTimeline = timeline;
-    _onPhaseChanged = onPhaseChanged;
+    _onTransition = onTransition;
     _isPlayingPhases = false;
   }
 
@@ -64,20 +70,30 @@ class PhaseTrackController<P extends Object> extends TrackController {
   TickerFuture playPhases(
     TrackPhaseTimeline<P> timeline, {
     P? atPhase,
-    void Function(P phase)? onPhaseChanged,
+    void Function(PhaseTransition<P> transition)? onTransition,
   }) {
     _activeTimeline = timeline;
-    _onPhaseChanged = onPhaseChanged;
+    _onTransition = onTransition;
     _isPlayingPhases = true;
+    _seedFromIfNeeded(timeline);
 
     final startIndex = atPhase != null ? timeline.phases.indexOf(atPhase) : 0;
     final effectiveIndex = startIndex < 0 ? 0 : startIndex;
 
-    _currentPhase = timeline.phases[effectiveIndex];
+    final startPhase = timeline.phases[effectiveIndex];
+    _currentPhase = startPhase;
 
-    play(timeline);
-    final phase = _currentPhase;
-    if (phase != null) _onPhaseChanged?.call(phase);
+    if (effectiveIndex == 0) {
+      return play(timeline);
+    } else {
+      // Start partway through the timeline by playing only the animations
+      // from [startPhase] onward. Looping (handled in [_onStatusChanged])
+      // still restarts from the full timeline.
+      return animate(
+        timeline.animationsFrom(startPhase),
+        withVelocity: timeline.withVelocity,
+      );
+    }
   }
 
   /// Jumps to [phase] in the active timeline.
@@ -98,11 +114,26 @@ class PhaseTrackController<P extends Object> extends TrackController {
     if (index < 0) return TickerFuture.complete();
 
     _isPlayingPhases = false;
+    _seedFromIfNeeded(timeline);
+
+    final previous = _currentPhase;
     _currentPhase = phase;
+    if (previous != null && previous != phase) {
+      _onTransition?.call(PhaseTransitioning(from: previous, to: phase));
+    }
 
     final anims = timeline.phaseAnimations[phase]!;
-    animate(anims, from: timeline.from);
-    _onPhaseChanged?.call(phase);
+    // Note: `from` is only applied once via [_seedFromIfNeeded]; re-applying it
+    // on every phase change would snap tracks back to their initial values.
+    return animate(anims, withVelocity: timeline.withVelocity);
+  }
+
+  /// Applies the timeline's `from` overrides exactly once, the first time a
+  /// timeline begins playing.
+  void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
+    if (_seededFrom) return;
+    _seededFrom = true;
+    if (timeline.from.isNotEmpty) set(timeline.from);
   }
 
   @override
@@ -117,23 +148,37 @@ class PhaseTrackController<P extends Object> extends TrackController {
     if (timeline == null) return;
 
     if (token is P && timeline.phases.contains(token)) {
+      final previous = _currentPhase;
       _currentPhase = token;
-      _onPhaseChanged?.call(token);
+      if (previous != null && previous != token) {
+        _onTransition?.call(PhaseTransitioning(from: previous, to: token));
+      }
     }
   }
 
   void _onStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
-    if (!_isPlayingPhases) return;
 
     final timeline = _activeTimeline;
-    if (timeline == null) return;
-    if (!timeline.phaseLoop.isLooping) return;
 
-    // Restart from the first phase
-    _currentPhase = timeline.phases.first;
-    play(timeline);
-    _onPhaseChanged?.call(_currentPhase!);
+    if (_isPlayingPhases &&
+        timeline != null &&
+        timeline.phaseLoop.isLooping) {
+      // Loop: wrap back to the first phase and replay.
+      final previous = _currentPhase;
+      final first = timeline.phases.first;
+      _currentPhase = first;
+      if (previous != null && previous != first) {
+        _onTransition?.call(PhaseTransitioning(from: previous, to: first));
+      }
+      play(timeline);
+      return;
+    }
+
+    final phase = _currentPhase;
+    if (phase != null) {
+      _onTransition?.call(PhaseSettled(phase));
+    }
   }
 
   @override

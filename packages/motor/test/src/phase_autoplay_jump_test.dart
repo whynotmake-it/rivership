@@ -93,12 +93,12 @@ void main() {
         // The sync barrier holds trackA for ~300ms. After release, trackA's
         // phase-2 animation should play from the start, not jump to the end.
         controller.animate([
-          TrackAnimation(trackA, [
+          trackA([
             const StepTo(1.0, motion: linear100),
             const SyncStep(token: #phaseB),
             const StepTo(2.0, motion: linear100),
           ]),
-          TrackAnimation(trackB, [
+          trackB([
             const StepTo(1.0, motion: linear400),
             const SyncStep(token: #phaseB),
             const StepTo(2.0, motion: linear100),
@@ -165,7 +165,7 @@ void main() {
       (tester) async {
         controller = PhaseTrackController<String>(vsync: tester);
 
-        final phasesVisited = <String>[];
+        final phaseTransitions = <PhaseTransition<String>>[];
 
         // Phase "a": fast track 100ms, slow track 400ms.
         // Phase "b": both 100ms.
@@ -188,7 +188,7 @@ void main() {
               slow.to(3.0, motion: linear100),
             ],
           }),
-          onPhaseChanged: phasesVisited.add,
+          onTransition: phaseTransitions.add,
         );
 
         await tester.pump();
@@ -199,7 +199,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 420));
 
         // Sync released — phase "b" should be starting.
-        expect(phasesVisited, contains('b'));
+        expect(
+          phaseTransitions,
+          contains(const PhaseTransitioning(from: 'a', to: 'b')),
+        );
 
         // One tick into phase "b".
         await tester.pump(const Duration(milliseconds: 17));
@@ -220,6 +223,16 @@ void main() {
         // Verify both tracks reached their final values.
         expect(controller.value(fast), closeTo(3.0, error));
         expect(controller.value(slow), closeTo(3.0, error));
+        expect(
+          phaseTransitions,
+          equals(
+            const [
+              PhaseTransitioning(from: 'a', to: 'b'),
+              PhaseTransitioning(from: 'b', to: 'c'),
+              PhaseSettled('c'),
+            ],
+          ),
+        );
       },
     );
 
@@ -245,9 +258,12 @@ void main() {
             },
             phaseLoop: LoopMode.loop,
           ),
-          onPhaseChanged: (phase) {
-            phasesVisited.add(phase);
-            valuesAtPhaseChange[phase] = controller.value(fast);
+          onTransition: (transition) {
+            if (transition is PhaseTransitioning<String>) {
+              final phase = transition.to;
+              phasesVisited.add(phase);
+              valuesAtPhaseChange[phase] = controller.value(fast);
+            }
           },
         );
 

@@ -1,8 +1,7 @@
-import 'package:motor/motor.dart';
+import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
-import 'package:motor/src/track_animation.dart';
 import 'package:motor/src/track_timeline.dart';
 
 /// A multi-track timeline organized by phases.
@@ -53,6 +52,23 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
 
   /// The first phase in the timeline.
   P get initialPhase => phases.first;
+
+  /// Returns the flattened animations starting at [startPhase], skipping all
+  /// phases before it.
+  ///
+  /// The returned list has no leading sync barrier, so playback begins
+  /// immediately at [startPhase] and then advances through the remaining
+  /// phases in order. Returns the full [animations] when [startPhase] is the
+  /// first phase (or not found).
+  List<TrackAnimation> animationsFrom(P startPhase) {
+    final index = phases.indexOf(startPhase);
+    if (index <= 0) return animations;
+
+    final subset = <P, List<TrackAnimation>>{
+      for (final phase in phases.skip(index)) phase: phaseAnimations[phase]!,
+    };
+    return _flatten(subset);
+  }
 
   static List<TrackAnimation> _flatten<P extends Object>(
     Map<P, List<TrackAnimation>> phaseAnimations,

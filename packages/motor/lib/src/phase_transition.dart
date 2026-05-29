@@ -18,6 +18,9 @@ sealed class PhaseTransition<P> {
     required P to,
   }) = PhaseTransitioning<P>;
 
+  /// The phase where the animation is currently at or transitioning to.
+  P get phase;
+
   /// Returns the last phase we were at.
   P get lastPhase => switch (this) {
         PhaseSettled(:final phase) => phase,
@@ -33,6 +36,7 @@ final class PhaseSettled<P> extends PhaseTransition<P> {
   const PhaseSettled(this.phase);
 
   /// The phase where the animation has settled.
+  @override
   final P phase;
 
   @override
@@ -64,6 +68,9 @@ final class PhaseTransitioning<P> extends PhaseTransition<P> {
 
   /// The phase the animation is transitioning to.
   final P to;
+
+  @override
+  P get phase => to;
 
   @override
   bool operator ==(Object other) =>

@@ -16,7 +16,6 @@ export 'src/motion_velocity_tracker.dart'
 export 'src/phase_transition.dart';
 export 'src/step.dart' hide SyncStep;
 export 'src/track.dart';
-export 'src/track_animation.dart';
 export 'src/track_phase_timeline.dart';
 export 'src/track_timeline.dart';
 export 'src/widgets/motion/motion_padding.dart';

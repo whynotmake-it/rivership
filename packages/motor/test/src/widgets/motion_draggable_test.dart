@@ -212,7 +212,8 @@ void main() {
       feedback.doesNotExist();
     });
 
-    testWidgets('completes return when released without moving', (tester) async {
+    testWidgets('completes return when released without moving',
+        (tester) async {
       var dragEnded = false;
 
       await tester.pumpWidget(

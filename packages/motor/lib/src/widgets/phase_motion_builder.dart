@@ -1,12 +1,26 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
+import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
-import 'package:motor/src/widgets/multi_track_motion_builder.dart';
 
 /// Builds a widget from phase-driven track values.
 ///
-/// Each phase in the [timeline] maps to a list of [TrackAnimation]s that play
+/// The builder receives the [TrackValueReader] for the animated tracks plus
+/// the `P` phase the timeline is currently at, so the UI can branch on the
+/// phase (e.g. swap an icon when a phase settles).
+typedef PhaseTrackWidgetBuilder<P> = Widget Function(
+  BuildContext context,
+  TrackValueReader value,
+  P phase,
+  Widget? child,
+);
+
+/// Builds a widget from phase-driven track values.
+///
+/// Each phase in the [timeline] maps to a list of track animations that play
 /// when that phase is entered. Phases can range from simple single-target
 /// animations to complex multi-step choreographies.
 ///
@@ -21,7 +35,7 @@ import 'package:motor/src/widgets/multi_track_motion_builder.dart';
 ///     .compact: [panelSize.to(Size(172, 128)), radius.to(24)],
 ///     .expanded: [panelSize.to(Size(292, 180)), radius.to(34)],
 ///   }),
-///   builder: (context, value, child) { ... },
+///   builder: (context, value, phase, child) { ... },
 /// )
 /// ```
 ///
@@ -34,9 +48,9 @@ import 'package:motor/src/widgets/multi_track_motion_builder.dart';
 ///   timeline: TrackPhaseTimeline({
 ///     .compact: [panelSize.to(Size(172, 128))],
 ///     .expanded: [panelSize.to(Size(292, 180))],
-///   }, loop: LoopMode.loop),
-///   onPhaseChanged: (phase) => print('Now at $phase'),
-///   builder: (context, value, child) { ... },
+///   }, phaseLoop: LoopMode.loop),
+///   onTransition: (transition) => print('Transition: $transition'),
+///   builder: (context, value, phase, child) { ... },
 /// )
 /// ```
 class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
@@ -48,7 +62,9 @@ class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
     this.playing = false,
     this.from,
     this.active = true,
-    this.onPhaseChanged,
+    this.restartTrigger,
+    this.velocityTracking = const VelocityTracking.on(),
+    this.onTransition,
     this.onAnimationStatusChanged,
     this.child,
     super.key,
@@ -66,7 +82,7 @@ class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
   /// Whether to automatically progress through phases.
   ///
   /// When `true`, plays through all phases in order. The timeline's
-  /// [LoopMode] controls what happens at the end.
+  /// [TrackPhaseTimeline.phaseLoop] controls what happens at the end.
   final bool playing;
 
   /// Builder-level initial-value overrides.
@@ -75,14 +91,25 @@ class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
   /// Whether playback is active.
   final bool active;
 
-  /// Called when the current phase changes (from auto-advance or seek).
-  final void Function(P phase)? onPhaseChanged;
+  /// Restarts playback from the current phase when this value changes.
+  ///
+  /// Useful for triggering replays without rebuilding the widget.
+  final Object? restartTrigger;
+
+  /// {@macro motor.velocityTracking}
+  final VelocityTracking velocityTracking;
+
+  /// Called when the timeline transitions between phases or settles.
+  ///
+  /// Emits [PhaseTransitioning] when a new phase begins animating and
+  /// [PhaseSettled] when playback for a phase comes to rest.
+  final void Function(PhaseTransition<P> transition)? onTransition;
 
   /// Called when the animation status changes.
   final ValueChanged<AnimationStatus>? onAnimationStatusChanged;
 
   /// Builds the widget.
-  final MultiTrackWidgetBuilder builder;
+  final PhaseTrackWidgetBuilder<P> builder;
 
   /// Optional child passed to [builder].
   final Widget? child;
@@ -101,6 +128,7 @@ class _PhaseMotionBuilderState<P extends Object>
     _controller = PhaseTrackController<P>(
       vsync: this,
       from: widget.from,
+      velocityTracking: widget.velocityTracking,
     );
     if (widget.onAnimationStatusChanged != null) {
       _controller.addStatusListener(widget.onAnimationStatusChanged!);
@@ -129,11 +157,13 @@ class _PhaseMotionBuilderState<P extends Object>
     final timelineChanged = widget.timeline != oldWidget.timeline;
     final phaseChanged = widget.currentPhase != oldWidget.currentPhase;
     final playingChanged = widget.playing != oldWidget.playing;
+    final restartTriggerChanged =
+        widget.restartTrigger != oldWidget.restartTrigger;
 
-    if (timelineChanged || playingChanged) {
+    if (timelineChanged || playingChanged || restartTriggerChanged) {
       _startPlayback();
     } else if (phaseChanged && widget.currentPhase != null) {
-      _controller.goToPhase(widget.currentPhase as P);
+      _controller.goToPhase(widget.currentPhase!);
     }
   }
 
@@ -152,14 +182,12 @@ class _PhaseMotionBuilderState<P extends Object>
       _controller.playPhases(
         widget.timeline,
         atPhase: phase,
-        onPhaseChanged: widget.onPhaseChanged,
+        onTransition: widget.onTransition,
       );
     } else {
-      _controller.setTimeline(
-        widget.timeline,
-        onPhaseChanged: widget.onPhaseChanged,
-      );
-      _controller.goToPhase(phase);
+      _controller
+        ..setTimeline(widget.timeline, onTransition: widget.onTransition)
+        ..goToPhase(phase);
     }
   }
 
@@ -169,7 +197,10 @@ class _PhaseMotionBuilderState<P extends Object>
       listenable: _controller,
       child: widget.child,
       builder: (context, child) {
-        return widget.builder(context, _controller.value, child);
+        final phase = _controller.currentPhase ??
+            widget.currentPhase ??
+            widget.timeline.initialPhase;
+        return widget.builder(context, _controller.value, phase, child);
       },
     );
   }

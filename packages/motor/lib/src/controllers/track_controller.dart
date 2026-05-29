@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -7,7 +8,6 @@ import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
-import 'package:motor/src/track_animation.dart';
 import 'package:motor/src/track_timeline.dart';
 
 part '_track_slot.dart';

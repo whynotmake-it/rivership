@@ -78,32 +78,28 @@ class _PhaseTracksPageState extends State<PhaseTracksPage>
   }
 
   TrackPhaseTimeline<_PanelPhase> _buildTimeline(ExampleTheme t) {
-    return TrackPhaseTimeline(
-      {
-        _PanelPhase.compact: [
-          _panelAlignment.to(Alignment.topLeft),
-          _panelSize.to(const Size(172, 128)),
-          _panelRadius.to(24.0),
-          _panelGlow.to(.2),
-          _panelTint.to(t.accentBlue),
-        ],
-        _PanelPhase.expanded: [
-          _panelAlignment.to(Alignment.center),
-          _panelSize.to(const Size(292, 180)),
-          _panelRadius.to(34.0),
-          _panelGlow.to(.55),
-          _panelTint.to(t.accentPurple),
-        ],
-        _PanelPhase.focus: [
-          _panelAlignment.to(Alignment.bottomRight),
-          _panelSize.to(const Size(224, 256)),
-          _panelRadius.to(46.0),
-          _panelGlow.to(.9),
-          _panelTint.to(t.accentGreen),
-        ],
-      },
-      phaseLoop: _autoplay ? LoopMode.loop : LoopMode.none,
-    );
+    return TrackPhaseTimeline({
+      _PanelPhase.compact: [
+        _panelAlignment.to(Alignment.topLeft),
+        _panelSize.to(const Size(172, 128)),
+        _panelRadius.to(24.0),
+        _panelGlow.to(.2),
+        _panelTint.to(t.accentBlue),
+      ],
+      _PanelPhase.expanded: [
+        _panelAlignment.to(Alignment.center),
+        _panelSize.to(const Size(292, 180)),
+        _panelGlow.to(.55),
+        _panelTint.to(t.accentPurple),
+      ],
+      _PanelPhase.focus: [
+        _panelAlignment.to(Alignment.bottomRight),
+        _panelSize.to(const Size(224, 256)),
+        _panelRadius.to(0.0),
+        _panelGlow.to(.9),
+        _panelTint.to(t.accentGreen),
+      ],
+    }, phaseLoop: _autoplay ? LoopMode.loop : LoopMode.none);
   }
 
   void _onPhaseSelected(_PanelPhase? phase) {
@@ -124,7 +120,13 @@ class _PhaseTracksPageState extends State<PhaseTracksPage>
     if (_autoplay) {
       _controller.playPhases(
         timeline,
-        onPhaseChanged: (phase) => setState(() => _phase = phase),
+        atPhase: _phase,
+        onTransition: (transition) => setState(() {
+          _phase = switch (transition) {
+            PhaseTransitioning(:final to) => to,
+            PhaseSettled(:final phase) => phase,
+          };
+        }),
       );
     } else {
       _controller.setTimeline(timeline);
