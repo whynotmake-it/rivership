@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_redundant_argument_values
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
 import 'util.dart';

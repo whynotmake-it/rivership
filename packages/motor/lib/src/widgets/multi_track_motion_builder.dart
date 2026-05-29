@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/track.dart';
-import 'package:motor/src/track_animation.dart';
 import 'package:motor/src/track_timeline.dart';
 
 /// Builds a widget from a multi-track animation.

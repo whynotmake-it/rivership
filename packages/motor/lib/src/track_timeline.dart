@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/track.dart';
-import 'package:motor/src/track_animation.dart';
 
 /// A reusable multi-track animation clip.
 class TrackTimeline with EquatableMixin {

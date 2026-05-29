@@ -107,17 +107,6 @@ void main() {
       expect((step as StepFree<double>).motion, isA<_FreeTestMotion>());
     });
 
-    test('creates phase values', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
-
-      final phases = track.phases({
-        'idle': 0.0,
-        'pressed': 1.0,
-      });
-
-      expect(phases.track, same(track));
-      expect(phases.valueFor('pressed'), equals(1));
-    });
   });
 
   group('TrackTimeline', () {

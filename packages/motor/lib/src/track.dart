@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/step.dart';
-import 'package:motor/src/track_animation.dart';
 
 /// Identity token for a logical animated property.
 ///
@@ -40,11 +39,11 @@ class Track<T extends Object> {
     T value, {
     Motion? motion,
   }) {
-    return TrackAnimation.single(this, to: value, motion: motion);
+    return TrackAnimation._(this, [Step.to(value, motion: motion)]);
   }
 
   /// Creates a multi-step animation for this track.
-  TrackAnimation<T> call(List<Step<T>> steps) => TrackAnimation(this, steps);
+  TrackAnimation<T> call(List<Step<T>> steps) => TrackAnimation._(this, steps);
 
   /// Creates a value snapshot for this track, optionally with [velocity].
   TrackValue<T> value(T value, {T? velocity}) =>
@@ -52,7 +51,7 @@ class Track<T extends Object> {
 
   /// Creates a free-motion animation for this track.
   TrackAnimation<T> free(FreeMotion motion) {
-    return TrackAnimation(this, [Step.free(motion: motion)]);
+    return TrackAnimation._(this, [Step.free(motion: motion)]);
   }
 
   /// Creates a [TrackAnimation] from a list of steps whose static type may
@@ -69,17 +68,14 @@ class Track<T extends Object> {
         else
           step as Step<T>,
     ];
-    return TrackAnimation<T>(this, typed);
+    return TrackAnimation._(this, typed);
   }
-
-  /// Creates phase-specific values for this track.
-  TrackPhases<P, T> phases<P>(Map<P, T> values) => TrackPhases(this, values);
 }
 
 /// A value (and optional velocity) snapshot for a [Track].
 ///
-/// Used as initial-value overrides in [TrackTimeline.from] and
-/// [TrackController.set].
+/// Used as initial-value overrides in `TrackTimeline.from` and
+/// `TrackController.set`.
 class TrackValue<T extends Object> with EquatableMixin {
   /// Creates a value snapshot that starts [track] from [value].
   TrackValue(this.track, this.value, {this.velocity});
@@ -101,17 +97,17 @@ class TrackValue<T extends Object> with EquatableMixin {
 @Deprecated('Use TrackValue instead')
 typedef TrackFrom<T extends Object> = TrackValue<T>;
 
-/// Phase-specific values for a track.
-class TrackPhases<P, T extends Object> {
-  /// Creates phase-specific values for [track].
-  TrackPhases(this.track, this.values);
+/// An animation instruction for a single [Track].
+class TrackAnimation<T extends Object> with EquatableMixin {
+  /// Creates an animation for [track] using [steps].
+  TrackAnimation._(this.track, this.steps);
 
-  /// The track whose values are provided.
+  /// The track this animation targets.
   final Track<T> track;
 
-  /// Values keyed by phase.
-  final Map<P, T> values;
+  /// The steps to play for [track].
+  final List<Step<T>> steps;
 
-  /// Returns the value for [phase].
-  T? valueFor(P phase) => values[phase];
+  @override
+  List<Object?> get props => [track, ...steps];
 }

@@ -132,8 +132,10 @@ class _DragCardState extends State<_DragCard>
 
       _controller.playPhases(
         timeline,
-        onPhaseChanged: (phase) {
-          if (phase == _Phase.dismissing) widget.onDismiss();
+        onTransition: (transition) {
+          if (transition case PhaseTransitioning(to: _Phase.dismissing)) {
+            widget.onDismiss();
+          }
         },
       );
     } else {

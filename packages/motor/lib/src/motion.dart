@@ -25,16 +25,6 @@ sealed class MotionBase {
   /// Default is [Tolerance.defaultTolerance].
   final Tolerance tolerance;
 
-  /// The characteristic duration of this motion, or `null` if unknown.
-  ///
-  /// For fixed-duration motions (curves, linear), this is the exact duration.
-  /// For springs, this is the spring's characteristic settling time.
-  /// For free motions that may never terminate, this returns `null`.
-  ///
-  /// Use [estimatedDuration] for a non-nullable fallback that probes the
-  /// simulation when no explicit duration is available.
-  Duration? get duration => null;
-
   /// Whether this motion needs to settle.
   ///
   /// If this is true, the motion will continue to animate until the velocity
@@ -110,6 +100,15 @@ abstract class Motion extends MotionBase {
     double extraBounce,
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
+
+  /// The characteristic duration of this motion, or `null` if unknown.
+  ///
+  /// For fixed-duration motions (curves, linear) this is the exact duration.
+  /// For springs it is the spring's characteristic settling time. Targeted
+  /// motions whose timing can only be discovered by running the simulation
+  /// return `null`, in which case consumers fall back to
+  /// [_estimateSimulationDuration].
+  Duration? get duration => null;
 
   /// Creates a simulation for this motion.
   ///
@@ -228,6 +227,7 @@ class CurvedMotion extends Motion {
   ]) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
+  @override
   final Duration duration;
 
   /// The curve that defines the rate of change of the motion over time.
@@ -317,6 +317,7 @@ class NoMotion extends Motion {
   const NoMotion([this.duration = Duration.zero]);
 
   /// The duration that this motion holds its value.
+  @override
   final Duration duration;
 
   @override
@@ -864,11 +865,8 @@ class FixedDurationMotion extends Motion {
       duration: duration,
       start: start,
       end: end,
-      sourceDuration: motionDurationInSeconds(
-        parent,
-        parentSimulation,
-        fallback: duration,
-      ),
+      sourceDuration: parent.duration?.toSeconds() ??
+          _estimateSimulationDuration(parentSimulation, fallback: duration),
     );
   }
 
@@ -899,7 +897,6 @@ class FixedDurationFreeMotion extends FreeMotion {
   final FreeMotion parent;
 
   /// The duration this motion should take.
-  @override
   final Duration duration;
 
   @override
@@ -917,8 +914,8 @@ class FixedDurationFreeMotion extends FreeMotion {
       start: start,
       velocity: velocity,
     );
-    final sourceDuration = motionDurationInSeconds(
-      parent,
+    // Free motions have no inherent duration, so always probe the simulation.
+    final sourceDuration = _estimateSimulationDuration(
       simulation,
       fallback: duration,
     );
@@ -1068,7 +1065,7 @@ class _FixedDurationSimulation extends Simulation {
   })  : _durationInSeconds =
             duration.inMicroseconds / Duration.microsecondsPerSecond,
         _sourceDuration = sourceDuration ??
-            estimateSimulationDuration(
+            _estimateSimulationDuration(
               parent,
               fallback: duration,
             ),
@@ -1102,28 +1099,9 @@ class _FixedDurationSimulation extends Simulation {
   double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
 
-/// Returns the natural duration for motions that expose one directly.
-///
-/// Prefer using [MotionBase.duration] directly instead.
-@Deprecated('Use MotionBase.duration instead')
-Duration? motionDuration(MotionBase motion) => motion.duration;
-
-/// Resolves a duration in seconds, preferring explicit motion timing and using
-/// bounded simulation estimation only as a fallback.
-double motionDurationInSeconds(
-  MotionBase motion,
-  Simulation simulation, {
-  Duration? fallback,
-}) {
-  final duration = motion.duration;
-  if (duration != null) return duration.toSeconds();
-
-  return estimateSimulationDuration(simulation, fallback: fallback);
-}
-
 /// Estimates when [simulation] finishes using exponential search followed by
 /// binary search, avoiding fixed-step scans through the whole timeline.
-double estimateSimulationDuration(
+double _estimateSimulationDuration(
   Simulation simulation, {
   Duration? fallback,
   Duration max = const Duration(seconds: 60),
@@ -1304,7 +1282,7 @@ class _TrimmedSimulation extends Simulation {
   final double _duration;
 
   static double _findParentDuration(Simulation parent) {
-    return estimateSimulationDuration(
+    return _estimateSimulationDuration(
       parent,
       fallback: const Duration(seconds: 1),
       max: const Duration(seconds: 10),

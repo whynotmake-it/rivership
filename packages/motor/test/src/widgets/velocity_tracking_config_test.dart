@@ -177,9 +177,8 @@ void main() {
     group('MotionBuilder (multi-dimensional)', () {
       testWidgets('tracked velocity carries momentum for Offset values',
           (tester) async {
-        Offset capturedValue = Offset.zero;
+        var capturedValue = Offset.zero;
 
-        // --- Tracking ON ---
         await tester.pumpWidget(
           MotionBuilder<Offset>(
             key: const ValueKey('on'),
@@ -222,7 +221,6 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        // --- Tracking OFF ---
         await tester.pumpWidget(
           MotionBuilder<Offset>(
             key: const ValueKey('off'),

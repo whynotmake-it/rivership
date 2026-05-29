@@ -1,7 +1,5 @@
 // ignore_for_file: cascade_invocations
 
-import 'dart:ui';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
@@ -166,12 +164,12 @@ void main() {
       controller = TrackController(vsync: tester);
 
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear150),
           const SyncStep(token: #phaseB),
           const StepTo(2.0, motion: linear100),
@@ -180,7 +178,7 @@ void main() {
 
       await tester.pump();
 
-      // At 60ms: trackA done (50ms motion), waiting at sync. trackB still animating.
+      // At 60ms: trackA done (50ms motion), waiting at sync. trackB animating.
       await tester.pump(const Duration(milliseconds: 60));
       expect(controller.value(trackA), closeTo(1.0, error));
       expect(controller.value(trackB), lessThan(1.0));
@@ -206,12 +204,12 @@ void main() {
       // Since they have different tokens, each should release independently
       // when that track alone reaches its sync.
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #x),
           const StepTo(2.0, motion: linear100),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear150),
           const SyncStep(token: #y),
           const StepTo(2.0, motion: linear100),
@@ -237,18 +235,17 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets(
-        'B8: large elapsed gap resolves sync barriers without collapse',
+    testWidgets('B8: large elapsed gap resolves sync barriers without collapse',
         (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #phase2),
           const StepTo(2.0, motion: linear50),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #phase2),
           const StepTo(2.0, motion: linear50),
@@ -268,12 +265,12 @@ void main() {
       controller = TrackController(vsync: tester);
 
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear150),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear100),
@@ -292,12 +289,12 @@ void main() {
 
       // Replay the same timeline
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear100),
@@ -312,8 +309,7 @@ void main() {
       expect(controller.value(trackB), closeTo(2.0, error));
     });
 
-    testWidgets(
-        'B10: track not part of sync group does not block release',
+    testWidgets('B10: track not part of sync group does not block release',
         (tester) async {
       controller = TrackController(vsync: tester);
       final trackC = Track<double>(MotionConverter.single, initial: 0.0);
@@ -321,17 +317,17 @@ void main() {
       // trackA and trackB sync on #barrier, trackC has no sync and runs
       // independently with a longer animation
       controller.animate([
-        TrackAnimation(trackA, [
+        trackA([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
-        TrackAnimation(trackB, [
+        trackB([
           const StepTo(1.0, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
-        TrackAnimation(trackC, [
+        trackC([
           const StepTo(5.0, motion: linear150),
         ]),
       ]);
@@ -376,6 +372,12 @@ void main() {
       controller = PhaseTrackController<String>(vsync: tester);
 
       final phasesVisited = <String>[];
+      void recordTransition(PhaseTransition<String> transition) {
+        if (transition is PhaseTransitioning<String>) {
+          if (phasesVisited.isEmpty) phasesVisited.add(transition.from);
+          phasesVisited.add(transition.to);
+        }
+      }
 
       controller.playPhases(
         TrackPhaseTimeline({
@@ -383,13 +385,13 @@ void main() {
           'active': [size.to(2.0, motion: linear100)],
           'done': [size.to(3.0, motion: linear100)],
         }),
-        onPhaseChanged: phasesVisited.add,
+        onTransition: recordTransition,
       );
 
       await tester.pump();
 
-      // First phase fires immediately
-      expect(phasesVisited, contains('idle'));
+      // Playback starts at the first phase immediately
+      expect(controller.currentPhase, equals('idle'));
 
       // Let first phase settle, second should begin
       await tester.pumpAndSettle();
@@ -398,7 +400,7 @@ void main() {
       expect(controller.value(size), closeTo(3.0, error));
     });
 
-    testWidgets('C12: goToPhase plays only that phase\'s animations',
+    testWidgets("C12: goToPhase plays only that phase's animations",
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -424,6 +426,12 @@ void main() {
       controller = PhaseTrackController<String>(vsync: tester);
 
       final phasesVisited = <String>[];
+      void recordTransition(PhaseTransition<String> transition) {
+        if (transition is PhaseTransitioning<String>) {
+          if (phasesVisited.isEmpty) phasesVisited.add(transition.from);
+          phasesVisited.add(transition.to);
+        }
+      }
 
       controller.playPhases(
         TrackPhaseTimeline(
@@ -433,7 +441,7 @@ void main() {
           },
           phaseLoop: LoopMode.loop,
         ),
-        onPhaseChanged: phasesVisited.add,
+        onTransition: recordTransition,
       );
 
       await tester.pump();
@@ -514,8 +522,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets(
-        'D16: track present in only some phases participates in sync',
+    testWidgets('D16: track present in only some phases participates in sync',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -624,7 +631,7 @@ void main() {
             'phase1': [offset.to(const Offset(50, 50), motion: linear100)],
             'phase2': [offset.to(const Offset(100, 100), motion: linear100)],
           }),
-          onPhaseChanged: (_) {},
+          onTransition: (_) {},
         );
 
         await tester.pump();
@@ -647,7 +654,7 @@ void main() {
             'phase1': [offset.to(const Offset(50, 50), motion: linear100)],
             'phase2': [offset.to(const Offset(100, 100), motion: linear100)],
           }),
-          onPhaseChanged: (_) {},
+          onTransition: (_) {},
         );
 
         await tester.pump();
@@ -675,7 +682,7 @@ void main() {
             'phase1': [offset.to(const Offset(50, 50), motion: linear100)],
             'phase2': [offset.to(const Offset(100, 100), motion: linear100)],
           }),
-          onPhaseChanged: (_) {},
+          onTransition: (_) {},
         );
 
         await tester.pump();
@@ -713,7 +720,7 @@ void main() {
               scale.to(1.0, motion: linear100),
             ],
           }),
-          onPhaseChanged: (_) {},
+          onTransition: (_) {},
         );
 
         await tester.pump();

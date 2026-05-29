@@ -116,7 +116,7 @@ void main() {
             _Phase.idle: [scale.to(1.0)],
             _Phase.pressed: [scale.to(0.5)],
           }),
-          builder: (context, value, child) {
+          builder: (context, value, phase, child) {
             captured = value<double>(scale);
             return const SizedBox();
           },

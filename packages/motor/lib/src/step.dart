@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
+import 'package:motor/src/track_phase_timeline.dart';
 
 /// A single instruction in a track animation.
 @immutable
