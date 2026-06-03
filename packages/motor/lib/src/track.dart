@@ -1,13 +1,17 @@
 import 'package:equatable/equatable.dart';
+import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/track_controller.dart'
+    show TrackController;
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/step.dart';
+import 'package:motor/src/track_timeline.dart' show TrackTimeline;
 
 /// Identity token for a logical animated property.
 ///
-/// Declare tracks as top-level or static `final` variables. Identity is the
-/// Dart object reference, so changing [zero] during hot reload preserves
-/// the same track identity.
+/// Declare tracks as top-level or static `final` variables.
+/// Identity is the Dart object reference, so changing [zero] during hot reload
+/// preserves the same track identity.
 class Track<T extends Object> {
   /// Creates a track with a [converter] and declared [zero].
   ///
@@ -22,7 +26,10 @@ class Track<T extends Object> {
   /// Converts track values to and from normalized dimensions.
   final MotionConverter<T> converter;
 
-  /// The fallback initial value for this track.
+  /// The baseline value for this track.
+  ///
+  /// Will be used by any motion controllers that don't have a set initial
+  /// value for this track.
   final T zero;
 
   /// The default motion for steps on this track.
@@ -45,9 +52,16 @@ class Track<T extends Object> {
   /// Creates a multi-step animation for this track.
   TrackAnimation<T> call(List<Step<T>> steps) => TrackAnimation._(this, steps);
 
-  /// Creates a value snapshot for this track, optionally with [velocity].
-  TrackValue<T> value(T value, {T? velocity}) =>
-      TrackValue(this, value, velocity: velocity);
+  /// Creates a value snapshot for this track.
+  ///
+  /// {@macro TrackValue}
+  TrackValue<T> value(T value) => TrackValue._(this, value);
+
+  /// Creates a velocity snapshot for this track.
+  ///
+  /// This is sugar for [value] that reads better in `withVelocity:` lists:
+  /// the snapshot's [TrackValue.value] is interpreted as a velocity.
+  TrackValue<T> velocity(T velocity) => TrackValue._(this, velocity);
 
   /// Creates a free-motion animation for this track.
   TrackAnimation<T> free(FreeMotion motion) {
@@ -60,6 +74,7 @@ class Track<T extends Object> {
   /// [SyncStep] barriers (which carry no value) are re-wrapped as
   /// `SyncStep<T>` so the resulting list has a uniform runtime type.
   /// All other steps must already be `Step<T>` at runtime.
+  @internal
   TrackAnimation<T> animationFromUntypedSteps(List<Step<Object>> steps) {
     final typed = <Step<T>>[
       for (final step in steps)
@@ -72,25 +87,26 @@ class Track<T extends Object> {
   }
 }
 
-/// A value (and optional velocity) snapshot for a [Track].
+/// A value snapshot for a [Track].
 ///
-/// Used as initial-value overrides in `TrackTimeline.from` and
-/// `TrackController.set`.
+/// {@template TrackValue}
+/// Used as initial-value overrides in [TrackTimeline.from] and
+/// [TrackController.set]. The same type is reused for `withVelocity:` lists,
+/// where its [value] is interpreted as a velocity.
+///
+/// {@endtemplate}
 class TrackValue<T extends Object> with EquatableMixin {
-  /// Creates a value snapshot that starts [track] from [value].
-  TrackValue(this.track, this.value, {this.velocity});
+  /// Creates a value snapshot for [track].
+  TrackValue._(this.track, this.value);
 
   /// The track this snapshot applies to.
   final Track<T> track;
 
-  /// The value for [track].
+  /// The value for [track] (or, in `withVelocity:` lists, the velocity).
   final T value;
 
-  /// Optional initial velocity for [track].
-  final T? velocity;
-
   @override
-  List<Object?> get props => [track, value, velocity];
+  List<Object?> get props => [track, value];
 }
 
 /// Backwards-compatible alias.
