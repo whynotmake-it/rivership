@@ -16,7 +16,7 @@ void main() {
     testWidgets('starts playback from the given phase, not phase 0',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
-      final size = Track<double>(MotionConverter.single, zero: 0);
+      final size = Track<double>(MotionConverter.single, origin: 0);
 
       controller.playPhases(
         TrackPhaseTimeline({
@@ -48,7 +48,7 @@ void main() {
     testWidgets('skips earlier phases but still continues to the end',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
-      final size = Track<double>(MotionConverter.single, zero: 0);
+      final size = Track<double>(MotionConverter.single, origin: 0);
 
       final entered = <String>[];
 

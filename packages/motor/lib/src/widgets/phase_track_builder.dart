@@ -29,7 +29,7 @@ typedef PhaseTrackWidgetBuilder<P> = Widget Function(
 /// **Manual control** -- set [currentPhase] to drive phase changes externally:
 ///
 /// ```dart
-/// PhaseMotionBuilder<PanelPhase>(
+/// PhaseTrackBuilder<PanelPhase>(
 ///   currentPhase: _phase,
 ///   timeline: TrackPhaseTimeline({
 ///     .compact: [panelSize.to(Size(172, 128)), radius.to(24)],
@@ -43,7 +43,7 @@ typedef PhaseTrackWidgetBuilder<P> = Widget Function(
 /// automatically when each phase's animations settle:
 ///
 /// ```dart
-/// PhaseMotionBuilder<PanelPhase>(
+/// PhaseTrackBuilder<PanelPhase>(
 ///   playing: true,
 ///   timeline: TrackPhaseTimeline({
 ///     .compact: [panelSize.to(Size(172, 128))],
@@ -53,9 +53,9 @@ typedef PhaseTrackWidgetBuilder<P> = Widget Function(
 ///   builder: (context, value, phase, child) { ... },
 /// )
 /// ```
-class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
-  /// Creates a phase motion builder.
-  const PhaseMotionBuilder({
+class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
+  /// Creates a phase track builder.
+  const PhaseTrackBuilder({
     required this.timeline,
     required this.builder,
     this.currentPhase,
@@ -115,11 +115,11 @@ class PhaseMotionBuilder<P extends Object> extends StatefulWidget {
   final Widget? child;
 
   @override
-  State<PhaseMotionBuilder<P>> createState() => _PhaseMotionBuilderState<P>();
+  State<PhaseTrackBuilder<P>> createState() => _PhaseTrackBuilderState<P>();
 }
 
-class _PhaseMotionBuilderState<P extends Object>
-    extends State<PhaseMotionBuilder<P>> with TickerProviderStateMixin {
+class _PhaseTrackBuilderState<P extends Object>
+    extends State<PhaseTrackBuilder<P>> with TickerProviderStateMixin {
   late PhaseTrackController<P> _controller;
 
   @override
@@ -137,7 +137,7 @@ class _PhaseMotionBuilderState<P extends Object>
   }
 
   @override
-  void didUpdateWidget(PhaseMotionBuilder<P> oldWidget) {
+  void didUpdateWidget(PhaseTrackBuilder<P> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {

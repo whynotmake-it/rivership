@@ -1,22 +1,12 @@
 import 'package:meta/meta.dart';
 
-/// Represents the different states of phase transitions in a sequence
-/// animation.
+/// A phase transition reported while a phased animation plays.
 ///
-/// This sealed class models the various states a phase transition can be in:
-/// - [PhaseSettled]: The animation has settled at a specific phase
-/// - [PhaseTransitioning]: The animation is transitioning from one phase
-///   to another
+/// It is either [PhaseTransitioning] (a new phase began animating) or
+/// [PhaseSettled] (the active phase came to rest).
 @immutable
 sealed class PhaseTransition<P> {
   const PhaseTransition();
-
-  const factory PhaseTransition.settled(P phase) = PhaseSettled<P>;
-
-  const factory PhaseTransition.transitioning({
-    required P from,
-    required P to,
-  }) = PhaseTransitioning<P>;
 
   /// The phase where the animation is currently at or transitioning to.
   P get phase;

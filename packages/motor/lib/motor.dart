@@ -14,7 +14,7 @@ export 'src/motion_sequence.dart';
 export 'src/motion_velocity_tracker.dart'
     show MotionVelocityEstimate, MotionVelocityTracker, VelocityTracking;
 export 'src/phase_transition.dart';
-export 'src/step.dart' hide SyncStep;
+export 'src/step.dart';
 export 'src/track.dart';
 export 'src/track_phase_timeline.dart';
 export 'src/track_timeline.dart';
@@ -22,6 +22,6 @@ export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
 export 'src/widgets/multi_track_motion_builder.dart';
-export 'src/widgets/phase_motion_builder.dart';
+export 'src/widgets/phase_track_builder.dart';
 export 'src/widgets/sequence_motion_builder.dart';
 export 'src/widgets/velocity_motion_builder.dart';

@@ -7,30 +7,31 @@ import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/step.dart';
 import 'package:motor/src/track_timeline.dart' show TrackTimeline;
 
-/// Identity token for a logical animated property.
+/// Identity for a single animated property (e.g. a panel's size or a tint).
 ///
-/// Declare tracks as top-level or static `final` variables.
-/// Identity is the Dart object reference, so changing [zero] during hot reload
-/// preserves the same track identity.
+/// A controller tracks values per [Track], keyed by object identity, so
+/// declare tracks as top-level or `static final` variables and reuse the same
+/// instance. The identity is the object reference itself — editing fields like
+/// [origin] during hot reload keeps the same track.
 class Track<T extends Object> {
-  /// Creates a track with a [converter] and declared [zero].
+  /// Creates a track with a [converter] and declared [origin].
   ///
   /// If [motion] is provided, it becomes the default motion for steps on this
   /// track that don't specify their own motion.
   Track(
     this.converter, {
-    required this.zero,
+    required this.origin,
     this.motion,
   });
 
   /// Converts track values to and from normalized dimensions.
   final MotionConverter<T> converter;
 
-  /// The baseline value for this track.
+  /// The default resting value for this track.
   ///
   /// Will be used by any motion controllers that don't have a set initial
   /// value for this track.
-  final T zero;
+  final T origin;
 
   /// The default motion for steps on this track.
   ///
@@ -108,10 +109,6 @@ class TrackValue<T extends Object> with EquatableMixin {
   @override
   List<Object?> get props => [track, value];
 }
-
-/// Backwards-compatible alias.
-@Deprecated('Use TrackValue instead')
-typedef TrackFrom<T extends Object> = TrackValue<T>;
 
 /// An animation instruction for a single [Track].
 class TrackAnimation<T extends Object> with EquatableMixin {

@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
@@ -310,7 +311,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Resolves the initial value for a track that has never been seen before.
   ///
   /// Checks the constructor-level [_from] overrides first, then falls back to
-  /// [Track.zero].
+  /// [Track.origin].
   T _resolveInitialValue<T extends Object>(Track<T> track) {
     for (final override in _from.reversed) {
       if (override case TrackValue<T>(track: final overrideTrack)
@@ -318,7 +319,7 @@ class TrackController extends Animation<TrackValueReader>
         return override.value;
       }
     }
-    return track.zero;
+    return track.origin;
   }
 
   /// Finds an explicit `from` override for [track] in the given list.
@@ -393,6 +394,8 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Subclasses (e.g. [PhaseTrackController]) override this to detect phase
   /// transitions. The [token] is the [SyncStep.token] that was released.
+  @protected
+  @visibleForOverriding
   void onSyncReleased(Object token) {}
 
   void _tick(Duration elapsed) {

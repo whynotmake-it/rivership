@@ -8,8 +8,8 @@ enum _Phase { idle, pressed }
 
 void main() {
   group('MultiTrackMotionBuilder', () {
-    final opacity = Track<double>(MotionConverter.single, zero: 0.0);
-    final scale = Track<double>(MotionConverter.single, zero: 1.0);
+    final opacity = Track<double>(MotionConverter.single, origin: 0.0);
+    final scale = Track<double>(MotionConverter.single, origin: 1.0);
 
     testWidgets('builds with track values', (tester) async {
       double? capturedOpacity;
@@ -99,10 +99,10 @@ void main() {
     });
   });
 
-  group('PhaseMotionBuilder', () {
+  group('PhaseTrackBuilder', () {
     final scale = Track<double>(
       MotionConverter.single,
-      zero: 1.0,
+      origin: 1.0,
       motion: const Motion.linear(Duration(milliseconds: 100)),
     );
 
@@ -110,7 +110,7 @@ void main() {
       double? captured;
 
       Widget build(_Phase phase) {
-        return PhaseMotionBuilder<_Phase>(
+        return PhaseTrackBuilder<_Phase>(
           currentPhase: phase,
           timeline: TrackPhaseTimeline({
             _Phase.idle: [scale.to(1.0)],
