@@ -13,7 +13,7 @@ void main() {
     testWidgets('builder receives the current phase', (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        initial: 1,
+        zero: 1,
         motion: linear100,
       );
 
@@ -46,7 +46,7 @@ void main() {
         (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        initial: 0,
+        zero: 0,
         motion: linear100,
       );
 
@@ -78,7 +78,7 @@ void main() {
     testWidgets('restartTrigger replays the timeline', (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        initial: 0,
+        zero: 0,
         motion: linear100,
       );
 
@@ -111,7 +111,7 @@ void main() {
         (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        initial: 0,
+        zero: 0,
         motion: linear100,
       );
 

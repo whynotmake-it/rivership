@@ -7,10 +7,10 @@ import 'package:motor_example/widgets/example_scaffold.dart';
 
 const _routeName = 'Tap Playground';
 
-final _orbAlignment = Track<Alignment>(.alignment, initial: Alignment.center);
-final _orbScale = Track<double>(.single, initial: 1);
-final _orbRotation = Track<double>(.single, initial: 0);
-final _orbTint = Track<Color>(.colorRgb, initial: Color(0xFF34C759));
+final _orbAlignment = Track<Alignment>(.alignment, zero: Alignment.center);
+final _orbScale = Track<double>(.single, zero: 1);
+final _orbRotation = Track<double>(.single, zero: 0);
+final _orbTint = Track<Color>(.colorRgb, zero: Color(0xFF34C759));
 
 class TapPlaygroundPage extends StatefulWidget {
   const TapPlaygroundPage({super.key});

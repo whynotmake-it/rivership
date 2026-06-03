@@ -18,11 +18,11 @@ class _TimelineChoreographyPageState extends State<TimelineChoreographyPage> {
   var _replay = 0;
   var _step = 'ready';
 
-  final offset = Track(.offset, initial: Offset(0, 500));
-  final scale = Track(.single, initial: .84);
-  final opacity = Track<double>(.single, initial: 0);
-  final rotation = Track<double>(.single, initial: -.08);
-  final tint = Track<Color>(.colorRgb, initial: Color(0xFF0A84FF));
+  final offset = Track(.offset, zero: Offset(0, 500));
+  final scale = Track(.single, zero: .84);
+  final opacity = Track<double>(.single, zero: 0);
+  final rotation = Track<double>(.single, zero: -.08);
+  final tint = Track<Color>(.colorRgb, zero: Color(0xFF0A84FF));
 
   get _launchTimeline => TrackTimeline([
     offset([
@@ -90,11 +90,11 @@ class _TimelineChoreographyPageState extends State<TimelineChoreographyPage> {
         from: [
           // The timeline should always start from the initial values,
           // so we set them here.
-          offset.value(offset.initial),
-          scale.value(scale.initial),
-          opacity.value(opacity.initial),
-          rotation.value(rotation.initial),
-          tint.value(tint.initial),
+          offset.value(offset.zero),
+          scale.value(scale.zero),
+          opacity.value(opacity.zero),
+          rotation.value(rotation.zero),
+          tint.value(tint.zero),
         ],
         timeline: _launchTimeline,
         restartTrigger: _replay,

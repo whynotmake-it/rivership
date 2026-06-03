@@ -6,16 +6,16 @@ import 'package:motor/src/step.dart';
 /// Identity token for a logical animated property.
 ///
 /// Declare tracks as top-level or static `final` variables. Identity is the
-/// Dart object reference, so changing [initial] during hot reload preserves
+/// Dart object reference, so changing [zero] during hot reload preserves
 /// the same track identity.
 class Track<T extends Object> {
-  /// Creates a track with a [converter] and declared [initial] value.
+  /// Creates a track with a [converter] and declared [zero].
   ///
   /// If [motion] is provided, it becomes the default motion for steps on this
   /// track that don't specify their own motion.
   Track(
     this.converter, {
-    required this.initial,
+    required this.zero,
     this.motion,
   });
 
@@ -23,7 +23,7 @@ class Track<T extends Object> {
   final MotionConverter<T> converter;
 
   /// The fallback initial value for this track.
-  final T initial;
+  final T zero;
 
   /// The default motion for steps on this track.
   ///
