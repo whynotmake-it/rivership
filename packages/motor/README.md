@@ -17,6 +17,8 @@ A unified motion system that brings together physics-based springs, duration-bas
 - 🍎 **Apple Design System** - Built-in CupertinoMotion presets matching iOS animations
 - 🎨 **Material Design 3** - MaterialSpringMotion tokens following Google's motion guidelines
 - 📱 **Multi-dimensional** - Animate complex types like Offset, Size, and Rect with independent physics per dimension
+- 🎼 **Tracks & Steps** - Choreograph many properties at once, each with its own multi-step motion
+- 🌬️ **Free Motion** - Self-directed physics like friction and decay, with rest-position projection
 - 🔄 **Interactive Widgets** - Motion-driven draggable widgets with natural return animations
 - 🎯 **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
 
@@ -57,14 +59,20 @@ final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
 final material = MaterialSpringMotion.standardSpatialDefault();
 ```
 
-Motor provides several motion types out of the box, with the ability to create custom motions by implementing the `Motion` interface:
+Motor provides several motion types out of the box, with the ability to create custom motions by extending these classes:
+
+**Target-based motions** (`Motion`) animate from a start value to a target value:
 
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
 - **`NoMotion`** - Holds at the target value for an optional duration.
-- **`SpringMotion`** - Physics-based motion using Flutter SDK's SpringDescription. Provides natural, responsive animations that feel alive.Defaults to snapping to the end value to ensure precise settling.
+- **`SpringMotion`** - Physics-based motion using Flutter SDK's `SpringDescription`. Provides natural, responsive animations that feel alive. Defaults to snapping to the end value to ensure precise settling.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
+
+**Free motions** (`FreeMotion`) are self-directed: they evolve from a position and velocity with no fixed target:
+
+- **`FrictionMotion`** - Decelerates due to drag, like a scroll view coasting to a stop. Use `finalValue` / `project` to compute where it will come to rest without running the full simulation.
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
@@ -188,9 +196,108 @@ MotionBuilder(
 )
 ```
 
+### Tracks & Steps 🎼
+
+Real UI motion rarely animates a single value. A panel might move, resize, change color, and rotate — each with its own timing and feel. A **`Track`** represents one such animated property, and you describe what it does with a sequence of **steps**.
+
+> **Note:** The examples below use the Dart 3.10 dot-shorthand syntax (`.to(...)` instead of `Step.to(...)`).
+
+Declare a track for each property you want to animate. Identity is the object reference, so declare them as `final` fields and reuse the same instance:
+
+```dart
+final offset = Track(.offset, origin: Offset.zero);
+final scale = Track(.single, origin: 0.8);
+final tint = Track(.colorRgb, origin: Colors.blue);
+```
+
+A track is **callable**, and it has a few helper methods to describe its motion. The simplest is a single step to a target:
+
+```dart
+scale.to(1, motion: .bouncySpring());
+```
+
+For richer motion, call the track with a list of steps that run in order:
+
+```dart
+offset([
+  .to(const Offset(0, 100), motion: .smoothSpring()),
+  .at(const Duration(milliseconds: 120), Offset.zero, motion: .bouncySpring()),
+]);
+```
+
+`MultiTrackMotionBuilder` plays one or more tracks together and rebuilds with their current values. The `builder` gets a `value` reader — call `value(track)` to read any track's current value:
+
+```dart
+MultiTrackMotionBuilder(
+  play: [
+    scale.to(1, motion: .bouncySpring()),
+    offset([
+      .to(const Offset(0, 100), motion: .smoothSpring()),
+      .at(const Duration(milliseconds: 120), Offset.zero,
+          motion: .bouncySpring()),
+    ]),
+    tint([
+      .hold(const Duration(milliseconds: 120)),
+      .to(Colors.green, motion: .smoothSpring()),
+    ]),
+  ],
+  builder: (context, value, child) {
+    return Transform.translate(
+      offset: value(offset),
+      child: Transform.scale(
+        scale: value(scale),
+        child: ColoredBox(color: value(tint), child: child),
+      ),
+    );
+  },
+)
+```
+
+Each track advances independently with its own steps and motions, but they all run on the same ticker.
+
+#### Steps
+
+Each step is one instruction on a track:
+
+- **`.to(value, motion:)`** — animate toward `value`. If `motion` is omitted, the track's default `motion` is used.
+- **`.at(time, value, motion:)`** — reach `value` at an absolute `time` from the track's start.
+- **`.hold(duration)`** — keep the current value for `duration`.
+- **`.free(motion:)`** — run a self-directed `FreeMotion` (e.g. friction) from the current value and velocity.
+- **`.sync(token:)`** — a barrier: the track waits here until every other track with the same `token` reaches its own sync step, then they continue together. Handy for re-aligning tracks that ran at different speeds.
+
+#### Phases — named states
+
+When your animation is really a set of named states (compact / expanded / focused), map each phase to the track values it should settle on. `PhaseTrackBuilder` drives it, either manually via `currentPhase` or automatically via `playing: true`:
+
+```dart
+enum PanelPhase { compact, expanded }
+
+PhaseTrackBuilder<PanelPhase>(
+  currentPhase: _phase, // change this to animate between phases
+  timeline: TrackPhaseTimeline({
+    .compact: [panelSize.to(const Size(172, 128)), radius.to(24)],
+    .expanded: [panelSize.to(const Size(292, 180)), radius.to(34)],
+  }),
+  builder: (context, value, phase, child) {
+    return SizedBox.fromSize(
+      size: value(panelSize),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(value(radius)),
+        ),
+      ),
+    );
+  },
+)
+```
+
+Phases insert sync barriers automatically, so every track reaches the next phase together. Set `playing: true` to auto-advance through all phases, and pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events. For imperative control, drop down to `TrackController` / `PhaseTrackController`.
+
 ### Sequence Animations 🎬
 
 Motor's sequence animations let you create complex, multi-phase animations with smooth transitions between states. Perfect for storytelling, onboarding flows, state machines, and complex UI transitions.
+
+> **Tracks vs. Sequences:** A `MotionSequence` animates a **single value** through ordered phases. If you need to choreograph **several properties at once** (each with its own steps and motion), reach for the **Tracks & Steps** section above instead.
 
 > **Note:** The upcoming examples use the Dart 3.10 dot-shorthand syntax.
 

@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/track_phase_timeline.dart';
@@ -38,11 +37,15 @@ sealed class Step<T extends Object> with EquatableMixin {
     Motion? motion,
   }) = StepAt<T>;
 
-  /// A synchronization barrier.
+  /// A synchronization barrier that waits for sibling tracks.
   ///
-  /// When playback reaches this step, the track pauses until all other active
-  /// tracks that share the same [token] (by `==`) also reach their sync step.
-  /// The [TrackController] then releases them together.
+  /// When playback reaches this step, the track holds its current value until
+  /// every other active track that shares the same [token] (by `==`) also
+  /// reaches a matching sync step. The controller then releases them together,
+  /// so the tracks continue in lockstep.
+  ///
+  /// Use this to keep independent tracks aligned at key moments without
+  /// hand-tuning each track's durations.
   const factory Step.sync({required Object token}) = SyncStep<T>;
 }
 
@@ -116,20 +119,19 @@ class StepAt<T extends Object> extends Step<T> {
   List<Object?> get props => [at, value, motion];
 }
 
-/// A synchronization point inserted at phase boundaries.
+/// A synchronization barrier that keeps sibling tracks aligned.
 ///
-/// When a track reaches a [SyncStep] during live playback, it enters a
-/// `waitForSync` state and holds its current value until all other active
-/// tracks with the same [token] also reach their sync step. The
-/// [TrackController] then releases them simultaneously so the next phase
-/// begins in unison.
+/// When a track reaches a [SyncStep] during live playback, it holds its
+/// current value until every other active track with the same [token] (by
+/// `==`) also reaches a matching sync step. The [TrackController] then
+/// releases them simultaneously so they continue in unison.
 ///
-/// During seek operations, sync steps are treated as zero-duration holds
-/// and passed through freely.
+/// Add one via [Step.sync] to coordinate otherwise-independent tracks, for
+/// example to make a slower and a faster track meet before the next move.
+/// [TrackPhaseTimeline] inserts these automatically at phase boundaries.
 ///
-/// This class is an internal implementation detail of [TrackPhaseTimeline]
-/// and is not part of the public API.
-@internal
+/// During seek operations, sync steps are treated as zero-duration holds and
+/// passed through freely.
 @immutable
 class SyncStep<T extends Object> extends Step<T> {
   /// Creates a sync step with a [token] for grouped release.

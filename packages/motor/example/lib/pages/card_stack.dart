@@ -8,7 +8,7 @@ import 'package:motor_example/widgets/example_scaffold.dart';
 
 enum _Phase { clearing, dismissing }
 
-final _offset = Track<Offset>(.offset, zero: .zero, motion: .bouncySpring());
+final _offset = Track<Offset>(.offset, origin: .zero, motion: .bouncySpring());
 
 const _colors = [Color(0xFF0A84FF), Color(0xFF34C759), Color(0xFFBF5AF2)];
 

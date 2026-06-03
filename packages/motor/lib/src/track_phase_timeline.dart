@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/step.dart';
@@ -60,6 +61,7 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   /// immediately at [startPhase] and then advances through the remaining
   /// phases in order. Returns the full [animations] when [startPhase] is the
   /// first phase (or not found).
+  @internal
   List<TrackAnimation> animationsFrom(P startPhase) {
     final index = phases.indexOf(startPhase);
     if (index <= 0) return animations;

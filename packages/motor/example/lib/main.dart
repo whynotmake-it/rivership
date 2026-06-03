@@ -226,10 +226,10 @@ class _HomePage extends StatelessWidget {
         ),
         ExampleCard(
           index: 1,
-          pillLabel: 'PhaseMotionBuilder',
+          pillLabel: 'PhaseTrackBuilder',
           pillIcon: CupertinoIcons.slider_horizontal_3,
           pillColor: t.accentPurple,
-          codeHint: 'PhaseMotionBuilder(currentPhase: ...)',
+          codeHint: 'PhaseTrackBuilder(currentPhase: ...)',
           preview: _PhasePreview(t: t),
           title: 'Phase Tracks',
           description:

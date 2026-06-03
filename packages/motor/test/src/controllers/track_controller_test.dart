@@ -11,8 +11,8 @@ import '../util.dart';
 void main() {
   group('TrackController', () {
     late TrackController controller;
-    final opacity = Track<double>(MotionConverter.single, zero: 0.0);
-    final scale = Track<double>(MotionConverter.single, zero: 1.0);
+    final opacity = Track<double>(MotionConverter.single, origin: 0.0);
+    final scale = Track<double>(MotionConverter.single, origin: 1.0);
 
     tearDown(() {
       controller.dispose();
@@ -299,7 +299,7 @@ void main() {
     testWidgets('settles interrupted tap playground reset at zero rotation',
         (tester) async {
       controller = TrackController(vsync: tester);
-      final rotation = Track<double>(MotionConverter.single, zero: 0.0);
+      final rotation = Track<double>(MotionConverter.single, origin: 0.0);
       const motion = Motion.smoothSpring(duration: Duration(milliseconds: 420));
 
       controller.play(

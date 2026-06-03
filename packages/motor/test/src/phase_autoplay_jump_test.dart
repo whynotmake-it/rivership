@@ -3,7 +3,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
-import 'package:motor/src/step.dart' show SyncStep;
 
 import 'util.dart';
 
@@ -76,8 +75,8 @@ void main() {
     const linear400 = Motion.linear(Duration(milliseconds: 400));
 
     late TrackController controller;
-    final trackA = Track<double>(MotionConverter.single, zero: 0.0);
-    final trackB = Track<double>(MotionConverter.single, zero: 0.0);
+    final trackA = Track<double>(MotionConverter.single, origin: 0.0);
+    final trackB = Track<double>(MotionConverter.single, origin: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -153,8 +152,8 @@ void main() {
     const linear400 = Motion.linear(Duration(milliseconds: 400));
 
     late PhaseTrackController<String> controller;
-    final fast = Track<double>(MotionConverter.single, zero: 0.0);
-    final slow = Track<double>(MotionConverter.single, zero: 0.0);
+    final fast = Track<double>(MotionConverter.single, origin: 0.0);
+    final slow = Track<double>(MotionConverter.single, origin: 0.0);
 
     tearDown(() {
       controller.dispose();

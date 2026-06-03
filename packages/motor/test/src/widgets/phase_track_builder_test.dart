@@ -7,20 +7,20 @@ import '../util.dart';
 enum _Phase { idle, pressed }
 
 void main() {
-  group('PhaseMotionBuilder', () {
+  group('PhaseTrackBuilder', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     testWidgets('builder receives the current phase', (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        zero: 1,
+        origin: 1,
         motion: linear100,
       );
 
       _Phase? capturedPhase;
 
       Widget build(_Phase phase) {
-        return PhaseMotionBuilder<_Phase>(
+        return PhaseTrackBuilder<_Phase>(
           currentPhase: phase,
           timeline: TrackPhaseTimeline({
             _Phase.idle: [scale.to(1)],
@@ -46,14 +46,14 @@ void main() {
         (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        zero: 0,
+        origin: 0,
         motion: linear100,
       );
 
       final transitions = <PhaseTransition<_Phase>>[];
 
       await tester.pumpWidget(
-        PhaseMotionBuilder<_Phase>(
+        PhaseTrackBuilder<_Phase>(
           playing: true,
           timeline: TrackPhaseTimeline({
             _Phase.idle: [scale.to(1)],
@@ -78,14 +78,14 @@ void main() {
     testWidgets('restartTrigger replays the timeline', (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        zero: 0,
+        origin: 0,
         motion: linear100,
       );
 
       var settleCount = 0;
 
       Widget build(int trigger) {
-        return PhaseMotionBuilder<_Phase>(
+        return PhaseTrackBuilder<_Phase>(
           playing: true,
           restartTrigger: trigger,
           timeline: TrackPhaseTimeline({
@@ -111,14 +111,14 @@ void main() {
         (tester) async {
       final scale = Track<double>(
         MotionConverter.single,
-        zero: 0,
+        origin: 0,
         motion: linear100,
       );
 
       double? captured;
 
       Widget build(_Phase phase) {
-        return PhaseMotionBuilder<_Phase>(
+        return PhaseTrackBuilder<_Phase>(
           currentPhase: phase,
           timeline: TrackPhaseTimeline(
             {
