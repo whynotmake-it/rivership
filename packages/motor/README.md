@@ -198,34 +198,57 @@ MotionBuilder(
 
 ### Tracks & Steps 🎼
 
-Real UI motion rarely animates a single value. A panel might move, resize, change color, and rotate — each with its own timing and feel. A **`Track`** represents one such animated property, and you describe what it does with a sequence of **steps**.
+Everything above animates a single value. But real UI motion rarely does — a panel might move, resize, recolor, and rotate at once, each with its own timing and feel. Motor handles this with two small primitives: a **`Track`** (one property) and a **`Step`** (one instruction). The rest of this section builds them up one at a time.
 
-> **Note:** The examples below use the Dart 3.10 dot-shorthand syntax (`.to(...)` instead of `Step.to(...)`).
+> **Note:** The examples use Dart's dot-shorthand syntax (`.to(...)` instead of `Step.to(...)`).
 
-Declare a track for each property you want to animate. Identity is the object reference, so declare them as `final` fields and reuse the same instance:
+#### A track is one animated property
+
+A `Track` bundles a converter (how to break the value into animatable dimensions), an `origin` (its resting value before anything plays), and an optional default `motion`. Declare one per property:
 
 ```dart
-final offset = Track(.offset, origin: Offset.zero);
-final scale = Track(.single, origin: 0.8);
-final tint = Track(.colorRgb, origin: Colors.blue);
+final offset = Track(.offset, origin: Offset.zero, motion: .smoothSpring());
+final scale  = Track(.single, origin: 0.8);
+final tint   = Track(.colorRgb, origin: Colors.blue, motion: .smoothSpring());
 ```
 
-A track is **callable**, and it has a few helper methods to describe its motion. The simplest is a single step to a target:
+The key detail: **a track's identity is the object itself, not its value.** Declare each track once (a `final` field or top-level variable) and reuse that instance. That identity is how controllers keep per-track state and how you read values back later — so don't create tracks inline in `build`. The optional `motion:` is the track's default — any step that omits its own motion falls back to it.
+
+#### Steps describe what a track does
+
+A track is **callable**. Call it with an ordered list of steps, or use `.to(...)` for the common single-step case:
 
 ```dart
-scale.to(1, motion: .bouncySpring());
-```
+scale.to(1, motion: .bouncySpring()); // single step
 
-For richer motion, call the track with a list of steps that run in order:
-
-```dart
-offset([
+offset([                               // multiple steps, run in order
   .to(const Offset(0, 100), motion: .smoothSpring()),
-  .at(const Duration(milliseconds: 120), Offset.zero, motion: .bouncySpring()),
+  .at(const Duration(milliseconds: 120), Offset.zero),
 ]);
 ```
 
-`MultiTrackMotionBuilder` plays one or more tracks together and rebuilds with their current values. The `builder` gets a `value` reader — call `value(track)` to read any track's current value:
+The available steps are the verbs of the system:
+
+- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted).
+- **`.at(time, value, motion:)`** — arrive at `value` at an *absolute* `time` from the track's start. Great for keyframes.
+- **`.hold(duration)`** — keep the current value for `duration`.
+- **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
+- **`.sync(token:)`** — a barrier (see below).
+
+#### Reading values back: the `value` reader
+
+When several tracks animate together, there isn't a single "value" to hand you — there are many. So instead of a value, the builder gives you a **`value` reader**: a function you call *with a track* to get that track's current value, fully typed.
+
+```dart
+final Offset o = value(offset); // returns Offset
+final double s = value(scale);  // returns double
+```
+
+Think of it as a typed lookup keyed by track identity: "given this track, what's its value right now?" This is exactly why tracks need to be stable instances.
+
+#### Play them together: `MultiTrackMotionBuilder`
+
+Now it all comes together. Pass a `play:` list of track animations; they share one ticker, and the builder rebuilds with the reader:
 
 ```dart
 MultiTrackMotionBuilder(
@@ -233,8 +256,7 @@ MultiTrackMotionBuilder(
     scale.to(1, motion: .bouncySpring()),
     offset([
       .to(const Offset(0, 100), motion: .smoothSpring()),
-      .at(const Duration(milliseconds: 120), Offset.zero,
-          motion: .bouncySpring()),
+      .at(const Duration(milliseconds: 120), Offset.zero),
     ]),
     tint([
       .hold(const Duration(milliseconds: 120)),
@@ -253,29 +275,32 @@ MultiTrackMotionBuilder(
 )
 ```
 
-Each track advances independently with its own steps and motions, but they all run on the same ticker.
+Each track advances independently — different steps, different motions — but on the same clock.
 
-#### Steps
+#### Keep tracks aligned: `.sync` barriers
 
-Each step is one instruction on a track:
+Independent tracks finish at different times. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together.
 
-- **`.to(value, motion:)`** — animate toward `value`. If `motion` is omitted, the track's default `motion` is used.
-- **`.at(time, value, motion:)`** — reach `value` at an absolute `time` from the track's start.
-- **`.hold(duration)`** — keep the current value for `duration`.
-- **`.free(motion:)`** — run a self-directed `FreeMotion` (e.g. friction) from the current value and velocity.
-- **`.sync(token:)`** — a barrier: the track waits here until every other track with the same `token` reaches its own sync step, then they continue together. Handy for re-aligning tracks that ran at different speeds.
+```dart
+offset([.to(a), .sync(token: #beat), .to(b)]);
+size([  .to(x), .sync(token: #beat), .to(y)]); // both wait at #beat
+```
+
+No more hand-tuning durations just to line things up.
 
 #### Phases — named states
 
-When your animation is really a set of named states (compact / expanded / focused), map each phase to the track values it should settle on. `PhaseTrackBuilder` drives it, either manually via `currentPhase` or automatically via `playing: true`:
+Most motion is really a set of named states (compact / expanded / focused). `TrackPhaseTimeline` maps each phase to the values its tracks should settle on, and **inserts sync barriers between phases for you** — so every track reaches the next phase together.
+
+`PhaseTrackBuilder` drives it, either manually via `currentPhase` or automatically via `playing: true`:
 
 ```dart
 enum PanelPhase { compact, expanded }
 
 PhaseTrackBuilder<PanelPhase>(
-  currentPhase: _phase, // change this to animate between phases
+  currentPhase: _phase, // change this to animate between states
   timeline: TrackPhaseTimeline({
-    .compact: [panelSize.to(const Size(172, 128)), radius.to(24)],
+    .compact:  [panelSize.to(const Size(172, 128)), radius.to(24)],
     .expanded: [panelSize.to(const Size(292, 180)), radius.to(34)],
   }),
   builder: (context, value, phase, child) {
@@ -291,7 +316,22 @@ PhaseTrackBuilder<PanelPhase>(
 )
 ```
 
-Phases insert sync barriers automatically, so every track reaches the next phase together. Set `playing: true` to auto-advance through all phases, and pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events. For imperative control, drop down to `TrackController` / `PhaseTrackController`.
+Pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events, and `phaseLoop` to auto-advance in a loop.
+
+#### Imperative control
+
+When you need control outside a builder (gestures, custom sequencing), drop down to `TrackController`. It's an `Animation<TrackValueReader>`, so its `value` is the same reader from above:
+
+```dart
+final controller = TrackController(vsync: this);
+
+controller.play(timeline);           // run a TrackTimeline
+controller.animate([scale.to(1.2)]); // redirect specific tracks
+controller.set([scale.value(1.0)]);  // jump without animating
+final s = controller.value(scale);   // read via the reader
+```
+
+`PhaseTrackController` adds phase navigation on top (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) — it's what `PhaseTrackBuilder` uses internally.
 
 ### Sequence Animations 🎬
 
