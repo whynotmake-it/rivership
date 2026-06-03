@@ -9,12 +9,12 @@ enum _PanelPhase { compact, expanded, focus }
 
 final _panelAlignment = Track<Alignment>(
   .alignment,
-  initial: Alignment.topLeft,
+  zero: Alignment.topLeft,
   motion: .smoothSpring(duration: Duration(milliseconds: 520)),
 );
 final _panelSize = Track<Size>(
   .size,
-  initial: Size(172, 128),
+  zero: Size(172, 128),
   motion: .bouncySpring(
     duration: Duration(milliseconds: 580),
     extraBounce: .03,
@@ -22,17 +22,17 @@ final _panelSize = Track<Size>(
 );
 final _panelRadius = Track<double>(
   .single,
-  initial: 24,
+  zero: 24,
   motion: .smoothSpring(duration: Duration(milliseconds: 520)),
 );
 final _panelGlow = Track<double>(
   .single,
-  initial: .2,
+  zero: .2,
   motion: .smoothSpring(duration: Duration(milliseconds: 520)),
 );
 final _panelTint = Track<Color>(
   .colorRgb,
-  initial: Color(0xFF0A84FF),
+  zero: Color(0xFF0A84FF),
   motion: .smoothSpring(duration: Duration(milliseconds: 420)),
 );
 

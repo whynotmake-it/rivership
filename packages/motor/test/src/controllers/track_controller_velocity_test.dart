@@ -8,7 +8,7 @@ import '../util.dart';
 void main() {
   group('TrackController.set', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final position = Track<double>(MotionConverter.single, zero: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -126,7 +126,7 @@ void main() {
 
   group('withVelocity: parameter', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final position = Track<double>(MotionConverter.single, zero: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -278,8 +278,8 @@ void main() {
 
   group('Integration', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, initial: 0.0);
-    final scale = Track<double>(MotionConverter.single, initial: 1.0);
+    final position = Track<double>(MotionConverter.single, zero: 0.0);
+    final scale = Track<double>(MotionConverter.single, zero: 1.0);
 
     tearDown(() {
       controller.dispose();

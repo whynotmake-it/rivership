@@ -8,7 +8,7 @@ import '../util.dart';
 void main() {
   group('TrackController.animate targets the correct value', () {
     late TrackController controller;
-    final offset = Track<Offset>(MotionConverter.offset, initial: Offset.zero);
+    final offset = Track<Offset>(MotionConverter.offset, zero: Offset.zero);
 
     const spring = Motion.interactiveSpring();
 

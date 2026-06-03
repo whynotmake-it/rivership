@@ -8,8 +8,8 @@ enum _Phase { idle, pressed }
 
 void main() {
   group('MultiTrackMotionBuilder', () {
-    final opacity = Track<double>(MotionConverter.single, initial: 0.0);
-    final scale = Track<double>(MotionConverter.single, initial: 1.0);
+    final opacity = Track<double>(MotionConverter.single, zero: 0.0);
+    final scale = Track<double>(MotionConverter.single, zero: 1.0);
 
     testWidgets('builds with track values', (tester) async {
       double? capturedOpacity;
@@ -102,7 +102,7 @@ void main() {
   group('PhaseMotionBuilder', () {
     final scale = Track<double>(
       MotionConverter.single,
-      initial: 1.0,
+      zero: 1.0,
       motion: const Motion.linear(Duration(milliseconds: 100)),
     );
 

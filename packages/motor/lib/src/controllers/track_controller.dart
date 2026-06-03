@@ -327,7 +327,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Resolves the initial value for a track that has never been seen before.
   ///
   /// Checks the constructor-level [_from] overrides first, then falls back to
-  /// [Track.initial].
+  /// [Track.zero].
   T _resolveInitialValue<T extends Object>(Track<T> track) {
     for (final override in _from.reversed) {
       if (override case TrackValue<T>(track: final overrideTrack)
@@ -335,7 +335,7 @@ class TrackController extends Animation<TrackValueReader>
         return override.value;
       }
     }
-    return track.initial;
+    return track.zero;
   }
 
   /// Finds an explicit `from` override for [track] in the given list.

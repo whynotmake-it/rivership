@@ -75,7 +75,7 @@ class _LoopModeDemo extends StatelessWidget {
   final Color color;
   final int restartKey;
 
-  static final _rotation = Track<double>(.single, initial: 0);
+  static final _rotation = Track<double>(.single, zero: 0);
 
   @override
   Widget build(BuildContext context) {

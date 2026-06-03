@@ -42,15 +42,15 @@ class _FreeTestSimulation extends Simulation {
 void main() {
   group('Track', () {
     test('uses identity equality', () {
-      final first = Track<double>(MotionConverter.single, initial: 0.0);
-      final second = Track<double>(MotionConverter.single, initial: 0.0);
+      final first = Track<double>(MotionConverter.single, zero: 0.0);
+      final second = Track<double>(MotionConverter.single, zero: 0.0);
 
       expect(first, same(first));
       expect(first == second, isFalse);
     });
 
     test('creates target animations', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
+      final track = Track<double>(MotionConverter.single, zero: 0.0);
       final animation = track.to(
         1,
         motion: const Motion.curved(Duration(milliseconds: 300)),
@@ -65,7 +65,7 @@ void main() {
     });
 
     test('creates multi-step animations', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
+      final track = Track<double>(MotionConverter.single, zero: 0.0);
       final steps = <Step<double>>[
         const Step.hold(Duration(milliseconds: 100)),
         const Step.to(1.0, motion: Motion.linear(Duration(milliseconds: 200))),
@@ -78,7 +78,7 @@ void main() {
     });
 
     test('creates value snapshots', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
+      final track = Track<double>(MotionConverter.single, zero: 0.0);
 
       final snapshot = track.value(10);
 
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('creates velocity snapshots', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
+      final track = Track<double>(MotionConverter.single, zero: 0.0);
 
       final snapshot = track.velocity(5.0);
 
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('creates free-motion animations', () {
-      final track = Track<double>(MotionConverter.single, initial: 0.0);
+      final track = Track<double>(MotionConverter.single, zero: 0.0);
 
       final animation = track.free(const _FreeTestMotion());
 
@@ -106,13 +106,12 @@ void main() {
       expect(step, isA<StepFree<double>>());
       expect((step as StepFree<double>).motion, isA<_FreeTestMotion>());
     });
-
   });
 
   group('TrackTimeline', () {
     test('owns animations, loop mode, and from overrides', () {
-      final opacity = Track<double>(MotionConverter.single, initial: 0.0);
-      final scale = Track<double>(MotionConverter.single, initial: 1.0);
+      final opacity = Track<double>(MotionConverter.single, zero: 0.0);
+      final scale = Track<double>(MotionConverter.single, zero: 1.0);
       final opacityAnimation = opacity.to(
         1,
         motion: const Motion.curved(Duration(milliseconds: 300)),

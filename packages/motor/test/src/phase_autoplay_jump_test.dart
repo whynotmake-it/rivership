@@ -76,8 +76,8 @@ void main() {
     const linear400 = Motion.linear(Duration(milliseconds: 400));
 
     late TrackController controller;
-    final trackA = Track<double>(MotionConverter.single, initial: 0.0);
-    final trackB = Track<double>(MotionConverter.single, initial: 0.0);
+    final trackA = Track<double>(MotionConverter.single, zero: 0.0);
+    final trackB = Track<double>(MotionConverter.single, zero: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -153,8 +153,8 @@ void main() {
     const linear400 = Motion.linear(Duration(milliseconds: 400));
 
     late PhaseTrackController<String> controller;
-    final fast = Track<double>(MotionConverter.single, initial: 0.0);
-    final slow = Track<double>(MotionConverter.single, initial: 0.0);
+    final fast = Track<double>(MotionConverter.single, zero: 0.0);
+    final slow = Track<double>(MotionConverter.single, zero: 0.0);
 
     tearDown(() {
       controller.dispose();
