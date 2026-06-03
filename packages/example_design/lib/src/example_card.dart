@@ -4,9 +4,9 @@ import 'package:example_design/src/example_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 
-/// Provides a category prefix (e.g. `'RCP'`, `'ADV'`) to descendant
-/// [ExampleCard]s so they can derive their badge label from their index
-/// alone (e.g. `RCP.003`).
+/// Provides a category prefix (e.g. `'EVD'`, `'CMP'`) to descendant
+/// [ExampleCard]s so they can derive their badge label from their index alone
+/// (e.g. `EVD.003`).
 class CardSection extends InheritedWidget {
   const CardSection({
     required this.prefix,
@@ -14,13 +14,13 @@ class CardSection extends InheritedWidget {
     super.key,
   });
 
-  /// A short uppercase abbreviation, e.g. `'RCP'`, `'PLY'`, `'PRE'`, `'ADV'`.
+  /// A short uppercase abbreviation, e.g. `'CNT'`, `'EVD'`, `'CMP'`, `'GST'`.
   final String prefix;
 
   static CardSection? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<CardSection>();
 
-  /// Formats a badge label like `RCP.003` from the [prefix] and a 0-based
+  /// Formats a badge label like `EVD.003` from the [prefix] and a 0-based
   /// [index].
   String labelFor(int index) =>
       '$prefix.${(index + 1).toString().padLeft(3, '0')}';
@@ -29,11 +29,11 @@ class CardSection extends InheritedWidget {
   bool updateShouldNotify(CardSection oldWidget) => prefix != oldWidget.prefix;
 }
 
-/// A tappable recipe card with a tall preview area, a floating pill badge,
-/// a title + description, and a mono code hint.
+/// A tappable example card with a tall preview, a neutral pill badge, and a
+/// title + description with an optional mono code hint.
 ///
-/// Each card has a subtle random rotation at rest that straightens on press,
-/// giving the page a scattered, tactile feel.
+/// Each card rests at a subtle random rotation that straightens on press,
+/// giving the overview a playful, scattered, tactile feel.
 class ExampleCard extends StatefulWidget {
   const ExampleCard({
     required this.preview,
@@ -41,8 +41,8 @@ class ExampleCard extends StatefulWidget {
     required this.description,
     required this.onTap,
     this.pillLabel,
-    this.pillColor,
     this.pillIcon,
+    this.pillColor,
     this.codeHint,
     this.index,
     this.categoryId,
@@ -54,8 +54,11 @@ class ExampleCard extends StatefulWidget {
   final String description;
   final VoidCallback onTap;
   final String? pillLabel;
-  final Color? pillColor;
   final IconData? pillIcon;
+
+  /// Deprecated: the Dia system is monochrome, so the pill is always neutral.
+  /// Retained for source compatibility with older example apps.
+  final Color? pillColor;
   final String? codeHint;
   final int? index;
   final String? categoryId;
@@ -66,34 +69,27 @@ class ExampleCard extends StatefulWidget {
 
 final _cardRandom = math.Random();
 
-class _ExampleCardState extends State<ExampleCard>
-    with SingleTickerProviderStateMixin {
+class _ExampleCardState extends State<ExampleCard> {
   late final double _restingRotation =
       (_cardRandom.nextDouble() * 2 - 1) * math.pi / 180;
 
   bool _isPressed = false;
 
-  void _onTapDown(TapDownDetails _) => setState(() {
-        _isPressed = true;
-      });
+  void _onTapDown(TapDownDetails _) => setState(() => _isPressed = true);
 
   void _onTapUp(TapUpDetails _) {
-    setState(() {
-      _isPressed = false;
-    });
+    setState(() => _isPressed = false);
     widget.onTap();
   }
 
-  void _onTapCancel() => setState(() {
-        _isPressed = false;
-      });
+  void _onTapCancel() => setState(() => _isPressed = false);
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
 
     return MotionBuilder<(double, double)>(
-      value: _isPressed ? (.97, 0.0) : (1, _restingRotation),
+      value: _isPressed ? (.97, 0) : (1, _restingRotation),
       motion: const CupertinoMotion.snappy(
         duration: Duration(milliseconds: 250),
       ),
@@ -112,23 +108,12 @@ class _ExampleCardState extends State<ExampleCard>
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
         onTapCancel: _onTapCancel,
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: t.surface,
+            color: t.surfaceSolid,
             borderRadius: BorderRadius.circular(ExampleTheme.cardRadius),
-            border: Border.all(color: t.borderSubtle),
-            boxShadow: [
-              BoxShadow(
-                color: t.cardShadow,
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-              BoxShadow(
-                color: t.cardShadow.withValues(alpha: .02),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: t.border),
+            boxShadow: t.softShadow,
           ),
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -157,110 +142,69 @@ class _ExampleCardState extends State<ExampleCard>
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(ExampleTheme.previewRadius),
-          child: CustomPaint(
-            foregroundPainter: InnerShadowPainter(
-              borderRadius: ExampleTheme.previewRadius,
-              shadowColor: t.innerShadowColor,
-              shadowBlur: 8,
-              shadowOffset: Offset.zero,
-              borderColor: t.innerBorderColor,
+          child: Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              color: t.fog,
+              borderRadius: BorderRadius.circular(ExampleTheme.previewRadius),
+              border: Border.all(color: t.border),
             ),
-            child: Container(
-              width: double.infinity,
-              height: 220,
-              decoration: BoxDecoration(
-                color: t.previewBg,
-                borderRadius:
-                    BorderRadius.circular(ExampleTheme.previewRadius),
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(child: widget.preview),
-                  if (categoryLabel != null)
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: t.surface.withValues(alpha: .8),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: t.pillBorder),
-                          boxShadow: [
-                            BoxShadow(
-                              color: t.pillShadow,
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          categoryLabel,
-                          textHeightBehavior: const TextHeightBehavior(
-                            applyHeightToFirstAscent: false,
-                            applyHeightToLastDescent: false,
-                            leadingDistribution: TextLeadingDistribution.even,
-                          ),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                            color: t.textSecondary,
-                          ),
-                        ),
+            child: Stack(
+              children: [
+                Positioned.fill(child: widget.preview),
+                if (categoryLabel != null)
+                  Positioned(
+                    top: 10,
+                    right: 12,
+                    child: Text(
+                      categoryLabel,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                        color: t.textTertiary,
+                        fontFamily: 'JetBrains Mono',
+                        fontFamilyFallback: const ['monospace', 'Menlo'],
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ),
         if (widget.pillLabel != null)
           Positioned(
-            bottom: -14,
+            bottom: -13,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                    ) +
-                    EdgeInsets.only(
-                      left: widget.pillIcon != null ? 12 : 14,
-                      right: 14,
-                    ),
+                padding: EdgeInsets.fromLTRB(
+                  widget.pillIcon != null ? 10 : 14,
+                  6,
+                  14,
+                  6,
+                ),
                 decoration: BoxDecoration(
-                  color: t.surface,
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: t.pillBorder),
-                  boxShadow: [
-                    BoxShadow(
-                      color: t.pillShadow,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  color: t.surfaceSolid,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: t.border),
+                  boxShadow: t.hairlineShadow,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  spacing: 6,
                   children: [
                     if (widget.pillIcon != null) ...[
                       Icon(
                         widget.pillIcon,
-                        size: 14,
-                        color: widget.pillColor ?? t.accent,
+                        size: 13,
+                        color: t.textSecondary,
                       ),
+                      const SizedBox(width: 6),
                     ],
                     Text(
                       widget.pillLabel!,
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                        leadingDistribution: TextLeadingDistribution.even,
-                      ),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -287,22 +231,22 @@ class _ExampleCardState extends State<ExampleCard>
             widget.title,
             style: TextStyle(
               fontSize: 17,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               letterSpacing: -0.3,
               color: t.textPrimary,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             widget.description,
             style: TextStyle(
               fontSize: 13,
-              height: 1.3,
+              height: 1.35,
               color: t.textSecondary,
             ),
           ),
           if (widget.codeHint != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               widget.codeHint!,
               style: TextStyle(
@@ -317,59 +261,4 @@ class _ExampleCardState extends State<ExampleCard>
       ),
     );
   }
-}
-
-/// Paints an inset shadow and a 1px border inside a rounded rectangle.
-class InnerShadowPainter extends CustomPainter {
-  InnerShadowPainter({
-    required this.borderRadius,
-    required this.shadowColor,
-    required this.shadowBlur,
-    required this.shadowOffset,
-    required this.borderColor,
-  });
-
-  final double borderRadius;
-  final Color shadowColor;
-  final double shadowBlur;
-  final Offset shadowOffset;
-  final Color borderColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
-
-    canvas
-      ..save()
-      ..clipRRect(rrect);
-
-    final shadowPaint = Paint()
-      ..color = shadowColor
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur);
-
-    final outer = rect.inflate(shadowBlur * 2);
-    final hole = Path()..addRRect(rrect);
-    final frame = Path()..addRect(outer);
-    final shadowPath =
-        Path.combine(PathOperation.difference, frame, hole).shift(shadowOffset);
-
-    canvas
-      ..drawPath(shadowPath, shadowPaint)
-      ..restore();
-
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawRRect(rrect.deflate(0.5), borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(InnerShadowPainter oldDelegate) =>
-      borderRadius != oldDelegate.borderRadius ||
-      shadowColor != oldDelegate.shadowColor ||
-      shadowBlur != oldDelegate.shadowBlur ||
-      shadowOffset != oldDelegate.shadowOffset ||
-      borderColor != oldDelegate.borderColor;
 }

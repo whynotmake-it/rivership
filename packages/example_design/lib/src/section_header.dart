@@ -1,15 +1,14 @@
 import 'package:example_design/src/example_theme.dart';
 import 'package:flutter/cupertino.dart';
 
-/// A centered header section with optional logo/icon, title, subtitle,
-/// and a monospaced hint.
+/// A centered header with an optional logo, a featherweight display title,
+/// a subtitle, and a monospaced hint.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     required this.title,
     this.subtitle,
     this.hint,
     this.icon,
-    this.iconColor,
     this.logo,
     super.key,
   });
@@ -18,7 +17,6 @@ class SectionHeader extends StatelessWidget {
   final String? subtitle;
   final String? hint;
   final IconData? icon;
-  final Color? iconColor;
   final Widget? logo;
 
   @override
@@ -31,62 +29,42 @@ class SectionHeader extends StatelessWidget {
       child: Column(
         children: [
           if (hasVisual) ...[
-            Transform.rotate(
-              angle: 0.05,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: t.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: t.pillBorder),
-                  boxShadow: [
-                    BoxShadow(
-                      color: t.pillShadow,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: logo ??
-                    Icon(
-                      icon,
-                      size: 24,
-                      color: iconColor ?? t.accentGold,
-                    ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            logo ?? Icon(icon, size: 28, color: t.textPrimary),
+            const SizedBox(height: 22),
           ],
           Text(
             title,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.5,
+              fontFamily: 'Archivo',
+              fontSize: 44,
+              fontWeight: FontWeight.w300,
+              letterSpacing: -1.6,
+              height: 1.05,
               color: t.textPrimary,
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Text(
               subtitle!,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                height: 1.3,
-                color: t.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                height: 1.4,
+                color: t.textSecondary,
               ),
             ),
           ],
           if (hint != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               hint!,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
-                color: t.textSecondary,
+                fontSize: 12,
+                color: t.textTertiary,
                 fontFamily: 'JetBrains Mono',
                 fontFamilyFallback: const ['monospace', 'Menlo'],
               ),

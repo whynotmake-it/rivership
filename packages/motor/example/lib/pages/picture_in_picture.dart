@@ -3,6 +3,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/widgets/example_scaffold.dart';
 
+/// A floating picture-in-picture window. Drag it anywhere; on release the fling
+/// velocity is projected with [FrictionMotion.project] to predict where it
+/// would coast, and it snaps to whichever corner is nearest that point.
 class PictureInPicturePage extends StatefulWidget {
   const PictureInPicturePage({super.key});
   static const routeName = 'Picture in Picture';
@@ -11,205 +14,157 @@ class PictureInPicturePage extends StatefulWidget {
   State<PictureInPicturePage> createState() => _PictureInPicturePageState();
 }
 
-class _PictureInPicturePageState extends State<PictureInPicturePage> {
-  int _currentCorner = 0;
-  int? _hoveringCorner;
+class _PictureInPicturePageState extends State<PictureInPicturePage>
+    with TickerProviderStateMixin {
+  static const _cardSize = Size(132, 84);
+  static const _inset = 12.0;
+  static const _friction = FrictionMotion(drag: 0.0012, constantDeceleration: 180);
 
-  static const _cornerLabels = ['Top Left', 'Top Right', 'Bottom Left', 'Bottom Right'];
+  MotionController<Offset>? _controller;
+  Size _stage = Size.zero;
+  bool _dragging = false;
 
   @override
-  Widget build(BuildContext context) {
-    return ExamplePage(
-      title: PictureInPicturePage.routeName,
-      description:
-          'MotionDraggable with corner snapping (PiP behavior). '
-          'Drag the card to any corner and it snaps with spring physics.',
-      action: Pill('Corner: ${_cornerLabels[_currentCorner]}'),
-      child: SizedBox(
-        height: 360,
-        child: Surface(
-          padding: const EdgeInsets.all(12),
-          child: Stack(
-            children: [
-              for (int i = 0; i < 4; i++)
-                _CornerTarget(
-                  corner: i,
-                  isActive: _currentCorner == i,
-                  isHovering: _hoveringCorner == i,
-                  onAccept: () => setState(() => _currentCorner = i),
-                  onHover: (hovering) =>
-                      setState(() => _hoveringCorner = hovering ? i : null),
-                ),
-              _PipCard(
-                currentCorner: _currentCorner,
-              ),
-            ],
-          ),
-        ),
-      ),
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  List<Offset> _corners(Size stage) {
+    final maxX = stage.width - _cardSize.width - _inset;
+    final maxY = stage.height - _cardSize.height - _inset;
+    return [
+      const Offset(_inset, _inset),
+      Offset(maxX, _inset),
+      Offset(_inset, maxY),
+      Offset(maxX, maxY),
+    ];
+  }
+
+  Offset _nearestCorner(Offset point, Size stage) {
+    final corners = _corners(stage);
+    var best = corners.first;
+    var bestDist = double.infinity;
+    for (final corner in corners) {
+      final d = (corner - point).distanceSquared;
+      if (d < bestDist) {
+        bestDist = d;
+        best = corner;
+      }
+    }
+    return best;
+  }
+
+  void _ensureController(Size stage) {
+    if (_controller != null && _stage == stage) return;
+    _stage = stage;
+    _controller?.dispose();
+    _controller = MotionController<Offset>(
+      motion: const CupertinoMotion.bouncy(),
+      vsync: this,
+      converter: MotionConverter.offset,
+      initialValue: _corners(stage).first,
     );
   }
-}
 
-class _CornerTarget extends StatelessWidget {
-  const _CornerTarget({
-    required this.corner,
-    required this.isActive,
-    required this.isHovering,
-    required this.onAccept,
-    required this.onHover,
-  });
+  void _onPanUpdate(DragUpdateDetails d) {
+    final c = _controller!;
+    c.value = c.value + d.delta;
+  }
 
-  final int corner;
-  final bool isActive;
-  final bool isHovering;
-  final VoidCallback onAccept;
-  final void Function(bool hovering) onHover;
-
-  Alignment get _alignment => switch (corner) {
-        0 => Alignment.topLeft,
-        1 => Alignment.topRight,
-        2 => Alignment.bottomLeft,
-        _ => Alignment.bottomRight,
-      };
+  void _onPanEnd(DragEndDetails d) {
+    setState(() => _dragging = false);
+    final c = _controller!;
+    final velocity = d.velocity.pixelsPerSecond;
+    final projected = _friction.project(
+      from: c.value,
+      velocity: velocity,
+      converter: MotionConverter.offset,
+    );
+    c.animateTo(_nearestCorner(projected, _stage), withVelocity: velocity);
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    return Align(
-      alignment: _alignment,
-      child: DragTarget<bool>(
-        onWillAcceptWithDetails: (_) {
-          onHover(true);
-          return true;
-        },
-        onLeave: (_) => onHover(false),
-        onAcceptWithDetails: (_) {
-          onHover(false);
-          onAccept();
-        },
-        builder: (context, candidateData, rejectedData) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: isHovering ? 80 : 60,
-            height: isHovering ? 80 : 60,
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: isActive
-                  ? t.accentBlue.withValues(alpha: .12)
-                  : isHovering
-                      ? t.accentGreen.withValues(alpha: .12)
-                      : t.canvas.withValues(alpha: .4),
-              border: Border.all(
-                color: isActive
-                    ? t.accentBlue.withValues(alpha: .5)
-                    : isHovering
-                        ? t.accentGreen.withValues(alpha: .5)
-                        : t.borderSubtle.withValues(alpha: .5),
-              ),
-            ),
-            child: Center(
-              child: Icon(
-                isActive
-                    ? CupertinoIcons.checkmark_circle_fill
-                    : CupertinoIcons.circle,
-                color: isActive
-                    ? t.accentBlue
-                    : t.textTertiary,
-                size: 18,
-              ),
-            ),
-          );
-        },
+    return ExamplePage(
+      title: PictureInPicturePage.routeName,
+      description:
+          'Drag the window and flick it. FrictionMotion.project predicts where '
+          'the throw would settle, the nearest corner wins, and the spring '
+          'carries the same velocity into the snap.',
+      child: SizedBox(
+        height: 380,
+        child: Surface(
+          padding: const EdgeInsets.all(4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stage = constraints.biggest;
+              _ensureController(stage);
+              final controller = _controller!;
+              return Stack(
+                children: [
+                  for (final corner in _corners(stage))
+                    Positioned(
+                      left: corner.dx,
+                      top: corner.dy,
+                      child: Container(
+                        width: _cardSize.width,
+                        height: _cardSize.height,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: t.border),
+                        ),
+                      ),
+                    ),
+                  AnimatedBuilder(
+                    animation: controller,
+                    builder: (context, _) => Positioned(
+                      left: controller.value.dx,
+                      top: controller.value.dy,
+                      child: GestureDetector(
+                        onPanStart: (_) => setState(() => _dragging = true),
+                        onPanUpdate: _onPanUpdate,
+                        onPanEnd: _onPanEnd,
+                        child: _PipCard(dragging: _dragging, size: _cardSize),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 }
 
 class _PipCard extends StatelessWidget {
-  const _PipCard({required this.currentCorner});
-
-  final int currentCorner;
-
-  Alignment get _alignment => switch (currentCorner) {
-        0 => Alignment.topLeft,
-        1 => Alignment.topRight,
-        2 => Alignment.bottomLeft,
-        _ => Alignment.bottomRight,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: _alignment,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: MotionDraggable<bool>(
-          data: true,
-          motion: const CupertinoMotion.bouncy(),
-          feedbackMatchesConstraints: true,
-          child: _PipVisual(),
-          feedback: _PipVisual(isDragging: true),
-        ),
-      ),
-    );
-  }
-}
-
-class _PipVisual extends StatelessWidget {
-  const _PipVisual({this.isDragging = false});
-
-  final bool isDragging;
+  const _PipCard({required this.dragging, required this.size});
+  final bool dragging;
+  final Size size;
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
     return Container(
-      width: 140,
-      height: 90,
+      width: size.width,
+      height: size.height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF2A1F5E),
-            Color(0xFF1A2540),
-          ],
+          colors: [t.textPrimary, t.textSecondary],
         ),
-        border: Border.all(
-          color: isDragging
-              ? t.accentGreen.withValues(alpha: .6)
-              : t.borderSubtle,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: isDragging ? .4 : .2),
-            blurRadius: isDragging ? 20 : 12,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: dragging ? t.softShadow : t.hairlineShadow,
       ),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              CupertinoIcons.play_fill,
-              color: t.textPrimary,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'PiP',
-              style: TextStyle(
-                color: t.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Icon(
+          CupertinoIcons.play_fill,
+          color: t.surfaceSolid.withValues(alpha: .9),
+          size: 26,
         ),
       ),
     );

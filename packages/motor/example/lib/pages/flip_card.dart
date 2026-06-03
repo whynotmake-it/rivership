@@ -23,31 +23,29 @@ class _FlipCardPageState extends State<FlipCardPage> {
     return ExamplePage(
       title: FlipCardPage.routeName,
       description:
-          'Spring-based vs curve-based flip card comparison. '
-          'Tap cards to flip early or toggle auto-flip.',
+          'The same 3D flip driven by a spring and by a curve. Tap a card to '
+          'interrupt it mid-flip — the spring keeps its momentum, the curve '
+          'restarts.',
       action: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Auto-flip',
             style: TextStyle(color: t.textSecondary, fontSize: 14),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           CupertinoSwitch(
             value: _autoFlip,
-            activeTrackColor: t.accentBlue,
+            activeTrackColor: t.textPrimary,
             onChanged: (v) => setState(() => _autoFlip = v),
           ),
         ],
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _SpringFlipCard(autoFlip: _autoFlip),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _CurveFlipCard(autoFlip: _autoFlip),
-          ),
+          Expanded(child: _SpringFlipCard(autoFlip: _autoFlip)),
+          const SizedBox(width: 14),
+          Expanded(child: _CurveFlipCard(autoFlip: _autoFlip)),
         ],
       ),
     );
@@ -75,10 +73,9 @@ class _SpringFlipCardState extends State<_SpringFlipCard>
       motion: const CupertinoMotion.bouncy(),
       vsync: this,
       initialValue: 0,
-    );
-    _controller.addListener(() {
-      if (mounted) setState(() {});
-    });
+    )..addListener(() {
+        if (mounted) setState(() {});
+      });
     _startTimerIfNeeded();
   }
 
@@ -115,19 +112,16 @@ class _SpringFlipCardState extends State<_SpringFlipCard>
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
     return GestureDetector(
       onTap: _flip,
       child: Column(
         children: [
           _FlipCardTransform(
             progress: _controller.value,
-            frontColor: t.accentBlue,
-            backColor: t.accentPurple,
-            frontLabel: 'SPRING',
-            backLabel: 'BOUNCY',
+            frontLabel: 'Spring',
+            backLabel: 'Bouncy',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Pill('CupertinoMotion.bouncy'),
         ],
       ),
@@ -156,14 +150,10 @@ class _CurveFlipCardState extends State<_CurveFlipCard>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
-    );
-    _curved = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutCubic,
-    );
-    _controller.addListener(() {
-      if (mounted) setState(() {});
-    });
+    )..addListener(() {
+        if (mounted) setState(() {});
+      });
+    _curved = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
     _startTimerIfNeeded();
   }
 
@@ -205,19 +195,16 @@ class _CurveFlipCardState extends State<_CurveFlipCard>
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
     return GestureDetector(
       onTap: _flip,
       child: Column(
         children: [
           _FlipCardTransform(
             progress: _curved.value,
-            frontColor: t.accentGreen,
-            backColor: t.accentOrange,
-            frontLabel: 'CURVE',
-            backLabel: 'EASED',
+            frontLabel: 'Curve',
+            backLabel: 'Eased',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Pill('CurvedAnimation'),
         ],
       ),
@@ -228,21 +215,16 @@ class _CurveFlipCardState extends State<_CurveFlipCard>
 class _FlipCardTransform extends StatelessWidget {
   const _FlipCardTransform({
     required this.progress,
-    required this.frontColor,
-    required this.backColor,
     required this.frontLabel,
     required this.backLabel,
   });
 
   final double progress;
-  final Color frontColor;
-  final Color backColor;
   final String frontLabel;
   final String backLabel;
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
     final angle = progress * pi;
     final showBack = angle > pi / 2;
 
@@ -255,35 +237,31 @@ class _FlipCardTransform extends StatelessWidget {
           ? Transform(
               alignment: Alignment.center,
               transform: Matrix4.identity()..rotateX(pi),
-              child: _buildFace(t, backColor, backLabel),
+              child: _buildFace(context, backLabel, filled: true),
             )
-          : _buildFace(t, frontColor, frontLabel),
+          : _buildFace(context, frontLabel, filled: false),
     );
   }
 
-  Widget _buildFace(ExampleTheme t, Color color, String label) {
+  Widget _buildFace(BuildContext context, String label, {required bool filled}) {
+    final t = ExampleTheme.of(context);
     return Container(
-      height: 160,
+      height: 170,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: .25),
-            t.surface,
-          ],
-        ),
-        border: Border.all(color: color.withValues(alpha: .4)),
+        color: filled ? t.textPrimary : t.surfaceSolid,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: t.border),
+        boxShadow: t.softShadow,
       ),
       child: Center(
         child: Text(
           label,
           style: TextStyle(
-            color: color,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2,
+            fontFamily: 'Archivo',
+            color: filled ? t.surfaceSolid : t.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w300,
+            letterSpacing: -0.4,
           ),
         ),
       ),
