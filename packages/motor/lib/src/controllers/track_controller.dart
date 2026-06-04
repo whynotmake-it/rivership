@@ -252,27 +252,76 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   /// Stops the given [tracks], or all tracks when [tracks] is null.
-  void stop({
+  ///
+  /// Unless [canceled] is true, each targeted track that is animating with a
+  /// settle-capable default motion (one whose [Motion.needsSettle] is true)
+  /// gracefully settles at its current value instead of freezing instantly —
+  /// for example a spring keeps its momentum and eases to rest. Tracks whose
+  /// default motion does not need settling (or that have no default motion)
+  /// stop immediately. When [canceled] is true every targeted track stops
+  /// immediately.
+  ///
+  /// Returns a [TickerFuture] that completes when the settling tracks come to
+  /// rest, or an already-complete future when nothing keeps animating (see
+  /// [play] for the whole-controller completion semantics).
+  TickerFuture stop({
     List<Track>? tracks,
     bool canceled = false,
   }) {
+    return canceled ? _hardStop(tracks) : _gracefulStop(tracks);
+  }
+
+  TickerFuture _hardStop(List<Track>? tracks) {
     if (tracks == null) {
       for (final slot in _slots.values) {
-        slot.stop(canceled: canceled);
+        slot.stop(canceled: true);
       }
       _activeTracks.clear();
     } else {
       for (final track in tracks) {
-        _slots[track]?.stop(canceled: canceled);
+        _slots[track]?.stop(canceled: true);
         _activeTracks.remove(track);
       }
     }
     if (_activeTracks.isEmpty) {
-      _ticker?.stop(canceled: canceled);
+      _ticker?.stop(canceled: true);
       _status = AnimationStatus.completed;
     }
     notifyListeners();
     _checkStatusChanged();
+    return TickerFuture.complete();
+  }
+
+  TickerFuture _gracefulStop(List<Track>? tracks) {
+    final targets = tracks ?? _slots.keys.toList();
+    for (final track in targets) {
+      final slot = _slots[track];
+      if (slot == null) continue;
+      if (slot.settle(startOffset: _lastElapsed)) {
+        // Keep the track active so the ticker drives it to rest. Reset its
+        // step bookkeeping so the settle segment doesn't re-fire onStep.
+        _activeTracks.add(track);
+        _lastStepByTrack.remove(track);
+      } else {
+        slot.stop(canceled: true);
+        _activeTracks.remove(track);
+      }
+    }
+
+    if (_activeTracks.isEmpty) {
+      _ticker?.stop();
+      _status = AnimationStatus.completed;
+      notifyListeners();
+      _checkStatusChanged();
+      return TickerFuture.complete();
+    }
+
+    // Settling tracks keep running; the (already active) ticker finishes them
+    // via the normal _tick completion path.
+    final future = _startTicker();
+    notifyListeners();
+    _checkStatusChanged();
+    return future;
   }
 
   /// Recreates the ticker using [vsync].

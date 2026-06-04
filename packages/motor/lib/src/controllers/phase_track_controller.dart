@@ -138,9 +138,9 @@ class PhaseTrackController<P extends Object> extends TrackController {
   }
 
   @override
-  void stop({List<Track>? tracks, bool canceled = false}) {
+  TickerFuture stop({List<Track>? tracks, bool canceled = false}) {
     if (tracks == null) _isPlayingPhases = false;
-    super.stop(tracks: tracks, canceled: canceled);
+    return super.stop(tracks: tracks, canceled: canceled);
   }
 
   @override
