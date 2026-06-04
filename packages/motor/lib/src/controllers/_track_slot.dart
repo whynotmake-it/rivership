@@ -5,6 +5,7 @@ class _TrackSlot<T extends Object> {
     required this.converter,
     required T initialValue,
     this.fallbackMotion,
+    this.fallbackMotionPerDimension,
   })  : _currentValues = converter.normalize(initialValue),
         _velocityValues = List<double>.filled(
           converter.normalize(initialValue).length,
@@ -13,6 +14,7 @@ class _TrackSlot<T extends Object> {
 
   final MotionConverter<T> converter;
   final Motion? fallbackMotion;
+  final List<Motion>? fallbackMotionPerDimension;
 
   List<double> _currentValues;
   List<double> _velocityValues;
@@ -61,6 +63,7 @@ class _TrackSlot<T extends Object> {
       velocity: velocityValue,
       loop: loop,
       fallbackMotion: fallbackMotion,
+      fallbackMotionPerDimension: fallbackMotionPerDimension,
     );
     _currentValues = List.of(_stepPlayback!.values);
     _velocityValues = List.of(_stepPlayback!.velocities);

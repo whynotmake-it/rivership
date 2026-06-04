@@ -22,7 +22,18 @@ class Track<T extends Object> {
     this.converter, {
     required this.origin,
     this.motion,
-  });
+  }) : motionPerDimension = null;
+
+  /// Creates a track whose default motion differs per normalized dimension.
+  ///
+  /// [motionPerDimension] becomes the per-dimension default for steps on this
+  /// track that don't specify their own motion. Its length must match the
+  /// number of normalized dimensions of [origin].
+  Track.motionPerDimension(
+    this.converter, {
+    required this.origin,
+    required this.motionPerDimension,
+  }) : motion = null;
 
   /// Converts track values to and from normalized dimensions.
   final MotionConverter<T> converter;
@@ -36,18 +47,29 @@ class Track<T extends Object> {
   /// The default motion for steps on this track.
   ///
   /// When a [Step.to] or [Step.at] omits its motion, this value is used
-  /// as the fallback at playback time.
+  /// as the fallback at playback time. Mutually exclusive with
+  /// [motionPerDimension].
   final Motion? motion;
+
+  /// The per-dimension default motions for steps on this track.
+  ///
+  /// When a step omits its motion, these are used as the fallback at playback
+  /// time. Mutually exclusive with [motion].
+  final List<Motion>? motionPerDimension;
 
   /// Creates a single-step animation to [value].
   ///
-  /// If [motion] is omitted, the track's [Track.motion] default is used at
-  /// playback time.
+  /// Provide either a single [motion] or [motionPerDimension] (not both). If
+  /// neither is given, the track's [Track.motion] / [Track.motionPerDimension]
+  /// default is used at playback time.
   TrackAnimation<T> to(
     T value, {
     Motion? motion,
+    List<Motion>? motionPerDimension,
   }) {
-    return TrackAnimation._(this, [Step.to(value, motion: motion)]);
+    return TrackAnimation._(this, [
+      Step.to(value, motion: motion, motionPerDimension: motionPerDimension),
+    ]);
   }
 
   /// Creates a multi-step animation for this track.

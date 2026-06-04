@@ -12,8 +12,9 @@ import 'package:motor/src/step.dart';
 class StepPlayback<T extends Object> {
   /// Creates playback from [steps].
   ///
-  /// If [fallbackMotion] is provided, it is used for any [StepTo] or [StepAt]
-  /// that does not specify its own motion.
+  /// If [fallbackMotion] (single) or [fallbackMotionPerDimension] (one motion
+  /// per normalized dimension) is provided, it is used for any [StepTo] or
+  /// [StepAt] that does not specify its own motion. Pass at most one.
   StepPlayback({
     required List<Step<T>> steps,
     required MotionConverter<T> converter,
@@ -21,7 +22,13 @@ class StepPlayback<T extends Object> {
     T? velocity,
     LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
+    List<Motion>? fallbackMotionPerDimension,
   })  : assert(steps.isNotEmpty, 'steps must not be empty'),
+        assert(
+          fallbackMotion == null || fallbackMotionPerDimension == null,
+          'Provide either fallbackMotion or fallbackMotionPerDimension, '
+          'not both.',
+        ),
         assert(
           _validateStepTiming(steps),
           'steps must have non-decreasing absolute times',
@@ -30,6 +37,7 @@ class StepPlayback<T extends Object> {
         _converter = converter,
         _loop = loop,
         _fallbackMotion = fallbackMotion,
+        _fallbackMotionPerDimension = fallbackMotionPerDimension,
         _initialValues = converter.normalize(start),
         _initialVelocities = switch (velocity) {
           null => List<double>.filled(converter.normalize(start).length, 0),
@@ -38,27 +46,36 @@ class StepPlayback<T extends Object> {
     if (loop == LoopMode.loop) {
       // `loop` animates back to the start after the last step. Model that as a
       // synthetic final step that returns to the start snapshot, reusing the
-      // first real step's motion. The wrap (in `_advanceStep`) then continues
-      // from there without a jump. `seamless` skips this and jumps instead.
-      final returnMotion = _firstStepMotion(_steps) ?? fallbackMotion;
-      if (returnMotion != null) {
-        _steps.add(StepTo<T>(start, motion: returnMotion));
+      // first real step's motion(s). The wrap (in `_advanceStep`) then
+      // continues from there without a jump. `seamless` skips this and jumps.
+      final returnMotions = _firstStepMotions(_steps, _initialValues.length) ??
+          _fallbackMotionPerDimension ??
+          (fallbackMotion != null
+              ? List<Motion>.filled(_initialValues.length, fallbackMotion)
+              : null);
+      if (returnMotions != null) {
+        _steps.add(StepTo<T>(start, motionPerDimension: returnMotions));
       }
     }
     _buildWaypoints();
     _reset();
   }
 
-  /// Returns the motion of the first step that targets a value, or `null` if
-  /// no step carries a motion.
-  static Motion? _firstStepMotion<S extends Object>(List<Step<S>> steps) {
+  /// Returns the per-dimension motions of the first step that targets a value,
+  /// or `null` if no step carries a motion.
+  static List<Motion>? _firstStepMotions<S extends Object>(
+    List<Step<S>> steps,
+    int dimensions,
+  ) {
     for (final step in steps) {
-      final motion = switch (step) {
-        StepTo<S>(:final motion) => motion,
-        StepAt<S>(:final motion) => motion,
-        _ => null,
-      };
-      if (motion != null) return motion;
+      switch (step) {
+        case StepTo<S>(:final motion, :final motionPerDimension) ||
+              StepAt<S>(:final motion, :final motionPerDimension):
+          if (motionPerDimension != null) return motionPerDimension;
+          if (motion != null) return List<Motion>.filled(dimensions, motion);
+        default:
+          break;
+      }
     }
     return null;
   }
@@ -87,6 +104,7 @@ class StepPlayback<T extends Object> {
   final MotionConverter<T> _converter;
   final LoopMode _loop;
   final Motion? _fallbackMotion;
+  final List<Motion>? _fallbackMotionPerDimension;
   final List<double> _initialValues;
   final List<double> _initialVelocities;
 
@@ -276,14 +294,44 @@ class StepPlayback<T extends Object> {
     _startCurrentStep();
   }
 
-  Motion _resolveMotion(Motion? stepMotion) {
-    final resolved = stepMotion ?? _fallbackMotion;
+  int get _dimensions => _initialValues.length;
+
+  /// Resolves the per-dimension motions for a step, or `null` if no motion is
+  /// available from the step or the fallback.
+  ///
+  /// Priority (most specific first): the step's per-dimension motions, the
+  /// step's single motion (applied to every dimension), the track's
+  /// [_fallbackMotionPerDimension], then the track's single [_fallbackMotion].
+  List<Motion>? _motionsOrNull(Motion? stepMotion, List<Motion>? stepPerDim) {
+    if (stepPerDim != null) return _checkLength(stepPerDim);
+    if (stepMotion != null) return List<Motion>.filled(_dimensions, stepMotion);
+    if (_fallbackMotionPerDimension case final perDim?) {
+      return _checkLength(perDim);
+    }
+    if (_fallbackMotion case final m?) {
+      return List<Motion>.filled(_dimensions, m);
+    }
+    return null;
+  }
+
+  /// Like [_motionsOrNull] but asserts that a motion is available.
+  List<Motion> _motions(Motion? stepMotion, List<Motion>? stepPerDim) {
+    final motions = _motionsOrNull(stepMotion, stepPerDim);
     assert(
-      resolved != null,
+      motions != null,
       'Step has no motion and no fallback motion was provided. '
       'Either pass a motion to the step or set a default motion on the Track.',
     );
-    return resolved!;
+    return motions!;
+  }
+
+  List<Motion> _checkLength(List<Motion> motions) {
+    assert(
+      motions.length == _dimensions,
+      'motionPerDimension length (${motions.length}) must match the number of '
+      'normalized dimensions ($_dimensions).',
+    );
+    return motions;
   }
 
   void _startCurrentStep() {
@@ -293,12 +341,12 @@ class StepPlayback<T extends Object> {
     }
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
-      StepTo<T>(:final value, :final motion) => () {
-          final resolved = _resolveMotion(motion);
+      StepTo<T>(:final value, :final motion, :final motionPerDimension) => () {
+          final motions = _motions(motion, motionPerDimension);
           final targets = _converter.normalize(value);
           return [
             for (var i = 0; i < targets.length; i++)
-              resolved.createSimulation(
+              motions[i].createSimulation(
                 start: _currentValues[i],
                 end: targets[i],
                 velocity: _currentVelocities[i],
@@ -319,17 +367,25 @@ class StepPlayback<T extends Object> {
               duration: duration.toSeconds(),
             ),
         ],
-      StepAt<T>(:final at, :final value, :final motion) => () {
-          final resolved = _resolveMotion(motion);
+      StepAt<T>(
+        :final at,
+        :final value,
+        :final motion,
+        :final motionPerDimension,
+      ) =>
+        () {
+          final motions = _motions(motion, motionPerDimension);
           final targets = _converter.normalize(value);
           final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
-          final atMotion = gap > 0
-              ? resolved
-                  .scaleTo(Duration(microseconds: (gap * 1000000).round()))
-              : resolved;
+          final atMotions = gap > 0
+              ? [
+                  for (final m in motions)
+                    m.scaleTo(Duration(microseconds: (gap * 1000000).round())),
+                ]
+              : motions;
           return [
             for (var i = 0; i < targets.length; i++)
-              atMotion.createSimulation(
+              atMotions[i].createSimulation(
                 start: _currentValues[i],
                 end: targets[i],
                 velocity: _currentVelocities[i],
@@ -350,18 +406,19 @@ class StepPlayback<T extends Object> {
     final targets =
         _stepIndex > 0 ? _waypoints[_stepIndex - 1] : _initialValues;
     final step = _steps[_stepIndex];
-    final motion = switch (step) {
-      StepTo<T>(:final motion) => motion ?? _fallbackMotion,
-      StepAt<T>(:final motion) => motion ?? _fallbackMotion,
+    final motions = switch (step) {
+      StepTo<T>(:final motion, :final motionPerDimension) ||
+      StepAt<T>(:final motion, :final motionPerDimension) =>
+        _motionsOrNull(motion, motionPerDimension),
       StepFree<T>() => null,
       StepHold<T>() => null,
       SyncStep<T>() => null,
     };
 
-    if (motion != null) {
+    if (motions != null) {
       _simulations = [
         for (var i = 0; i < targets.length; i++)
-          motion.createSimulation(
+          motions[i].createSimulation(
             start: _currentValues[i],
             end: targets[i],
             velocity: _currentVelocities[i],

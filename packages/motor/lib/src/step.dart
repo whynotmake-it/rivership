@@ -12,11 +12,14 @@ sealed class Step<T extends Object> with EquatableMixin {
 
   /// Animates to [value] using a target-based [motion].
   ///
-  /// If [motion] is omitted, the track's default motion is used at playback
-  /// time. An assertion fires if no motion is available from either source.
+  /// Provide either a single [motion] (applied to every dimension) or
+  /// [motionPerDimension] (one motion per normalized dimension), not both. If
+  /// neither is given, the track's default motion is used at playback time. An
+  /// assertion fires if no motion is available from any source.
   const factory Step.to(
     T value, {
     Motion? motion,
+    List<Motion>? motionPerDimension,
   }) = StepTo<T>;
 
   /// Runs a self-directed free [motion].
@@ -29,12 +32,15 @@ sealed class Step<T extends Object> with EquatableMixin {
 
   /// Starts an animation that reaches [value] at absolute time [at].
   ///
-  /// If [motion] is omitted, the track's default motion is used at playback
-  /// time. An assertion fires if no motion is available from either source.
+  /// Provide either a single [motion] (applied to every dimension) or
+  /// [motionPerDimension] (one motion per normalized dimension), not both. If
+  /// neither is given, the track's default motion is used at playback time. An
+  /// assertion fires if no motion is available from any source.
   const factory Step.at(
     Duration at,
     T value, {
     Motion? motion,
+    List<Motion>? motionPerDimension,
   }) = StepAt<T>;
 
   /// A synchronization barrier that waits for sibling tracks.
@@ -56,16 +62,27 @@ class StepTo<T extends Object> extends Step<T> {
   const StepTo(
     this.value, {
     this.motion,
-  });
+    this.motionPerDimension,
+  }) : assert(
+          motion == null || motionPerDimension == null,
+          'Provide either motion or motionPerDimension, not both.',
+        );
 
   /// The target value.
   final T value;
 
-  /// The motion used to reach [value], or null to use the track default.
+  /// The motion used to reach [value] in every dimension, or null to use
+  /// [motionPerDimension] or the track default.
   final Motion? motion;
 
+  /// Per-dimension motions used to reach [value].
+  ///
+  /// Each entry drives one normalized dimension of [value]. Mutually exclusive
+  /// with [motion]; if both are null the track default is used.
+  final List<Motion>? motionPerDimension;
+
   @override
-  List<Object?> get props => [value, motion];
+  List<Object?> get props => [value, motion, motionPerDimension];
 }
 
 /// A step that runs a self-directed motion.
@@ -104,7 +121,11 @@ class StepAt<T extends Object> extends Step<T> {
     this.at,
     this.value, {
     this.motion,
-  });
+    this.motionPerDimension,
+  }) : assert(
+          motion == null || motionPerDimension == null,
+          'Provide either motion or motionPerDimension, not both.',
+        );
 
   /// The absolute time from the start of the track animation.
   final Duration at;
@@ -112,11 +133,18 @@ class StepAt<T extends Object> extends Step<T> {
   /// The target value.
   final T value;
 
-  /// The motion used to reach [value], or null to use the track default.
+  /// The motion used to reach [value] in every dimension, or null to use
+  /// [motionPerDimension] or the track default.
   final Motion? motion;
 
+  /// Per-dimension motions used to reach [value].
+  ///
+  /// Each entry drives one normalized dimension of [value]. Mutually exclusive
+  /// with [motion]; if both are null the track default is used.
+  final List<Motion>? motionPerDimension;
+
   @override
-  List<Object?> get props => [at, value, motion];
+  List<Object?> get props => [at, value, motion, motionPerDimension];
 }
 
 /// A synchronization barrier that keeps sibling tracks aligned.

@@ -320,6 +320,7 @@ class TrackController extends Animation<TrackValueReader>
       converter: track.converter,
       initialValue: initialValue,
       fallbackMotion: track.motion,
+      fallbackMotionPerDimension: track.motionPerDimension,
     );
     _slots[track] = slot;
     return slot;
