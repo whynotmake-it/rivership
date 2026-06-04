@@ -35,8 +35,32 @@ class StepPlayback<T extends Object> {
           null => List<double>.filled(converter.normalize(start).length, 0),
           final value => converter.normalize(value),
         } {
+    if (loop == LoopMode.loop) {
+      // `loop` animates back to the start after the last step. Model that as a
+      // synthetic final step that returns to the start snapshot, reusing the
+      // first real step's motion. The wrap (in `_advanceStep`) then continues
+      // from there without a jump. `seamless` skips this and jumps instead.
+      final returnMotion = _firstStepMotion(_steps) ?? fallbackMotion;
+      if (returnMotion != null) {
+        _steps.add(StepTo<T>(start, motion: returnMotion));
+      }
+    }
     _buildWaypoints();
     _reset();
+  }
+
+  /// Returns the motion of the first step that targets a value, or `null` if
+  /// no step carries a motion.
+  static Motion? _firstStepMotion<S extends Object>(List<Step<S>> steps) {
+    for (final step in steps) {
+      final motion = switch (step) {
+        StepTo<S>(:final motion) => motion,
+        StepAt<S>(:final motion) => motion,
+        _ => null,
+      };
+      if (motion != null) return motion;
+    }
+    return null;
   }
 
   static bool _validateStepTiming<S extends Object>(List<Step<S>> steps) {
@@ -223,8 +247,9 @@ class StepPlayback<T extends Object> {
           _isDone = true;
           return;
         case LoopMode.loop:
-          _currentValues = List.of(_initialValues);
-          _currentVelocities = List.of(_initialVelocities);
+          // The synthetic return step appended at construction has already
+          // animated back to the start snapshot, so just continue the next
+          // cycle from there without jumping.
           _cycleStartSeconds = _segmentStartSeconds;
           _stepIndex = 0;
         case LoopMode.pingPong:
@@ -233,8 +258,10 @@ class StepPlayback<T extends Object> {
           _cycleStartSeconds = _segmentStartSeconds;
           _stepIndex = _steps.length - 1;
         case LoopMode.seamless:
-          // Continue from current values (no reset) so the wrap is smooth.
-          // Callers should ensure first and last values match.
+          // Jump straight back to the start snapshot and replay. The timeline
+          // is expected to end where it began, so the jump is invisible.
+          _currentValues = List.of(_initialValues);
+          _currentVelocities = List.of(_initialVelocities);
           _cycleStartSeconds = _segmentStartSeconds;
           _stepIndex = 0;
       }

@@ -75,6 +75,42 @@ void main() {
       expect(steps, equals([0, 0]));
     });
 
+    testWidgets('restartTrigger starts from the start, not animate back',
+        (tester) async {
+      double? captured;
+
+      Widget build(int trigger) {
+        return MultiTrackMotionBuilder(
+          timeline: TrackTimeline([
+            opacity.to(
+              1,
+              motion: const Motion.linear(Duration(milliseconds: 100)),
+            ),
+          ]),
+          restartTrigger: trigger,
+          builder: (context, value, child) {
+            captured = value<double>(opacity);
+            return const SizedBox();
+          },
+        );
+      }
+
+      await tester.pumpWidget(build(0));
+      await tester.pumpAndSettle();
+      // Settled at the end of the timeline.
+      expect(captured, closeTo(1, error));
+
+      // Changing the trigger must jump back to the start (origin 0) and replay
+      // forward — not animate from 1 back toward the first value.
+      await tester.pumpWidget(build(1));
+      await tester.pump();
+      expect(captured, closeTo(0, error));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(captured, greaterThan(0));
+      expect(captured, lessThan(1));
+    });
+
     testWidgets('honors active false', (tester) async {
       double? captured;
 
@@ -135,6 +171,37 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(captured, closeTo(0.5, error));
+    });
+
+    testWidgets('restartTrigger starts from the start, not animate back',
+        (tester) async {
+      double? captured;
+
+      Widget build(int trigger) {
+        return PhaseTrackBuilder<_Phase>(
+          playing: true,
+          restartTrigger: trigger,
+          timeline: TrackPhaseTimeline({
+            _Phase.idle: [scale.to(2.0)],
+            _Phase.pressed: [scale.to(3.0)],
+          }),
+          builder: (context, value, phase, child) {
+            captured = value<double>(scale);
+            return const SizedBox();
+          },
+        );
+      }
+
+      await tester.pumpWidget(build(0));
+      await tester.pumpAndSettle();
+      // Settled at the last phase.
+      expect(captured, closeTo(3, error));
+
+      // Changing the trigger must jump back to the start (origin 1.0) and
+      // replay forward — not animate from 3 back toward the first phase.
+      await tester.pumpWidget(build(1));
+      await tester.pump();
+      expect(captured, closeTo(1, error));
     });
   });
 }

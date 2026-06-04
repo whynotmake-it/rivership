@@ -72,6 +72,30 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
     return _flatten(subset);
   }
 
+  /// The resting values each track settles to at the end of the first phase.
+  ///
+  /// Used by [PhaseTrackController] to jump back to the start when [phaseLoop]
+  /// is [LoopMode.seamless]. Tracks whose first-phase animation has no concrete
+  /// target (e.g. only holds) are omitted.
+  @internal
+  List<TrackValue> get firstPhaseValues {
+    TrackValue? restingValueOf(TrackAnimation anim) {
+      for (final step in anim.steps.reversed) {
+        if (step is StepTo) return anim.track.value(step.value);
+        if (step is StepAt) return anim.track.value(step.value);
+      }
+      return null;
+    }
+
+    final anims = phaseAnimations[initialPhase] ?? const <TrackAnimation>[];
+    final result = <TrackValue>[];
+    for (final anim in anims) {
+      final value = restingValueOf(anim);
+      if (value != null) result.add(value);
+    }
+    return result;
+  }
+
   static List<TrackAnimation> _flatten<P extends Object>(
     Map<P, List<TrackAnimation>> phaseAnimations,
   ) {

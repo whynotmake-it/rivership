@@ -27,6 +27,22 @@ class TrackTimeline with EquatableMixin {
   /// velocity. Unlike [from], this does not move the track's value.
   final List<TrackValue> withVelocity;
 
+  /// The resolved start value for every track in [animations].
+  ///
+  /// For each track this is its [from] override when present, otherwise the
+  /// track's [Track.origin]. This is where the timeline begins playing, and is
+  /// what callers jump back to in order to restart from the start.
+  List<TrackValue> get startValues => [
+        for (final animation in animations) _startValueFor(animation.track),
+      ];
+
+  TrackValue _startValueFor(Track track) {
+    for (final override in from.reversed) {
+      if (identical(override.track, track)) return override;
+    }
+    return track.value(track.origin);
+  }
+
   @override
   List<Object?> get props => [...animations, loop, ...from, ...withVelocity];
 }

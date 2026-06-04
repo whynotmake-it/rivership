@@ -47,7 +47,11 @@ class MultiTrackMotionBuilder extends StatefulWidget {
   /// Optional loop override.
   final LoopMode? loop;
 
-  /// Restarts playback when this value changes.
+  /// Restarts playback from the start when this value changes.
+  ///
+  /// Jumps every track back to its start value (its `from` override or the
+  /// track's origin) and replays from the beginning, rather than animating
+  /// from the current values back to the first value.
   final Object? restartTrigger;
 
   /// Whether playback is active.
@@ -105,11 +109,18 @@ class _MultiTrackMotionBuilderState extends State<MultiTrackMotionBuilder>
       return;
     }
 
-    if (widget.timeline != oldWidget.timeline ||
+    // A restartTrigger change replays from the start (jumping back to the
+    // start snapshot first), matching the legacy builder. Other changes keep
+    // animating from the current values.
+    final restartTriggerChanged =
+        widget.restartTrigger != oldWidget.restartTrigger;
+
+    if (restartTriggerChanged) {
+      _updatePlayback(restart: true);
+    } else if (widget.timeline != oldWidget.timeline ||
         widget.play != oldWidget.play ||
         widget.loop != oldWidget.loop ||
         widget.withVelocity != oldWidget.withVelocity ||
-        widget.restartTrigger != oldWidget.restartTrigger ||
         widget.active != oldWidget.active) {
       _updatePlayback();
     }
@@ -132,10 +143,16 @@ class _MultiTrackMotionBuilderState extends State<MultiTrackMotionBuilder>
     super.dispose();
   }
 
-  void _updatePlayback() {
+  void _updatePlayback({bool restart = false}) {
     if (!widget.active) return;
 
     final timeline = _effectiveTimeline();
+    if (restart) {
+      // Jump every track back to its start value before replaying, so a
+      // restartTrigger change starts the animation from the start rather than
+      // animating from the current value back to the first value.
+      _controller.set(timeline.startValues);
+    }
     _controller.play(
       timeline,
       onStep: widget.onStep,

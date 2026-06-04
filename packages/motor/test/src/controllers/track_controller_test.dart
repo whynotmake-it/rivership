@@ -423,7 +423,8 @@ void main() {
     group('looping', () {
       const linear100 = Motion.linear(Duration(milliseconds: 100));
 
-      testWidgets('LoopMode.loop resets to initial values each cycle',
+      testWidgets(
+          'LoopMode.loop animates back to the start after the last step',
           (tester) async {
         controller = TrackController(vsync: tester);
 
@@ -438,17 +439,28 @@ void main() {
 
         await tester.pump();
 
-        // First cycle: 0 -> 1
+        // First cycle: 0 -> 1 over 100ms.
         await tester.pump(const Duration(milliseconds: 50));
-        expect(controller.value(opacity), greaterThan(0));
-        expect(controller.value(opacity), lessThan(1));
+        expect(controller.value(opacity), closeTo(0.5, error));
 
-        await tester.pump(const Duration(milliseconds: 60));
-        // After 110ms, first step is done and loop restarted.
-        // Value should have reset toward 0 and be animating to 1 again.
-        expect(controller.value(opacity), lessThan(1));
+        // Finish the first cycle, reaching the last step's value (1.0).
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.value(opacity), closeTo(1, error));
+
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(
+          controller.value(opacity),
+          closeTo(0.5, error),
+          reason: 'loop should animate back to start, not jump',
+        );
+
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.value(opacity), closeTo(0, error));
+
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.value(opacity), closeTo(0.5, error));
+
         expect(controller.isAnimating, isTrue);
-
         controller.stop(canceled: true);
       });
 
@@ -479,10 +491,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 60));
         expect(controller.value(opacity), greaterThan(0.4));
 
-        // Let the cycle complete and loop restart
+        // Let the forward steps complete (200ms) and enter the return leg.
         await tester.pump(const Duration(milliseconds: 100));
-        // After looping, value should have reset toward 0 and be
-        // animating toward 0.5 again
+        // loop animates back to the start: the value is on its way down from
+        // 1.0 toward 0, so it is below 1.0 and still animating.
         final v = controller.value(opacity);
         expect(v, lessThan(1.0));
         expect(controller.isAnimating, isTrue);
@@ -562,17 +574,15 @@ void main() {
         controller.stop(canceled: true);
       });
 
-      testWidgets('LoopMode.seamless does not reset to initial values',
-          (tester) async {
+      testWidgets(
+          'LoopMode.seamless jumps back to the start after the last '
+          'step', (tester) async {
         controller = TrackController(vsync: tester);
 
         controller.play(
           TrackTimeline(
             [
-              opacity([
-                const Step.to(0.5, motion: linear100),
-                const Step.to(1.0, motion: linear100),
-              ]),
+              opacity.to(1, motion: linear100),
             ],
             loop: LoopMode.seamless,
           ),
@@ -580,20 +590,20 @@ void main() {
 
         await tester.pump();
 
-        // After first cycle completes (200ms), the seamless wrap should NOT
-        // jump back to 0. Instead, it continues from 1.0 toward step 0's
-        // target (0.5).
-        final values = <double>[];
-        controller.addListener(() {
-          values.add(controller.value(opacity));
-        });
+        // First cycle reaches the last step's value (1.0) at 100ms.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value(opacity), closeTo(1, error));
 
-        await tester.pump(const Duration(milliseconds: 210));
-
-        // Verify no value dropped back to ~0 (the initial value)
-        for (final v in values) {
-          expect(v, greaterThanOrEqualTo(-error));
-        }
+        // seamless must JUMP back to the start (0) and immediately replay
+        // forward. A short while after the last step the value should already
+        // be near 0 (animating 0 -> 1 again), NOT unwinding from 1.
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(
+          controller.value(opacity),
+          lessThan(0.5),
+          reason: 'seamless should jump to start, not animate back',
+        );
+        expect(controller.value(opacity), closeTo(0.2, 0.1));
 
         expect(controller.isAnimating, isTrue);
         controller.stop(canceled: true);

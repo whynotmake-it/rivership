@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
@@ -161,17 +162,43 @@ class PhaseTrackController<P extends Object> extends TrackController {
 
     final timeline = _activeTimeline;
 
-    if (_isPlayingPhases &&
-        timeline != null &&
-        timeline.phaseLoop.isLooping) {
-      // Loop: wrap back to the first phase and replay.
+    if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {
       final previous = _currentPhase;
-      final first = timeline.phases.first;
+      final phases = timeline.phases;
+      final first = phases.first;
+
+      if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
+        // seamless: jump straight back to the first phase (invisible when the
+        // last phase matches the first), then animate on to the second phase
+        // immediately. Replaying from the second phase avoids re-animating
+        // into the first phase, which would otherwise stall for the first
+        // step's full duration.
+
+        final second = phases[1];
+        final values = timeline.firstPhaseValues;
+        if (values.isNotEmpty) set(values);
+
+        if (previous != null && previous != first) {
+          _onTransition?.call(PhaseTransitioning(from: previous, to: first));
+        }
+        _currentPhase = second;
+        _onTransition?.call(PhaseTransitioning(from: first, to: second));
+        animate(
+          timeline.animationsFrom(second),
+          withVelocity: timeline.withVelocity,
+        );
+        return;
+      }
+
+      // loop (and single-phase seamless): animate from the current values back
+      // to the first phase and replay the whole timeline. Unlike `play`, this
+      // does not re-apply `timeline.from`, so the loop animates back to the
+      // first phase rather than snapping to the seed value each cycle.
       _currentPhase = first;
       if (previous != null && previous != first) {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
-      play(timeline);
+      animate(timeline.animations, withVelocity: timeline.withVelocity);
       return;
     }
 
