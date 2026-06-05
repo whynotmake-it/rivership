@@ -379,6 +379,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   void _cancelReturn() {
     if (currentEntry?.mounted ?? false) {
       currentEntry?.remove();
+      currentEntry = null;
     }
     controller.stop(canceled: true);
     isReturning = false;
