@@ -66,6 +66,35 @@ class TrackController extends Animation<TrackValueReader>
   /// Returns the current velocity for [track].
   T velocity<T extends Object>(Track<T> track) => _slot(track).velocity as T;
 
+  /// Returns the tracked velocity estimate for [track], or null if velocity
+  /// tracking is disabled or no samples have been recorded.
+  ///
+  /// The internal trackers are stored type-erased (`<Object>`), so the estimate
+  /// is reconstructed with [track]'s value type rather than cast directly.
+  MotionVelocityEstimate<T>? trackedVelocityEstimate<T extends Object>(
+    Track<T> track,
+  ) {
+    final estimate = _velocityTrackers[track]?.getVelocityEstimate();
+    if (estimate == null) return null;
+    return MotionVelocityEstimate<T>(
+      perSecond: estimate.perSecond as T,
+      confidence: estimate.confidence,
+      duration: estimate.duration,
+      offset: estimate.offset as T,
+    );
+  }
+
+  /// Clears velocity-tracking samples so future [set] calls start fresh.
+  void resetVelocityTracking() {
+    _velocityTrackers.clear();
+    _velocityTime
+      ..reset()
+      ..stop();
+  }
+
+  /// The elapsed duration of the current run, or null when not animating.
+  Duration? get lastElapsedDuration => isAnimating ? _lastElapsed : null;
+
   /// Sets one or more track values without starting an animation.
   ///
   /// For each [TrackValue] in [values]:

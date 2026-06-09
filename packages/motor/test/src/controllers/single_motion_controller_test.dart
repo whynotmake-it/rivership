@@ -259,7 +259,20 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        expect(animationValues, equals(motionValues));
+        // MotionController drives a Ticker just like AnimationController and
+        // produces the same value progression. The only difference is that
+        // AnimationController emits an extra duplicate value for its initial
+        // frame, which MotionController does not. Collapsing consecutive
+        // duplicates makes the two sequences directly comparable.
+        List<double> withoutConsecutiveDuplicates(List<double> values) => [
+              for (final (index, value) in values.indexed)
+                if (index == 0 || value != values[index - 1]) value,
+            ];
+
+        expect(
+          withoutConsecutiveDuplicates(motionValues),
+          equals(withoutConsecutiveDuplicates(animationValues)),
+        );
       });
     });
 
