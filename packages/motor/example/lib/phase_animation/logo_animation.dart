@@ -48,6 +48,9 @@ class LogoAnimation extends StatelessWidget {
                 sizeFactor: AlwaysStoppedAnimation(value.textWidth),
                 fixedCrossAxisSizeFactor: 1,
                 axis: Axis.horizontal,
+
+                // TODO(tim): migrate to alignment on a future version of Flutter
+                // ignore: deprecated_member_use
                 axisAlignment: 1,
                 child: ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
