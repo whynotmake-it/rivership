@@ -554,7 +554,7 @@ DA:183,6
 DA:184,6
 DA:185,3
 DA:199,1
-DA:215,1
+DA:215,0
 DA:233,1
 DA:241,3
 DA:250,9
@@ -565,7 +565,7 @@ DA:259,1
 DA:265,4
 DA:266,2
 DA:274,1
-DA:285,1
+DA:285,0
 DA:305,2
 DA:311,2
 DA:312,2
@@ -574,7 +574,7 @@ DA:316,2
 DA:319,4
 DA:321,2
 LF:74
-LH:67
+LH:65
 end_of_record
 SF:lib/src/stupid_simple_cupertino_sheet.dart
 DA:15,1
