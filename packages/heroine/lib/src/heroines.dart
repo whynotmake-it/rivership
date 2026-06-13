@@ -80,10 +80,7 @@ class HeroineController extends NavigatorObserver {
       topRoute.isCurrent,
       'Top route $topRoute is not current in heroine transition.',
     );
-    assert(
-      navigator != null,
-      'Navigator is null in heroine transition.',
-    );
+    assert(navigator != null, 'Navigator is null in heroine transition.');
     if (previousTopRoute == null) {
       return;
     }
@@ -139,11 +136,10 @@ class HeroineController extends NavigatorObserver {
     final flightType = switch ((
       isUserGestureTransition,
       oldRouteAnimation.status,
-      newRouteAnimation.status
+      newRouteAnimation.status,
     )) {
       (true, _, _) ||
-      (_, AnimationStatus.reverse, _) =>
-        HeroFlightDirection.pop,
+      (_, AnimationStatus.reverse, _) => HeroFlightDirection.pop,
       (_, _, AnimationStatus.forward) => HeroFlightDirection.push,
       _ => null,
     };
@@ -166,7 +162,8 @@ class HeroineController extends NavigatorObserver {
     // adding routes to the pages stack causing the route to never get laid out.
     final fromRouteRenderBox =
         toRoute.subtreeContext?.findRenderObject() as RenderBox?;
-    final hasValidSize = (fromRouteRenderBox?.hasSize ?? false) &&
+    final hasValidSize =
+        (fromRouteRenderBox?.hasSize ?? false) &&
         fromRouteRenderBox!.size.isFinite;
 
     if (isUserGestureTransition &&
@@ -183,21 +180,18 @@ class HeroineController extends NavigatorObserver {
     } else {
       // Otherwise, delay measuring until the end of the next frame to allow
       // the 'to' route to build and layout.
-      WidgetsBinding.instance.addPostFrameCallback(
-        (Duration value) {
-          if (fromRoute.navigator == null || toRoute.navigator == null) {
-            return;
-          }
-          toRoute.offstage = toRoute.animation!.value == 0.0;
-          _startHeroTransition(
-            fromRoute,
-            toRoute,
-            flightType,
-            isUserGestureTransition,
-          );
-        },
-        debugLabel: 'HeroController.startTransition',
-      );
+      WidgetsBinding.instance.addPostFrameCallback((Duration value) {
+        if (fromRoute.navigator == null || toRoute.navigator == null) {
+          return;
+        }
+        toRoute.offstage = toRoute.animation!.value == 0.0;
+        _startHeroTransition(
+          fromRoute,
+          toRoute,
+          flightType,
+          isUserGestureTransition,
+        );
+      }, debugLabel: 'HeroController.startTransition');
     }
   }
 
@@ -283,13 +277,15 @@ class HeroineController extends NavigatorObserver {
       final existingFlight = _flights[tag];
 
       // Check if both heroines agree to transition.
-      final shouldTransition = toHero != null &&
+      final shouldTransition =
+          toHero != null &&
           flightType != null &&
           (fromHero.widget.shouldTransition?.call(
                 HeroineTransitionDetails(
                   currentRoute: from,
                   otherRoute: to,
                   direction: flightType,
+                  isFromHeroine: true,
                 ),
               ) ??
               true) &&
@@ -298,6 +294,7 @@ class HeroineController extends NavigatorObserver {
                   currentRoute: to,
                   otherRoute: from,
                   direction: flightType,
+                  isFromHeroine: false,
                 ),
               ) ??
               true);
@@ -312,7 +309,8 @@ class HeroineController extends NavigatorObserver {
               toRoute: to,
               fromHero: fromHero,
               toHero: toHero,
-              shuttleBuilder: toHero.widget.flightShuttleBuilder ??
+              shuttleBuilder:
+                  toHero.widget.flightShuttleBuilder ??
                   fromHero.widget.flightShuttleBuilder ??
                   const FadeShuttleBuilder(),
               isUserGestureTransition: isUserGestureTransition,
@@ -379,8 +377,9 @@ class HeroineController extends NavigatorObserver {
     Iterable<Object> otherRouteHeroes,
   ) {
     final ownTag = heroine?.widget.tag;
-    final parentTag =
-        heroine?.context.findAncestorWidgetOfExactType<Heroine>()?.tag;
+    final parentTag = heroine?.context
+        .findAncestorWidgetOfExactType<Heroine>()
+        ?.tag;
     if (parentTag == null || ownTag == null) return false;
 
     // If both the parent and the child are flying, then we don't support it.

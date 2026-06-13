@@ -9,6 +9,7 @@ class HeroineTransitionDetails {
     required this.currentRoute,
     required this.otherRoute,
     required this.direction,
+    required this.isFromHeroine,
   });
 
   /// The route this heroine lives on.
@@ -19,4 +20,11 @@ class HeroineTransitionDetails {
 
   /// The direction of the transition (push or pop).
   final HeroFlightDirection direction;
+
+  /// Whether this heroine is the one initiating the transition.
+  final bool isFromHeroine;
+
+  Route<dynamic> get fromRoute => isFromHeroine ? currentRoute : otherRoute;
+
+  Route<dynamic> get toRoute => isFromHeroine ? otherRoute : currentRoute;
 }
