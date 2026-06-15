@@ -74,6 +74,10 @@ void main() {
 
       testWidgets('1D horizontal phase animation through sequence',
           (tester) async {
+        // snapToEnd defaults to true as of Motor 2.0. This golden intentionally
+        // opts out so it keeps exercising the off-target (non-snapping) spring
+        // settling path; see the spring snapToEnd default tests in
+        // motion_test.dart for the new default behavior.
         const sequence = MotionSequence.states(
           phaseMap,
           motion: CupertinoMotion.bouncy(snapToEnd: false),

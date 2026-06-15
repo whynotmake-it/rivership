@@ -413,30 +413,28 @@ void main() {
     });
 
     group('.status', () {
-      late MotionController<Offset> controller;
-      tearDown(() {
-        try {
-          controller.dispose();
-        } catch (_) {}
-      });
-
+      // Each test owns its controller and disposes it via addTearDown. This
+      // keeps tests that use a differently-typed controller (e.g. the
+      // directional SingleMotionController below) properly isolated.
       testWidgets('is .dismissed initially', (tester) async {
-        controller = MotionController<Offset>(
+        final controller = MotionController<Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
         );
+        addTearDown(controller.dispose);
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
 
       testWidgets('is forward when animating to larger values', (tester) async {
-        controller = MotionController(
+        final controller = MotionController(
           motion: motion,
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
         );
+        addTearDown(controller.dispose);
 
         unawaited(controller.animateTo(const Offset(1, 1)));
         await tester.pump();
@@ -447,12 +445,13 @@ void main() {
 
       testWidgets('is forward when animating to smaller values',
           (tester) async {
-        controller = MotionController<Offset>(
+        final controller = MotionController<Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
           initialValue: const Offset(1, 1),
         );
+        addTearDown(controller.dispose);
 
         unawaited(controller.animateTo(Offset.zero));
         await tester.pump();
@@ -462,12 +461,13 @@ void main() {
       });
 
       testWidgets('is dismissed when back at initial value', (tester) async {
-        controller = MotionController<Offset>(
+        final controller = MotionController<Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
         );
+        addTearDown(controller.dispose);
 
         unawaited(controller.animateTo(const Offset(1, 1)));
         await tester.pump();
@@ -488,6 +488,7 @@ void main() {
           motion: motion,
           vsync: tester,
         );
+        addTearDown(controller.dispose);
 
         unawaited(controller.animateTo(3));
         await tester.pump();
@@ -796,8 +797,14 @@ void main() {
         expect(controller.status, equals(AnimationStatus.completed));
       });
 
-      testWidgets('is reverse when animating to smaller values',
-          (tester) async {
+      testWidgets(
+          'reports forward for a non-directional converter even when '
+          'animating to smaller values', (tester) async {
+        // OffsetMotionConverter is not directional, so the controller cannot
+        // know that animating toward the lower bound is "backwards". It reports
+        // forward while animating, then dismissed once it rests at the lower
+        // bound. (On Motor 1.x reverse() forced AnimationStatus.reverse here
+        // regardless of converter; see the directional test below.)
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
@@ -810,6 +817,34 @@ void main() {
         unawaited(controller.reverse());
         await tester.pump();
         expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
+      });
+
+      testWidgets(
+          'reports reverse for a directional converter when animating to '
+          'smaller values', (tester) async {
+        // A DirectionalMotionConverter lets the controller detect that the
+        // target is "smaller" and report AnimationStatus.reverse while it
+        // animates, settling at dismissed on the lower bound.
+        final directionalConverter = MotionConverter.customDirectional(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+          compare: (a, b) => a.dx.compareTo(b.dx),
+        );
+
+        controller = BoundedMotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: directionalConverter,
+          initialValue: const Offset(1, 1),
+          lowerBound: Offset.zero,
+          upperBound: const Offset(1, 1),
+        );
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
@@ -905,19 +940,23 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        // Set multiple values - velocity tracker will use real time
-        controller
-          ..value = Offset.zero
-          ..value = const Offset(10, 20)
-          ..value = const Offset(20, 40)
-          ..value = const Offset(30, 60);
+        // Set values at a constant 16ms cadence (the fake clock advances with
+        // pump), moving by (10, 20) each frame. Four samples give the velocity
+        // tracker full confidence, so the estimate is exact:
+        // 10px / 16ms = 625 px/s on x, 20px / 16ms = 1250 px/s on y.
+        const frame = Duration(milliseconds: 16);
+        controller.value = Offset.zero;
+        await tester.pump(frame);
+        controller.value = const Offset(10, 20);
+        await tester.pump(frame);
+        controller.value = const Offset(20, 40);
+        await tester.pump(frame);
+        controller.value = const Offset(30, 60);
 
-        // Velocity estimate should exist (values were tracked)
         final estimate = controller.trackedVelocityEstimate;
         expect(estimate, isNotNull);
-        // Since we're using real time and samples are very close together,
-        // velocity will be very high. We just verify tracking occurred.
-        expect(estimate!.perSecond, isNot(Offset.zero));
+        expect(estimate!.perSecond.dx, closeTo(625, error));
+        expect(estimate.perSecond.dy, closeTo(1250, error));
       });
 
       testWidgets('velocity getter returns tracked velocity when not animating',
@@ -931,15 +970,18 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        // Set values to track
-        controller
-          ..value = Offset.zero
-          ..value = const Offset(10, 20)
-          ..value = const Offset(20, 40);
+        const frame = Duration(milliseconds: 16);
+        controller.value = Offset.zero;
+        await tester.pump(frame);
+        controller.value = const Offset(10, 20);
+        await tester.pump(frame);
+        controller.value = const Offset(20, 40);
+        await tester.pump(frame);
+        controller.value = const Offset(30, 60);
 
-        // Velocity getter should return non-zero tracked velocity
-        final velocity = controller.velocity;
-        expect(velocity, isNot(Offset.zero));
+        // When not animating, the velocity getter returns the tracked velocity.
+        expect(controller.velocity.dx, closeTo(625, error));
+        expect(controller.velocity.dy, closeTo(1250, error));
       });
 
       testWidgets('animateTo uses tracked velocity when no velocity provided',
@@ -953,21 +995,25 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        // Build up tracked velocity
-        controller
-          ..value = Offset.zero
-          ..value = const Offset(10, 20)
-          ..value = const Offset(20, 40);
+        // Build up a known tracked velocity of (625, 1250) px/s.
+        const frame = Duration(milliseconds: 16);
+        controller.value = Offset.zero;
+        await tester.pump(frame);
+        controller.value = const Offset(10, 20);
+        await tester.pump(frame);
+        controller.value = const Offset(20, 40);
+        await tester.pump(frame);
+        controller.value = const Offset(30, 60);
 
-        // Capture tracked velocity before animation
         final trackedVelocity = controller.velocity;
-        expect(trackedVelocity, isNot(Offset.zero));
+        expect(trackedVelocity.dx, closeTo(625, error));
+        expect(trackedVelocity.dy, closeTo(1250, error));
 
-        // Start animation - should use tracked velocity
+        // Start animation without explicit velocity - it should adopt the
+        // tracked velocity as its initial velocity (read at t=0).
         controller.animateTo(const Offset(100, 200));
         await tester.pump();
 
-        // Animation velocity should match what was tracked
         final animationVelocity = controller.velocity;
         expect(
           animationVelocity.dx,
@@ -1114,17 +1160,20 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        // Add samples
-        controller
-          ..value = 0.0
-          ..value = 10.0
-          ..value = 20.0
-          ..value = 30.0;
+        // Four samples 10 units apart at a 16ms cadence give an exact
+        // 10 / 16ms = 625 units/s estimate.
+        const frame = Duration(milliseconds: 16);
+        controller.value = 0.0;
+        await tester.pump(frame);
+        controller.value = 10.0;
+        await tester.pump(frame);
+        controller.value = 20.0;
+        await tester.pump(frame);
+        controller.value = 30.0;
 
-        // Get velocity estimate - should be non-zero
         final estimate = controller.trackedVelocityEstimate;
         expect(estimate, isNotNull);
-        expect(estimate!.perSecond, isNot(0.0));
+        expect(estimate!.perSecond, closeTo(625, error));
       });
     });
   });

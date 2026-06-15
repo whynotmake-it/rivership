@@ -241,7 +241,9 @@ void main() {
         controller = PhaseTrackController<String>(vsync: tester);
 
         final phasesVisited = <String>[];
-        final valuesAtPhaseChange = <String, double>{};
+        // Capture the fast-track value at every 'b' entry (one per cycle), not
+        // just the last, so we can verify it stays put across cycles.
+        final fastValuesAtBEntry = <double>[];
 
         controller.playPhases(
           TrackPhaseTimeline(
@@ -261,7 +263,9 @@ void main() {
             if (transition is PhaseTransitioning<String>) {
               final phase = transition.to;
               phasesVisited.add(phase);
-              valuesAtPhaseChange[phase] = controller.value(fast);
+              if (phase == 'b') {
+                fastValuesAtBEntry.add(controller.value(fast));
+              }
             }
           },
         );
@@ -277,24 +281,27 @@ void main() {
 
         // The loop should have visited 'a' and 'b' multiple times.
         expect(phasesVisited.length, greaterThanOrEqualTo(4));
-
-        // Check that each time we enter phase 'b', the fast track value
-        // is near 1.0 (not jumped past it due to accumulated time drift).
-        // After the initial 'a', every 'b' entry should find fast near 1.0.
-        var bEntryCount = 0;
-        for (var i = 0; i < phasesVisited.length; i++) {
-          if (phasesVisited[i] != 'b') continue;
-          bEntryCount++;
-          // We can't easily capture the exact value at phase change, but we
-          // can check the pattern. The phase change callback fires when sync
-          // releases, so the value should be near 1.0 (the phase "a" target).
-          // If the bug exists, it would be at or near 2.0 already.
-        }
         expect(
-          bEntryCount,
+          fastValuesAtBEntry.length,
           greaterThanOrEqualTo(2),
           reason: 'Should have entered phase b at least twice in a loop.',
         );
+
+        // The fast track reaches 1.0 at 100ms and then holds at the sync
+        // barrier until the slow track finishes phase 'a' at 400ms. So every
+        // time we enter phase 'b', fast must be at ~1.0. If time drift
+        // accumulated across cycles, later entries would already have advanced
+        // toward the phase 'b' target (2.0). The 0.25 tolerance only absorbs
+        // the 20ms pump granularity, not a whole extra leg.
+        for (final value in fastValuesAtBEntry) {
+          expect(
+            value,
+            closeTo(1.0, 0.25),
+            reason: 'fast should be at the phase "a" target (1.0) on every '
+                'phase "b" entry; drift would push it toward 2.0. '
+                'Captured: $fastValuesAtBEntry',
+          );
+        }
       },
     );
   });

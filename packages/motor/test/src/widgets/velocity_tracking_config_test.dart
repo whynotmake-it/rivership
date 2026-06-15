@@ -1,455 +1,259 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
-import 'package:motor/src/widgets/base_motion_builder.dart';
+
+import '../util.dart';
+
+/// One animation frame. The fake test clock advances with `pump`, so feeding
+/// values this far apart yields a deterministic tracked velocity.
+const _frame = Duration(milliseconds: 16);
 
 void main() {
   group('velocity tracking through widget layer', () {
+    // These tests drive everything through the public widget API: rebuilding a
+    // builder with `active: false` and a new `value` records a velocity sample
+    // (see BaseMotionBuilderState.didUpdateWidget), and pumping between
+    // rebuilds advances the (fake) clock so the tracked velocity is exact.
+    //
+    // Feeding 0 -> 20 -> 40 -> 60 -> 80 -> 100 one frame apart is a constant
+    // 20px / 16ms = 1250px/s, which the tracker reports with full confidence.
+    const fed = [20.0, 40.0, 60.0, 80.0, 100.0];
+    const expectedVelocity = 1250.0;
+
     group('SingleMotionBuilder', () {
+      Future<double> runScenario(
+        WidgetTester tester, {
+        required VelocityTracking tracking,
+        required Key key,
+      }) async {
+        var captured = 0.0;
+        Widget build(double value, {required bool active}) =>
+            SingleMotionBuilder(
+              key: key,
+              value: value,
+              active: active,
+              motion: const CupertinoMotion.smooth(),
+              velocityTracking: tracking,
+              builder: (context, value, child) {
+                captured = value;
+                return const SizedBox();
+              },
+            );
+
+        await tester.pumpWidget(build(0, active: false));
+        for (final v in fed) {
+          await tester.pump(_frame);
+          await tester.pumpWidget(build(v, active: false));
+        }
+
+        // Re-activate toward a far target: animateTo adopts the tracked
+        // velocity, so a single frame of progress reflects the momentum.
+        await tester.pump(_frame);
+        await tester.pumpWidget(build(200, active: true));
+        await tester.pump(_frame);
+        return captured;
+      }
+
       testWidgets('tracked velocity carries momentum when active is restored',
           (tester) async {
-        double capturedValue = 0;
-
-        // --- Scenario 1: tracking ON ---
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            key: const ValueKey('on'),
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
+        final withTracking = await runScenario(
+          tester,
+          tracking: const VelocityTracking.on(),
+          key: const ValueKey('on'),
         );
-
-        // Get controller and rapidly set values synchronously, same as the
-        // controller-level tests. This avoids the 40ms real-time timeout
-        // inside the velocity tracker.
-        final stateOn = tester.state<BaseMotionBuilderState<double>>(
-          find.byType(SingleMotionBuilder),
-        );
-        stateOn.controller
-          ..value = 0.0
-          ..value = 20.0
-          ..value = 40.0
-          ..value = 60.0
-          ..value = 80.0
-          ..value = 100.0;
-
-        // Verify velocity is actually tracked
-        final estimate = stateOn.controller.trackedVelocityEstimate;
-        expect(estimate, isNotNull);
-        expect(estimate!.perSecond, greaterThan(0));
-
-        // Restore active with a higher target — animateTo uses tracked velocity
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            key: const ValueKey('on'),
-            value: 200,
-            motion: const CupertinoMotion.smooth(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-        final valueWithTracking = capturedValue;
-
         await tester.pumpAndSettle();
 
-        // --- Scenario 2: tracking OFF (fresh widget via different key) ---
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            key: const ValueKey('off'),
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
+        final withoutTracking = await runScenario(
+          tester,
+          tracking: const VelocityTracking.off(),
+          key: const ValueKey('off'),
         );
+        await tester.pumpAndSettle();
 
-        final stateOff = tester.state<BaseMotionBuilderState<double>>(
-          find.byType(SingleMotionBuilder),
-        );
-        stateOff.controller
-          ..value = 0.0
-          ..value = 20.0
-          ..value = 40.0
-          ..value = 60.0
-          ..value = 80.0
-          ..value = 100.0;
-
-        // Verify no velocity is tracked
-        expect(stateOff.controller.trackedVelocityEstimate, isNull);
-        expect(stateOff.controller.velocity, 0.0);
-
-        // Restore active with the same target
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            key: const ValueKey('off'),
-            value: 200,
-            motion: const CupertinoMotion.smooth(),
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-        final valueWithoutTracking = capturedValue;
-
-        // With tracked positive velocity the value should have progressed
-        // further after one frame than without tracking.
         expect(
-          valueWithTracking,
-          greaterThan(valueWithoutTracking),
-          reason: 'With velocity tracking, the animation should carry momentum '
-              'from the rapid value changes, progressing further after one '
-              'frame than without tracking.',
+          withTracking,
+          greaterThan(withoutTracking),
+          reason: 'With velocity tracking the animation carries momentum from '
+              'the rapid value changes, progressing further after one frame.',
         );
-
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets(
-          'controller exposes non-zero tracked velocity after rapid changes',
-          (tester) async {
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            builder: (context, value, child) => const SizedBox(),
-          ),
-        );
-
-        final state = tester.state<BaseMotionBuilderState<double>>(
-          find.byType(SingleMotionBuilder),
-        );
-
-        // Rapidly increase values synchronously
-        state.controller
-          ..value = 0.0
-          ..value = 10.0
-          ..value = 20.0
-          ..value = 30.0;
-
-        final estimate = state.controller.trackedVelocityEstimate;
-        expect(estimate, isNotNull);
-        expect(estimate!.perSecond, greaterThan(0));
-      });
-
-      testWidgets('controller has no tracked velocity when tracking is off',
-          (tester) async {
-        await tester.pumpWidget(
-          SingleMotionBuilder(
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) => const SizedBox(),
-          ),
-        );
-
-        final state = tester.state<BaseMotionBuilderState<double>>(
-          find.byType(SingleMotionBuilder),
-        );
-
-        state.controller
-          ..value = 0.0
-          ..value = 10.0
-          ..value = 20.0
-          ..value = 30.0;
-
-        expect(state.controller.trackedVelocityEstimate, isNull);
-        expect(state.controller.velocity, 0.0);
       });
     });
 
     group('MotionBuilder (multi-dimensional)', () {
       testWidgets('tracked velocity carries momentum for Offset values',
           (tester) async {
-        var capturedValue = Offset.zero;
+        Future<Offset> runScenario({
+          required VelocityTracking tracking,
+          required Key key,
+        }) async {
+          var captured = Offset.zero;
+          Widget build(Offset value, {required bool active}) =>
+              MotionBuilder<Offset>(
+                key: key,
+                value: value,
+                active: active,
+                motion: const CupertinoMotion.smooth(),
+                converter: const OffsetMotionConverter(),
+                velocityTracking: tracking,
+                builder: (context, value, child) {
+                  captured = value;
+                  return const SizedBox();
+                },
+              );
 
-        await tester.pumpWidget(
-          MotionBuilder<Offset>(
-            key: const ValueKey('on'),
-            value: Offset.zero,
-            motion: const CupertinoMotion.smooth(),
-            converter: const OffsetMotionConverter(),
-            active: false,
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
+          await tester.pumpWidget(build(Offset.zero, active: false));
+          for (final v in fed) {
+            await tester.pump(_frame);
+            // Move twice as fast on x as on y.
+            await tester.pumpWidget(build(Offset(v, v / 2), active: false));
+          }
+          await tester.pump(_frame);
+          await tester.pumpWidget(build(const Offset(200, 100), active: true));
+          await tester.pump(_frame);
+          return captured;
+        }
+
+        final withTracking = await runScenario(
+          tracking: const VelocityTracking.on(),
+          key: const ValueKey('on'),
         );
-
-        final stateOn = tester.state<BaseMotionBuilderState<Offset>>(
-          find.byType(MotionBuilder<Offset>),
+        await tester.pumpAndSettle();
+        final withoutTracking = await runScenario(
+          tracking: const VelocityTracking.off(),
+          key: const ValueKey('off'),
         );
-        stateOn.controller
-          ..value = Offset.zero
-          ..value = const Offset(20, 10)
-          ..value = const Offset(40, 20)
-          ..value = const Offset(60, 30)
-          ..value = const Offset(80, 40)
-          ..value = const Offset(100, 50);
-
-        await tester.pumpWidget(
-          MotionBuilder<Offset>(
-            key: const ValueKey('on'),
-            value: const Offset(200, 100),
-            motion: const CupertinoMotion.smooth(),
-            converter: const OffsetMotionConverter(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-        final withTracking = capturedValue;
-
         await tester.pumpAndSettle();
 
-        await tester.pumpWidget(
-          MotionBuilder<Offset>(
-            key: const ValueKey('off'),
-            value: Offset.zero,
-            motion: const CupertinoMotion.smooth(),
-            converter: const OffsetMotionConverter(),
-            active: false,
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
-        );
+        expect(withTracking.dx, greaterThan(withoutTracking.dx));
+        expect(withTracking.dy, greaterThan(withoutTracking.dy));
+      });
 
-        final stateOff = tester.state<BaseMotionBuilderState<Offset>>(
-          find.byType(MotionBuilder<Offset>),
-        );
-        stateOff.controller
-          ..value = Offset.zero
-          ..value = const Offset(20, 10)
-          ..value = const Offset(40, 20)
-          ..value = const Offset(60, 30)
-          ..value = const Offset(80, 40)
-          ..value = const Offset(100, 50);
+      testWidgets(
+          'motionPerDimension constructor forwards velocity tracking',
+          (tester) async {
+        // Feed identical samples for both configs (so they start the activated
+        // animation from the same position) and compare progress. Only the
+        // tracking-on run should carry momentum, proving the flag is forwarded
+        // through the motionPerDimension constructor.
+        Future<Offset> runScenario({
+          required VelocityTracking tracking,
+          required Key key,
+        }) async {
+          var captured = Offset.zero;
+          Widget build(Offset value, {required bool active}) =>
+              MotionBuilder<Offset>.motionPerDimension(
+                key: key,
+                value: value,
+                active: active,
+                motionPerDimension: const [
+                  CupertinoMotion.smooth(),
+                  CupertinoMotion.smooth(),
+                ],
+                converter: const OffsetMotionConverter(),
+                velocityTracking: tracking,
+                builder: (context, value, child) {
+                  captured = value;
+                  return const SizedBox();
+                },
+              );
 
-        await tester.pumpWidget(
-          MotionBuilder<Offset>(
-            key: const ValueKey('off'),
-            value: const Offset(200, 100),
-            motion: const CupertinoMotion.smooth(),
-            converter: const OffsetMotionConverter(),
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) {
-              capturedValue = value;
-              return const SizedBox();
-            },
-          ),
+          await tester.pumpWidget(build(Offset.zero, active: false));
+          for (final v in fed) {
+            await tester.pump(_frame);
+            await tester.pumpWidget(build(Offset(v, v / 2), active: false));
+          }
+          await tester.pump(_frame);
+          await tester.pumpWidget(build(const Offset(200, 100), active: true));
+          await tester.pump(_frame);
+          return captured;
+        }
+
+        final withTracking = await runScenario(
+          tracking: const VelocityTracking.on(),
+          key: const ValueKey('on'),
         );
-        await tester.pump(const Duration(milliseconds: 16));
-        final withoutTracking = capturedValue;
+        await tester.pumpAndSettle();
+        final withoutTracking = await runScenario(
+          tracking: const VelocityTracking.off(),
+          key: const ValueKey('off'),
+        );
+        await tester.pumpAndSettle();
 
         expect(
           withTracking.dx,
           greaterThan(withoutTracking.dx),
-          reason: 'dx should progress further with tracked positive velocity.',
+          reason: 'Tracking on must carry momentum through motionPerDimension.',
         );
-        expect(
-          withTracking.dy,
-          greaterThan(withoutTracking.dy),
-          reason: 'dy should progress further with tracked positive velocity.',
-        );
-
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets(
-          'motionPerDimension constructor also forwards velocity tracking',
-          (tester) async {
-        await tester.pumpWidget(
-          MotionBuilder<Offset>.motionPerDimension(
-            value: Offset.zero,
-            motionPerDimension: const [
-              CupertinoMotion.smooth(),
-              CupertinoMotion.smooth(),
-            ],
-            converter: const OffsetMotionConverter(),
-            active: false,
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, child) => const SizedBox(),
-          ),
-        );
-
-        final state = tester.state<BaseMotionBuilderState<Offset>>(
-          find.byType(MotionBuilder<Offset>),
-        );
-        state.controller
-          ..value = Offset.zero
-          ..value = const Offset(10, 10)
-          ..value = const Offset(20, 20);
-
-        expect(state.controller.trackedVelocityEstimate, isNull);
+        expect(withTracking.dy, greaterThan(withoutTracking.dy));
       });
     });
 
-    group('VelocityMotionBuilder', () {
-      testWidgets('tracked velocity is reflected in builder velocity argument',
+    group('SingleVelocityMotionBuilder', () {
+      Future<double> velocityAfterActivation(
+        WidgetTester tester, {
+        required VelocityTracking tracking,
+        required Key key,
+      }) async {
+        var capturedVelocity = 0.0;
+        Widget build(double value, {required bool active}) =>
+            SingleVelocityMotionBuilder(
+              key: key,
+              value: value,
+              active: active,
+              motion: const CupertinoMotion.smooth(),
+              velocityTracking: tracking,
+              builder: (context, value, velocity, child) {
+                capturedVelocity = velocity;
+                return const SizedBox();
+              },
+            );
+
+        await tester.pumpWidget(build(0, active: false));
+        for (final v in fed) {
+          await tester.pump(_frame);
+          await tester.pumpWidget(build(v, active: false));
+        }
+        await tester.pump(_frame);
+        await tester.pumpWidget(build(200, active: true));
+        // Zero-duration frame: the simulation's initial velocity equals the
+        // tracked velocity exactly before any time elapses.
+        await tester.pump();
+        return capturedVelocity;
+      }
+
+      testWidgets(
+          'tracked velocity is reflected in the builder velocity argument',
           (tester) async {
-        double capturedVelocity = 0;
-
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
+        final velocity = await velocityAfterActivation(
+          tester,
+          tracking: const VelocityTracking.on(),
+          key: const ValueKey('on'),
         );
 
-        final state = tester.state<BaseMotionBuilderState<double>>(
-          find.byType(SingleVelocityMotionBuilder),
-        );
-        state.controller
-          ..value = 0.0
-          ..value = 20.0
-          ..value = 40.0
-          ..value = 60.0
-          ..value = 80.0
-          ..value = 100.0;
-
-        // Restore active — animateTo should pick up tracked velocity
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            value: 200,
-            motion: const CupertinoMotion.smooth(),
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-
-        // Velocity should be positive (moving toward 200 with momentum)
-        expect(capturedVelocity, greaterThan(0));
+        expect(velocity, closeTo(expectedVelocity, 1));
 
         await tester.pumpAndSettle();
       });
 
       testWidgets('animation velocity is higher with tracking than without',
           (tester) async {
-        double capturedVelocity = 0;
-
-        // --- With tracking ---
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            key: const ValueKey('on'),
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
+        final withTracking = await velocityAfterActivation(
+          tester,
+          tracking: const VelocityTracking.on(),
+          key: const ValueKey('on'),
         );
-
-        tester
-            .state<BaseMotionBuilderState<double>>(
-              find.byType(SingleVelocityMotionBuilder),
-            )
-            .controller
-          ..value = 0.0
-          ..value = 20.0
-          ..value = 40.0
-          ..value = 60.0
-          ..value = 80.0
-          ..value = 100.0;
-
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            key: const ValueKey('on'),
-            value: 200,
-            motion: const CupertinoMotion.smooth(),
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-        final velocityWithTracking = capturedVelocity;
-
         await tester.pumpAndSettle();
 
-        // --- Without tracking ---
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            key: const ValueKey('off'),
-            value: 0,
-            motion: const CupertinoMotion.smooth(),
-            active: false,
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
+        final withoutTracking = await velocityAfterActivation(
+          tester,
+          tracking: const VelocityTracking.off(),
+          key: const ValueKey('off'),
         );
-
-        tester
-            .state<BaseMotionBuilderState<double>>(
-              find.byType(SingleVelocityMotionBuilder),
-            )
-            .controller
-          ..value = 0.0
-          ..value = 20.0
-          ..value = 40.0
-          ..value = 60.0
-          ..value = 80.0
-          ..value = 100.0;
-
-        await tester.pumpWidget(
-          SingleVelocityMotionBuilder(
-            key: const ValueKey('off'),
-            value: 200,
-            motion: const CupertinoMotion.smooth(),
-            velocityTracking: const VelocityTracking.off(),
-            builder: (context, value, velocity, child) {
-              capturedVelocity = velocity;
-              return const SizedBox();
-            },
-          ),
-        );
-        await tester.pump(const Duration(milliseconds: 16));
-        final velocityWithoutTracking = capturedVelocity;
-
-        expect(
-          velocityWithTracking,
-          greaterThan(velocityWithoutTracking),
-          reason:
-              'Animation velocity should be higher when tracked momentum is '
-              'carried over from rapid value changes.',
-        );
-
         await tester.pumpAndSettle();
+
+        expect(withoutTracking, moreOrLessEquals(0, epsilon: error));
+        expect(withTracking, greaterThan(withoutTracking));
+        expect(withTracking, closeTo(expectedVelocity, 1));
       });
     });
   });

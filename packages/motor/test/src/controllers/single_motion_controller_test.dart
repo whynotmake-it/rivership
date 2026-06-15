@@ -257,22 +257,18 @@ void main() {
         animationController.forward();
         controller.forward();
 
+        // Neither controller emits a value synchronously when the animation
+        // starts; the first notification comes from the first tick.
+        expect(motionValues, isEmpty);
+        expect(animationValues, isEmpty);
+
         await tester.pumpAndSettle();
 
-        // MotionController drives a Ticker just like AnimationController and
-        // produces the same value progression. The only difference is that
-        // AnimationController emits an extra duplicate value for its initial
-        // frame, which MotionController does not. Collapsing consecutive
-        // duplicates makes the two sequences directly comparable.
-        List<double> withoutConsecutiveDuplicates(List<double> values) => [
-              for (final (index, value) in values.indexed)
-                if (index == 0 || value != values[index - 1]) value,
-            ];
-
-        expect(
-          withoutConsecutiveDuplicates(motionValues),
-          equals(withoutConsecutiveDuplicates(animationValues)),
-        );
+        // MotionController drives a Ticker exactly like AnimationController and
+        // emits the identical value sequence - no extra (synchronous) value at
+        // the start and no duplicated frames. This locks the emission behavior
+        // so a regression that adds or drops a frame is caught.
+        expect(motionValues, equals(animationValues));
       });
     });
 

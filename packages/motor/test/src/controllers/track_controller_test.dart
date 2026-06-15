@@ -738,4 +738,50 @@ void main() {
       );
     });
   });
+
+  group('TrackController lifecycle and redirection', () {
+    final position = Track<double>(MotionConverter.single, initial: 0);
+    const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+
+    testWidgets('dispose while animating stops the ticker cleanly',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      controller.animate([position.to(100, motion: spring)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.isAnimating, isTrue);
+
+      // Disposing mid-flight must tear down the ticker. If it left a ticker or
+      // timer pending, the test binding would fail this test.
+      controller.dispose();
+    });
+
+    testWidgets('animate redirect preserves velocity mid-flight',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+
+      controller.animate([position.to(100, motion: spring)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final velocityBefore = controller.velocity(position);
+      expect(velocityBefore, greaterThan(0));
+
+      // Redirect to a new target without an explicit velocity. The slot must
+      // carry the current velocity into the new simulation rather than
+      // resetting to zero, so motion stays smooth.
+      controller.animate([position.to(200, motion: spring)]);
+      // Zero-duration frame: the new simulation's initial velocity equals the
+      // velocity at the moment of redirect.
+      await tester.pump();
+
+      expect(
+        controller.velocity(position),
+        moreOrLessEquals(velocityBefore, epsilon: 1),
+      );
+
+      controller.stop(canceled: true);
+    });
+  });
 }
