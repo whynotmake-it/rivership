@@ -28,17 +28,28 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   TrackPhaseTimeline(
     this.phaseAnimations, {
     this.phaseLoop = LoopMode.none,
-    List<TrackValue> from = const [],
-    List<TrackValue> withVelocity = const [],
+    this.from = const [],
+    this.withVelocity = const [],
   }) : super(
           _flatten(phaseAnimations),
           loop: LoopMode.none,
-          from: from,
-          withVelocity: withVelocity,
         );
 
   /// The phase-to-animation mapping as provided by the caller.
   final Map<P, List<TrackAnimation>> phaseAnimations;
+
+  /// One-time initial-value seeds applied before the first phase plays.
+  ///
+  /// Unlike per-animation `from`, these are applied only once (when a timeline
+  /// first begins playing) so navigating between phases animates from the
+  /// current values rather than snapping back to the seed each time.
+  final List<TrackValue> from;
+
+  /// One-time per-track initial velocities applied before the first phase.
+  ///
+  /// Each entry's [TrackValue.value] is interpreted as that track's starting
+  /// velocity.
+  final List<TrackValue> withVelocity;
 
   /// How the phase sequence should loop.
   ///

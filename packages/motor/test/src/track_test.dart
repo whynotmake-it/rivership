@@ -42,15 +42,15 @@ class _FreeTestSimulation extends Simulation {
 void main() {
   group('Track', () {
     test('uses identity equality', () {
-      final first = Track<double>(MotionConverter.single, origin: 0.0);
-      final second = Track<double>(MotionConverter.single, origin: 0.0);
+      final first = Track<double>(MotionConverter.single, initial: 0.0);
+      final second = Track<double>(MotionConverter.single, initial: 0.0);
 
       expect(first, same(first));
       expect(first == second, isFalse);
     });
 
     test('creates target animations', () {
-      final track = Track<double>(MotionConverter.single, origin: 0.0);
+      final track = Track<double>(MotionConverter.single, initial: 0.0);
       final animation = track.to(
         1,
         motion: const Motion.curved(Duration(milliseconds: 300)),
@@ -65,7 +65,7 @@ void main() {
     });
 
     test('creates multi-step animations', () {
-      final track = Track<double>(MotionConverter.single, origin: 0.0);
+      final track = Track<double>(MotionConverter.single, initial: 0.0);
       final steps = <Step<double>>[
         const Step.hold(Duration(milliseconds: 100)),
         const Step.to(1.0, motion: Motion.linear(Duration(milliseconds: 200))),
@@ -78,7 +78,7 @@ void main() {
     });
 
     test('creates value snapshots', () {
-      final track = Track<double>(MotionConverter.single, origin: 0.0);
+      final track = Track<double>(MotionConverter.single, initial: 0.0);
 
       final snapshot = track.value(10);
 
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('creates velocity snapshots', () {
-      final track = Track<double>(MotionConverter.single, origin: 0.0);
+      final track = Track<double>(MotionConverter.single, initial: 0.0);
 
       final snapshot = track.velocity(5.0);
 
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('creates free-motion animations', () {
-      final track = Track<double>(MotionConverter.single, origin: 0.0);
+      final track = Track<double>(MotionConverter.single, initial: 0.0);
 
       final animation = track.free(const _FreeTestMotion());
 
@@ -109,9 +109,9 @@ void main() {
   });
 
   group('TrackTimeline', () {
-    test('owns animations, loop mode, and from overrides', () {
-      final opacity = Track<double>(MotionConverter.single, origin: 0.0);
-      final scale = Track<double>(MotionConverter.single, origin: 1.0);
+    test('owns animations and loop mode', () {
+      final opacity = Track<double>(MotionConverter.single, initial: 0.0);
+      final scale = Track<double>(MotionConverter.single, initial: 1.0);
       final opacityAnimation = opacity.to(
         1,
         motion: const Motion.curved(Duration(milliseconds: 300)),
@@ -120,17 +120,60 @@ void main() {
         2,
         motion: const Motion.curved(Duration(milliseconds: 300)),
       );
-      final from = opacity.value(0.5);
 
       final timeline = TrackTimeline(
         [opacityAnimation, scaleAnimation],
         loop: LoopMode.seamless,
-        from: [from],
       );
 
       expect(timeline.animations, [opacityAnimation, scaleAnimation]);
       expect(timeline.loop, LoopMode.seamless);
-      expect(timeline.from, [from]);
+    });
+
+    test('compares by value (animations and loop)', () {
+      final opacity = Track<double>(MotionConverter.single, initial: 0.0);
+      TrackTimeline build({LoopMode loop = LoopMode.none}) => TrackTimeline(
+            [
+              opacity.to(
+                1,
+                motion: const Motion.curved(Duration(milliseconds: 300)),
+              ),
+            ],
+            loop: loop,
+          );
+
+      expect(build(), equals(build()));
+      expect(build(), isNot(equals(build(loop: LoopMode.loop))));
+    });
+  });
+
+  group('TrackAnimation', () {
+    final opacity = Track<double>(MotionConverter.single, initial: 0.0);
+
+    TrackAnimation<double> build({
+      double target = 1.0,
+      double? from,
+      double? withVelocity,
+    }) =>
+        opacity.to(
+          target,
+          motion: const Motion.linear(Duration(milliseconds: 100)),
+          from: from,
+          withVelocity: withVelocity,
+        );
+
+    test('equal animations compare equal', () {
+      expect(build(), equals(build()));
+      expect(
+        build(from: 0.2, withVelocity: 5),
+        equals(build(from: 0.2, withVelocity: 5)),
+      );
+    });
+
+    test('differing fields are unequal', () {
+      expect(build(), isNot(equals(build(target: 2))));
+      expect(build(from: 0.2), isNot(equals(build(from: 0.3))));
+      expect(build(withVelocity: 5), isNot(equals(build(withVelocity: 6))));
     });
   });
 }

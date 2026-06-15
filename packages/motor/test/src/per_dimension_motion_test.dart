@@ -123,7 +123,7 @@ void main() {
 
       final position = Track<Offset>.motionPerDimension(
         MotionConverter.offset,
-        origin: Offset.zero,
+        initial: Offset.zero,
         motionPerDimension: const [linear100, linear200],
       );
 
@@ -149,7 +149,7 @@ void main() {
       // Track default is uniformly fast; the step asks for a slow y.
       final position = Track<Offset>.motionPerDimension(
         MotionConverter.offset,
-        origin: Offset.zero,
+        initial: Offset.zero,
         motionPerDimension: const [linear100, linear100],
       );
 

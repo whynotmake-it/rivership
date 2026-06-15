@@ -105,7 +105,7 @@ class MotionController<T extends Object> extends Animation<T>
         _motionPerDimension = List.of(motionPerDimension),
         _animationBehavior = behavior {
     _inner = TrackController(vsync: vsync, velocityTracking: velocityTracking);
-    _track = Track<T>(converter, origin: initialValue);
+    _track = Track<T>(converter, initial: initialValue);
     _inner
       ..addListener(notifyListeners)
       ..addStatusListener(_handleInnerStatus);
@@ -146,7 +146,7 @@ class MotionController<T extends Object> extends Animation<T>
 
     if (_inner.isAnimating) _inner.stop(tracks: [_track], canceled: true);
     _converter = value;
-    _track = Track<T>(value, origin: reinterpreted);
+    _track = Track<T>(value, initial: reinterpreted);
     _inner
       ..set(
         [_track.value(reinterpreted)],
@@ -269,10 +269,14 @@ class MotionController<T extends Object> extends Animation<T>
         ? AnimationStatus.forward
         : AnimationStatus.reverse;
     final future = _inner.animate(
-      [_track.to(target, motionPerDimension: _motionPerDimension)],
-      from: from != null ? [_track.value(from)] : const [],
-      withVelocity:
-          withVelocity != null ? [_track.velocity(withVelocity)] : const [],
+      [
+        _track.to(
+          target,
+          motionPerDimension: _motionPerDimension,
+          from: from,
+          withVelocity: withVelocity,
+        ),
+      ],
     );
     _inner.resetVelocityTracking();
     _checkStatusChanged();

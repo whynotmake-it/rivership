@@ -1,3 +1,14 @@
+## Unreleased
+
+> Note: This release has breaking changes to the track APIs.
+
+ - **BREAKING** **REFACTOR**: `Track.origin` is now the optional `Track.initial`. When a track is first needed and no value/`from`/`initial` is available, it falls back to a zero value inferred from the animation's first target (the `MotionConverter.zero` idea was dropped).
+ - **BREAKING** **FEAT**: per-track `from`/`withVelocity` now live on `Track.call`/`.to`/`.free` (i.e. on `TrackAnimation`) instead of on `TrackController.animate`, `TrackTimeline`, and the multi-track builder.
+ - **BREAKING** **REFACTOR**: rename `MultiTrackMotionBuilder` to `TrackBuilder`, with a default constructor (`animations:` + `loop:`, mirroring `TrackController.animate`) and a `TrackBuilder.timeline(...)` constructor (mirroring `TrackController.play`). The `timeline`/`play` duality and its assertion are gone.
+ - **FIX**: `TrackBuilder` no longer restarts playback on every rebuild — inline animation lists are compared deeply and timelines compare by value.
+ - **BREAKING** **FEAT**: `TrackController.animate` gains a `loop` parameter and drops its `from`/`withVelocity` list parameters.
+ - **BREAKING** **REFACTOR**: `TrackPhaseTimeline` keeps its one-time `from`/`withVelocity` seeds; `PhaseTrackBuilder` drops its builder-level `from` (seed via the timeline instead).
+
 ## 1.1.0
 
  - **FEAT**: added `MotionPadding`, motors equivalent to `AnimatedPadding` that can handle negative values.

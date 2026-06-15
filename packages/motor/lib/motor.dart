@@ -23,7 +23,7 @@ export 'src/track_timeline.dart';
 export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
-export 'src/widgets/multi_track_motion_builder.dart';
 export 'src/widgets/phase_track_builder.dart';
 export 'src/widgets/sequence_motion_builder.dart';
+export 'src/widgets/track_builder.dart';
 export 'src/widgets/velocity_motion_builder.dart';

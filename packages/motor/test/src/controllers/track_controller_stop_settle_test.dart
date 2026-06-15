@@ -12,9 +12,9 @@ void main() {
     late TrackController controller;
 
     final springTrack =
-        Track<double>(MotionConverter.single, origin: 0, motion: spring);
+        Track<double>(MotionConverter.single, initial: 0, motion: spring);
     final linearTrack =
-        Track<double>(MotionConverter.single, origin: 0, motion: linear100);
+        Track<double>(MotionConverter.single, initial: 0, motion: linear100);
 
     tearDown(() {
       controller.dispose();
@@ -85,7 +85,7 @@ void main() {
         (tester) async {
       controller = TrackController(vsync: tester);
 
-      final noDefault = Track<double>(MotionConverter.single, origin: 0);
+      final noDefault = Track<double>(MotionConverter.single, initial: 0);
       // The spring lives on the step, not the track; settle uses the track
       // default, so there is nothing to settle with.
       controller.animate([noDefault.to(1, motion: spring)]);

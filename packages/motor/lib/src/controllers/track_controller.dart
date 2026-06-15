@@ -119,7 +119,7 @@ class TrackController extends Animation<TrackValueReader>
     TrackValue<T> trackValue,
     List<TrackValue> withVelocity,
   ) {
-    final slot = _slot(trackValue.track);
+    final slot = _slot(trackValue.track, initialOverride: trackValue.value);
     final explicitVelocity = _velocityFor(trackValue.track, withVelocity);
     if (explicitVelocity != null) {
       slot.setValueWithVelocity(trackValue.value, explicitVelocity.value);
@@ -168,8 +168,6 @@ class TrackController extends Animation<TrackValueReader>
     return _startAnimations(
       animations: timeline.animations,
       loop: timeline.loop,
-      from: timeline.from,
-      withVelocity: timeline.withVelocity,
       onStep: onStep,
     );
   }
@@ -181,9 +179,9 @@ class TrackController extends Animation<TrackValueReader>
   /// tracks already animating keep running untouched. Use [stop] to halt
   /// specific tracks. Passing an empty list is a no-op.
   ///
-  /// [from] starts a track from a different value (jumping to it first).
-  /// [withVelocity] provides per-track initial velocities (each entry's
-  /// [TrackValue.value] is the velocity) without moving the value.
+  /// Per-track start values and velocities are carried on each
+  /// [TrackAnimation] (`from:` / `withVelocity:`). [loop] applies to every
+  /// animation in this call.
   ///
   /// Returns a [TickerFuture] with **whole-controller** semantics: it completes
   /// when every active track settles and the ticker stops, not just the tracks
@@ -192,15 +190,12 @@ class TrackController extends Animation<TrackValueReader>
   /// already-complete future. Calling [stop] with `canceled: true` cancels it.
   TickerFuture animate(
     List<TrackAnimation> animations, {
-    List<TrackValue> from = const [],
-    List<TrackValue> withVelocity = const [],
+    LoopMode loop = LoopMode.none,
     void Function(Track track, int stepIndex)? onStep,
   }) {
     return _startAnimations(
       animations: animations,
-      loop: LoopMode.none,
-      from: from,
-      withVelocity: withVelocity,
+      loop: loop,
       onStep: onStep,
     );
   }
@@ -208,8 +203,6 @@ class TrackController extends Animation<TrackValueReader>
   TickerFuture _startAnimations({
     required List<TrackAnimation> animations,
     required LoopMode loop,
-    required List<TrackValue> from,
-    List<TrackValue> withVelocity = const [],
     void Function(Track track, int stepIndex)? onStep,
   }) {
     assert(
@@ -250,8 +243,6 @@ class TrackController extends Animation<TrackValueReader>
       _playAnimation(
         animation,
         loop: loop,
-        from: from,
-        withVelocity: withVelocity,
         startOffset: startOffset,
       );
     }
@@ -371,29 +362,33 @@ class TrackController extends Animation<TrackValueReader>
   void _playAnimation<T extends Object>(
     TrackAnimation<T> animation, {
     required LoopMode loop,
-    required List<TrackValue> from,
-    required List<TrackValue> withVelocity,
     required Duration startOffset,
   }) {
-    final slot = _slot(animation.track);
-    final fromValue = _explicitFromFor(animation.track, from);
-    if (fromValue != null) {
-      slot.setValue(fromValue.value);
+    final slot = _slot(animation.track, forAnimation: animation);
+    if (animation.from case final from?) {
+      slot.setValue(from);
     }
-    final velocityValue = _velocityFor(animation.track, withVelocity);
     slot.play(
       animation.steps,
       loop: loop,
       startOffset: startOffset,
-      velocity: velocityValue?.value,
+      velocity: animation.withVelocity,
     );
   }
 
-  _TrackSlot _slot<T extends Object>(Track<T> track) {
+  _TrackSlot _slot<T extends Object>(
+    Track<T> track, {
+    TrackAnimation<T>? forAnimation,
+    T? initialOverride,
+  }) {
     final existing = _slots[track];
     if (existing != null) return existing;
 
-    final initialValue = _resolveInitialValue(track);
+    final initialValue = _resolveInitialValue(
+      track,
+      forAnimation,
+      initialOverride,
+    );
     final slot = _TrackSlot(
       converter: track.converter,
       initialValue: initialValue,
@@ -406,34 +401,33 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Resolves the initial value for a track that has never been seen before.
   ///
-  /// Checks the constructor-level [_from] overrides first, then falls back to
-  /// [Track.origin].
-  T _resolveInitialValue<T extends Object>(Track<T> track) {
+  /// Resolution order: an explicit [initialOverride] (used by [set]), then the
+  /// constructor-level [_from] seeds, then the animation's own start value
+  /// (`from` -> [Track.initial] -> zero-filled fallback), then [Track.initial].
+  /// Asserts when none of these can supply a value.
+  T _resolveInitialValue<T extends Object>(
+    Track<T> track,
+    TrackAnimation<T>? animation,
+    T? initialOverride,
+  ) {
+    if (initialOverride != null) return initialOverride;
     for (final override in _from.reversed) {
       if (override case TrackValue<T>(track: final overrideTrack)
           when identical(overrideTrack, track)) {
         return override.value;
       }
     }
-    return track.origin;
-  }
-
-  /// Finds an explicit `from` override for [track] in the given list.
-  ///
-  /// Unlike [_resolveInitialValue], this does NOT fall back to the
-  /// constructor-level [_from] — it only matches explicit overrides passed
-  /// to [play] or [animate].
-  TrackValue<T>? _explicitFromFor<T extends Object>(
-    Track<T> track,
-    List<TrackValue> from,
-  ) {
-    for (final override in from.reversed) {
-      if (override case TrackValue<T>(track: final overrideTrack)
-          when identical(overrideTrack, track)) {
-        return override;
-      }
-    }
-    return null;
+    if (animation != null) return animation.resolveStartValue();
+    if (track.initial case final value?) return value;
+    assert(
+      false,
+      'Tried to read a track value before it had any value. The track has no '
+      'initial value and was never set or animated. Provide Track.initial, '
+      'call set(), or animate it first.',
+    );
+    throw StateError(
+      'Track has no value: provide Track.initial or set/animate it first.',
+    );
   }
 
   /// Finds an explicit velocity override for [track] in [withVelocity].
