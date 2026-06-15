@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
@@ -5,17 +6,21 @@ import 'util.dart';
 
 void main() {
   group('MotionVelocityTracker', () {
-    test('tracks single double value velocity', () {
+    test('a single pair yields a low-confidence (under-weighted) estimate', () {
       final tracker = MotionVelocityTracker<double>(MotionConverter.single)
 
         // t=0, v=0
         ..addPosition(Duration.zero, 0.0)
 
-        // t=10ms, v=10. Velocity = 10 / 0.01 = 1000
+        // t=10ms, v=10. The instantaneous pair velocity is 10 / 0.01 = 1000.
         ..addPosition(const Duration(milliseconds: 10), 10.0);
 
+      // With only one pair of samples available, just the most-recent slot is
+      // populated, which carries the smallest weight (0.05). So the estimate is
+      // deliberately conservative: 1000 * 0.05 = 50. Full confidence requires
+      // more history (see the next test).
       final estimate = tracker.getVelocityEstimate();
-      expect(estimate, isNotNull);
+      expect(estimate!.perSecond, closeTo(50.0, error));
     });
 
     test('tracks velocity with enough history', () {
@@ -50,16 +55,22 @@ void main() {
       expect(estimate.perSecond.dy, closeTo(2000.0, error));
     });
 
-    test('returns zero if stopped for too long', () async {
-      final tracker = MotionVelocityTracker<double>(MotionConverter.single)
-        ..addPosition(Duration.zero, 0.0)
-        ..addPosition(const Duration(milliseconds: 10), 10.0);
+    test('returns zero if stopped for too long', () {
+      // fakeAsync controls package:clock, which the tracker uses for its
+      // "pointer stopped" detection, so this is deterministic (no real wait).
+      fakeAsync((async) {
+        final tracker = MotionVelocityTracker<double>(MotionConverter.single)
+          ..addPosition(Duration.zero, 0.0)
+          ..addPosition(const Duration(milliseconds: 10), 10.0);
 
-      // Wait 50ms (threshold is 40ms)
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Just under the 40ms threshold: still reports a velocity.
+        async.elapse(const Duration(milliseconds: 39));
+        expect(tracker.getVelocityEstimate()!.perSecond, isNot(0.0));
 
-      final estimate = tracker.getVelocityEstimate();
-      expect(estimate!.perSecond, 0.0);
+        // Past the threshold: movement is considered stopped -> zero velocity.
+        async.elapse(const Duration(milliseconds: 2));
+        expect(tracker.getVelocityEstimate()!.perSecond, 0.0);
+      });
     });
 
     test('weighted average check', () {

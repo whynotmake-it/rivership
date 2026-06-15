@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/gestures.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -89,21 +90,17 @@ class MotionVelocityTracker<T> {
       List<_PointAtTime?>.filled(_sampleSize, null);
   int _index = 0;
 
-  Stopwatch? _stopwatch;
-
-  Stopwatch get _sinceLastSample {
-    _stopwatch ??= Stopwatch()..start();
-    return _stopwatch!;
-  }
+  /// Wall-clock instant of the most recent sample, sourced from [clock] so the
+  /// "pointer stopped" detection is driven by the fake clock under test and by
+  /// real time in production.
+  DateTime? _lastSampleAt;
 
   /// Adds a position sample at the given [time].
   ///
   /// Call this each time the value changes during user interaction.
   /// The tracker stores up to 20 samples in a circular buffer.
   void addPosition(Duration time, T value) {
-    _sinceLastSample
-      ..start()
-      ..reset();
+    _lastSampleAt = clock.now();
 
     _index = (_index + 1) % _sampleSize;
     _touchSamples[_index] = (converter.normalize(value), time);
@@ -144,8 +141,10 @@ class MotionVelocityTracker<T> {
 
     final dims = newestSample.$1.length;
 
-    if (_sinceLastSample.elapsedMilliseconds >
-        _assumePointerMoveStoppedMilliseconds) {
+    final lastSampleAt = _lastSampleAt;
+    if (lastSampleAt != null &&
+        clock.now().difference(lastSampleAt).inMilliseconds >
+            _assumePointerMoveStoppedMilliseconds) {
       final zeroT = converter.denormalize(List.filled(dims, 0.0));
       return MotionVelocityEstimate<T>(
         perSecond: zeroT,

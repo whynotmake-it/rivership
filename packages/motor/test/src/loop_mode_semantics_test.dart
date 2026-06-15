@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 
+import 'util.dart';
+
 /// These tests pin down the agreed LoopMode semantics, matching the legacy
 /// sequence controllers:
 ///
@@ -28,45 +30,79 @@ void main() {
     test('loop animates back to the start after the last step', () {
       final p = playback(LoopMode.loop);
 
-      // Forward leg almost done: value near the last step's target (1.0).
+      // Forward leg at 99ms of a 100ms linear ramp: exactly 0.99.
       p.advanceTo(0.099);
-      expect(p.values.single, closeTo(1, 0.05));
+      expect(p.values.single, closeTo(0.99, error));
 
-      // Shortly after the last step, loop is unwinding 1 -> 0, so the value is
-      // still high. It must NOT have jumped back to 0.
+      // 20ms into the linear return leg (1 -> 0 over 100ms): exactly 0.8.
+      // It must NOT have jumped back to 0.
       p.advanceTo(0.12);
       expect(
         p.values.single,
-        greaterThan(0.5),
+        closeTo(0.8, error),
         reason: 'loop should animate back to the start, not jump',
       );
 
       // Halfway through the return leg.
       p.advanceTo(0.15);
-      expect(p.values.single, closeTo(0.5, 0.05));
+      expect(p.values.single, closeTo(0.5, error));
 
       // End of the return leg: back at the start.
       p.advanceTo(0.2);
-      expect(p.values.single, closeTo(0, 0.05));
+      expect(p.values.single, closeTo(0, error));
       expect(p.isDone, isFalse);
     });
 
     test('seamless jumps back to the start after the last step', () {
       final p = playback(LoopMode.seamless);
 
-      // Forward leg almost done: value near the last step's target (1.0).
+      // Forward leg at 99ms: exactly 0.99.
       p.advanceTo(0.099);
-      expect(p.values.single, closeTo(1, 0.05));
+      expect(p.values.single, closeTo(0.99, error));
 
-      // Shortly after the last step, seamless has already jumped to 0 and is
-      // animating forward again, so the value is low.
+      // Seamless jumped to 0 at 100ms and is animating forward again, so at
+      // 120ms it is exactly 20ms (0.2) into the new forward leg, not unwinding.
       p.advanceTo(0.12);
       expect(
         p.values.single,
-        lessThan(0.5),
+        closeTo(0.2, error),
         reason: 'seamless should jump to the start, not animate back',
       );
-      expect(p.values.single, closeTo(0.2, 0.05));
+      expect(p.isDone, isFalse);
+    });
+
+    test('none plays once and stops at the target', () {
+      final p = playback(LoopMode.none);
+
+      p.advanceTo(0.05);
+      expect(p.values.single, closeTo(0.5, error));
+      expect(p.isDone, isFalse);
+
+      // Reaches the target and stays there - no looping back.
+      p.advanceTo(0.1);
+      expect(p.values.single, closeTo(1, error));
+
+      p.advanceTo(0.5);
+      expect(p.values.single, closeTo(1, error));
+      expect(p.isDone, isTrue);
+    });
+
+    test('pingPong alternates forward and reverse legs', () {
+      final p = playback(LoopMode.pingPong);
+
+      // Forward leg 0 -> 1.
+      p.advanceTo(0.1);
+      expect(p.values.single, closeTo(1, error));
+
+      // Reverse leg 1 -> 0 over the next 100ms.
+      p.advanceTo(0.15);
+      expect(p.values.single, closeTo(0.5, error));
+      p.advanceTo(0.2);
+      expect(p.values.single, closeTo(0, error));
+
+      // Forward again.
+      p.advanceTo(0.25);
+      expect(p.values.single, closeTo(0.5, error));
       expect(p.isDone, isFalse);
     });
 
@@ -75,11 +111,11 @@ void main() {
 
       // Cycle length is 200ms: 100ms forward + 100ms return.
       p.advanceTo(0.2); // back at start
-      expect(p.values.single, closeTo(0, 0.05));
+      expect(p.values.single, closeTo(0, error));
       p.advanceTo(0.25); // 50ms into the second forward leg
-      expect(p.values.single, closeTo(0.5, 0.05));
+      expect(p.values.single, closeTo(0.5, error));
       p.advanceTo(0.3); // reached the target again
-      expect(p.values.single, closeTo(1, 0.05));
+      expect(p.values.single, closeTo(1, error));
       expect(p.isDone, isFalse);
     });
   });

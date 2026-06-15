@@ -102,6 +102,77 @@ void main() {
     });
   });
 
+  group('spring snapToEnd default', () {
+    test('all spring factories default snapToEnd to true', () {
+      expect(
+        const SpringMotion(SpringDescription(mass: 1, stiffness: 1, damping: 1))
+            .snapToEnd,
+        isTrue,
+      );
+      expect(
+        (const Motion.customSpring(
+          SpringDescription(mass: 1, stiffness: 1, damping: 1),
+        ) as SpringMotion)
+            .snapToEnd,
+        isTrue,
+      );
+      expect(const CupertinoMotion().snapToEnd, isTrue);
+      expect(const CupertinoMotion.bouncy().snapToEnd, isTrue);
+      expect(const CupertinoMotion.snappy().snapToEnd, isTrue);
+      expect(const CupertinoMotion.smooth().snapToEnd, isTrue);
+      expect(const CupertinoMotion.interactive().snapToEnd, isTrue);
+    });
+
+    test('snapToEnd: false is respected', () {
+      expect(const CupertinoMotion.bouncy(snapToEnd: false).snapToEnd, isFalse);
+      expect(
+        const SpringMotion(
+          SpringDescription(mass: 1, stiffness: 1, damping: 1),
+          snapToEnd: false,
+        ).snapToEnd,
+        isFalse,
+      );
+    });
+
+    test('default spring settles exactly on the target value', () {
+      const motion = CupertinoMotion.bouncy();
+      final simulation = motion.createSimulation(start: 0, end: 1);
+
+      var t = 0.0;
+      while (!simulation.isDone(t) && t < 10) {
+        t += 1 / 60;
+      }
+
+      expect(simulation.isDone(t), isTrue);
+      // snapToEnd guarantees the resting value is exactly the target, not just
+      // within tolerance, so value-based conditionals stay reliable.
+      expect(simulation.x(t), equals(1.0));
+    });
+
+    test('snapToEnd: false can settle off-target within tolerance', () {
+      const snapping = CupertinoMotion.bouncy();
+      const notSnapping = CupertinoMotion.bouncy(snapToEnd: false);
+
+      double restingValue(SpringMotion motion) {
+        final simulation = motion.createSimulation(start: 0, end: 1);
+        var t = 0.0;
+        while (!simulation.isDone(t) && t < 10) {
+          t += 1 / 60;
+        }
+        return simulation.x(t);
+      }
+
+      expect(restingValue(snapping), equals(1.0));
+      // Without snapping the resting value lands within tolerance but is not
+      // guaranteed to be exactly the target.
+      expect(restingValue(notSnapping), isNot(equals(1.0)));
+      expect(
+        restingValue(notSnapping),
+        closeTo(1.0, snapping.tolerance.distance),
+      );
+    });
+  });
+
   group('NoMotion', () {
     test('creates a simulation that holds the target value', () {
       const motion = Motion.none(Duration(seconds: 1));

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
@@ -41,7 +42,12 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
-  final Stopwatch _velocityTime = Stopwatch();
+
+  /// A monotonic timestamp for velocity sampling, sourced from [clock] so it is
+  /// driven by the fake clock under test (advancing with `tester.pump`) and by
+  /// wall-clock time in production.
+  Duration get _velocityNow =>
+      Duration(microseconds: clock.now().microsecondsSinceEpoch);
 
   Ticker? _ticker;
   TickerFuture? _tickerFuture;
@@ -87,9 +93,6 @@ class TrackController extends Animation<TrackValueReader>
   /// Clears velocity-tracking samples so future [set] calls start fresh.
   void resetVelocityTracking() {
     _velocityTrackers.clear();
-    _velocityTime
-      ..reset()
-      ..stop();
   }
 
   /// The elapsed duration of the current run, or null when not animating.
@@ -132,7 +135,7 @@ class TrackController extends Animation<TrackValueReader>
   void _trackVelocitySample<T extends Object>(Track<T> track, T value) {
     final tracker = _trackerFor(track);
     if (tracker == null) return;
-    tracker.addPosition(_velocityTime.elapsed, value);
+    tracker.addPosition(_velocityNow, value);
     final estimate =
         (tracker as MotionVelocityTracker<T>).getVelocityEstimate();
     if (estimate != null) {
@@ -146,7 +149,6 @@ class TrackController extends Animation<TrackValueReader>
     if (existing != null) return existing;
     final tracker = velocityTracking(track.converter);
     if (tracker == null) return null;
-    _velocityTime.start();
     _velocityTrackers[track] = tracker;
     return tracker;
   }
@@ -249,7 +251,6 @@ class TrackController extends Animation<TrackValueReader>
 
     _status = AnimationStatus.forward;
     final future = _startTicker();
-    notifyListeners();
     _checkStatusChanged();
     return future;
   }
