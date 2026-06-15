@@ -260,7 +260,7 @@ class _HomePage extends StatelessWidget {
           index: 6,
           pillLabel: 'array of Tracks',
           pillIcon: CupertinoIcons.circle_grid_3x3,
-          codeHint: 'MultiTrackMotionBuilder(loop: ...)',
+          codeHint: 'TrackBuilder(loop: ...)',
           preview: const _LoadersPreview(),
           title: 'Loaders',
           description: 'Dot grids and spinners from looping tracks.',
@@ -291,7 +291,7 @@ class _HomePage extends StatelessWidget {
         ),
         ExampleCard(
           index: 2,
-          pillLabel: 'MultiTrackMotionBuilder',
+          pillLabel: 'TrackBuilder',
           pillIcon: CupertinoIcons.list_bullet,
           codeHint: 'array of staggered tracks',
           preview: const _StaggerPreview(),

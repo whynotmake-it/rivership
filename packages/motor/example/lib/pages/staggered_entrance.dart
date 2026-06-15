@@ -25,9 +25,9 @@ class StaggeredEntrancePage extends StatefulWidget {
 class _StaggeredEntrancePageState extends State<StaggeredEntrancePage> {
   static final _rowTracks = [
     for (var i = 0; i < StaggeredEntrancePage._rows.length; i++)
-      Track<double>(.single, origin: 0),
+      Track<double>(.single, initial: 0),
   ];
-  static final _header = Track<double>(.single, origin: 0);
+  static final _header = Track<double>(.single, initial: 0);
 
   int _replay = 0;
 
@@ -48,13 +48,9 @@ class _StaggeredEntrancePageState extends State<StaggeredEntrancePage> {
       ),
       child: Surface(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        child: MultiTrackMotionBuilder(
+        child: TrackBuilder(
           restartTrigger: _replay,
-          from: [
-            _header.value(0),
-            for (final track in _rowTracks) track.value(0),
-          ],
-          play: [
+          animations: [
             _header([
               .to(
                 1,

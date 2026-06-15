@@ -7,22 +7,22 @@ enum _PlayerPhase { mini, full }
 
 final _art = Track<Rect>(
   .rect,
-  origin: Rect.zero,
+  initial: Rect.zero,
   motion: .smoothSpring(duration: Duration(milliseconds: 560)),
 );
 final _radius = Track<double>(
   .single,
-  origin: 12,
+  initial: 12,
   motion: .smoothSpring(duration: Duration(milliseconds: 520)),
 );
 final _full = Track<double>(
   .single,
-  origin: 0,
+  initial: 0,
   motion: .smoothSpring(duration: Duration(milliseconds: 420)),
 );
 final _mini = Track<double>(
   .single,
-  origin: 1,
+  initial: 1,
   motion: .smoothSpring(duration: Duration(milliseconds: 380)),
 );
 
@@ -41,10 +41,10 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   var _phase = _PlayerPhase.mini;
 
   void _toggle() => setState(
-        () => _phase = _phase == _PlayerPhase.mini
-            ? _PlayerPhase.full
-            : _PlayerPhase.mini,
-      );
+    () => _phase = _phase == _PlayerPhase.mini
+        ? _PlayerPhase.full
+        : _PlayerPhase.mini,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -65,32 +65,35 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 final w = constraints.maxWidth;
                 final h = constraints.maxHeight;
                 const artSize = 220.0;
-                final timeline = TrackPhaseTimeline<_PlayerPhase>({
-                  _PlayerPhase.mini: [
-                    _art.to(Rect.fromLTWH(16, h - 72, 56, 56)),
-                    _radius.to(12),
-                    _full.to(0),
-                    _mini.to(1),
+                final timeline = TrackPhaseTimeline<_PlayerPhase>(
+                  {
+                    .mini: [
+                      _art.to(Rect.fromLTWH(16, h - 72, 56, 56)),
+                      _radius.to(12),
+                      _full.to(0),
+                      _mini.to(1),
+                    ],
+                    .full: [
+                      _art.to(
+                        Rect.fromLTWH((w - artSize) / 2, 36, artSize, artSize),
+                      ),
+                      _radius.to(28),
+                      _full.to(1),
+                      _mini.to(0),
+                    ],
+                  },
+                  from: [
+                    _art.value(Rect.fromLTWH(16, h - 72, 56, 56)),
+                    _radius.value(12),
+                    _full.value(0),
+                    _mini.value(1),
                   ],
-                  _PlayerPhase.full: [
-                    _art.to(Rect.fromLTWH((w - artSize) / 2, 36, artSize,
-                        artSize)),
-                    _radius.to(28),
-                    _full.to(1),
-                    _mini.to(0),
-                  ],
-                });
+                );
                 return GestureDetector(
                   onTap: _toggle,
                   child: PhaseTrackBuilder<_PlayerPhase>(
                     currentPhase: _phase,
                     timeline: timeline,
-                    from: [
-                      _art.value(Rect.fromLTWH(16, h - 72, 56, 56)),
-                      _radius.value(12),
-                      _full.value(0),
-                      _mini.value(1),
-                    ],
                     builder: (context, value, phase, child) {
                       final art = value<Rect>(_art);
                       final radius = value<double>(_radius);
@@ -254,7 +257,11 @@ class _FullControls extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Icon(CupertinoIcons.backward_fill, color: t.textSecondary, size: 28),
+            Icon(
+              CupertinoIcons.backward_fill,
+              color: t.textSecondary,
+              size: 28,
+            ),
             Icon(CupertinoIcons.play_fill, color: t.textPrimary, size: 40),
             Icon(CupertinoIcons.forward_fill, color: t.textSecondary, size: 28),
           ],

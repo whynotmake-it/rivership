@@ -11,8 +11,8 @@ import '../util.dart';
 void main() {
   group('TrackController', () {
     late TrackController controller;
-    final opacity = Track<double>(MotionConverter.single, origin: 0.0);
-    final scale = Track<double>(MotionConverter.single, origin: 1.0);
+    final opacity = Track<double>(MotionConverter.single, initial: 0.0);
+    final scale = Track<double>(MotionConverter.single, initial: 1.0);
 
     tearDown(() {
       controller.dispose();
@@ -67,7 +67,8 @@ void main() {
       expect(controller.status, AnimationStatus.completed);
     });
 
-    testWidgets('uses timeline from overrides for lazy slots', (tester) async {
+    testWidgets('uses animation from overrides for lazy slots',
+        (tester) async {
       controller = TrackController(vsync: tester);
       controller.play(
         TrackTimeline(
@@ -75,9 +76,9 @@ void main() {
             opacity.to(
               1.0,
               motion: const Motion.linear(Duration(milliseconds: 100)),
+              from: 0.5,
             ),
           ],
-          from: [opacity.value(0.5)],
         ),
       );
 
@@ -299,7 +300,7 @@ void main() {
     testWidgets('settles interrupted tap playground reset at zero rotation',
         (tester) async {
       controller = TrackController(vsync: tester);
-      final rotation = Track<double>(MotionConverter.single, origin: 0.0);
+      final rotation = Track<double>(MotionConverter.single, initial: 0.0);
       const motion = Motion.smoothSpring(duration: Duration(milliseconds: 420));
 
       controller.play(
@@ -663,6 +664,78 @@ void main() {
 
         controller.stop(canceled: true);
       });
+    });
+  });
+
+  group('initial value resolution', () {
+    late TrackController controller;
+
+    tearDown(() => controller.dispose());
+
+    testWidgets('falls back to zero (offset) when initial is omitted',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final offset = Track<Offset>(MotionConverter.offset);
+
+      controller.animate([
+        offset.to(
+          const Offset(10, 20),
+          motion: const Motion.linear(Duration(milliseconds: 100)),
+        ),
+      ]);
+
+      await tester.pump();
+      expect(controller.value(offset), Offset.zero);
+
+      await tester.pumpAndSettle();
+      expect(controller.value(offset).dx, closeTo(10, error));
+      expect(controller.value(offset).dy, closeTo(20, error));
+    });
+
+    testWidgets('infers zero dimensions from a custom converter target',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final offset = Track<Offset>(
+        MotionConverter.custom(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+        ),
+      );
+
+      controller.animate([
+        offset.to(
+          const Offset(4, 8),
+          motion: const Motion.linear(Duration(milliseconds: 100)),
+        ),
+      ]);
+
+      await tester.pump();
+      expect(controller.value(offset), Offset.zero);
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('asserts when there is no value to infer from',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final track = Track<double>(MotionConverter.single);
+
+      expect(
+        () => controller.animate([
+          track([const Step.hold(Duration(milliseconds: 100))]),
+        ]),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    testWidgets('asserts when reading a track that never had a value',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final track = Track<double>(MotionConverter.single);
+
+      expect(
+        () => controller.value(track),
+        throwsA(isA<AssertionError>()),
+      );
     });
   });
 }

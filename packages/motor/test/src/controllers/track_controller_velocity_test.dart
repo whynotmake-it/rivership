@@ -8,7 +8,7 @@ import '../util.dart';
 void main() {
   group('TrackController.set', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, origin: 0.0);
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -126,7 +126,7 @@ void main() {
 
   group('withVelocity: parameter', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, origin: 0.0);
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -140,9 +140,7 @@ void main() {
       // Start from 2.0 with positive velocity — should overshoot target.
       controller.play(
         TrackTimeline(
-          [position.to(2.0, motion: spring)],
-          from: [position.value(2.0)],
-          withVelocity: [position.velocity(100.0)],
+          [position.to(2.0, motion: spring, from: 2.0, withVelocity: 100.0)],
         ),
       );
 
@@ -164,8 +162,7 @@ void main() {
       // without overshooting.
       controller.play(
         TrackTimeline(
-          [position.to(1.0, motion: spring)],
-          from: [position.value(1.0)],
+          [position.to(1.0, motion: spring, from: 1.0)],
         ),
       );
 
@@ -192,12 +189,10 @@ void main() {
       // Tracked velocity should be negative.
       expect(controller.velocity(position), lessThan(0));
 
-      // Play with explicit positive velocity in from: — should override.
+      // Play with explicit positive velocity — should override tracked.
       controller.play(
         TrackTimeline(
-          [position.to(1.0, motion: spring)],
-          from: [position.value(1.0)],
-          withVelocity: [position.velocity(100.0)],
+          [position.to(1.0, motion: spring, from: 1.0, withVelocity: 100.0)],
         ),
       );
 
@@ -213,7 +208,7 @@ void main() {
 
   group('withVelocity on animate', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, origin: 0.0);
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -229,8 +224,7 @@ void main() {
       controller.set([position.value(2.0)]);
 
       controller.animate(
-        [position.to(2.0, motion: spring)],
-        withVelocity: [position.velocity(150.0)],
+        [position.to(2.0, motion: spring, withVelocity: 150.0)],
       );
 
       await tester.pump();
@@ -260,8 +254,7 @@ void main() {
 
       // Explicit positive velocity should win and cause overshoot past 1.0.
       controller.animate(
-        [position.to(1.0, motion: spring)],
-        withVelocity: [position.velocity(100.0)],
+        [position.to(1.0, motion: spring, withVelocity: 100.0)],
       );
 
       await tester.pump();
@@ -278,8 +271,8 @@ void main() {
 
   group('Integration', () {
     late TrackController controller;
-    final position = Track<double>(MotionConverter.single, origin: 0.0);
-    final scale = Track<double>(MotionConverter.single, origin: 1.0);
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final scale = Track<double>(MotionConverter.single, initial: 1.0);
 
     tearDown(() {
       controller.dispose();
@@ -336,15 +329,14 @@ void main() {
       expect(controller.velocity(scale), equals(0.0));
     });
 
-    testWidgets('C13: Track.value() works in TrackTimeline from:',
+    testWidgets('C13: per-animation from is applied before playing',
         (tester) async {
       controller = TrackController(vsync: tester);
       const linear = Motion.linear(Duration(milliseconds: 100));
 
       controller.play(
         TrackTimeline(
-          [position.to(10.0, motion: linear)],
-          from: [position.value(5.0)],
+          [position.to(10.0, motion: linear, from: 5.0)],
         ),
       );
 

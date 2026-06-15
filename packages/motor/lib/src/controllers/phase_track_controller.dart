@@ -90,10 +90,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       // Start partway through the timeline by playing only the animations
       // from [startPhase] onward. Looping (handled in [_onStatusChanged])
       // still restarts from the full timeline.
-      return animate(
-        timeline.animationsFrom(startPhase),
-        withVelocity: timeline.withVelocity,
-      );
+      return animate(timeline.animationsFrom(startPhase));
     }
   }
 
@@ -124,18 +121,34 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
 
     final anims = timeline.phaseAnimations[phase]!;
-    // Note: `from` is only applied once via [_seedFromIfNeeded]; re-applying it
-    // on every phase change would snap tracks back to their initial values.
-    return animate(anims, withVelocity: timeline.withVelocity);
+    // Note: `from`/`withVelocity` are only applied once via [_seedFromIfNeeded];
+    // re-applying them on every phase change would snap tracks back to their
+    // initial values/velocities.
+    return animate(anims);
   }
 
-  /// Applies the timeline's `from` overrides exactly once, the first time a
-  /// timeline begins playing.
+  /// Applies the timeline's one-time `from`/`withVelocity` seeds exactly once,
+  /// the first time a timeline begins playing.
+  ///
+  /// Velocity-only seeds (a track in `withVelocity` but not `from`) keep the
+  /// track's current value while applying the seeded velocity.
   void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
     if (_seededFrom) return;
     _seededFrom = true;
-    if (timeline.from.isNotEmpty) set(timeline.from);
+    if (timeline.from.isEmpty && timeline.withVelocity.isEmpty) return;
+
+    final values = <TrackValue>[...timeline.from];
+    for (final velocity in timeline.withVelocity) {
+      final hasFrom = timeline.from.any(
+        (override) => identical(override.track, velocity.track),
+      );
+      if (!hasFrom) values.add(_currentValueSnapshot(velocity.track));
+    }
+    set(values, withVelocity: timeline.withVelocity);
   }
+
+  TrackValue<T> _currentValueSnapshot<T extends Object>(Track<T> track) =>
+      track.value(value(track));
 
   @override
   TickerFuture stop({List<Track>? tracks, bool canceled = false}) {
@@ -183,10 +196,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
         }
         _currentPhase = second;
         _onTransition?.call(PhaseTransitioning(from: first, to: second));
-        animate(
-          timeline.animationsFrom(second),
-          withVelocity: timeline.withVelocity,
-        );
+        animate(timeline.animationsFrom(second));
         return;
       }
 
@@ -198,7 +208,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       if (previous != null && previous != first) {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
-      animate(timeline.animations, withVelocity: timeline.withVelocity);
+      animate(timeline.animations);
       return;
     }
 

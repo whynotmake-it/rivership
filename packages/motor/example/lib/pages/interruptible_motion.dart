@@ -21,7 +21,7 @@ class InterruptibleMotionPage extends StatefulWidget {
 
 enum _Kind { spring, curve }
 
-late final _value = Track(.single, origin: 0.0);
+late final _value = Track(.single, initial: 0.0);
 
 class _InterruptibleMotionPageState extends State<InterruptibleMotionPage>
     with TickerProviderStateMixin {

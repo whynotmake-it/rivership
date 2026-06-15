@@ -88,7 +88,7 @@ void main() {
   // Phase looping (PhaseTrackController).
   // ───────────────────────────────────────────────────────────────────────
   group('PhaseTrackController phase loop semantics', () {
-    final size = Track<double>(MotionConverter.single, origin: 0);
+    final size = Track<double>(MotionConverter.single, initial: 0);
     late PhaseTrackController<String> controller;
 
     tearDown(() => controller.dispose());

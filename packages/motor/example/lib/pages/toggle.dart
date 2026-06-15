@@ -85,12 +85,12 @@ class _SpringSwitchState extends State<_SpringSwitch>
   late final _c = TrackController(vsync: this);
   late final _value = Track(
     .single,
-    origin: 0.0,
+    initial: 0.0,
     motion: MaterialSpringMotion.expressiveEffectsFast(),
   );
   late final _thumbScale = Track(
     .single,
-    origin: 1.0,
+    initial: 1.0,
     motion: .snappySpring(duration: Duration(milliseconds: 100)),
   );
 
@@ -181,13 +181,13 @@ class _LikeButtonState extends State<_LikeButton>
   // release its pop.
   final _likeScale = Track<double>(
     .single,
-    origin: 1,
+    initial: 1,
     motion: .bouncySpring(extraBounce: .3),
   );
 
   late final _thumbColor = Track(
     .colorRgb,
-    origin: _desiredThumbColor,
+    initial: _desiredThumbColor,
     motion: .snappySpring(duration: Duration(milliseconds: 100)),
   );
 

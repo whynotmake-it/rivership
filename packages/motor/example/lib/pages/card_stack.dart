@@ -8,7 +8,7 @@ import 'package:motor_example/widgets/example_scaffold.dart';
 
 enum _Phase { clearing, dismissing }
 
-final _offset = Track<Offset>(.offset, origin: .zero, motion: .bouncySpring());
+final _offset = Track<Offset>(.offset, initial: .zero, motion: .bouncySpring());
 
 class CardStackPage extends StatefulWidget {
   const CardStackPage({super.key});

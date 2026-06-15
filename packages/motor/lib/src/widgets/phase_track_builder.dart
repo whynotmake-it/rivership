@@ -3,7 +3,6 @@ import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
-import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
 /// Builds a widget from phase-driven track values.
@@ -60,7 +59,6 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
     required this.builder,
     this.currentPhase,
     this.playing = false,
-    this.from,
     this.active = true,
     this.restartTrigger,
     this.velocityTracking = const VelocityTracking.on(),
@@ -84,9 +82,6 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
   /// When `true`, plays through all phases in order. The timeline's
   /// [TrackPhaseTimeline.phaseLoop] controls what happens at the end.
   final bool playing;
-
-  /// Builder-level initial-value overrides.
-  final List<TrackValue>? from;
 
   /// Whether playback is active.
   final bool active;
@@ -130,7 +125,6 @@ class _PhaseTrackBuilderState<P extends Object>
     super.initState();
     _controller = PhaseTrackController<P>(
       vsync: this,
-      from: widget.from,
       velocityTracking: widget.velocityTracking,
     );
     if (widget.onAnimationStatusChanged != null) {

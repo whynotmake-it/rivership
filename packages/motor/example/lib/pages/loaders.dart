@@ -49,22 +49,22 @@ class LoadersPage extends StatelessWidget {
 }
 
 /// A staggered dot loader. Each dot is its own [Track], created in an array and
-/// played together with a looping [TrackTimeline].
+/// played together on a single looping [TrackBuilder].
 class _DotRow extends StatelessWidget {
   const _DotRow();
 
   static const _count = 10;
   static const _offsetMs = 120;
   static final _dots = [
-    for (var i = 0; i < _count; i++) Track<double>(.single, origin: 0.3),
+    for (var i = 0; i < _count; i++) Track<double>(.single, initial: 0.3),
   ];
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    return MultiTrackMotionBuilder(
+    return TrackBuilder(
       loop: LoopMode.loop,
-      play: [
+      animations: [
         for (final (i, dot) in _dots.indexed)
           dot([
             .hold(Duration(milliseconds: i * _offsetMs)),
@@ -111,15 +111,15 @@ class _Spinner extends StatelessWidget {
 
   static final _angle = Track<double>(
     .single,
-    origin: 0.0,
+    initial: 0.0,
     motion: LinearMotion(Duration(milliseconds: 900)),
   );
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    return MultiTrackMotionBuilder(
-      play: [
+    return TrackBuilder(
+      animations: [
         _angle([.to(0.0), .to(math.pi), .to(2 * math.pi)]),
       ],
       loop: .seamless,
