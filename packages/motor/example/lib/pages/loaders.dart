@@ -120,7 +120,11 @@ class _Spinner extends StatelessWidget {
     final t = ExampleTheme.of(context);
     return TrackBuilder(
       animations: [
-        _angle([.to(0.0), .to(math.pi), .to(2 * math.pi)]),
+        _angle([
+          .to(0.0, motion: .linear(.zero)),
+          .to(math.pi),
+          .to(2 * math.pi),
+        ]),
       ],
       loop: .seamless,
       builder: (context, value, _) => Transform.rotate(
