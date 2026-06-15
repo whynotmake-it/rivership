@@ -19,8 +19,6 @@ dependencies:
     path: ../../packages/heroine/example
   motor_example:
     path: ../../packages/motor/example
-  springster_example:
-    path: ../../packages/springster/example
   stupid_simple_sheet_example:
     path: ../../packages/stupid_simple_sheet/example
 
