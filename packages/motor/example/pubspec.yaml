@@ -8,14 +8,15 @@ version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.10.0
   flutter: ^3.27.0
 
 dependencies:
   auto_route: ^10.0.1
+  example_design:
+    path: ../../example_design
   flutter:
     sdk: flutter
-  pull_down_button: ^0.10.2
   motor:
     path: ../
 

@@ -1,11 +1,107 @@
 // ignore_for_file: avoid_redundant_argument_values
 
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
 import 'util.dart';
 
+class _ConstantVelocityMotion extends FreeMotion {
+  const _ConstantVelocityMotion();
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double velocity = 0,
+  }) {
+    return _ConstantVelocitySimulation(start: start, velocity: velocity);
+  }
+}
+
+class _ConstantVelocitySimulation extends Simulation {
+  _ConstantVelocitySimulation({
+    required this.start,
+    required this.velocity,
+  });
+
+  final double start;
+  final double velocity;
+
+  @override
+  double x(double time) => start + velocity * time;
+
+  @override
+  double dx(double time) => velocity;
+
+  @override
+  bool isDone(double time) => time >= 1;
+}
+
 void main() {
+  group('Motion hierarchy', () {
+    test('keeps targeted Motion factory source compatibility', () {
+      const curved = Motion.curved(Duration(milliseconds: 300));
+      const spring = Motion.smoothSpring();
+
+      expect(curved, isA<Motion>());
+      expect(curved, isA<MotionBase>());
+      expect(spring, isA<Motion>());
+      expect(spring, isA<MotionBase>());
+    });
+
+    test('scales fixed-duration motions natively', () {
+      const curved = Motion.curved(Duration(milliseconds: 300));
+      const linear = Motion.linear(Duration(milliseconds: 300));
+      const none = Motion.none(Duration(milliseconds: 300));
+
+      expect(
+        curved.scaleTo(const Duration(seconds: 1)),
+        equals(const Motion.curved(Duration(seconds: 1))),
+      );
+      expect(
+        linear.scaleTo(const Duration(seconds: 1)),
+        equals(const Motion.linear(Duration(seconds: 1))),
+      );
+      expect(none.scaleTo(const Duration(seconds: 1)), isA<NoMotion>());
+      expect(
+        (none.scaleTo(const Duration(seconds: 1)) as NoMotion).duration,
+        equals(const Duration(seconds: 1)),
+      );
+    });
+
+    test('wraps target-based physics in a fixed-duration motion', () {
+      const spring = Motion.smoothSpring();
+      final scaled = spring.scaleTo(const Duration(milliseconds: 250));
+
+      expect(scaled, isA<FixedDurationMotion>());
+
+      final simulation = scaled.createSimulation(start: 0, end: 10);
+      expect(simulation.x(0), equals(0));
+      expect(simulation.isDone(0.2), isFalse);
+      expect(simulation.x(0.25), equals(10));
+      expect(simulation.isDone(0.25), isTrue);
+    });
+
+    test('wraps free motions in a fixed-duration motion', () {
+      const motion = _ConstantVelocityMotion();
+      final scaled = motion.scaleTo(const Duration(milliseconds: 500));
+
+      expect(scaled, isA<FixedDurationFreeMotion>());
+
+      final simulation = scaled.createSimulation(start: 2, velocity: 4);
+      expect(simulation.x(0), equals(2));
+      expect(simulation.x(0.25), closeTo(4, error));
+      expect(simulation.x(0.5), closeTo(6, error));
+      expect(simulation.isDone(0.5), isTrue);
+    });
+  });
+
   group('NoMotion', () {
     test('creates a simulation that holds the target value', () {
       const motion = Motion.none(Duration(seconds: 1));
