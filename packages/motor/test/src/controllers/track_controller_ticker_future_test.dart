@@ -9,8 +9,8 @@ void main() {
 
   group('TrackController TickerFuture', () {
     late TrackController controller;
-    final opacity = Track<double>(MotionConverter.single, origin: 0.0);
-    final scale = Track<double>(MotionConverter.single, origin: 0.0);
+    final opacity = Track<double>(MotionConverter.single, initial: 0.0);
+    final scale = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -190,7 +190,7 @@ void main() {
     testWidgets('playPhases completes when a non-looping sequence settles',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
-      final size = Track<double>(MotionConverter.single, origin: 0);
+      final size = Track<double>(MotionConverter.single, initial: 0);
 
       final future = controller.playPhases(
         TrackPhaseTimeline({
@@ -214,7 +214,7 @@ void main() {
     testWidgets('goToPhase returns a TickerFuture that completes on settle',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
-      final size = Track<double>(MotionConverter.single, origin: 0);
+      final size = Track<double>(MotionConverter.single, initial: 0);
 
       final timeline = TrackPhaseTimeline({
         'a': [size.to(1, motion: linear100)],

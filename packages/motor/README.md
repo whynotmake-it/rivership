@@ -204,15 +204,17 @@ Everything above animates a single value. But real UI motion rarely does — a p
 
 #### A track is one animated property
 
-A `Track` bundles a converter (how to break the value into animatable dimensions), an `origin` (its resting value before anything plays), and an optional default `motion`. Declare one per property:
+A `Track` bundles a converter (how to break the value into animatable dimensions), an optional `initial` (its resting value before anything plays), and an optional default `motion`. Declare one per property:
 
 ```dart
-final offset = Track(.offset, origin: Offset.zero, motion: .smoothSpring());
-final scale  = Track(.single, origin: 0.8);
-final tint   = Track(.colorRgb, origin: Colors.blue, motion: .smoothSpring());
+final offset = Track(.offset, initial: Offset.zero, motion: .smoothSpring());
+final scale  = Track(.single, initial: 0.8);
+final tint   = Track(.colorRgb, initial: Colors.blue, motion: .smoothSpring());
 ```
 
 The key detail: **a track's identity is the object itself, not its value.** Declare each track once (a `final` field or top-level variable) and reuse that instance. That identity is how controllers keep per-track state and how you read values back later — so don't create tracks inline in `build`. The optional `motion:` is the track's default — any step that omits its own motion falls back to it.
+
+`initial` is optional: when a controller first needs a value for a track and none has been set, it uses the animation's `from:` if present, then the track's `initial`, and otherwise falls back to a zero value (matching the dimensionality of the animation's first target).
 
 #### Steps describe what a track does
 
@@ -246,13 +248,13 @@ final double s = value(scale);  // returns double
 
 Think of it as a typed lookup keyed by track identity: "given this track, what's its value right now?" This is exactly why tracks need to be stable instances.
 
-#### Play them together: `MultiTrackMotionBuilder`
+#### Play them together: `TrackBuilder`
 
-Now it all comes together. Pass a `play:` list of track animations; they share one ticker, and the builder rebuilds with the reader:
+Now it all comes together. Pass an `animations:` list of track animations; they share one ticker, and the builder rebuilds with the reader:
 
 ```dart
-MultiTrackMotionBuilder(
-  play: [
+TrackBuilder(
+  animations: [
     scale.to(1, motion: .bouncySpring()),
     offset([
       .to(const Offset(0, 100), motion: .smoothSpring()),
@@ -276,6 +278,8 @@ MultiTrackMotionBuilder(
 ```
 
 Each track advances independently — different steps, different motions — but on the same clock.
+
+Per-track starting points and velocities live on each animation via `from:` and `withVelocity:` (e.g. `offset.to(target, from: start, withVelocity: fling)`). Looping is a per-clip concern: pass `loop:` to the builder (`TrackBuilder(loop: .loop, ...)`), or predefine a reusable `TrackTimeline` (which owns its `loop`) and play it with `TrackBuilder.timeline(timeline, ...)`. Because `TrackTimeline` compares by value, rebuilding with an equal timeline won't restart the animation.
 
 #### Keep tracks aligned: `.sync` barriers
 

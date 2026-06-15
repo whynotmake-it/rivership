@@ -151,8 +151,8 @@ void main() {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     late TrackController controller;
-    final trackA = Track<double>(MotionConverter.single, origin: 0.0);
-    final trackB = Track<double>(MotionConverter.single, origin: 0.0);
+    final trackA = Track<double>(MotionConverter.single, initial: 0.0);
+    final trackB = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -311,7 +311,7 @@ void main() {
     testWidgets('B10: track not part of sync group does not block release',
         (tester) async {
       controller = TrackController(vsync: tester);
-      final trackC = Track<double>(MotionConverter.single, origin: 0.0);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
 
       // trackA and trackB sync on #barrier, trackC has no sync and runs
       // independently with a longer animation
@@ -359,8 +359,8 @@ void main() {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     late PhaseTrackController<String> controller;
-    final size = Track<double>(MotionConverter.single, origin: 0.0);
-    final opacity = Track<double>(MotionConverter.single, origin: 0.0);
+    final size = Track<double>(MotionConverter.single, initial: 0.0);
+    final opacity = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -514,8 +514,8 @@ void main() {
     const linear200 = Motion.linear(Duration(milliseconds: 200));
 
     late PhaseTrackController<String> controller;
-    final trackA = Track<double>(MotionConverter.single, origin: 0.0);
-    final trackB = Track<double>(MotionConverter.single, origin: 0.0);
+    final trackA = Track<double>(MotionConverter.single, initial: 0.0);
+    final trackB = Track<double>(MotionConverter.single, initial: 0.0);
 
     tearDown(() {
       controller.dispose();
@@ -602,7 +602,7 @@ void main() {
 
     final offset = Track<Offset>(
       MotionConverter.offset,
-      origin: Offset.zero,
+      initial: Offset.zero,
       motion: linear100,
     );
 
@@ -700,7 +700,7 @@ void main() {
         controller = PhaseTrackController<String>(vsync: tester);
         final scale = Track<double>(
           MotionConverter.single,
-          origin: 1.0,
+          initial: 1.0,
           motion: linear100,
         );
 

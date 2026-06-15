@@ -21,11 +21,15 @@ class _TitleSlidePageState extends State<TitleSlidePage> {
     return ExamplePage(
       title: TitleSlidePage.routeName,
       description:
-          'Variable font animation with MotionBuilder and a custom '
-          'FontMotionConverter. Letters stagger in with animated weight and width.',
-      action: CupertinoButton(
-        onPressed: () => setState(() => _restartKey++),
-        child: const Text('Replay'),
+          'A variable font animated per letter. Each glyph staggers in with '
+          'animated weight and width — hover a letter to push its weight '
+          'further. A natural fit for a featherweight type system.',
+      action: Align(
+        alignment: Alignment.centerLeft,
+        child: NeutralButton(
+          onPressed: () => setState(() => _restartKey++),
+          child: const Text('Replay'),
+        ),
       ),
       child: Surface(
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
