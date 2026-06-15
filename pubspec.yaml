@@ -9,6 +9,7 @@ environment:
 
 workspace:
   - apps/example
+  - packages/example_design
   - packages/heroine
   - packages/heroine/example
   - packages/motor
@@ -19,8 +20,6 @@ workspace:
   - packages/stupid_simple_sheet
   - packages/stupid_simple_sheet/example
   - packages/snaptest
-  - packages/springster
-  - packages/springster/example
   
 dev_dependencies:
   lintervention: ^0.3.1

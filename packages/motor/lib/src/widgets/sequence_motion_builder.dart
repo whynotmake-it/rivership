@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:motor/src/controllers/motion_controller.dart';
+import 'package:motor/src/controllers/legacy/legacy_motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';

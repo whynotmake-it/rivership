@@ -26,7 +26,7 @@ void main() {
         motion: SpringMotion(SpringDescription.withDurationAndBounce()),
       );
       expect(curve.transform(0), equals(0.0));
-      expect(curve.transform(1), closeTo(1.0, 0.1));
+      expect(curve.transform(1), closeTo(1.0, error));
       expect(curve.transform(0.5), inInclusiveRange(0.0, 1.0));
     });
 

@@ -1,0 +1,15 @@
+name: example_design
+description: Shared design system for rivership example apps.
+publish_to: none
+version: 0.0.1
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0
+  flutter: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  motor:
+    path: ../motor

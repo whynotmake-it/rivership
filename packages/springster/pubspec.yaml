@@ -1,7 +1,6 @@
 name: springster
 description: Spring animations and simulations, simplified.
 version: 1.0.2
-resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/springster
 homepage: https://whynotmake.it
 

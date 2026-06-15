@@ -971,11 +971,11 @@ void main() {
         final animationVelocity = controller.velocity;
         expect(
           animationVelocity.dx,
-          moreOrLessEquals(trackedVelocity.dx, epsilon: 1),
+          moreOrLessEquals(trackedVelocity.dx, epsilon: error),
         );
         expect(
           animationVelocity.dy,
-          moreOrLessEquals(trackedVelocity.dy, epsilon: 1),
+          moreOrLessEquals(trackedVelocity.dy, epsilon: error),
         );
 
         await tester.pumpAndSettle();
