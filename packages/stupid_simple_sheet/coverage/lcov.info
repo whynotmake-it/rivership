@@ -499,7 +499,7 @@ LF:50
 LH:49
 end_of_record
 SF:lib/src/snapping_point.dart
-DA:23,3
+DA:23,2
 DA:51,3
 DA:52,6
 DA:54,3
@@ -547,15 +547,15 @@ DA:164,0
 DA:165,0
 DA:167,0
 DA:168,0
-DA:175,2
+DA:175,1
 DA:178,3
 DA:181,3
 DA:183,6
 DA:184,6
 DA:185,3
-DA:199,2
+DA:199,1
 DA:215,0
-DA:233,2
+DA:233,1
 DA:241,3
 DA:250,9
 DA:251,3
