@@ -71,6 +71,20 @@ class _DrawerPageState extends State<DrawerPage> with TickerProviderStateMixin {
                 return Stack(
                   children: [
                     _AppScreen(onMenu: () => _animateTo(1)),
+                    // A left-edge strip so the drawer can be swiped open, not
+                    // just tapped open from the menu icon.
+                    if (v < 1)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 28,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragUpdate: _onDragUpdate,
+                          onHorizontalDragEnd: _onDragEnd,
+                        ),
+                      ),
                     if (v > 0)
                       Positioned.fill(
                         child: GestureDetector(

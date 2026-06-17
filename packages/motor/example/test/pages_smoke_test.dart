@@ -1,0 +1,106 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:motor_example/pages/accordion.dart';
+import 'package:motor_example/pages/card_stack.dart';
+import 'package:motor_example/pages/curve_trap.dart';
+import 'package:motor_example/pages/draggable_icons.dart';
+import 'package:motor_example/pages/drawer.dart';
+import 'package:motor_example/pages/interruptible_motion.dart';
+import 'package:motor_example/pages/loaders.dart';
+import 'package:motor_example/pages/motion_character.dart';
+import 'package:motor_example/pages/now_playing.dart';
+import 'package:motor_example/pages/payment_success.dart';
+import 'package:motor_example/pages/picture_in_picture.dart';
+import 'package:motor_example/pages/pull_to_refresh.dart';
+import 'package:motor_example/pages/snap_carousel.dart';
+import 'package:motor_example/pages/the_spring.dart';
+import 'package:motor_example/pages/thermostat.dart';
+import 'package:motor_example/pages/title_slide.dart';
+import 'package:motor_example/pages/toast.dart';
+import 'package:motor_example/pages/toggle.dart';
+import 'package:motor_example/pages/two_dimensions.dart';
+import 'package:motor_example/pages/why_motion.dart';
+
+// Pump enough frames to drain any one-shot stagger timers (e.g. Title Slide
+// schedules per-letter delays) so the test's no-pending-timer invariant holds.
+Future<void> _pumpFrames(WidgetTester tester, {int frames = 60}) async {
+  for (var i = 0; i < frames; i++) {
+    await tester.pump(const Duration(milliseconds: 32));
+  }
+}
+
+void main() {
+  final pages = <String, Widget Function()>{
+    'Why Motion?': () => const WhyMotionPage(),
+    'Curve Trap': () => const CurveTrapPage(),
+    'The Spring': () => const TheSpringPage(),
+    'Carry the Momentum': () => const InterruptibleMotionPage(),
+    'Two Dimensions': () => const TwoDimensionsPage(),
+    'Motion Character': () => const MotionCharacterPage(),
+    'Toggle': () => const TogglePage(),
+    'Snap Carousel': () => const SnapCarouselPage(),
+    'Toast': () => const ToastPage(),
+    'Drawer': () => const DrawerPage(),
+    'Accordion': () => const AccordionPage(),
+    'Loaders': () => const LoadersPage(),
+    'Payment Success': () => const PaymentSuccessPage(),
+    'Thermostat': () => const ThermostatPage(),
+    'Card Stack': () => const CardStackPage(),
+    'Now Playing': () => const NowPlayingPage(),
+    'Title Slide': () => const TitleSlidePage(),
+    'Picture in Picture': () => const PictureInPicturePage(),
+    'Pull to Refresh': () => const PullToRefreshPage(),
+    'Draggable Icons': () => const DraggableIconsPage(),
+  };
+
+  for (final entry in pages.entries) {
+    testWidgets('${entry.key} builds and runs without exceptions', (
+      tester,
+    ) async {
+      await tester.pumpWidget(CupertinoApp(home: entry.value()));
+      await _pumpFrames(tester);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('Payment Success plays the full sync-barrier timeline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const CupertinoApp(home: PaymentSuccessPage()));
+    await tester.pump();
+
+    // Press and hold the pay button long enough to commit (hold timer is
+    // 420ms), then let the orchestration run through the sync barrier.
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Pay  \$42.00')),
+    );
+    await tester.pump(const Duration(milliseconds: 700)); // commit fires
+    await gesture.up();
+    // Run the timeline: morph + processing dwell + post-barrier check/receipt.
+    for (var i = 0; i < 120; i++) {
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text('Payment sent'), findsOneWidget);
+  });
+
+  testWidgets('Thermostat drags the target and toggles power', (tester) async {
+    await tester.pumpWidget(const CupertinoApp(home: ThermostatPage()));
+    await tester.pump();
+
+    // Drag the dial up (warmer) then down (cooler) — the mode should follow.
+    await tester.drag(find.byType(ThermostatPage), const Offset(0, -120));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    await tester.drag(find.byType(ThermostatPage), const Offset(0, 200));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    await tester.tap(find.text('Turn off'));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Turn on'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+  });
+}

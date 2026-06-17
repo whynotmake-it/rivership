@@ -168,3 +168,26 @@ class Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GhostPill(text, icon: icon);
 }
+
+/// The monospace "aha" caption that closes every explainer page, so the arc
+/// reads consistently.
+class TakeawayText extends StatelessWidget {
+  const TakeawayText(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
+    return Text(
+      text,
+      style: TextStyle(
+        color: t.textTertiary,
+        fontSize: 12,
+        height: 1.45,
+        fontFamily: 'JetBrains Mono',
+        fontFamilyFallback: const ['monospace', 'Menlo'],
+      ),
+    );
+  }
+}
