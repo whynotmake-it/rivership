@@ -157,6 +157,59 @@ await snap(name: 'after_tap');
 await snap(from: find.byKey(const Key('my-card')));
 ```
 
+`from` chooses what gets snapped. snaptest walks up to the nearest
+`RepaintBoundary` and captures that boundary.
+
+Use `from` when:
+- You want to change the capture source.
+- You want to snap a widget or subtree instead of the whole screen.
+- You care about the widget's own repaint boundary more than surrounding UI.
+
+If you're thinking "snap this widget," use `from`.
+
+### Crop the result
+```dart
+final cardFinder = find.byKey(const Key('my-card'));
+await snap(crop: tester.getRect(cardFinder));
+```
+
+`crop` trims the snapped result to a `Rect` in Flutter logical coordinates. It
+uses the same coordinate space as `tester.getRect(finder)`, including when
+device frames are enabled.
+
+Use `crop` when:
+- You want to keep the current capture source, but trim the final image.
+- You want a widget-shaped image while keeping its background or ancestors.
+- You want overlays, dialogs, tooltips, or menu entries that are rendered
+  outside the widget's own repaint boundary to appear in the result.
+
+For example, this captures the whole screen and then crops to the card's bounds:
+```dart
+final cardFinder = find.byKey(const Key('my-card'));
+await snap(crop: tester.getRect(cardFinder));
+```
+
+That is different from `from: cardFinder`: `from` captures the card's nearest
+`RepaintBoundary`, while `crop` keeps screen-level visuals and only trims the
+output bounds.
+
+If device framing is enabled, keep passing logical rects from Flutter. snaptest
+maps the rect into the framed device's screen area for you.
+
+You can also combine both features:
+```dart
+await snap(
+  from: find.byKey(const Key('card-boundary')),
+  crop: tester.getRect(find.text('Confirm')),
+);
+```
+
+Use both when:
+- You want to snap a specific source selected by `from`.
+- But you only want to keep a smaller region inside that snapped result.
+
+If you're thinking "snap from here, but only keep this part," use both.
+
 ### Override global settings
 ```dart
 void main() {
@@ -243,12 +296,25 @@ All methods on `snap` accept these common parameters:
 ```dart
 await snap(
   name: 'custom_name',           // Custom filename
-  from: find.byKey(key),         // Specific widget to capture
+  from: find.byKey(key),         // Choose what gets snapped
+  crop: tester.getRect(find.byKey(key)), // Trim the snapped result
   settings: SnaptestSettings(),  // Override global settings
   device: Devices.ios.iPhone16,  // Device to simulate
   orientation: Orientation.portrait,
 );
 ```
+
+`from` and `crop` answer different questions:
+- `from`: What should be snapped?
+- `crop`: Which logical part of that snapped image should be kept?
+
+As a rule of thumb:
+- Start with `from` if you want to change the source.
+- Start with `crop` if you want to change the bounds of the final image.
+- Use `crop: tester.getRect(finder)` for the common "crop to this widget, but
+  still include backgrounds and overlays" case.
+- Device framing does not change the coordinate space for `crop`; keep using
+  Flutter logical coordinates.
 
 `snap.golden()` and `snap.andGolden()` additionally accept:
 
