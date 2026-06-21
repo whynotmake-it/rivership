@@ -60,8 +60,9 @@ Widget getOverlayedChild(
   BuildContext context,
   Widget? child,
   Animation<double> animation,
-  bool secondLayer,
-) {
+  bool secondLayer, {
+  bool expandOverlay = true,
+}) {
   final bool isDarkMode =
       CupertinoTheme.brightnessOf(context) == Brightness.dark;
   final overlayColor = isDarkMode && !secondLayer
@@ -71,19 +72,25 @@ Widget getOverlayedChild(
     begin: 0.0,
     end: secondLayer && isDarkMode ? 0.15 : 0.1,
   ));
+  final overlay = IgnorePointer(
+    child: FadeTransition(
+      opacity: opacity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: overlayColor),
+        // When expanding, the overlay is a non-positioned child that forces the
+        // stack to fill the largest allowed size (the default sheet behavior).
+        child: expandOverlay ? const SizedBox.expand() : null,
+      ),
+    ),
+  );
   return Stack(
     clipBehavior: Clip.none,
     children: <Widget>[
       if (child != null) child,
-      IgnorePointer(
-        child: FadeTransition(
-          opacity: opacity,
-          child: DecoratedBox(
-            decoration: BoxDecoration(color: overlayColor),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      ),
+      // When not expanding, the overlay is positioned so it matches the child's
+      // size instead of dictating it — letting a content-hugging sheet (e.g. a
+      // fitted form sheet) size to its content.
+      if (expandOverlay) overlay else Positioned.fill(child: overlay),
     ],
   );
 }

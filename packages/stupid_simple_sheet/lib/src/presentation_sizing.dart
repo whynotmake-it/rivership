@@ -133,6 +133,14 @@ class PresentationSizing {
         kFormSheetWidth + 2 * kFormSheetMinHorizontalMargin;
   }
 
+  /// Whether the presentation sizes its height to its content rather than to a
+  /// fixed or filled height.
+  ///
+  /// True when the vertical axis uses `fitted` or `sticky`. This applies to
+  /// both form-sheet cards and the edge-to-edge fallback, so a fitted sheet
+  /// hugs its content on compact-width displays too.
+  bool get sizesHeightToContent => _vertical != _AxisSizing.standard;
+
   /// The constraints to apply to the form sheet card, given the [availableSize]
   /// remaining after margins and insets have been removed.
   ///

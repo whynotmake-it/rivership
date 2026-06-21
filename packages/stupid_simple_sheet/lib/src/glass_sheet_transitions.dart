@@ -43,6 +43,7 @@ abstract class GlassSheetTransitions {
     required Color backgroundColor,
     required bool secondSheet,
     double? extensionAtBottom,
+    bool hugContent = false,
     Widget? child,
   }) {
     final slideAnimation = secondSheet
@@ -88,6 +89,7 @@ abstract class GlassSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
+            expandOverlay: !hugContent,
           ),
         ),
       ),
@@ -125,6 +127,7 @@ abstract class GlassSheetTransitions {
       backgroundColor: backgroundColor,
       secondSheet: secondSheet,
       extensionAtBottom: formSheet ? 0 : null,
+      hugContent: presentationSizing.sizesHeightToContent,
       child: child,
     );
 
