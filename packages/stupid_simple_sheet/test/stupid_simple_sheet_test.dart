@@ -2188,6 +2188,142 @@ void main() {
     });
   });
 
+  group('PresentationSizing', () {
+    group('resolvesToFormSheet', () {
+      test('form resolves to a card only when the screen is wide enough', () {
+        expect(
+          PresentationSizing.form.resolvesToFormSheet(const Size(1200, 900)),
+          isTrue,
+        );
+        expect(
+          PresentationSizing.form.resolvesToFormSheet(const Size(400, 800)),
+          isFalse,
+        );
+      });
+
+      test('page never resolves to a card', () {
+        expect(
+          PresentationSizing.page.resolvesToFormSheet(const Size(1200, 900)),
+          isFalse,
+        );
+      });
+
+      test('automatic matches form', () {
+        expect(PresentationSizing.automatic, PresentationSizing.form);
+      });
+    });
+
+    group('formSheetConstraints', () {
+      test('standard sizing produces a fixed-size card', () {
+        final constraints = PresentationSizing.form.formSheetConstraints(
+          const Size(1000, 1000),
+        );
+        expect(constraints.minWidth, kFormSheetWidth);
+        expect(constraints.maxWidth, kFormSheetWidth);
+        expect(constraints.minHeight, kFormSheetHeight);
+        expect(constraints.maxHeight, kFormSheetHeight);
+      });
+
+      test('fitted sizing hugs content up to the standard size', () {
+        final constraints = PresentationSizing.form
+            .fitted(horizontal: false, vertical: true)
+            .formSheetConstraints(const Size(1000, 1000));
+        // Horizontal is untouched, so it stays at the standard width.
+        expect(constraints.minWidth, kFormSheetWidth);
+        expect(constraints.maxWidth, kFormSheetWidth);
+        // Vertical hugs content, never exceeding the standard height.
+        expect(constraints.minHeight, 0);
+        expect(constraints.maxHeight, kFormSheetHeight);
+      });
+
+      test('sticky sizing grows past the standard size into free space', () {
+        final constraints = PresentationSizing.form
+            .sticky()
+            .formSheetConstraints(const Size(1000, 1000));
+        expect(constraints.minWidth, kFormSheetWidth);
+        expect(constraints.maxWidth, 1000);
+        expect(constraints.minHeight, kFormSheetHeight);
+        expect(constraints.maxHeight, 1000);
+      });
+
+      test('constraints are clamped to the available space', () {
+        final constraints = PresentationSizing.form.formSheetConstraints(
+          const Size(300, 400),
+        );
+        expect(constraints.maxWidth, 300);
+        expect(constraints.maxHeight, 400);
+      });
+    });
+
+    Widget build({required PresentationSizing presentationSizing}) {
+      return CupertinoApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                return CupertinoButton.filled(
+                  key: const ValueKey('button'),
+                  onPressed: () => Navigator.of(context).push(
+                    StupidSimpleGlassSheetRoute<void>(
+                      presentationSizing: presentationSizing,
+                      child: const Scaffold(key: ValueKey('scaffold')),
+                    ),
+                  ),
+                  child: const Text('Show'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    void setScreenSize(WidgetTester tester, Size size) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets('form presents a centered card on a wide screen',
+        (tester) async {
+      setScreenSize(tester, const Size(1200, 900));
+
+      await tester
+          .pumpWidget(build(presentationSizing: PresentationSizing.form));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final size = tester.getSize(find.byKey(const ValueKey('scaffold')));
+      expect(size.width, kFormSheetWidth);
+      expect(size.width, lessThan(1200));
+    });
+
+    testWidgets('page stays edge-to-edge on a wide screen', (tester) async {
+      setScreenSize(tester, const Size(1200, 900));
+
+      await tester
+          .pumpWidget(build(presentationSizing: PresentationSizing.page));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final size = tester.getSize(find.byKey(const ValueKey('scaffold')));
+      expect(size.width, 1200);
+    });
+
+    testWidgets('form falls back to edge-to-edge on a narrow screen',
+        (tester) async {
+      setScreenSize(tester, const Size(400, 800));
+
+      await tester
+          .pumpWidget(build(presentationSizing: PresentationSizing.form));
+      await tester.tap(find.byKey(const ValueKey('button')));
+      await tester.pumpAndSettle();
+
+      final size = tester.getSize(find.byKey(const ValueKey('scaffold')));
+      expect(size.width, 400);
+    });
+  });
+
   group('SnapPhysics integration', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),

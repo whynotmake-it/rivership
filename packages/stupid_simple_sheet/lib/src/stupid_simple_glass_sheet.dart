@@ -40,11 +40,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
     this.blurBehindBarrier = true,
-    this.enableFormSheet = true,
-    this.formSheetWidth = 580,
-    this.formSheetMinHorizontalMargin = 40,
-    this.formSheetMaxHeight = 650,
-    this.formSheetMinVerticalMargin = 64,
+    this.presentationSizing = PresentationSizing.form,
 
     /// The color applied to the route behind the first glass sheet.
     ///
@@ -126,37 +122,21 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
-  /// Whether the sheet is allowed to present as an iPad-style centered form
-  /// sheet when the screen is wide enough.
+  /// How the sheet is sized on screen.
   ///
-  /// When false, the sheet always presents edge-to-edge from the bottom,
-  /// regardless of the screen width.
+  /// Mirrors SwiftUI's `presentationSizing`. Defaults to
+  /// [PresentationSizing.form], which presents as an iPad-style centered card
+  /// on regular-width displays and as an edge-to-edge bottom sheet on
+  /// compact-width displays. Use [PresentationSizing.page] to always present
+  /// edge-to-edge from the bottom.
   ///
   /// When the form sheet presentation is active, [dismissalMode] is ignored
   /// and the sheet always dismisses by sliding.
-  ///
-  /// Defaults to true.
-  final bool enableFormSheet;
-
-  /// The width of the form sheet.
-  final double formSheetWidth;
-
-  /// The minimum horizontal margin on each side of the form sheet.
-  final double formSheetMinHorizontalMargin;
-
-  /// The maximum height of the form sheet. Content that exceeds this
-  /// height will scroll.
-  final double formSheetMaxHeight;
-
-  /// The minimum vertical margin above and below the form sheet.
-  /// Applied in addition to safe area insets.
-  final double formSheetMinVerticalMargin;
+  final PresentationSizing presentationSizing;
 
   /// Whether the current screen warrants form sheet presentation.
   bool _shouldUseFormSheet(BuildContext context) {
-    if (!enableFormSheet) return false;
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    return screenWidth - 2 * formSheetMinHorizontalMargin >= formSheetWidth;
+    return presentationSizing.resolvesToFormSheet(MediaQuery.sizeOf(context));
   }
 
   @override
@@ -238,11 +218,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
             secondSheet: _isSecondGlassSheet,
             dismissalMode: dismissalMode,
             shape: shape,
-            formSheet: _shouldUseFormSheet(context),
-            formSheetWidth: formSheetWidth,
-            formSheetMinHorizontalMargin: formSheetMinHorizontalMargin,
-            formSheetMaxHeight: formSheetMaxHeight,
-            formSheetMinVerticalMargin: formSheetMinVerticalMargin,
+            presentationSizing: presentationSizing,
             child: maybeSnapshotChild(child),
           );
         },

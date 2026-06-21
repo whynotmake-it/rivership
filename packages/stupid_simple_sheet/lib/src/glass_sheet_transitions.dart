@@ -108,14 +108,11 @@ abstract class GlassSheetTransitions {
         top: Radius.circular(36),
       ),
     ),
-    bool formSheet = false,
-    bool isStacked = false,
-    double formSheetWidth = 580,
-    double formSheetMinHorizontalMargin = 40,
-    double formSheetMaxHeight = 650,
-    double formSheetMinVerticalMargin = 64,
+    PresentationSizing presentationSizing = PresentationSizing.form,
     Widget? child,
   }) {
+    final formSheet =
+        presentationSizing.resolvesToFormSheet(MediaQuery.sizeOf(context));
     final effectiveShape = formSheet ? toFormSheetShape(shape) : shape;
 
     final secondaryChild = secondarySlideUpTransition(
@@ -136,6 +133,17 @@ abstract class GlassSheetTransitions {
         builder: (context) {
           final screenSize = MediaQuery.sizeOf(context);
           final viewInsets = MediaQuery.viewInsetsOf(context);
+          final topMargin = viewInsets.top +
+              kFormSheetMinVerticalMargin +
+              (secondSheet ? kFormSheetPaddingToPrevious : 0);
+          final bottomMargin = viewInsets.bottom +
+              kFormSheetMinVerticalMargin +
+              kFormSheetBottomInset;
+          // The space the card can occupy after margins and insets are removed.
+          final availableSize = Size(
+            screenSize.width - 2 * kFormSheetMinHorizontalMargin,
+            screenSize.height - topMargin - bottomMargin,
+          );
           return AnimatedBuilder(
             animation: animation,
             builder: (context, child) {
@@ -146,21 +154,15 @@ abstract class GlassSheetTransitions {
             },
             child: Padding(
               padding: EdgeInsets.only(
-                left: formSheetMinHorizontalMargin,
-                right: formSheetMinHorizontalMargin,
-                top: viewInsets.top +
-                    formSheetMinVerticalMargin +
-                    (secondSheet ? kFormSheetPaddingToPrevious : 0),
-                bottom: viewInsets.bottom +
-                    formSheetMinVerticalMargin +
-                    kFormSheetBottomInset,
+                left: kFormSheetMinHorizontalMargin,
+                right: kFormSheetMinHorizontalMargin,
+                top: topMargin,
+                bottom: bottomMargin,
               ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: formSheetWidth,
-                    maxHeight: formSheetMaxHeight,
-                  ),
+                  constraints:
+                      presentationSizing.formSheetConstraints(availableSize),
                   child: secondaryChild,
                 ),
               ),
@@ -179,7 +181,8 @@ abstract class GlassSheetTransitions {
           minimum:
               EdgeInsets.only(top: MediaQuery.sizeOf(context).height * 0.05),
           child: Padding(
-            padding: EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
+            padding:
+                EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
             child: Align(
               alignment: Alignment.bottomCenter,
               child: SheetDismissalTransition(
