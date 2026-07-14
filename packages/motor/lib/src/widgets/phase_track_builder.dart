@@ -161,7 +161,9 @@ class _PhaseTrackBuilderState<P extends Object>
       // A restartTrigger change replays from the start (jumping back to the
       // start snapshot first) rather than animating from the current values.
       _startPlayback(restart: true);
-    } else if (timelineChanged || playingChanged) {
+    } else if (timelineChanged ||
+        playingChanged ||
+        widget.active != oldWidget.active) {
       _startPlayback();
     } else if (phaseChanged && widget.currentPhase != null) {
       _controller.goToPhase(widget.currentPhase!);

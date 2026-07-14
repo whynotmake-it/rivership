@@ -36,7 +36,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   void Function(PhaseTransition<P> transition)? _onTransition;
   P? _currentPhase;
   bool _isPlayingPhases = false;
-  bool _seededFrom = false;
+  TrackPhaseTimeline<P>? _seededTimeline;
 
   /// The active phase timeline, if any.
   TrackPhaseTimeline<P>? get activeTimeline => _activeTimeline;
@@ -133,8 +133,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// Velocity-only seeds (a track in `withVelocity` but not `from`) keep the
   /// track's current value while applying the seeded velocity.
   void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
-    if (_seededFrom) return;
-    _seededFrom = true;
+    if (_seededTimeline == timeline) return;
+    _seededTimeline = timeline;
     if (timeline.from.isEmpty && timeline.withVelocity.isEmpty) return;
 
     final values = <TrackValue>[...timeline.from];
