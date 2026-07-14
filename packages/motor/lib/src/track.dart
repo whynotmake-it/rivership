@@ -162,6 +162,7 @@ class Track<T extends Object> {
 /// where its [value] is interpreted as a velocity.
 ///
 /// {@endtemplate}
+// ignore: deprecated_member_use
 class TrackValue<T extends Object> with EquatableMixin {
   /// Creates a value snapshot for [track].
   TrackValue._(this.track, this.value);
@@ -182,6 +183,7 @@ class TrackValue<T extends Object> with EquatableMixin {
 /// override (jump to this value before animating) and an initial
 /// [withVelocity]. `loop` is intentionally not part of an animation — it is a
 /// per-clip concern owned by the timeline or the playback call site.
+// ignore: deprecated_member_use
 class TrackAnimation<T extends Object> with EquatableMixin {
   /// Creates an animation for [track] using [steps].
   TrackAnimation._(

@@ -6,6 +6,7 @@ import 'package:motor/src/track_phase_timeline.dart';
 
 /// A single instruction in a track animation.
 @immutable
+// ignore: deprecated_member_use
 sealed class Step<T extends Object> with EquatableMixin {
   /// Creates a step.
   const Step();

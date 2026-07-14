@@ -45,6 +45,7 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
   'MotionSequence will be removed in motor 3.0.',
 )
 @immutable
+// ignore: deprecated_member_use
 abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// {@macro MotionSequence}
   @Deprecated(
