@@ -83,6 +83,22 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
     return _flatten(subset);
   }
 
+  /// The flattened animations for playing phases in reverse order, starting
+  /// from the second-to-last phase (the last phase's values are the current
+  /// resting state when a pingPong reversal begins).
+  ///
+  /// Phase order is reversed; each phase's own steps still play forward. Sync
+  /// barriers between phases carry the target phase as their token, so phase
+  /// transitions are still reported through [PhaseTrackController].
+  @internal
+  List<TrackAnimation> reversedAnimations() {
+    final reversedMap = <P, List<TrackAnimation>>{
+      for (final phase in phases.reversed.skip(1))
+        phase: phaseAnimations[phase]!,
+    };
+    return _flatten(reversedMap);
+  }
+
   /// The resting values each track settles to at the end of the first phase.
   ///
   /// Used by [PhaseTrackController] to jump back to the start when [phaseLoop]

@@ -43,7 +43,7 @@ void main() {
     expect(p.isDone, isFalse);
   });
 
-  test('pingPong characterizes Step.at on the reverse leg', () {
+  test('pingPong mirrors Step.at timing on the reverse leg', () {
     final p = playback([
       const Step.to(1, motion: linear100),
       const Step.at(
@@ -60,16 +60,17 @@ void main() {
     p.advanceTo(0.3);
     expect(p.values.single, closeTo(2, error));
 
-    // CHARACTERIZATION: current behavior, believed incorrect — see plans/002.
-    // The reverse Step.at uses its unscaled 100ms motion rather than mirroring
-    // the forward schedule.
     p.advanceTo(0.35);
-    expect(p.values.single, closeTo(1.5, error));
+    expect(p.values.single, closeTo(1.75, error));
     p.advanceTo(0.4);
-    expect(p.values.single, closeTo(1, error));
+    expect(p.values.single, closeTo(1.5, error));
     p.advanceTo(0.45);
-    expect(p.values.single, closeTo(0.5, error));
+    expect(p.values.single, closeTo(1.25, error));
     p.advanceTo(0.5);
+    expect(p.values.single, closeTo(1, error));
+    p.advanceTo(0.55);
+    expect(p.values.single, closeTo(0.5, error));
+    p.advanceTo(0.6);
     expect(p.values.single, closeTo(0, error));
   });
 

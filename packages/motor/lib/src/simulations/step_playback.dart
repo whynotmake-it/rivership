@@ -57,6 +57,7 @@ class StepPlayback<T extends Object> {
         _steps.add(StepTo<T>(start, motionPerDimension: returnMotions));
       }
     }
+    _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
     _reset();
   }
@@ -111,6 +112,9 @@ class StepPlayback<T extends Object> {
   /// Target values for each step, used by pingPong to reverse.
   /// Index i holds the normalized target that step i animates toward.
   late final List<List<double>> _waypoints;
+
+  /// The duration each step occupied during forward playback.
+  late final List<double?> _forwardSegmentSeconds;
 
   late List<double> _currentValues;
   late List<double> _currentVelocities;
@@ -196,6 +200,7 @@ class StepPlayback<T extends Object> {
       final completionSeconds = _completionTime(localSeconds);
       _sample(completionSeconds);
       _segmentStartSeconds += completionSeconds;
+      _recordForwardSegmentDuration(completionSeconds);
 
       // If the current step is a SyncStep, enter waitForSync instead of
       // advancing. The TrackController will call releaseSync() when all
@@ -234,6 +239,7 @@ class StepPlayback<T extends Object> {
       final completionSeconds = _completionTime(localSeconds);
       _sample(completionSeconds);
       _segmentStartSeconds += completionSeconds;
+      _recordForwardSegmentDuration(completionSeconds);
       _advanceStep();
 
       if (_segmentStartSeconds > elapsedSeconds) return _isDone;
@@ -292,6 +298,12 @@ class StepPlayback<T extends Object> {
     }
 
     _startCurrentStep();
+  }
+
+  void _recordForwardSegmentDuration(double seconds) {
+    if (_direction > 0) {
+      _forwardSegmentSeconds[_stepIndex] = seconds;
+    }
   }
 
   int get _dimensions => _initialValues.length;
@@ -407,9 +419,21 @@ class StepPlayback<T extends Object> {
         _stepIndex > 0 ? _waypoints[_stepIndex - 1] : _initialValues;
     final step = _steps[_stepIndex];
     final motions = switch (step) {
-      StepTo<T>(:final motion, :final motionPerDimension) ||
-      StepAt<T>(:final motion, :final motionPerDimension) =>
+      StepTo<T>(:final motion, :final motionPerDimension) =>
         _motionsOrNull(motion, motionPerDimension),
+      StepAt<T>(:final motion, :final motionPerDimension) => () {
+          final resolved = _motionsOrNull(motion, motionPerDimension);
+          final forwardSeconds = _forwardSegmentSeconds[_stepIndex];
+          if (resolved == null || forwardSeconds == null) return resolved;
+          return [
+            for (final motion in resolved)
+              motion.scaleTo(
+                Duration(
+                  microseconds: (forwardSeconds * 1000000).round(),
+                ),
+              ),
+          ];
+        }(),
       StepFree<T>() => null,
       StepHold<T>() => null,
       SyncStep<T>() => null,
@@ -439,6 +463,8 @@ class StepPlayback<T extends Object> {
   }
 
   bool _moveToScheduledStepIfDue(double elapsedSeconds) {
+    if (_direction < 0) return false;
+
     final nextStepIndex = _stepIndex + _direction;
     if (nextStepIndex < 0 || nextStepIndex >= _steps.length) return false;
 
@@ -448,6 +474,7 @@ class StepPlayback<T extends Object> {
       if (elapsedSeconds < absoluteAt) return false;
 
       _sample(absoluteAt - _segmentStartSeconds);
+      _recordForwardSegmentDuration(absoluteAt - _segmentStartSeconds);
       _segmentStartSeconds = absoluteAt;
       _advanceStep();
       return true;

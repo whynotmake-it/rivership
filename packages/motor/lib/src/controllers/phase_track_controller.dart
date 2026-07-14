@@ -22,6 +22,9 @@ import 'package:motor/src/track_timeline.dart';
 ///
 /// Because [TrackPhaseTimeline] extends [TrackTimeline], the standard [play]
 /// method also works for non-phase playback.
+///
+/// With [LoopMode.pingPong], phases are visited in reverse order after the
+/// forward pass. Each phase's own steps still play forward.
 class PhaseTrackController<P extends Object> extends TrackController {
   /// Creates a phase track controller.
   PhaseTrackController({
@@ -36,6 +39,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   void Function(PhaseTransition<P> transition)? _onTransition;
   P? _currentPhase;
   bool _isPlayingPhases = false;
+  bool _phaseDirectionForward = true;
   TrackPhaseTimeline<P>? _seededTimeline;
 
   /// The active phase timeline, if any.
@@ -55,6 +59,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _activeTimeline = timeline;
     _onTransition = onTransition;
     _isPlayingPhases = false;
+    _phaseDirectionForward = true;
   }
 
   /// Plays through all phases of [timeline], auto-advancing when each
@@ -76,6 +81,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _activeTimeline = timeline;
     _onTransition = onTransition;
     _isPlayingPhases = true;
+    _phaseDirectionForward = true;
     _seedFromIfNeeded(timeline);
 
     final startIndex = atPhase != null ? timeline.phases.indexOf(atPhase) : 0;
@@ -179,6 +185,27 @@ class PhaseTrackController<P extends Object> extends TrackController {
       final previous = _currentPhase;
       final phases = timeline.phases;
       final first = phases.first;
+
+      if (timeline.phaseLoop == LoopMode.pingPong && phases.length >= 2) {
+        if (_phaseDirectionForward) {
+          _phaseDirectionForward = false;
+          final next = phases[phases.length - 2];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.last, to: next),
+          );
+          animate(timeline.reversedAnimations());
+        } else {
+          _phaseDirectionForward = true;
+          final next = phases[1];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.first, to: next),
+          );
+          animate(timeline.animationsFrom(next));
+        }
+        return;
+      }
 
       if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
         // seamless: jump straight back to the first phase (invisible when the

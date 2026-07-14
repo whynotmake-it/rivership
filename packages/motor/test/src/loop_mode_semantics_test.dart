@@ -186,5 +186,85 @@ void main() {
       expect(controller.isAnimating, isTrue);
       controller.stop(canceled: true);
     });
+
+    testWidgets('pingPong visits three phases in both directions',
+        (tester) async {
+      controller = PhaseTrackController<String>(vsync: tester);
+      final transitions = <String>[];
+      final pingPongTimeline = TrackPhaseTimeline(
+        {
+          'a': [size.to(1, motion: linear100)],
+          'b': [size.to(2, motion: linear100)],
+          'c': [size.to(3, motion: linear100)],
+        },
+        phaseLoop: LoopMode.pingPong,
+      );
+
+      controller.playPhases(
+        pingPongTimeline,
+        onTransition: (transition) {
+          if (transition
+              case PhaseTransitioning<String>(
+                :final from,
+                :final to,
+              )) {
+            transitions.add('$from->$to');
+          }
+        },
+      );
+      await tester.pump();
+
+      for (final target in [1.0, 2.0, 3.0, 2.0, 1.0, 2.0, 3.0]) {
+        await tester.pump(const Duration(milliseconds: 101));
+        expect(controller.value(size), closeTo(target, error));
+      }
+
+      expect(
+        transitions,
+        [
+          'a->b',
+          'b->c',
+          'c->b',
+          'b->a',
+          'a->b',
+          'b->c',
+          'c->b',
+        ],
+      );
+      expect(controller.isAnimating, isTrue);
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('pingPong alternates two phases without duplicates',
+        (tester) async {
+      controller = PhaseTrackController<String>(vsync: tester);
+      final transitions = <String>[];
+
+      controller.playPhases(
+        timeline(LoopMode.pingPong),
+        onTransition: (transition) {
+          if (transition
+              case PhaseTransitioning<String>(
+                :final from,
+                :final to,
+              )) {
+            transitions.add('$from->$to');
+          }
+        },
+      );
+      await tester.pump();
+
+      for (final target in [1.0, 2.0, 1.0, 2.0, 1.0]) {
+        await tester.pump(const Duration(milliseconds: 101));
+        expect(controller.value(size), closeTo(target, error));
+      }
+
+      expect(
+        transitions,
+        ['a->b', 'b->a', 'a->b', 'b->a', 'a->b'],
+      );
+      expect(controller.isAnimating, isTrue);
+      controller.stop(canceled: true);
+    });
   });
 }
