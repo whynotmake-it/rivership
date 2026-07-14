@@ -129,5 +129,47 @@ void main() {
       final future = controller.stop(canceled: true);
       await future;
     });
+
+    testWidgets(
+        'partial stop() settles one track while the other keeps animating',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([springTrack.to(1), linearTrack.to(1)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+
+      final springAtStop = controller.value(springTrack);
+      final linearAtStop = controller.value(linearTrack);
+      expect(springAtStop, lessThan(1));
+      expect(linearAtStop, lessThan(1));
+
+      final future = controller.stop(tracks: [springTrack]);
+      var completed = false;
+      future.then((_) => completed = true);
+
+      // The stopped spring keeps moving (it settles, it does not freeze).
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        controller.value(springTrack),
+        isNot(closeTo(springAtStop, 1e-6)),
+        reason: 'a graceful stop lets the spring settle, not freeze',
+      );
+      // The linear track was not targeted and keeps going to its target.
+      expect(controller.value(linearTrack), greaterThan(linearAtStop));
+
+      await tester.pump();
+      expect(completed, isFalse);
+
+      await tester.pumpAndSettle();
+      expect(completed, isTrue);
+      expect(controller.isAnimating, isFalse);
+
+      // The linear track finished its animation; the spring came to rest near
+      // where it was stopped instead of its original target.
+      expect(controller.value(linearTrack), closeTo(1, 1e-4));
+      expect(controller.value(springTrack), closeTo(springAtStop, 1e-1));
+      expect(controller.value(springTrack), lessThan(1));
+    });
   });
 }

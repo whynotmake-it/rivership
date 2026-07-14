@@ -90,9 +90,28 @@ void main() {
         loop: LoopMode.loop,
       );
 
+      // Forward leg: the fast (x) dimension finishes at 100ms while the slow
+      // (y) one is halfway — the dimensions diverge.
       playback.advanceTo(0.1);
-      playback.advanceTo(0.3);
-      playback.advanceTo(0.6);
+      expect(playback.values[0], closeTo(1, 1e-3));
+      expect(playback.values[1], closeTo(0.5, 1e-2));
+
+      // The segment ends when the slow dimension finishes (200ms); the loop
+      // return leg reuses the per-dimension motions, so 50ms in, x (100ms) is
+      // halfway back while y (200ms) is only a quarter of the way.
+      playback.advanceTo(0.25);
+      expect(playback.values[0], closeTo(0.5, 1e-2));
+      expect(playback.values[1], closeTo(0.75, 1e-2));
+
+      // Return leg finished: back at the start, ready for the next cycle.
+      playback.advanceTo(0.4);
+      expect(playback.values[0], closeTo(0, 1e-2));
+      expect(playback.values[1], closeTo(0, 1e-2));
+
+      // 50ms into the second forward leg.
+      playback.advanceTo(0.45);
+      expect(playback.values[0], closeTo(0.5, 1e-2));
+      expect(playback.values[1], closeTo(0.25, 1e-2));
       expect(playback.isDone, isFalse);
     });
 
@@ -109,8 +128,21 @@ void main() {
         loop: LoopMode.pingPong,
       );
 
+      // End of the forward leg (bounded by the slow 200ms dimension).
       playback.advanceTo(0.2);
+      expect(playback.values[0], closeTo(1, 1e-3));
+      expect(playback.values[1], closeTo(1, 1e-3));
+
+      // 50ms into the reverse leg: x (100ms) is halfway back, y (200ms) only
+      // a quarter — the dimensions diverge on the way back too.
+      playback.advanceTo(0.25);
+      expect(playback.values[0], closeTo(0.5, 1e-2));
+      expect(playback.values[1], closeTo(0.75, 1e-2));
+
+      // Reverse leg complete: back at the start, still not done.
       playback.advanceTo(0.4);
+      expect(playback.values[0], closeTo(0, 1e-2));
+      expect(playback.values[1], closeTo(0, 1e-2));
       expect(playback.isDone, isFalse);
     });
   });
