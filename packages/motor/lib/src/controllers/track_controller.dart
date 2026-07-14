@@ -43,6 +43,10 @@ class TrackController extends Animation<TrackValueReader>
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
 
+  /// The number of tracks this controller currently holds state for.
+  @visibleForTesting
+  int get debugTrackCount => _slots.length;
+
   /// A monotonic timestamp for velocity sampling, sourced from [clock] so it is
   /// driven by the fake clock under test (advancing with `tester.pump`) and by
   /// wall-clock time in production.
@@ -343,6 +347,23 @@ class TrackController extends Animation<TrackValueReader>
     notifyListeners();
     _checkStatusChanged();
     return future;
+  }
+
+  /// Removes all internal state for [track].
+  ///
+  /// Used when a track identity is being replaced (e.g. a converter swap
+  /// creates a new track). Stops the track's slot first if it is animating.
+  @internal
+  void forgetTrack(Track track) {
+    _slots[track]?.stop(canceled: true);
+    _slots.remove(track);
+    _activeTracks.remove(track);
+    _velocityTrackers.remove(track);
+    _lastStepByTrack.remove(track);
+    for (final participants in _tokenParticipants.values) {
+      participants.remove(track);
+    }
+    _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
   }
 
   /// Recreates the ticker using [vsync].

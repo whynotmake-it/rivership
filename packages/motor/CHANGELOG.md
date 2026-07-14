@@ -52,6 +52,7 @@
 
  - **FIX**: `PhaseTrackController` now plays `pingPong` phase loops in reverse phase order after each forward pass instead of replaying phases forward like `loop`.
  - **FIX**: `Step.at` segments in `pingPong` loops now mirror their forward scheduled duration on the reverse leg instead of using the motion's unscaled duration and re-triggering absolute-time boundaries.
+ - **FIX**: swapping a `MotionController`'s `converter` no longer leaks the replaced track's internal state in the underlying `TrackController`.
  - **FIX**: `PhaseTrackController` now re-applies a timeline's one-time `from`/`withVelocity` seeds when a *different* timeline starts playing on the same controller. Previously the seeds were applied only once per controller, so swapping timelines (e.g. changing `PhaseTrackBuilder.timeline`) silently kept the previous timeline's values. Replaying an equal-value timeline still does not re-seed.
  - **FIX**: `PhaseTrackBuilder` resumes playback when `active` is toggled from `false` back to `true`. Previously only the deactivation transition was handled, so a reactivated builder stayed frozen.
  - **FIX**: `SpringMotion` equality (and `hashCode`) now includes `snapToEnd`, so spring motions differing only in `snapToEnd` compare unequal. This affects rebuild-restart detection in `TrackBuilder` and motion swaps on `MotionController`, which previously ignored a `snapToEnd` change.

@@ -118,6 +118,10 @@ class MotionController<T extends Object> extends Animation<T>
   List<Motion> _motionPerDimension;
   final AnimationBehavior _animationBehavior;
 
+  /// The underlying track controller.
+  @visibleForTesting
+  TrackController get debugInnerController => _inner;
+
   /// The most recent animation target, used to evaluate the resting [status].
   T? _lastTarget;
 
@@ -145,9 +149,11 @@ class MotionController<T extends Object> extends Animation<T>
     final reinterpretedVelocity = value.denormalize(velocityNormalized);
 
     if (_inner.isAnimating) _inner.stop(tracks: [_track], canceled: true);
+    final oldTrack = _track;
     _converter = value;
     _track = Track<T>(value, initial: reinterpreted);
     _inner
+      ..forgetTrack(oldTrack)
       ..set(
         [_track.value(reinterpreted)],
         withVelocity: [_track.velocity(reinterpretedVelocity)],
