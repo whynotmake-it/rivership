@@ -7,6 +7,10 @@ import 'package:motor/src/track.dart';
 /// A timeline bundles a set of [TrackAnimation]s with a [loop] mode. Per-track
 /// start values and velocities live on the individual [TrackAnimation]s
 /// (`from:` / `withVelocity:`), not on the timeline.
+///
+/// Timelines compare by value (`Equatable`): building an equal timeline on
+/// rebuild will not restart playback in `TrackBuilder`. Reuse instances or
+/// hoist them to fields for clarity; equality makes both safe.
 // ignore: deprecated_member_use
 class TrackTimeline with EquatableMixin {
   /// Creates a timeline from track [animations].

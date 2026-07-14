@@ -7,11 +7,10 @@ import 'package:motor/src/simulations/no_motion_simulation.dart';
 export 'motion_curve.dart';
 
 /// {@template Motion}
-/// A motion pattern such as spring physics or duration-based curves.
+/// The root of motor's motion family.
 ///
-/// [Motion] provides a foundation for creating various types of animation
-/// behaviors. Concrete implementations of this class define specific motion
-/// patterns like spring physics or duration-based curves.
+/// Concrete motions extend [Motion] (target-based) or [FreeMotion]
+/// (self-directed); this root is sealed.
 /// {@endtemplate}
 @immutable
 sealed class MotionBase {

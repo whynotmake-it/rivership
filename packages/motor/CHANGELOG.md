@@ -5,6 +5,10 @@
 > `MotionSequence`, `SequenceMotionController`, and `SequenceMotionBuilder` stay
 > source-compatible, but several runtime behaviors have changed (see below).
 
+### Docs
+
+ - **DOCS**: fix broken README samples and clarify SDK syntax, timeline equality, track value readers, sync-barrier seeking, and custom motion extension points.
+
 ### Deprecations
 
  - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, and `SequenceMotionBuilder` — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.

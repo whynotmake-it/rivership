@@ -29,7 +29,11 @@ A unified motion system that brings together physics-based springs, duration-bas
 
 **❗ In order to start using Motor you must have the [Dart SDK][dart_install_link] installed on your machine.**
 
+Code samples in this README use Dart 3.10 dot-shorthands; motor itself supports Dart 3.5+.
+
 Add to your `pubspec.yaml`:
+
+<!-- TODO(release): verify pubspec version is 2.0.0 before publishing -->
 
 ```yaml
 dependencies:
@@ -67,13 +71,15 @@ final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
 final material = MaterialSpringMotion.standardSpatialDefault();
 ```
 
-Motor provides several motion types out of the box, with the ability to create custom motions by extending these classes:
+Motor provides several motion types out of the box, with the ability to create
+custom motions by extending `Motion` (target-based) or `FreeMotion`
+(self-directed):
 
 **Target-based motions** (`Motion`) animate from a start value to a target value:
 
 - **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
 - **`LinearMotion`** - Like `CurvedMotion` but always linear.
-- **`NoMotion`** - Holds at the target value for an optional duration.
+- **`NoMotion`** - Holds at the current value for an optional duration, never reaching the target.
 - **`SpringMotion`** - Physics-based motion using Flutter SDK's `SpringDescription`. Provides natural, responsive animations that feel alive. Defaults to snapping to the end value to ensure precise settling.
 - **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
 - **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
@@ -132,12 +138,12 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 - **`.expressiveEffectsDefault()`** - Moderate expressive effects (damping: 1, stiffness: 1600)
 - **`.expressiveEffectsSlow()`** - Gentle expressive effects (damping: 1, stiffness: 800)
 
-You can also create custom `MaterialSpringMotion` instances:
+`MaterialSpringMotion` only exposes the official M3 tokens. For custom spring
+parameters, use `SpringMotion`:
 
 ```dart
-final customMaterial = MaterialSpringMotion(
-  damping: 0.8,
-  stiffness: 500,
+final customMaterial = SpringMotion(
+  SpringDescription.withDampingRatio(ratio: 0.8, stiffness: 500),
 );
 ```
 
@@ -191,7 +197,7 @@ For Material Design applications, you can use MaterialSpringMotion tokens:
 
 ```dart
 MotionBuilder(
-  motion: MaterialSpringMotion.expressiveSpatialDefault,
+  motion: MaterialSpringMotion.expressiveSpatialDefault(),
   value: const Offset(100, 100),
   from: Offset.zero,
   converter: OffsetMotionConverter(),
@@ -213,7 +219,10 @@ MotionBuilder(
 
 Everything above animates a single value. But real UI motion rarely does — a panel might move, resize, recolor, and rotate at once, each with its own timing and feel. Motor handles this with two small primitives: a **`Track`** (one property) and a **`Step`** (one instruction). The rest of this section builds them up one at a time.
 
-> **Note:** The examples use Dart's dot-shorthand syntax (`.to(...)` instead of `Step.to(...)`).
+> **Note:** The examples use Dart 3.10+ dot-shorthand syntax. On older SDKs,
+> write the full form (`Step.to(...)`, `CupertinoMotion.smooth()`, and so on).
+> `track.to(value)` is a method on `Track`; `.to(...)` inside a step list is
+> shorthand for `Step.to(...)`.
 
 #### A track is one animated property
 
@@ -333,7 +342,8 @@ PhaseTrackBuilder<PanelPhase>(
 )
 ```
 
-Pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events, and `phaseLoop` to auto-advance in a loop.
+Pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events,
+and set `phaseLoop` on the `TrackPhaseTimeline` to auto-advance in a loop.
 
 #### Imperative control
 
@@ -530,7 +540,7 @@ For maximum control, Motor provides `MotionController` for complex types and `Si
 
 ```dart
 final controller = MotionController(
-  motion: CupertinoMotion.bouncy(), // or Motion.duration(), etc.
+  motion: CupertinoMotion.bouncy(), // or Motion.curved(...), etc.
   vsync: this,
 );
 ```

@@ -18,6 +18,13 @@ part '_track_slot.dart';
 typedef TrackValueReader = T Function<T extends Object>(Track<T> track);
 
 /// Controls a single active [TrackTimeline] from a ticker.
+///
+/// This is an `Animation<TrackValueReader>`, so [value] is a reader function:
+/// call it with a [Track] to get that track's current value. This shape remains
+/// usable with `ValueListenable` and `ListenableBuilder` infrastructure, but
+/// does not compose with [Tween.animate] or [Animation.drive] like an
+/// `Animation<double>` does. Read specific tracks with `value(track)` inside a
+/// listener instead.
 class TrackController extends Animation<TrackValueReader>
     with
         AnimationLocalListenersMixin,
@@ -260,6 +267,10 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   /// Evaluates active tracks at [t] without starting the ticker.
+  ///
+  /// Seeking treats sync barriers as zero-duration holds and passes through
+  /// them freely (see [SyncStep]); tracks scrubbed past a barrier will not wait
+  /// for their peers.
   void scrubTo(Duration t) {
     for (final track in _activeTracks) {
       _slots[track]?.scrubTo(t);
