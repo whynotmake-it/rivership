@@ -1,4 +1,5 @@
-// ignore_for_file: deprecated_member_use_from_same_package, unawaited_futures
+// ignore_for_file: deprecated_member_use_from_same_package
+// ignore_for_file: unawaited_futures, cascade_invocations
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';

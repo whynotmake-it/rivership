@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'dart:collection';
 
 import 'package:flutter/animation.dart';
@@ -789,9 +791,19 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
 ///
 /// await controller.playSequence(sequence);
 /// ```
+@Deprecated(
+  'Use PhaseTrackController with a TrackPhaseTimeline instead. '
+  'See MIGRATION.md. '
+  'SequenceMotionController will be removed in motor 3.0.',
+)
 class SequenceMotionController<P, T extends Object>
     extends MotionController<T> {
   /// Creates a phase motion controller with single motion for all dimensions.
+  @Deprecated(
+    'Use PhaseTrackController with a TrackPhaseTimeline instead. '
+    'See MIGRATION.md. '
+    'SequenceMotionController will be removed in motor 3.0.',
+  )
   SequenceMotionController({
     required super.motion,
     required super.vsync,
@@ -802,6 +814,11 @@ class SequenceMotionController<P, T extends Object>
   });
 
   /// Creates a sequence motion controller with motion per dimension.
+  @Deprecated(
+    'Use PhaseTrackController with a TrackPhaseTimeline instead. '
+    'See MIGRATION.md. '
+    'SequenceMotionController will be removed in motor 3.0.',
+  )
   SequenceMotionController.motionPerDimension({
     required super.motionPerDimension,
     required super.vsync,

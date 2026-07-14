@@ -44,6 +44,14 @@ dart pub add motor
 
 ## Usage 💡
 
+### Choosing an API
+
+| You want to animate… | Reach for |
+|----------------------|-----------|
+| A single value or property | `MotionBuilder` / `SingleMotionBuilder`, or `MotionController` for imperative control |
+| Multiple properties / choreography | [Tracks & Steps](#tracks--steps-) (`TrackBuilder`, `PhaseTrackBuilder`, `TrackController`) |
+| Legacy sequences (`MotionSequence`) | Deprecated — see [MIGRATION.md](./MIGRATION.md) for moving to Tracks |
+
 ### Motion
 
 The core of Motor's unified motion system is the `Motion` class. It represents the **type of motion** that will drive your animation, whether physics-based or duration-based.
@@ -342,23 +350,18 @@ final s = controller.value(scale);   // read via the reader
 
 `PhaseTrackController` adds phase navigation on top (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) — it's what `PhaseTrackBuilder` uses internally.
 
-### Sequence Animations 🎬
+### Sequence Animations (deprecated)
 
-Motor's sequence animations let you create complex, multi-phase animations with smooth transitions between states. Perfect for storytelling, onboarding flows, state machines, and complex UI transitions.
+> **⚠️ Deprecated:** The sequence stack — `MotionSequence`, `SequenceMotionBuilder`, and `SequenceMotionController` — is deprecated in Motor 2.0 and will be removed in 3.0. Use the [Tracks & Steps](#tracks--steps-) APIs above instead; see [MIGRATION.md](./MIGRATION.md) for a step-by-step migration guide.
 
-> **Tracks vs. Sequences:** A `MotionSequence` animates a **single value** through ordered phases. If you need to choreograph **several properties at once** (each with its own steps and motion), reach for the **Tracks & Steps** section above instead.
-
-> **Note:** The upcoming examples use the Dart 3.10 dot-shorthand syntax.
+A `MotionSequence` animates a **single value** through ordered phases. This section stays as a reference for existing users; don't build new features on it.
 
 #### Motion Sequences
 
-A `MotionSequence` defines a series of phases that your animation progresses through. Motor provides three types of sequences for different use cases:
-
-##### 1. State Sequences - Named Phases
-
-Perfect for state machines, enums, or any named phase system:
+Motor provides three sequence types:
 
 ```dart
+// 1. State sequences — named phases (enums, strings):
 enum ButtonState { idle, pressed, loading }
 
 final MotionSequence<ButtonState, Offset> buttonSequence = .states({
@@ -366,26 +369,15 @@ final MotionSequence<ButtonState, Offset> buttonSequence = .states({
   .pressed: Offset(0, 5),
   .loading: Offset(10, 0),
 }, motion: .bouncySpring());
-```
 
-##### 2. Step Sequences - Ordered Progression  
-
-The most common sequence type for ordered progressions through values:
-
-```dart
+// 2. Step sequences — ordered progression by index:
 final MotionSequence<int, Color> colorSequence = MotionSequence.steps([
   Colors.red,
-  Colors.yellow, 
+  Colors.yellow,
   Colors.green,
-  Colors.blue,
 ], motion: .smoothSpring(), loop: .seamless);
-```
 
-##### 3. Spanning Sequences - Proportional Timing
-
-For precise timing control where a single motion spans across positioned phases. Think of it like flexbox - phases at higher positions take proportionally more time to reach:
-
-```dart
+// 3. Spanning sequences — one motion distributed across positioned phases:
 final logoSequence = MotionSequence.spanning({
   0.0: LogoState(opacity: 0),        // Start (0% of total time)
   1.0: LogoState(opacity: 1),        // 50% of total time
@@ -393,18 +385,11 @@ final logoSequence = MotionSequence.spanning({
 }, motion: .linear(Duration(seconds: 2)));
 ```
 
-#### Loop Modes
-
-Control how your sequences repeat:
-
-- **`LoopMode.none`** - Play once and stop
-- **`LoopMode.loop`** - Animate back to start and repeat
-- **`LoopMode.seamless`** - Treat first/last phases as identical for smooth circular loops
-- **`LoopMode.pingPong`** - Play forward then backward
+Sequences repeat according to their `loop:` — `LoopMode.none` (play once), `.loop` (animate back to start and repeat), `.seamless` (jump back to an identical first phase), or `.pingPong` (forward then backward).
 
 #### Sequence Animation Widget
 
-Use `SequenceMotionBuilder` to bring sequences to life:
+Use `SequenceMotionBuilder` to play sequences. Pass `playing: true` for automatic phase progression (respecting the loop mode), or `playing: false` to animate only when `currentPhase` changes:
 
 ```dart
 enum LoadingState { idle, spinning, complete }
@@ -417,69 +402,21 @@ SequenceMotionBuilder<LoadingState, double>(
   }, motion: .smoothSpring()),
   converter: .single,
   playing: true, // Auto-progress through phases
-  currentPhase: currentState, // Or control manually
   onTransition: (transition) => print('Now in transition: $transition'),
   builder: (context, rotation, phase, child) {
     return Transform.rotate(
       angle: rotation,
-      child: Icon(
-        phase == .complete ? Icons.check : Icons.refresh,
-        color: phase == .complete ? Colors.green : Colors.blue,
-      ),
+      child: Icon(phase == .complete ? Icons.check : Icons.refresh),
     );
   },
 )
 ```
 
-#### Manual vs Automatic Playback
+For per-phase motions, use `MotionSequence.statesWithMotions` / `stepsWithMotions`, which pair each value with its own motion.
 
-**Automatic Playback** (`playing: true`):
-- Progresses through all phases automatically
-- Respects loop modes for continuous animation
-- Perfect for loading indicators, demonstrations
+For imperative control, `SequenceMotionController.playSequence` still works but is deprecated — use `PhaseTrackController` with a `TrackPhaseTimeline` instead (see [Imperative control](#imperative-control) above and [MIGRATION.md](./MIGRATION.md)).
 
-**Manual Control** (`playing: false`):
-- Only animates when `currentPhase` changes
-- Full control over phase transitions
-- Ideal for user-driven state changes, interactive tutorials
-
-#### Individual Motion Per Phase
-
-For ultimate control, specify different motions for each phase:
-
-```dart
-final complexSequence = MotionSequence<AppState, ButtonStyle>.statesWithMotions({
-  .loading: (loadingStyle, .smoothSpring()),
-  .error: (errorStyle, .bouncySpring()), // Extra bounce for attention
-  .success: (successStyle, .curved(Duration(seconds: 2), Curves.ease)),
-});
-```
-
-#### Advanced: Phase Motion Controllers
-
-For maximum control, use `SequenceMotionController` directly:
-
-```dart
-final controller = SequenceMotionController<ButtonState, Offset>(
-  motion: .smoothSpring(),
-  vsync: this,
-  converter: .offset,
-  initialValue: .zero,
-);
-
-// Play a sequence
-await controller.playSequence(buttonSequence);
-
-// Check current state
-if (controller.isPlayingSequence) {
-  print('Current phase: ${controller.currentSequencePhase}');
-  print('Progress: ${controller.sequenceProgress}');
-}
-```
-
-Sequence animations work with **any motion type** - mix springs, curves, and custom motions within the same sequence for rich, expressive animations.
-
-> **Note:** Spring motions snap to their end value by default (`snapToEnd: true`). This ensures precise settling but may cause visual jumps in sequences if the previous phase's velocity is not preserved or if the target values are not continuous. If you experience jumps, consider setting `snapToEnd: false` on your springs.
+> **Note:** Spring motions snap to their end value by default (`snapToEnd: true`). This may cause visual jumps in sequences whose target values are not continuous; set `snapToEnd: false` on those springs if needed.
 
 ### MotionConverter
 

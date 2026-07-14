@@ -184,6 +184,7 @@ class _LoopCard extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final span = constraints.maxWidth - 16;
+                // ignore: deprecated_member_use
                 return SequenceMotionBuilder<int, double>(
                   sequence: [0.0, 0.5, 1.0].toSteps(
                     motion: const CupertinoMotion.smooth(

@@ -3,6 +3,7 @@
 library motor;
 
 export 'src/controllers/legacy/legacy_motion_controller.dart'
+    // ignore: deprecated_member_use_from_same_package
     show SequenceMotionController;
 export 'src/controllers/motion_controller.dart'
     show BoundedMotionController, MotionController;
