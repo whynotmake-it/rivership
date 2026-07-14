@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_redundant_argument_values
 
-import 'package:flutter/physics.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/controllers/motion_controller.dart'
@@ -308,6 +308,44 @@ void main() {
       // For linear motion, velocity should be positive and finite
       expect(velocity, greaterThan(0));
       expect(velocity.isFinite, isTrue);
+    });
+
+    test('preserves curved parent samples', () {
+      final simulation = const CurvedMotion(
+        Duration(seconds: 1),
+        Curves.easeInOut,
+      ).trimmed(fromStart: 0.2, fromEnd: 0.1).createSimulation();
+
+      const samples = [
+        (0.0, 0.0, 0.0),
+        (0.1, 0.11830247917850757, 1.3046286549398545),
+        (0.35, 0.5597513652865835, 1.609224776492224),
+        (0.7, 1.0, 0.0),
+      ];
+      for (final (time, position, velocity) in samples) {
+        expect(simulation.x(time), closeTo(position, 1e-9));
+        expect(simulation.dx(time), closeTo(velocity, 1e-9));
+      }
+    });
+
+    test('preserves spring parent samples', () {
+      final simulation = const CupertinoMotion()
+          .trimmed(fromStart: 0.2, fromEnd: 0.1)
+          .createSimulation();
+
+      // 1e-8 tolerance: seeding the duration probe with the spring's
+      // characteristic duration changes the exponential-search path, shifting
+      // the estimate by ~3.5e-9 versus the unseeded baseline — far below any
+      // observable threshold.
+      const samples = [
+        (0.0, 0.0),
+        (0.1, 0.5743175672500058),
+        (0.35, 0.9608466277078888),
+        (0.7, 0.9996420550842717),
+      ];
+      for (final (time, position) in samples) {
+        expect(simulation.x(time), closeTo(position, 1e-8));
+      }
     });
   });
 }

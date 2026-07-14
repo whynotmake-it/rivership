@@ -37,6 +37,11 @@ sealed class MotionBase {
   bool get unboundedWillSettle;
 
   /// Returns a motion wrapper that completes in exactly [duration].
+  ///
+  /// Wrappers around motions with an unknown duration probe their simulation
+  /// on each `createSimulation` call. Construct wrappers once as fields or
+  /// constants and reuse them instead of rebuilding them in `build` or per
+  /// frame; wrappers are immutable and compare by value.
   MotionBase scaleTo(Duration duration);
 
   /// Estimates when [simulation] finishes using exponential search followed by
@@ -1250,11 +1255,19 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      parentDuration: estimateSimulationDuration(
-        scaledSim,
-        fallback: const Duration(seconds: 1),
-        max: const Duration(seconds: 10),
-      ),
+      parentDuration: switch (parent.duration) {
+        final d? when !parent.needsSettle => d.toSeconds(),
+        final d? => estimateSimulationDuration(
+            scaledSim,
+            fallback: d,
+            max: const Duration(seconds: 10),
+          ),
+        null => estimateSimulationDuration(
+            scaledSim,
+            fallback: const Duration(seconds: 1),
+            max: const Duration(seconds: 10),
+          ),
+      },
     );
   }
 
@@ -1342,6 +1355,9 @@ class _TrimmedSimulation extends Simulation {
 }
 
 /// Extension methods for [Motion] to provide convenient trimming functionality.
+///
+/// Motion wrappers are immutable value objects; construct and reuse them
+/// because unknown-duration parents are probed on each `createSimulation`.
 ///
 /// **Important**: Trimming behavior varies by motion type:
 /// * **Deterministic motions** (like [CurvedMotion]): Trimming is exact and

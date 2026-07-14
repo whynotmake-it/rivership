@@ -76,6 +76,11 @@ Motor provides several motion types out of the box, with the ability to create c
 
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
+**Tip:** Motions and their wrappers are immutable value objects, so declare
+them as `const` or `static final` and reuse them. Wrappers such as `scaleTo`
+and `trimmed` probe simulation durations when the underlying duration is
+unknown, so avoid re-creating them in hot paths.
+
 ### CupertinoMotion
 
 `CupertinoMotion` is a subclass of `SpringMotion` that provides predefined spring configurations matching Apple's design system. These motions are designed to feel natural and familiar to iOS users, as they mirror the spring animations used throughout Apple's platforms.
