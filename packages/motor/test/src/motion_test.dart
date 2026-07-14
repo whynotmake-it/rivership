@@ -3,6 +3,8 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
+import 'package:motor/src/controllers/motion_controller.dart'
+    show motionsEqual;
 
 import 'util.dart';
 
@@ -170,6 +172,49 @@ void main() {
         restingValue(notSnapping),
         closeTo(1.0, snapping.tolerance.distance),
       );
+    });
+  });
+
+  group('SpringMotion equality', () {
+    const description = SpringDescription(mass: 1, stiffness: 100, damping: 10);
+
+    test('motions differing only in snapToEnd are unequal', () {
+      const snapping = SpringMotion(description);
+      const notSnapping = SpringMotion(description, snapToEnd: false);
+
+      expect(snapping == notSnapping, isFalse);
+      expect(snapping.hashCode, isNot(equals(notSnapping.hashCode)));
+    });
+
+    test('subtypes with identical physics and snapToEnd compare equal', () {
+      const motion = CupertinoMotion(
+        duration: Duration(milliseconds: 500),
+        bounce: 0.1,
+      );
+      const smooth = CupertinoMotion.smooth(extraBounce: 0.1);
+
+      expect(motion == smooth, isTrue);
+      expect(motion.hashCode, equals(smooth.hashCode));
+    });
+
+    test('copyWith preserves duration and bounce exactly', () {
+      const motion = CupertinoMotion(
+        duration: Duration(milliseconds: 320),
+        bounce: 0.2,
+      );
+      final copy = motion.copyWith(snapToEnd: false);
+
+      expect(copy.duration, equals(const Duration(milliseconds: 320)));
+      expect(copy.bounce, equals(0.2));
+      expect(copy.snapToEnd, isFalse);
+    });
+
+    test('motionsEqual detects snapToEnd differences', () {
+      const snapping = SpringMotion(description);
+      const notSnapping = SpringMotion(description, snapToEnd: false);
+
+      expect(motionsEqual([snapping], [notSnapping]), isFalse);
+      expect(motionsEqual([snapping], [snapping]), isTrue);
     });
   });
 

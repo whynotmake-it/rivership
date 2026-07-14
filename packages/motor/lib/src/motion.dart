@@ -483,15 +483,20 @@ abstract class SpringMotion extends Motion {
     if (other is SpringMotion) {
       return description.damping == other.description.damping &&
           description.mass == other.description.mass &&
-          description.stiffness == other.description.stiffness;
+          description.stiffness == other.description.stiffness &&
+          snapToEnd == other.snapToEnd;
     }
     return false;
   }
 
   /// Returns a hash code for this object.
   @override
-  int get hashCode =>
-      Object.hash(description.damping, description.mass, description.stiffness);
+  int get hashCode => Object.hash(
+        description.damping,
+        description.mass,
+        description.stiffness,
+        snapToEnd,
+      );
 
   /// Returns a string representation of this object.
   @override
@@ -634,8 +639,8 @@ class CupertinoMotion extends SpringMotion {
     bool? snapToEnd,
   }) {
     return CupertinoMotion(
-      duration: duration ?? description.duration,
-      bounce: bounce ?? description.bounce,
+      duration: duration ?? this.duration,
+      bounce: bounce ?? this.bounce,
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
