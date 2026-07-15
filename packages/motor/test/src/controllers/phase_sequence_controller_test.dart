@@ -30,6 +30,19 @@ void main() {
     });
 
     group('MotionController API compatibility', () {
+      testWidgets('is assignable to the exported MotionController',
+          (tester) async {
+        controller = SequenceMotionController<String, Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        final MotionController<Offset> motionController = controller;
+        expect(motionController, same(controller));
+      });
+
       testWidgets('creates with initial value', (tester) async {
         controller = SequenceMotionController<String, Offset>(
           motion: motion,
@@ -625,6 +638,65 @@ void main() {
           expect(controller.motionPerDimension[1], equals(motion));
         });
       });
+    });
+  });
+
+  group('sequence playback', () {
+    const linear100 = Motion.linear(Duration(milliseconds: 100));
+
+    testWidgets('reports progress while playing', (tester) async {
+      final controller = SequenceMotionController<int, double>(
+        motion: linear100,
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      addTearDown(controller.dispose);
+      final sequence = MotionSequence.steps(
+        const [0.0, 1.0, 2.0],
+        motion: linear100,
+      );
+
+      expect(controller.sequenceProgress, 0);
+      controller.playSequence(sequence);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(controller.sequenceProgress, 0.5);
+
+      await tester.pump(const Duration(milliseconds: 101));
+      await tester.pump(const Duration(milliseconds: 101));
+      expect(controller.isPlayingSequence, isFalse);
+      expect(controller.sequenceProgress, 0);
+    });
+
+    testWidgets('starts at a requested phase', (tester) async {
+      final controller = SequenceMotionController<int, double>(
+        motion: linear100,
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      addTearDown(controller.dispose);
+      final sequence = MotionSequence.steps(
+        const [0.0, 1.0, 2.0],
+        motion: linear100,
+      );
+      final visited = <int>[];
+
+      controller.playSequence(
+        sequence,
+        atPhase: 1,
+        onTransition: (transition) {
+          if (transition case PhaseTransitioning(:final to)) visited.add(to);
+        },
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 101));
+
+      expect(visited, [2]);
+      expect(controller.value, 2);
+      expect(controller.isPlayingSequence, isFalse);
     });
   });
 }

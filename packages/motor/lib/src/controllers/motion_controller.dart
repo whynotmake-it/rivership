@@ -3,13 +3,16 @@ import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
-import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_timeline.dart';
+
+part 'sequence_motion_controller.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.

@@ -222,8 +222,14 @@ State queries map as follows:
 
 3.0 deletion checklist:
 
-- [ ] Delete `lib/src/controllers/legacy/` (the legacy `MotionController`
-      copy and `SequenceMotionController`).
+> Note: the legacy engine copy (`lib/src/controllers/legacy/`) was already
+> removed in 2.0 itself — `SequenceMotionController` now runs on the 2.0
+> track engine. The 3.0 removal covers only the deprecated API symbols and
+> their tests.
+
+- [ ] Delete `lib/src/controllers/sequence_motion_controller.dart` (the
+      deprecated `SequenceMotionController`, a part of
+      `motion_controller.dart`).
 - [ ] Delete `lib/src/motion_sequence.dart` and move its `LoopMode`
       re-export (`LoopMode` itself is *not* deprecated — it drives track
       playback too).

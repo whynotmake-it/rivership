@@ -37,6 +37,10 @@
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
  - **FEAT**: add `MotionController.play(List<Step<T>>, {loop, onStep})` for step-based and looping single-value playback, plus `trackedVelocityEstimate`.
  - **REFACTOR**: move the legacy sequence engine and `SequenceMotionController` to `controllers/legacy/`. `SequenceMotionController` and `SequenceMotionBuilder` remain exported and functional as compatibility shims; new phase/multi-property work should use `PhaseTrackBuilder` / `TrackPhaseTimeline`.
+ - **REFACTOR**: the deprecated sequence APIs (`SequenceMotionController` and `SequenceMotionBuilder`) now run on the 2.0 track engine; the internal legacy controller copy is deleted. `SequenceMotionController` is a subtype of the exported `MotionController` again, restoring 1.x source compatibility. Phase timing is unchanged (pinned by the legacy sequence semantics tests). Observable deltas:
+   - `playSequence`'s returned `TickerFuture` for LOOPING sequences now resolves at the end of the first cycle instead of never (matching `PhaseTrackController.playPhases` — do not `await` a looping sequence).
+   - phase-boundary values are sampled at the simulation's exact completion time (a sub-tolerance difference, visible only to non-snapping springs).
+   - three goldens changed within anti-aliasing tolerance: `loop_mode_seamless.png` (the seamless jump renders one frame earlier because the continuation is synchronous instead of legacy's post-frame callback — raster visibility only, the value timeline anchors identically), `spanning.png` (trimmed-motion leg boundaries sample at exact done-time slightly before the nominal end, where legacy sampled past-done and clamped to the end value — sub-tolerance anti-aliasing drift), and `state_sequence_1d_animation.png` (the non-snapping-spring boundary-sampling delta above).
 
 ### Velocity tracking
 

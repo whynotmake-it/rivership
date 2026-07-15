@@ -2,11 +2,9 @@
 /// duration-based curves under one API.
 library motor;
 
-export 'src/controllers/legacy/legacy_motion_controller.dart'
-    // ignore: deprecated_member_use_from_same_package
-    show SequenceMotionController;
 export 'src/controllers/motion_controller.dart'
-    show BoundedMotionController, MotionController;
+    // ignore: deprecated_member_use_from_same_package
+    show BoundedMotionController, MotionController, SequenceMotionController;
 export 'src/controllers/phase_track_controller.dart';
 export 'src/controllers/single_motion_controller.dart';
 export 'src/controllers/track_controller.dart';
