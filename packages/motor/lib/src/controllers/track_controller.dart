@@ -321,10 +321,8 @@ class TrackController extends Animation<TrackValueReader>
     }
     if (_activeTracks.isEmpty) {
       _ticker?.stop(canceled: true);
-      _status = AnimationStatus.completed;
     }
     notifyListeners();
-    _checkStatusChanged();
     return TickerFuture.complete();
   }
 
@@ -526,6 +524,15 @@ class TrackController extends Animation<TrackValueReader>
   @visibleForOverriding
   void onSyncReleased(Object token) {}
 
+  /// Called after every active track finishes a non-looping playback run.
+  ///
+  /// Return true when a subclass synchronously starts a continuation and wants
+  /// the run boundary hidden from status listeners. The controller then keeps
+  /// its current status instead of reporting [AnimationStatus.completed].
+  @protected
+  @visibleForOverriding
+  bool onPlaybackCompleted() => false;
+
   void _tick(Duration elapsed) {
     _lastElapsed = elapsed;
     var allDone = true;
@@ -572,8 +579,10 @@ class TrackController extends Animation<TrackValueReader>
     if (allDone) {
       _ticker?.stop();
       _activeTracks.clear();
-      _status = AnimationStatus.completed;
-      _checkStatusChanged();
+      if (!onPlaybackCompleted()) {
+        _status = AnimationStatus.completed;
+        _checkStatusChanged();
+      }
     }
 
     notifyListeners();

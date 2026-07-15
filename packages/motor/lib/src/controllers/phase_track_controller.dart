@@ -31,9 +31,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     required super.vsync,
     super.from,
     super.velocityTracking,
-  }) {
-    addStatusListener(_onStatusChanged);
-  }
+  });
 
   TrackPhaseTimeline<P>? _activeTimeline;
   void Function(PhaseTransition<P> transition)? _onTransition;
@@ -94,7 +92,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       return play(timeline);
     } else {
       // Start partway through the timeline by playing only the animations
-      // from [startPhase] onward. Looping (handled in [_onStatusChanged])
+      // from [startPhase] onward. Looping (handled in [onPlaybackCompleted])
       // still restarts from the full timeline.
       return animate(timeline.animationsFrom(startPhase));
     }
@@ -176,9 +174,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
   }
 
-  void _onStatusChanged(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-
+  @override
+  bool onPlaybackCompleted() {
     final timeline = _activeTimeline;
 
     if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {
@@ -204,7 +201,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
           );
           animate(timeline.animationsFrom(next));
         }
-        return;
+        return true;
       }
 
       if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
@@ -224,7 +221,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _currentPhase = second;
         _onTransition?.call(PhaseTransitioning(from: first, to: second));
         animate(timeline.animationsFrom(second));
-        return;
+        return true;
       }
 
       // loop (and single-phase seamless): animate from the current values back
@@ -236,18 +233,13 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
       animate(timeline.animations);
-      return;
+      return true;
     }
 
     final phase = _currentPhase;
     if (phase != null) {
       _onTransition?.call(PhaseSettled(phase));
     }
-  }
-
-  @override
-  void dispose() {
-    removeStatusListener(_onStatusChanged);
-    super.dispose();
+    return false;
   }
 }

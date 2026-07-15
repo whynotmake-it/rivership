@@ -58,6 +58,8 @@
 
 ### Fixes
 
+ - **FIX**: canceled controller stops no longer report `AnimationStatus.completed`; they stop immediately without emitting a status notification.
+ - **FIX**: looping `PhaseTrackController` playback now reports `AnimationStatus.forward` once at startup instead of flapping through `completed` between cycles.
  - **FIX**: `PhaseTrackController` now plays `pingPong` phase loops in reverse phase order after each forward pass instead of replaying phases forward like `loop`.
  - **FIX**: `Step.at` segments in `pingPong` loops now mirror their forward scheduled duration on the reverse leg instead of using the motion's unscaled duration and re-triggering absolute-time boundaries.
  - **FIX**: swapping a `MotionController`'s `converter` no longer leaks the replaced track's internal state in the underlying `TrackController`.
