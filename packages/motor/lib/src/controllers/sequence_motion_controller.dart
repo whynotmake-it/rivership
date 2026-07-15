@@ -59,10 +59,26 @@ class SequenceMotionController<P, T extends Object>
     super.velocityTracking,
   }) : super.motionPerDimension();
 
+  /// The sequence passed to [playSequence], or null when nothing plays.
   MotionSequence<P, T>? _activeSequence;
+
+  /// The phases of the chain currently playing, in playback order.
+  ///
+  /// A "chain" is one directional run through the sequence, played as a
+  /// single [play] call. For [LoopMode.pingPong] this can be the reversed
+  /// phase list, so [_onChainStep] indexes into this list rather than into
+  /// [_activeSequence]'s (always-forward) phases.
   List<P> _chainRun = const [];
+
+  /// Where [_currentSequencePhase] sits in [_activeSequence]'s phase list.
+  ///
+  /// Kept separately because [sequenceProgress] is defined over the
+  /// sequence's own phase order, not the (possibly reversed) [_chainRun].
   int _currentSequencePhaseIndex = 0;
+
+  /// 1 while playing forward, -1 during a pingPong reverse pass.
   int _sequenceDirection = 1;
+
   void Function(PhaseTransition<P> transition)? _onPhaseTransition;
   bool _isPlayingSequence = false;
   P? _currentSequencePhase;
@@ -85,6 +101,22 @@ class SequenceMotionController<P, T extends Object>
     return _currentSequencePhaseIndex / (totalPhases - 1);
   }
 
+  /// Plays one directional run of phases as a single step chain.
+  ///
+  /// The chain alternates `Step.to` and `Step.sync`: each phase becomes a
+  /// `Step.to` leg, and a sync barrier sits between consecutive legs. The
+  /// barriers are what reproduce the legacy timing: a single-track barrier
+  /// releases in the same tick it is reached, re-anchoring the next leg's
+  /// start time to that tick (instead of the previous leg's ideal end time),
+  /// which is exactly how the old controller started each phase.
+  ///
+  /// Resulting step indices: even = the `Step.to` for `run[index ~/ 2]`,
+  /// odd = the barrier released when the leg before it finishes.
+  ///
+  /// [fromPhaseForFirstLeg] is forwarded to [MotionSequence.motionForPhase]
+  /// for the first leg: null means "sequence start" (a `NoMotion` hold for
+  /// plain sequences), while loop/pingPong continuations pass the phase the
+  /// previous chain ended on so the first leg animates.
   TickerFuture _playChain(
     List<P> run, {
     required P? fromPhaseForFirstLeg,
@@ -139,15 +171,29 @@ class SequenceMotionController<P, T extends Object>
     return future;
   }
 
+  /// Translates the chain's step indices into phase transitions.
+  ///
+  /// Called by the engine whenever playback enters a new step.
   void _onChainStep(int stepIndex) {
     if (!_isPlayingSequence) return;
+    // Even indices are the Step.to legs; entering one is not news — its
+    // target phase was already reported when the barrier before it released.
+    // Odd indices are the sync barriers, reached in the exact tick the
+    // previous leg finished: that is the moment a phase transition happens.
     if (stepIndex.isEven) return;
+    // Barrier at index 2i-1 sits between run[i - 1] and run[i], so the
+    // barrier's own index maps to its destination leg like this:
     final runIndex = (stepIndex + 1) ~/ 2;
     final from = _chainRun[runIndex - 1];
     final to = _chainRun[runIndex];
     _previousSequencePhase = from;
     _currentSequencePhase = to;
+    // sequenceProgress is defined over the sequence's forward phase order,
+    // so look the phase up there (not in the possibly-reversed _chainRun).
     _currentSequencePhaseIndex = _activeSequence!.phases.indexOf(to);
+    // Keep the base class's resting-status bookkeeping pointed at the phase
+    // we are now heading for (it compares this against the initial value to
+    // report completed vs dismissed once everything settles).
     _lastTarget = _activeSequence!.valueForPhase(to);
     _onPhaseTransition?.call(PhaseTransitioning(from: from, to: to));
   }
@@ -184,8 +230,20 @@ class SequenceMotionController<P, T extends Object>
     );
   }
 
+  /// Intercepts the inner controller's completion to chain the next cycle.
+  ///
+  /// Overriding this (instead of adding a status listener) matters: the base
+  /// class would otherwise report [AnimationStatus.completed] between loop
+  /// cycles, while a looping sequence should stay `forward` throughout.
+  /// Everything here runs synchronously inside the completion tick, so the
+  /// next chain's ticker is backdated to this frame and each cycle anchors
+  /// where the previous one ended — the same timing the legacy controller
+  /// produced. Deferring any of this to a post-frame callback would lose
+  /// that anchoring.
   @override
   void _handleInnerStatus(AnimationStatus status) {
+    // Not our completion to intercept: either no sequence is playing, or the
+    // inner controller reported something other than "done".
     if (!_isPlayingSequence || status != AnimationStatus.completed) {
       super._handleInnerStatus(status);
       return;
@@ -196,17 +254,25 @@ class SequenceMotionController<P, T extends Object>
       case LoopMode.none:
         _completeSequence();
       case LoopMode.loop:
+        // Replay the whole sequence. Passing the phase we ended on as the
+        // first leg's fromPhase makes motionForPhase return a real motion,
+        // so the wrap-around leg animates back to the start instead of
+        // holding (NoMotion is only for a sequence's very first leg).
         _playChain(phases, fromPhaseForFirstLeg: _chainRun.last);
       case LoopMode.pingPong:
         if (_sequenceDirection == 1) {
+          // Forward pass finished: walk back down from the second-to-last
+          // phase (we are already resting on the last one).
           _sequenceDirection = -1;
           var start = phases.length - 2;
-          if (start < 0) start = 0;
+          if (start < 0) start = 0; // Single-phase sequence: stay put.
           _playChain(
             [for (var i = start; i >= 0; i--) phases[i]],
             fromPhaseForFirstLeg: _chainRun.last,
           );
         } else {
+          // Reverse pass finished: head forward again from the second
+          // phase (we are already resting on the first one).
           _sequenceDirection = 1;
           var start = 1;
           if (start >= phases.length) start = phases.length - 1;
@@ -216,6 +282,9 @@ class SequenceMotionController<P, T extends Object>
           );
         }
       case LoopMode.seamless:
+        // Seamless assumes the last phase's value matches the first's, so
+        // jump straight there (no animated return leg) and clear any
+        // velocity samples the jump would otherwise pollute.
         final first = phases.first;
         _inner.set([_track.value(sequence.valueForPhase(first))]);
         _inner.resetVelocityTracking();
@@ -224,6 +293,7 @@ class SequenceMotionController<P, T extends Object>
         _currentSequencePhaseIndex = 0;
         _onPhaseTransition?.call(PhaseSettled(first));
         if (phases.length == 1) {
+          // Nothing to continue to after the jump.
           _completeSequence();
           return;
         }
@@ -231,6 +301,11 @@ class SequenceMotionController<P, T extends Object>
     }
   }
 
+  /// Ends a sequence that ran to natural completion.
+  ///
+  /// Unlike [_stopSequence], this reports [PhaseSettled] for the final phase
+  /// before clearing the bookkeeping — interruptions stay silent, natural
+  /// completion announces itself.
   void _completeSequence() {
     final finalPhase = _currentSequencePhase;
     _isPlayingSequence = false;
@@ -247,6 +322,10 @@ class SequenceMotionController<P, T extends Object>
     super._handleInnerStatus(AnimationStatus.completed);
   }
 
+  /// Silently abandons the active sequence, emitting no events.
+  ///
+  /// Used when something interrupts playback (`value=`, [animateTo], [play],
+  /// [stop], [dispose], a converter swap, or a new [playSequence]).
   void _stopSequence() {
     if (!_isPlayingSequence) return;
     _isPlayingSequence = false;
@@ -291,12 +370,21 @@ class SequenceMotionController<P, T extends Object>
     super.dispose();
   }
 
+  // The base setter stops the inner track and replaces the Track identity
+  // (forgetting the old one), which would strand the sequence bookkeeping on
+  // a dead chain. Treat a converter swap as an interruption, like value=.
+  // (Canceled stops are silent since the status-semantics fix, so this is
+  // pure bookkeeping — not a defense against spurious status events.)
   @override
   set converter(MotionConverter<T> newConverter) {
     _stopSequence();
     super.converter = newConverter;
   }
 
+  // The base motion setters redirect an in-flight animation to its target.
+  // The legacy controller deliberately skipped that during sequences (the
+  // new motion should only apply from the next leg on), so these overrides
+  // update the motions without calling _redirect().
   @override
   set motion(Motion value) {
     _motionPerDimension = List.filled(_motionPerDimension.length, value);
