@@ -53,6 +53,41 @@ void main() {
       expect(p.isDone, isFalse);
     });
 
+    test('loop snaps to the start when no return motion is available', () {
+      const motion = FreeMotion.friction();
+      const start = 4.0;
+      const velocity = 100.0;
+      final simulation = motion.createSimulation(
+        start: start,
+        velocity: velocity,
+      );
+      var low = 0.0;
+      var high = 100.0;
+      for (var i = 0; i < 60; i++) {
+        final middle = (low + high) / 2;
+        if (simulation.isDone(middle)) {
+          high = middle;
+        } else {
+          low = middle;
+        }
+      }
+
+      final p = StepPlayback<double>(
+        steps: const [StepFree(motion: motion)],
+        converter: MotionConverter.single,
+        start: start,
+        velocity: velocity,
+        loop: LoopMode.loop,
+      );
+
+      p.advanceTo(low);
+      expect(p.values.single, isNot(closeTo(start, error)));
+
+      p.advanceTo(high);
+      expect(p.values.single, closeTo(start, error));
+      expect(p.isDone, isFalse);
+    });
+
     test('seamless jumps back to the start after the last step', () {
       final p = playback(LoopMode.seamless);
 

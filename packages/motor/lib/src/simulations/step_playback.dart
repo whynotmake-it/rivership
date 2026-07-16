@@ -55,6 +55,7 @@ class StepPlayback<T extends Object> {
               : null);
       if (returnMotions != null) {
         _steps.add(StepTo<T>(start, motionPerDimension: returnMotions));
+        _hasReturnStep = true;
       }
     }
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
@@ -108,6 +109,7 @@ class StepPlayback<T extends Object> {
   final List<Motion>? _fallbackMotionPerDimension;
   final List<double> _initialValues;
   final List<double> _initialVelocities;
+  var _hasReturnStep = false;
 
   /// Target values for each step, used by pingPong to reverse.
   /// Index i holds the normalized target that step i animates toward.
@@ -273,7 +275,12 @@ class StepPlayback<T extends Object> {
         case LoopMode.loop:
           // The synthetic return step appended at construction has already
           // animated back to the start snapshot, so just continue the next
-          // cycle from there without jumping.
+          // cycle from there without jumping. Timelines without a target
+          // motion have no return step, so restart from their initial state.
+          if (!_hasReturnStep) {
+            _currentValues = List.of(_initialValues);
+            _currentVelocities = List.of(_initialVelocities);
+          }
           _cycleStartSeconds = _segmentStartSeconds;
           _stepIndex = 0;
         case LoopMode.pingPong:
