@@ -287,5 +287,85 @@ void main() {
       await tester.pumpAndSettle();
       expect(captured, closeTo(1, error));
     });
+
+    testWidgets('changing velocityTracking recreates playback',
+        (tester) async {
+      final scale = Track<double>(MotionConverter.single, initial: 0);
+      double? captured;
+
+      Widget build(VelocityTracking velocityTracking) {
+        return PhaseTrackBuilder<_Phase>(
+          playing: true,
+          velocityTracking: velocityTracking,
+          timeline: TrackPhaseTimeline({
+            _Phase.idle: [
+              scale.to(
+                1,
+                motion: const Motion.linear(Duration(milliseconds: 200)),
+              ),
+            ],
+          }),
+          builder: (context, value, phase, child) {
+            captured = value<double>(scale);
+            return const SizedBox();
+          },
+        );
+      }
+
+      await tester.pumpWidget(build(const VelocityTracking.on()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final midway = captured!;
+      expect(midway, closeTo(0.5, error));
+
+      await tester.pumpWidget(build(const VelocityTracking.off()));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(captured, lessThan(midway));
+
+      await tester.pumpAndSettle();
+      expect(captured, closeTo(1, error));
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('equal velocityTracking does not restart playback',
+        (tester) async {
+      final scale = Track<double>(MotionConverter.single, initial: 0);
+      const velocityTracking = VelocityTracking.on();
+      double? captured;
+
+      Widget build() {
+        return PhaseTrackBuilder<_Phase>(
+          playing: true,
+          // Explicitly exercise equality of two const `on` configurations.
+          // ignore: avoid_redundant_argument_values
+          velocityTracking: velocityTracking,
+          timeline: TrackPhaseTimeline({
+            _Phase.idle: [
+              scale.to(
+                1,
+                motion: const Motion.linear(Duration(milliseconds: 200)),
+              ),
+            ],
+          }),
+          builder: (context, value, phase, child) {
+            captured = value<double>(scale);
+            return const SizedBox();
+          },
+        );
+      }
+
+      await tester.pumpWidget(build());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final midway = captured!;
+      expect(midway, closeTo(0.5, error));
+
+      await tester.pumpWidget(build());
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(captured, greaterThan(midway));
+
+      await tester.pumpAndSettle();
+      expect(captured, closeTo(1, error));
+    });
   });
 }

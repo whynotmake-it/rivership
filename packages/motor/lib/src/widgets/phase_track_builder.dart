@@ -95,6 +95,10 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
   final Object? restartTrigger;
 
   /// {@macro motor.velocityTracking}
+  ///
+  /// Changing this setting recreates the controller and restarts playback.
+  /// Store a custom `velocityTrackerBuilder` closure in a field instead of
+  /// recreating it inline on every build.
   final VelocityTracking velocityTracking;
 
   /// Called when the timeline transitions between phases or settles.
@@ -144,6 +148,19 @@ class _PhaseTrackBuilderState<P extends Object>
       if (widget.onAnimationStatusChanged != null) {
         _controller.addStatusListener(widget.onAnimationStatusChanged!);
       }
+    }
+
+    if (widget.velocityTracking != oldWidget.velocityTracking) {
+      _controller.dispose();
+      _controller = PhaseTrackController<P>(
+        vsync: this,
+        velocityTracking: widget.velocityTracking,
+      );
+      if (widget.onAnimationStatusChanged != null) {
+        _controller.addStatusListener(widget.onAnimationStatusChanged!);
+      }
+      _startPlayback();
+      return;
     }
 
     if (widget.active != oldWidget.active && !widget.active) {
