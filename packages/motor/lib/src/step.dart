@@ -155,6 +155,10 @@ class StepAt<T extends Object> extends Step<T> {
 /// `==`) also reaches a matching sync step. The [TrackController] then
 /// releases them simultaneously so they continue in unison.
 ///
+/// Tracks stopped or redirected before reaching their barrier are removed from
+/// the barrier's participant set. The remaining tracks keep waiting for each
+/// other.
+///
 /// Add one via [Step.sync] to coordinate otherwise-independent tracks, for
 /// example to make a slower and a faster track meet before the next move.
 /// [TrackPhaseTimeline] inserts these automatically at phase boundaries.

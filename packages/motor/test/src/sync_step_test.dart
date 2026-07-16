@@ -397,10 +397,11 @@ void main() {
     testWidgets('B12: stopped participant no longer blocks the barrier',
         (tester) async {
       controller = TrackController(vsync: tester);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
 
       controller.animate([
         trackA([
-          const StepTo(1, motion: linear100),
+          const StepTo(1, motion: linear50),
           const SyncStep(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
@@ -409,18 +410,159 @@ void main() {
           const SyncStep(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
       ]);
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
-      controller.stop(tracks: [trackA], canceled: true);
+      controller.stop(tracks: [trackC], canceled: true);
 
-      // CHARACTERIZATION: current behavior — see plans/005. A participant
-      // stopped before reaching the barrier counts as ready.
-      await tester.pump(const Duration(milliseconds: 130));
-      expect(controller.value(trackB), closeTo(1, error));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 40));
       await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.value(trackA), greaterThan(1));
       expect(controller.value(trackB), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('stopping the last missing participant releases waiters',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear50),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      controller.stop(tracks: [trackC], canceled: true);
+      await tester.pump(const Duration(milliseconds: 10));
+
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('stopping all tracks clears sync state for later animations',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const SyncStep(token: #oldBarrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear150),
+          const SyncStep(token: #oldBarrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+
+      controller.stop(canceled: true);
+      expect(controller.isAnimating, isFalse);
+
+      controller.animate([
+        trackA([
+          const StepTo(3, motion: linear50),
+          const SyncStep(token: #freshBarrier),
+          const StepTo(4, motion: linear50),
+        ]),
+        trackB([
+          const StepTo(3, motion: linear50),
+          const SyncStep(token: #freshBarrier),
+          const StepTo(4, motion: linear50),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(controller.value(trackA), closeTo(4, error));
+      expect(controller.value(trackB), closeTo(4, error));
+      expect(controller.isAnimating, isFalse);
+    });
+
+    testWidgets('graceful stop does not release past active participants',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final springTrack = Track<double>(
+        MotionConverter.single,
+        initial: 0.0,
+        motion: const CupertinoMotion.smooth(),
+      );
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        springTrack([
+          const StepTo(1),
+          const SyncStep(token: #barrier),
+          const StepTo(2),
+        ]),
+        trackA([
+          const StepTo(1, motion: linear50),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const SyncStep(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      controller.stop(tracks: [springTrack]);
+
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackC), greaterThan(1));
 
       controller.stop(canceled: true);
     });

@@ -58,6 +58,7 @@
 
 ### Fixes
 
+ - **FIX**: stopping a track no longer releases sync barriers early for the remaining tracks.
  - **FIX**: canceled controller stops no longer report `AnimationStatus.completed`; they stop immediately without emitting a status notification.
  - **FIX**: looping `PhaseTrackController` playback now reports `AnimationStatus.forward` once at startup instead of flapping through `completed` between cycles.
  - **FIX**: `PhaseTrackController` now plays `pingPong` phase loops in reverse phase order after each forward pass instead of replaying phases forward like `loop`.

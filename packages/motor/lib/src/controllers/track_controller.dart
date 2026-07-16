@@ -313,12 +313,15 @@ class TrackController extends Animation<TrackValueReader>
         slot.stop(canceled: true);
       }
       _activeTracks.clear();
+      _tokenParticipants.clear();
     } else {
       for (final track in tracks) {
         _slots[track]?.stop(canceled: true);
         _activeTracks.remove(track);
       }
+      _pruneTokenParticipants(tracks);
     }
+    _releaseWaitingSyncBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop(canceled: true);
     }
@@ -342,6 +345,8 @@ class TrackController extends Animation<TrackValueReader>
       }
     }
 
+    _pruneTokenParticipants(targets);
+    _releaseWaitingSyncBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
       _status = AnimationStatus.completed;
@@ -369,10 +374,7 @@ class TrackController extends Animation<TrackValueReader>
     _activeTracks.remove(track);
     _velocityTrackers.remove(track);
     _lastStepByTrack.remove(track);
-    for (final participants in _tokenParticipants.values) {
-      participants.remove(track);
-    }
-    _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
+    _pruneTokenParticipants([track]);
   }
 
   /// Recreates the ticker using [vsync].
@@ -489,9 +491,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackAnimation> animations,
     Set<Track> timelineTracks,
   ) {
-    for (final participants in _tokenParticipants.values) {
-      participants.removeAll(timelineTracks);
-    }
+    _pruneTokenParticipants(timelineTracks);
     for (final animation in animations) {
       for (final step in animation.steps) {
         if (step is SyncStep) {
@@ -499,7 +499,37 @@ class TrackController extends Animation<TrackValueReader>
         }
       }
     }
+  }
+
+  /// Removes [tracks] from every sync-token participant set, dropping tokens
+  /// left without participants. Stopped/redirected tracks will never reach
+  /// their old barriers, so they must not hold (or trivially satisfy) them.
+  void _pruneTokenParticipants(Iterable<Track> tracks) {
+    for (final participants in _tokenParticipants.values) {
+      participants.removeAll(tracks);
+    }
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
+  }
+
+  /// Releases barriers whose remaining participants are already waiting.
+  ///
+  /// Stop paths call this synchronously because the stopped track may have
+  /// been the only participant keeping the ticker active.
+  void _releaseWaitingSyncBarriers() {
+    for (final entry in _tokenParticipants.entries.toList()) {
+      final token = entry.key;
+      final participants = entry.value;
+      final allWaiting = participants.every((track) {
+        final slot = _slots[track];
+        return slot != null && slot.isWaitingForSync && slot.syncToken == token;
+      });
+      if (!allWaiting) continue;
+
+      for (final track in participants) {
+        _slots[track]?.releaseSync();
+      }
+      onSyncReleased(token);
+    }
   }
 
   TickerFuture _startTicker() {
