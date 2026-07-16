@@ -588,7 +588,7 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
           case LoopMode.loop:
             return _phasesList.length - 1;
           case LoopMode.seamless:
-            return _phasesList.length - 2;
+            return _phasesList.length > 2 ? _phasesList.length - 2 : 1;
         }
       } else {
         return index - 1;
