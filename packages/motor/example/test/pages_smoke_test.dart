@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/pages/accordion.dart';
+import 'package:motor_example/pages/boarding_pass.dart';
 import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/curve_trap.dart';
 import 'package:motor_example/pages/curve_trap_escape.dart';
@@ -67,6 +68,7 @@ void main() {
     'Picture in Picture': () => const PictureInPicturePage(),
     'Pull to Refresh': () => const PullToRefreshPage(),
     'Draggable Icons': () => const DraggableIconsPage(),
+    'Boarding Pass': () => const BoardingPassPage(),
   };
 
   for (final entry in pages.entries) {
@@ -213,6 +215,43 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.text('Turn on'));
     await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Boarding Pass interrupts mid-entrance and re-books', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const CupertinoApp(home: BoardingPassPage()));
+    await tester.pump();
+
+    // Thirty display frames leaves the causal content timeline in flight.
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    const ticketKey = ValueKey('boarding-pass-ticket');
+    await tester.fling(find.byKey(ticketKey), const Offset(420, 0), 1800);
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    final viewportWidth =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    expect(
+      tester.getCenter(find.byKey(ticketKey)).dx,
+      greaterThan(viewportWidth),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Re-book'));
+    for (var i = 0; i < 120; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    final gate = tester.widget<Transform>(
+      find.byKey(const ValueKey('boarding-pass-gate')),
+    );
+    expect(gate.transform.getMaxScaleOnAxis(), greaterThan(.9));
     expect(tester.takeException(), isNull);
   });
 }

@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor_example/pages/accordion.dart';
+import 'package:motor_example/pages/boarding_pass.dart';
 import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/curve_trap.dart';
 import 'package:motor_example/pages/curve_trap_escape.dart';
@@ -109,6 +110,8 @@ final motorRoutes = [
   _route(SyncBarriersPage.routeName, 'sync-barriers',
       (_) => const SyncBarriersPage()),
   _route(PhasesPage.routeName, 'phases', (_) => const PhasesPage()),
+  _route(BoardingPassPage.routeName, 'boarding-pass',
+      (_) => const BoardingPassPage()),
 ];
 
 final router = RootStackRouter.build(
