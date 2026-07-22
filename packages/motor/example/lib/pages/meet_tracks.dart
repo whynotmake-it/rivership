@@ -24,11 +24,7 @@ class _MeetTracksPageState extends State<MeetTracksPage>
     initial: const Offset(-110, 64),
     motion: .bouncySpring(),
   );
-  final _scale = Track<double>(
-    .single,
-    initial: 0.72,
-    motion: .smoothSpring(),
-  );
+  final _scale = Track<double>(.single, initial: 0.72, motion: .smoothSpring());
   final _tint = Track<Color>(
     .colorRgb,
     initial: CupertinoColors.systemGrey,
@@ -158,10 +154,7 @@ class _Readouts extends StatelessWidget {
           '${position.dy.toStringAsFixed(1)}',
           style: style,
         ),
-        Text(
-          'value(_scale) ${scale.toStringAsFixed(2)}',
-          style: style,
-        ),
+        Text('value(_scale) ${scale.toStringAsFixed(2)}', style: style),
         Text(
           'value(_tint)  #${tint.toARGB32().toRadixString(16).padLeft(8, '0')}',
           style: style,

@@ -28,7 +28,10 @@ class _PullToRefreshPageState extends State<PullToRefreshPage>
   final _pull = Track<double>(.single, initial: 0);
   final _spin = Track<double>(.single, initial: 0);
 
-  static const _friction = FrictionMotion(drag: 0.002, constantDeceleration: 220);
+  static const _friction = FrictionMotion(
+    drag: 0.002,
+    constantDeceleration: 220,
+  );
 
   bool _refreshing = false;
 

@@ -130,9 +130,7 @@ void main() {
   testWidgets('Timelines & Steps loops and switches to pingPong', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      const CupertinoApp(home: TimelinesAndStepsPage()),
-    );
+    await tester.pumpWidget(const CupertinoApp(home: TimelinesAndStepsPage()));
     await _pumpFrames(tester, frames: 240);
     expect(tester.takeException(), isNull);
 

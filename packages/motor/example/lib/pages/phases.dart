@@ -18,8 +18,7 @@ class PhasesPage extends StatefulWidget {
   State<PhasesPage> createState() => _PhasesPageState();
 }
 
-class _PhasesPageState extends State<PhasesPage>
-    with TickerProviderStateMixin {
+class _PhasesPageState extends State<PhasesPage> with TickerProviderStateMixin {
   final _size = Track<double>(.single, initial: 0, motion: .smoothSpring());
   final _lift = Track<Offset>(
     .offset,
@@ -60,23 +59,14 @@ class _PhasesPageState extends State<PhasesPage>
   final _freePosition = Track<double>(.single, initial: 0);
   final _scrubProgress = Track<double>(.single, initial: 0);
   late final _controller = PhaseTrackController<_Panel>(vsync: this);
-  late final _scrubTimeline = TrackPhaseTimeline<_Panel>(
-    {
-      _Panel.compact: [
-        _scrubProgress.to(
-          0,
-          motion: .linear(Duration(milliseconds: 500)),
-        ),
-      ],
-      _Panel.expanded: [
-        _scrubProgress.to(
-          1,
-          motion: .linear(Duration(milliseconds: 500)),
-        ),
-      ],
-    },
-    phaseLoop: LoopMode.loop,
-  );
+  late final _scrubTimeline = TrackPhaseTimeline<_Panel>({
+    _Panel.compact: [
+      _scrubProgress.to(0, motion: .linear(Duration(milliseconds: 500))),
+    ],
+    _Panel.expanded: [
+      _scrubProgress.to(1, motion: .linear(Duration(milliseconds: 500))),
+    ],
+  }, phaseLoop: LoopMode.loop);
 
   _Panel _phase = _Panel.compact;
   bool _playing = false;
@@ -98,9 +88,7 @@ class _PhasesPageState extends State<PhasesPage>
   void _togglePhase() {
     if (_playing) return;
     setState(() {
-      _phase = _phase == _Panel.compact
-          ? _Panel.expanded
-          : _Panel.compact;
+      _phase = _phase == _Panel.compact ? _Panel.expanded : _Panel.compact;
     });
   }
 
@@ -127,18 +115,12 @@ class _PhasesPageState extends State<PhasesPage>
 
   void _onPanEnd(DragEndDetails details) {
     _controller.animate([
-      _freePosition(
-        [
-          .free(
-            motion: const FrictionMotion(
-              drag: 0.01,
-              constantDeceleration: 900,
-            ),
-          ),
-          .to(0, motion: .bouncySpring()),
-        ],
-        withVelocity: details.velocity.pixelsPerSecond.dx,
-      ),
+      _freePosition([
+        .free(
+          motion: const FrictionMotion(drag: 0.01, constantDeceleration: 900),
+        ),
+        .to(0, motion: .bouncySpring()),
+      ], withVelocity: details.velocity.pixelsPerSecond.dx),
     ]);
   }
 
@@ -146,9 +128,7 @@ class _PhasesPageState extends State<PhasesPage>
     setState(() => _scrubValue = value);
     // scrubTo seeks currently live tracks. After a canceled stop there are no
     // active tracks to seek, so it is intentionally a no-op.
-    _controller.scrubTo(
-      Duration(milliseconds: (value * 500).round()),
-    );
+    _controller.scrubTo(Duration(milliseconds: (value * 500).round()));
   }
 
   @override
@@ -315,9 +295,8 @@ class _PhasesPageState extends State<PhasesPage>
               ),
               const SizedBox(width: 12),
               NeutralButton(
-                onPressed: () => context.navigateTo(
-                  NamedRoute(CardStackPage.routeName),
-                ),
+                onPressed: () =>
+                    context.navigateTo(NamedRoute(CardStackPage.routeName)),
                 child: const Text('Card Stack'),
               ),
             ],

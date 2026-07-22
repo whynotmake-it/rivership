@@ -80,9 +80,8 @@ class ExamplePage extends StatelessWidget {
                               horizontal: 4,
                               vertical: 8,
                             ),
-                            onPressed: () => context.navigateTo(
-                              NamedRoute(next.routeName),
-                            ),
+                            onPressed: () =>
+                                context.navigateTo(NamedRoute(next.routeName)),
                             child: Text(
                               'next: ${next.label} →',
                               style: TextStyle(

@@ -23,8 +23,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
   static const _offset = Duration(milliseconds: 100);
 
   final _dots = [
-    for (var i = 0; i < _dotCount; i++)
-      Track<double>(.single, initial: 0.3),
+    for (var i = 0; i < _dotCount; i++) Track<double>(.single, initial: 0.3),
   ];
   final _angle = Track<double>(.single, initial: 0);
   final _playhead = ValueNotifier(Duration.zero);
@@ -50,41 +49,30 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
 
   void _rebuildTimeline() {
     _timeline = _loop == LoopMode.seamless
-        ? TrackTimeline(
-            [
-              _angle([
-                // Seamless loops require identical first and last rendered
-                // frames. This zero-duration step encodes the instant reset.
-                .to(0, motion: .linear(.zero)),
-                .to(math.pi, motion: .linear(Duration(milliseconds: 450))),
-                .to(2 * math.pi,
-                    motion: .linear(Duration(milliseconds: 450))),
+        ? TrackTimeline([
+            _angle([
+              // Seamless loops require identical first and last rendered
+              // frames. This zero-duration step encodes the instant reset.
+              .to(0, motion: .linear(.zero)),
+              .to(math.pi, motion: .linear(Duration(milliseconds: 450))),
+              .to(2 * math.pi, motion: .linear(Duration(milliseconds: 450))),
+            ]),
+          ], loop: _loop)
+        : TrackTimeline([
+            for (final (index, dot) in _dots.indexed)
+              dot([
+                .hold(_offset * index),
+                .to(
+                  1,
+                  motion: .smoothSpring(duration: Duration(milliseconds: 250)),
+                ),
+                .to(
+                  0.3,
+                  motion: .smoothSpring(duration: Duration(milliseconds: 350)),
+                ),
+                .hold(_offset * (_dotCount - index)),
               ]),
-            ],
-            loop: _loop,
-          )
-        : TrackTimeline(
-            [
-              for (final (index, dot) in _dots.indexed)
-                dot([
-                  .hold(_offset * index),
-                  .to(
-                    1,
-                    motion: .smoothSpring(
-                      duration: Duration(milliseconds: 250),
-                    ),
-                  ),
-                  .to(
-                    0.3,
-                    motion: .smoothSpring(
-                      duration: Duration(milliseconds: 350),
-                    ),
-                  ),
-                  .hold(_offset * (_dotCount - index)),
-                ]),
-            ],
-            loop: _loop,
-          );
+          ], loop: _loop);
     _duration = _loop == LoopMode.seamless
         ? const Duration(milliseconds: 900)
         : const Duration(milliseconds: 1100);
@@ -156,10 +144,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
                         angle: value(_angle),
                         child: CustomPaint(
                           size: const Size.square(48),
-                          painter: _ArcPainter(
-                            theme.textPrimary,
-                            theme.border,
-                          ),
+                          painter: _ArcPainter(theme.textPrimary, theme.border),
                         ),
                       )
                     : Row(
@@ -167,8 +152,9 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
                         children: [
                           for (final dot in _dots)
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 7),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                              ),
                               child: Transform.scale(
                                 scale: 0.6 + value(dot) * 0.7,
                                 child: Container(
@@ -176,8 +162,10 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color: theme.textPrimary.withValues(
-                                      alpha: (0.25 + value(dot) * 0.75)
-                                          .clamp(0, 1),
+                                      alpha: (0.25 + value(dot) * 0.75).clamp(
+                                        0,
+                                        1,
+                                      ),
                                     ),
                                     shape: BoxShape.circle,
                                   ),

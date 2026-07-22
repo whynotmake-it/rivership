@@ -51,8 +51,7 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
   bool _barrier = true;
   int _replay = 0;
 
-  TrackTimeline get _timeline =>
-      _barrier ? _withBarrier : _withoutBarrier;
+  TrackTimeline get _timeline => _barrier ? _withBarrier : _withoutBarrier;
 
   @override
   void initState() {

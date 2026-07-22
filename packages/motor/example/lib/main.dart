@@ -49,36 +49,75 @@ final motorRoutes = [
     type: const RouteType.cupertino(),
     builder: (context, state) => const _HomePage(),
   ),
-  _route(InstantVsAnimatedPage.routeName, 'instant-vs-animated',
-      (_) => const InstantVsAnimatedPage()),
-  _route(CurveTrapEscapePage.routeName, 'curve-trap-escape',
-      (_) => const CurveTrapEscapePage()),
-  _route(SpringCharacterPage.routeName, 'spring-character',
-      (_) => const SpringCharacterPage()),
-  _route(PhotoFlickPage.routeName, 'photo-flick',
-      (_) => const PhotoFlickPage()),
   _route(
-      MeetTracksPage.routeName, 'meet-tracks', (_) => const MeetTracksPage()),
-  _route(TimelinesAndStepsPage.routeName, 'timelines-and-steps',
-      (_) => const TimelinesAndStepsPage()),
-  _route(SyncBarriersPage.routeName, 'sync-barriers',
-      (_) => const SyncBarriersPage()),
+    InstantVsAnimatedPage.routeName,
+    'instant-vs-animated',
+    (_) => const InstantVsAnimatedPage(),
+  ),
+  _route(
+    CurveTrapEscapePage.routeName,
+    'curve-trap-escape',
+    (_) => const CurveTrapEscapePage(),
+  ),
+  _route(
+    SpringCharacterPage.routeName,
+    'spring-character',
+    (_) => const SpringCharacterPage(),
+  ),
+  _route(
+    PhotoFlickPage.routeName,
+    'photo-flick',
+    (_) => const PhotoFlickPage(),
+  ),
+  _route(
+    MeetTracksPage.routeName,
+    'meet-tracks',
+    (_) => const MeetTracksPage(),
+  ),
+  _route(
+    TimelinesAndStepsPage.routeName,
+    'timelines-and-steps',
+    (_) => const TimelinesAndStepsPage(),
+  ),
+  _route(
+    SyncBarriersPage.routeName,
+    'sync-barriers',
+    (_) => const SyncBarriersPage(),
+  ),
   _route(PhasesPage.routeName, 'phases', (_) => const PhasesPage()),
   _route(TogglePage.routeName, 'toggle', (_) => const TogglePage()),
-  _route(PullToRefreshPage.routeName, 'pull-to-refresh',
-      (_) => const PullToRefreshPage()),
+  _route(
+    PullToRefreshPage.routeName,
+    'pull-to-refresh',
+    (_) => const PullToRefreshPage(),
+  ),
   _route(CardStackPage.routeName, 'card-stack', (_) => const CardStackPage()),
-  _route(PaymentSuccessPage.routeName, 'payment-success',
-      (_) => const PaymentSuccessPage()),
-  _route(BoardingPassPage.routeName, 'boarding-pass',
-      (_) => const BoardingPassPage()),
-  _route(SnapCarouselPage.routeName, 'snap-carousel',
-      (_) => const SnapCarouselPage()),
+  _route(
+    PaymentSuccessPage.routeName,
+    'payment-success',
+    (_) => const PaymentSuccessPage(),
+  ),
+  _route(
+    BoardingPassPage.routeName,
+    'boarding-pass',
+    (_) => const BoardingPassPage(),
+  ),
+  _route(
+    SnapCarouselPage.routeName,
+    'snap-carousel',
+    (_) => const SnapCarouselPage(),
+  ),
   _route(ToastPage.routeName, 'toast', (_) => const ToastPage()),
-  _route(PictureInPicturePage.routeName, 'picture-in-picture',
-      (_) => const PictureInPicturePage()),
-  _route(DraggableIconsPage.routeName, 'draggable-icons',
-      (_) => const DraggableIconsPage()),
+  _route(
+    PictureInPicturePage.routeName,
+    'picture-in-picture',
+    (_) => const PictureInPicturePage(),
+  ),
+  _route(
+    DraggableIconsPage.routeName,
+    'draggable-icons',
+    (_) => const DraggableIconsPage(),
+  ),
 ];
 
 final router = RootStackRouter.build(
@@ -148,9 +187,7 @@ class _HomePage extends StatelessWidget {
                         label: 'RECIPES',
                         cards: _recipeCards(context),
                       ),
-                      const SliverPadding(
-                        padding: EdgeInsets.only(bottom: 64),
-                      ),
+                      const SliverPadding(padding: EdgeInsets.only(bottom: 64)),
                     ],
                   ),
                 ),
@@ -165,13 +202,12 @@ class _HomePage extends StatelessWidget {
   static Widget _cardSection({
     required String label,
     required List<Widget> cards,
-  }) =>
-      SliverMainAxisGroup(
-        slivers: [
-          SliverToBoxAdapter(child: _SubsectionLabel(label)),
-          SliverToBoxAdapter(child: _CardGrid(children: cards)),
-        ],
-      );
+  }) => SliverMainAxisGroup(
+    slivers: [
+      SliverToBoxAdapter(child: _SubsectionLabel(label)),
+      SliverToBoxAdapter(child: _CardGrid(children: cards)),
+    ],
+  );
 
   void _go(BuildContext context, String name) =>
       context.navigateTo(NamedRoute(name));
@@ -186,233 +222,226 @@ class _HomePage extends StatelessWidget {
     required String routeName,
     required IconData icon,
     String? codeHint,
-  }) =>
-      ExampleCard(
-        categoryId: chapter,
-        pillLabel: pill,
-        pillIcon: icon,
-        codeHint: codeHint,
-        preview: preview,
-        title: title,
-        description: description,
-        onTap: () => _go(context, routeName),
-      );
+  }) => ExampleCard(
+    categoryId: chapter,
+    pillLabel: pill,
+    pillIcon: icon,
+    codeHint: codeHint,
+    preview: preview,
+    title: title,
+    description: description,
+    onTap: () => _go(context, routeName),
+  );
 
   List<Widget> _feelCards(BuildContext context) => [
-        _card(
-          context,
-          chapter: '1.1',
-          pill: 'set vs animate',
-          icon: CupertinoIcons.arrow_right_arrow_left,
-          codeHint: 'controller.animate([position.to(target)])',
-          preview: const _InstantPreview(),
-          title: 'Instant vs. Animated',
-          description:
-              'See how continuous motion preserves context when values change.',
-          routeName: InstantVsAnimatedPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '1.2',
-          pill: 'CurvedMotion',
-          icon: CupertinoIcons.bolt_horizontal,
-          codeHint: 'interrupt → velocity = 0',
-          preview: const _CurvePreview(),
-          title: 'The Curve Trap',
-          description:
-              'Learn why time curves kink when an animation is interrupted.',
-          routeName: CurveTrapEscapePage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '1.3',
-          pill: 'CupertinoMotion',
-          icon: CupertinoIcons.slider_horizontal_3,
-          codeHint: 'duration + bounce',
-          preview: const _SpringPreview(),
-          title: 'Spring Character',
-          description:
-              'Shape a spring’s personality with duration and bounce.',
-          routeName: SpringCharacterPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '1.4',
-          pill: 'Track<Offset>',
-          icon: CupertinoIcons.move,
-          codeHint: 'motionPerDimension',
-          preview: const _PhotoPreview(),
-          title: 'More Than One Dimension',
-          description:
-              'Carry gesture velocity independently across both spatial axes.',
-          routeName: PhotoFlickPage.routeName,
-        ),
-      ];
+    _card(
+      context,
+      chapter: '1.1',
+      pill: 'set vs animate',
+      icon: CupertinoIcons.arrow_right_arrow_left,
+      codeHint: 'controller.animate([position.to(target)])',
+      preview: const _InstantPreview(),
+      title: 'Instant vs. Animated',
+      description:
+          'See how continuous motion preserves context when values change.',
+      routeName: InstantVsAnimatedPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '1.2',
+      pill: 'CurvedMotion',
+      icon: CupertinoIcons.bolt_horizontal,
+      codeHint: 'interrupt → velocity = 0',
+      preview: const _CurvePreview(),
+      title: 'The Curve Trap',
+      description:
+          'Learn why time curves kink when an animation is interrupted.',
+      routeName: CurveTrapEscapePage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '1.3',
+      pill: 'CupertinoMotion',
+      icon: CupertinoIcons.slider_horizontal_3,
+      codeHint: 'duration + bounce',
+      preview: const _SpringPreview(),
+      title: 'Spring Character',
+      description: 'Shape a spring’s personality with duration and bounce.',
+      routeName: SpringCharacterPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '1.4',
+      pill: 'Track<Offset>',
+      icon: CupertinoIcons.move,
+      codeHint: 'motionPerDimension',
+      preview: const _PhotoPreview(),
+      title: 'More Than One Dimension',
+      description:
+          'Carry gesture velocity independently across both spatial axes.',
+      routeName: PhotoFlickPage.routeName,
+    ),
+  ];
 
   List<Widget> _trackCards(BuildContext context) => [
-        _card(
-          context,
-          chapter: '2.1',
-          pill: 'Track<T>',
-          icon: CupertinoIcons.waveform_path,
-          codeHint: 'Track(value, motion:)',
-          preview: const _TrackPreview(),
-          title: 'Meet Tracks',
-          description:
-              'Use one stateful value that remembers velocity across targets.',
-          routeName: MeetTracksPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '2.2',
-          pill: 'TrackTimeline',
-          icon: CupertinoIcons.time,
-          codeHint: 'steps + loop',
-          preview: const _TimelinePreview(),
-          title: 'Timelines & Steps',
-          description:
-              'Compose ordered motion steps and control how they repeat.',
-          routeName: TimelinesAndStepsPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '2.3',
-          pill: 'TrackTimeline + sync',
-          icon: CupertinoIcons.equal_square,
-          codeHint: 'track.sync(token:)',
-          preview: const _SyncPreview(),
-          title: 'Sync Barriers',
-          description:
-              'Hold faster tracks at a barrier until every peer catches up.',
-          routeName: SyncBarriersPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '2.4',
-          pill: 'PhaseTrackController',
-          icon: CupertinoIcons.square_stack_3d_up,
-          codeHint: 'playPhases(timeline)',
-          preview: const _PhasesPreview(),
-          title: 'Phases',
-          description:
-              'Model interruptible UI stories as named, settled states.',
-          routeName: PhasesPage.routeName,
-        ),
-      ];
+    _card(
+      context,
+      chapter: '2.1',
+      pill: 'Track<T>',
+      icon: CupertinoIcons.waveform_path,
+      codeHint: 'Track(value, motion:)',
+      preview: const _TrackPreview(),
+      title: 'Meet Tracks',
+      description:
+          'Use one stateful value that remembers velocity across targets.',
+      routeName: MeetTracksPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '2.2',
+      pill: 'TrackTimeline',
+      icon: CupertinoIcons.time,
+      codeHint: 'steps + loop',
+      preview: const _TimelinePreview(),
+      title: 'Timelines & Steps',
+      description: 'Compose ordered motion steps and control how they repeat.',
+      routeName: TimelinesAndStepsPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '2.3',
+      pill: 'TrackTimeline + sync',
+      icon: CupertinoIcons.equal_square,
+      codeHint: 'track.sync(token:)',
+      preview: const _SyncPreview(),
+      title: 'Sync Barriers',
+      description:
+          'Hold faster tracks at a barrier until every peer catches up.',
+      routeName: SyncBarriersPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '2.4',
+      pill: 'PhaseTrackController',
+      icon: CupertinoIcons.square_stack_3d_up,
+      codeHint: 'playPhases(timeline)',
+      preview: const _PhasesPreview(),
+      title: 'Phases',
+      description: 'Model interruptible UI stories as named, settled states.',
+      routeName: PhasesPage.routeName,
+    ),
+  ];
 
   List<Widget> _gestureCards(BuildContext context) => [
-        _card(
-          context,
-          chapter: '3.1',
-          pill: 'Track + drag',
-          icon: CupertinoIcons.switch_camera,
-          codeHint: 'drag → velocity → settle',
-          preview: const _TogglePreview(),
-          title: 'Toggle',
-          description:
-              'Hand a drag’s measured velocity to the settling spring.',
-          routeName: TogglePage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '3.2',
-          pill: 'FrictionMotion.project',
-          icon: CupertinoIcons.arrow_clockwise,
-          codeHint: 'pull → project → commit',
-          preview: const _PullPreview(),
-          title: 'Pull to Refresh',
-          description:
-              'Project a release to decide whether a gesture should commit.',
-          routeName: PullToRefreshPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '3.3',
-          pill: 'PhaseTrackController',
-          icon: CupertinoIcons.rectangle_stack,
-          codeHint: 'gesture → phase',
-          preview: const _StackPreview(),
-          title: 'Card Stack',
-          description:
-              'Turn gesture outcomes into stable, composable motion phases.',
-          routeName: CardStackPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '3.4',
-          pill: 'TrackTimeline + sync',
-          icon: CupertinoIcons.checkmark_seal,
-          codeHint: 'track.sync(token:)',
-          preview: const _PaymentPreview(),
-          title: 'Payment Success',
-          description:
-              'Coordinate many tracks around a shared narrative checkpoint.',
-          routeName: PaymentSuccessPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '3.5',
-          pill: 'phases + timelines',
-          icon: CupertinoIcons.airplane,
-          codeHint: 'interrupt → re-book',
-          preview: const _BoardingPreview(),
-          title: 'Boarding Pass',
-          description:
-              'Combine gestures, phases, and timelines in a resilient flow.',
-          routeName: BoardingPassPage.routeName,
-        ),
-      ];
+    _card(
+      context,
+      chapter: '3.1',
+      pill: 'Track + drag',
+      icon: CupertinoIcons.switch_camera,
+      codeHint: 'drag → velocity → settle',
+      preview: const _TogglePreview(),
+      title: 'Toggle',
+      description: 'Hand a drag’s measured velocity to the settling spring.',
+      routeName: TogglePage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '3.2',
+      pill: 'FrictionMotion.project',
+      icon: CupertinoIcons.arrow_clockwise,
+      codeHint: 'pull → project → commit',
+      preview: const _PullPreview(),
+      title: 'Pull to Refresh',
+      description:
+          'Project a release to decide whether a gesture should commit.',
+      routeName: PullToRefreshPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '3.3',
+      pill: 'PhaseTrackController',
+      icon: CupertinoIcons.rectangle_stack,
+      codeHint: 'gesture → phase',
+      preview: const _StackPreview(),
+      title: 'Card Stack',
+      description:
+          'Turn gesture outcomes into stable, composable motion phases.',
+      routeName: CardStackPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '3.4',
+      pill: 'TrackTimeline + sync',
+      icon: CupertinoIcons.checkmark_seal,
+      codeHint: 'track.sync(token:)',
+      preview: const _PaymentPreview(),
+      title: 'Payment Success',
+      description:
+          'Coordinate many tracks around a shared narrative checkpoint.',
+      routeName: PaymentSuccessPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '3.5',
+      pill: 'phases + timelines',
+      icon: CupertinoIcons.airplane,
+      codeHint: 'interrupt → re-book',
+      preview: const _BoardingPreview(),
+      title: 'Boarding Pass',
+      description:
+          'Combine gestures, phases, and timelines in a resilient flow.',
+      routeName: BoardingPassPage.routeName,
+    ),
+  ];
 
   List<Widget> _recipeCards(BuildContext context) => [
-        _card(
-          context,
-          chapter: '4.1',
-          pill: 'FrictionMotion.project',
-          icon: CupertinoIcons.rectangle_stack,
-          codeHint: 'project → nearest page',
-          preview: const _CarouselPreview(),
-          title: 'Snap Carousel',
-          description:
-              'Project fling momentum before selecting the nearest snap point.',
-          routeName: SnapCarouselPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '4.2',
-          pill: 'SingleMotionController',
-          icon: CupertinoIcons.bell,
-          codeHint: 'swipe → withVelocity',
-          preview: const _ToastPreview(),
-          title: 'Toast',
-          description:
-              'Preserve swipe velocity when dismissing transient content.',
-          routeName: ToastPage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '4.3',
-          pill: 'MotionController<Offset>',
-          icon: CupertinoIcons.rectangle_on_rectangle,
-          codeHint: 'project → nearest corner',
-          preview: const _PipPreview(),
-          title: 'Picture in Picture',
-          description:
-              'Project two-dimensional velocity toward a stable corner.',
-          routeName: PictureInPicturePage.routeName,
-        ),
-        _card(
-          context,
-          chapter: '4.4',
-          pill: 'MotionDraggable',
-          icon: CupertinoIcons.hand_draw,
-          codeHint: 'MotionDraggable(motion: ...)',
-          preview: const _DragPreview(),
-          title: 'Draggable Icons',
-          description:
-              'Add spring-backed drag and drop without manual controllers.',
-          routeName: DraggableIconsPage.routeName,
-        ),
-      ];
+    _card(
+      context,
+      chapter: '4.1',
+      pill: 'FrictionMotion.project',
+      icon: CupertinoIcons.rectangle_stack,
+      codeHint: 'project → nearest page',
+      preview: const _CarouselPreview(),
+      title: 'Snap Carousel',
+      description:
+          'Project fling momentum before selecting the nearest snap point.',
+      routeName: SnapCarouselPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '4.2',
+      pill: 'SingleMotionController',
+      icon: CupertinoIcons.bell,
+      codeHint: 'swipe → withVelocity',
+      preview: const _ToastPreview(),
+      title: 'Toast',
+      description: 'Preserve swipe velocity when dismissing transient content.',
+      routeName: ToastPage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '4.3',
+      pill: 'MotionController<Offset>',
+      icon: CupertinoIcons.rectangle_on_rectangle,
+      codeHint: 'project → nearest corner',
+      preview: const _PipPreview(),
+      title: 'Picture in Picture',
+      description: 'Project two-dimensional velocity toward a stable corner.',
+      routeName: PictureInPicturePage.routeName,
+    ),
+    _card(
+      context,
+      chapter: '4.4',
+      pill: 'MotionDraggable',
+      icon: CupertinoIcons.hand_draw,
+      codeHint: 'MotionDraggable(motion: ...)',
+      preview: const _DragPreview(),
+      title: 'Draggable Icons',
+      description:
+          'Add spring-backed drag and drop without manual controllers.',
+      routeName: DraggableIconsPage.routeName,
+    ),
+  ];
 }
 
 class _SubsectionLabel extends StatelessWidget {
@@ -449,8 +478,10 @@ class _CardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns =
-            (constraints.maxWidth / _cardMaxWidth).floor().clamp(1, 4);
+        final columns = (constraints.maxWidth / _cardMaxWidth).floor().clamp(
+          1,
+          4,
+        );
         final width =
             (constraints.maxWidth - _cardSpacing * (columns - 1)) / columns;
         return Wrap(
@@ -472,18 +503,15 @@ class _InstantPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
     Widget lane(Alignment alignment) => SizedBox(
-          height: 24,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              Container(height: 2, color: t.border),
-              Align(
-                alignment: alignment,
-                child: _dot(t, size: 18),
-              ),
-            ],
-          ),
-        );
+      height: 24,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          Container(height: 2, color: t.border),
+          Align(alignment: alignment, child: _dot(t, size: 18)),
+        ],
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
@@ -503,19 +531,19 @@ class _CurvePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.all(24),
-        child: TrajectoryLine(
-          points: [
-            Offset(.05, .8),
-            Offset(.42, .2),
-            Offset(.5, .5),
-            Offset(.95, .5),
-          ],
-          gradient: ExampleTheme.spectrum,
-          thickness: 3,
-          fade: false,
-        ),
-      );
+    padding: EdgeInsets.all(24),
+    child: TrajectoryLine(
+      points: [
+        Offset(.05, .8),
+        Offset(.42, .2),
+        Offset(.5, .5),
+        Offset(.95, .5),
+      ],
+      gradient: ExampleTheme.spectrum,
+      thickness: 3,
+      fade: false,
+    ),
+  );
 }
 
 class _SpringPreview extends StatelessWidget {
@@ -617,11 +645,7 @@ class _TimelinePreview extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (final widths in const [
-            (42.0, 76.0),
-            (68.0, 44.0),
-            (28.0, 88.0),
-          ])
+          for (final widths in const [(42.0, 76.0), (68.0, 44.0), (28.0, 88.0)])
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 7),
               child: Row(
@@ -770,8 +794,11 @@ class _PullPreview extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(CupertinoIcons.arrow_clockwise,
-              size: 24, color: t.textSecondary),
+          Icon(
+            CupertinoIcons.arrow_clockwise,
+            size: 24,
+            color: t.textSecondary,
+          ),
           const SizedBox(height: 16),
           for (var i = 0; i < 3; i++)
             Padding(
@@ -852,9 +879,7 @@ class _CarouselPreview extends StatelessWidget {
                 height: i == 1 ? 82 : 70,
                 decoration: BoxDecoration(
                   color: t.surfaceSolid,
-                  border: Border.all(
-                    color: i == 1 ? t.borderStrong : t.border,
-                  ),
+                  border: Border.all(color: i == 1 ? t.borderStrong : t.border),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -913,7 +938,11 @@ class _PipPreview extends StatelessWidget {
             color: t.textPrimary,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(CupertinoIcons.play_fill, color: t.surfaceSolid, size: 18),
+          child: Icon(
+            CupertinoIcons.play_fill,
+            color: t.surfaceSolid,
+            size: 18,
+          ),
         ),
       ),
     );
@@ -938,8 +967,11 @@ class _DragPreview extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: t.border),
             ),
-            child:
-                Icon(CupertinoIcons.heart_fill, color: t.textPrimary, size: 18),
+            child: Icon(
+              CupertinoIcons.heart_fill,
+              color: t.textPrimary,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 24),
           Container(
@@ -957,11 +989,7 @@ class _DragPreview extends StatelessWidget {
   }
 }
 
-Widget _dot(
-  ExampleTheme t, {
-  double size = 14,
-  bool surface = false,
-}) =>
+Widget _dot(ExampleTheme t, {double size = 14, bool surface = false}) =>
     Container(
       width: size,
       height: size,
