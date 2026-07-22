@@ -31,6 +31,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     required super.vsync,
     super.from,
     super.velocityTracking,
+    super.debugLabel,
   });
 
   TrackPhaseTimeline<P>? _activeTimeline;

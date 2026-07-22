@@ -31,7 +31,10 @@ const _dismissTravel = 200.0;
 
 class _BoardingPassPageState extends State<BoardingPassPage>
     with TickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Boarding pass choreography',
+  );
 
   final _ticketPos = Track<Offset>(.offset, initial: _ticketStart);
   final _ticketAngle = Track<double>(.single, initial: _ticketStartAngle);

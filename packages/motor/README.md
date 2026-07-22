@@ -21,6 +21,7 @@ A unified motion system that brings together physics-based springs, duration-bas
 - 🌬️ **Free Motion** - Self-directed physics like friction and decay, with rest-position projection
 - 🔄 **Interactive Widgets** - Motion-driven draggable widgets with natural return animations
 - 🎯 **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
+- 🛠️ **Optional DevTools** - Inspect, scrub, slow down, and tune live tracks with the separate `motor_devtools` package
 
 ## Try it out
 [Open Example](https://whynotmake-it.github.io/rivership/#/motor)
@@ -45,6 +46,12 @@ Or install via `dart pub`:
 ```sh
 dart pub add motor
 ```
+
+For an opt-in in-app timeline and motion tuning panel, also add
+`motor_devtools` and wrap your app with `MotorDevTools`. The separate package
+can be omitted and tree-shaken from apps that do not need it. See the
+[`motor_devtools` README](../motor_devtools/README.md) for debug, feature-flag,
+and production usage.
 
 ## Usage 💡
 

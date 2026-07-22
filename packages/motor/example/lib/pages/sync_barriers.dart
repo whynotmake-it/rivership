@@ -18,9 +18,20 @@ class SyncBarriersPage extends StatefulWidget {
 
 class _SyncBarriersPageState extends State<SyncBarriersPage>
     with SingleTickerProviderStateMixin {
-  final _runner = Track<double>(.single, initial: 0);
-  final _walker = Track<double>(.single, initial: 0);
-  late final _controller = TrackController(vsync: this);
+  final _runner = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Runner position',
+  );
+  final _walker = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Walker position',
+  );
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Relay sync',
+  );
 
   late final TrackTimeline _withoutBarrier = TrackTimeline([
     _runner([

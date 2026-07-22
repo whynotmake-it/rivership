@@ -2,6 +2,7 @@ import 'package:flutter/animation.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
+import 'package:motor/src/motion.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
 
@@ -112,4 +113,26 @@ extension TrackControllerInspection on TrackController {
 
   /// Monotonic counter that changes whenever the playing plan changes.
   int get playbackRevision => internalPlaybackRevision;
+
+  /// The controller-local playback rate used by inspection tooling.
+  ///
+  /// A value of `0.25` runs this controller at quarter speed without changing
+  /// Flutter's global time dilation or affecting unrelated animations.
+  double get playbackSpeed => internalPlaybackSpeed;
+
+  /// Changes the controller-local playback rate.
+  set playbackSpeed(double value) => internalPlaybackSpeed = value;
+
+  /// Designer overrides keyed by track identity.
+  Map<Track<Object>, Motion> get motionOverrides => internalMotionOverrides;
+
+  /// Replaces target-based step motions for [track] on future playback.
+  ///
+  /// Passing null restores the authored motion. Call [replay] to hear the
+  /// change immediately on the controller's most recently submitted clip.
+  void setMotionOverride(Track track, Motion? motion) =>
+      internalSetMotionOverride(track, motion);
+
+  /// Replays the most recently submitted clip from its original start values.
+  TickerFuture replay() => internalReplay();
 }

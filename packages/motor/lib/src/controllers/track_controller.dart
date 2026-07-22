@@ -3,6 +3,7 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/inspection/playback_snapshot.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
@@ -36,13 +37,18 @@ class TrackController extends Animation<TrackValueReader>
     required TickerProvider vsync,
     List<TrackValue>? from,
     this.velocityTracking = const VelocityTracking.on(),
+    this.debugLabel,
   }) : _from = List<TrackValue>.of(from ?? const []) {
     _ticker = vsync.createTicker(_tick);
+    MotorInspectionRegistry.registerController(this);
   }
 
   /// Controls whether [set] automatically tracks velocity from position
   /// samples. Explicit velocity on [TrackValue] always works regardless.
   final VelocityTracking velocityTracking;
+
+  /// A human-readable name shown by optional inspection tools.
+  final String? debugLabel;
 
   final List<TrackValue> _from;
   final Map<Track, _TrackSlot> _slots = {};
@@ -50,6 +56,11 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
+  final Map<Track, Motion> _motionOverrides = {};
+  List<TrackAnimation> _lastAnimations = const [];
+  List<TrackValue> _lastStartValues = const [];
+  LoopMode _lastLoop = LoopMode.none;
+  double _playbackSpeed = 1;
   var _playbackRevision = 0;
 
   /// The number of tracks this controller currently holds state for.
@@ -220,6 +231,7 @@ class TrackController extends Animation<TrackValueReader>
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
+    bool rememberForReplay = true,
   }) {
     assert(
       () {
@@ -240,6 +252,14 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
+    if (rememberForReplay) {
+      _lastAnimations = List.unmodifiable(animations);
+      _lastStartValues = List.unmodifiable([
+        for (final animation in animations) _startValueFor(animation),
+      ]);
+      _lastLoop = loop;
+    }
+
     _playbackRevision++;
 
     _onStep = onStep;
@@ -259,7 +279,7 @@ class TrackController extends Animation<TrackValueReader>
     final startOffset = isAnimating ? _lastElapsed : Duration.zero;
     for (final animation in animations) {
       _playAnimation(
-        animation,
+        _applyMotionOverride(animation),
         loop: loop,
         startOffset: startOffset,
       );
@@ -320,6 +340,21 @@ class TrackController extends Animation<TrackValueReader>
     _startTicker();
     _checkStatusChanged();
     notifyListeners();
+  }
+
+  TrackValue<T> _startValueFor<T extends Object>(
+    TrackAnimation<T> animation,
+  ) {
+    final slot = _slots[animation.track];
+    final value =
+        animation.from ?? slot?.value ?? animation.resolveStartValue();
+    return animation.track.value(value as T);
+  }
+
+  TrackAnimation _applyMotionOverride(TrackAnimation animation) {
+    final override = _motionOverrides[animation.track];
+    if (override == null) return animation;
+    return animation.withMotionOverride(override);
   }
 
   /// Stops the given [tracks], or all tracks when [tracks] is null.
@@ -424,6 +459,7 @@ class TrackController extends Animation<TrackValueReader>
 
   @override
   void dispose() {
+    MotorInspectionRegistry.unregisterController(this);
     _ticker?.stop();
     _ticker?.dispose();
     _ticker = null;
@@ -475,6 +511,56 @@ class TrackController extends Animation<TrackValueReader>
   /// Exposes the plan-revision counter to the inspection extension.
   @internal
   int get internalPlaybackRevision => _playbackRevision;
+
+  /// Exposes the inspection playback speed to tooling.
+  @internal
+  double get internalPlaybackSpeed => _playbackSpeed;
+
+  /// Changes the logical playback rate without affecting other controllers.
+  @internal
+  set internalPlaybackSpeed(double value) {
+    assert(value > 0, 'playbackSpeed must be greater than zero.');
+    if (value <= 0 || value == _playbackSpeed) return;
+    final wasAnimating = isAnimating;
+    if (wasAnimating) pause();
+    _playbackSpeed = value;
+    if (wasAnimating) resume();
+    notifyListeners();
+  }
+
+  /// Exposes active designer motion overrides to tooling.
+  @internal
+  Map<Track<Object>, Motion> get internalMotionOverrides => Map.unmodifiable(
+        _motionOverrides.cast<Track<Object>, Motion>(),
+      );
+
+  /// Sets or clears a designer motion override for [track].
+  @internal
+  void internalSetMotionOverride(Track track, Motion? motion) {
+    if (motion == null) {
+      _motionOverrides.remove(track);
+    } else {
+      _motionOverrides[track] = motion;
+    }
+    notifyListeners();
+  }
+
+  /// Replays the most recently submitted clip from its recorded start values.
+  @internal
+  TickerFuture internalReplay() {
+    if (_lastAnimations.isEmpty) return TickerFuture.complete();
+    final animations = _lastAnimations;
+    final starts = _lastStartValues;
+    final loop = _lastLoop;
+    _hardStop(null);
+    set(starts);
+    return _startAnimations(
+      animations: animations,
+      loop: loop,
+      onStep: _onStep,
+      rememberForReplay: false,
+    );
+  }
 
   static Duration? _durationFromSeconds(double? seconds) => seconds == null
       ? null
@@ -660,13 +746,16 @@ class TrackController extends Animation<TrackValueReader>
   bool onPlaybackCompleted() => false;
 
   void _tick(Duration elapsed) {
-    _lastElapsed = elapsed;
+    final logicalElapsed = Duration(
+      microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
+    );
+    _lastElapsed = logicalElapsed;
     var allDone = true;
 
     for (final track in _activeTracks.toList()) {
       final slot = _slots[track];
       if (slot == null) continue;
-      if (!slot.tick(elapsed)) {
+      if (!slot.tick(logicalElapsed)) {
         allDone = false;
       }
       _notifyStep(track, slot);

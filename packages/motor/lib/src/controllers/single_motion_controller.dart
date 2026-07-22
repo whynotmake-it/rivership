@@ -15,6 +15,7 @@ class SingleMotionController extends MotionController<double> {
     super.initialValue = 0,
     super.behavior = AnimationBehavior.normal,
     super.velocityTracking,
+    super.debugLabel,
   }) : super(
           converter: const SingleMotionConverter(),
         );
@@ -45,6 +46,7 @@ class BoundedSingleMotionController extends BoundedMotionController<double>
     super.upperBound = 1,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   }) : super(
           converter: const SingleMotionConverter(),
         );

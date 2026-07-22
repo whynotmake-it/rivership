@@ -34,11 +34,19 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
   );
 
   final _dots = [
-    for (var i = 0; i < _dotCount; i++) Track<double>(.single, initial: 0.3),
+    for (var i = 0; i < _dotCount; i++)
+      Track<double>(.single, initial: 0.3, debugLabel: 'Dot ${i + 1} scale'),
   ];
-  final _angle = Track<double>(.single, initial: 0);
+  final _angle = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Spinner angle',
+  );
 
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Timeline loop demo',
+  );
   late TrackTimeline _timeline;
   LoopMode _loop = LoopMode.loop;
 

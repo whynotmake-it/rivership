@@ -13,6 +13,7 @@ class PolyMotionController extends MotionController<List<double>> {
     required super.vsync,
     super.initialValue = const [0, 0],
     super.behavior = AnimationBehavior.normal,
+    super.debugLabel,
   }) : super(
           converter: MotionConverter.custom(
             denormalize: (values) => values,
@@ -37,6 +38,7 @@ class PolyMotionControllerBounded extends BoundedMotionController<List<double>>
     required super.lowerBound,
     required super.upperBound,
     super.behavior,
+    super.debugLabel,
   })  : assert(
           initialValue.length == lowerBound.length,
           'initialValue must have the same length as lowerBound and upperBound',

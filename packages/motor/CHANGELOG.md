@@ -19,6 +19,7 @@
 
 ### Tracks: a new multi-property animation system
 
+ - **FEAT**: add optional `debugLabel` values to tracks and controllers, plus an opt-in lifecycle registry, controller-local playback speed, replay, and target-motion overrides for external inspection tooling. The core retains no global controller collection until an observer attaches.
  - **FEAT**: add a read-only playback inspection API at `package:motor/inspection.dart`, exposing immutable snapshots of live track plans, timing, loop, synchronization, and playhead state for debug tooling.
  - **FEAT**: add `Track<T>`, the immutable, identity-based key for a single animated property. A track carries a `MotionConverter`, an optional `initial` value, and an optional default `motion`/`motionPerDimension`. Build instructions with `track.to(...)`, `track(...)` (multi-step), `track.free(...)`, `track.value(...)`, and `track.velocity(...)`.
  - **FEAT**: add `TrackStep<T>` as the unit of a track animation: `TrackStep.to` (animate to a target), `TrackStep.at` (reach a target at an absolute time), `TrackStep.hold` (hold the current value), `TrackStep.free` (run a self-directed `FreeMotion`), and `TrackStep.sync` (a barrier that waits for sibling tracks sharing a token before releasing them together).

@@ -42,6 +42,7 @@ class SequenceMotionController<P, T extends Object>
     required super.initialValue,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   });
 
   /// Creates a sequence motion controller with motion per dimension.
@@ -57,6 +58,7 @@ class SequenceMotionController<P, T extends Object>
     required super.initialValue,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   }) : super.motionPerDimension();
 
   /// The sequence passed to [playSequence], or null when nothing plays.

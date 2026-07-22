@@ -29,6 +29,7 @@ class Track<T extends Object> {
     this.converter, {
     this.initial,
     this.motion,
+    this.debugLabel,
   }) : motionPerDimension = null;
 
   /// Creates a track whose default motion differs per normalized dimension.
@@ -41,7 +42,11 @@ class Track<T extends Object> {
     this.converter, {
     required this.motionPerDimension,
     this.initial,
+    this.debugLabel,
   }) : motion = null;
+
+  /// A human-readable name shown by optional inspection tools.
+  final String? debugLabel;
 
   /// Converts track values to and from normalized dimensions.
   final MotionConverter<T> converter;
@@ -211,6 +216,29 @@ class TrackAnimation<T extends Object> with EquatableMixin {
 
   /// Optional starting velocity for the animation.
   final T? withVelocity;
+
+  /// Rebuilds target-based steps with [motion] while preserving value types.
+  @internal
+  TrackAnimation<T> withMotionOverride(Motion motion) => TrackAnimation._(
+        track,
+        [
+          for (final step in steps)
+            switch (step) {
+              StepTo<T>(:final value) => TrackStep.to(
+                  value,
+                  motion: motion,
+                ),
+              StepAt<T>(:final at, :final value) => TrackStep.at(
+                  at,
+                  value,
+                  motion: motion,
+                ),
+              _ => step,
+            },
+        ],
+        from: from,
+        withVelocity: withVelocity,
+      );
 
   /// Resolves the value this animation should start from when the controller
   /// has no existing value for [track].

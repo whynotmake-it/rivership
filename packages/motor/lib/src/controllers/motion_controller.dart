@@ -60,6 +60,7 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
     VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
           motionPerDimension:
               List.filled(converter.normalize(initialValue).length, motion),
@@ -68,6 +69,7 @@ class MotionController<T extends Object> extends Animation<T>
           initialValue: initialValue,
           behavior: behavior,
           velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   /// Creates a motion controller with individual motions per dimension.
@@ -78,6 +80,7 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
     VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
           motionPerDimension: motionPerDimension,
           vsync: vsync,
@@ -85,6 +88,7 @@ class MotionController<T extends Object> extends Animation<T>
           initialValue: initialValue,
           behavior: behavior,
           velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   MotionController._({
@@ -94,21 +98,29 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     required AnimationBehavior behavior,
     required VelocityTracking velocityTracking,
+    required String? debugLabel,
   })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ),
         assert(
-          motionPerDimension.length ==
-              converter.normalize(initialValue).length,
+          motionPerDimension.length == converter.normalize(initialValue).length,
           'the number of motions must match the number of dimensions',
         ),
         _converter = converter,
         _initialValue = initialValue,
         _motionPerDimension = List.of(motionPerDimension),
         _animationBehavior = behavior {
-    _inner = TrackController(vsync: vsync, velocityTracking: velocityTracking);
-    _track = Track<T>(converter, initial: initialValue);
+    _inner = TrackController(
+      vsync: vsync,
+      velocityTracking: velocityTracking,
+      debugLabel: debugLabel,
+    );
+    _track = Track<T>(
+      converter,
+      initial: initialValue,
+      debugLabel: debugLabel == null ? null : '$debugLabel value',
+    );
     _inner
       ..addListener(notifyListeners)
       ..addStatusListener(_handleInnerStatus);
@@ -402,6 +414,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T upperBound,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
 
@@ -416,6 +429,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T upperBound,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound),
         super.motionPerDimension();

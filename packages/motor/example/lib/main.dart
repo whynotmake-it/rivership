@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/pages/boarding_pass.dart';
 import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/curve_trap_escape.dart';
@@ -25,9 +26,11 @@ import 'package:motor_example/widgets/motor_logo.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    CupertinoApp.router(
-      debugShowCheckedModeBanner: false,
-      routerConfig: router.config(),
+    MotorDevTools(
+      child: CupertinoApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router.config(),
+      ),
     ),
   );
 }
