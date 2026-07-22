@@ -201,6 +201,16 @@ void main() {
     );
     expect(tester.takeException(), isNull);
 
+    // The dismissed stage never dead-ends: an in-stage affordance appears
+    // once the fly-out has fully settled.
+    for (var i = 0; i < 120; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(
+      find.byKey(const ValueKey('boarding-pass-rebook-empty')),
+      findsOneWidget,
+    );
+
     await tester.tap(find.text('Re-book'));
     for (var i = 0; i < 120; i++) {
       await tester.pump(const Duration(milliseconds: 16));
@@ -210,6 +220,42 @@ void main() {
       find.byKey(const ValueKey('boarding-pass-gate')),
     );
     expect(gate.transform.getMaxScaleOnAxis(), greaterThan(.9));
+    expect(
+      find.byKey(const ValueKey('boarding-pass-rebook-empty')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Boarding Pass springs a gentle mid-entrance drag back home', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const CupertinoApp(home: BoardingPassPage()));
+    await tester.pump();
+
+    // Grab the ticket while the entrance choreography is still in flight.
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // A gentle sideways displacement with (near) zero release velocity: the
+    // old position-based dismissal test flung this ticket offscreen.
+    const ticketKey = ValueKey('boarding-pass-ticket');
+    await tester.drag(find.byKey(ticketKey), const Offset(140, 0));
+    for (var i = 0; i < 180; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    final ticketCenter = tester.getCenter(find.byKey(ticketKey));
+    final stageCenter = tester.getCenter(
+      find.byKey(const ValueKey('boarding-pass-stage')),
+    );
+    expect((ticketCenter - stageCenter).distance, lessThan(1));
+    expect(
+      find.byKey(const ValueKey('boarding-pass-rebook-empty')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
 }

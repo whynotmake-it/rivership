@@ -21,6 +21,15 @@ const _ticketStart = Offset(0, 280);
 const _ticketStartAngle = 5 * math.pi / 180;
 const _routeLetters = 'CGN → LIS';
 
+/// The ticket spring's design duration — also where the lanes draw #landed.
+const _ticketLanding = Duration(milliseconds: 520);
+const _letterStagger = Duration(milliseconds: 45);
+const _letterReveal = Duration(milliseconds: 260);
+
+/// Projected horizontal travel of the release gesture (not the ticket's
+/// inherited momentum) required to read as a deliberate dismissal fling.
+const _dismissTravel = 200.0;
+
 class _BoardingPassPageState extends State<BoardingPassPage>
     with TickerProviderStateMixin {
   late final _controller = TrackController(vsync: this);
@@ -34,28 +43,42 @@ class _BoardingPassPageState extends State<BoardingPassPage>
   final _barcode = Track<double>(.single, initial: 0);
   final _gateChip = Track<double>(.single, initial: 0);
 
+  /// The five lanes the visualization docks on. The letters lane is
+  /// synthetic: one block spanning the first letter's reveal through the last
+  /// letter's finish, so the docked plan resolves to the same span as the
+  /// full choreography. Docking on the first letter alone ended the lane
+  /// 360ms before the letters visibly stop animating.
   late final TrackTimeline _representativeTimeline = TrackTimeline([
     _entranceTimeline.animations[0],
     _entranceTimeline.animations[1],
-    _entranceTimeline.animations[2],
+    _letterTracks.first([
+      .sync(token: #landed),
+      .to(
+        1,
+        motion: CurvedMotion(
+          _letterStagger * (_routeLetters.length - 1) + _letterReveal,
+          Curves.easeOutCubic,
+        ),
+      ),
+    ]),
     _entranceTimeline.animations[_entranceTimeline.animations.length - 2],
     _entranceTimeline.animations.last,
   ]);
   late TrackTimeline _lanesTimeline = _representativeTimeline;
   late final Ticker _playheadTicker;
   final _playhead = ValueNotifier(Duration.zero);
+  Duration? _barrierReleaseElapsed;
 
   Offset _velocityBeforeDrag = Offset.zero;
   Offset _dragDelta = Offset.zero;
+  bool _dismissed = false;
+  int _flyOutGeneration = 0;
 
   late final TrackTimeline _entranceTimeline = TrackTimeline([
     // The ticket arrives first. Its real upward velocity makes the spring
     // overshoot before both physical tracks meet the landing barrier.
     _ticketPos([
-      .to(
-        Offset.zero,
-        motion: .smoothSpring(duration: const Duration(milliseconds: 520)),
-      ),
+      .to(Offset.zero, motion: .smoothSpring(duration: _ticketLanding)),
       .sync(token: #landed),
     ], withVelocity: const Offset(0, -900)),
     _ticketAngle([
@@ -70,14 +93,8 @@ class _BoardingPassPageState extends State<BoardingPassPage>
     for (final (index, track) in _letterTracks.indexed)
       track([
         .sync(token: #landed),
-        .hold(Duration(milliseconds: index * 45)),
-        .to(
-          1,
-          motion: const CurvedMotion(
-            Duration(milliseconds: 260),
-            Curves.easeOutCubic,
-          ),
-        ),
+        .hold(_letterStagger * index),
+        .to(1, motion: const CurvedMotion(_letterReveal, Curves.easeOutCubic)),
       ]),
     _barcode([
       .sync(token: #landed),
@@ -120,6 +137,8 @@ class _BoardingPassPageState extends State<BoardingPassPage>
 
   void _resetAndPlayEntrance() {
     _dragDelta = Offset.zero;
+    _dismissed = false;
+    _flyOutGeneration += 1;
     _controller
       ..set([
         _ticketPos.value(_ticketStart),
@@ -133,13 +152,36 @@ class _BoardingPassPageState extends State<BoardingPassPage>
   }
 
   void _onPlayheadTick(Duration elapsed) {
-    _playhead.value = elapsed;
+    _playhead.value = _lanePlayhead(elapsed);
     if (!_controller.isAnimating) _playheadTicker.stop();
+  }
+
+  /// Maps wall time onto the lanes' design-time axis.
+  ///
+  /// The lanes draw the #landed barrier at the springs' design duration, but
+  /// the engine releases it only when the springs actually settle — a beat
+  /// later. Holding the playhead at the drawn barrier until the release
+  /// really happens (observable as the first letter leaving zero) makes the
+  /// barrier rule visually coincide with the content pour-in. The stretch
+  /// before the barrier remains an approximation: springs have no exact end
+  /// on a fixed time axis, so the playhead can reach the barrier slightly
+  /// before the ticket visibly rests.
+  Duration _lanePlayhead(Duration elapsed) {
+    if (!identical(_lanesTimeline, _representativeTimeline)) return elapsed;
+    if (_barrierReleaseElapsed == null) {
+      if (_controller.value(_letterTracks.first) > 0) {
+        _barrierReleaseElapsed = elapsed;
+      } else {
+        return elapsed < _ticketLanding ? elapsed : _ticketLanding;
+      }
+    }
+    return _ticketLanding + (elapsed - _barrierReleaseElapsed!);
   }
 
   void _restartPlayhead() {
     if (_playheadTicker.isActive) _playheadTicker.stop();
     _playhead.value = Duration.zero;
+    _barrierReleaseElapsed = null;
     _playheadTicker.start();
   }
 
@@ -153,9 +195,9 @@ class _BoardingPassPageState extends State<BoardingPassPage>
     // entrance momentum first so the hand can add to it on release.
     _velocityBeforeDrag = _controller.velocity(_ticketPos);
     _dragDelta = Offset.zero;
-    _setLanesTimeline(
-      TrackTimeline([_ticketPos.to(_controller.value(_ticketPos))]),
-    );
+    _flyOutGeneration += 1;
+    // Leave the lanes on their current plan: every other track keeps
+    // following it while the hand owns only the ticket's position.
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -167,6 +209,8 @@ class _BoardingPassPageState extends State<BoardingPassPage>
 
   void _onPanEnd(DragEndDetails details) {
     final gestureVelocity = details.velocity.pixelsPerSecond;
+    // Merging the pre-drag momentum back in keeps the release spring
+    // continuous with whatever the ticket was already doing.
     final mergedVelocity = _velocityBeforeDrag + gestureVelocity;
 
     if (_dragDelta.dy > 80 && _dragDelta.dy.abs() > _dragDelta.dx.abs()) {
@@ -176,15 +220,24 @@ class _BoardingPassPageState extends State<BoardingPassPage>
 
     const friction = FrictionMotion(drag: 0.001, constantDeceleration: 200);
     final current = _controller.value(_ticketPos);
-    final projected = friction.project(
+    // The dismissal decision judges the hand alone: mid-entrance the
+    // inherited momentum can be huge (the -900 arrival velocity), and the
+    // old position-based test (`projected.dx.abs() > 100`) dismissed after
+    // any ~100px sideways displacement, even for a gentle release. Only a
+    // deliberate horizontal fling — enough gesture velocity to coast past
+    // [_dismissTravel] — sends the ticket away.
+    final gestureProjected = friction.project(
       from: current,
-      velocity: mergedVelocity,
+      velocity: gestureVelocity,
       converter: .offset,
     );
+    final projectedTravel = gestureProjected.dx - current.dx;
 
-    if (projected.dx.abs() > 100) {
-      final direction = projected.dx.sign == 0 ? 1.0 : projected.dx.sign;
-      final target = Offset(direction * 720, projected.dy.clamp(-300.0, 300.0));
+    if (projectedTravel.abs() > _dismissTravel) {
+      final target = Offset(
+        projectedTravel.sign * 720,
+        gestureProjected.dy.clamp(-300.0, 300.0),
+      );
       final flyOut = _ticketPos.to(
         target,
         motion: .smoothSpring(
@@ -193,7 +246,13 @@ class _BoardingPassPageState extends State<BoardingPassPage>
         withVelocity: mergedVelocity,
       );
       _setLanesTimeline(TrackTimeline([flyOut]));
-      _controller.animate([flyOut]);
+      final generation = ++_flyOutGeneration;
+      // Once the fly-out lands, surface a way back: the stage would
+      // otherwise dead-end as an empty rectangle.
+      _controller.animate([flyOut]).whenCompleteOrCancel(() {
+        if (!mounted || generation != _flyOutGeneration) return;
+        setState(() => _dismissed = true);
+      });
       return;
     }
 
@@ -238,32 +297,44 @@ class _BoardingPassPageState extends State<BoardingPassPage>
           SizedBox(
             height: 420,
             child: Stage(
+              key: const ValueKey('boarding-pass-stage'),
               label: 'Book flight',
               child: AnimatedBuilder(
                 animation: _controller,
                 builder: (context, _) {
-                  return Center(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanStart: _onPanStart,
-                      onPanUpdate: _onPanUpdate,
-                      onPanEnd: _onPanEnd,
-                      onPanCancel: _onPanCancel,
-                      child: Transform.translate(
-                        offset: _controller.value(_ticketPos),
-                        child: Transform.rotate(
-                          angle: _controller.value(_ticketAngle),
-                          child: _BoardingTicket(
-                            letterValues: [
-                              for (final track in _letterTracks)
-                                _controller.value(track),
-                            ],
-                            barcode: _controller.value(_barcode),
-                            gateScale: _controller.value(_gateChip),
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (_dismissed)
+                        NeutralButton(
+                          key: const ValueKey('boarding-pass-rebook-empty'),
+                          onPressed: _rebook,
+                          child: const Text('Book another flight'),
+                        ),
+                      Center(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onPanStart: _onPanStart,
+                          onPanUpdate: _onPanUpdate,
+                          onPanEnd: _onPanEnd,
+                          onPanCancel: _onPanCancel,
+                          child: Transform.translate(
+                            offset: _controller.value(_ticketPos),
+                            child: Transform.rotate(
+                              angle: _controller.value(_ticketAngle),
+                              child: _BoardingTicket(
+                                letterValues: [
+                                  for (final track in _letterTracks)
+                                    _controller.value(track),
+                                ],
+                                barcode: _controller.value(_barcode),
+                                gateScale: _controller.value(_gateChip),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   );
                 },
               ),
