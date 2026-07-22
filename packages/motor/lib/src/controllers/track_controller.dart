@@ -3,6 +3,7 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
+import 'package:motor/src/inspection/playback_snapshot.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -49,6 +50,7 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
+  var _playbackRevision = 0;
 
   /// The number of tracks this controller currently holds state for.
   @visibleForTesting
@@ -123,6 +125,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> values, {
     List<TrackValue> withVelocity = const [],
   }) {
+    _playbackRevision++;
     for (final trackValue in values) {
       _setTrackValue(trackValue, withVelocity);
     }
@@ -237,6 +240,8 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
+    _playbackRevision++;
+
     _onStep = onStep;
 
     // Only the named tracks restart; clearing their last-step bookkeeping lets
@@ -272,6 +277,7 @@ class TrackController extends Animation<TrackValueReader>
   /// them freely (see [StepSync]); tracks scrubbed past a barrier will not wait
   /// for their peers.
   void scrubTo(Duration t) {
+    _playbackRevision++;
     for (final track in _activeTracks) {
       _slots[track]?.scrubTo(t);
     }
@@ -308,6 +314,7 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   TickerFuture _hardStop(List<Track>? tracks) {
+    _playbackRevision++;
     if (tracks == null) {
       for (final slot in _slots.values) {
         slot.stop(canceled: true);
@@ -330,6 +337,7 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   TickerFuture _gracefulStop(List<Track>? tracks) {
+    _playbackRevision++;
     final targets = tracks ?? _slots.keys.toList();
     for (final track in targets) {
       final slot = _slots[track];
@@ -369,6 +377,7 @@ class TrackController extends Animation<TrackValueReader>
   /// creates a new track). Stops the track's slot first if it is animating.
   @internal
   void forgetTrack(Track track) {
+    _playbackRevision++;
     _slots[track]?.stop(canceled: true);
     _slots.remove(track);
     _activeTracks.remove(track);
@@ -391,6 +400,58 @@ class TrackController extends Animation<TrackValueReader>
     _ticker = null;
     super.dispose();
   }
+
+  /// Builds a read-only snapshot for `package:motor/inspection.dart`.
+  @internal
+  PlaybackSnapshot internalInspectPlayback() {
+    final tracks = <TrackPlayback>[];
+    for (final entry in _slots.entries) {
+      final playback = entry.value._stepPlayback;
+      if (playback == null) continue;
+      tracks.add(
+        TrackPlayback(
+          track: entry.key,
+          steps: [
+            for (final step in playback.stepsView) step,
+          ],
+          hasSyntheticReturnStep: playback.hasSyntheticReturnStep,
+          loop: playback.loop,
+          currentStepIndex: playback.currentStepIndex,
+          direction: playback.direction,
+          cycle: playback.cycle,
+          isWaitingForSync: playback.isWaitingForSync,
+          syncToken: playback.syncToken,
+          startOffset: entry.value._startOffset,
+          playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
+          cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
+          stepStarts: [
+            for (final seconds in playback.stepStartSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          stepDurations: [
+            for (final seconds in playback.forwardSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+        ),
+      );
+    }
+    return PlaybackSnapshot(
+      revision: _playbackRevision,
+      tickerElapsed: lastElapsedDuration,
+      status: status,
+      tracks: tracks,
+    );
+  }
+
+  /// Exposes the plan-revision counter to the inspection extension.
+  @internal
+  int get internalPlaybackRevision => _playbackRevision;
+
+  static Duration? _durationFromSeconds(double? seconds) => seconds == null
+      ? null
+      : Duration(
+          microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+        );
 
   void _playAnimation<T extends Object>(
     TrackAnimation<T> animation, {

@@ -1,4 +1,5 @@
 import 'package:flutter/physics.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
@@ -59,6 +60,7 @@ class StepPlayback<T extends Object> {
       }
     }
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
+    _stepStartSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
     _reset();
   }
@@ -118,11 +120,15 @@ class StepPlayback<T extends Object> {
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
 
+  /// The slot-local time at which each forward step began in this cycle.
+  late final List<double?> _stepStartSeconds;
+
   late List<double> _currentValues;
   late List<double> _currentVelocities;
   late List<Simulation> _simulations;
   var _stepIndex = 0;
   var _direction = 1;
+  var _cycle = 0;
   var _cycleStartSeconds = 0.0;
   var _segmentStartSeconds = 0.0;
   var _lastElapsedSeconds = 0.0;
@@ -161,6 +167,43 @@ class StepPlayback<T extends Object> {
     if (!_isWaitingForSync) return null;
     return (_steps[_stepIndex] as StepSync<T>).token;
   }
+
+  /// The actual playback plan, including a synthetic loop-return step.
+  @internal
+  List<TrackStep<T>> get stepsView => List.unmodifiable(_steps);
+
+  /// Whether [stepsView] ends with a synthetic loop-return step.
+  @internal
+  bool get hasSyntheticReturnStep => _hasReturnStep;
+
+  /// The loop mode used by this playback.
+  @internal
+  LoopMode get loop => _loop;
+
+  /// Recorded forward segment durations, in seconds.
+  @internal
+  List<double?> get forwardSegmentSeconds =>
+      List.unmodifiable(_forwardSegmentSeconds);
+
+  /// Recorded forward step start times, in slot-local seconds.
+  @internal
+  List<double?> get stepStartSeconds => List.unmodifiable(_stepStartSeconds);
+
+  /// The current playback direction: `1` forward or `-1` reverse.
+  @internal
+  int get direction => _direction;
+
+  /// The number of loop boundaries crossed by this playback.
+  @internal
+  int get cycle => _cycle;
+
+  /// The most recent slot-local elapsed time, in seconds.
+  @internal
+  double get lastElapsedSeconds => _lastElapsedSeconds;
+
+  /// The slot-local time at which the current loop leg began, in seconds.
+  @internal
+  double get cycleStartSeconds => _cycleStartSeconds;
 
   /// Releases the playback past the current [StepSync].
   ///
@@ -255,11 +298,15 @@ class StepPlayback<T extends Object> {
     _currentVelocities = List.of(_initialVelocities);
     _stepIndex = 0;
     _direction = 1;
+    _cycle = 0;
     _cycleStartSeconds = 0;
     _segmentStartSeconds = 0;
     _lastElapsedSeconds = 0;
     _isDone = false;
     _isWaitingForSync = false;
+    for (var i = 0; i < _stepStartSeconds.length; i++) {
+      _stepStartSeconds[i] = null;
+    }
     _startCurrentStep();
     _sample(0);
   }
@@ -282,11 +329,13 @@ class StepPlayback<T extends Object> {
             _currentVelocities = List.of(_initialVelocities);
           }
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = 0;
         case LoopMode.pingPong:
           // Reverse direction from the last step.
           _direction = -1;
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = _steps.length - 1;
         case LoopMode.seamless:
           // Jump straight back to the start snapshot and replay. The timeline
@@ -294,6 +343,7 @@ class StepPlayback<T extends Object> {
           _currentValues = List.of(_initialValues);
           _currentVelocities = List.of(_initialVelocities);
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = 0;
       }
     } else if (_direction < 0 && _stepIndex < 0) {
@@ -358,6 +408,7 @@ class StepPlayback<T extends Object> {
       _startReverseStep();
       return;
     }
+    _stepStartSeconds[_stepIndex] = _segmentStartSeconds;
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
       StepTo<T>(:final value, :final motion, :final motionPerDimension) => () {
