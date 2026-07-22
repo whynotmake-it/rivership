@@ -101,6 +101,10 @@ class _SpringCharacterPageState extends State<SpringCharacterPage>
     final t = ExampleTheme.of(context);
     return ExamplePage(
       title: SpringCharacterPage.routeName,
+      next: (
+        label: 'More Than One Dimension',
+        routeName: 'More Than One Dimension',
+      ),
       description:
           'Drag and fling one sheet, then tune its duration and bounce. Every '
           'preset receives the same artifact and the same gesture.',

@@ -17,6 +17,7 @@ class TogglePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ExamplePage(
       title: routeName,
+      next: (label: 'Pull to Refresh', routeName: 'Pull to Refresh'),
       description:
           'Interactive state, the easy way. Each control animates a single '
           'value with a bouncy spring, so taps feel springy and responsive '

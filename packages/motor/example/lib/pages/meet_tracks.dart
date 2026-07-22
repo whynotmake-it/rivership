@@ -59,6 +59,7 @@ class _MeetTracksPageState extends State<MeetTracksPage>
     final theme = ExampleTheme.of(context);
     return ExamplePage(
       title: MeetTracksPage.routeName,
+      next: (label: 'Timelines & Steps', routeName: 'Timelines & Steps'),
       description:
           'A track gives one animated property a stable identity. Tap anywhere '
           'in the stage, then tap again mid-flight: three tracks redirect on '

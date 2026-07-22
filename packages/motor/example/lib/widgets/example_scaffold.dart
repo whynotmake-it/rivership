@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -8,6 +9,7 @@ class ExamplePage extends StatelessWidget {
     required this.description,
     required this.child,
     this.action,
+    this.next,
     this.glow = true,
     super.key,
   });
@@ -15,6 +17,7 @@ class ExamplePage extends StatelessWidget {
   final String title;
   final String description;
   final Widget? action;
+  final ({String label, String routeName})? next;
   final Widget child;
   final bool glow;
 
@@ -68,6 +71,33 @@ class ExamplePage extends StatelessWidget {
                       ],
                       const SizedBox(height: 20),
                       child,
+                      if (next case final next?) ...[
+                        const SizedBox(height: 32),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: CupertinoButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 8,
+                            ),
+                            onPressed: () => context.navigateTo(
+                              NamedRoute(next.routeName),
+                            ),
+                            child: Text(
+                              'next: ${next.label} →',
+                              style: TextStyle(
+                                color: t.textSecondary,
+                                fontSize: 13,
+                                fontFamily: 'JetBrains Mono',
+                                fontFamilyFallback: const [
+                                  'monospace',
+                                  'Menlo',
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

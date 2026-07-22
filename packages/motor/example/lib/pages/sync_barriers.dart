@@ -97,6 +97,7 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
     final theme = ExampleTheme.of(context);
     return ExamplePage(
       title: SyncBarriersPage.routeName,
+      next: (label: 'Phases', routeName: 'Phases'),
       description:
           'Two tracks keep independent clocks until .sync(token:) makes them '
           'meet. Turn the barrier off to see each dot pop as soon as it arrives.',

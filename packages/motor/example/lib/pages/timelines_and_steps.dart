@@ -121,6 +121,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
     };
     return ExamplePage(
       title: TimelinesAndStepsPage.routeName,
+      next: (label: 'Sync Barriers', routeName: 'Sync Barriers'),
       description:
           'A timeline is a reusable value made from steps. Change its loop '
           'mode and watch the same plan jump home, bounce backward, or join '

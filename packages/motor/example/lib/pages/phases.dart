@@ -156,6 +156,7 @@ class _PhasesPageState extends State<PhasesPage>
     final theme = ExampleTheme.of(context);
     return ExamplePage(
       title: PhasesPage.routeName,
+      next: (label: 'Toggle', routeName: 'Toggle'),
       description:
           'Barriers coordinate steps inside one plan; phases name whole UI '
           'states and choose the plan for each transition.',

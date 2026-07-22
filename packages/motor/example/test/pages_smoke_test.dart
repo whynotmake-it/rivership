@@ -1,18 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motor_example/pages/accordion.dart';
+import 'package:motor_example/main.dart' as example;
 import 'package:motor_example/pages/boarding_pass.dart';
 import 'package:motor_example/pages/card_stack.dart';
-import 'package:motor_example/pages/curve_trap.dart';
 import 'package:motor_example/pages/curve_trap_escape.dart';
 import 'package:motor_example/pages/draggable_icons.dart';
-import 'package:motor_example/pages/drawer.dart';
 import 'package:motor_example/pages/instant_vs_animated.dart';
-import 'package:motor_example/pages/interruptible_motion.dart';
-import 'package:motor_example/pages/loaders.dart';
 import 'package:motor_example/pages/meet_tracks.dart';
-import 'package:motor_example/pages/motion_character.dart';
-import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/photo_flick.dart';
@@ -21,17 +15,12 @@ import 'package:motor_example/pages/pull_to_refresh.dart';
 import 'package:motor_example/pages/snap_carousel.dart';
 import 'package:motor_example/pages/spring_character.dart';
 import 'package:motor_example/pages/sync_barriers.dart';
-import 'package:motor_example/pages/the_spring.dart';
-import 'package:motor_example/pages/thermostat.dart';
 import 'package:motor_example/pages/timelines_and_steps.dart';
-import 'package:motor_example/pages/title_slide.dart';
 import 'package:motor_example/pages/toast.dart';
 import 'package:motor_example/pages/toggle.dart';
-import 'package:motor_example/pages/two_dimensions.dart';
-import 'package:motor_example/pages/why_motion.dart';
 
-// Pump enough frames to drain any one-shot stagger timers (e.g. Title Slide
-// schedules per-letter delays) so the test's no-pending-timer invariant holds.
+// Pump enough frames to drain one-shot timers so the test's no-pending-timer
+// invariant holds.
 Future<void> _pumpFrames(WidgetTester tester, {int frames = 60}) async {
   for (var i = 0; i < frames; i++) {
     await tester.pump(const Duration(milliseconds: 32));
@@ -44,32 +33,38 @@ void main() {
     'The Curve Trap': () => const CurveTrapEscapePage(),
     'Spring Character': () => const SpringCharacterPage(),
     'More Than One Dimension': () => const PhotoFlickPage(),
-    'Why Motion?': () => const WhyMotionPage(),
-    'Curve Trap': () => const CurveTrapPage(),
-    'The Spring': () => const TheSpringPage(),
-    'Carry the Momentum': () => const InterruptibleMotionPage(),
-    'Two Dimensions': () => const TwoDimensionsPage(),
-    'Motion Character': () => const MotionCharacterPage(),
     'Toggle': () => const TogglePage(),
     'Snap Carousel': () => const SnapCarouselPage(),
     'Toast': () => const ToastPage(),
-    'Drawer': () => const DrawerPage(),
-    'Accordion': () => const AccordionPage(),
-    'Loaders': () => const LoadersPage(),
     'Meet Tracks': () => const MeetTracksPage(),
     'Payment Success': () => const PaymentSuccessPage(),
-    'Thermostat': () => const ThermostatPage(),
     'Timelines & Steps': () => const TimelinesAndStepsPage(),
     'Sync Barriers': () => const SyncBarriersPage(),
     'Phases': () => const PhasesPage(),
     'Card Stack': () => const CardStackPage(),
-    'Now Playing': () => const NowPlayingPage(),
-    'Title Slide': () => const TitleSlidePage(),
     'Picture in Picture': () => const PictureInPicturePage(),
     'Pull to Refresh': () => const PullToRefreshPage(),
     'Draggable Icons': () => const DraggableIconsPage(),
     'Boarding Pass': () => const BoardingPassPage(),
   };
+  const nextPages = <String, String>{
+    'Instant vs. Animated': 'The Curve Trap',
+    'The Curve Trap': 'Spring Character',
+    'Spring Character': 'More Than One Dimension',
+    'More Than One Dimension': 'Meet Tracks',
+    'Meet Tracks': 'Timelines & Steps',
+    'Timelines & Steps': 'Sync Barriers',
+    'Sync Barriers': 'Phases',
+    'Phases': 'Toggle',
+    'Toggle': 'Pull to Refresh',
+    'Pull to Refresh': 'Card Stack',
+    'Card Stack': 'Payment Success',
+    'Payment Success': 'Boarding Pass',
+  };
+
+  test('smoke map covers every page route', () {
+    expect(pages.length, example.motorRoutes.length - 1);
+  });
 
   for (final entry in pages.entries) {
     testWidgets('${entry.key} builds and runs without exceptions', (
@@ -78,6 +73,9 @@ void main() {
       await tester.pumpWidget(CupertinoApp(home: entry.value()));
       await _pumpFrames(tester);
       expect(tester.takeException(), isNull);
+      if (nextPages[entry.key] case final next?) {
+        expect(find.text('next: $next →'), findsOneWidget);
+      }
     });
   }
 
@@ -195,26 +193,6 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('auto-play')));
     await _pumpFrames(tester, frames: 180);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Thermostat drags the target and toggles power', (tester) async {
-    await tester.pumpWidget(const CupertinoApp(home: ThermostatPage()));
-    await tester.pump();
-
-    // Drag the dial up (warmer) then down (cooler) — the mode should follow.
-    await tester.drag(find.byType(ThermostatPage), const Offset(0, -120));
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 32));
-    }
-    await tester.drag(find.byType(ThermostatPage), const Offset(0, 200));
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 32));
-    }
-    await tester.tap(find.text('Turn off'));
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.text('Turn on'));
-    await tester.pump(const Duration(milliseconds: 200));
     expect(tester.takeException(), isNull);
   });
 

@@ -101,6 +101,7 @@ class _CurveTrapEscapePageState extends State<CurveTrapEscapePage>
     final t = ExampleTheme.of(context);
     return ExamplePage(
       title: CurveTrapEscapePage.routeName,
+      next: (label: 'Spring Character', routeName: 'Spring Character'),
       description:
           'Interrupt the same sheet under a curve and a spring. The curve '
           'restarts its clock; the spring re-solves from live velocity.',

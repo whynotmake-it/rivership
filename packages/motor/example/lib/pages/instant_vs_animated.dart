@@ -54,6 +54,7 @@ class _InstantVsAnimatedPageState extends State<InstantVsAnimatedPage>
     final t = ExampleTheme.of(context);
     return ExamplePage(
       title: InstantVsAnimatedPage.routeName,
+      next: (label: 'The Curve Trap', routeName: 'The Curve Trap'),
       description:
           'Open the same sheet in two phones. The state change is identical; '
           'only the way the interface carries you between states changes.',

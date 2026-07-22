@@ -32,6 +32,7 @@ class _CardStackPageState extends State<CardStackPage> {
   Widget build(BuildContext context) {
     return ExamplePage(
       title: CardStackPage.routeName,
+      next: (label: 'Payment Success', routeName: 'Payment Success'),
       description:
           'Drag the top card to dismiss it. The fling velocity is projected '
           'through a friction sim to decide whether it clears the stack, and '

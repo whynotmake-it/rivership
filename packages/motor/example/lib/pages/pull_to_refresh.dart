@@ -89,6 +89,7 @@ class _PullToRefreshPageState extends State<PullToRefreshPage>
   Widget build(BuildContext context) {
     return ExamplePage(
       title: PullToRefreshPage.routeName,
+      next: (label: 'Card Stack', routeName: 'Card Stack'),
       description:
           'Drag the list down and let go. The header stretches with rubber-band '
           'resistance; on release, a friction projection decides whether your '

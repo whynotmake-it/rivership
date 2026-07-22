@@ -176,6 +176,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
     final t = ExampleTheme.of(context);
     return ExamplePage(
       title: PaymentSuccessPage.routeName,
+      next: (label: 'Boarding Pass', routeName: 'Boarding Pass'),
       description:
           'Press and hold the button to pay — release early and it springs '
           'back. On commit, one timeline morphs the button into a spinner, '

@@ -147,6 +147,7 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
     final t = ExampleTheme.of(context);
     return ExamplePage(
       title: PhotoFlickPage.routeName,
+      next: (label: 'Meet Tracks', routeName: 'Meet Tracks'),
       description:
           'Open a photo and flick it freely. Its X and Y projections keep '
           'their own velocity and can settle on different springs.',
