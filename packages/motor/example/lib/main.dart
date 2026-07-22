@@ -12,16 +12,20 @@ import 'package:motor_example/pages/drawer.dart';
 import 'package:motor_example/pages/instant_vs_animated.dart';
 import 'package:motor_example/pages/interruptible_motion.dart';
 import 'package:motor_example/pages/loaders.dart';
+import 'package:motor_example/pages/meet_tracks.dart';
 import 'package:motor_example/pages/motion_character.dart';
 import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
+import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/photo_flick.dart';
 import 'package:motor_example/pages/picture_in_picture.dart';
 import 'package:motor_example/pages/pull_to_refresh.dart';
 import 'package:motor_example/pages/snap_carousel.dart';
 import 'package:motor_example/pages/spring_character.dart';
+import 'package:motor_example/pages/sync_barriers.dart';
 import 'package:motor_example/pages/the_spring.dart';
 import 'package:motor_example/pages/thermostat.dart';
+import 'package:motor_example/pages/timelines_and_steps.dart';
 import 'package:motor_example/pages/title_slide.dart';
 import 'package:motor_example/pages/toast.dart';
 import 'package:motor_example/pages/toggle.dart';
@@ -98,6 +102,13 @@ final motorRoutes = [
       (_) => const PullToRefreshPage()),
   _route(DraggableIconsPage.routeName, 'draggable-icons',
       (_) => const DraggableIconsPage()),
+  _route(MeetTracksPage.routeName, 'meet-tracks',
+      (_) => const MeetTracksPage()),
+  _route(TimelinesAndStepsPage.routeName, 'timelines-and-steps',
+      (_) => const TimelinesAndStepsPage()),
+  _route(SyncBarriersPage.routeName, 'sync-barriers',
+      (_) => const SyncBarriersPage()),
+  _route(PhasesPage.routeName, 'phases', (_) => const PhasesPage()),
 ];
 
 final router = RootStackRouter.build(

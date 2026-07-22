@@ -68,10 +68,7 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
   }
 
   void _tick(Duration elapsed) {
-    final duration = layoutTimeline(
-      _timeline,
-      pixelsPerMillisecond: 0,
-    ).totalDuration;
+    const duration = Duration(milliseconds: 1100);
     _playhead.value = elapsed > duration ? duration : elapsed;
   }
 
@@ -123,8 +120,8 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
         children: [
           Surface(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
-            child: TrackBuilder.timeline(
-              _timeline,
+            child: TrackBuilder(
+              animations: _timeline.animations,
               restartTrigger: _replay,
               builder: (context, value, _) => Column(
                 children: [

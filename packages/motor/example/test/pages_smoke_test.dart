@@ -13,6 +13,7 @@ import 'package:motor_example/pages/meet_tracks.dart';
 import 'package:motor_example/pages/motion_character.dart';
 import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
+import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/photo_flick.dart';
 import 'package:motor_example/pages/picture_in_picture.dart';
 import 'package:motor_example/pages/pull_to_refresh.dart';
@@ -59,6 +60,7 @@ void main() {
     'Thermostat': () => const ThermostatPage(),
     'Timelines & Steps': () => const TimelinesAndStepsPage(),
     'Sync Barriers': () => const SyncBarriersPage(),
+    'Phases': () => const PhasesPage(),
     'Card Stack': () => const CardStackPage(),
     'Now Playing': () => const NowPlayingPage(),
     'Title Slide': () => const TitleSlidePage(),
@@ -175,6 +177,22 @@ void main() {
     await _pumpFrames(tester, frames: 60);
     expect(read('runner-value'), greaterThan(1.2));
     expect(read('walker-value'), greaterThan(1.2));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Phases settles manually and auto-plays several cycles', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const CupertinoApp(home: PhasesPage()));
+    await tester.tap(find.byKey(const ValueKey('phase-card')));
+    await _pumpFrames(tester, frames: 80);
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('phase-status'))).data,
+      contains('PhaseSettled'),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('auto-play')));
+    await _pumpFrames(tester, frames: 180);
     expect(tester.takeException(), isNull);
   });
 

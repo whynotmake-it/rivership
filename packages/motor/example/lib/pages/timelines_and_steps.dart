@@ -55,7 +55,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
               _angle([
                 // Seamless loops require identical first and last rendered
                 // frames. This zero-duration step encodes the instant reset.
-                .to(0, motion: .linear(Duration.zero)),
+                .to(0, motion: .linear(.zero)),
                 .to(math.pi, motion: .linear(Duration(milliseconds: 450))),
                 .to(2 * math.pi,
                     motion: .linear(Duration(milliseconds: 450))),
@@ -85,10 +85,9 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
             ],
             loop: _loop,
           );
-    _duration = layoutTimeline(
-      _timeline,
-      pixelsPerMillisecond: 0,
-    ).totalDuration;
+    _duration = _loop == LoopMode.seamless
+        ? const Duration(milliseconds: 900)
+        : const Duration(milliseconds: 1100);
   }
 
   void _selectLoop(LoopMode? loop) {
