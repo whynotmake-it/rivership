@@ -22,6 +22,21 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
   static const _dotCount = 5;
   static const _offset = Duration(milliseconds: 100);
 
+  // The docked lanes share one clock with this animation, so every segment
+  // must end at an exact, knowable time. Springs settle on their own physics
+  // (their design duration is only perceptual — a 250ms smooth spring only
+  // comes to rest near 500ms), which would make the loop period drift away
+  // from the playhead a little more each cycle. Fixed-duration curves keep
+  // the engine's loop period equal to the span the lanes draw.
+  static const _pop = CurvedMotion(
+    Duration(milliseconds: 250),
+    Curves.easeOutBack,
+  );
+  static const _fall = CurvedMotion(
+    Duration(milliseconds: 350),
+    Curves.easeInOutCubic,
+  );
+
   final _dots = [
     for (var i = 0; i < _dotCount; i++) Track<double>(.single, initial: 0.3),
   ];
@@ -32,6 +47,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
   late TrackTimeline _timeline;
   late Duration _duration;
   LoopMode _loop = LoopMode.loop;
+  int _restart = 0;
 
   @override
   void initState() {
@@ -61,21 +77,23 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
         : TrackTimeline([
             for (final (index, dot) in _dots.indexed)
               dot([
+                // Zero-duration anchor: LoopMode.loop appends an implicit
+                // return-to-start step that reuses the first step's motion.
+                // Anchoring with a free zero-duration step keeps that return
+                // instant (the plan already ends at its start value), so the
+                // engine's loop period stays equal to the drawn span.
+                .to(0.3, motion: .linear(.zero)),
                 .hold(_offset * index),
-                .to(
-                  1,
-                  motion: .smoothSpring(duration: Duration(milliseconds: 250)),
-                ),
-                .to(
-                  0.3,
-                  motion: .smoothSpring(duration: Duration(milliseconds: 350)),
-                ),
+                .to(1, motion: _pop),
+                .to(0.3, motion: _fall),
                 .hold(_offset * (_dotCount - index)),
               ]),
           ], loop: _loop);
-    _duration = _loop == LoopMode.seamless
-        ? const Duration(milliseconds: 900)
-        : const Duration(milliseconds: 1100);
+    // Derive the playhead period from the same layout pass the lanes draw
+    // with, so the clock and the drawing cannot disagree.
+    // ignore: invalid_use_of_visible_for_testing_member
+    _duration = layoutTimeline(_timeline, pixelsPerMillisecond: 0)
+        .totalDuration;
   }
 
   void _selectLoop(LoopMode? loop) {
@@ -84,6 +102,11 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
     _playhead.value = Duration.zero;
     setState(() {
       _loop = loop;
+      // Bumping the restart trigger makes TrackBuilder jump every track back
+      // to its start value and replay from the beginning — on the same frame
+      // the playhead ticker resets — so no dot keeps phase (or freezes
+      // mid-pop) from the previous mode.
+      _restart++;
       _rebuildTimeline();
     });
     _ticker.start();
@@ -139,6 +162,7 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
             child: Center(
               child: TrackBuilder.timeline(
                 _timeline,
+                restartTrigger: _restart,
                 builder: (context, value, _) => _loop == LoopMode.seamless
                     ? Transform.rotate(
                         angle: value(_angle),
