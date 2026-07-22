@@ -355,10 +355,36 @@ final controller = TrackController(vsync: this);
 controller.play(timeline);           // run a TrackTimeline
 controller.animate([scale.to(1.2)]); // redirect specific tracks
 controller.set([scale.value(1.0)]);  // jump without animating
+controller.pause();                  // freeze without losing the plan
+controller.scrubTo(const Duration(milliseconds: 240));
+controller.resume();                 // continue smoothly from the scrub
 final s = controller.value(scale);   // read via the reader
 ```
 
 `PhaseTrackController` adds phase navigation on top (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) — it's what `PhaseTrackBuilder` uses internally.
+
+#### Playback inspection
+
+Debug overlays and developer tools can observe a controller without reaching
+into Motor internals. Import the separate inspection library and request an
+immutable snapshot:
+
+```dart
+import 'package:motor/inspection.dart';
+
+final snapshot = controller.inspectPlayback();
+
+for (final playback in snapshot.tracks) {
+  print('${playback.track}: step ${playback.currentStepIndex}');
+  print(playback.stepDurations); // actual timings appear as playback runs
+}
+```
+
+Each snapshot includes the controller status and revision plus per-track steps,
+loop cycle and direction, barrier state, playhead, recorded starts, and actual
+step durations. Listen to the controller and compare `playbackRevision` when a
+tool needs to distinguish a rewritten plan from an ordinary animation tick.
+The example gallery uses this API for its live, draggable timeline inspector.
 
 ### Sequence Animations (deprecated)
 

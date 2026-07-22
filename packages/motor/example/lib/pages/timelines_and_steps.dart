@@ -2,10 +2,9 @@ import 'dart:math' as math;
 
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/widgets/example_scaffold.dart';
-import 'package:motor_example/widgets/timeline_lanes.dart';
+import 'package:motor_example/widgets/timeline_inspector.dart';
 
 /// Shows reusable timelines, ordered steps, and their loop behavior.
 class TimelinesAndStepsPage extends StatefulWidget {
@@ -22,12 +21,9 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
   static const _dotCount = 5;
   static const _offset = Duration(milliseconds: 100);
 
-  // The docked lanes share one clock with this animation, so every segment
-  // must end at an exact, knowable time. Springs settle on their own physics
-  // (their design duration is only perceptual — a 250ms smooth spring only
-  // comes to rest near 500ms), which would make the loop period drift away
-  // from the playhead a little more each cycle. Fixed-duration curves keep
-  // the engine's loop period equal to the span the lanes draw.
+  // Fixed curves make the contrast between the loop modes unambiguous. The
+  // inspector reads actual engine timing, so it remains honest if these are
+  // replaced with springs later.
   static const _pop = CurvedMotion(
     Duration(milliseconds: 250),
     Curves.easeOutBack,
@@ -41,25 +37,21 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
     for (var i = 0; i < _dotCount; i++) Track<double>(.single, initial: 0.3),
   ];
   final _angle = Track<double>(.single, initial: 0);
-  final _playhead = ValueNotifier(Duration.zero);
 
-  late final Ticker _ticker;
+  late final _controller = TrackController(vsync: this);
   late TrackTimeline _timeline;
-  late Duration _duration;
   LoopMode _loop = LoopMode.loop;
-  int _restart = 0;
 
   @override
   void initState() {
     super.initState();
     _rebuildTimeline();
-    _ticker = createTicker(_tick)..start();
+    _playTimeline();
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
-    _playhead.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -89,38 +81,22 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
                 .hold(_offset * (_dotCount - index)),
               ]),
           ], loop: _loop);
-    // Derive the playhead period from the same layout pass the lanes draw
-    // with, so the clock and the drawing cannot disagree.
-    // ignore: invalid_use_of_visible_for_testing_member
-    _duration = layoutTimeline(_timeline, pixelsPerMillisecond: 0)
-        .totalDuration;
+  }
+
+  void _playTimeline() {
+    _controller
+      ..stop(canceled: true)
+      ..set(_timeline.startValues)
+      ..play(_timeline);
   }
 
   void _selectLoop(LoopMode? loop) {
     if (loop == null || loop == _loop) return;
-    _ticker.stop();
-    _playhead.value = Duration.zero;
     setState(() {
       _loop = loop;
-      // Bumping the restart trigger makes TrackBuilder jump every track back
-      // to its start value and replay from the beginning — on the same frame
-      // the playhead ticker resets — so no dot keeps phase (or freezes
-      // mid-pop) from the previous mode.
-      _restart++;
       _rebuildTimeline();
     });
-    _ticker.start();
-  }
-
-  void _tick(Duration elapsed) {
-    final total = _duration.inMicroseconds;
-    if (total == 0) return;
-    final cycle = elapsed.inMicroseconds ~/ total;
-    final within = elapsed.inMicroseconds % total;
-    final visible = _loop == LoopMode.pingPong && cycle.isOdd
-        ? total - within
-        : within;
-    _playhead.value = Duration(microseconds: visible);
+    _playTimeline();
   }
 
   @override
@@ -160,12 +136,11 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
           Surface(
             padding: const EdgeInsets.symmetric(vertical: 34),
             child: Center(
-              child: TrackBuilder.timeline(
-                _timeline,
-                restartTrigger: _restart,
-                builder: (context, value, _) => _loop == LoopMode.seamless
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) => _loop == LoopMode.seamless
                     ? Transform.rotate(
-                        angle: value(_angle),
+                        angle: _controller.value(_angle),
                         child: CustomPaint(
                           size: const Size.square(48),
                           painter: _ArcPainter(theme.textPrimary, theme.border),
@@ -180,16 +155,15 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
                                 horizontal: 7,
                               ),
                               child: Transform.scale(
-                                scale: 0.6 + value(dot) * 0.7,
+                                scale: 0.6 + _controller.value(dot) * 0.7,
                                 child: Container(
                                   width: 16,
                                   height: 16,
                                   decoration: BoxDecoration(
                                     color: theme.textPrimary.withValues(
-                                      alpha: (0.25 + value(dot) * 0.75).clamp(
-                                        0,
-                                        1,
-                                      ),
+                                      alpha:
+                                          (0.25 + _controller.value(dot) * 0.75)
+                                              .clamp(0, 1),
                                     ),
                                     shape: BoxShape.circle,
                                   ),
@@ -204,9 +178,8 @@ class _TimelinesAndStepsPageState extends State<TimelinesAndStepsPage>
           const SizedBox(height: 18),
           Surface(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-            child: TimelineLanes(
-              timeline: _timeline,
-              playhead: _playhead,
+            child: TimelineInspector(
+              controller: _controller,
               laneLabels: labels,
               laneColors: {
                 for (final track in _timeline.animations)

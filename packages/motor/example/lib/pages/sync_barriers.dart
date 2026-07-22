@@ -1,11 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/pages/payment_success.dart';
 import 'package:motor_example/widgets/example_scaffold.dart';
-import 'package:motor_example/widgets/timeline_lanes.dart';
+import 'package:motor_example/widgets/timeline_inspector.dart';
 
 /// Contrasts independent arrivals with tracks meeting at a sync barrier.
 class SyncBarriersPage extends StatefulWidget {
@@ -21,7 +20,7 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
     with SingleTickerProviderStateMixin {
   final _runner = Track<double>(.single, initial: 0);
   final _walker = Track<double>(.single, initial: 0);
-  final _playhead = ValueNotifier(Duration.zero);
+  late final _controller = TrackController(vsync: this);
 
   late final TrackTimeline _withoutBarrier = TrackTimeline([
     _runner([
@@ -47,48 +46,38 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
     ]),
   ]);
 
-  late final Ticker _ticker;
   bool _barrier = true;
-  int _replay = 0;
 
   TrackTimeline get _timeline => _barrier ? _withBarrier : _withoutBarrier;
 
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(_tick)..start();
+    _playTimeline();
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
-    _playhead.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  void _tick(Duration elapsed) {
-    const duration = Duration(milliseconds: 1100);
-    _playhead.value = elapsed > duration ? duration : elapsed;
-  }
-
-  void _restartClock() {
-    _ticker
-      ..stop()
-      ..start();
-    _playhead.value = Duration.zero;
+  void _playTimeline() {
+    _controller
+      ..stop(canceled: true)
+      ..set(_timeline.startValues)
+      ..play(_timeline);
   }
 
   void _setBarrier(bool value) {
     setState(() {
       _barrier = value;
-      _replay++;
     });
-    _restartClock();
+    _playTimeline();
   }
 
   void _replayTimeline() {
-    setState(() => _replay++);
-    _restartClock();
+    _playTimeline();
   }
 
   @override
@@ -120,21 +109,20 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
         children: [
           Surface(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
-            child: TrackBuilder(
-              animations: _timeline.animations,
-              restartTrigger: _replay,
-              builder: (context, value, _) => Column(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) => Column(
                 children: [
                   _RaceLane(
                     label: 'runner',
-                    value: value(_runner),
+                    value: _controller.value(_runner),
                     color: ExampleTheme.spectrumRed,
                     valueKey: const ValueKey('runner-value'),
                   ),
                   const SizedBox(height: 24),
                   _RaceLane(
                     label: 'walker',
-                    value: value(_walker),
+                    value: _controller.value(_walker),
                     color: theme.textPrimary,
                     valueKey: const ValueKey('walker-value'),
                   ),
@@ -145,9 +133,8 @@ class _SyncBarriersPageState extends State<SyncBarriersPage>
           const SizedBox(height: 18),
           Surface(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-            child: TimelineLanes(
-              timeline: _timeline,
-              playhead: _playhead,
+            child: TimelineInspector(
+              controller: _controller,
               laneLabels: {_runner: 'runner', _walker: 'walker'},
               laneColors: {
                 _runner: ExampleTheme.spectrumRed,

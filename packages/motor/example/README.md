@@ -13,8 +13,8 @@ motion with Motor.
 ## Tracks
 
 - **Meet Tracks** — give animated values stable identity and remembered velocity.
-- **Timelines & Steps** — compose ordered motion and choose how it repeats.
-- **Sync Barriers** — coordinate tracks without forcing them onto one clock.
+- **Timelines & Steps** — compose ordered motion, inspect it live, and scrub it.
+- **Sync Barriers** — watch independent clocks converge on a recorded barrier.
 - **Phases** — model interruptible UI stories as named, settled states.
 
 ## Gestures × timelines
@@ -23,7 +23,7 @@ motion with Motor.
 - **Pull to Refresh** — project a release before deciding whether to commit.
 - **Card Stack** — turn gesture outcomes into composable motion phases.
 - **Payment Success** — coordinate many tracks around a shared checkpoint.
-- **Boarding Pass** — combine gestures, phases, and timelines in one resilient flow.
+- **Boarding Pass** — inspect a five-lane choreography while interrupting it.
 
 ## Recipes
 
@@ -57,3 +57,8 @@ changes mid-flight, so redirected motion stays smooth.
 
 **How do I animate many properties?** Use tracks. Each property can have its own
 steps and motion while all tracks advance on a shared clock.
+
+**Can I inspect a running timeline?** Yes. The timeline examples attach a live
+inspector directly to `TrackController`. Solid segments are engine-recorded
+timings, dotted segments are estimates, and dragging pauses, scrubs, and resumes
+the real controller.

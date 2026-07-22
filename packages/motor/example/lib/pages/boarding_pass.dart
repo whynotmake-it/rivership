@@ -2,10 +2,9 @@ import 'dart:math' as math;
 
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:motor/motor.dart';
 import 'package:motor_example/widgets/example_scaffold.dart';
-import 'package:motor_example/widgets/timeline_lanes.dart';
+import 'package:motor_example/widgets/timeline_inspector.dart';
 
 /// A boarding pass whose causal timeline stays live to the user's hand.
 class BoardingPassPage extends StatefulWidget {
@@ -42,32 +41,6 @@ class _BoardingPassPageState extends State<BoardingPassPage>
   ];
   final _barcode = Track<double>(.single, initial: 0);
   final _gateChip = Track<double>(.single, initial: 0);
-
-  /// The five lanes the visualization docks on. The letters lane is
-  /// synthetic: one block spanning the first letter's reveal through the last
-  /// letter's finish, so the docked plan resolves to the same span as the
-  /// full choreography. Docking on the first letter alone ended the lane
-  /// 360ms before the letters visibly stop animating.
-  late final TrackTimeline _representativeTimeline = TrackTimeline([
-    _entranceTimeline.animations[0],
-    _entranceTimeline.animations[1],
-    _letterTracks.first([
-      .sync(token: #landed),
-      .to(
-        1,
-        motion: CurvedMotion(
-          _letterStagger * (_routeLetters.length - 1) + _letterReveal,
-          Curves.easeOutCubic,
-        ),
-      ),
-    ]),
-    _entranceTimeline.animations[_entranceTimeline.animations.length - 2],
-    _entranceTimeline.animations.last,
-  ]);
-  late TrackTimeline _lanesTimeline = _representativeTimeline;
-  late final Ticker _playheadTicker;
-  final _playhead = ValueNotifier(Duration.zero);
-  Duration? _barrierReleaseElapsed;
 
   Offset _velocityBeforeDrag = Offset.zero;
   Offset _dragDelta = Offset.zero;
@@ -118,22 +91,16 @@ class _BoardingPassPageState extends State<BoardingPassPage>
   @override
   void initState() {
     super.initState();
-    _playheadTicker = createTicker(_onPlayheadTick);
     _resetAndPlayEntrance();
   }
 
   @override
   void dispose() {
-    _playheadTicker.dispose();
-    _playhead.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  void _rebook() {
-    _setLanesTimeline(_representativeTimeline);
-    _resetAndPlayEntrance();
-  }
+  void _rebook() => _resetAndPlayEntrance();
 
   void _resetAndPlayEntrance() {
     _dragDelta = Offset.zero;
@@ -148,46 +115,6 @@ class _BoardingPassPageState extends State<BoardingPassPage>
         _gateChip.value(0),
       ])
       ..play(_entranceTimeline);
-    _restartPlayhead();
-  }
-
-  void _onPlayheadTick(Duration elapsed) {
-    _playhead.value = _lanePlayhead(elapsed);
-    if (!_controller.isAnimating) _playheadTicker.stop();
-  }
-
-  /// Maps wall time onto the lanes' design-time axis.
-  ///
-  /// The lanes draw the #landed barrier at the springs' design duration, but
-  /// the engine releases it only when the springs actually settle — a beat
-  /// later. Holding the playhead at the drawn barrier until the release
-  /// really happens (observable as the first letter leaving zero) makes the
-  /// barrier rule visually coincide with the content pour-in. The stretch
-  /// before the barrier remains an approximation: springs have no exact end
-  /// on a fixed time axis, so the playhead can reach the barrier slightly
-  /// before the ticket visibly rests.
-  Duration _lanePlayhead(Duration elapsed) {
-    if (!identical(_lanesTimeline, _representativeTimeline)) return elapsed;
-    if (_barrierReleaseElapsed == null) {
-      if (_controller.value(_letterTracks.first) > 0) {
-        _barrierReleaseElapsed = elapsed;
-      } else {
-        return elapsed < _ticketLanding ? elapsed : _ticketLanding;
-      }
-    }
-    return _ticketLanding + (elapsed - _barrierReleaseElapsed!);
-  }
-
-  void _restartPlayhead() {
-    if (_playheadTicker.isActive) _playheadTicker.stop();
-    _playhead.value = Duration.zero;
-    _barrierReleaseElapsed = null;
-    _playheadTicker.start();
-  }
-
-  void _setLanesTimeline(TrackTimeline timeline) {
-    setState(() => _lanesTimeline = timeline);
-    _restartPlayhead();
   }
 
   void _onPanStart(DragStartDetails _) {
@@ -245,7 +172,6 @@ class _BoardingPassPageState extends State<BoardingPassPage>
         ).trimmed(fromEnd: .88),
         withVelocity: mergedVelocity,
       );
-      _setLanesTimeline(TrackTimeline([flyOut]));
       final generation = ++_flyOutGeneration;
       // Once the fly-out lands, surface a way back: the stage would
       // otherwise dead-end as an empty rectangle.
@@ -265,7 +191,6 @@ class _BoardingPassPageState extends State<BoardingPassPage>
       ),
       .sync(token: #landed),
     ], withVelocity: mergedVelocity);
-    _setLanesTimeline(TrackTimeline([springBack]));
     _controller.animate([springBack]);
   }
 
@@ -277,7 +202,6 @@ class _BoardingPassPageState extends State<BoardingPassPage>
       ),
       .sync(token: #landed),
     ]);
-    _setLanesTimeline(TrackTimeline([springBack]));
     _controller.animate([springBack]);
   }
 
@@ -341,23 +265,28 @@ class _BoardingPassPageState extends State<BoardingPassPage>
             ),
           ),
           const SizedBox(height: 20),
-          TimelineLanes(
-            timeline: _lanesTimeline,
-            playhead: _playhead,
-            laneLabels: {
-              _ticketPos: 'ticket',
-              _ticketAngle: 'tilt',
-              _letterTracks.first: 'letters',
-              _barcode: 'barcode',
-              _gateChip: 'gate',
-            },
-            laneColors: {
-              _ticketPos: ExampleTheme.signalBlue,
-              _ticketAngle: ExampleTheme.roseQuartz,
-              _letterTracks.first: ExampleTheme.marigold,
-              _barcode: ExampleTheme.spectrumRed,
-              _gateChip: ExampleTheme.signalBlue,
-            },
+          Surface(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+            child: TimelineInspector(
+              controller: _controller,
+              laneGroups: [
+                {..._letterTracks},
+              ],
+              laneLabels: {
+                _ticketPos: 'ticket',
+                _ticketAngle: 'tilt',
+                _letterTracks.first: 'letters',
+                _barcode: 'barcode',
+                _gateChip: 'gate',
+              },
+              laneColors: {
+                _ticketPos: ExampleTheme.signalBlue,
+                _ticketAngle: ExampleTheme.roseQuartz,
+                _letterTracks.first: ExampleTheme.marigold,
+                _barcode: ExampleTheme.spectrumRed,
+                _gateChip: ExampleTheme.signalBlue,
+              },
+            ),
           ),
         ],
       ),
