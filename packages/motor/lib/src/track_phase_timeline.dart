@@ -1,15 +1,15 @@
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
-import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
 
 /// A multi-track timeline organized by phases.
 ///
 /// Each phase maps to a list of [TrackAnimation]s that describe what happens
 /// to each track during that phase. When played, the phases are flattened into
-/// a single [TrackTimeline] with [SyncStep] barriers inserted at phase
+/// a single [TrackTimeline] with [StepSync] barriers inserted at phase
 /// boundaries so all tracks advance together.
 ///
 /// ```dart
@@ -136,7 +136,7 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
       }
     }
 
-    final stepsByTrack = <Track, List<Step>>{
+    final stepsByTrack = <Track, List<TrackStep>>{
       for (final track in allTracks) track: [],
     };
 
@@ -152,7 +152,7 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
       if (i < phases.length - 1) {
         final nextPhase = phases[i + 1];
         for (final track in allTracks) {
-          stepsByTrack[track]!.add(SyncStep(token: nextPhase));
+          stepsByTrack[track]!.add(StepSync(token: nextPhase));
         }
       }
     }

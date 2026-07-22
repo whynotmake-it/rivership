@@ -10,7 +10,7 @@ void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
 
   StepPlayback<double> playback(
-    List<Step<double>> steps, {
+    List<TrackStep<double>> steps, {
     double velocity = 0,
   }) {
     return StepPlayback<double>(
@@ -24,8 +24,8 @@ void main() {
 
   test('pingPong reverses a hold before returning to the initial value', () {
     final p = playback([
-      const Step.to(1, motion: linear100),
-      const Step.hold(Duration(milliseconds: 100)),
+      const TrackStep.to(1, motion: linear100),
+      const TrackStep.hold(Duration(milliseconds: 100)),
     ]);
 
     p.advanceTo(0.05);
@@ -43,10 +43,10 @@ void main() {
     expect(p.isDone, isFalse);
   });
 
-  test('pingPong mirrors Step.at timing on the reverse leg', () {
+  test('pingPong mirrors TrackStep.at timing on the reverse leg', () {
     final p = playback([
-      const Step.to(1, motion: linear100),
-      const Step.at(
+      const TrackStep.to(1, motion: linear100),
+      const TrackStep.at(
         Duration(milliseconds: 300),
         2,
         motion: linear100,
@@ -76,7 +76,7 @@ void main() {
 
   test('pingPong substitutes a hold for a reverse free step', () {
     final p = playback(
-      [const Step.free(motion: FrictionMotion(drag: 0.1))],
+      [const TrackStep.free(motion: FrictionMotion(drag: 0.1))],
       velocity: 10,
     );
 
@@ -92,8 +92,8 @@ void main() {
 
   test('pingPong reverses through each previous waypoint', () {
     final p = playback([
-      const Step.to(0.5, motion: linear100),
-      const Step.to(1, motion: linear100),
+      const TrackStep.to(0.5, motion: linear100),
+      const TrackStep.to(1, motion: linear100),
     ]);
 
     p.advanceTo(0.05);

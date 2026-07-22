@@ -8,17 +8,17 @@ import 'util.dart';
 
 void main() {
   // ─────────────────────────────────────────────────────────────────────────
-  // A. StepPlayback with SyncStep (unit-level, no widgets)
+  // A. StepPlayback with StepSync (unit-level, no widgets)
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('StepPlayback SyncStep', () {
+  group('StepPlayback StepSync', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     test('A1: single sync step blocks playback', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -39,7 +39,7 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -68,9 +68,9 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
-          const SyncStep(token: #phaseC),
+          const StepSync(token: #phaseC),
           const StepTo(3.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -100,9 +100,9 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
-          const SyncStep(token: #phaseC),
+          const StepSync(token: #phaseC),
           const StepTo(3.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -120,7 +120,7 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -165,12 +165,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -205,12 +205,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #x),
+          const StepSync(token: #x),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #y),
+          const StepSync(token: #y),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -241,12 +241,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phase2),
+          const StepSync(token: #phase2),
           const StepTo(2.0, motion: linear50),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phase2),
+          const StepSync(token: #phase2),
           const StepTo(2.0, motion: linear50),
         ]),
       ]);
@@ -267,12 +267,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -291,12 +291,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -319,12 +319,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
         trackC([
@@ -359,17 +359,17 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackB([
           const StepTo(1, motion: linear100),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackC([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -402,17 +402,17 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackB([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackC([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -445,17 +445,17 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackB([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackC([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -482,12 +482,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #oldBarrier),
+          const StepSync(token: #oldBarrier),
           const StepTo(2, motion: linear100),
         ]),
         trackB([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #oldBarrier),
+          const StepSync(token: #oldBarrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -502,12 +502,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(3, motion: linear50),
-          const SyncStep(token: #freshBarrier),
+          const StepSync(token: #freshBarrier),
           const StepTo(4, motion: linear50),
         ]),
         trackB([
           const StepTo(3, motion: linear50),
-          const SyncStep(token: #freshBarrier),
+          const StepSync(token: #freshBarrier),
           const StepTo(4, motion: linear50),
         ]),
       ]);
@@ -532,17 +532,17 @@ void main() {
       controller.animate([
         springTrack([
           const StepTo(1),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2),
         ]),
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackC([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -574,12 +574,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
         trackB([
           const StepTo(1, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2, motion: linear100),
         ]),
       ]);
@@ -609,16 +609,16 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #first),
+          const StepSync(token: #first),
           const StepTo(2, motion: linear50),
-          const SyncStep(token: #second),
+          const StepSync(token: #second),
           const StepTo(3, motion: linear50),
         ]),
         trackB([
           const StepTo(1, motion: linear50),
-          const SyncStep(token: #first),
+          const StepSync(token: #first),
           const StepTo(2, motion: linear50),
-          const SyncStep(token: #second),
+          const StepSync(token: #second),
           const StepTo(3, motion: linear50),
         ]),
       ]);
@@ -902,8 +902,8 @@ void main() {
         final initial = controller.value(offset);
         expect(initial, Offset.zero);
 
-        // This should not throw "List<Step<Object>> is not a subtype of
-        // List<Step<Offset>>"
+        // This should not throw "List<TrackStep<Object>> is not a subtype of
+        // List<TrackStep<Offset>>"
         controller.playPhases(
           TrackPhaseTimeline({
             'phase1': [offset.to(const Offset(50, 50), motion: linear100)],

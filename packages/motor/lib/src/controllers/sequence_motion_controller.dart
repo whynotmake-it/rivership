@@ -103,14 +103,15 @@ class SequenceMotionController<P, T extends Object>
 
   /// Plays one directional run of phases as a single step chain.
   ///
-  /// The chain alternates `Step.to` and `Step.sync`: each phase becomes a
-  /// `Step.to` leg, and a sync barrier sits between consecutive legs. The
+  /// The chain alternates `TrackStep.to` and `TrackStep.sync`: each phase
+  /// becomes a
+  /// `TrackStep.to` leg, and a sync barrier sits between consecutive legs. The
   /// barriers are what reproduce the legacy timing: a single-track barrier
   /// releases in the same tick it is reached, re-anchoring the next leg's
   /// start time to that tick (instead of the previous leg's ideal end time),
   /// which is exactly how the old controller started each phase.
   ///
-  /// Resulting step indices: even = the `Step.to` for `run[index ~/ 2]`,
+  /// Resulting step indices: even = the `TrackStep.to` for `run[index ~/ 2]`,
   /// odd = the barrier released when the leg before it finishes.
   ///
   /// [fromPhaseForFirstLeg] is forwarded to [MotionSequence.motionForPhase]
@@ -130,8 +131,8 @@ class SequenceMotionController<P, T extends Object>
     _currentSequencePhase = run.first;
     _currentSequencePhaseIndex = sequence.phases.indexOf(run.first);
 
-    final steps = <Step<T>>[
-      Step.to(
+    final steps = <TrackStep<T>>[
+      TrackStep.to(
         sequence.valueForPhase(run.first),
         motion: sequence.motionForPhase(
           toPhase: run.first,
@@ -141,8 +142,8 @@ class SequenceMotionController<P, T extends Object>
       for (var i = 1; i < run.length; i++) ...[
         // A fresh identity keeps each phase barrier independent.
         // ignore: prefer_const_constructors
-        Step.sync(token: Object()),
-        Step.to(
+        TrackStep.sync(token: Object()),
+        TrackStep.to(
           sequence.valueForPhase(run[i]),
           motion: sequence.motionForPhase(
             toPhase: run[i],
@@ -176,7 +177,7 @@ class SequenceMotionController<P, T extends Object>
   /// Called by the engine whenever playback enters a new step.
   void _onChainStep(int stepIndex) {
     if (!_isPlayingSequence) return;
-    // Even indices are the Step.to legs; entering one is not news — its
+    // Even indices are the TrackStep.to legs; entering one is not news — its
     // target phase was already reported when the barrier before it released.
     // Odd indices are the sync barriers, reached in the exact tick the
     // previous leg finished: that is the moment a phase transition happens.
@@ -350,7 +351,7 @@ class SequenceMotionController<P, T extends Object>
 
   @override
   TickerFuture play(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {

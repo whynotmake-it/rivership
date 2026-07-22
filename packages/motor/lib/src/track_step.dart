@@ -7,9 +7,9 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// A single instruction in a track animation.
 @immutable
 // ignore: deprecated_member_use
-sealed class Step<T extends Object> with EquatableMixin {
+sealed class TrackStep<T extends Object> with EquatableMixin {
   /// Creates a step.
-  const Step();
+  const TrackStep();
 
   /// Animates to [value] using a target-based [motion].
   ///
@@ -17,19 +17,19 @@ sealed class Step<T extends Object> with EquatableMixin {
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
   /// neither is given, the track's default motion is used at playback time. An
   /// assertion fires if no motion is available from any source.
-  const factory Step.to(
+  const factory TrackStep.to(
     T value, {
     Motion? motion,
     List<Motion>? motionPerDimension,
   }) = StepTo<T>;
 
   /// Runs a self-directed free [motion].
-  const factory Step.free({
+  const factory TrackStep.free({
     required FreeMotion motion,
   }) = StepFree<T>;
 
   /// Holds the current value for [duration].
-  const factory Step.hold(Duration duration) = StepHold<T>;
+  const factory TrackStep.hold(Duration duration) = StepHold<T>;
 
   /// Starts an animation that reaches [value] at absolute time [at].
   ///
@@ -37,7 +37,7 @@ sealed class Step<T extends Object> with EquatableMixin {
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
   /// neither is given, the track's default motion is used at playback time. An
   /// assertion fires if no motion is available from any source.
-  const factory Step.at(
+  const factory TrackStep.at(
     Duration at,
     T value, {
     Motion? motion,
@@ -53,12 +53,12 @@ sealed class Step<T extends Object> with EquatableMixin {
   ///
   /// Use this to keep independent tracks aligned at key moments without
   /// hand-tuning each track's durations.
-  const factory Step.sync({required Object token}) = SyncStep<T>;
+  const factory TrackStep.sync({required Object token}) = StepSync<T>;
 }
 
 /// A step that animates toward [value].
 @immutable
-class StepTo<T extends Object> extends Step<T> {
+class StepTo<T extends Object> extends TrackStep<T> {
   /// Creates a target step.
   const StepTo(
     this.value, {
@@ -88,7 +88,7 @@ class StepTo<T extends Object> extends Step<T> {
 
 /// A step that runs a self-directed motion.
 @immutable
-class StepFree<T extends Object> extends Step<T> {
+class StepFree<T extends Object> extends TrackStep<T> {
   /// Creates a free-motion step.
   const StepFree({
     required this.motion,
@@ -103,7 +103,7 @@ class StepFree<T extends Object> extends Step<T> {
 
 /// A step that holds the current value.
 @immutable
-class StepHold<T extends Object> extends Step<T> {
+class StepHold<T extends Object> extends TrackStep<T> {
   /// Creates a hold step.
   const StepHold(this.duration);
 
@@ -116,7 +116,7 @@ class StepHold<T extends Object> extends Step<T> {
 
 /// A step that starts at an absolute time.
 @immutable
-class StepAt<T extends Object> extends Step<T> {
+class StepAt<T extends Object> extends TrackStep<T> {
   /// Creates an absolute-time target step.
   const StepAt(
     this.at,
@@ -150,7 +150,7 @@ class StepAt<T extends Object> extends Step<T> {
 
 /// A synchronization barrier that keeps sibling tracks aligned.
 ///
-/// When a track reaches a [SyncStep] during live playback, it holds its
+/// When a track reaches a [StepSync] during live playback, it holds its
 /// current value until every other active track with the same [token] (by
 /// `==`) also reaches a matching sync step. The [TrackController] then
 /// releases them simultaneously so they continue in unison.
@@ -159,16 +159,16 @@ class StepAt<T extends Object> extends Step<T> {
 /// the barrier's participant set. The remaining tracks keep waiting for each
 /// other.
 ///
-/// Add one via [Step.sync] to coordinate otherwise-independent tracks, for
+/// Add one via [TrackStep.sync] to coordinate otherwise-independent tracks, for
 /// example to make a slower and a faster track meet before the next move.
 /// [TrackPhaseTimeline] inserts these automatically at phase boundaries.
 ///
 /// During seek operations, sync steps are treated as zero-duration holds and
 /// passed through freely.
 @immutable
-class SyncStep<T extends Object> extends Step<T> {
+class StepSync<T extends Object> extends TrackStep<T> {
   /// Creates a sync step with a [token] for grouped release.
-  const SyncStep({required this.token});
+  const StepSync({required this.token});
 
   /// The token used to group sync steps across tracks.
   ///

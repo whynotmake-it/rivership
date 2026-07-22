@@ -12,7 +12,7 @@ void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
 
   StepPlayback<double> playback(
-    List<Step<double>> steps, {
+    List<TrackStep<double>> steps, {
     LoopMode loop = LoopMode.none,
   }) {
     return StepPlayback<double>(
@@ -39,7 +39,7 @@ void main() {
   }
 
   void expectParity(
-    List<Step<double>> steps,
+    List<TrackStep<double>> steps,
     double target, {
     LoopMode loop = LoopMode.none,
     bool releaseSync = false,
@@ -64,10 +64,10 @@ void main() {
   }
 
   test('advanceTo and seekTo agree on a plain timeline', () {
-    final steps = <Step<double>>[
-      const Step.to(1, motion: linear100),
-      const Step.hold(Duration(milliseconds: 50)),
-      const Step.to(0, motion: linear100),
+    final steps = <TrackStep<double>>[
+      const TrackStep.to(1, motion: linear100),
+      const TrackStep.hold(Duration(milliseconds: 50)),
+      const TrackStep.to(0, motion: linear100),
     ];
 
     for (final target in [0.05, 0.1, 0.26]) {
@@ -76,8 +76,8 @@ void main() {
   });
 
   test('advanceTo and seekTo agree across loop cycles', () {
-    final steps = <Step<double>>[
-      const Step.to(1, motion: linear100),
+    final steps = <TrackStep<double>>[
+      const TrackStep.to(1, motion: linear100),
     ];
 
     for (final target in [0.05, 0.1, 0.25]) {
@@ -86,10 +86,10 @@ void main() {
   });
 
   test('advanceTo and seekTo agree when sync is released', () {
-    final steps = <Step<double>>[
-      const Step.to(1, motion: linear100),
-      const Step.sync(token: #barrier),
-      const Step.to(2, motion: linear100),
+    final steps = <TrackStep<double>>[
+      const TrackStep.to(1, motion: linear100),
+      const TrackStep.sync(token: #barrier),
+      const TrackStep.to(2, motion: linear100),
     ];
 
     // seekTo passes sync barriers freely by design (step.dart:161-162). The
@@ -101,10 +101,10 @@ void main() {
   });
 
   test('backward advanceTo delegates to seekTo', () {
-    final steps = <Step<double>>[
-      const Step.to(1, motion: linear100),
-      const Step.hold(Duration(milliseconds: 50)),
-      const Step.to(0, motion: linear100),
+    final steps = <TrackStep<double>>[
+      const TrackStep.to(1, motion: linear100),
+      const TrackStep.hold(Duration(milliseconds: 50)),
+      const TrackStep.to(0, motion: linear100),
     ];
     final advanced = playback(steps);
     final sought = playback(steps);

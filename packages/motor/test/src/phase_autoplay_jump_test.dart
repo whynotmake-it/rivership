@@ -25,7 +25,7 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -94,12 +94,12 @@ void main() {
         controller.animate([
           trackA([
             const StepTo(1.0, motion: linear100),
-            const SyncStep(token: #phaseB),
+            const StepSync(token: #phaseB),
             const StepTo(2.0, motion: linear100),
           ]),
           trackB([
             const StepTo(1.0, motion: linear400),
-            const SyncStep(token: #phaseB),
+            const StepSync(token: #phaseB),
             const StepTo(2.0, motion: linear100),
           ]),
         ]);

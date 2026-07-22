@@ -10,16 +10,16 @@ void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
   const linear200 = Motion.linear(Duration(milliseconds: 200));
 
-  const stepsA = <Step<double>>[
-    Step.to(1, motion: linear100),
-    Step.hold(Duration(milliseconds: 50)),
-    Step.to(0, motion: linear100),
+  const stepsA = <TrackStep<double>>[
+    TrackStep.to(1, motion: linear100),
+    TrackStep.hold(Duration(milliseconds: 50)),
+    TrackStep.to(0, motion: linear100),
   ];
-  const stepsB = <Step<double>>[
-    Step.to(2, motion: linear200),
+  const stepsB = <TrackStep<double>>[
+    TrackStep.to(2, motion: linear200),
   ];
 
-  double expectedAt(List<Step<double>> steps, Duration t) {
+  double expectedAt(List<TrackStep<double>> steps, Duration t) {
     final playback = StepPlayback<double>(
       steps: steps,
       converter: MotionConverter.single,

@@ -3,9 +3,9 @@ import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
-import 'package:motor/src/step.dart';
+import 'package:motor/src/track_step.dart';
 
-/// Stateful playback for a list of [Step]s.
+/// Stateful playback for a list of [TrackStep]s.
 ///
 /// Unlike [Simulation], this advances segment-by-segment and only leaves a
 /// segment once all of its simulations report that they are done.
@@ -16,7 +16,7 @@ class StepPlayback<T extends Object> {
   /// per normalized dimension) is provided, it is used for any [StepTo] or
   /// [StepAt] that does not specify its own motion. Pass at most one.
   StepPlayback({
-    required List<Step<T>> steps,
+    required List<TrackStep<T>> steps,
     required MotionConverter<T> converter,
     required T start,
     T? velocity,
@@ -66,7 +66,7 @@ class StepPlayback<T extends Object> {
   /// Returns the per-dimension motions of the first step that targets a value,
   /// or `null` if no step carries a motion.
   static List<Motion>? _firstStepMotions<S extends Object>(
-    List<Step<S>> steps,
+    List<TrackStep<S>> steps,
     int dimensions,
   ) {
     for (final step in steps) {
@@ -82,14 +82,14 @@ class StepPlayback<T extends Object> {
     return null;
   }
 
-  static bool _validateStepTiming<S extends Object>(List<Step<S>> steps) {
+  static bool _validateStepTiming<S extends Object>(List<TrackStep<S>> steps) {
     var minElapsed = Duration.zero;
     for (var i = 0; i < steps.length; i++) {
       final step = steps[i];
       if (step case StepAt<S>(:final at)) {
         if (at < minElapsed) {
           throw AssertionError(
-            'Step.at(${at.inMilliseconds}ms) at index $i would go back in '
+            'TrackStep.at(${at.inMilliseconds}ms) at index $i would go back in '
             'time. Preceding holds already consume ${minElapsed.inMilliseconds}'
             'ms. The .at() time must be >= the cumulative hold duration.',
           );
@@ -102,7 +102,7 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
-  final List<Step<T>> _steps;
+  final List<TrackStep<T>> _steps;
   final MotionConverter<T> _converter;
   final LoopMode _loop;
   final Motion? _fallbackMotion;
@@ -152,17 +152,17 @@ class StepPlayback<T extends Object> {
   /// Whether playback has completed.
   bool get isDone => _isDone;
 
-  /// Whether playback is paused at a [SyncStep], waiting for external release.
+  /// Whether playback is paused at a [StepSync], waiting for external release.
   bool get isWaitingForSync => _isWaitingForSync;
 
-  /// The token of the [SyncStep] currently being waited on, or `null` if
+  /// The token of the [StepSync] currently being waited on, or `null` if
   /// playback is not waiting at a sync barrier.
   Object? get syncToken {
     if (!_isWaitingForSync) return null;
-    return (_steps[_stepIndex] as SyncStep<T>).token;
+    return (_steps[_stepIndex] as StepSync<T>).token;
   }
 
-  /// Releases the playback past the current [SyncStep].
+  /// Releases the playback past the current [StepSync].
   ///
   /// Called by [TrackController] when all active tracks have reached their
   /// sync step and are ready to advance together.
@@ -204,10 +204,10 @@ class StepPlayback<T extends Object> {
       _segmentStartSeconds += completionSeconds;
       _recordForwardSegmentDuration(completionSeconds);
 
-      // If the current step is a SyncStep, enter waitForSync instead of
+      // If the current step is a StepSync, enter waitForSync instead of
       // advancing. The TrackController will call releaseSync() when all
       // tracks are synchronized.
-      if (_steps[_stepIndex] is SyncStep<T>) {
+      if (_steps[_stepIndex] is StepSync<T>) {
         _isWaitingForSync = true;
         return false;
       }
@@ -338,7 +338,7 @@ class StepPlayback<T extends Object> {
     final motions = _motionsOrNull(stepMotion, stepPerDim);
     assert(
       motions != null,
-      'Step has no motion and no fallback motion was provided. '
+      'TrackStep has no motion and no fallback motion was provided. '
       'Either pass a motion to the step or set a default motion on the Track.',
     );
     return motions!;
@@ -411,7 +411,7 @@ class StepPlayback<T extends Object> {
               ),
           ];
         }(),
-      SyncStep<T>() => [
+      StepSync<T>() => [
           for (final value in _currentValues)
             _HoldSimulation(value: value, duration: 0),
         ],
@@ -443,7 +443,7 @@ class StepPlayback<T extends Object> {
         }(),
       StepFree<T>() => null,
       StepHold<T>() => null,
-      SyncStep<T>() => null,
+      StepSync<T>() => null,
     };
 
     if (motions != null) {

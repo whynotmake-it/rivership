@@ -13,11 +13,15 @@
 
  - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, and `SequenceMotionBuilder` — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.
 
+### Naming
+
+ - **BREAKING** **REFACTOR**: rename the track-step type `Step` to `TrackStep` (file `src/step.dart` → `src/track_step.dart`) and `SyncStep` to `StepSync`, so importing motor alongside `package:flutter/material.dart` (which exports the `Stepper` row widget `Step`) no longer requires `hide Step` workarounds, and the step subclasses are uniformly prefixed (`StepTo`, `StepAt`, `StepHold`, `StepFree`, `StepSync`). This only affects code written against the unreleased 2.0 dev branch; dot-shorthand call sites (`.to(...)`, `.sync(...)`) are unaffected.
+
 ### Tracks: a new multi-property animation system
 
  - **FEAT**: add `Track<T>`, the immutable, identity-based key for a single animated property. A track carries a `MotionConverter`, an optional `initial` value, and an optional default `motion`/`motionPerDimension`. Build instructions with `track.to(...)`, `track(...)` (multi-step), `track.free(...)`, `track.value(...)`, and `track.velocity(...)`.
- - **FEAT**: add `Step<T>` as the unit of a track animation: `Step.to` (animate to a target), `Step.at` (reach a target at an absolute time), `Step.hold` (hold the current value), `Step.free` (run a self-directed `FreeMotion`), and `Step.sync` (a barrier that waits for sibling tracks sharing a token before releasing them together).
- - **FEAT**: add `TrackAnimation<T>` (the per-track instruction, carrying its own `from`/`withVelocity`), `TrackTimeline` (a reusable, value-equatable multi-track clip that owns its `LoopMode`), and `TrackPhaseTimeline<P>` (a phase-organized timeline that flattens phases into one timeline with `SyncStep` barriers at boundaries, plus one-time `from`/`withVelocity` seeds and `phaseLoop`).
+ - **FEAT**: add `TrackStep<T>` as the unit of a track animation: `TrackStep.to` (animate to a target), `TrackStep.at` (reach a target at an absolute time), `TrackStep.hold` (hold the current value), `TrackStep.free` (run a self-directed `FreeMotion`), and `TrackStep.sync` (a barrier that waits for sibling tracks sharing a token before releasing them together).
+ - **FEAT**: add `TrackAnimation<T>` (the per-track instruction, carrying its own `from`/`withVelocity`), `TrackTimeline` (a reusable, value-equatable multi-track clip that owns its `LoopMode`), and `TrackPhaseTimeline<P>` (a phase-organized timeline that flattens phases into one timeline with `StepSync` barriers at boundaries, plus one-time `from`/`withVelocity` seeds and `phaseLoop`).
  - **FEAT**: add `TrackController`, a multi-track controller backed by one ticker. Supports lazy per-track initialization, `play`/`animate`/`set`/`scrubTo`/`resume`/`stop`, per-track graceful settling, velocity preservation across redirection, sync barriers, `onStep` callbacks, and whole-controller `TickerFuture` completion semantics.
  - **FEAT**: add `PhaseTrackController<P>`, a `TrackController` that understands phases via `playPhases`, `goToPhase`, `setTimeline`, and `currentPhase`, reporting `PhaseTransitioning`/`PhaseSettled` through a transition callback.
  - **FEAT**: add `TrackBuilder` (declarative multi-track playback) with a default constructor (inline `animations:` + `loop:`, mirroring `TrackController.animate`) and a `TrackBuilder.timeline(...)` constructor (mirroring `TrackController.play`). Inline animation lists compare deeply and timelines compare by value, so an equal-but-new list on rebuild does not restart playback. `restartTrigger` jumps every track back to its start value and replays.
@@ -35,7 +39,7 @@
 ### Controllers
 
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
- - **FEAT**: add `MotionController.play(List<Step<T>>, {loop, onStep})` for step-based and looping single-value playback, plus `trackedVelocityEstimate`.
+ - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback, plus `trackedVelocityEstimate`.
  - **REFACTOR**: move the legacy sequence engine and `SequenceMotionController` to `controllers/legacy/`. `SequenceMotionController` and `SequenceMotionBuilder` remain exported and functional as compatibility shims; new phase/multi-property work should use `PhaseTrackBuilder` / `TrackPhaseTimeline`.
  - **REFACTOR**: the deprecated sequence APIs (`SequenceMotionController` and `SequenceMotionBuilder`) now run on the 2.0 track engine; the internal legacy controller copy is deleted. `SequenceMotionController` is a subtype of the exported `MotionController` again, restoring 1.x source compatibility. Phase timing is unchanged (pinned by the legacy sequence semantics tests). Observable deltas:
    - `playSequence`'s returned `TickerFuture` for LOOPING sequences now resolves at the end of the first cycle instead of never (matching `PhaseTrackController.playPhases` — do not `await` a looping sequence).
@@ -65,7 +69,7 @@
  - **FIX**: canceled controller stops no longer report `AnimationStatus.completed`; they stop immediately without emitting a status notification.
  - **FIX**: looping `PhaseTrackController` playback now reports `AnimationStatus.forward` once at startup instead of flapping through `completed` between cycles.
  - **FIX**: `PhaseTrackController` now plays `pingPong` phase loops in reverse phase order after each forward pass instead of replaying phases forward like `loop`.
- - **FIX**: `Step.at` segments in `pingPong` loops now mirror their forward scheduled duration on the reverse leg instead of using the motion's unscaled duration and re-triggering absolute-time boundaries.
+ - **FIX**: `TrackStep.at` segments in `pingPong` loops now mirror their forward scheduled duration on the reverse leg instead of using the motion's unscaled duration and re-triggering absolute-time boundaries.
  - **FIX**: swapping a `MotionController`'s `converter` no longer leaks the replaced track's internal state in the underlying `TrackController`.
  - **FIX**: `PhaseTrackController` now re-applies a timeline's one-time `from`/`withVelocity` seeds when a *different* timeline starts playing on the same controller. Previously the seeds were applied only once per controller, so swapping timelines (e.g. changing `PhaseTrackBuilder.timeline`) silently kept the previous timeline's values. Replaying an equal-value timeline still does not re-seed.
  - **FIX**: `PhaseTrackBuilder` resumes playback when `active` is toggled from `false` back to `true`. Previously only the deactivation transition was handled, so a reactivated builder stayed frozen.

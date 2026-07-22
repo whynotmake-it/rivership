@@ -49,7 +49,7 @@ class _TrackSlot<T extends Object> {
   }
 
   void play(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     required Duration startOffset,
     LoopMode loop = LoopMode.none,
     T? velocity,
@@ -134,7 +134,7 @@ class _TrackSlot<T extends Object> {
     if (motions == null || !motions.any((motion) => motion.needsSettle)) {
       return false;
     }
-    play([Step.to(value)], startOffset: startOffset);
+    play([TrackStep.to(value)], startOffset: startOffset);
     return true;
   }
 

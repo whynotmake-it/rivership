@@ -79,7 +79,7 @@ void main() {
       Widget build() => TrackBuilder(
             animations: [
               opacity([
-                const Step.to(
+                const TrackStep.to(
                   1,
                   motion: Motion.linear(Duration(milliseconds: 200)),
                 ),
@@ -117,7 +117,7 @@ void main() {
       Widget build(double target) => TrackBuilder(
             animations: [
               opacity([
-                Step.to(
+                TrackStep.to(
                   target,
                   motion: const Motion.linear(Duration(milliseconds: 100)),
                 ),
@@ -142,7 +142,7 @@ void main() {
       Widget build() => TrackBuilder.timeline(
             TrackTimeline([
               opacity([
-                const Step.to(
+                const TrackStep.to(
                   1,
                   motion: Motion.linear(Duration(milliseconds: 200)),
                 ),
@@ -169,7 +169,7 @@ void main() {
         return TrackBuilder(
           animations: [
             opacity([
-              const Step.to(
+              const TrackStep.to(
                 1,
                 motion: Motion.linear(Duration(milliseconds: 100)),
               ),
@@ -230,11 +230,11 @@ void main() {
           loop: LoopMode.loop,
           animations: [
             opacity([
-              const Step.to(
+              const TrackStep.to(
                 1,
                 motion: Motion.linear(Duration(milliseconds: 100)),
               ),
-              const Step.to(
+              const TrackStep.to(
                 0,
                 motion: Motion.linear(Duration(milliseconds: 100)),
               ),

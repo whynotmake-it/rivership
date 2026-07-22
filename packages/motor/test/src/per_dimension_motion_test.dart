@@ -14,7 +14,7 @@ void main() {
         () {
       final playback = StepPlayback<Offset>(
         steps: [
-          Step.to(
+          TrackStep.to(
             const Offset(1, 1),
             motionPerDimension: const [linear100, linear200],
           ),
@@ -35,7 +35,7 @@ void main() {
 
     test('fallbackMotionPerDimension is used when a step omits its motion', () {
       final playback = StepPlayback<Offset>(
-        steps: [const Step.to(Offset(1, 1))],
+        steps: [const TrackStep.to(Offset(1, 1))],
         converter: MotionConverter.offset,
         start: Offset.zero,
         fallbackMotionPerDimension: const [linear100, linear200],
@@ -49,7 +49,7 @@ void main() {
     test('step motionPerDimension overrides the track fallback motion', () {
       final playback = StepPlayback<Offset>(
         steps: [
-          Step.to(
+          TrackStep.to(
             const Offset(1, 1),
             motionPerDimension: const [linear100, linear200],
           ),
@@ -67,7 +67,7 @@ void main() {
 
     test('a single step motion still applies to every dimension', () {
       final playback = StepPlayback<Offset>(
-        steps: [const Step.to(Offset(1, 1), motion: linear100)],
+        steps: [const TrackStep.to(Offset(1, 1), motion: linear100)],
         converter: MotionConverter.offset,
         start: Offset.zero,
       );
@@ -80,7 +80,7 @@ void main() {
     test('loop replays with per-dimension motion', () {
       final playback = StepPlayback<Offset>(
         steps: [
-          Step.to(
+          TrackStep.to(
             const Offset(1, 1),
             motionPerDimension: const [linear100, linear200],
           ),
@@ -118,7 +118,7 @@ void main() {
     test('pingPong reverses with per-dimension motion', () {
       final playback = StepPlayback<Offset>(
         steps: [
-          Step.to(
+          TrackStep.to(
             const Offset(1, 1),
             motionPerDimension: const [linear100, linear200],
           ),
@@ -203,23 +203,23 @@ void main() {
   group('Per-dimension motion step equality and validation', () {
     test('StepTo equality includes motionPerDimension', () {
       expect(
-        Step.to(
+        TrackStep.to(
           const Offset(1, 1),
           motionPerDimension: const [linear100, linear200],
         ),
-        Step.to(
+        TrackStep.to(
           const Offset(1, 1),
           motionPerDimension: const [linear100, linear200],
         ),
       );
 
       expect(
-        Step.to(
+        TrackStep.to(
           const Offset(1, 1),
           motionPerDimension: const [linear100, linear200],
         ),
         isNot(
-          Step.to(
+          TrackStep.to(
             const Offset(1, 1),
             motionPerDimension: const [linear100, linear100],
           ),
@@ -227,9 +227,10 @@ void main() {
       );
     });
 
-    test('Step.to asserts motion and motionPerDimension are exclusive', () {
+    test('TrackStep.to asserts motion and motionPerDimension are exclusive',
+        () {
       expect(
-        () => Step.to(
+        () => TrackStep.to(
           const Offset(1, 1),
           motion: linear100,
           motionPerDimension: const [linear100, linear200],

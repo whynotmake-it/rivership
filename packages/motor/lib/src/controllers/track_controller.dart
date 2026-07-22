@@ -8,8 +8,8 @@ import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/simulations/step_playback.dart';
-import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
 
 part '_track_slot.dart';
@@ -269,7 +269,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Evaluates active tracks at [t] without starting the ticker.
   ///
   /// Seeking treats sync barriers as zero-duration holds and passes through
-  /// them freely (see [SyncStep]); tracks scrubbed past a barrier will not wait
+  /// them freely (see [StepSync]); tracks scrubbed past a barrier will not wait
   /// for their peers.
   void scrubTo(Duration t) {
     for (final track in _activeTracks) {
@@ -494,7 +494,7 @@ class TrackController extends Animation<TrackValueReader>
     _pruneTokenParticipants(timelineTracks);
     for (final animation in animations) {
       for (final step in animation.steps) {
-        if (step is SyncStep) {
+        if (step is StepSync) {
           (_tokenParticipants[step.token] ??= {}).add(animation.track);
         }
       }
@@ -549,7 +549,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Called when a group of tracks is released past a sync barrier.
   ///
   /// Subclasses (e.g. [PhaseTrackController]) override this to detect phase
-  /// transitions. The [token] is the [SyncStep.token] that was released.
+  /// transitions. The [token] is the [StepSync.token] that was released.
   @protected
   @visibleForOverriding
   void onSyncReleased(Object token) {}

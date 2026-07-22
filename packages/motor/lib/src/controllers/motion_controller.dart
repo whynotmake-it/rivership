@@ -8,8 +8,8 @@ import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
-import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
 
 part 'sequence_motion_controller.dart';
@@ -297,7 +297,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// Non-looping playback completes when all chained simulations finish.
   /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
   TickerFuture play(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {

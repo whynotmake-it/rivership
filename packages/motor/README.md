@@ -217,12 +217,12 @@ MotionBuilder(
 
 ### Tracks & Steps 🎼
 
-Everything above animates a single value. But real UI motion rarely does — a panel might move, resize, recolor, and rotate at once, each with its own timing and feel. Motor handles this with two small primitives: a **`Track`** (one property) and a **`Step`** (one instruction). The rest of this section builds them up one at a time.
+Everything above animates a single value. But real UI motion rarely does — a panel might move, resize, recolor, and rotate at once, each with its own timing and feel. Motor handles this with two small primitives: a **`Track`** (one property) and a **`TrackStep`** (one instruction). The rest of this section builds them up one at a time.
 
 > **Note:** The examples use Dart 3.10+ dot-shorthand syntax. On older SDKs,
-> write the full form (`Step.to(...)`, `CupertinoMotion.smooth()`, and so on).
+> write the full form (`TrackStep.to(...)`, `CupertinoMotion.smooth()`, and so on).
 > `track.to(value)` is a method on `Track`; `.to(...)` inside a step list is
-> shorthand for `Step.to(...)`.
+> shorthand for `TrackStep.to(...)`.
 
 #### A track is one animated property
 

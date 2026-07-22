@@ -14,8 +14,8 @@ void main() {
     test('hold then to plays sequentially', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.hold(Duration(milliseconds: 200)),
-          const Step.to(1.0, motion: linear100),
+          const TrackStep.hold(Duration(milliseconds: 200)),
+          const TrackStep.to(1.0, motion: linear100),
         ],
         converter: MotionConverter.single,
         start: 0.0,
@@ -37,10 +37,10 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
-    test('Step.at with valid future time plays correctly', () {
+    test('TrackStep.at with valid future time plays correctly', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.at(
+          const TrackStep.at(
             Duration(milliseconds: 200),
             1.0,
             motion: linear200,
@@ -59,11 +59,11 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
-    test('Step.at after a shorter hold plays correctly', () {
+    test('TrackStep.at after a shorter hold plays correctly', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.hold(Duration(milliseconds: 100)),
-          const Step.at(
+          const TrackStep.hold(Duration(milliseconds: 100)),
+          const TrackStep.at(
             Duration(milliseconds: 300),
             1.0,
             motion: linear200,
@@ -91,8 +91,8 @@ void main() {
       expect(
         () => StepPlayback<double>(
           steps: [
-            const Step.hold(Duration(seconds: 1)),
-            const Step.at(
+            const TrackStep.hold(Duration(seconds: 1)),
+            const TrackStep.at(
               Duration(milliseconds: 500),
               1.0,
               motion: linear100,
@@ -109,9 +109,9 @@ void main() {
       expect(
         () => StepPlayback<double>(
           steps: [
-            const Step.hold(Duration(milliseconds: 400)),
-            const Step.hold(Duration(milliseconds: 400)),
-            const Step.at(
+            const TrackStep.hold(Duration(milliseconds: 400)),
+            const TrackStep.hold(Duration(milliseconds: 400)),
+            const TrackStep.at(
               Duration(milliseconds: 500),
               1.0,
               motion: linear100,
@@ -128,12 +128,12 @@ void main() {
       expect(
         () => StepPlayback<double>(
           steps: [
-            const Step.at(
+            const TrackStep.at(
               Duration(milliseconds: 300),
               1.0,
               motion: linear100,
             ),
-            const Step.at(
+            const TrackStep.at(
               Duration(milliseconds: 100),
               2.0,
               motion: linear100,
@@ -149,9 +149,9 @@ void main() {
     test('sequential to steps play in order', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.to(1.0, motion: linear100),
-          const Step.to(2.0, motion: linear100),
-          const Step.to(3.0, motion: linear100),
+          const TrackStep.to(1.0, motion: linear100),
+          const TrackStep.to(2.0, motion: linear100),
+          const TrackStep.to(3.0, motion: linear100),
         ],
         converter: MotionConverter.single,
         start: 0.0,
@@ -173,8 +173,8 @@ void main() {
     test('hold of zero duration advances immediately', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.hold(Duration.zero),
-          const Step.to(1.0, motion: linear100),
+          const TrackStep.hold(Duration.zero),
+          const TrackStep.to(1.0, motion: linear100),
         ],
         converter: MotionConverter.single,
         start: 0.0,
@@ -189,12 +189,12 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
-    test('Step.at at exactly the cumulative time is valid (gap == 0)', () {
+    test('TrackStep.at at exactly the cumulative time is valid (gap == 0)', () {
       // hold(100ms) then at(100ms) => gap is exactly 0, which is allowed.
       final playback = StepPlayback<double>(
         steps: [
-          const Step.hold(Duration(milliseconds: 100)),
-          const Step.at(
+          const TrackStep.hold(Duration(milliseconds: 100)),
+          const TrackStep.at(
             Duration(milliseconds: 100),
             1.0,
             motion: linear100,
@@ -224,7 +224,7 @@ void main() {
     test('single hold step completes after its duration', () {
       final playback = StepPlayback<double>(
         steps: [
-          const Step.hold(Duration(milliseconds: 300)),
+          const TrackStep.hold(Duration(milliseconds: 300)),
         ],
         converter: MotionConverter.single,
         start: 5.0,
