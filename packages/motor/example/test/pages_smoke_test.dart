@@ -104,16 +104,19 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.byKey(const ValueKey('photo-0')));
-    await tester.pump();
+    // The open transition is animated: let it settle at stage center first.
+    await _pumpFrames(tester);
     expect(
       (tester.getCenter(find.byKey(const ValueKey('opened-photo'))) -
               tester.getCenter(find.byKey(const ValueKey('photo-stage'))))
           .distance,
       lessThan(1),
     );
+    // Horizontal so the photo's pan wins the arena over the page's vertical
+    // scroll view.
     await tester.fling(
       find.byKey(const ValueKey('opened-photo')),
-      const Offset(36, 24),
+      const Offset(36, 0),
       10,
     );
     await _pumpFrames(tester, frames: 100);
@@ -128,6 +131,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Photo flick animates open and dismisses back into its slot', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const CupertinoApp(home: PhotoFlickPage()));
+    await tester.pump();
+
+    final slotCenter = tester.getCenter(find.byKey(const ValueKey('photo-0')));
+    final slotSize = tester.getSize(find.byKey(const ValueKey('photo-0')));
+    final stageCenter = tester.getCenter(
+      find.byKey(const ValueKey('photo-stage')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('photo-0')));
+    await tester.pump();
+    // Three frames in, the photo must be mid-transition: strictly between
+    // its grid slot and the opened state in both position and size.
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final opened = find.byKey(const ValueKey('opened-photo'));
+    final midCenter = tester.getCenter(opened);
+    final midSize = tester.getSize(opened);
+    expect((midCenter - slotCenter).distance, greaterThan(1));
+    expect((midCenter - stageCenter).distance, greaterThan(1));
+    expect(midSize.width, greaterThan(slotSize.width + 1));
+    expect(midSize.width, lessThan(189));
+
+    await _pumpFrames(tester);
+    expect((tester.getCenter(opened) - stageCenter).distance, lessThan(1));
+
+    // A hard horizontal fling dismisses (vertical drags belong to the page's
+    // scroll view): the photo settles back into its grid slot and the static
+    // grid tile takes over.
+    await tester.fling(opened, const Offset(160, 0), 2400);
+    await _pumpFrames(tester, frames: 120);
+    expect(opened, findsNothing);
+    expect(
+      (tester.getCenter(find.byKey(const ValueKey('photo-0'))) - slotCenter)
+          .distance,
+      lessThan(1),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Timelines & Steps loops and switches to pingPong', (
     tester,
   ) async {
@@ -136,6 +185,16 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('pingPong'));
+    await _pumpFrames(tester, frames: 120);
+    expect(tester.takeException(), isNull);
+
+    // Keep switching: each switch restarts the dots and the playhead on the
+    // same frame, so repeated switches must stay exception-free.
+    await tester.tap(find.text('seamless'));
+    await _pumpFrames(tester, frames: 120);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('loop'));
     await _pumpFrames(tester, frames: 120);
     expect(tester.takeException(), isNull);
   });
@@ -165,11 +224,11 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const CupertinoApp(home: PhasesPage()));
-    await tester.tap(find.byKey(const ValueKey('phase-card')));
+    await tester.tap(find.byKey(const ValueKey('phase-chip-packed')));
     await _pumpFrames(tester, frames: 80);
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('phase-status'))).data,
-      contains('PhaseSettled'),
+      contains('PhaseSettled(packed)'),
     );
 
     await tester.tap(find.byKey(const ValueKey('auto-play')));
