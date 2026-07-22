@@ -1,0 +1,50 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare-release:
+    name: Prepare ${{ github.ref_name == 'main' && 'stable release' || 'prerelease' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛑 Enforce release branches
+        if: github.ref_name != 'main' && github.ref_name != 'dev'
+        run: |
+          echo "::error::Release preparation runs only on 'dev' (prerelease) or 'main' (stable graduation), not '${{ github.ref_name }}'."
+          exit 1
+
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+
+      - name: Ⓜ️ Version packages (dev → prerelease, main → graduate)
+        uses: bluefireteam/melos-action@v3
+        with:
+          run-versioning-prerelease: ${{ github.ref_name == 'dev' }}
+          run-versioning-graduate: ${{ github.ref_name == 'main' }}
+          publish-dry-run: true
+
+      - name: 🎋 Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: "chore(release): Publish packages"
+          body: |
+            Prepared packages for release to pub.dev from `${{ github.ref_name }}`.
+
+            - dispatched on `dev` → prerelease versions (`-dev.N`)
+            - dispatched on `main` → graduated stable versions
+
+            Review the version bumps and CHANGELOG entries before merging.
+            Merging this PR triggers tagging (and, once plan 002 is live,
+            publishing to pub.dev).
+          branch: chore/release-${{ github.ref_name }}
+          base: ${{ github.ref_name }}
+          delete-branch: true
