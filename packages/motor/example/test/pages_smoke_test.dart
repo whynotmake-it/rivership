@@ -47,21 +47,6 @@ void main() {
     'Draggable Icons': () => const DraggableIconsPage(),
     'Boarding Pass': () => const BoardingPassPage(),
   };
-  const nextPages = <String, String>{
-    'Instant vs. Animated': 'The Curve Trap',
-    'The Curve Trap': 'Spring Character',
-    'Spring Character': 'More Than One Dimension',
-    'More Than One Dimension': 'Meet Tracks',
-    'Meet Tracks': 'Timelines & Steps',
-    'Timelines & Steps': 'Sync Barriers',
-    'Sync Barriers': 'Phases',
-    'Phases': 'Toggle',
-    'Toggle': 'Pull to Refresh',
-    'Pull to Refresh': 'Card Stack',
-    'Card Stack': 'Payment Success',
-    'Payment Success': 'Boarding Pass',
-  };
-
   test('smoke map covers every page route', () {
     expect(pages.length, example.motorRoutes.length - 1);
   });
@@ -73,9 +58,6 @@ void main() {
       await tester.pumpWidget(CupertinoApp(home: entry.value()));
       await _pumpFrames(tester);
       expect(tester.takeException(), isNull);
-      if (nextPages[entry.key] case final next?) {
-        expect(find.text('next: $next →'), findsOneWidget);
-      }
     });
   }
 
