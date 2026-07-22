@@ -9,24 +9,33 @@ directly.
 | I want to… | Do this |
 |------------|---------|
 | Ship prereleases of what's on dev | Actions → "Prepare release" → run on `dev` → review and merge the `chore(release)` PR |
-| Ship stable versions | Open and merge a PR from `dev` to `main`, then Actions → "Prepare release" → run on `main` → review and merge the `chore(release)` PR |
-| Ship a hotfix from main | Land the fix PR on `main`, then Actions → "Prepare release" → run on `main` with `mode=hotfix` → review and merge the `chore(release)` PR |
+| Ship stable versions | Open and merge the `dev` → `main` PR → CI automatically opens the graduation `chore(release)` PR → review and merge it |
+| Ship a hotfix from main | Merge the fix PR to `main` → CI automatically opens a patch `chore(release)` PR → review and merge it |
 | After any stable release | Open and merge the back-merge PR from `main` to `dev` |
+
+In every case the `chore(release)` PR is the human checkpoint: review and merge
+it, and tagging plus publishing follow automatically.
 
 ## How the pipeline works
 
-1. `.github/workflows/prepare-release.yaml` derives its mode from the selected
-   branch. On `dev`, Melos runs prerelease versioning. On `main`, it graduates
-   prereleases to stable versions by default, or runs plain conventional-commit
-   versioning when `mode=hotfix`. Any other branch is rejected, as is hotfix
-   mode on `dev`.
-2. Melos versions only changed, publishable packages according to conventional
+1. Any push to `main` starts `.github/workflows/prepare-release.yaml`, except
+   merges of a `chore(release)` PR, which the tagging workflow owns. The
+   workflow inspects the publishable packages' pubspec versions: if any
+   contains a prerelease (`-dev.`), it graduates them to stable versions (the
+   `dev` → `main` merge case); otherwise it runs plain conventional-commit
+   versioning (the hotfix case). If nothing is releasable, Melos makes no
+   changes and no release PR is opened. Dispatching the workflow manually on
+   `main` runs the same detection — use it as a fallback or re-run if an
+   automatic run failed.
+2. Dispatching the workflow on `dev` runs prerelease versioning. Any other
+   dispatched branch is rejected.
+3. Melos versions only changed, publishable packages according to conventional
    commits, runs a publish dry-run, and opens a
    `chore(release): Publish packages` PR.
-3. Merging that PR starts `.github/workflows/tag-release.yaml`, which creates
+4. Merging that PR starts `.github/workflows/tag-release.yaml`, which creates
    `<package>-v<version>` tags. The tags are pushed with `RELEASE_PAT` so their
    push events can start other workflows.
-4. Each tag starts `.github/workflows/publish.yaml`. It publishes that package
+5. Each tag starts `.github/workflows/publish.yaml`. It publishes that package
    to pub.dev using OIDC and creates a GitHub release. Versions containing
    `-dev.N` become GitHub prereleases.
 
@@ -61,10 +70,16 @@ and `main` → `dev` PRs in GitHub; no local branch juggling is required.
 
 ## Hotfixing a stable release
 
-Direct-from-`main` hotfixes are a first-class release path. Land the fix through
-a PR to `main`, then run "Prepare release" on `main` with `mode=hotfix`. Melos
-uses conventional commits to choose the stable patch or minor bump. Review and
-merge the generated release PR normally; never publish or tag by hand.
+Direct-from-`main` hotfixes are a first-class release path and need no manual
+dispatch: landing the fix PR on `main` is the trigger. CI detects that the tree
+contains only stable versions and runs conventional-commit versioning, so Melos
+chooses the stable patch or minor bump from the fix commits. Review and merge
+the generated release PR normally; never publish or tag by hand.
+
+One edge to respect: if an un-merged graduation `chore(release)` PR is still
+open, `main` still contains prerelease versions, so a hotfix push would detect
+them and graduate instead of preparing a patch release. Merge or close pending
+release PRs before landing hotfixes.
 
 The fix must also land on `dev`, either by cherry-picking it or promptly
 back-merging `main` into `dev`. The version math remains safe when `dev` is

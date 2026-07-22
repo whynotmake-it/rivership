@@ -2,34 +2,24 @@ name: Prepare release
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: Stable release mode on main; dev supports prerelease only
-        required: true
-        default: graduate
-        type: choice
-        options:
-          - graduate
-          - hotfix
+  push:
+    branches:
+      - main
 
 jobs:
   prepare-release:
     name: Prepare ${{ github.ref_name == 'main' && 'stable release' || 'prerelease' }}
+    # Pushes of a merged `chore(release)` PR belong to tag-release.yaml.
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, 'chore(release)')
     permissions:
       contents: write
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: 🛑 Enforce release branches
-        if: github.ref_name != 'main' && github.ref_name != 'dev'
+        if: github.event_name == 'workflow_dispatch' && github.ref_name != 'main' && github.ref_name != 'dev'
         run: |
-          echo "::error::Release preparation runs only on 'dev' (prerelease) or 'main' (stable graduation), not '${{ github.ref_name }}'."
-          exit 1
-
-      - name: 🛑 Reject hotfix mode on dev
-        if: github.ref_name == 'dev' && inputs.mode == 'hotfix'
-        run: |
-          echo "::error::Hotfix mode applies only on 'main'. Dispatch 'dev' with mode 'graduate' to prepare a prerelease."
+          echo "::error::Release preparation runs only on 'dev' (prerelease) or 'main' (stable), not '${{ github.ref_name }}'."
           exit 1
 
       - name: 📚 Checkout
@@ -37,28 +27,51 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Any non-release push to main carries release intent. Prerelease versions
+      # in the tree mean a dev → main merge just landed, so graduate them.
+      # Otherwise run plain conventional-commit versioning (the hotfix case).
+      - name: 🔍 Detect release strategy
+        id: strategy
+        if: github.ref_name == 'main'
+        run: |
+          strategy=version
+          for pubspec in packages/*/pubspec.yaml; do
+            if grep -Eq "^publish_to:[[:space:]]*['\"]?none" "$pubspec"; then
+              continue
+            fi
+            if grep -Eq "^version:.*-dev\." "$pubspec"; then
+              strategy=graduate
+              break
+            fi
+          done
+          echo "strategy=$strategy" >> "$GITHUB_OUTPUT"
+          echo "Detected release strategy: $strategy"
+
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
 
       - name: Ⓜ️ Version packages
         uses: bluefireteam/melos-action@v3
         with:
-          run-versioning: ${{ github.ref_name == 'main' && inputs.mode == 'hotfix' }}
-          run-versioning-prerelease: ${{ github.ref_name == 'dev' }}
-          run-versioning-graduate: ${{ github.ref_name == 'main' && inputs.mode == 'graduate' }}
+          run-versioning: ${{ github.ref_name == 'main' && steps.strategy.outputs.strategy == 'version' }}
+          run-versioning-prerelease: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'dev' }}
+          run-versioning-graduate: ${{ github.ref_name == 'main' && steps.strategy.outputs.strategy == 'graduate' }}
           publish-dry-run: true
 
+      # Assumption: create-pull-request@v7's default clean-tree behavior creates
+      # no PR, so pushes with nothing releasable harmlessly stop here.
       - name: 🎋 Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
           title: "chore(release): Publish packages"
           body: |
             Prepared packages for release to pub.dev from `${{ github.ref_name }}`.
-            Mode: `${{ github.ref_name == 'dev' && 'prerelease' || inputs.mode }}`.
+            Strategy: `${{ github.ref_name == 'dev' && 'prerelease' || steps.strategy.outputs.strategy }}`.
+            Trigger: ${{ github.event_name == 'push' && 'automatically triggered by a push to `main`' || 'manually dispatched' }}.
 
             - dispatched on `dev` → prerelease versions (`-dev.N`)
-            - dispatched on `main` with `graduate` → graduated stable versions
-            - dispatched on `main` with `hotfix` → conventional-commit stable versions
+            - `main` with prerelease versions in the tree → `graduate`, stable graduated versions
+            - `main` with only stable versions → `version`, conventional-commit bumps (hotfixes)
 
             Review the version bumps and CHANGELOG entries before merging.
             Merging this PR triggers tagging (and, once plan 002 is live,
