@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,7 +18,14 @@ class PhotoFlickPage extends StatefulWidget {
 class _PhotoFlickPageState extends State<PhotoFlickPage>
     with SingleTickerProviderStateMixin {
   late final _controller = TrackController(vsync: this);
+
+  /// The opened photo's center, relative to the stage center. Doubles as the
+  /// open/close travel (slot → center → slot) and the flick position, so one
+  /// continuous value carries the photo through its whole story.
   final _position = Track(.offset, initial: Offset.zero);
+
+  /// 0 = resting in its grid slot, 1 = opened large.
+  final _zoom = Track<double>(.single, initial: 0);
 
   static const _single = CupertinoMotion.smooth(
     duration: Duration(milliseconds: 650),
@@ -28,11 +35,31 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
     CupertinoMotion.snappy(),
     CupertinoMotion.bouncy(extraBounce: .35),
   ];
+  static const _openClose = CupertinoMotion.smooth(
+    duration: Duration(milliseconds: 450),
+    extraBounce: .05,
+  );
+
+  /// The dismissal return: long enough that a hard fling visibly carries the
+  /// photo outward before the spring curves it home into its slot.
+  static const _goHome = CupertinoMotion.smooth(
+    duration: Duration(milliseconds: 700),
+  );
   static const _friction = FrictionMotion(
     drag: .001,
     constantDeceleration: 200,
   );
   static const _dismissThreshold = 180.0;
+
+  static const _smallSize = Size(112, 92);
+  static const _largeSize = Size(190, 230);
+  static const _gridGap = 14.0;
+
+  /// The center of grid slot [index] (2×2 grid), relative to stage center.
+  static Offset _slotOffset(int index) => Offset(
+    (index.isEven ? -1 : 1) * (_smallSize.width + _gridGap) / 2,
+    (index < 2 ? -1 : 1) * (_smallSize.height + _gridGap) / 2,
+  );
 
   final List<double> _xTrace = [];
   final List<double> _yTrace = [];
@@ -72,7 +99,8 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
     if (status != AnimationStatus.completed || !_dismissing || !mounted) {
       return;
     }
-    _controller.set([_position.value(Offset.zero)]);
+    // The photo has settled back into its slot at grid size, so swapping in
+    // the static grid tile is invisible.
     setState(() {
       _dismissing = false;
       _openedPhoto = null;
@@ -82,17 +110,32 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
   }
 
   void _openPhoto(int index) {
-    _controller.set([_position.value(Offset.zero)]);
+    if (_openedPhoto != null) return;
+    // Anchor both tracks at the slot's resting state, then animate position
+    // and zoom together so the photo grows out of its grid slot.
+    _controller.set([
+      _position.value(_slotOffset(index)),
+      _zoom.value(0),
+    ]);
     setState(() {
       _openedPhoto = index;
       _dismissing = false;
       _xTrace.clear();
       _yTrace.clear();
     });
+    _controller.animate([
+      _position.to(Offset.zero, motion: _openClose),
+      _zoom.to(1, motion: _openClose),
+    ]);
   }
 
   void _onPanStart(DragStartDetails _) {
-    _controller.stop(canceled: true);
+    // Stop only the position track: the finger owns it now. If the photo was
+    // caught mid-dismissal, grow it back to full size while the drag goes on.
+    _controller.stop(tracks: [_position], canceled: true);
+    if (_dismissing) {
+      _controller.animate([_zoom.to(1, motion: _openClose)]);
+    }
     setState(() {
       _dismissing = false;
       _xTrace.clear();
@@ -115,17 +158,16 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
     );
 
     if (projected.distance > _dismissThreshold) {
-      final direction = projected.distance == 0
-          ? const Offset(0, 1)
-          : projected / projected.distance;
-      final target = direction * math.max(projected.distance, 520);
+      // Dismiss: the fling velocity carries the photo outward while the
+      // spring bends its path home, shrinking it back into its grid slot.
       setState(() => _dismissing = true);
       _controller.animate([
         _position.to(
-          target,
-          motion: .smoothSpring().trimmed(fromEnd: .86),
+          _slotOffset(_openedPhoto!),
+          motion: _goHome,
           withVelocity: velocity,
         ),
+        _zoom.to(0, motion: _goHome),
       ]);
       return;
     }
@@ -150,7 +192,8 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
       next: (label: 'Meet Tracks', routeName: 'Meet Tracks'),
       description:
           'Open a photo and flick it freely. Its X and Y projections keep '
-          'their own velocity and can settle on different springs.',
+          'their own velocity and can settle on different springs — flick '
+          'hard and it carries that velocity home into its grid slot.',
       action: Row(
         children: [
           CupertinoSwitch(
@@ -176,44 +219,54 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
                   ? 'Tap a photo'
                   : 'Drag & flick the photo',
               padding: EdgeInsets.zero,
-              child: LayoutBuilder(
-                builder: (context, constraints) => SizedBox.expand(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned.fill(
-                        child: AnimatedBuilder(
-                          animation: _controller,
-                          builder: (context, _) => CustomPaint(
-                            painter: _ProjectionPainter(
-                              theme: t,
-                              position: _controller.value(_position),
-                              xTrace: _xTrace,
-                              yTrace: _yTrace,
-                            ),
+              child: SizedBox.expand(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, _) => CustomPaint(
+                          painter: _ProjectionPainter(
+                            theme: t,
+                            position: _controller.value(_position),
+                            xTrace: _xTrace,
+                            yTrace: _yTrace,
                           ),
                         ),
                       ),
-                      if (_openedPhoto == null)
-                        _PhotoGrid(onOpen: _openPhoto)
-                      else
-                        AnimatedBuilder(
-                          animation: _controller,
-                          builder: (context, child) => Transform.translate(
-                            offset: _controller.value(_position),
-                            child: child,
+                    ),
+                    // All four photos stay in the tree; the opened one leaves
+                    // its slot and animates above the others.
+                    for (var index = 0; index < 4; index++)
+                      if (index != _openedPhoto)
+                        Transform.translate(
+                          offset: _slotOffset(index),
+                          child: GestureDetector(
+                            key: ValueKey('photo-$index'),
+                            onTap: () => _openPhoto(index),
+                            child: _Photo(index: index),
                           ),
+                        ),
+                    if (_openedPhoto case final opened?)
+                      AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, _) => Transform.translate(
+                          offset: _controller.value(_position),
                           child: GestureDetector(
                             key: const ValueKey('opened-photo'),
                             behavior: HitTestBehavior.opaque,
                             onPanStart: _onPanStart,
                             onPanUpdate: _onPanUpdate,
                             onPanEnd: _onPanEnd,
-                            child: _Photo(index: _openedPhoto!, large: true),
+                            child: _Photo(
+                              index: opened,
+                              zoom: _controller.value(_zoom),
+                            ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -229,43 +282,23 @@ class _PhotoFlickPageState extends State<PhotoFlickPage>
   }
 }
 
-class _PhotoGrid extends StatelessWidget {
-  const _PhotoGrid({required this.onOpen});
-
-  final ValueChanged<int> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        children: [
-          for (var index = 0; index < 4; index++)
-            GestureDetector(
-              key: ValueKey('photo-$index'),
-              onTap: () => onOpen(index),
-              child: _Photo(index: index),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Photo extends StatelessWidget {
-  const _Photo({required this.index, this.large = false});
+  const _Photo({required this.index, this.zoom = 0});
 
   final int index;
-  final bool large;
+
+  /// Blend between grid-tile size (0) and opened size (1).
+  final double zoom;
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
     final shades = [t.textPrimary, t.textSecondary, t.borderStrong, t.pebble];
+    final small = _PhotoFlickPageState._smallSize;
+    final large = _PhotoFlickPageState._largeSize;
     return Container(
-      width: large ? 190 : 112,
-      height: large ? 230 : 92,
+      width: lerpDouble(small.width, large.width, zoom),
+      height: lerpDouble(small.height, large.height, zoom),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -275,14 +308,14 @@ class _Photo extends StatelessWidget {
             shades[(index + 1) % shades.length].withValues(alpha: .55),
           ],
         ),
-        borderRadius: BorderRadius.circular(large ? 22 : 14),
+        borderRadius: BorderRadius.circular(lerpDouble(14, 22, zoom)!),
         border: Border.all(color: t.border),
         boxShadow: t.softShadow,
       ),
       child: Icon(
         CupertinoIcons.photo_fill,
         color: t.surfaceSolid.withValues(alpha: .75),
-        size: large ? 42 : 24,
+        size: lerpDouble(24, 42, zoom),
       ),
     );
   }
