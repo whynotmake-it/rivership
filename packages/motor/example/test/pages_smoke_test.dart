@@ -18,6 +18,7 @@ import 'package:motor_example/pages/picture_in_picture.dart';
 import 'package:motor_example/pages/pull_to_refresh.dart';
 import 'package:motor_example/pages/snap_carousel.dart';
 import 'package:motor_example/pages/spring_character.dart';
+import 'package:motor_example/pages/sync_barriers.dart';
 import 'package:motor_example/pages/the_spring.dart';
 import 'package:motor_example/pages/thermostat.dart';
 import 'package:motor_example/pages/timelines_and_steps.dart';
@@ -57,6 +58,7 @@ void main() {
     'Payment Success': () => const PaymentSuccessPage(),
     'Thermostat': () => const ThermostatPage(),
     'Timelines & Steps': () => const TimelinesAndStepsPage(),
+    'Sync Barriers': () => const SyncBarriersPage(),
     'Card Stack': () => const CardStackPage(),
     'Now Playing': () => const NowPlayingPage(),
     'Title Slide': () => const TitleSlidePage(),
@@ -152,6 +154,27 @@ void main() {
 
     await tester.tap(find.text('pingPong'));
     await _pumpFrames(tester, frames: 120);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Sync Barriers holds the runner until the walker arrives', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const CupertinoApp(home: SyncBarriersPage()));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    double read(String key) {
+      final widget = tester.widget<Text>(find.byKey(ValueKey(key)));
+      return double.parse(widget.data!);
+    }
+
+    expect(read('runner-value'), closeTo(1, 0.01));
+    expect(read('walker-value'), lessThan(1));
+    expect(read('runner-value'), lessThan(1.02));
+
+    await _pumpFrames(tester, frames: 60);
+    expect(read('runner-value'), greaterThan(1.2));
+    expect(read('walker-value'), greaterThan(1.2));
     expect(tester.takeException(), isNull);
   });
 
