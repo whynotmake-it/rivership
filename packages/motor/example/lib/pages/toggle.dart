@@ -151,6 +151,8 @@ class _SpringSwitchState extends State<_SpringSwitch>
       child: ValueListenableBuilder(
         valueListenable: _c,
         builder: (context, v, _) {
+          // Color saturates at the endpoints, while the wider clamp below lets
+          // the thumb preserve a hint of the spring's overshoot.
           final clamped = v(_value).clamp(0.0, 1.0);
           final scale = v(_thumbScale);
           return Container(
@@ -250,6 +252,8 @@ class _LikeButtonState extends State<_LikeButton>
           .at(
             Duration(milliseconds: 150),
             1.5,
+            // Play only the spring's rising half, then hand off to the settle
+            // below before its wobble begins.
             motion: .bouncySpring().trimmed(fromEnd: .5),
           ),
           .to(1),
@@ -270,10 +274,10 @@ class _LikeButtonState extends State<_LikeButton>
       onTapUp: (_) => _release(),
       onTapCancel: () =>
           _controller.animate([_likeScale.to(1, motion: .interactiveSpring())]),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final burst = _controller.value<double>(_burst).clamp(0.0, 1.0);
+      child: ValueListenableBuilder<TrackValueReader>(
+        valueListenable: _controller,
+        builder: (context, value, _) {
+          final burst = value(_burst).clamp(0.0, 1.0);
           return SizedBox(
             width: 56,
             height: 56,
@@ -282,11 +286,11 @@ class _LikeButtonState extends State<_LikeButton>
               children: [
                 if (burst > 0 && burst < 1) ..._burstParticles(burst),
                 Transform.scale(
-                  scale: _controller.value<double>(_likeScale),
+                  scale: value<double>(_likeScale),
                   child: Icon(
                     _liked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
                     size: 28,
-                    color: _controller.value<Color>(_thumbColor),
+                    color: value<Color>(_thumbColor),
                   ),
                 ),
               ],
@@ -363,6 +367,7 @@ class _RotateToggleState extends State<_RotateToggle>
         width: 40,
         height: 40,
         decoration: BoxDecoration(color: t.fog, shape: BoxShape.circle),
+        // SingleMotionController exposes its value directly by design.
         child: AnimatedBuilder(
           animation: _c,
           builder: (context, _) => Transform.rotate(

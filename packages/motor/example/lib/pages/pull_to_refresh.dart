@@ -33,6 +33,8 @@ class _PullToRefreshPageState extends State<PullToRefreshPage>
     constantDeceleration: 220,
   );
 
+  // Two states and one timer are clearer to manage directly here. See the
+  // Phases page for the named-state alternative when a flow grows.
   bool _refreshing = false;
 
   @override
@@ -73,6 +75,8 @@ class _PullToRefreshPageState extends State<PullToRefreshPage>
     // Spin continuously through the "loading" window, then settle back.
     _controller
         .animate([
+          // Dragging already advanced the angle, so a relative target avoids a
+          // jump and adds eight full turns from wherever the gesture stopped.
           _spin.to(
             _controller.value(_spin) + math.pi * 8,
             motion: const CurvedMotion(

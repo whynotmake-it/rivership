@@ -129,6 +129,8 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
               .sync(token: #ready),
               .to(
                 1.3,
+                // Use only the spring's rising half for character, then hand
+                // off to the settle below before the wobble begins.
                 motion: .bouncySpring(extraBounce: .4).trimmed(fromEnd: .5),
               ),
               .to(1),
