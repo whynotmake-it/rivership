@@ -6,16 +6,20 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor_example/pages/accordion.dart';
 import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/curve_trap.dart';
+import 'package:motor_example/pages/curve_trap_escape.dart';
 import 'package:motor_example/pages/draggable_icons.dart';
 import 'package:motor_example/pages/drawer.dart';
+import 'package:motor_example/pages/instant_vs_animated.dart';
 import 'package:motor_example/pages/interruptible_motion.dart';
 import 'package:motor_example/pages/loaders.dart';
 import 'package:motor_example/pages/motion_character.dart';
 import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
+import 'package:motor_example/pages/photo_flick.dart';
 import 'package:motor_example/pages/picture_in_picture.dart';
 import 'package:motor_example/pages/pull_to_refresh.dart';
 import 'package:motor_example/pages/snap_carousel.dart';
+import 'package:motor_example/pages/spring_character.dart';
 import 'package:motor_example/pages/the_spring.dart';
 import 'package:motor_example/pages/thermostat.dart';
 import 'package:motor_example/pages/title_slide.dart';
@@ -61,6 +65,14 @@ final motorRoutes = [
       (_) => const TwoDimensionsPage()),
   _route(MotionCharacterPage.routeName, 'motion-character',
       (_) => const MotionCharacterPage()),
+  _route(InstantVsAnimatedPage.routeName, 'instant-vs-animated',
+      (_) => const InstantVsAnimatedPage()),
+  _route(CurveTrapEscapePage.routeName, 'curve-trap-escape',
+      (_) => const CurveTrapEscapePage()),
+  _route(SpringCharacterPage.routeName, 'spring-character',
+      (_) => const SpringCharacterPage()),
+  _route(PhotoFlickPage.routeName, 'photo-flick',
+      (_) => const PhotoFlickPage()),
   // Everyday UI.
   _route(TogglePage.routeName, 'toggle', (_) => const TogglePage()),
   _route(SnapCarouselPage.routeName, 'snap-carousel',

@@ -3,16 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/pages/accordion.dart';
 import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/curve_trap.dart';
+import 'package:motor_example/pages/curve_trap_escape.dart';
 import 'package:motor_example/pages/draggable_icons.dart';
 import 'package:motor_example/pages/drawer.dart';
+import 'package:motor_example/pages/instant_vs_animated.dart';
 import 'package:motor_example/pages/interruptible_motion.dart';
 import 'package:motor_example/pages/loaders.dart';
 import 'package:motor_example/pages/motion_character.dart';
 import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
+import 'package:motor_example/pages/photo_flick.dart';
 import 'package:motor_example/pages/picture_in_picture.dart';
 import 'package:motor_example/pages/pull_to_refresh.dart';
 import 'package:motor_example/pages/snap_carousel.dart';
+import 'package:motor_example/pages/spring_character.dart';
 import 'package:motor_example/pages/the_spring.dart';
 import 'package:motor_example/pages/thermostat.dart';
 import 'package:motor_example/pages/title_slide.dart';
@@ -31,6 +35,10 @@ Future<void> _pumpFrames(WidgetTester tester, {int frames = 60}) async {
 
 void main() {
   final pages = <String, Widget Function()>{
+    'Instant vs. Animated': () => const InstantVsAnimatedPage(),
+    'The Curve Trap': () => const CurveTrapEscapePage(),
+    'Spring Character': () => const SpringCharacterPage(),
+    'More Than One Dimension': () => const PhotoFlickPage(),
     'Why Motion?': () => const WhyMotionPage(),
     'Curve Trap': () => const CurveTrapPage(),
     'The Spring': () => const TheSpringPage(),
@@ -82,6 +90,51 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     expect(find.text('Payment sent'), findsOneWidget);
+  });
+
+  testWidgets('Curve Trap handles a mid-flight reversal', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const CupertinoApp(home: CurveTrapEscapePage()));
+    await tester.pump();
+
+    await tester.tap(find.text('Open'));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Close'));
+    await _pumpFrames(tester);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Photo flick returns a low-velocity fling home', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const CupertinoApp(home: PhotoFlickPage()));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('photo-0')));
+    await tester.pump();
+    expect(
+      (tester.getCenter(find.byKey(const ValueKey('opened-photo'))) -
+              tester.getCenter(find.byKey(const ValueKey('photo-stage'))))
+          .distance,
+      lessThan(1),
+    );
+    await tester.fling(
+      find.byKey(const ValueKey('opened-photo')),
+      const Offset(36, 24),
+      10,
+    );
+    await _pumpFrames(tester, frames: 100);
+
+    final photoCenter = tester.getCenter(
+      find.byKey(const ValueKey('opened-photo')),
+    );
+    final stageCenter = tester.getCenter(
+      find.byKey(const ValueKey('photo-stage')),
+    );
+    expect((photoCenter - stageCenter).distance, lessThan(1));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Thermostat drags the target and toggles power', (tester) async {
