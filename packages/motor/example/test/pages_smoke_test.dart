@@ -9,6 +9,7 @@ import 'package:motor_example/pages/drawer.dart';
 import 'package:motor_example/pages/instant_vs_animated.dart';
 import 'package:motor_example/pages/interruptible_motion.dart';
 import 'package:motor_example/pages/loaders.dart';
+import 'package:motor_example/pages/meet_tracks.dart';
 import 'package:motor_example/pages/motion_character.dart';
 import 'package:motor_example/pages/now_playing.dart';
 import 'package:motor_example/pages/payment_success.dart';
@@ -51,6 +52,7 @@ void main() {
     'Drawer': () => const DrawerPage(),
     'Accordion': () => const AccordionPage(),
     'Loaders': () => const LoadersPage(),
+    'Meet Tracks': () => const MeetTracksPage(),
     'Payment Success': () => const PaymentSuccessPage(),
     'Thermostat': () => const ThermostatPage(),
     'Card Stack': () => const CardStackPage(),
