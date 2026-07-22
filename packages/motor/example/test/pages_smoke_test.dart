@@ -20,6 +20,7 @@ import 'package:motor_example/pages/snap_carousel.dart';
 import 'package:motor_example/pages/spring_character.dart';
 import 'package:motor_example/pages/the_spring.dart';
 import 'package:motor_example/pages/thermostat.dart';
+import 'package:motor_example/pages/timelines_and_steps.dart';
 import 'package:motor_example/pages/title_slide.dart';
 import 'package:motor_example/pages/toast.dart';
 import 'package:motor_example/pages/toggle.dart';
@@ -55,6 +56,7 @@ void main() {
     'Meet Tracks': () => const MeetTracksPage(),
     'Payment Success': () => const PaymentSuccessPage(),
     'Thermostat': () => const ThermostatPage(),
+    'Timelines & Steps': () => const TimelinesAndStepsPage(),
     'Card Stack': () => const CardStackPage(),
     'Now Playing': () => const NowPlayingPage(),
     'Title Slide': () => const TitleSlidePage(),
@@ -136,6 +138,20 @@ void main() {
       find.byKey(const ValueKey('photo-stage')),
     );
     expect((photoCenter - stageCenter).distance, lessThan(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Timelines & Steps loops and switches to pingPong', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(home: TimelinesAndStepsPage()),
+    );
+    await _pumpFrames(tester, frames: 240);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('pingPong'));
+    await _pumpFrames(tester, frames: 120);
     expect(tester.takeException(), isNull);
   });
 
