@@ -55,14 +55,14 @@ final motorRoutes = [
     type: const RouteType.cupertino(),
     builder: (context, state) => const _HomePage(),
   ),
-  // Why physical motion (the explainer arc).
+  // Why physical motion (the OLD explainer arc — replaced by Arc 1 below;
+  // deletion happens in plan 005). The Curve Trap and Two Dimensions routes
+  // are removed already: their replacements reuse the same route names and
+  // auto_route rejects duplicates at startup/hot restart.
   _route(WhyMotionPage.routeName, 'why-motion', (_) => const WhyMotionPage()),
-  _route(CurveTrapPage.routeName, 'curve-trap', (_) => const CurveTrapPage()),
   _route(TheSpringPage.routeName, 'the-spring', (_) => const TheSpringPage()),
   _route(InterruptibleMotionPage.routeName, 'interruptible',
       (_) => const InterruptibleMotionPage()),
-  _route(TwoDimensionsPage.routeName, 'two-dimensions',
-      (_) => const TwoDimensionsPage()),
   _route(MotionCharacterPage.routeName, 'motion-character',
       (_) => const MotionCharacterPage()),
   _route(InstantVsAnimatedPage.routeName, 'instant-vs-animated',
