@@ -1,7 +1,8 @@
 # Releasing
 
 `dev` is the prerelease train and publishes `-dev.N` versions. `main` is the
-stable train and only graduates versions that were released from `dev` first.
+stable train: it graduates versions released from `dev` and can ship hotfixes
+directly.
 
 ## TL;DR
 
@@ -9,13 +10,16 @@ stable train and only graduates versions that were released from `dev` first.
 |------------|---------|
 | Ship prereleases of what's on dev | Actions → "Prepare release" → run on `dev` → review and merge the `chore(release)` PR |
 | Ship stable versions | Open and merge a PR from `dev` to `main`, then Actions → "Prepare release" → run on `main` → review and merge the `chore(release)` PR |
+| Ship a hotfix from main | Land the fix PR on `main`, then Actions → "Prepare release" → run on `main` with `mode=hotfix` → review and merge the `chore(release)` PR |
 | After any stable release | Open and merge the back-merge PR from `main` to `dev` |
 
 ## How the pipeline works
 
 1. `.github/workflows/prepare-release.yaml` derives its mode from the selected
    branch. On `dev`, Melos runs prerelease versioning. On `main`, it graduates
-   prereleases to stable versions. Any other branch is rejected.
+   prereleases to stable versions by default, or runs plain conventional-commit
+   versioning when `mode=hotfix`. Any other branch is rejected, as is hotfix
+   mode on `dev`.
 2. Melos versions only changed, publishable packages according to conventional
    commits, runs a publish dry-run, and opens a
    `chore(release): Publish packages` PR.
@@ -26,8 +30,8 @@ stable train and only graduates versions that were released from `dev` first.
    to pub.dev using OIDC and creates a GitHub release. Versions containing
    `-dev.N` become GitHub prereleases.
 
-Stable releases only graduate existing prereleases. Every package ships from
-`dev` before its stable version ships from `main`.
+Normal stable releases graduate existing prereleases. Hotfix releases are the
+exception and can version fixes landed directly on `main`.
 
 ## Reviewing a release PR
 
@@ -57,11 +61,17 @@ and `main` → `dev` PRs in GitHub; no local branch juggling is required.
 
 ## Hotfixing a stable release
 
-Prefer landing the fix on `dev`, publishing a prerelease, merging `dev` to
-`main`, and graduating it through the normal stable train. Keep `dev`
-releasable so this path remains available. If unreleasable work is stacked on
-`dev`, cut a temporary branch from `main` and agree on an explicit release
-path before changing the guarded workflow; never publish or tag by hand.
+Direct-from-`main` hotfixes are a first-class release path. Land the fix through
+a PR to `main`, then run "Prepare release" on `main` with `mode=hotfix`. Melos
+uses conventional commits to choose the stable patch or minor bump. Review and
+merge the generated release PR normally; never publish or tag by hand.
+
+The fix must also land on `dev`, either by cherry-picking it or promptly
+back-merging `main` into `dev`. The version math remains safe when `dev` is
+already on its next prerelease line: after a `1.1.1` hotfix on `main`, a
+back-merge keeps a version such as `2.0.0-dev.N` ahead because
+`2.0.0-dev.N` sorts above `1.1.1`. Melos handles that ordering while continuing
+the `dev` prerelease train.
 
 ## One-time setup (status)
 

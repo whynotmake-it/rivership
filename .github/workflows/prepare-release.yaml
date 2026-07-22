@@ -2,6 +2,15 @@ name: Prepare release
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Stable release mode on main; dev supports prerelease only
+        required: true
+        default: graduate
+        type: choice
+        options:
+          - graduate
+          - hotfix
 
 jobs:
   prepare-release:
@@ -17,6 +26,12 @@ jobs:
           echo "::error::Release preparation runs only on 'dev' (prerelease) or 'main' (stable graduation), not '${{ github.ref_name }}'."
           exit 1
 
+      - name: 🛑 Reject hotfix mode on dev
+        if: github.ref_name == 'dev' && inputs.mode == 'hotfix'
+        run: |
+          echo "::error::Hotfix mode applies only on 'main'. Dispatch 'dev' with mode 'graduate' to prepare a prerelease."
+          exit 1
+
       - name: 📚 Checkout
         uses: actions/checkout@v5
         with:
@@ -25,11 +40,12 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
 
-      - name: Ⓜ️ Version packages (dev → prerelease, main → graduate)
+      - name: Ⓜ️ Version packages
         uses: bluefireteam/melos-action@v3
         with:
+          run-versioning: ${{ github.ref_name == 'main' && inputs.mode == 'hotfix' }}
           run-versioning-prerelease: ${{ github.ref_name == 'dev' }}
-          run-versioning-graduate: ${{ github.ref_name == 'main' }}
+          run-versioning-graduate: ${{ github.ref_name == 'main' && inputs.mode == 'graduate' }}
           publish-dry-run: true
 
       - name: 🎋 Create Pull Request
@@ -38,9 +54,11 @@ jobs:
           title: "chore(release): Publish packages"
           body: |
             Prepared packages for release to pub.dev from `${{ github.ref_name }}`.
+            Mode: `${{ github.ref_name == 'dev' && 'prerelease' || inputs.mode }}`.
 
             - dispatched on `dev` → prerelease versions (`-dev.N`)
-            - dispatched on `main` → graduated stable versions
+            - dispatched on `main` with `graduate` → graduated stable versions
+            - dispatched on `main` with `hotfix` → conventional-commit stable versions
 
             Review the version bumps and CHANGELOG entries before merging.
             Merging this PR triggers tagging (and, once plan 002 is live,
