@@ -18,6 +18,7 @@ import 'package:motor_example/pages/sync_barriers.dart';
 import 'package:motor_example/pages/timelines_and_steps.dart';
 import 'package:motor_example/pages/toast.dart';
 import 'package:motor_example/pages/toggle.dart';
+import 'package:motor_example/widgets/phone_frame.dart';
 
 // Pump enough frames to drain one-shot timers so the test's no-pending-timer
 // invariant holds.
@@ -258,4 +259,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Spring Character opens and closes via the toggle button', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const CupertinoApp(home: SpringCharacterPage()));
+    await tester.pump();
+
+    DemoSheet sheet() => tester.widget<DemoSheet>(find.byType(DemoSheet));
+    expect(sheet().value, 0);
+
+    await tester.tap(find.text('Open'));
+    await _pumpFrames(tester);
+    expect(sheet().value, closeTo(1, .01));
+
+    await tester.tap(find.text('Close'));
+    await _pumpFrames(tester);
+    expect(sheet().value, closeTo(0, .01));
+    expect(tester.takeException(), isNull);
+  });
 }

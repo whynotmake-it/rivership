@@ -26,6 +26,7 @@ class _SpringCharacterPageState extends State<SpringCharacterPage>
   double _durationMs = 500;
   double _bounce = 0;
   Motion? _presetMotion;
+  bool _open = false;
 
   Motion get _motion =>
       _presetMotion ??
@@ -71,9 +72,17 @@ class _SpringCharacterPageState extends State<SpringCharacterPage>
     final target = normalizedVelocity.abs() > 1
         ? (normalizedVelocity > 0 ? 1.0 : 0.0)
         : (position > .5 ? 1.0 : 0.0);
+    // Keep the toggle button's label truthful when the hand decides.
+    setState(() => _open = target == 1.0);
     // No explicit withVelocity: the controller carries the velocity it tracked
     // during the drag into this redirect.
     _controller.animate([_sheet.to(target, motion: _motion)]);
+  }
+
+  void _toggleSheet() {
+    setState(() => _open = !_open);
+    _trace.reset();
+    _controller.animate([_sheet.to(_open ? 1.0 : 0.0, motion: _motion)]);
   }
 
   void _setTuning({required double duration, required double bounce}) {
@@ -108,6 +117,13 @@ class _SpringCharacterPageState extends State<SpringCharacterPage>
       description:
           'Drag and fling one sheet, then tune its duration and bounce. Every '
           'preset receives the same artifact and the same gesture.',
+      action: Align(
+        alignment: Alignment.centerLeft,
+        child: CupertinoButton.filled(
+          onPressed: _toggleSheet,
+          child: Text(_open ? 'Close' : 'Open'),
+        ),
+      ),
       child: Surface(
         padding: const EdgeInsets.all(18),
         child: Column(
