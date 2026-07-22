@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
+import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
@@ -120,6 +121,82 @@ void main() {
       expect(controller.isAnimating, isFalse);
       expect(controller.value(trackA), closeTo(0, error));
       expect(controller.value(trackB), closeTo(2, error));
+    });
+
+    testWidgets('resume after scrub continues from the scrubbed position',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      const linear = Motion.linear(Duration(seconds: 1));
+      controller.animate([
+        trackA([
+          const TrackStep.to(1, motion: linear),
+          const TrackStep.to(2, motion: linear),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      controller.pause();
+      controller.scrubTo(const Duration(milliseconds: 600));
+      final scrubbed = controller.value(trackA);
+
+      controller.resume();
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value(trackA), greaterThanOrEqualTo(scrubbed));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('scrubbing past a barrier releases waiting peers',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      const linear50 = Motion.linear(Duration(milliseconds: 50));
+      const linear150 = Motion.linear(Duration(milliseconds: 150));
+      controller.animate([
+        trackA([
+          const TrackStep.to(1, motion: linear50),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(2, motion: linear200),
+        ]),
+        trackB([
+          const TrackStep.to(1, motion: linear150),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(2, motion: linear200),
+        ]),
+      ]);
+
+      await tester.pump();
+      controller.pause();
+      controller.scrubTo(const Duration(milliseconds: 100));
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), lessThan(1));
+
+      controller.resume();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 20));
+
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), greaterThan(1));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('scrub to end completes cleanly', (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA(stepsA)]);
+      await tester.pump();
+      controller.pause();
+
+      controller.scrubTo(const Duration(seconds: 2));
+
+      expect(controller.status, AnimationStatus.completed);
+      expect(controller.isAnimating, isFalse);
+      expect(controller.value(trackA), closeTo(0, error));
+
+      controller.animate([trackA.to(1, motion: linear100)]);
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(controller.value(trackA), closeTo(1, error));
     });
 
     testWidgets('resync preserves values and the animation still completes',

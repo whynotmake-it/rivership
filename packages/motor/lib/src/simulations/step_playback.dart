@@ -205,6 +205,18 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _cycleStartSeconds;
 
+  /// Whether this playback has already crossed [token] in its current leg.
+  @internal
+  bool hasPassedSync(Object token) {
+    for (var index = 0; index < _steps.length; index++) {
+      final step = _steps[index];
+      if (step is! StepSync<T> || step.token != token) continue;
+      if (_direction > 0 && _stepIndex > index) return true;
+      if (_direction < 0 && _stepIndex < index) return true;
+    }
+    return false;
+  }
+
   /// Releases the playback past the current [StepSync].
   ///
   /// Called by [TrackController] when all active tracks have reached their

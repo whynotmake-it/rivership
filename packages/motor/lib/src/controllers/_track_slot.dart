@@ -34,6 +34,9 @@ class _TrackSlot<T extends Object> {
 
   void releaseSync() => _stepPlayback?.releaseSync();
 
+  bool hasPassedSync(Object token) =>
+      _stepPlayback?.hasPassedSync(token) ?? false;
+
   void setValue(T value) {
     _currentValues = converter.normalize(value);
     _velocityValues = List<double>.filled(_currentValues.length, 0);
@@ -104,6 +107,18 @@ class _TrackSlot<T extends Object> {
       _playback = _TrackSlotPlayback.idle;
     }
     return done;
+  }
+
+  /// Re-bases the controller axis around this slot's current local playhead.
+  ///
+  /// A restarted ticker begins at zero. Making the start offset negative by
+  /// the already-consumed local time keeps `ticker - startOffset` continuous.
+  void rebaseTo(Duration tickerElapsed) {
+    final seconds = _stepPlayback?.lastElapsedSeconds ?? 0;
+    final localPlayhead = Duration(
+      microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+    );
+    _startOffset = tickerElapsed - localPlayhead;
   }
 
   bool _tickStepPlayback(double seconds) {

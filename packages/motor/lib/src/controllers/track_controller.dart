@@ -274,23 +274,52 @@ class TrackController extends Animation<TrackValueReader>
   /// Evaluates active tracks at [t] without starting the ticker.
   ///
   /// Seeking treats sync barriers as zero-duration holds and passes through
-  /// them freely (see [StepSync]); tracks scrubbed past a barrier will not wait
-  /// for their peers.
+  /// them freely (see [StepSync]). Tracks scrubbed past a barrier count as
+  /// having arrived, so peers that later reach it are released normally.
+  ///
+  /// Call [pause] before repeated interactive scrubs, then [resume] to
+  /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
     _playbackRevision++;
+    var allDone = _activeTracks.isNotEmpty;
     for (final track in _activeTracks) {
-      _slots[track]?.scrubTo(t);
+      final slot = _slots[track];
+      if (slot == null || !slot.scrubTo(t)) allDone = false;
     }
+    _releaseSatisfiedBarriers();
+    if (allDone) _completePlayback();
     notifyListeners();
   }
 
-  /// Resumes the ticker if any slots are active.
+  /// Pauses playback without clearing track plans or changing status.
+  ///
+  /// While paused, [isAnimating] is false because the ticker is stopped. No
+  /// status event is dispatched: pausing is an inspection and authoring action,
+  /// not a completed or canceled animation outcome. Use [scrubTo] to inspect a
+  /// position and [resume] to continue from it.
+  void pause() {
+    final ticker = _ticker;
+    if (ticker == null || !ticker.isActive) return;
+    ticker.stop();
+    notifyListeners();
+  }
+
+  /// Resumes paused playback from each track's current local playhead.
+  ///
+  /// Calling this while the ticker is already active or after playback has
+  /// completed is a no-op.
   void resume() {
-    if (_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
-      _status = AnimationStatus.forward;
-      _startTicker();
-      _checkStatusChanged();
+    if (isAnimating) return;
+    if (!_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
+      return;
     }
+    for (final track in _activeTracks) {
+      _slots[track]?.rebaseTo(Duration.zero);
+    }
+    _status = AnimationStatus.forward;
+    _startTicker();
+    _checkStatusChanged();
+    notifyListeners();
   }
 
   /// Stops the given [tracks], or all tracks when [tracks] is null.
@@ -328,7 +357,7 @@ class TrackController extends Animation<TrackValueReader>
       }
       _pruneTokenParticipants(tracks);
     }
-    _releaseWaitingSyncBarriers();
+    _releaseSatisfiedBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop(canceled: true);
     }
@@ -354,7 +383,7 @@ class TrackController extends Animation<TrackValueReader>
     }
 
     _pruneTokenParticipants(targets);
-    _releaseWaitingSyncBarriers();
+    _releaseSatisfiedBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
       _status = AnimationStatus.completed;
@@ -572,22 +601,28 @@ class TrackController extends Animation<TrackValueReader>
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
   }
 
-  /// Releases barriers whose remaining participants are already waiting.
-  ///
-  /// Stop paths call this synchronously because the stopped track may have
-  /// been the only participant keeping the ticker active.
-  void _releaseWaitingSyncBarriers() {
+  /// Releases barriers whose participants have arrived or already crossed.
+  void _releaseSatisfiedBarriers() {
     for (final entry in _tokenParticipants.entries.toList()) {
       final token = entry.key;
       final participants = entry.value;
-      final allWaiting = participants.every((track) {
+      var anyWaiting = false;
+      final allReady = participants.every((track) {
         final slot = _slots[track];
-        return slot != null && slot.isWaitingForSync && slot.syncToken == token;
+        if (slot == null || !slot.isAnimating) return true;
+        if (slot.isWaitingForSync && slot.syncToken == token) {
+          anyWaiting = true;
+          return true;
+        }
+        return slot.hasPassedSync(token);
       });
-      if (!allWaiting) continue;
+      if (!allReady || !anyWaiting) continue;
 
       for (final track in participants) {
-        _slots[track]?.releaseSync();
+        final slot = _slots[track];
+        if (slot != null && slot.isWaitingForSync && slot.syncToken == token) {
+          slot.releaseSync();
+        }
       }
       onSyncReleased(token);
     }
@@ -627,7 +662,6 @@ class TrackController extends Animation<TrackValueReader>
   void _tick(Duration elapsed) {
     _lastElapsed = elapsed;
     var allDone = true;
-    final syncTokens = <Object>{};
 
     for (final track in _activeTracks.toList()) {
       final slot = _slots[track];
@@ -635,48 +669,23 @@ class TrackController extends Animation<TrackValueReader>
       if (!slot.tick(elapsed)) {
         allDone = false;
       }
-      if (slot.isWaitingForSync) {
-        final token = slot.syncToken;
-        if (token != null) syncTokens.add(token);
-      }
       _notifyStep(track, slot);
     }
 
-    for (final token in syncTokens) {
-      final participants = _tokenParticipants[token];
-      if (participants == null) continue;
+    _releaseSatisfiedBarriers();
 
-      // Release when every track that participates in this token is either
-      // waiting at the barrier for this token, or no longer animating.
-      final allReady = participants.every((track) {
-        final slot = _slots[track];
-        if (slot == null) return true;
-        if (!slot.isAnimating) return true;
-        return slot.isWaitingForSync && slot.syncToken == token;
-      });
-      if (allReady) {
-        for (final track in participants) {
-          final slot = _slots[track];
-          if (slot != null &&
-              slot.isWaitingForSync &&
-              slot.syncToken == token) {
-            slot.releaseSync();
-          }
-        }
-        onSyncReleased(token);
-      }
-    }
-
-    if (allDone) {
-      _ticker?.stop();
-      _activeTracks.clear();
-      if (!onPlaybackCompleted()) {
-        _status = AnimationStatus.completed;
-        _checkStatusChanged();
-      }
-    }
+    if (allDone) _completePlayback();
 
     notifyListeners();
+  }
+
+  void _completePlayback() {
+    _ticker?.stop();
+    _activeTracks.clear();
+    if (!onPlaybackCompleted()) {
+      _status = AnimationStatus.completed;
+      _checkStatusChanged();
+    }
   }
 
   void _checkStatusChanged() {
