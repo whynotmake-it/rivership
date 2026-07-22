@@ -80,8 +80,12 @@ class ExamplePage extends StatelessWidget {
                               horizontal: 4,
                               vertical: 8,
                             ),
-                            onPressed: () =>
-                                context.navigateTo(NamedRoute(next.routeName)),
+                            // Replace instead of push: walking the next-chain
+                            // should not stack up example routes, and back
+                            // should always return to the home grid.
+                            onPressed: () => context.replaceRoute(
+                              NamedRoute(next.routeName),
+                            ),
                             child: Text(
                               'next: ${next.label} →',
                               style: TextStyle(
