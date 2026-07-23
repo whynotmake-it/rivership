@@ -283,9 +283,11 @@ class _SharedTickGroup {
     baseInterval = interval;
     _tick = 0;
     for (final subscription in _subscriptions.values) {
-      subscription.tickMultiple =
+      final tickMultiple =
           subscription.interval.inMicroseconds ~/ interval.inMicroseconds;
-      subscription.nextTick = subscription.tickMultiple;
+      subscription
+        ..tickMultiple = tickMultiple
+        ..nextTick = tickMultiple;
     }
     start();
   }
