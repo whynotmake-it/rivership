@@ -392,6 +392,40 @@ void main() {
         ..dispose();
     });
 
+    testWidgets('fps multiples align despite microsecond rounding', (
+      tester,
+    ) async {
+      final fastInterval = TickerRate.fps(30).interval!;
+      final slowInterval = TickerRate.fps(15).interval!;
+      expect(slowInterval.inMicroseconds, fastInterval.inMicroseconds * 2 + 1);
+
+      final fastElapsed = <Duration>[];
+      final slowElapsed = <Duration>[];
+      final fast = FixedTicker(fastElapsed.add, interval: fastInterval);
+      final slow = FixedTicker(slowElapsed.add, interval: slowInterval);
+
+      unawaited(fast.start());
+      unawaited(slow.start());
+      await tester.pump();
+      fastElapsed.clear();
+      slowElapsed.clear();
+
+      await tester.pump(fastInterval);
+      expect(fastElapsed, hasLength(1));
+      expect(slowElapsed, isEmpty);
+
+      await tester.pump(fastInterval);
+      expect(fastElapsed, hasLength(2));
+      expect(slowElapsed, hasLength(1));
+
+      fast
+        ..stop()
+        ..dispose();
+      slow
+        ..stop()
+        ..dispose();
+    });
+
     testWidgets('shared false retains an independent phase', (tester) async {
       const interval = Duration(milliseconds: 50);
       final sharedElapsed = <Duration>[];

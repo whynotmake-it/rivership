@@ -17,8 +17,9 @@ import 'package:meta/meta.dart';
 ///
 /// Fixed-rate tickers share a phase-aligned scheduler by default. Tickers with
 /// equal intervals request frames together, while intervals that are exact
-/// multiples naturally meet on the same scheduler boundaries. Set [shared] to
-/// `false` to retain an independent periodic timer for a ticker.
+/// multiples naturally meet on the same scheduler boundaries. The scheduler
+/// tolerates the bounded microsecond rounding introduced by FPS-derived
+/// intervals. Set [shared] to `false` to retain an independent periodic timer.
 ///
 /// ## Elapsed time in fixed-rate mode
 ///
@@ -241,10 +242,8 @@ class _SharedTickGroup {
   int _tick = 0;
 
   bool canUse(Duration interval) {
-    final baseMicroseconds = baseInterval.inMicroseconds;
-    final intervalMicroseconds = interval.inMicroseconds;
-    return intervalMicroseconds % baseMicroseconds == 0 ||
-        baseMicroseconds % intervalMicroseconds == 0;
+    return _harmonicMultiple(interval, baseInterval) != null ||
+        _harmonicMultiple(baseInterval, interval) != null;
   }
 
   Duration? intervalFor(FixedTicker ticker) {
@@ -256,12 +255,12 @@ class _SharedTickGroup {
   }
 
   void add(FixedTicker ticker, Duration interval) {
-    if (baseInterval.inMicroseconds % interval.inMicroseconds == 0 &&
-        baseInterval != interval) {
+    final baseMultiple = _harmonicMultiple(baseInterval, interval);
+    if (baseMultiple != null && interval < baseInterval) {
       _rebase(interval);
     }
 
-    final tickMultiple = interval.inMicroseconds ~/ baseInterval.inMicroseconds;
+    final tickMultiple = _harmonicMultiple(interval, baseInterval)!;
     _subscriptions[ticker] = _SharedTickSubscription(
       interval,
       tickMultiple,
@@ -283,8 +282,10 @@ class _SharedTickGroup {
     baseInterval = interval;
     _tick = 0;
     for (final subscription in _subscriptions.values) {
-      final tickMultiple =
-          subscription.interval.inMicroseconds ~/ interval.inMicroseconds;
+      final tickMultiple = _harmonicMultiple(
+        subscription.interval,
+        interval,
+      )!;
       subscription
         ..tickMultiple = tickMultiple
         ..nextTick = tickMultiple;
@@ -318,4 +319,17 @@ class _SharedTickSubscription {
   final Duration interval;
   int tickMultiple;
   int nextTick;
+}
+
+int? _harmonicMultiple(Duration longer, Duration shorter) {
+  final longerMicroseconds = longer.inMicroseconds;
+  final shorterMicroseconds = shorter.inMicroseconds;
+  if (longerMicroseconds < shorterMicroseconds) return null;
+
+  final multiple =
+      (longerMicroseconds + shorterMicroseconds ~/ 2) ~/ shorterMicroseconds;
+  final roundingError = (longerMicroseconds - shorterMicroseconds * multiple)
+      .abs();
+  final maximumRoundingError = (multiple + 1) ~/ 2;
+  return roundingError <= maximumRoundingError ? multiple : null;
 }

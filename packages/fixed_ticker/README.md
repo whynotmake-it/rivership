@@ -154,7 +154,9 @@ Fixed-rate tickers share scheduling by default, including tickers created by
 different providers. Tickers at the same rate request frames together instead
 of maintaining separate timer phases. Rates with intervals that are exact
 multiples also align: for example, a 10 fps ticker fires alongside every second
-tick of a 20 fps ticker.
+tick of a 20 fps ticker. The scheduler allows the sub-microsecond rounding
+difference introduced when FPS values are converted to `Duration`s, so common
+pairs such as 30 fps and 15 fps align as expected.
 
 Override `shareTicks` when a provider needs independent timing:
 
