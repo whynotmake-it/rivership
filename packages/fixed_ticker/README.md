@@ -22,6 +22,7 @@ Sometimes that is more work than the animation needs. A background shimmer, deco
 - Drop-in ticker provider mixins for `AnimationController`
 - Fixed rates from frames-per-second values or explicit intervals
 - Seamless switching between fixed-rate and normal vsync ticking
+- Shared, phase-aligned fixed-rate ticks by default
 - `TickerRateScope` for subtree-wide rate control
 - Testing utilities for fixed-rate animations
 
@@ -149,6 +150,30 @@ class _MyState extends State<MyWidget>
 }
 ```
 
+Fixed-rate tickers share scheduling by default, including tickers created by
+different providers. Tickers at the same rate request frames together instead
+of maintaining separate timer phases. Rates with intervals that are exact
+multiples also align: for example, a 10 fps ticker fires alongside every second
+tick of a 20 fps ticker. The scheduler allows the sub-microsecond rounding
+difference introduced when FPS values are converted to `Duration`s, so common
+pairs such as 30 fps and 15 fps align as expected.
+
+Override `shareTicks` when a provider needs independent timing:
+
+```dart
+class _MyState extends State<MyWidget>
+    with SingleFixedTickerProviderStateMixin {
+  @override
+  TickerRate get tickerRate => TickerRate.fps(30);
+
+  @override
+  bool get shareTicks => false;
+}
+```
+
+Like `tickerRate`, a state-driven `shareTicks` value is applied by calling
+`updateTickerRate()`.
+
 ### Using FixedTicker directly
 
 You can also create a `FixedTicker` yourself if you're not using the mixins:
@@ -157,6 +182,7 @@ You can also create a `FixedTicker` yourself if you're not using the mixins:
 final ticker = FixedTicker(
   (elapsed) => print('Elapsed: $elapsed'),
   interval: const Duration(milliseconds: 50), // 20fps
+  shared: false, // Optional: use an independent timer and phase.
 );
 ticker.start();
 // ...later...
@@ -187,7 +213,12 @@ testWidgets('my animation completes', (tester) async {
 
 ## How it works
 
-`FixedTicker` extends Flutter's `Ticker` and overrides `scheduleTick` / `unscheduleTick` to use `Timer.periodic` as a rate limiter when an `interval` is set. When `interval` is `null`, it delegates entirely to the parent and behaves like a normal `Ticker`.
+`FixedTicker` extends Flutter's `Ticker` and overrides `scheduleTick` /
+`unscheduleTick` to use a shared `Timer.periodic` scheduler as a rate limiter
+when an `interval` is set. Compatible intervals share the fastest interval as
+a base and use integer tick generations to align slower rates. Setting
+`shared: false` uses a dedicated periodic timer instead. When `interval` is
+`null`, it delegates entirely to the parent and behaves like a normal `Ticker`.
 
 In fixed-rate mode, the periodic timer does not compute elapsed time itself. Each timer tick schedules a frame callback through the parent `Ticker`, and the parent computes elapsed from Flutter's monotonic frame timestamp. This means:
 
