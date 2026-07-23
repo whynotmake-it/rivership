@@ -159,6 +159,7 @@ class _MotorDevToolsState extends State<MotorDevTools>
       _refreshScheduled = false;
       if (mounted) setState(() {});
     });
+    SchedulerBinding.instance.scheduleFrame();
   }
 
   @override
@@ -409,120 +410,138 @@ class _FloatingChromeState extends State<_FloatingChrome> {
       child: Directionality(
         textDirection: TextDirection.ltr,
         child: Theme(
-          data: ThemeData.dark(useMaterial3: true).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: _accent,
-              secondary: _muted,
-              surface: _surface,
+          data:
+              ThemeData(
+                brightness: Brightness.dark,
+                useMaterial3: true,
+                fontFamily: 'Roboto',
+                fontFamilyFallback: const ['Roboto'],
+              ).copyWith(
+                colorScheme: const ColorScheme.dark(
+                  primary: _accent,
+                  secondary: _muted,
+                  surface: _surface,
+                ),
+              ),
+          child: DefaultTextStyle(
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'Roboto',
             ),
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final stage = constraints.biggest;
-              final expandedSize = Size(
-                (stage.width - _inset * 2).clamp(0, 430),
-                (stage.height - _inset * 2).clamp(0, 720),
-              );
-              final objectSize = _isFull
-                  ? expandedSize
-                  : _isPeek
-                  ? _peekSize
-                  : _collapsedSize;
-              final position = _dragPosition == null
-                  ? _anchoredPosition(stage, objectSize)
-                  : _clamp(_dragPosition!, stage, objectSize);
-              return Stack(
-                alignment: Alignment.topLeft,
-                children: [
-                  AnimatedPositioned(
-                    duration: _dragging
-                        ? Duration.zero
-                        : const Duration(milliseconds: 360),
-                    curve: Curves.easeOutCubic,
-                    left: position.dx,
-                    top: position.dy,
-                    child: AnimatedContainer(
-                      key: _isFull
-                          ? const ValueKey('motor-devtools-panel')
-                          : _isPeek
-                          ? const ValueKey('motor-devtools-peek')
-                          : const ValueKey('motor-devtools-launcher'),
-                      duration: const Duration(milliseconds: 360),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stage = constraints.biggest;
+                final expandedSize = Size(
+                  (stage.width - _inset * 2).clamp(0, 430),
+                  (stage.height - _inset * 2).clamp(0, 720),
+                );
+                final objectSize = _isFull
+                    ? expandedSize
+                    : _isPeek
+                    ? _peekSize
+                    : _collapsedSize;
+                final position = _dragPosition == null
+                    ? _anchoredPosition(stage, objectSize)
+                    : _clamp(_dragPosition!, stage, objectSize);
+                return Stack(
+                  alignment: Alignment.topLeft,
+                  children: [
+                    AnimatedPositioned(
+                      duration: _dragging
+                          ? Duration.zero
+                          : const Duration(milliseconds: 360),
                       curve: Curves.easeOutCubic,
-                      width: objectSize.width,
-                      height: objectSize.height,
-                      decoration: BoxDecoration(
-                        color: _surface,
-                        border: Border.all(color: _stroke),
-                        borderRadius: BorderRadius.circular(
-                          _isFull ? 18 : 16,
+                      left: position.dx,
+                      top: position.dy,
+                      child: AnimatedContainer(
+                        key: _isFull
+                            ? const ValueKey('motor-devtools-panel')
+                            : _isPeek
+                            ? const ValueKey('motor-devtools-peek')
+                            : const ValueKey('motor-devtools-launcher'),
+                        duration: const Duration(milliseconds: 360),
+                        curve: Curves.easeOutCubic,
+                        width: objectSize.width,
+                        height: objectSize.height,
+                        decoration: BoxDecoration(
+                          color: _surface,
+                          border: Border.all(color: _stroke),
+                          borderRadius: BorderRadius.circular(
+                            _isFull ? 18 : 16,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x66000000),
+                              blurRadius: 28,
+                              offset: Offset(0, 12),
+                            ),
+                          ],
                         ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x66000000),
-                            blurRadius: 28,
-                            offset: Offset(0, 12),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          IgnorePointer(
-                            ignoring: _isFull || _isPeek,
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 140),
-                              opacity: _isFull || _isPeek ? 0 : 1,
-                              child: _CollapsedLauncher(
-                                count: widget.controllerCount,
-                                trackCount: widget.trackCount,
-                                dragging: _dragging,
-                                onTap: () => setState(() => _isPeek = true),
-                                onPanUpdate: (details) =>
-                                    _updateDrag(details, stage, _collapsedSize),
-                                onPanEnd: (details) =>
-                                    _finishDrag(details, stage, _collapsedSize),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            IgnorePointer(
+                              ignoring: _isFull || _isPeek,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 140),
+                                opacity: _isFull || _isPeek ? 0 : 1,
+                                child: _CollapsedLauncher(
+                                  count: widget.controllerCount,
+                                  trackCount: widget.trackCount,
+                                  dragging: _dragging,
+                                  onTap: () => setState(() => _isPeek = true),
+                                  onPanUpdate: (details) => _updateDrag(
+                                    details,
+                                    stage,
+                                    _collapsedSize,
+                                  ),
+                                  onPanEnd: (details) => _finishDrag(
+                                    details,
+                                    stage,
+                                    _collapsedSize,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          IgnorePointer(
-                            ignoring: _isFull || !_isPeek,
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 180),
-                              opacity: !_isFull && _isPeek ? 1 : 0,
-                              child: _PeekLauncher(
-                                controller: widget.peekController,
-                                name: widget.peekName,
-                                count: widget.controllerCount,
-                                onExpand: _expand,
-                                onCollapse: () =>
-                                    setState(() => _isPeek = false),
-                                onPanUpdate: (details) =>
-                                    _updateDrag(details, stage, _peekSize),
-                                onPanEnd: (details) =>
-                                    _finishDrag(details, stage, _peekSize),
+                            IgnorePointer(
+                              ignoring: _isFull || !_isPeek,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 180),
+                                opacity: !_isFull && _isPeek ? 1 : 0,
+                                child: _PeekLauncher(
+                                  controller: widget.peekController,
+                                  name: widget.peekName,
+                                  count: widget.controllerCount,
+                                  onExpand: _expand,
+                                  onCollapse: () =>
+                                      setState(() => _isPeek = false),
+                                  onPanUpdate: (details) =>
+                                      _updateDrag(details, stage, _peekSize),
+                                  onPanEnd: (details) =>
+                                      _finishDrag(details, stage, _peekSize),
+                                ),
                               ),
                             ),
-                          ),
-                          IgnorePointer(
-                            ignoring: !_isFull,
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 220),
-                              opacity: _isFull ? 1 : 0,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: widget.panel,
+                            IgnorePointer(
+                              ignoring: !_isFull,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 220),
+                                opacity: _isFull ? 1 : 0,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: widget.panel,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

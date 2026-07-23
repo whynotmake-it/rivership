@@ -21,3 +21,4 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   lintervention: ^0.3.1
+  snaptest: ^1.0.0-dev.3

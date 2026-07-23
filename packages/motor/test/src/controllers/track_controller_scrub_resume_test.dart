@@ -2,6 +2,7 @@
 
 import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 
@@ -181,22 +182,48 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('scrub to end completes cleanly', (tester) async {
+    testWidgets('scrub can move backward and forward after touching the end',
+        (tester) async {
       controller = TrackController(vsync: tester);
       controller.animate([trackA(stepsA)]);
       await tester.pump();
       controller.pause();
 
       controller.scrubTo(const Duration(seconds: 2));
-
-      expect(controller.status, AnimationStatus.completed);
-      expect(controller.isAnimating, isFalse);
       expect(controller.value(trackA), closeTo(0, error));
 
-      controller.animate([trackA.to(1, motion: linear100)]);
-      await tester.pump();
+      controller.scrubTo(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(0.5, error));
+
+      controller.resume();
+      expect(controller.isAnimating, isTrue);
+      controller.pause();
+      controller.scrubTo(const Duration(milliseconds: 200));
+      expect(controller.value(trackA), closeTo(0.5, error));
+      expect(controller.isAnimating, isFalse);
+      expect(controller.inspectPlayback().tracks, hasLength(1));
+
+      controller.resume();
       await tester.pumpAndSettle();
-      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackA), closeTo(0, error));
+    });
+
+    testWidgets('completed playback remains available for inspection scrubbing',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA(stepsA)]);
+      await tester.pumpAndSettle();
+      expect(controller.status, AnimationStatus.completed);
+
+      controller.scrubTo(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(0.5, error));
+      controller.scrubTo(const Duration(milliseconds: 200));
+      expect(controller.value(trackA), closeTo(0.5, error));
+
+      controller.resume();
+      await tester.pumpAndSettle();
+      expect(controller.value(trackA), closeTo(0, error));
+      expect(controller.status, AnimationStatus.completed);
     });
 
     testWidgets('resync preserves values and the animation still completes',

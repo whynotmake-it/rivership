@@ -10,9 +10,9 @@ const _laneHeight = 34.0;
 
 /// A compact, live timeline for a [TrackController].
 ///
-/// Solid segments have been measured by Motor. Outlined segments are design
-/// estimates that will be replaced as playback reaches them. Dragging pauses
-/// the controller, scrubs its current plan, and resumes it on release.
+/// Solid segments have been measured by Motor. Outlined segments are stable
+/// estimates captured when playback begins. Dragging pauses the controller,
+/// scrubs its current plan, and resumes it on release.
 class MotorTimeline extends StatefulWidget {
   /// Creates a Motor playback timeline.
   const MotorTimeline({
@@ -65,8 +65,7 @@ class _MotorTimelineState extends State<MotorTimeline> {
     }
   }
 
-  bool get _canScrub =>
-      _snapshot.tracks.any((playback) => playback.currentStepIndex >= 0);
+  bool get _canScrub => _snapshot.tracks.isNotEmpty;
 
   void _startScrub(DragStartDetails details) {
     if (!_canScrub) return;
@@ -304,15 +303,13 @@ MotorTimelineLane _layoutTrack(
   for (var index = 0; index < playback.steps.length; index++) {
     final step = playback.steps[index];
     final rawStart = playback.stepStarts[index];
-    final recordedStart = rawStart != null && rawStart >= playback.cycleStart
-        ? rawStart - playback.cycleStart
-        : null;
-    final start = playback.startOffset + (recordedStart ?? cursor);
+    final recordedStart = rawStart != null && rawStart >= playback.cycleStart;
+    final start = playback.startOffset + cursor;
     if (step is StepSync<Object>) {
       segments.add(
         MotorTimelineSegment(
           kind: MotorTimelineSegmentKind.barrier,
-          provenance: recordedStart == null
+          provenance: !recordedStart
               ? MotorTimelineProvenance.estimated
               : MotorTimelineProvenance.recorded,
           start: start,
@@ -325,12 +322,12 @@ MotorTimelineLane _layoutTrack(
     }
     final design = _designDuration(playback.track, step, placeholder, cursor);
     final actual = playback.stepDurations[index];
-    final duration = actual ?? design.$2;
+    final duration = playback.estimatedStepDurations[index] ?? design.$2;
     final end = start + duration;
     segments.add(
       MotorTimelineSegment(
         kind: design.$1,
-        provenance: recordedStart != null && actual != null
+        provenance: recordedStart && actual != null
             ? MotorTimelineProvenance.recorded
             : MotorTimelineProvenance.estimated,
         start: start,
@@ -339,13 +336,16 @@ MotorTimelineLane _layoutTrack(
         endX: _toX(end, scale),
       ),
     );
-    cursor = (recordedStart ?? cursor) + duration;
+    cursor += duration;
   }
   final end = segments.fold(
     playback.startOffset,
     (latest, segment) => segment.end > latest ? segment.end : latest,
   );
-  var playhead = playback.startOffset + playback.playhead - playback.cycleStart;
+  final legElapsed = playback.playhead - playback.cycleStart;
+  var playhead = playback.direction < 0
+      ? end - legElapsed
+      : playback.startOffset + legElapsed;
   if (playhead < Duration.zero) playhead = Duration.zero;
   if (playhead > end) playhead = end;
   return MotorTimelineLane(
@@ -419,6 +419,7 @@ class _MotorTimelinePainter extends CustomPainter {
       color: Colors.white.withValues(alpha: 0.58),
       fontSize: 10,
       fontWeight: FontWeight.w600,
+      fontFamily: 'Roboto',
     );
     for (var index = 0; index < layout.lanes.length; index++) {
       final lane = layout.lanes[index];

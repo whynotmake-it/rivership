@@ -42,6 +42,7 @@
 
  - **FEAT**: add `TrackController.pause()` for silent, non-destructive playback inspection and authoring.
  - **FIX**: `resume()` after `scrubTo()` now continues from the scrubbed position instead of rewinding, and scrubbing past a sync barrier no longer stalls peers that arrive later.
+ - **FIX**: retain completed playback plans for inspection, keep scrubbing on the authored timeline axis across repeated pause/resume gestures, and capture stable per-step duration estimates only while inspection tooling is attached.
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
  - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback, plus `trackedVelocityEstimate`.
  - **REFACTOR**: move the legacy sequence engine and `SequenceMotionController` to `controllers/legacy/`. `SequenceMotionController` and `SequenceMotionBuilder` remain exported and functional as compatibility shims; new phase/multi-property work should use `PhaseTrackBuilder` / `TrackPhaseTimeline`.

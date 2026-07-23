@@ -291,7 +291,7 @@ class TrackController extends Animation<TrackValueReader>
     return future;
   }
 
-  /// Evaluates active tracks at [t] without starting the ticker.
+  /// Evaluates retained track plans at [t] without starting the ticker.
   ///
   /// Seeking treats sync barriers as zero-duration holds and passes through
   /// them freely (see [StepSync]). Tracks scrubbed past a barrier count as
@@ -301,13 +301,13 @@ class TrackController extends Animation<TrackValueReader>
   /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
     _playbackRevision++;
-    var allDone = _activeTracks.isNotEmpty;
-    for (final track in _activeTracks) {
-      final slot = _slots[track];
-      if (slot == null || !slot.scrubTo(t)) allDone = false;
+    _lastElapsed = t;
+    for (final entry in _slots.entries) {
+      if (!entry.value.hasPlayback) continue;
+      _activeTracks.add(entry.key);
+      entry.value.scrubTo(t);
     }
     _releaseSatisfiedBarriers();
-    if (allDone) _completePlayback();
     notifyListeners();
   }
 
@@ -486,7 +486,7 @@ class TrackController extends Animation<TrackValueReader>
           cycle: playback.cycle,
           isWaitingForSync: playback.isWaitingForSync,
           syncToken: playback.syncToken,
-          startOffset: entry.value._startOffset,
+          startOffset: entry.value.inspectionStartOffset,
           playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
           cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
           stepStarts: [
@@ -495,6 +495,10 @@ class TrackController extends Animation<TrackValueReader>
           ],
           stepDurations: [
             for (final seconds in playback.forwardSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          estimatedStepDurations: [
+            for (final seconds in playback.estimatedSegmentSeconds)
               _durationFromSeconds(seconds),
           ],
         ),
@@ -582,6 +586,7 @@ class TrackController extends Animation<TrackValueReader>
       loop: loop,
       startOffset: startOffset,
       velocity: animation.withVelocity,
+      estimateDurations: MotorInspectionRegistry.durationEstimationEnabled,
     );
   }
 

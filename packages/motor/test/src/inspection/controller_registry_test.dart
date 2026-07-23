@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -49,6 +51,49 @@ void main() {
     expect(
       observer.registered.single.inspectPlayback().tracks,
       isEmpty,
+    );
+
+    controller.dispose();
+    subscription.dispose();
+  });
+
+  testWidgets('attached tooling captures stable finite duration estimates', (
+    tester,
+  ) async {
+    final observer = _RecordingObserver();
+    final subscription = MotorInspectionRegistry.attach(observer);
+    final controller = TrackController(vsync: tester);
+    final track = Track<double>(MotionConverter.single, initial: 0);
+
+    unawaited(
+      controller.animate([
+        track([
+          const TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 120)),
+          ),
+          const TrackStep.hold(Duration(milliseconds: 40)),
+          const TrackStep.to(
+            0,
+            motion: Motion.linear(Duration(milliseconds: 80)),
+          ),
+        ]),
+      ]),
+    );
+    await tester.pump();
+
+    final initial =
+        controller.inspectPlayback().tracks.single.estimatedStepDurations;
+    expect(initial, const [
+      Duration(milliseconds: 120),
+      Duration(milliseconds: 40),
+      Duration(milliseconds: 80),
+    ]);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(
+      controller.inspectPlayback().tracks.single.estimatedStepDurations,
+      initial,
     );
 
     controller.dispose();

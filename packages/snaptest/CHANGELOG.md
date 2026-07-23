@@ -3,6 +3,9 @@
 > Note: This release has breaking changes.
 
  - **BREAKING** **FIX**: always load all images.
+ - **FIX**: make `TestDevicesVariant` use the selected device's logical surface
+   size for layout and hit testing, and preserve an active variant while
+   capturing screenshots.
 
 ## 1.0.0-dev.2
 

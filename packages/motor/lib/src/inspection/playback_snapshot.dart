@@ -49,9 +49,11 @@ class TrackPlayback {
     required this.cycleStart,
     required List<Duration?> stepStarts,
     required List<Duration?> stepDurations,
+    required List<Duration?> estimatedStepDurations,
   })  : steps = List.unmodifiable(steps),
         stepStarts = List.unmodifiable(stepStarts),
-        stepDurations = List.unmodifiable(stepDurations);
+        stepDurations = List.unmodifiable(stepDurations),
+        estimatedStepDurations = List.unmodifiable(estimatedStepDurations);
 
   /// The identity of the track represented by this snapshot.
   final Track<Object> track;
@@ -101,6 +103,13 @@ class TrackPlayback {
 
   /// Actual durations occupied by forward steps, or `null` until recorded.
   final List<Duration?> stepDurations;
+
+  /// Stable duration estimates computed when this playback plan was created.
+  ///
+  /// Inspection-enabled controllers probe the same simulations used by
+  /// playback once, before the ticker starts. Entries can remain `null` for
+  /// simulations that do not report completion.
+  final List<Duration?> estimatedStepDurations;
 }
 
 /// Read-only playback inspection for [TrackController].

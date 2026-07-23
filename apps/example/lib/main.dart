@@ -4,6 +4,7 @@ import 'package:heroine_example/main.dart';
 import 'package:motor_example/main.dart';
 import 'package:rivership/rivership.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
+import 'package:motor_devtools/motor_devtools.dart';
 
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
@@ -34,13 +35,15 @@ void main() async {
   );
 
   runApp(
-    CupertinoApp.router(
-      debugShowCheckedModeBanner: false,
-      routerConfig: router.config(
-        navigatorObservers: () => [
-          HeroineController(),
-          HeroController(),
-        ],
+    MotorDevTools(
+      child: CupertinoApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router.config(
+          navigatorObservers: () => [
+            HeroineController(),
+            HeroController(),
+          ],
+        ),
       ),
     ),
   );

@@ -8,3 +8,7 @@
 - Add interactive track cards, a duration/bounce spring field, and a
   duration/easing Curve Lab for session-only motion tuning.
 - Support opt-in production use and restore session changes when disabled.
+- Stabilize timeline geometry before playback, render reverse legs correctly,
+  and support repeated forward/backward scrubbing after completion.
+- Add device-variant rendered screenshots and blocked-text golden coverage for
+  every launcher and Motion Studio state.

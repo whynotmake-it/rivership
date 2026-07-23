@@ -21,12 +21,17 @@ class _TrackSlot<T extends Object> {
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
+  Duration _inspectionStartOffset = Duration.zero;
 
   T get value => converter.denormalize(_currentValues);
 
   T get velocity => converter.denormalize(_velocityValues);
 
   bool get isAnimating => _playback != _TrackSlotPlayback.idle;
+
+  bool get hasPlayback => _stepPlayback != null;
+
+  Duration get inspectionStartOffset => _inspectionStartOffset;
 
   bool get isWaitingForSync => _stepPlayback?.isWaitingForSync ?? false;
 
@@ -56,8 +61,10 @@ class _TrackSlot<T extends Object> {
     required Duration startOffset,
     LoopMode loop = LoopMode.none,
     T? velocity,
+    bool estimateDurations = false,
   }) {
     _startOffset = startOffset;
+    _inspectionStartOffset = startOffset;
     final velocityValue = velocity ?? this.velocity;
     _stepPlayback = StepPlayback<T>(
       steps: steps,
@@ -67,6 +74,7 @@ class _TrackSlot<T extends Object> {
       loop: loop,
       fallbackMotion: fallbackMotion,
       fallbackMotionPerDimension: fallbackMotionPerDimension,
+      estimateDurations: estimateDurations,
     );
     _currentValues = List.of(_stepPlayback!.values);
     _velocityValues = List.of(_stepPlayback!.velocities);
@@ -75,6 +83,12 @@ class _TrackSlot<T extends Object> {
 
   double _localSeconds(Duration elapsed) {
     final local = elapsed - _startOffset;
+    final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
+    return seconds < 0 ? 0 : seconds;
+  }
+
+  double _inspectionSeconds(Duration elapsed) {
+    final local = elapsed - _inspectionStartOffset;
     final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
     return seconds < 0 ? 0 : seconds;
   }
@@ -95,18 +109,16 @@ class _TrackSlot<T extends Object> {
   }
 
   bool scrubTo(Duration elapsed) {
-    if (_playback == _TrackSlotPlayback.idle) return true;
+    if (_stepPlayback == null) return true;
+    if (_playback == _TrackSlotPlayback.idle) {
+      _playback = _TrackSlotPlayback.chained;
+    }
 
-    final seconds = _localSeconds(elapsed);
-    final done = switch (_playback) {
+    final seconds = _inspectionSeconds(elapsed);
+    return switch (_playback) {
       _TrackSlotPlayback.idle => true,
       _TrackSlotPlayback.chained => _seekStepPlayback(seconds),
     };
-
-    if (done) {
-      _playback = _TrackSlotPlayback.idle;
-    }
-    return done;
   }
 
   /// Re-bases the controller axis around this slot's current local playhead.

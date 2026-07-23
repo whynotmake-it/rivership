@@ -81,4 +81,8 @@ abstract final class MotorInspectionRegistry {
   /// Whether any inspection tool is currently attached.
   @visibleForTesting
   static bool get hasObservers => _observers.isNotEmpty;
+
+  /// Whether playback should capture inspection-only duration estimates.
+  @internal
+  static bool get durationEstimationEnabled => _observers.isNotEmpty;
 }

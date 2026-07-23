@@ -24,6 +24,7 @@ class StepPlayback<T extends Object> {
     LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
     List<Motion>? fallbackMotionPerDimension,
+    bool estimateDurations = false,
   })  : assert(steps.isNotEmpty, 'steps must not be empty'),
         assert(
           fallbackMotion == null || fallbackMotionPerDimension == null,
@@ -63,6 +64,9 @@ class StepPlayback<T extends Object> {
     _stepStartSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
     _reset();
+    _estimatedSegmentSeconds = estimateDurations
+        ? _estimateSegmentDurations(start: start, velocity: velocity)
+        : List<double?>.filled(_steps.length, null);
   }
 
   /// Returns the per-dimension motions of the first step that targets a value,
@@ -120,6 +124,9 @@ class StepPlayback<T extends Object> {
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
 
+  /// Stable predicted durations for the forward playback plan.
+  late final List<double?> _estimatedSegmentSeconds;
+
   /// The slot-local time at which each forward step began in this cycle.
   late final List<double?> _stepStartSeconds;
 
@@ -144,6 +151,66 @@ class StepPlayback<T extends Object> {
           _ => List.of(_initialValues),
         },
     ];
+  }
+
+  List<double?> _estimateSegmentDurations({
+    required T start,
+    required T? velocity,
+  }) {
+    final estimator = StepPlayback<T>(
+      steps: _steps,
+      converter: _converter,
+      start: start,
+      velocity: velocity,
+      fallbackMotion: _fallbackMotion,
+      fallbackMotionPerDimension: _fallbackMotionPerDimension,
+    );
+    // One distant seek resolves every finite segment with binary search.
+    // Truly unbounded simulations remain null instead of blocking startup.
+    // ignore: cascade_invocations
+    estimator.seekTo(const Duration(days: 1).inSeconds.toDouble());
+    final simulated = estimator.forwardSegmentSeconds;
+    final estimates = <double?>[];
+    var cursor = Duration.zero;
+    for (var index = 0; index < _steps.length; index++) {
+      final step = _steps[index];
+      final authored = switch (step) {
+        StepHold<T>(:final duration) => duration,
+        StepSync<T>() => Duration.zero,
+        StepAt<T>(:final at) => at > cursor ? at - cursor : Duration.zero,
+        StepTo<T>(:final motion, :final motionPerDimension) =>
+          _knownMotionDuration(motion, motionPerDimension),
+        StepFree<T>() => null,
+      };
+      final seconds = authored == null
+          ? simulated[index]
+          : authored.inMicroseconds / Duration.microsecondsPerSecond;
+      estimates.add(seconds);
+      if (seconds != null) {
+        cursor += Duration(
+          microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+        );
+      }
+    }
+    return estimates;
+  }
+
+  Duration? _knownMotionDuration(
+    Motion? motion,
+    List<Motion>? motionPerDimension,
+  ) {
+    final motions = motionPerDimension ??
+        (motion == null ? null : [motion]) ??
+        _fallbackMotionPerDimension ??
+        (_fallbackMotion == null ? null : [_fallbackMotion]);
+    if (motions == null || motions.isEmpty) return null;
+    var longest = Duration.zero;
+    for (final candidate in motions) {
+      final duration = candidate.duration;
+      if (duration == null) return null;
+      if (duration > longest) longest = duration;
+    }
+    return longest;
   }
 
   /// Current normalized values.
@@ -184,6 +251,11 @@ class StepPlayback<T extends Object> {
   @internal
   List<double?> get forwardSegmentSeconds =>
       List.unmodifiable(_forwardSegmentSeconds);
+
+  /// Predicted forward segment durations captured before playback starts.
+  @internal
+  List<double?> get estimatedSegmentSeconds =>
+      List.unmodifiable(_estimatedSegmentSeconds);
 
   /// Recorded forward step start times, in slot-local seconds.
   @internal
