@@ -294,9 +294,17 @@ class _SharedTickDemoState extends State<_SharedTickDemo>
 
   void _startSecondTicker() {
     if (!mounted) return;
+    unawaited(_secondTicker.start());
+  }
+
+  void _restartSecondTickerLate() {
+    _delayedStart?.cancel();
     if (_secondTicker.isActive) _secondTicker.stop();
     setState(() => _secondFrame = null);
-    unawaited(_secondTicker.start());
+    _delayedStart = Timer(
+      const Duration(milliseconds: 750),
+      _startSecondTicker,
+    );
   }
 
   @override
@@ -366,7 +374,7 @@ class _SharedTickDemoState extends State<_SharedTickDemo>
           const SizedBox(height: 8),
           CupertinoButton(
             padding: EdgeInsets.zero,
-            onPressed: _startSecondTicker,
+            onPressed: _restartSecondTickerLate,
             child: const Text('Restart ticker B late'),
           ),
         ],
