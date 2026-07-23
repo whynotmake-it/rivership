@@ -25,3 +25,14 @@
 - Flutter/Dart project using hooks_riverpod for state management
 - Each package has its own pubspec.yaml and follows standard Dart package structure
 - Main library files export public API from `src/` directory
+
+## Cursor Cloud specific instructions
+
+Flutter `3.44.1` (pinned in `.fvmrc`, Dart `3.12.1`) is preinstalled at `/opt/flutter` with `flutter`, `dart`, and `melos` symlinked into `/usr/local/bin`, so they work in any shell. The startup update script runs `melos bootstrap`, which resolves the whole Dart pub workspace with a single root `flutter pub get` (this is a `resolution: workspace` monorepo — do not run per-package `pub get`).
+
+Standard commands are in the `## Build/Test Commands` section above. Non-obvious caveats:
+
+- `melos run generate` is a no-op: no package depends on `build_runner` and there are no generated files, so codegen is not part of the workflow (the aggregate example builds its `auto_route` config at runtime).
+- `melos analyze` uses `dart analyze --fatal-infos`, so info-level lints fail the run. `heroine`, `motor`, and `snaptest` currently report a pre-existing `EquatableMixin` deprecation info (upstream `equatable` drift, since there is no committed lockfile). This is not an environment problem.
+- Running example apps on the **web** target: `motor/example` and `springster/example` run fine (`flutter run -d web-server --web-port 8080`). The aggregate `apps/example`, `heroine/example`, and `stupid_simple_sheet/example` depend on the `liquid_glass_renderer` git package, whose shaders fail to compile to SkSL on web — run those on desktop instead of web.
+- The Linux desktop target is not fully provisioned (missing `ninja-build`, `libgtk-3-dev`); install those before `flutter run -d linux`. Web (Chrome) works out of the box.
