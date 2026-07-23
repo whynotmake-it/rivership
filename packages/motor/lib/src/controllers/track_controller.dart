@@ -3,13 +3,15 @@ import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
+import 'package:motor/src/inspection/playback_snapshot.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/simulations/step_playback.dart';
-import 'package:motor/src/step.dart';
 import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
 
 part '_track_slot.dart';
@@ -18,6 +20,13 @@ part '_track_slot.dart';
 typedef TrackValueReader = T Function<T extends Object>(Track<T> track);
 
 /// Controls a single active [TrackTimeline] from a ticker.
+///
+/// This is an `Animation<TrackValueReader>`, so [value] is a reader function:
+/// call it with a [Track] to get that track's current value. This shape remains
+/// usable with `ValueListenable` and `ListenableBuilder` infrastructure, but
+/// does not compose with [Tween.animate] or [Animation.drive] like an
+/// `Animation<double>` does. Read specific tracks with `value(track)` inside a
+/// listener instead.
 class TrackController extends Animation<TrackValueReader>
     with
         AnimationLocalListenersMixin,
@@ -28,13 +37,18 @@ class TrackController extends Animation<TrackValueReader>
     required TickerProvider vsync,
     List<TrackValue>? from,
     this.velocityTracking = const VelocityTracking.on(),
+    this.debugLabel,
   }) : _from = List<TrackValue>.of(from ?? const []) {
     _ticker = vsync.createTicker(_tick);
+    MotorInspectionRegistry.registerController(this);
   }
 
   /// Controls whether [set] automatically tracks velocity from position
   /// samples. Explicit velocity on [TrackValue] always works regardless.
   final VelocityTracking velocityTracking;
+
+  /// A human-readable name shown by optional inspection tools.
+  final String? debugLabel;
 
   final List<TrackValue> _from;
   final Map<Track, _TrackSlot> _slots = {};
@@ -42,6 +56,16 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
+  final Map<Track, Motion> _motionOverrides = {};
+  List<TrackAnimation> _lastAnimations = const [];
+  List<TrackValue> _lastStartValues = const [];
+  LoopMode _lastLoop = LoopMode.none;
+  double _playbackSpeed = 1;
+  var _playbackRevision = 0;
+
+  /// The number of tracks this controller currently holds state for.
+  @visibleForTesting
+  int get debugTrackCount => _slots.length;
 
   /// A monotonic timestamp for velocity sampling, sourced from [clock] so it is
   /// driven by the fake clock under test (advancing with `tester.pump`) and by
@@ -112,6 +136,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> values, {
     List<TrackValue> withVelocity = const [],
   }) {
+    _playbackRevision++;
     for (final trackValue in values) {
       _setTrackValue(trackValue, withVelocity);
     }
@@ -206,6 +231,7 @@ class TrackController extends Animation<TrackValueReader>
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
+    bool rememberForReplay = true,
   }) {
     assert(
       () {
@@ -226,6 +252,16 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
+    if (rememberForReplay) {
+      _lastAnimations = List.unmodifiable(animations);
+      _lastStartValues = List.unmodifiable([
+        for (final animation in animations) _startValueFor(animation),
+      ]);
+      _lastLoop = loop;
+    }
+
+    _playbackRevision++;
+
     _onStep = onStep;
 
     // Only the named tracks restart; clearing their last-step bookkeeping lets
@@ -243,7 +279,7 @@ class TrackController extends Animation<TrackValueReader>
     final startOffset = isAnimating ? _lastElapsed : Duration.zero;
     for (final animation in animations) {
       _playAnimation(
-        animation,
+        _applyMotionOverride(animation),
         loop: loop,
         startOffset: startOffset,
       );
@@ -255,21 +291,70 @@ class TrackController extends Animation<TrackValueReader>
     return future;
   }
 
-  /// Evaluates active tracks at [t] without starting the ticker.
+  /// Evaluates retained track plans at [t] without starting the ticker.
+  ///
+  /// Seeking treats sync barriers as zero-duration holds and passes through
+  /// them freely (see [StepSync]). Tracks scrubbed past a barrier count as
+  /// having arrived, so peers that later reach it are released normally.
+  ///
+  /// Call [pause] before repeated interactive scrubs, then [resume] to
+  /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
-    for (final track in _activeTracks) {
-      _slots[track]?.scrubTo(t);
+    _playbackRevision++;
+    _lastElapsed = t;
+    for (final entry in _slots.entries) {
+      if (!entry.value.hasPlayback) continue;
+      _activeTracks.add(entry.key);
+      entry.value.scrubTo(t);
     }
+    _releaseSatisfiedBarriers();
     notifyListeners();
   }
 
-  /// Resumes the ticker if any slots are active.
+  /// Pauses playback without clearing track plans or changing status.
+  ///
+  /// While paused, [isAnimating] is false because the ticker is stopped. No
+  /// status event is dispatched: pausing is an inspection and authoring action,
+  /// not a completed or canceled animation outcome. Use [scrubTo] to inspect a
+  /// position and [resume] to continue from it.
+  void pause() {
+    final ticker = _ticker;
+    if (ticker == null || !ticker.isActive) return;
+    ticker.stop();
+    notifyListeners();
+  }
+
+  /// Resumes paused playback from each track's current local playhead.
+  ///
+  /// Calling this while the ticker is already active or after playback has
+  /// completed is a no-op.
   void resume() {
-    if (_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
-      _status = AnimationStatus.forward;
-      _startTicker();
-      _checkStatusChanged();
+    if (isAnimating) return;
+    if (!_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
+      return;
     }
+    for (final track in _activeTracks) {
+      _slots[track]?.rebaseTo(Duration.zero);
+    }
+    _status = AnimationStatus.forward;
+    _startTicker();
+    _checkStatusChanged();
+    notifyListeners();
+  }
+
+  TrackValue<T> _startValueFor<T extends Object>(
+    TrackAnimation<T> animation,
+  ) {
+    final slot = _slots[animation.track];
+    final value =
+        animation.from ?? slot?.value ?? animation.resolveStartValue();
+    return animation.track.value(value as T);
+  }
+
+  TrackAnimation _applyMotionOverride(TrackAnimation animation) {
+    final override = _motionOverrides[animation.track];
+    if (override == null) return animation;
+    return animation.withMotionOverride(override);
   }
 
   /// Stops the given [tracks], or all tracks when [tracks] is null.
@@ -293,27 +378,30 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   TickerFuture _hardStop(List<Track>? tracks) {
+    _playbackRevision++;
     if (tracks == null) {
       for (final slot in _slots.values) {
         slot.stop(canceled: true);
       }
       _activeTracks.clear();
+      _tokenParticipants.clear();
     } else {
       for (final track in tracks) {
         _slots[track]?.stop(canceled: true);
         _activeTracks.remove(track);
       }
+      _pruneTokenParticipants(tracks);
     }
+    _releaseSatisfiedBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop(canceled: true);
-      _status = AnimationStatus.completed;
     }
     notifyListeners();
-    _checkStatusChanged();
     return TickerFuture.complete();
   }
 
   TickerFuture _gracefulStop(List<Track>? tracks) {
+    _playbackRevision++;
     final targets = tracks ?? _slots.keys.toList();
     for (final track in targets) {
       final slot = _slots[track];
@@ -329,6 +417,8 @@ class TrackController extends Animation<TrackValueReader>
       }
     }
 
+    _pruneTokenParticipants(targets);
+    _releaseSatisfiedBarriers();
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
       _status = AnimationStatus.completed;
@@ -345,6 +435,21 @@ class TrackController extends Animation<TrackValueReader>
     return future;
   }
 
+  /// Removes all internal state for [track].
+  ///
+  /// Used when a track identity is being replaced (e.g. a converter swap
+  /// creates a new track). Stops the track's slot first if it is animating.
+  @internal
+  void forgetTrack(Track track) {
+    _playbackRevision++;
+    _slots[track]?.stop(canceled: true);
+    _slots.remove(track);
+    _activeTracks.remove(track);
+    _velocityTrackers.remove(track);
+    _lastStepByTrack.remove(track);
+    _pruneTokenParticipants([track]);
+  }
+
   /// Recreates the ticker using [vsync].
   void resync(TickerProvider vsync) {
     final oldTicker = _ticker!;
@@ -354,11 +459,118 @@ class TrackController extends Animation<TrackValueReader>
 
   @override
   void dispose() {
+    MotorInspectionRegistry.unregisterController(this);
     _ticker?.stop();
     _ticker?.dispose();
     _ticker = null;
     super.dispose();
   }
+
+  /// Builds a read-only snapshot for `package:motor/inspection.dart`.
+  @internal
+  PlaybackSnapshot internalInspectPlayback() {
+    final tracks = <TrackPlayback>[];
+    for (final entry in _slots.entries) {
+      final playback = entry.value._stepPlayback;
+      if (playback == null) continue;
+      tracks.add(
+        TrackPlayback(
+          track: entry.key,
+          steps: [
+            for (final step in playback.stepsView) step,
+          ],
+          hasSyntheticReturnStep: playback.hasSyntheticReturnStep,
+          loop: playback.loop,
+          currentStepIndex: playback.currentStepIndex,
+          direction: playback.direction,
+          cycle: playback.cycle,
+          isWaitingForSync: playback.isWaitingForSync,
+          syncToken: playback.syncToken,
+          startOffset: entry.value.inspectionStartOffset,
+          playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
+          cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
+          stepStarts: [
+            for (final seconds in playback.stepStartSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          stepDurations: [
+            for (final seconds in playback.forwardSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          estimatedStepDurations: [
+            for (final seconds in playback.estimatedSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+        ),
+      );
+    }
+    return PlaybackSnapshot(
+      revision: _playbackRevision,
+      tickerElapsed: lastElapsedDuration,
+      status: status,
+      tracks: tracks,
+    );
+  }
+
+  /// Exposes the plan-revision counter to the inspection extension.
+  @internal
+  int get internalPlaybackRevision => _playbackRevision;
+
+  /// Exposes the inspection playback speed to tooling.
+  @internal
+  double get internalPlaybackSpeed => _playbackSpeed;
+
+  /// Changes the logical playback rate without affecting other controllers.
+  @internal
+  set internalPlaybackSpeed(double value) {
+    assert(value > 0, 'playbackSpeed must be greater than zero.');
+    if (value <= 0 || value == _playbackSpeed) return;
+    final wasAnimating = isAnimating;
+    if (wasAnimating) pause();
+    _playbackSpeed = value;
+    if (wasAnimating) resume();
+    notifyListeners();
+  }
+
+  /// Exposes active designer motion overrides to tooling.
+  @internal
+  Map<Track<Object>, Motion> get internalMotionOverrides => Map.unmodifiable(
+        _motionOverrides.cast<Track<Object>, Motion>(),
+      );
+
+  /// Sets or clears a designer motion override for [track].
+  @internal
+  void internalSetMotionOverride(Track track, Motion? motion) {
+    if (motion == null) {
+      _motionOverrides.remove(track);
+    } else {
+      _motionOverrides[track] = motion;
+    }
+    notifyListeners();
+  }
+
+  /// Replays the most recently submitted clip from its recorded start values.
+  @internal
+  TickerFuture internalReplay() {
+    if (_lastAnimations.isEmpty) return TickerFuture.complete();
+    final animations = _lastAnimations;
+    final starts = _lastStartValues;
+    final loop = _lastLoop;
+    _hardStop(null);
+    set(starts);
+    return _startAnimations(
+      animations: animations,
+      loop: loop,
+      onStep: _onStep,
+      rememberForReplay: false,
+    );
+  }
+
+  static Duration? _durationFromSeconds(double? seconds) => seconds == null
+      ? null
+      : Duration(
+          microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+        );
 
   void _playAnimation<T extends Object>(
     TrackAnimation<T> animation, {
@@ -374,6 +586,7 @@ class TrackController extends Animation<TrackValueReader>
       loop: loop,
       startOffset: startOffset,
       velocity: animation.withVelocity,
+      estimateDurations: MotorInspectionRegistry.durationEstimationEnabled,
     );
   }
 
@@ -459,17 +672,51 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackAnimation> animations,
     Set<Track> timelineTracks,
   ) {
-    for (final participants in _tokenParticipants.values) {
-      participants.removeAll(timelineTracks);
-    }
+    _pruneTokenParticipants(timelineTracks);
     for (final animation in animations) {
       for (final step in animation.steps) {
-        if (step is SyncStep) {
+        if (step is StepSync) {
           (_tokenParticipants[step.token] ??= {}).add(animation.track);
         }
       }
     }
+  }
+
+  /// Removes [tracks] from every sync-token participant set, dropping tokens
+  /// left without participants. Stopped/redirected tracks will never reach
+  /// their old barriers, so they must not hold (or trivially satisfy) them.
+  void _pruneTokenParticipants(Iterable<Track> tracks) {
+    for (final participants in _tokenParticipants.values) {
+      participants.removeAll(tracks);
+    }
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
+  }
+
+  /// Releases barriers whose participants have arrived or already crossed.
+  void _releaseSatisfiedBarriers() {
+    for (final entry in _tokenParticipants.entries.toList()) {
+      final token = entry.key;
+      final participants = entry.value;
+      var anyWaiting = false;
+      final allReady = participants.every((track) {
+        final slot = _slots[track];
+        if (slot == null || !slot.isAnimating) return true;
+        if (slot.isWaitingForSync && slot.syncToken == token) {
+          anyWaiting = true;
+          return true;
+        }
+        return slot.hasPassedSync(token);
+      });
+      if (!allReady || !anyWaiting) continue;
+
+      for (final track in participants) {
+        final slot = _slots[track];
+        if (slot != null && slot.isWaitingForSync && slot.syncToken == token) {
+          slot.releaseSync();
+        }
+      }
+      onSyncReleased(token);
+    }
   }
 
   TickerFuture _startTicker() {
@@ -489,62 +736,50 @@ class TrackController extends Animation<TrackValueReader>
   /// Called when a group of tracks is released past a sync barrier.
   ///
   /// Subclasses (e.g. [PhaseTrackController]) override this to detect phase
-  /// transitions. The [token] is the [SyncStep.token] that was released.
+  /// transitions. The [token] is the [StepSync.token] that was released.
   @protected
   @visibleForOverriding
   void onSyncReleased(Object token) {}
 
+  /// Called after every active track finishes a non-looping playback run.
+  ///
+  /// Return true when a subclass synchronously starts a continuation and wants
+  /// the run boundary hidden from status listeners. The controller then keeps
+  /// its current status instead of reporting [AnimationStatus.completed].
+  @protected
+  @visibleForOverriding
+  bool onPlaybackCompleted() => false;
+
   void _tick(Duration elapsed) {
-    _lastElapsed = elapsed;
+    final logicalElapsed = Duration(
+      microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
+    );
+    _lastElapsed = logicalElapsed;
     var allDone = true;
-    final syncTokens = <Object>{};
 
     for (final track in _activeTracks.toList()) {
       final slot = _slots[track];
       if (slot == null) continue;
-      if (!slot.tick(elapsed)) {
+      if (!slot.tick(logicalElapsed)) {
         allDone = false;
-      }
-      if (slot.isWaitingForSync) {
-        final token = slot.syncToken;
-        if (token != null) syncTokens.add(token);
       }
       _notifyStep(track, slot);
     }
 
-    for (final token in syncTokens) {
-      final participants = _tokenParticipants[token];
-      if (participants == null) continue;
+    _releaseSatisfiedBarriers();
 
-      // Release when every track that participates in this token is either
-      // waiting at the barrier for this token, or no longer animating.
-      final allReady = participants.every((track) {
-        final slot = _slots[track];
-        if (slot == null) return true;
-        if (!slot.isAnimating) return true;
-        return slot.isWaitingForSync && slot.syncToken == token;
-      });
-      if (allReady) {
-        for (final track in participants) {
-          final slot = _slots[track];
-          if (slot != null &&
-              slot.isWaitingForSync &&
-              slot.syncToken == token) {
-            slot.releaseSync();
-          }
-        }
-        onSyncReleased(token);
-      }
-    }
+    if (allDone) _completePlayback();
 
-    if (allDone) {
-      _ticker?.stop();
-      _activeTracks.clear();
+    notifyListeners();
+  }
+
+  void _completePlayback() {
+    _ticker?.stop();
+    _activeTracks.clear();
+    if (!onPlaybackCompleted()) {
       _status = AnimationStatus.completed;
       _checkStatusChanged();
     }
-
-    notifyListeners();
   }
 
   void _checkStatusChanged() {

@@ -22,21 +22,24 @@ import 'package:motor/src/track_timeline.dart';
 ///
 /// Because [TrackPhaseTimeline] extends [TrackTimeline], the standard [play]
 /// method also works for non-phase playback.
+///
+/// With [LoopMode.pingPong], phases are visited in reverse order after the
+/// forward pass. Each phase's own steps still play forward.
 class PhaseTrackController<P extends Object> extends TrackController {
   /// Creates a phase track controller.
   PhaseTrackController({
     required super.vsync,
     super.from,
     super.velocityTracking,
-  }) {
-    addStatusListener(_onStatusChanged);
-  }
+    super.debugLabel,
+  });
 
   TrackPhaseTimeline<P>? _activeTimeline;
   void Function(PhaseTransition<P> transition)? _onTransition;
   P? _currentPhase;
   bool _isPlayingPhases = false;
-  bool _seededFrom = false;
+  bool _phaseDirectionForward = true;
+  TrackPhaseTimeline<P>? _seededTimeline;
 
   /// The active phase timeline, if any.
   TrackPhaseTimeline<P>? get activeTimeline => _activeTimeline;
@@ -55,6 +58,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _activeTimeline = timeline;
     _onTransition = onTransition;
     _isPlayingPhases = false;
+    _phaseDirectionForward = true;
   }
 
   /// Plays through all phases of [timeline], auto-advancing when each
@@ -76,6 +80,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _activeTimeline = timeline;
     _onTransition = onTransition;
     _isPlayingPhases = true;
+    _phaseDirectionForward = true;
     _seedFromIfNeeded(timeline);
 
     final startIndex = atPhase != null ? timeline.phases.indexOf(atPhase) : 0;
@@ -88,7 +93,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       return play(timeline);
     } else {
       // Start partway through the timeline by playing only the animations
-      // from [startPhase] onward. Looping (handled in [_onStatusChanged])
+      // from [startPhase] onward. Looping (handled in [onPlaybackCompleted])
       // still restarts from the full timeline.
       return animate(timeline.animationsFrom(startPhase));
     }
@@ -133,8 +138,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// Velocity-only seeds (a track in `withVelocity` but not `from`) keep the
   /// track's current value while applying the seeded velocity.
   void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
-    if (_seededFrom) return;
-    _seededFrom = true;
+    if (_seededTimeline == timeline) return;
+    _seededTimeline = timeline;
     if (timeline.from.isEmpty && timeline.withVelocity.isEmpty) return;
 
     final values = <TrackValue>[...timeline.from];
@@ -170,15 +175,35 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
   }
 
-  void _onStatusChanged(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-
+  @override
+  bool onPlaybackCompleted() {
     final timeline = _activeTimeline;
 
     if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {
       final previous = _currentPhase;
       final phases = timeline.phases;
       final first = phases.first;
+
+      if (timeline.phaseLoop == LoopMode.pingPong && phases.length >= 2) {
+        if (_phaseDirectionForward) {
+          _phaseDirectionForward = false;
+          final next = phases[phases.length - 2];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.last, to: next),
+          );
+          animate(timeline.reversedAnimations());
+        } else {
+          _phaseDirectionForward = true;
+          final next = phases[1];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.first, to: next),
+          );
+          animate(timeline.animationsFrom(next));
+        }
+        return true;
+      }
 
       if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
         // seamless: jump straight back to the first phase (invisible when the
@@ -197,7 +222,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _currentPhase = second;
         _onTransition?.call(PhaseTransitioning(from: first, to: second));
         animate(timeline.animationsFrom(second));
-        return;
+        return true;
       }
 
       // loop (and single-phase seamless): animate from the current values back
@@ -209,18 +234,13 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
       animate(timeline.animations);
-      return;
+      return true;
     }
 
     final phase = _currentPhase;
     if (phase != null) {
       _onTransition?.call(PhaseSettled(phase));
     }
-  }
-
-  @override
-  void dispose() {
-    removeStatusListener(_onStatusChanged);
-    super.dispose();
+    return false;
   }
 }

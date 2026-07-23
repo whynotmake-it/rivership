@@ -21,6 +21,7 @@ class _TrackSlot<T extends Object> {
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
+  Duration _inspectionStartOffset = Duration.zero;
 
   T get value => converter.denormalize(_currentValues);
 
@@ -28,11 +29,18 @@ class _TrackSlot<T extends Object> {
 
   bool get isAnimating => _playback != _TrackSlotPlayback.idle;
 
+  bool get hasPlayback => _stepPlayback != null;
+
+  Duration get inspectionStartOffset => _inspectionStartOffset;
+
   bool get isWaitingForSync => _stepPlayback?.isWaitingForSync ?? false;
 
   Object? get syncToken => _stepPlayback?.syncToken;
 
   void releaseSync() => _stepPlayback?.releaseSync();
+
+  bool hasPassedSync(Object token) =>
+      _stepPlayback?.hasPassedSync(token) ?? false;
 
   void setValue(T value) {
     _currentValues = converter.normalize(value);
@@ -49,12 +57,14 @@ class _TrackSlot<T extends Object> {
   }
 
   void play(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     required Duration startOffset,
     LoopMode loop = LoopMode.none,
     T? velocity,
+    bool estimateDurations = false,
   }) {
     _startOffset = startOffset;
+    _inspectionStartOffset = startOffset;
     final velocityValue = velocity ?? this.velocity;
     _stepPlayback = StepPlayback<T>(
       steps: steps,
@@ -64,6 +74,7 @@ class _TrackSlot<T extends Object> {
       loop: loop,
       fallbackMotion: fallbackMotion,
       fallbackMotionPerDimension: fallbackMotionPerDimension,
+      estimateDurations: estimateDurations,
     );
     _currentValues = List.of(_stepPlayback!.values);
     _velocityValues = List.of(_stepPlayback!.velocities);
@@ -72,6 +83,12 @@ class _TrackSlot<T extends Object> {
 
   double _localSeconds(Duration elapsed) {
     final local = elapsed - _startOffset;
+    final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
+    return seconds < 0 ? 0 : seconds;
+  }
+
+  double _inspectionSeconds(Duration elapsed) {
+    final local = elapsed - _inspectionStartOffset;
     final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
     return seconds < 0 ? 0 : seconds;
   }
@@ -92,18 +109,28 @@ class _TrackSlot<T extends Object> {
   }
 
   bool scrubTo(Duration elapsed) {
-    if (_playback == _TrackSlotPlayback.idle) return true;
+    if (_stepPlayback == null) return true;
+    if (_playback == _TrackSlotPlayback.idle) {
+      _playback = _TrackSlotPlayback.chained;
+    }
 
-    final seconds = _localSeconds(elapsed);
-    final done = switch (_playback) {
+    final seconds = _inspectionSeconds(elapsed);
+    return switch (_playback) {
       _TrackSlotPlayback.idle => true,
       _TrackSlotPlayback.chained => _seekStepPlayback(seconds),
     };
+  }
 
-    if (done) {
-      _playback = _TrackSlotPlayback.idle;
-    }
-    return done;
+  /// Re-bases the controller axis around this slot's current local playhead.
+  ///
+  /// A restarted ticker begins at zero. Making the start offset negative by
+  /// the already-consumed local time keeps `ticker - startOffset` continuous.
+  void rebaseTo(Duration tickerElapsed) {
+    final seconds = _stepPlayback?.lastElapsedSeconds ?? 0;
+    final localPlayhead = Duration(
+      microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+    );
+    _startOffset = tickerElapsed - localPlayhead;
   }
 
   bool _tickStepPlayback(double seconds) {
@@ -134,7 +161,7 @@ class _TrackSlot<T extends Object> {
     if (motions == null || !motions.any((motion) => motion.needsSettle)) {
       return false;
     }
-    play([Step.to(value)], startOffset: startOffset);
+    play([TrackStep.to(value)], startOffset: startOffset);
     return true;
   }
 

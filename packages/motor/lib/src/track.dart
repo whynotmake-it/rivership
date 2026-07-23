@@ -4,7 +4,7 @@ import 'package:motor/src/controllers/track_controller.dart'
     show TrackController;
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
-import 'package:motor/src/step.dart';
+import 'package:motor/src/track_step.dart';
 
 /// Identity for a single animated property (e.g. a panel's size or a tint).
 ///
@@ -23,12 +23,13 @@ class Track<T extends Object> {
   /// optional: when a controller first needs a value for this track and no
   /// `from` override, prior value, or [initial] is available, the track falls
   /// back to a zero-filled value whose dimensionality matches the first
-  /// concrete target (`Step.to`/`Step.at`) of the animation being played.
+  /// concrete target (`TrackStep.to`/`TrackStep.at`) of the animation being played.
   /// {@endtemplate}
   Track(
     this.converter, {
     this.initial,
     this.motion,
+    this.debugLabel,
   }) : motionPerDimension = null;
 
   /// Creates a track whose default motion differs per normalized dimension.
@@ -41,7 +42,11 @@ class Track<T extends Object> {
     this.converter, {
     required this.motionPerDimension,
     this.initial,
+    this.debugLabel,
   }) : motion = null;
+
+  /// A human-readable name shown by optional inspection tools.
+  final String? debugLabel;
 
   /// Converts track values to and from normalized dimensions.
   final MotionConverter<T> converter;
@@ -53,7 +58,8 @@ class Track<T extends Object> {
 
   /// The default motion for steps on this track.
   ///
-  /// When a [Step.to] or [Step.at] omits its motion, this value is used
+  /// When a [TrackStep.to] or [TrackStep.at] omits its motion, this value is
+  /// used
   /// as the fallback at playback time. Mutually exclusive with
   /// [motionPerDimension].
   final Motion? motion;
@@ -83,7 +89,13 @@ class Track<T extends Object> {
   }) {
     return TrackAnimation._(
       this,
-      [Step.to(value, motion: motion, motionPerDimension: motionPerDimension)],
+      [
+        TrackStep.to(
+          value,
+          motion: motion,
+          motionPerDimension: motionPerDimension,
+        ),
+      ],
       from: from,
       withVelocity: withVelocity,
     );
@@ -93,7 +105,7 @@ class Track<T extends Object> {
   ///
   /// {@macro Track.fromVelocity}
   TrackAnimation<T> call(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     T? from,
     T? withVelocity,
   }) =>
@@ -120,30 +132,30 @@ class Track<T extends Object> {
   }) {
     return TrackAnimation._(
       this,
-      [Step.free(motion: motion)],
+      [TrackStep.free(motion: motion)],
       from: from,
       withVelocity: withVelocity,
     );
   }
 
   /// Creates a [TrackAnimation] from a list of steps whose static type may
-  /// have been erased to `Step<Object>`.
+  /// have been erased to `TrackStep<Object>`.
   ///
-  /// [SyncStep] barriers (which carry no value) are re-wrapped as
-  /// `SyncStep<T>` so the resulting list has a uniform runtime type.
-  /// All other steps must already be `Step<T>` at runtime.
+  /// [StepSync] barriers (which carry no value) are re-wrapped as
+  /// `StepSync<T>` so the resulting list has a uniform runtime type.
+  /// All other steps must already be `TrackStep<T>` at runtime.
   @internal
   TrackAnimation<T> animationFromUntypedSteps(
-    List<Step<Object>> steps, {
+    List<TrackStep<Object>> steps, {
     T? from,
     T? withVelocity,
   }) {
-    final typed = <Step<T>>[
+    final typed = <TrackStep<T>>[
       for (final step in steps)
-        if (step case SyncStep(:final token))
-          SyncStep<T>(token: token)
+        if (step case StepSync(:final token))
+          StepSync<T>(token: token)
         else
-          step as Step<T>,
+          step as TrackStep<T>,
     ];
     return TrackAnimation._(
       this,
@@ -162,6 +174,7 @@ class Track<T extends Object> {
 /// where its [value] is interpreted as a velocity.
 ///
 /// {@endtemplate}
+// ignore: deprecated_member_use
 class TrackValue<T extends Object> with EquatableMixin {
   /// Creates a value snapshot for [track].
   TrackValue._(this.track, this.value);
@@ -182,6 +195,7 @@ class TrackValue<T extends Object> with EquatableMixin {
 /// override (jump to this value before animating) and an initial
 /// [withVelocity]. `loop` is intentionally not part of an animation — it is a
 /// per-clip concern owned by the timeline or the playback call site.
+// ignore: deprecated_member_use
 class TrackAnimation<T extends Object> with EquatableMixin {
   /// Creates an animation for [track] using [steps].
   TrackAnimation._(
@@ -195,7 +209,7 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   final Track<T> track;
 
   /// The steps to play for [track].
-  final List<Step<T>> steps;
+  final List<TrackStep<T>> steps;
 
   /// Optional value to jump to before animating.
   final T? from;
@@ -203,12 +217,35 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   /// Optional starting velocity for the animation.
   final T? withVelocity;
 
+  /// Rebuilds target-based steps with [motion] while preserving value types.
+  @internal
+  TrackAnimation<T> withMotionOverride(Motion motion) => TrackAnimation._(
+        track,
+        [
+          for (final step in steps)
+            switch (step) {
+              StepTo<T>(:final value) => TrackStep.to(
+                  value,
+                  motion: motion,
+                ),
+              StepAt<T>(:final at, :final value) => TrackStep.at(
+                  at,
+                  value,
+                  motion: motion,
+                ),
+              _ => step,
+            },
+        ],
+        from: from,
+        withVelocity: withVelocity,
+      );
+
   /// Resolves the value this animation should start from when the controller
   /// has no existing value for [track].
   ///
   /// Resolution order: [from] -> [Track.initial] -> a zero-filled value whose
   /// dimensionality matches this animation's first concrete target
-  /// (`Step.to`/`Step.at`). Throws if none of these can supply a value.
+  /// (`TrackStep.to`/`TrackStep.at`). Throws if none of these can supply a value.
   T resolveStartValue() {
     if (from case final value?) return value;
     if (track.initial case final value?) return value;
@@ -218,7 +255,7 @@ class TrackAnimation<T extends Object> with EquatableMixin {
     assert(
       false,
       'Track has no initial value, no `from`, and the animation has no '
-      'concrete target (Step.to/Step.at) to infer a starting value from. '
+      'concrete target (TrackStep.to/TrackStep.at) to infer a starting value from. '
       'Provide Track.initial or a from: value.',
     );
     throw StateError(

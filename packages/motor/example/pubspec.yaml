@@ -19,6 +19,8 @@ dependencies:
     sdk: flutter
   motor:
     path: ../
+  motor_devtools:
+    path: ../../motor_devtools
 
 dev_dependencies:
   flutter_test:

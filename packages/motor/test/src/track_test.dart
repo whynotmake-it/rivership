@@ -66,9 +66,12 @@ void main() {
 
     test('creates multi-step animations', () {
       final track = Track<double>(MotionConverter.single, initial: 0.0);
-      final steps = <Step<double>>[
-        const Step.hold(Duration(milliseconds: 100)),
-        const Step.to(1.0, motion: Motion.linear(Duration(milliseconds: 200))),
+      final steps = <TrackStep<double>>[
+        const TrackStep.hold(Duration(milliseconds: 100)),
+        const TrackStep.to(
+          1,
+          motion: Motion.linear(Duration(milliseconds: 200)),
+        ),
       ];
 
       final animation = track(steps);

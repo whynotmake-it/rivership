@@ -564,7 +564,6 @@ Future<ui.Image?> _takeDeviceScreenshot({
         orientation: orientation,
         includeDeviceFrame: settings.includeDeviceFrame,
       );
-
       if (crop == null) {
         return captured.image;
       }
@@ -632,11 +631,27 @@ Future<T?> _runInFakeDevice<T>(
   final binding = TestWidgetsFlutterBinding.instance;
   await binding.pump(Duration.zero);
 
+  final activeVariant = activeDeviceVariant;
+  if (activeVariant != null &&
+      activeVariant.$1 == device &&
+      activeVariant.$2 == orientation) {
+    return maybeRunAsync(fn);
+  }
+
+  final previousSurfaceSize = binding.renderViews.single.size;
   final restoreView = setTestViewForDevice(device, orientation);
+  if (device != null) {
+    var surfaceSize = device.screenSize;
+    if (device.isLandscape(orientation)) {
+      surfaceSize = surfaceSize.flipped;
+    }
+    await binding.setSurfaceSize(surfaceSize);
+  }
 
   final result = await maybeRunAsync(fn);
 
   restoreView();
+  await binding.setSurfaceSize(previousSurfaceSize);
 
   await binding.pump(Duration.zero);
 

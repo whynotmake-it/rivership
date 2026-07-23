@@ -17,6 +17,7 @@ class TogglePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ExamplePage(
       title: routeName,
+      next: (label: 'Pull to Refresh', routeName: 'Pull to Refresh'),
       description:
           'Interactive state, the easy way. Each control animates a single '
           'value with a bouncy spring, so taps feel springy and responsive '
@@ -96,10 +97,12 @@ class _SpringSwitchState extends State<_SpringSwitch>
 
   bool _on = false;
 
-  @override
-  void initState() {
-    super.initState();
-  }
+  // Geometry shared by render and drag math. Track units 0..1 map to [_travel]
+  // pixels of thumb travel (see the thumb's `left` below).
+  static const _w = 58.0;
+  static const _h = 34.0;
+  static const _thumb = 26.0;
+  static const _travel = _w - _thumb - 8;
 
   @override
   void dispose() {
@@ -112,20 +115,44 @@ class _SpringSwitchState extends State<_SpringSwitch>
     _c.animate([_value.to(_on ? 1 : 0)]);
   }
 
+  void _onDragUpdate(DragUpdateDetails d) {
+    // Track the finger 1:1 with `set`, which records live velocity on the
+    // controller for the release.
+    final next = (_c.value(_value) + d.delta.dx / _travel).clamp(0.0, 1.0);
+    _c.set([_value.value(next)]);
+  }
+
+  void _onDragEnd(DragEndDetails d) {
+    final vNorm = d.velocity.pixelsPerSecond.dx / _travel;
+    final pos = _c.value(_value);
+    final target = vNorm.abs() > 1
+        ? (vNorm > 0 ? 1.0 : 0.0)
+        : (pos > 0.5 ? 1.0 : 0.0);
+    setState(() => _on = target == 1.0);
+    // No explicit withVelocity: the controller carries the velocity it tracked
+    // during the drag into this redirect.
+    _c.animate([_value.to(target), _thumbScale.to(1)]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    const w = 58.0;
-    const h = 34.0;
-    const thumb = 26.0;
+    const w = _w;
+    const h = _h;
+    const thumb = _thumb;
     return GestureDetector(
       onTap: _toggle,
       onTapDown: (_) => _c.animate([_thumbScale.to(.8)]),
       onTapUp: (_) => _c.animate([_thumbScale.to(1)]),
       onTapCancel: () => _c.animate([_thumbScale.to(1)]),
+      onHorizontalDragStart: (_) => _c.animate([_thumbScale.to(.8)]),
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
       child: ValueListenableBuilder(
         valueListenable: _c,
         builder: (context, v, _) {
+          // Color saturates at the endpoints, while the wider clamp below lets
+          // the thumb preserve a hint of the spring's overshoot.
           final clamped = v(_value).clamp(0.0, 1.0);
           final scale = v(_thumbScale);
           return Container(
@@ -185,6 +212,14 @@ class _LikeButtonState extends State<_LikeButton>
     motion: .bouncySpring(extraBounce: .3),
   );
 
+  // A short-lived 0→1 track that radiates a ring of particles on a like, played
+  // in the same timeline as the pop so the two are choreographed together.
+  final _burst = Track<double>(
+    .single,
+    initial: 0,
+    motion: const CurvedMotion(Duration(milliseconds: 450), Curves.easeOut),
+  );
+
   late final _thumbColor = Track(
     .colorRgb,
     initial: _desiredThumbColor,
@@ -217,10 +252,13 @@ class _LikeButtonState extends State<_LikeButton>
           .at(
             Duration(milliseconds: 150),
             1.5,
+            // Play only the spring's rising half, then hand off to the settle
+            // below before its wobble begins.
             motion: .bouncySpring().trimmed(fromEnd: .5),
           ),
           .to(1),
         ]),
+        _burst.to(1, from: 0),
       ]);
     } else {
       _controller.animate([_likeScale.to(1, motion: .interactiveSpring())]);
@@ -236,18 +274,55 @@ class _LikeButtonState extends State<_LikeButton>
       onTapUp: (_) => _release(),
       onTapCancel: () =>
           _controller.animate([_likeScale.to(1, motion: .interactiveSpring())]),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => Transform.scale(
-          scale: _controller.value<double>(_likeScale),
-          child: Icon(
-            _liked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-            size: 28,
-            color: _controller.value<Color>(_thumbColor),
-          ),
-        ),
+      child: ValueListenableBuilder<TrackValueReader>(
+        valueListenable: _controller,
+        builder: (context, value, _) {
+          final burst = value(_burst).clamp(0.0, 1.0);
+          return SizedBox(
+            width: 56,
+            height: 56,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (burst > 0 && burst < 1) ..._burstParticles(burst),
+                Transform.scale(
+                  scale: value<double>(_likeScale),
+                  child: Icon(
+                    _liked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                    size: 28,
+                    color: value<Color>(_thumbColor),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
+  }
+
+  List<Widget> _burstParticles(double burst) {
+    final distance = 10 + burst * 16;
+    return [
+      for (var i = 0; i < 6; i++)
+        Transform.translate(
+          offset: Offset(
+            math.cos(i / 6 * 2 * math.pi) * distance,
+            math.sin(i / 6 * 2 * math.pi) * distance,
+          ),
+          child: Opacity(
+            opacity: 1 - burst,
+            child: Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+    ];
   }
 }
 
@@ -292,6 +367,7 @@ class _RotateToggleState extends State<_RotateToggle>
         width: 40,
         height: 40,
         decoration: BoxDecoration(color: t.fog, shape: BoxShape.circle),
+        // SingleMotionController exposes its value directly by design.
         child: AnimatedBuilder(
           animation: _c,
           builder: (context, _) => Transform.rotate(

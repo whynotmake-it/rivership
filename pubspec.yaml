@@ -13,6 +13,7 @@ workspace:
   - packages/heroine
   - packages/heroine/example
   - packages/motor
+  - packages/motor_devtools
   - packages/motor/example
   - packages/rivership
   - packages/rivership_test

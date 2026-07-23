@@ -514,6 +514,79 @@ void main() {
       });
     });
 
+    group('converter swap', () {
+      testWidgets('forgets replaced track state', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        for (var i = 0; i < 100; i++) {
+          controller.converter = MotionConverter.custom(
+            normalize: (value) => [value.dx, value.dy],
+            denormalize: (values) => Offset(values[0], values[1]),
+          );
+        }
+
+        expect(controller.debugInnerController.debugTrackCount, 1);
+
+        controller.animateTo(const Offset(1, 1)).ignore();
+        await tester.pumpAndSettle();
+
+        expect(controller.value.dx, moreOrLessEquals(1, epsilon: error));
+        expect(controller.value.dy, moreOrLessEquals(1, epsilon: error));
+      });
+
+      testWidgets('reinterprets the current value under the new converter',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: const Offset(2, 3),
+        );
+        addTearDown(controller.dispose);
+
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dy, value.dx],
+          denormalize: (values) => Offset(values[1], values[0]),
+        );
+
+        expect(controller.value, const Offset(3, 2));
+      });
+
+      testWidgets('stops and reinterprets a mid-animation swap',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        controller.animateTo(const Offset(10, 20)).ignore();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        final valueBeforeSwap = controller.value;
+
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dy, value.dx],
+          denormalize: (values) => Offset(values[1], values[0]),
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(controller.isAnimating, isFalse);
+        expect(
+          controller.value,
+          Offset(valueBeforeSwap.dy, valueBeforeSwap.dx),
+        );
+      });
+    });
+
     group('.converter', () {
       late MotionController<EdgeInsetsGeometry> controller;
       tearDown(() {
@@ -613,6 +686,37 @@ void main() {
           moreOrLessEquals(0, epsilon: error),
         );
       });
+    });
+  });
+
+  group('TrackController.forgetTrack', () {
+    testWidgets('evicts state and allows lazy reinitialization',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final forgottenTrack = Track<Offset>(
+        const OffsetMotionConverter(),
+        initial: const Offset(2, 3),
+      );
+      final retainedTrack = Track<Offset>(
+        const OffsetMotionConverter(),
+        initial: Offset.zero,
+        motion: const CupertinoMotion.smooth(),
+      );
+
+      controller
+        ..set([forgottenTrack.value(const Offset(4, 5))])
+        ..animate([retainedTrack.to(const Offset(1, 1))]);
+
+      expect(controller.debugTrackCount, 2);
+
+      controller.forgetTrack(forgottenTrack);
+
+      expect(controller.debugTrackCount, 1);
+      expect(controller.value(forgottenTrack), const Offset(2, 3));
+      expect(controller.debugTrackCount, 2);
+
+      await tester.pumpAndSettle();
     });
   });
 

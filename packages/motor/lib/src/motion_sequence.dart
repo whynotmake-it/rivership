@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'dart:math';
 
 import 'package:equatable/equatable.dart';
@@ -9,6 +11,11 @@ import 'package:motor/src/motion.dart';
 export 'package:motor/src/loop_mode.dart';
 
 /// A value and its associated motion.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 typedef ValueWithMotion<T> = (T value, Motion motion);
 
 /// {@template MotionSequence}
@@ -32,9 +39,20 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 /// ], motion: Motion.smoothSpring());
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 @immutable
+// ignore: deprecated_member_use
 abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// {@macro MotionSequence}
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const MotionSequence();
 
   /// Creates a sequence from named phases to values.
@@ -55,6 +73,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///   ButtonState.loading: Offset(10, 0),
   /// }, motion: Motion.bouncySpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const factory MotionSequence.states(
     Map<P, T> values, {
     required Motion motion,
@@ -69,6 +92,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///   ButtonState.pressed: (Offset(0, 5), Motion.snappySpring()),
   /// });
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const factory MotionSequence.statesWithMotions(
     Map<P, ValueWithMotion<T>> values, {
     LoopMode loop,
@@ -209,8 +237,18 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
 ///
 /// Use [MotionSequence.steps] to create step sequences.
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class StepSequence<T extends Object> extends MotionSequence<int, T> {
   /// Creates a step sequence with a single motion for all steps.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StepSequence(
     this._steps, {
     required Motion motion,
@@ -219,6 +257,11 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
         _stepsWithMotions = null;
 
   /// Creates a step sequence with individual motions per step.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StepSequence.withMotions(
     this._stepsWithMotions, {
     this.loop = LoopMode.none,
@@ -304,8 +347,18 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
 /// Perfect for state machines, enums, or any named phase system.
 /// Use [MotionSequence.states] to create state sequences.
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   /// Creates a state sequence with a single motion for all transitions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StateSequence(
     this._states, {
     required Motion motion,
@@ -314,6 +367,11 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
         _statesWithMotions = null;
 
   /// Creates a state sequence with individual motions per phase.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StateSequence.withMotions(
     this._statesWithMotions, {
     this.loop = LoopMode.none,
@@ -421,12 +479,22 @@ class SingleMotionPhaseSequence<P, T extends Object>
 /// }, motion: LinearMotion(Duration(seconds: 2)))
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 @immutable
 class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   /// Creates a spanning sequence with positioned phases.
   ///
   /// [values] maps position numbers to property values. The [motion]
   /// spans across all phases proportionally based on their positions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence(
     Map<num, T> values, {
     required this.motion,
@@ -520,7 +588,7 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
           case LoopMode.loop:
             return _phasesList.length - 1;
           case LoopMode.seamless:
-            return _phasesList.length - 2;
+            return _phasesList.length > 2 ? _phasesList.length - 2 : 1;
         }
       } else {
         return index - 1;

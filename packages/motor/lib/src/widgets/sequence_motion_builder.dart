@@ -1,5 +1,7 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:flutter/widgets.dart';
-import 'package:motor/src/controllers/legacy/legacy_motion_controller.dart';
+import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
@@ -57,8 +59,18 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// )
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+  'See MIGRATION.md. '
+  'SequenceMotionBuilder will be removed in motor 3.0.',
+)
 class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// {@macro SequenceMotionBuilder}
+  @Deprecated(
+    'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+    'See MIGRATION.md. '
+    'SequenceMotionBuilder will be removed in motor 3.0.',
+  )
   const SequenceMotionBuilder({
     required this.sequence,
     required this.converter,

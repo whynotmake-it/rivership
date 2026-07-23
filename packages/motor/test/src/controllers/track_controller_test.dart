@@ -94,11 +94,11 @@ void main() {
       controller.play(
         TrackTimeline([
           opacity([
-            const Step.to(
+            const TrackStep.to(
               1,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
-            const Step.to(
+            const TrackStep.to(
               0,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
@@ -409,8 +409,8 @@ void main() {
 
       controller.animate([
         opacity([
-          const Step.to(1, motion: motion),
-          const Step.to(0, motion: motion),
+          const TrackStep.to(1, motion: motion),
+          const TrackStep.to(0, motion: motion),
         ]),
       ]);
 
@@ -473,8 +473,8 @@ void main() {
           TrackTimeline(
             [
               opacity([
-                const Step.to(0.5, motion: linear100),
-                const Step.to(1.0, motion: linear100),
+                const TrackStep.to(0.5, motion: linear100),
+                const TrackStep.to(1.0, motion: linear100),
               ]),
             ],
             loop: LoopMode.loop,
@@ -483,12 +483,12 @@ void main() {
 
         await tester.pump();
 
-        // Step 0: 0 -> 0.5 in 100ms
+        // TrackStep 0: 0 -> 0.5 in 100ms
         await tester.pump(const Duration(milliseconds: 50));
         expect(controller.value(opacity), greaterThan(0));
         expect(controller.value(opacity), lessThan(0.5));
 
-        // Step 1: 0.5 -> 1.0
+        // TrackStep 1: 0.5 -> 1.0
         await tester.pump(const Duration(milliseconds: 60));
         expect(controller.value(opacity), greaterThan(0.4));
 
@@ -511,8 +511,8 @@ void main() {
           TrackTimeline(
             [
               opacity([
-                const Step.to(0.5, motion: linear100),
-                const Step.to(1.0, motion: linear100),
+                const TrackStep.to(0.5, motion: linear100),
+                const TrackStep.to(1.0, motion: linear100),
               ]),
             ],
             loop: LoopMode.pingPong,
@@ -721,7 +721,7 @@ void main() {
 
       expect(
         () => controller.animate([
-          track([const Step.hold(Duration(milliseconds: 100))]),
+          track([const TrackStep.hold(Duration(milliseconds: 100))]),
         ]),
         throwsA(isA<AssertionError>()),
       );

@@ -53,6 +53,41 @@ void main() {
       expect(p.isDone, isFalse);
     });
 
+    test('loop snaps to the start when no return motion is available', () {
+      const motion = FreeMotion.friction();
+      const start = 4.0;
+      const velocity = 100.0;
+      final simulation = motion.createSimulation(
+        start: start,
+        velocity: velocity,
+      );
+      var low = 0.0;
+      var high = 100.0;
+      for (var i = 0; i < 60; i++) {
+        final middle = (low + high) / 2;
+        if (simulation.isDone(middle)) {
+          high = middle;
+        } else {
+          low = middle;
+        }
+      }
+
+      final p = StepPlayback<double>(
+        steps: const [StepFree(motion: motion)],
+        converter: MotionConverter.single,
+        start: start,
+        velocity: velocity,
+        loop: LoopMode.loop,
+      );
+
+      p.advanceTo(low);
+      expect(p.values.single, isNot(closeTo(start, error)));
+
+      p.advanceTo(high);
+      expect(p.values.single, closeTo(start, error));
+      expect(p.isDone, isFalse);
+    });
+
     test('seamless jumps back to the start after the last step', () {
       final p = playback(LoopMode.seamless);
 
@@ -182,6 +217,86 @@ void main() {
         drop,
         greaterThan(0.5),
         reason: 'seamless should jump back to the first phase',
+      );
+      expect(controller.isAnimating, isTrue);
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('pingPong visits three phases in both directions',
+        (tester) async {
+      controller = PhaseTrackController<String>(vsync: tester);
+      final transitions = <String>[];
+      final pingPongTimeline = TrackPhaseTimeline(
+        {
+          'a': [size.to(1, motion: linear100)],
+          'b': [size.to(2, motion: linear100)],
+          'c': [size.to(3, motion: linear100)],
+        },
+        phaseLoop: LoopMode.pingPong,
+      );
+
+      controller.playPhases(
+        pingPongTimeline,
+        onTransition: (transition) {
+          if (transition
+              case PhaseTransitioning<String>(
+                :final from,
+                :final to,
+              )) {
+            transitions.add('$from->$to');
+          }
+        },
+      );
+      await tester.pump();
+
+      for (final target in [1.0, 2.0, 3.0, 2.0, 1.0, 2.0, 3.0]) {
+        await tester.pump(const Duration(milliseconds: 101));
+        expect(controller.value(size), closeTo(target, error));
+      }
+
+      expect(
+        transitions,
+        [
+          'a->b',
+          'b->c',
+          'c->b',
+          'b->a',
+          'a->b',
+          'b->c',
+          'c->b',
+        ],
+      );
+      expect(controller.isAnimating, isTrue);
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('pingPong alternates two phases without duplicates',
+        (tester) async {
+      controller = PhaseTrackController<String>(vsync: tester);
+      final transitions = <String>[];
+
+      controller.playPhases(
+        timeline(LoopMode.pingPong),
+        onTransition: (transition) {
+          if (transition
+              case PhaseTransitioning<String>(
+                :final from,
+                :final to,
+              )) {
+            transitions.add('$from->$to');
+          }
+        },
+      );
+      await tester.pump();
+
+      for (final target in [1.0, 2.0, 1.0, 2.0, 1.0]) {
+        await tester.pump(const Duration(milliseconds: 101));
+        expect(controller.value(size), closeTo(target, error));
+      }
+
+      expect(
+        transitions,
+        ['a->b', 'b->a', 'a->b', 'b->a', 'a->b'],
       );
       expect(controller.isAnimating, isTrue);
       controller.stop(canceled: true);

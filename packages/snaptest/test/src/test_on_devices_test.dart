@@ -26,6 +26,11 @@ void main() {
     'tests all devices and orientations',
     variant: variant,
     (tester) async {
+      final (device, orientation) = variant.currentValue!;
+      final expectedSize = orientation == Orientation.landscape
+          ? device.screenSize.flipped
+          : device.screenSize;
+
       await tester.pumpWidget(
         const MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -34,9 +39,16 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
+      expect(tester.binding.renderViews.single.size, expectedSize);
       tested.add(variant.currentValue!);
       await snap.andGolden(
         settings: const SnaptestSettings.rendered(),
+      );
+      expect(
+        tester.binding.renderViews.single.size,
+        expectedSize,
+        reason: 'capturing inside an active variant must preserve its viewport',
       );
     },
   );

@@ -194,9 +194,9 @@ void main() {
       });
     });
 
-    test('works in a Step.free', () {
+    test('works in a TrackStep.free', () {
       const motion = FrictionMotion();
-      const step = Step<double>.free(motion: motion);
+      const step = TrackStep<double>.free(motion: motion);
 
       expect(step, isA<StepFree<double>>());
       expect((step as StepFree<double>).motion, equals(motion));

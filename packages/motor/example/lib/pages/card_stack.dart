@@ -8,6 +8,8 @@ import 'package:motor_example/widgets/example_scaffold.dart';
 
 enum _Phase { clearing, dismissing }
 
+// A Track is an identity key; sharing it is safe because every card owns a
+// separate controller.
 final _offset = Track<Offset>(.offset, initial: .zero, motion: .bouncySpring());
 
 class CardStackPage extends StatefulWidget {
@@ -32,6 +34,7 @@ class _CardStackPageState extends State<CardStackPage> {
   Widget build(BuildContext context) {
     return ExamplePage(
       title: CardStackPage.routeName,
+      next: (label: 'Payment Success', routeName: 'Payment Success'),
       description:
           'Drag the top card to dismiss it. The fling velocity is projected '
           'through a friction sim to decide whether it clears the stack, and '
@@ -78,6 +81,8 @@ class _DragCardState extends State<_DragCard>
     with SingleTickerProviderStateMixin {
   late final _controller = PhaseTrackController<_Phase>(
     vsync: this,
+    // Gesture updates use set(), but release supplies the recognizer's velocity
+    // explicitly below, so deriving it again from samples could double-count.
     velocityTracking: .off(),
   );
 

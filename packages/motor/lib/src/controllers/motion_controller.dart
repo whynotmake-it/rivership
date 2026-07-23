@@ -3,13 +3,16 @@ import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
-import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
-import 'package:motor/src/step.dart';
+import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
+
+part 'sequence_motion_controller.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -57,6 +60,7 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
     VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
           motionPerDimension:
               List.filled(converter.normalize(initialValue).length, motion),
@@ -65,6 +69,7 @@ class MotionController<T extends Object> extends Animation<T>
           initialValue: initialValue,
           behavior: behavior,
           velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   /// Creates a motion controller with individual motions per dimension.
@@ -75,6 +80,7 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
     VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
           motionPerDimension: motionPerDimension,
           vsync: vsync,
@@ -82,6 +88,7 @@ class MotionController<T extends Object> extends Animation<T>
           initialValue: initialValue,
           behavior: behavior,
           velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   MotionController._({
@@ -91,21 +98,29 @@ class MotionController<T extends Object> extends Animation<T>
     required T initialValue,
     required AnimationBehavior behavior,
     required VelocityTracking velocityTracking,
+    required String? debugLabel,
   })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ),
         assert(
-          motionPerDimension.length ==
-              converter.normalize(initialValue).length,
+          motionPerDimension.length == converter.normalize(initialValue).length,
           'the number of motions must match the number of dimensions',
         ),
         _converter = converter,
         _initialValue = initialValue,
         _motionPerDimension = List.of(motionPerDimension),
         _animationBehavior = behavior {
-    _inner = TrackController(vsync: vsync, velocityTracking: velocityTracking);
-    _track = Track<T>(converter, initial: initialValue);
+    _inner = TrackController(
+      vsync: vsync,
+      velocityTracking: velocityTracking,
+      debugLabel: debugLabel,
+    );
+    _track = Track<T>(
+      converter,
+      initial: initialValue,
+      debugLabel: debugLabel == null ? null : '$debugLabel value',
+    );
     _inner
       ..addListener(notifyListeners)
       ..addStatusListener(_handleInnerStatus);
@@ -117,6 +132,10 @@ class MotionController<T extends Object> extends Animation<T>
   final T _initialValue;
   List<Motion> _motionPerDimension;
   final AnimationBehavior _animationBehavior;
+
+  /// The underlying track controller.
+  @visibleForTesting
+  TrackController get debugInnerController => _inner;
 
   /// The most recent animation target, used to evaluate the resting [status].
   T? _lastTarget;
@@ -145,9 +164,11 @@ class MotionController<T extends Object> extends Animation<T>
     final reinterpretedVelocity = value.denormalize(velocityNormalized);
 
     if (_inner.isAnimating) _inner.stop(tracks: [_track], canceled: true);
+    final oldTrack = _track;
     _converter = value;
     _track = Track<T>(value, initial: reinterpreted);
     _inner
+      ..forgetTrack(oldTrack)
       ..set(
         [_track.value(reinterpreted)],
         withVelocity: [_track.velocity(reinterpretedVelocity)],
@@ -288,7 +309,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// Non-looping playback completes when all chained simulations finish.
   /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
   TickerFuture play(
-    List<Step<T>> steps, {
+    List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {
@@ -393,6 +414,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T upperBound,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
 
@@ -407,6 +429,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T upperBound,
     super.behavior,
     super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound),
         super.motionPerDimension();

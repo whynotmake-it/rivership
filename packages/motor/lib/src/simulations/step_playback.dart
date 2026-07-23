@@ -1,11 +1,12 @@
 import 'package:flutter/physics.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
-import 'package:motor/src/step.dart';
+import 'package:motor/src/track_step.dart';
 
-/// Stateful playback for a list of [Step]s.
+/// Stateful playback for a list of [TrackStep]s.
 ///
 /// Unlike [Simulation], this advances segment-by-segment and only leaves a
 /// segment once all of its simulations report that they are done.
@@ -16,13 +17,14 @@ class StepPlayback<T extends Object> {
   /// per normalized dimension) is provided, it is used for any [StepTo] or
   /// [StepAt] that does not specify its own motion. Pass at most one.
   StepPlayback({
-    required List<Step<T>> steps,
+    required List<TrackStep<T>> steps,
     required MotionConverter<T> converter,
     required T start,
     T? velocity,
     LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
     List<Motion>? fallbackMotionPerDimension,
+    bool estimateDurations = false,
   })  : assert(steps.isNotEmpty, 'steps must not be empty'),
         assert(
           fallbackMotion == null || fallbackMotionPerDimension == null,
@@ -55,16 +57,22 @@ class StepPlayback<T extends Object> {
               : null);
       if (returnMotions != null) {
         _steps.add(StepTo<T>(start, motionPerDimension: returnMotions));
+        _hasReturnStep = true;
       }
     }
+    _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
+    _stepStartSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
     _reset();
+    _estimatedSegmentSeconds = estimateDurations
+        ? _estimateSegmentDurations(start: start, velocity: velocity)
+        : List<double?>.filled(_steps.length, null);
   }
 
   /// Returns the per-dimension motions of the first step that targets a value,
   /// or `null` if no step carries a motion.
   static List<Motion>? _firstStepMotions<S extends Object>(
-    List<Step<S>> steps,
+    List<TrackStep<S>> steps,
     int dimensions,
   ) {
     for (final step in steps) {
@@ -80,14 +88,14 @@ class StepPlayback<T extends Object> {
     return null;
   }
 
-  static bool _validateStepTiming<S extends Object>(List<Step<S>> steps) {
+  static bool _validateStepTiming<S extends Object>(List<TrackStep<S>> steps) {
     var minElapsed = Duration.zero;
     for (var i = 0; i < steps.length; i++) {
       final step = steps[i];
       if (step case StepAt<S>(:final at)) {
         if (at < minElapsed) {
           throw AssertionError(
-            'Step.at(${at.inMilliseconds}ms) at index $i would go back in '
+            'TrackStep.at(${at.inMilliseconds}ms) at index $i would go back in '
             'time. Preceding holds already consume ${minElapsed.inMilliseconds}'
             'ms. The .at() time must be >= the cumulative hold duration.',
           );
@@ -100,23 +108,34 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
-  final List<Step<T>> _steps;
+  final List<TrackStep<T>> _steps;
   final MotionConverter<T> _converter;
   final LoopMode _loop;
   final Motion? _fallbackMotion;
   final List<Motion>? _fallbackMotionPerDimension;
   final List<double> _initialValues;
   final List<double> _initialVelocities;
+  var _hasReturnStep = false;
 
   /// Target values for each step, used by pingPong to reverse.
   /// Index i holds the normalized target that step i animates toward.
   late final List<List<double>> _waypoints;
+
+  /// The duration each step occupied during forward playback.
+  late final List<double?> _forwardSegmentSeconds;
+
+  /// Stable predicted durations for the forward playback plan.
+  late final List<double?> _estimatedSegmentSeconds;
+
+  /// The slot-local time at which each forward step began in this cycle.
+  late final List<double?> _stepStartSeconds;
 
   late List<double> _currentValues;
   late List<double> _currentVelocities;
   late List<Simulation> _simulations;
   var _stepIndex = 0;
   var _direction = 1;
+  var _cycle = 0;
   var _cycleStartSeconds = 0.0;
   var _segmentStartSeconds = 0.0;
   var _lastElapsedSeconds = 0.0;
@@ -134,6 +153,66 @@ class StepPlayback<T extends Object> {
     ];
   }
 
+  List<double?> _estimateSegmentDurations({
+    required T start,
+    required T? velocity,
+  }) {
+    final estimator = StepPlayback<T>(
+      steps: _steps,
+      converter: _converter,
+      start: start,
+      velocity: velocity,
+      fallbackMotion: _fallbackMotion,
+      fallbackMotionPerDimension: _fallbackMotionPerDimension,
+    );
+    // One distant seek resolves every finite segment with binary search.
+    // Truly unbounded simulations remain null instead of blocking startup.
+    // ignore: cascade_invocations
+    estimator.seekTo(const Duration(days: 1).inSeconds.toDouble());
+    final simulated = estimator.forwardSegmentSeconds;
+    final estimates = <double?>[];
+    var cursor = Duration.zero;
+    for (var index = 0; index < _steps.length; index++) {
+      final step = _steps[index];
+      final authored = switch (step) {
+        StepHold<T>(:final duration) => duration,
+        StepSync<T>() => Duration.zero,
+        StepAt<T>(:final at) => at > cursor ? at - cursor : Duration.zero,
+        StepTo<T>(:final motion, :final motionPerDimension) =>
+          _knownMotionDuration(motion, motionPerDimension),
+        StepFree<T>() => null,
+      };
+      final seconds = authored == null
+          ? simulated[index]
+          : authored.inMicroseconds / Duration.microsecondsPerSecond;
+      estimates.add(seconds);
+      if (seconds != null) {
+        cursor += Duration(
+          microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+        );
+      }
+    }
+    return estimates;
+  }
+
+  Duration? _knownMotionDuration(
+    Motion? motion,
+    List<Motion>? motionPerDimension,
+  ) {
+    final motions = motionPerDimension ??
+        (motion == null ? null : [motion]) ??
+        _fallbackMotionPerDimension ??
+        (_fallbackMotion == null ? null : [_fallbackMotion]);
+    if (motions == null || motions.isEmpty) return null;
+    var longest = Duration.zero;
+    for (final candidate in motions) {
+      final duration = candidate.duration;
+      if (duration == null) return null;
+      if (duration > longest) longest = duration;
+    }
+    return longest;
+  }
+
   /// Current normalized values.
   List<double> get values => List.unmodifiable(_currentValues);
 
@@ -146,17 +225,71 @@ class StepPlayback<T extends Object> {
   /// Whether playback has completed.
   bool get isDone => _isDone;
 
-  /// Whether playback is paused at a [SyncStep], waiting for external release.
+  /// Whether playback is paused at a [StepSync], waiting for external release.
   bool get isWaitingForSync => _isWaitingForSync;
 
-  /// The token of the [SyncStep] currently being waited on, or `null` if
+  /// The token of the [StepSync] currently being waited on, or `null` if
   /// playback is not waiting at a sync barrier.
   Object? get syncToken {
     if (!_isWaitingForSync) return null;
-    return (_steps[_stepIndex] as SyncStep<T>).token;
+    return (_steps[_stepIndex] as StepSync<T>).token;
   }
 
-  /// Releases the playback past the current [SyncStep].
+  /// The actual playback plan, including a synthetic loop-return step.
+  @internal
+  List<TrackStep<T>> get stepsView => List.unmodifiable(_steps);
+
+  /// Whether [stepsView] ends with a synthetic loop-return step.
+  @internal
+  bool get hasSyntheticReturnStep => _hasReturnStep;
+
+  /// The loop mode used by this playback.
+  @internal
+  LoopMode get loop => _loop;
+
+  /// Recorded forward segment durations, in seconds.
+  @internal
+  List<double?> get forwardSegmentSeconds =>
+      List.unmodifiable(_forwardSegmentSeconds);
+
+  /// Predicted forward segment durations captured before playback starts.
+  @internal
+  List<double?> get estimatedSegmentSeconds =>
+      List.unmodifiable(_estimatedSegmentSeconds);
+
+  /// Recorded forward step start times, in slot-local seconds.
+  @internal
+  List<double?> get stepStartSeconds => List.unmodifiable(_stepStartSeconds);
+
+  /// The current playback direction: `1` forward or `-1` reverse.
+  @internal
+  int get direction => _direction;
+
+  /// The number of loop boundaries crossed by this playback.
+  @internal
+  int get cycle => _cycle;
+
+  /// The most recent slot-local elapsed time, in seconds.
+  @internal
+  double get lastElapsedSeconds => _lastElapsedSeconds;
+
+  /// The slot-local time at which the current loop leg began, in seconds.
+  @internal
+  double get cycleStartSeconds => _cycleStartSeconds;
+
+  /// Whether this playback has already crossed [token] in its current leg.
+  @internal
+  bool hasPassedSync(Object token) {
+    for (var index = 0; index < _steps.length; index++) {
+      final step = _steps[index];
+      if (step is! StepSync<T> || step.token != token) continue;
+      if (_direction > 0 && _stepIndex > index) return true;
+      if (_direction < 0 && _stepIndex < index) return true;
+    }
+    return false;
+  }
+
+  /// Releases the playback past the current [StepSync].
   ///
   /// Called by [TrackController] when all active tracks have reached their
   /// sync step and are ready to advance together.
@@ -196,11 +329,12 @@ class StepPlayback<T extends Object> {
       final completionSeconds = _completionTime(localSeconds);
       _sample(completionSeconds);
       _segmentStartSeconds += completionSeconds;
+      _recordForwardSegmentDuration(completionSeconds);
 
-      // If the current step is a SyncStep, enter waitForSync instead of
+      // If the current step is a StepSync, enter waitForSync instead of
       // advancing. The TrackController will call releaseSync() when all
       // tracks are synchronized.
-      if (_steps[_stepIndex] is SyncStep<T>) {
+      if (_steps[_stepIndex] is StepSync<T>) {
         _isWaitingForSync = true;
         return false;
       }
@@ -234,6 +368,7 @@ class StepPlayback<T extends Object> {
       final completionSeconds = _completionTime(localSeconds);
       _sample(completionSeconds);
       _segmentStartSeconds += completionSeconds;
+      _recordForwardSegmentDuration(completionSeconds);
       _advanceStep();
 
       if (_segmentStartSeconds > elapsedSeconds) return _isDone;
@@ -247,11 +382,15 @@ class StepPlayback<T extends Object> {
     _currentVelocities = List.of(_initialVelocities);
     _stepIndex = 0;
     _direction = 1;
+    _cycle = 0;
     _cycleStartSeconds = 0;
     _segmentStartSeconds = 0;
     _lastElapsedSeconds = 0;
     _isDone = false;
     _isWaitingForSync = false;
+    for (var i = 0; i < _stepStartSeconds.length; i++) {
+      _stepStartSeconds[i] = null;
+    }
     _startCurrentStep();
     _sample(0);
   }
@@ -267,13 +406,20 @@ class StepPlayback<T extends Object> {
         case LoopMode.loop:
           // The synthetic return step appended at construction has already
           // animated back to the start snapshot, so just continue the next
-          // cycle from there without jumping.
+          // cycle from there without jumping. Timelines without a target
+          // motion have no return step, so restart from their initial state.
+          if (!_hasReturnStep) {
+            _currentValues = List.of(_initialValues);
+            _currentVelocities = List.of(_initialVelocities);
+          }
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = 0;
         case LoopMode.pingPong:
           // Reverse direction from the last step.
           _direction = -1;
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = _steps.length - 1;
         case LoopMode.seamless:
           // Jump straight back to the start snapshot and replay. The timeline
@@ -281,6 +427,7 @@ class StepPlayback<T extends Object> {
           _currentValues = List.of(_initialValues);
           _currentVelocities = List.of(_initialVelocities);
           _cycleStartSeconds = _segmentStartSeconds;
+          _cycle++;
           _stepIndex = 0;
       }
     } else if (_direction < 0 && _stepIndex < 0) {
@@ -292,6 +439,12 @@ class StepPlayback<T extends Object> {
     }
 
     _startCurrentStep();
+  }
+
+  void _recordForwardSegmentDuration(double seconds) {
+    if (_direction > 0) {
+      _forwardSegmentSeconds[_stepIndex] = seconds;
+    }
   }
 
   int get _dimensions => _initialValues.length;
@@ -319,7 +472,7 @@ class StepPlayback<T extends Object> {
     final motions = _motionsOrNull(stepMotion, stepPerDim);
     assert(
       motions != null,
-      'Step has no motion and no fallback motion was provided. '
+      'TrackStep has no motion and no fallback motion was provided. '
       'Either pass a motion to the step or set a default motion on the Track.',
     );
     return motions!;
@@ -339,6 +492,7 @@ class StepPlayback<T extends Object> {
       _startReverseStep();
       return;
     }
+    _stepStartSeconds[_stepIndex] = _segmentStartSeconds;
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
       StepTo<T>(:final value, :final motion, :final motionPerDimension) => () {
@@ -392,7 +546,7 @@ class StepPlayback<T extends Object> {
               ),
           ];
         }(),
-      SyncStep<T>() => [
+      StepSync<T>() => [
           for (final value in _currentValues)
             _HoldSimulation(value: value, duration: 0),
         ],
@@ -407,12 +561,24 @@ class StepPlayback<T extends Object> {
         _stepIndex > 0 ? _waypoints[_stepIndex - 1] : _initialValues;
     final step = _steps[_stepIndex];
     final motions = switch (step) {
-      StepTo<T>(:final motion, :final motionPerDimension) ||
-      StepAt<T>(:final motion, :final motionPerDimension) =>
+      StepTo<T>(:final motion, :final motionPerDimension) =>
         _motionsOrNull(motion, motionPerDimension),
+      StepAt<T>(:final motion, :final motionPerDimension) => () {
+          final resolved = _motionsOrNull(motion, motionPerDimension);
+          final forwardSeconds = _forwardSegmentSeconds[_stepIndex];
+          if (resolved == null || forwardSeconds == null) return resolved;
+          return [
+            for (final motion in resolved)
+              motion.scaleTo(
+                Duration(
+                  microseconds: (forwardSeconds * 1000000).round(),
+                ),
+              ),
+          ];
+        }(),
       StepFree<T>() => null,
       StepHold<T>() => null,
-      SyncStep<T>() => null,
+      StepSync<T>() => null,
     };
 
     if (motions != null) {
@@ -439,6 +605,8 @@ class StepPlayback<T extends Object> {
   }
 
   bool _moveToScheduledStepIfDue(double elapsedSeconds) {
+    if (_direction < 0) return false;
+
     final nextStepIndex = _stepIndex + _direction;
     if (nextStepIndex < 0 || nextStepIndex >= _steps.length) return false;
 
@@ -448,6 +616,7 @@ class StepPlayback<T extends Object> {
       if (elapsedSeconds < absoluteAt) return false;
 
       _sample(absoluteAt - _segmentStartSeconds);
+      _recordForwardSegmentDuration(absoluteAt - _segmentStartSeconds);
       _segmentStartSeconds = absoluteAt;
       _advanceStep();
       return true;

@@ -8,17 +8,17 @@ import 'util.dart';
 
 void main() {
   // ─────────────────────────────────────────────────────────────────────────
-  // A. StepPlayback with SyncStep (unit-level, no widgets)
+  // A. StepPlayback with StepSync (unit-level, no widgets)
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('StepPlayback SyncStep', () {
+  group('StepPlayback StepSync', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     test('A1: single sync step blocks playback', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -39,7 +39,7 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -68,9 +68,9 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
-          const SyncStep(token: #phaseC),
+          const StepSync(token: #phaseC),
           const StepTo(3.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -100,9 +100,9 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
-          const SyncStep(token: #phaseC),
+          const StepSync(token: #phaseC),
           const StepTo(3.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -120,7 +120,7 @@ void main() {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ],
         converter: MotionConverter.single,
@@ -165,12 +165,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #phaseB),
+          const StepSync(token: #phaseB),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -205,12 +205,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #x),
+          const StepSync(token: #x),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #y),
+          const StepSync(token: #y),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -241,12 +241,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phase2),
+          const StepSync(token: #phase2),
           const StepTo(2.0, motion: linear50),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #phase2),
+          const StepSync(token: #phase2),
           const StepTo(2.0, motion: linear50),
         ]),
       ]);
@@ -260,18 +260,19 @@ void main() {
       expect(controller.isAnimating, isFalse);
     });
 
-    testWidgets('B9: stop and resume preserves sync state', (tester) async {
+    testWidgets('B9: stop(canceled) and re-animate rebuilds sync state',
+        (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear150),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -290,12 +291,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear100),
         ]),
       ]);
@@ -318,12 +319,12 @@ void main() {
       controller.animate([
         trackA([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
         trackB([
           const StepTo(1.0, motion: linear50),
-          const SyncStep(token: #barrier),
+          const StepSync(token: #barrier),
           const StepTo(2.0, motion: linear50),
         ]),
         trackC([
@@ -348,6 +349,284 @@ void main() {
       expect(controller.value(trackC), lessThan(5.0));
 
       controller.stop(canceled: true);
+    });
+
+    testWidgets('B11: three tracks wait for the slowest participant',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear100),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), lessThan(1));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 10));
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), greaterThan(1));
+      expect(controller.value(trackC), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('B12: stopped participant no longer blocks the barrier',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      controller.stop(tracks: [trackC], canceled: true);
+
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('stopping the last missing participant releases waiters',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      controller.stop(tracks: [trackC], canceled: true);
+      await tester.pump(const Duration(milliseconds: 10));
+
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackB), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('stopping all tracks clears sync state for later animations',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #oldBarrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #oldBarrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+
+      controller.stop(canceled: true);
+      expect(controller.isAnimating, isFalse);
+
+      controller.animate([
+        trackA([
+          const StepTo(3, motion: linear50),
+          const StepSync(token: #freshBarrier),
+          const StepTo(4, motion: linear50),
+        ]),
+        trackB([
+          const StepTo(3, motion: linear50),
+          const StepSync(token: #freshBarrier),
+          const StepTo(4, motion: linear50),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(controller.value(trackA), closeTo(4, error));
+      expect(controller.value(trackB), closeTo(4, error));
+      expect(controller.isAnimating, isFalse);
+    });
+
+    testWidgets('graceful stop does not release past active participants',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final springTrack = Track<double>(
+        MotionConverter.single,
+        initial: 0.0,
+        motion: const CupertinoMotion.smooth(),
+      );
+      final trackC = Track<double>(MotionConverter.single, initial: 0.0);
+
+      controller.animate([
+        springTrack([
+          const StepTo(1),
+          const StepSync(token: #barrier),
+          const StepTo(2),
+        ]),
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackC([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      controller.stop(tracks: [springTrack]);
+
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackC), lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.value(trackA), greaterThan(1));
+      expect(controller.value(trackC), greaterThan(1));
+
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('B13: redirecting a waiting participant avoids deadlock',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear150),
+          const StepSync(token: #barrier),
+          const StepTo(2, motion: linear100),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(controller.value(trackA), closeTo(1, error));
+
+      controller.animate([trackA.to(3, motion: linear100)]);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), greaterThan(1));
+
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(controller.value(trackB), greaterThan(1));
+
+      await tester.pumpAndSettle();
+      expect(controller.value(trackA), closeTo(3, error));
+      expect(controller.value(trackB), closeTo(2, error));
+    });
+
+    testWidgets('B14: onSyncReleased fires once per token release',
+        (tester) async {
+      final recordingController = _RecordingTrackController(vsync: tester);
+      controller = recordingController;
+
+      controller.animate([
+        trackA([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #first),
+          const StepTo(2, motion: linear50),
+          const StepSync(token: #second),
+          const StepTo(3, motion: linear50),
+        ]),
+        trackB([
+          const StepTo(1, motion: linear50),
+          const StepSync(token: #first),
+          const StepTo(2, motion: linear50),
+          const StepSync(token: #second),
+          const StepTo(3, motion: linear50),
+        ]),
+      ]);
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(recordingController.releasedTokens, [#first, #second]);
     });
   });
 
@@ -623,8 +902,8 @@ void main() {
         final initial = controller.value(offset);
         expect(initial, Offset.zero);
 
-        // This should not throw "List<Step<Object>> is not a subtype of
-        // List<Step<Offset>>"
+        // This should not throw "List<TrackStep<Object>> is not a subtype of
+        // List<TrackStep<Offset>>"
         controller.playPhases(
           TrackPhaseTimeline({
             'phase1': [offset.to(const Offset(50, 50), motion: linear100)],
@@ -730,4 +1009,15 @@ void main() {
       },
     );
   });
+}
+
+class _RecordingTrackController extends TrackController {
+  _RecordingTrackController({required super.vsync});
+
+  final releasedTokens = <Object>[];
+
+  @override
+  void onSyncReleased(Object token) {
+    releasedTokens.add(token);
+  }
 }

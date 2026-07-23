@@ -104,9 +104,15 @@ void main() {
       );
 
       final future = controller.play([
-        const Step.to(10.0, motion: Motion.linear(Duration(milliseconds: 100))),
-        const Step.hold(Duration(milliseconds: 100)),
-        const Step.to(0.0, motion: Motion.linear(Duration(milliseconds: 100))),
+        const TrackStep.to(
+          10,
+          motion: Motion.linear(Duration(milliseconds: 100)),
+        ),
+        const TrackStep.hold(Duration(milliseconds: 100)),
+        const TrackStep.to(
+          0,
+          motion: Motion.linear(Duration(milliseconds: 100)),
+        ),
       ]);
 
       expect(future, isA<TickerFuture>());
@@ -136,8 +142,8 @@ void main() {
       unawaited(
         controller.play(
           [
-            const Step.to(10, motion: _LyingDurationMotion()),
-            const Step.to(
+            const TrackStep.to(10, motion: _LyingDurationMotion()),
+            const TrackStep.to(
               20,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
@@ -169,8 +175,11 @@ void main() {
 
       unawaited(
         controller.play([
-          const Step.free(motion: _FiniteFreeMotion()),
-          const Step.to(0, motion: Motion.linear(Duration(milliseconds: 100))),
+          const TrackStep.free(motion: _FiniteFreeMotion()),
+          const TrackStep.to(
+            0,
+            motion: Motion.linear(Duration(milliseconds: 100)),
+          ),
         ]),
       );
 
@@ -185,7 +194,7 @@ void main() {
     });
 
     testWidgets(
-        'Step.at interrupts an unfinished segment at its scheduled time',
+        'TrackStep.at interrupts an unfinished segment at its scheduled time',
         (tester) async {
       final steps = <int>[];
       controller = MotionController<double>(
@@ -198,8 +207,8 @@ void main() {
       unawaited(
         controller.play(
           [
-            const Step.to(10, motion: _LyingDurationMotion()),
-            const Step.at(
+            const TrackStep.to(10, motion: _LyingDurationMotion()),
+            const TrackStep.at(
               Duration(milliseconds: 120),
               0,
               motion: Motion.linear(Duration(milliseconds: 100)),
@@ -231,11 +240,11 @@ void main() {
       unawaited(
         controller.play(
           [
-            const Step.to(
+            const TrackStep.to(
               10,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
-            const Step.to(
+            const TrackStep.to(
               20,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
@@ -261,7 +270,7 @@ void main() {
       unawaited(
         controller.play(
           [
-            const Step.to(
+            const TrackStep.to(
               10,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
@@ -290,11 +299,11 @@ void main() {
       unawaited(
         controller.play(
           [
-            const Step.to(
+            const TrackStep.to(
               10,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
-            const Step.to(
+            const TrackStep.to(
               20,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),

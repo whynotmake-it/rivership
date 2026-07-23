@@ -7,11 +7,10 @@ import 'package:motor/src/simulations/no_motion_simulation.dart';
 export 'motion_curve.dart';
 
 /// {@template Motion}
-/// A motion pattern such as spring physics or duration-based curves.
+/// The root of motor's motion family.
 ///
-/// [Motion] provides a foundation for creating various types of animation
-/// behaviors. Concrete implementations of this class define specific motion
-/// patterns like spring physics or duration-based curves.
+/// Concrete motions extend [Motion] (target-based) or [FreeMotion]
+/// (self-directed); this root is sealed.
 /// {@endtemplate}
 @immutable
 sealed class MotionBase {
@@ -37,6 +36,11 @@ sealed class MotionBase {
   bool get unboundedWillSettle;
 
   /// Returns a motion wrapper that completes in exactly [duration].
+  ///
+  /// Wrappers around motions with an unknown duration probe their simulation
+  /// on each `createSimulation` call. Construct wrappers once as fields or
+  /// constants and reuse them instead of rebuilding them in `build` or per
+  /// frame; wrappers are immutable and compare by value.
   MotionBase scaleTo(Duration duration);
 
   /// Estimates when [simulation] finishes using exponential search followed by
@@ -483,15 +487,20 @@ abstract class SpringMotion extends Motion {
     if (other is SpringMotion) {
       return description.damping == other.description.damping &&
           description.mass == other.description.mass &&
-          description.stiffness == other.description.stiffness;
+          description.stiffness == other.description.stiffness &&
+          snapToEnd == other.snapToEnd;
     }
     return false;
   }
 
   /// Returns a hash code for this object.
   @override
-  int get hashCode =>
-      Object.hash(description.damping, description.mass, description.stiffness);
+  int get hashCode => Object.hash(
+        description.damping,
+        description.mass,
+        description.stiffness,
+        snapToEnd,
+      );
 
   /// Returns a string representation of this object.
   @override
@@ -634,8 +643,8 @@ class CupertinoMotion extends SpringMotion {
     bool? snapToEnd,
   }) {
     return CupertinoMotion(
-      duration: duration ?? description.duration,
-      bounce: bounce ?? description.bounce,
+      duration: duration ?? this.duration,
+      bounce: bounce ?? this.bounce,
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
@@ -1245,11 +1254,19 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      parentDuration: estimateSimulationDuration(
-        scaledSim,
-        fallback: const Duration(seconds: 1),
-        max: const Duration(seconds: 10),
-      ),
+      parentDuration: switch (parent.duration) {
+        final d? when !parent.needsSettle => d.toSeconds(),
+        final d? => estimateSimulationDuration(
+            scaledSim,
+            fallback: d,
+            max: const Duration(seconds: 10),
+          ),
+        null => estimateSimulationDuration(
+            scaledSim,
+            fallback: const Duration(seconds: 1),
+            max: const Duration(seconds: 10),
+          ),
+      },
     );
   }
 
@@ -1337,6 +1354,9 @@ class _TrimmedSimulation extends Simulation {
 }
 
 /// Extension methods for [Motion] to provide convenient trimming functionality.
+///
+/// Motion wrappers are immutable value objects; construct and reuse them
+/// because unknown-duration parents are probed on each `createSimulation`.
 ///
 /// **Important**: Trimming behavior varies by motion type:
 /// * **Deterministic motions** (like [CurvedMotion]): Trimming is exact and

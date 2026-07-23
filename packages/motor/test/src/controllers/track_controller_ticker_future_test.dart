@@ -94,8 +94,8 @@ void main() {
       // in-flight future is shared, reflecting the whole controller settling.
       final second = controller.animate([
         scale([
-          const Step.to(1, motion: linear100),
-          const Step.to(2, motion: linear100),
+          const TrackStep.to(1, motion: linear100),
+          const TrackStep.to(2, motion: linear100),
         ]),
       ]);
       expect(identical(first, second), isTrue);
@@ -122,9 +122,9 @@ void main() {
       controller.play(
         TrackTimeline([
           opacity([
-            const Step.to(1, motion: linear100),
-            const Step.to(0, motion: linear100),
-            const Step.to(1, motion: linear100),
+            const TrackStep.to(1, motion: linear100),
+            const TrackStep.to(0, motion: linear100),
+            const TrackStep.to(1, motion: linear100),
           ]),
         ]),
       );

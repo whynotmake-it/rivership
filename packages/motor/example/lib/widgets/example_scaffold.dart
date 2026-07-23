@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -8,6 +9,7 @@ class ExamplePage extends StatelessWidget {
     required this.description,
     required this.child,
     this.action,
+    this.next,
     this.glow = true,
     super.key,
   });
@@ -15,6 +17,7 @@ class ExamplePage extends StatelessWidget {
   final String title;
   final String description;
   final Widget? action;
+  final ({String label, String routeName})? next;
   final Widget child;
   final bool glow;
 
@@ -68,6 +71,36 @@ class ExamplePage extends StatelessWidget {
                       ],
                       const SizedBox(height: 20),
                       child,
+                      if (next case final next?) ...[
+                        const SizedBox(height: 32),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: CupertinoButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 8,
+                            ),
+                            // Replace instead of push: walking the next-chain
+                            // should not stack up example routes, and back
+                            // should always return to the home grid.
+                            onPressed: () => context.replaceRoute(
+                              NamedRoute(next.routeName),
+                            ),
+                            child: Text(
+                              'next: ${next.label} →',
+                              style: TextStyle(
+                                color: t.textSecondary,
+                                fontSize: 13,
+                                fontFamily: 'JetBrains Mono',
+                                fontFamilyFallback: const [
+                                  'monospace',
+                                  'Menlo',
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -167,4 +200,27 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GhostPill(text, icon: icon);
+}
+
+/// The monospace "aha" caption that closes every explainer page, so the arc
+/// reads consistently.
+class TakeawayText extends StatelessWidget {
+  const TakeawayText(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
+    return Text(
+      text,
+      style: TextStyle(
+        color: t.textTertiary,
+        fontSize: 12,
+        height: 1.45,
+        fontFamily: 'JetBrains Mono',
+        fontFamilyFallback: const ['monospace', 'Menlo'],
+      ),
+    );
+  }
 }
