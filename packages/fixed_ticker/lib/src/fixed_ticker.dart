@@ -207,17 +207,18 @@ class _SharedTickScheduler {
     if (existingGroup?.intervalFor(ticker) == interval) return;
     unsubscribe(ticker);
 
-    _SharedTickGroup? group;
-    for (final candidate in _groups) {
-      if (candidate.canUse(interval)) {
-        group = candidate;
-        break;
-      }
+    final compatibleGroups = _groups
+        .where((candidate) => candidate.canUse(interval))
+        .toList();
+    final group = compatibleGroups.firstOrNull;
+    final selectedGroup = group ?? (_SharedTickGroup(this, interval)..start());
+    _groups.add(selectedGroup);
+    selectedGroup.prepareBase(interval);
+    for (final compatibleGroup in compatibleGroups.skip(1)) {
+      selectedGroup.absorb(compatibleGroup);
     }
-    group ??= _SharedTickGroup(this, interval)..start();
-    _groups.add(group);
-    group.add(ticker, interval);
-    _tickerGroups[ticker] = group;
+    selectedGroup.add(ticker, interval);
+    _tickerGroups[ticker] = selectedGroup;
   }
 
   void unsubscribe(FixedTicker ticker) {
@@ -240,10 +241,16 @@ class _SharedTickGroup {
 
   Timer? _timer;
   int _tick = 0;
+  Duration? _pendingBaseInterval;
+  final Set<FixedTicker> _joinOnRebase = <FixedTicker>{};
+  final Set<FixedTicker> _alignOnRebase = <FixedTicker>{};
+  final Set<_SharedTickGroup> _groupsToAbsorbOnRebase = <_SharedTickGroup>{};
+  final Map<FixedTicker, Timer> _pendingTimers = <FixedTicker, Timer>{};
 
   bool canUse(Duration interval) {
-    return _harmonicMultiple(interval, baseInterval) != null ||
-        _harmonicMultiple(baseInterval, interval) != null;
+    final effectiveBase = _pendingBaseInterval ?? baseInterval;
+    return _harmonicMultiple(interval, effectiveBase) != null ||
+        _harmonicMultiple(effectiveBase, interval) != null;
   }
 
   Duration? intervalFor(FixedTicker ticker) {
@@ -254,10 +261,80 @@ class _SharedTickGroup {
     _timer = Timer.periodic(baseInterval, _handleTick);
   }
 
+  void prepareBase(Duration interval) {
+    final effectiveBase = _pendingBaseInterval ?? baseInterval;
+    if (interval < effectiveBase &&
+        _harmonicMultiple(effectiveBase, interval) != null) {
+      _pendingBaseInterval = interval;
+    }
+  }
+
+  void absorb(_SharedTickGroup other) {
+    if (identical(this, other)) return;
+
+    prepareBase(other._pendingBaseInterval ?? other.baseInterval);
+    if (_pendingBaseInterval != null) {
+      _groupsToAbsorbOnRebase.add(other);
+      return;
+    }
+    _absorbNow(other);
+  }
+
+  void _absorbNow(_SharedTickGroup other) {
+    other._timer?.cancel();
+    other._timer = null;
+    scheduler.removeGroup(other);
+
+    for (final entry in other._subscriptions.entries) {
+      final ticker = entry.key;
+      final interval = entry.value.interval;
+      prepareBase(interval);
+      scheduler._tickerGroups[ticker] = this;
+      if (_pendingBaseInterval != null) {
+        _subscriptions[ticker] = _SharedTickSubscription(interval, 0, 0);
+        _alignOnRebase.add(ticker);
+      } else {
+        final tickMultiple = _harmonicMultiple(interval, baseInterval)!;
+        _subscriptions[ticker] = _SharedTickSubscription(
+          interval,
+          tickMultiple,
+          (_tick ~/ tickMultiple + 1) * tickMultiple,
+        );
+      }
+    }
+    other._subscriptions.clear();
+    other._joinOnRebase.clear();
+    other._alignOnRebase.clear();
+    for (final timer in other._pendingTimers.values) {
+      timer.cancel();
+    }
+    other._pendingTimers.clear();
+    other._groupsToAbsorbOnRebase.clear();
+  }
+
   void add(FixedTicker ticker, Duration interval) {
-    final baseMultiple = _harmonicMultiple(baseInterval, interval);
-    if (baseMultiple != null && interval < baseInterval) {
-      _rebase(interval);
+    final effectiveBase = _pendingBaseInterval ?? baseInterval;
+    final baseMultiple = _harmonicMultiple(effectiveBase, interval);
+    if (baseMultiple != null && interval < effectiveBase) {
+      prepareBase(interval);
+    }
+
+    final pendingBaseInterval = _pendingBaseInterval;
+    if (pendingBaseInterval != null) {
+      final tickMultiple = _harmonicMultiple(interval, pendingBaseInterval)!;
+      _subscriptions[ticker] = _SharedTickSubscription(
+        interval,
+        tickMultiple,
+        0,
+      );
+      _joinOnRebase.add(ticker);
+      _pendingTimers[ticker] = Timer.periodic(interval, (_) {
+        if (_joinOnRebase.contains(ticker) &&
+            _subscriptions.containsKey(ticker)) {
+          ticker._handleSharedTick();
+        }
+      });
+      return;
     }
 
     final tickMultiple = _harmonicMultiple(interval, baseInterval)!;
@@ -270,6 +347,9 @@ class _SharedTickGroup {
 
   void remove(FixedTicker ticker) {
     _subscriptions.remove(ticker);
+    _joinOnRebase.remove(ticker);
+    _alignOnRebase.remove(ticker);
+    _pendingTimers.remove(ticker)?.cancel();
     if (_subscriptions.isEmpty) {
       _timer?.cancel();
       _timer = null;
@@ -277,19 +357,52 @@ class _SharedTickGroup {
     }
   }
 
-  void _rebase(Duration interval) {
+  void _rebase(Duration interval, List<FixedTicker> dueTickers) {
     _timer?.cancel();
+    for (final group in _groupsToAbsorbOnRebase.toList()) {
+      _absorbNow(group);
+    }
+    _groupsToAbsorbOnRebase.clear();
+    final oldBaseInterval = baseInterval;
+    final oldTick = _tick;
+    final baseMultiple = _harmonicMultiple(oldBaseInterval, interval)!;
     baseInterval = interval;
-    _tick = 0;
-    for (final subscription in _subscriptions.values) {
+    _tick = oldTick * baseMultiple;
+    for (final entry in _subscriptions.entries) {
+      final ticker = entry.key;
+      final subscription = entry.value;
       final tickMultiple = _harmonicMultiple(
         subscription.interval,
         interval,
       )!;
-      subscription
-        ..tickMultiple = tickMultiple
-        ..nextTick = tickMultiple;
+      if (_joinOnRebase.contains(ticker)) {
+        dueTickers.add(ticker);
+        subscription
+          ..tickMultiple = tickMultiple
+          ..nextTick = _tick + tickMultiple;
+      } else if (_alignOnRebase.contains(ticker)) {
+        var nextTick =
+            ((_tick + tickMultiple - 1) ~/ tickMultiple) * tickMultiple;
+        if (nextTick == _tick) {
+          dueTickers.add(ticker);
+          nextTick += tickMultiple;
+        }
+        subscription
+          ..tickMultiple = tickMultiple
+          ..nextTick = nextTick;
+      } else {
+        subscription
+          ..tickMultiple = tickMultiple
+          ..nextTick *= baseMultiple;
+      }
     }
+    _pendingBaseInterval = null;
+    _joinOnRebase.clear();
+    _alignOnRebase.clear();
+    for (final timer in _pendingTimers.values) {
+      timer.cancel();
+    }
+    _pendingTimers.clear();
     start();
   }
 
@@ -303,6 +416,11 @@ class _SharedTickGroup {
 
       dueTickers.add(ticker);
       subscription.nextTick += subscription.tickMultiple;
+    }
+
+    final pendingBaseInterval = _pendingBaseInterval;
+    if (pendingBaseInterval != null) {
+      _rebase(pendingBaseInterval, dueTickers);
     }
 
     for (final ticker in dueTickers) {
