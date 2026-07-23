@@ -250,6 +250,8 @@ class _SharedTickDemo extends StatefulWidget {
 
 class _SharedTickDemoState extends State<_SharedTickDemo>
     with FixedTickerProviderStateMixin {
+  static const _lateStartDelay = Duration(milliseconds: 1500);
+
   late final Ticker _firstTicker;
   late final Ticker _secondTicker;
   Timer? _delayedStart;
@@ -272,10 +274,7 @@ class _SharedTickDemoState extends State<_SharedTickDemo>
     _firstTicker = createTicker((_) => _recordTick(first: true));
     _secondTicker = createTicker((_) => _recordTick(first: false));
     unawaited(_firstTicker.start());
-    _delayedStart = Timer(
-      const Duration(milliseconds: 750),
-      _startSecondTicker,
-    );
+    _delayedStart = Timer(_lateStartDelay, _startSecondTicker);
   }
 
   void _recordTick({required bool first}) {
@@ -301,10 +300,7 @@ class _SharedTickDemoState extends State<_SharedTickDemo>
     _delayedStart?.cancel();
     if (_secondTicker.isActive) _secondTicker.stop();
     setState(() => _secondFrame = null);
-    _delayedStart = Timer(
-      const Duration(milliseconds: 750),
-      _startSecondTicker,
-    );
+    _delayedStart = Timer(_lateStartDelay, _startSecondTicker);
   }
 
   @override
@@ -339,7 +335,7 @@ class _SharedTickDemoState extends State<_SharedTickDemo>
           ),
           const SizedBox(height: 6),
           Text(
-            'Ticker B starts 750ms late. Both run at 2 fps, then land on the '
+            'Ticker B starts 1.5s late. Both run at 2 fps, then land on the '
             'same frame without maintaining separate timer phases.',
             style: TextStyle(fontSize: 13, color: secondaryLabel),
           ),
