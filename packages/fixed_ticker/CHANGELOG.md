@@ -1,6 +1,8 @@
-## 0.1.1
+## 0.2.0
 
- - **FEAT**: synchronize equal and harmonic fixed ticker rates through a shared scheduler by default, with per-ticker and provider opt-out controls (#300).
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: synchronize equal and harmonic fixed ticker rates through a shared scheduler by default. Use the per-ticker or provider opt-out controls to retain independent scheduling (#300).
 
 ## 0.1.0
 

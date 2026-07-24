@@ -32,7 +32,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  fixed_ticker: ^0.1.0
+  fixed_ticker: ^0.2.0
 ```
 
 ## Usage
