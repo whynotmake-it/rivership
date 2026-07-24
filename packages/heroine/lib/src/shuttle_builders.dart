@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 ///
 /// Basically a callable class that matches the signature of
 /// [HeroFlightShuttleBuilder] and offers a convenience method.
+// ignore: deprecated_member_use
 abstract class HeroineShuttleBuilder with EquatableMixin {
   /// Creates a new [HeroineShuttleBuilder].
   const HeroineShuttleBuilder({
