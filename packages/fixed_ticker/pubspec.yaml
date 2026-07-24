@@ -1,6 +1,6 @@
 name: fixed_ticker
 description: A drop-in Ticker replacement that uses Timer.periodic to gate frame callbacks at a fixed interval.
-version: 0.1.0
+version: 0.1.1
 resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/fixed_ticker
 homepage: https://whynotmake.it

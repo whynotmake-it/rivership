@@ -1,3 +1,8 @@
+## 1.0.0-dev.4
+
+ - **FIX**(snaptest): preserve active device variant (#303).
+ - **FEAT**: add `crop` parameter to allow cropping snapshots.
+
 ## 1.0.0-dev.3
 
 > Note: This release has breaking changes.
