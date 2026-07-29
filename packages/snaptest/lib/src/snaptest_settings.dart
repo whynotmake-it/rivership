@@ -55,6 +55,7 @@ import 'package:snaptest/src/constants.dart';
 ///   },
 /// );
 /// ```
+// ignore: deprecated_member_use
 class SnaptestSettings with EquatableMixin {
   /// Creates screenshot settings for debugging and testing.
   ///
