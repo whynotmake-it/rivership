@@ -84,16 +84,34 @@ class _FlightController {
     }
 
     // Animate position and size to the destination
-    _spec.controllingHero._motionController
-      ?..motion = _spec.motion
-      ..animateTo(
-        _spec.toHeroLocation,
-        from: resetBoundingBox ? _spec.fromHeroLocation : null,
-        withVelocity: switch (fromHeroVelocity) {
-          final v? => HeroineLocation._velocity(v),
-          null => null,
-        },
+    if (_spec.controllingHero._motionController case final mc?) {
+      mc
+        ..motion = _spec.motion
+        ..animateTo(
+          _spec.toHeroLocation,
+          from: resetBoundingBox ? _spec.fromHeroLocation : null,
+          withVelocity: switch (fromHeroVelocity) {
+            final v? => HeroineLocation._velocity(v),
+            null => null,
+          },
+        );
+    } else {
+      // Controller was lost mid-flight (e.g. during divert). Recreate it.
+      _spec.controllingHero._createMotionController(
+        _spec,
+        _onSpringAnimationStatusChanged,
       );
+      _spec.controllingHero._motionController
+        ?..motion = _spec.motion
+        ..animateTo(
+          _spec.toHeroLocation,
+          from: resetBoundingBox ? _spec.fromHeroLocation : null,
+          withVelocity: switch (fromHeroVelocity) {
+            final v? => HeroineLocation._velocity(v),
+            null => null,
+          },
+        );
+    }
   }
 
   /// Called on every frame when continuous target tracking is enabled.
@@ -163,9 +181,9 @@ class _FlightController {
     required _HeroineState to,
   }) {
     if (from == to) return;
-    to._linkRedirectedMotionController(
-      from._motionController!,
-    );
+    final controller = from._motionController;
+    if (controller == null) return;
+    to._linkRedirectedMotionController(controller);
     from._unlinkMotionControllers();
   }
 

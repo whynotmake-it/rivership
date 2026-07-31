@@ -149,6 +149,76 @@ class Heroine extends StatefulWidget {
   /// transition.
   final bool pauseTickersDuringFlight;
 
+  /// Returns flight information for the heroine associated with
+  /// [heroineContext], if it is currently participating in a flight.
+  ///
+  /// The returned [HeroineFlightInfo.handoffBoundingBox] provides the
+  /// predicted position of the flying widget at the moment the route
+  /// transition animation completes (handoff), taking the current spring
+  /// simulation state into account.
+  ///
+  /// Returns `null` if the heroine is not currently in flight.
+  static HeroineFlightInfo? flightInfoOf(BuildContext heroineContext) {
+    // heroineContext is the _HeroineState's own context (a StatefulElement).
+    // findAncestorStateOfType won't work from own context — it walks from
+    // the parent element upward, missing the state itself.
+    final element = heroineContext as StatefulElement;
+    final state = element.state as _HeroineState;
+    final spec = state._currentFlightSpec;
+    if (spec == null) return null;
+    final mc = state._motionController;
+
+    // Without a motion controller, fall back to the raw target position.
+    if (mc == null) {
+      return HeroineFlightInfo(
+        handoffBoundingBox: spec.toHeroLocation.boundingBox,
+      );
+    }
+
+    // If there is no remaining animation time or the motion isn't a spring,
+    // use the target as-is.
+    final remaining =
+        spec.duration - (mc.lastElapsedDuration ?? Duration.zero);
+    if (remaining <= Duration.zero) {
+      return HeroineFlightInfo(
+        handoffBoundingBox: spec.toHeroLocation.boundingBox,
+      );
+    }
+
+    final description = switch (mc.motion) {
+      final SpringMotion sm => sm.description,
+      _ => null,
+    };
+    if (description == null) {
+      return HeroineFlightInfo(
+        handoffBoundingBox: spec.toHeroLocation.boundingBox,
+      );
+    }
+
+    // Predict the spring state at handoff by running a SpringSimulation per
+    // dimension forward from the current state.
+    final converter = _HeroineLocationConverter();
+    final current = converter.normalize(mc.value);
+    final target = converter.normalize(spec.toHeroLocation);
+    final velocities = mc.velocities;
+    final remainingSeconds =
+        remaining.inMicroseconds / Duration.microsecondsPerSecond;
+
+    final predicted = <double>[];
+    for (var i = 0; i < current.length; i++) {
+      final sim = SpringSimulation(
+        description,
+        current[i],
+        target[i],
+        velocities[i],
+      );
+      predicted.add(sim.x(remainingSeconds));
+    }
+
+    final result = converter.denormalize(predicted);
+    return HeroineFlightInfo(handoffBoundingBox: result.boundingBox);
+  }
+
   @override
   State<Heroine> createState() => _HeroineState();
 }
@@ -160,6 +230,10 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   /// Controller for animating the center position.
   MotionController<HeroineLocation>? _motionController;
+
+  /// The flight specification when this heroine is participating in a flight.
+  /// Set in [_startFlight], cleared in [_endFlight].
+  _FlightSpec? _currentFlightSpec;
 
   /// Initializes motion controllers for this hero's flight.
   ///
@@ -201,6 +275,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   /// Starts a flight for this heroine.
   void _startFlight(_FlightSpec spec) {
+    _currentFlightSpec = spec;
     final placeholderSize = switch (context.findRenderObject()) {
       final RenderBox box => box.size,
       _ => Size.zero,
@@ -258,6 +333,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
 
   /// Ends the flight for this heroine.
   void _endFlight() {
+    _currentFlightSpec = null;
     if (!mounted) return;
 
     setState(() {

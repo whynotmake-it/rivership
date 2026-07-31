@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:heroine/heroine.dart';
 import 'package:motor/motor.dart';
 
@@ -9,6 +10,31 @@ part 'flight_spec.dart';
 part 'heroine_location.dart';
 part 'heroine_transition_details.dart';
 part 'heroine_widget.dart';
+
+// -----------------------------------------------------------------------------
+// HeroineFlightInfo
+// -----------------------------------------------------------------------------
+
+/// Information about an active heroine flight, accessible from
+/// [Heroine.flightInfoOf].
+///
+/// Provides the predicted position of the flying widget at the moment the
+/// route transition animation completes (handoff point). This is useful for
+/// shuttle builders that need to compute clipping geometry based on where the
+/// flying widget will be, rather than where it currently is.
+class HeroineFlightInfo {
+  /// Creates a [HeroineFlightInfo] with a predicted handoff bounding box.
+  const HeroineFlightInfo({required this.handoffBoundingBox});
+
+  /// The predicted bounding box of the flying widget (in navigator
+  /// coordinates) at the moment of handoff, taking the current spring
+  /// simulation state into account.
+  final Rect handoffBoundingBox;
+}
+
+// -----------------------------------------------------------------------------
+// DuplicateHeroinePolicy
+// -----------------------------------------------------------------------------
 
 /// Defines how to handle multiple [Heroine] widgets with the same [Heroine.tag]
 /// within a single route subtree.

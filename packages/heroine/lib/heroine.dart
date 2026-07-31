@@ -11,6 +11,10 @@ export 'package:motor/motor.dart'
         SpringMotion;
 
 export 'src/drag_dismissable.dart' show DragDismissable;
+export 'src/clipping/clipping_shuttle_builder.dart'
+    show ClippingShuttleBuilder;
+export 'src/clipping/over_heroine.dart'
+    show KeepDir, OverHeroine, OverHeroineScope;
 export 'src/heroine_route_mixin.dart'
     show HeroinePageRoute, HeroinePageRouteMixin, ReactToHeroineDismiss;
 export 'src/heroine_velocity.dart' show HeroineVelocity;
@@ -19,5 +23,6 @@ export 'src/heroines.dart'
         DuplicateHeroinePolicy,
         Heroine,
         HeroineController,
+        HeroineFlightInfo,
         HeroineTransitionDetails;
 export 'src/shuttle_builders.dart';
