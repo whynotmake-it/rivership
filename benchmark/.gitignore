@@ -1,0 +1,5 @@
+.dart_tool/
+.build/
+results/
+*.json
+!pubspec.yaml

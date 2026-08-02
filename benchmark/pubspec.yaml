@@ -1,0 +1,20 @@
+name: motor_benchmark
+description: Microbenchmarks comparing Motor to Flutter's AnimationController.
+publish_to: none
+resolution: workspace
+version: 0.0.1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  motor:
+    path: ../packages/motor
+
+dev_dependencies:
+  lintervention: ^0.3.1
