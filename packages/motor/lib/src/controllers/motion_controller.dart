@@ -109,7 +109,7 @@ class MotionController<T extends Object> extends Animation<T>
         ),
         _converter = converter,
         _initialValue = initialValue,
-        _motionPerDimension = List.of(motionPerDimension),
+        _motionPerDimension = List.of(motionPerDimension, growable: false),
         _animationBehavior = behavior {
     _inner = TrackController(
       vsync: vsync,

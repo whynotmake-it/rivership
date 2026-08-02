@@ -54,6 +54,9 @@ class TrackController extends Animation<TrackValueReader>
   final Map<Track, _TrackSlot> _slots = {};
   final Map<Track, int> _lastStepByTrack = {};
   final Set<Track> _activeTracks = {};
+  /// Reused each [_tick] so `onStep` can mutate [_activeTracks] safely without
+  /// allocating a fresh list every frame.
+  final List<Track> _activeTracksScratch = <Track>[];
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
   final Map<Track, Motion> _motionOverrides = {};
@@ -164,8 +167,7 @@ class TrackController extends Animation<TrackValueReader>
     final estimate =
         (tracker as MotionVelocityTracker<T>).getVelocityEstimate();
     if (estimate != null) {
-      _slots[track]!._velocityValues =
-          track.converter.normalize(estimate.perSecond);
+      _slots[track]!.setVelocity(estimate.perSecond);
     }
   }
 
@@ -751,13 +753,20 @@ class TrackController extends Animation<TrackValueReader>
   bool onPlaybackCompleted() => false;
 
   void _tick(Duration elapsed) {
-    final logicalElapsed = Duration(
-      microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
-    );
+    // Avoid a Duration alloc on the common path (speed == 1).
+    final logicalElapsed = _playbackSpeed == 1.0
+        ? elapsed
+        : Duration(
+            microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
+          );
     _lastElapsed = logicalElapsed;
     var allDone = true;
 
-    for (final track in _activeTracks.toList()) {
+    // Snapshot into a reused list: [onStep] may start/stop tracks mid-loop.
+    final tracks = _activeTracksScratch
+      ..clear()
+      ..addAll(_activeTracks);
+    for (final track in tracks) {
       final slot = _slots[track];
       if (slot == null) continue;
       if (!slot.tick(logicalElapsed)) {

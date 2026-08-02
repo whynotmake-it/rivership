@@ -6,26 +6,35 @@ class _TrackSlot<T extends Object> {
     required T initialValue,
     this.fallbackMotion,
     this.fallbackMotionPerDimension,
-  })  : _currentValues = converter.normalize(initialValue),
-        _velocityValues = List<double>.filled(
-          converter.normalize(initialValue).length,
-          0,
-        );
+  }) : _cachedValue = initialValue {
+    final normalized = converter.normalize(initialValue);
+    _currentValues = normalized;
+    _velocityValues = List<double>.filled(normalized.length, 0);
+    _cachedVelocity = converter.denormalize(_velocityValues);
+  }
 
   final MotionConverter<T> converter;
   final Motion? fallbackMotion;
   final List<Motion>? fallbackMotionPerDimension;
 
-  List<double> _currentValues;
-  List<double> _velocityValues;
+  late List<double> _currentValues;
+  late List<double> _velocityValues;
+  late T _cachedValue;
+  late T _cachedVelocity;
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
   Duration _inspectionStartOffset = Duration.zero;
 
-  T get value => converter.denormalize(_currentValues);
+  /// True while [_currentValues] / [_velocityValues] alias [StepPlayback]
+  /// buffers. Cleared on [stop] / [setValue] so the slot keeps a private copy.
+  var _borrowingPlaybackBuffers = false;
 
-  T get velocity => converter.denormalize(_velocityValues);
+  /// Eager denormalized value — refreshed after each sample, not on every read.
+  T get value => _cachedValue;
+
+  /// Eager denormalized velocity — refreshed after each sample.
+  T get velocity => _cachedVelocity;
 
   bool get isAnimating => _playback != _TrackSlotPlayback.idle;
 
@@ -43,17 +52,29 @@ class _TrackSlot<T extends Object> {
       _stepPlayback?.hasPassedSync(token) ?? false;
 
   void setValue(T value) {
+    _detachPlaybackBuffers();
     _currentValues = converter.normalize(value);
     _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _cachedValue = value;
+    _cachedVelocity = converter.denormalize(_velocityValues);
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
 
   void setValueWithVelocity(T value, T velocity) {
+    _detachPlaybackBuffers();
     _currentValues = converter.normalize(value);
     _velocityValues = converter.normalize(velocity);
+    _cachedValue = value;
+    _cachedVelocity = velocity;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
+  }
+
+  /// Updates velocity buffers from an external estimate (e.g. gesture tracking).
+  void setVelocity(T velocity) {
+    _velocityValues = converter.normalize(velocity);
+    _cachedVelocity = velocity;
   }
 
   void play(
@@ -76,9 +97,13 @@ class _TrackSlot<T extends Object> {
       fallbackMotionPerDimension: fallbackMotionPerDimension,
       estimateDurations: estimateDurations,
     );
-    _currentValues = List.of(_stepPlayback!.values);
-    _velocityValues = List.of(_stepPlayback!.velocities);
+    // Zero-copy: read through the playback buffers mutated in place each tick.
+    final buffers = _stepPlayback!.borrowStateBuffers();
+    _currentValues = buffers.$1;
+    _velocityValues = buffers.$2;
+    _borrowingPlaybackBuffers = true;
     _playback = _TrackSlotPlayback.chained;
+    _refreshCaches();
   }
 
   double _localSeconds(Duration elapsed) {
@@ -102,6 +127,7 @@ class _TrackSlot<T extends Object> {
       _TrackSlotPlayback.chained => _tickStepPlayback(seconds),
     };
 
+    _refreshCaches();
     if (done) {
       _playback = _TrackSlotPlayback.idle;
     }
@@ -115,10 +141,12 @@ class _TrackSlot<T extends Object> {
     }
 
     final seconds = _inspectionSeconds(elapsed);
-    return switch (_playback) {
+    final done = switch (_playback) {
       _TrackSlotPlayback.idle => true,
       _TrackSlotPlayback.chained => _seekStepPlayback(seconds),
     };
+    _refreshCaches();
+    return done;
   }
 
   /// Re-bases the controller axis around this slot's current local playhead.
@@ -134,19 +162,12 @@ class _TrackSlot<T extends Object> {
   }
 
   bool _tickStepPlayback(double seconds) {
-    final playback = _stepPlayback!;
-    final done = playback.advanceTo(seconds);
-    _currentValues = List.of(playback.values);
-    _velocityValues = List.of(playback.velocities);
-    return done;
+    // Buffers are aliased; advanceTo samples in place — no List.of.
+    return _stepPlayback!.advanceTo(seconds);
   }
 
   bool _seekStepPlayback(double seconds) {
-    final playback = _stepPlayback!;
-    final done = playback.seekTo(seconds);
-    _currentValues = List.of(playback.values);
-    _velocityValues = List.of(playback.velocities);
-    return done;
+    return _stepPlayback!.seekTo(seconds);
   }
 
   /// Redirects this slot to settle at its current value using the fallback
@@ -172,9 +193,26 @@ class _TrackSlot<T extends Object> {
   }
 
   void stop({bool canceled = false}) {
+    _detachPlaybackBuffers();
+    for (var i = 0; i < _velocityValues.length; i++) {
+      _velocityValues[i] = 0;
+    }
+    _cachedVelocity = converter.denormalize(_velocityValues);
     _stepPlayback = null;
-    _velocityValues = List<double>.filled(_currentValues.length, 0);
     _playback = _TrackSlotPlayback.idle;
+  }
+
+  /// Takes ownership of the current buffers so [StepPlayback] can be dropped.
+  void _detachPlaybackBuffers() {
+    if (!_borrowingPlaybackBuffers) return;
+    _currentValues = List<double>.of(_currentValues, growable: false);
+    _velocityValues = List<double>.of(_velocityValues, growable: false);
+    _borrowingPlaybackBuffers = false;
+  }
+
+  void _refreshCaches() {
+    _cachedValue = converter.denormalize(_currentValues);
+    _cachedVelocity = converter.denormalize(_velocityValues);
   }
 
   int get currentStepIndex => _stepPlayback?.currentStepIndex ?? -1;
