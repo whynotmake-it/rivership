@@ -125,9 +125,11 @@ class MotionVelocityTracker<T> {
     final dtMs = dt.toDouble() / 1000.0;
 
     // (end - start) * 1000 / dtMs
-    return List.generate(end.$1.length, (i) {
-      return (end.$1[i] - start.$1[i]) * 1000 / dtMs;
-    });
+    return List.generate(
+      end.$1.length,
+      (i) => (end.$1[i] - start.$1[i]) * 1000 / dtMs,
+      growable: false,
+    );
   }
 
   /// Returns a velocity estimate based on recent position samples.
@@ -191,9 +193,11 @@ class MotionVelocityTracker<T> {
     }
 
     // Offset
-    final offsetValues = List.generate(dims, (i) {
-      return newestSample.$1[i] - oldestNonNullSample!.$1[i];
-    });
+    final offsetValues = List.generate(
+      dims,
+      (i) => newestSample.$1[i] - oldestNonNullSample!.$1[i],
+      growable: false,
+    );
 
     return MotionVelocityEstimate<T>(
       perSecond: converter.denormalize(estimatedVelocityValues),

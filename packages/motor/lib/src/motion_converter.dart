@@ -78,10 +78,11 @@ abstract class MotionConverter<T> {
   T lerp(T a, T b, double t) {
     final aValues = normalize(a);
     final bValues = normalize(b);
-    final resultValues = <double>[];
-    for (var i = 0; i < aValues.length; i++) {
-      resultValues.add(lerpDouble(aValues[i], bValues[i], t)!);
-    }
+    final resultValues = List<double>.generate(
+      aValues.length,
+      (i) => lerpDouble(aValues[i], bValues[i], t)!,
+      growable: false,
+    );
     return denormalize(resultValues);
   }
 }
@@ -136,7 +137,8 @@ class SingleMotionConverter extends MotionConverter<double>
   const SingleMotionConverter();
 
   @override
-  List<double> normalize(double value) => [value];
+  List<double> normalize(double value) =>
+      List<double>.filled(1, value);
 
   @override
   double denormalize(List<double> values) => values[0];
@@ -148,7 +150,8 @@ class OffsetMotionConverter extends MotionConverter<Offset> {
   const OffsetMotionConverter();
 
   @override
-  List<double> normalize(Offset value) => [value.dx, value.dy];
+  List<double> normalize(Offset value) =>
+      List<double>.of([value.dx, value.dy], growable: false);
 
   @override
   Offset denormalize(List<double> values) => Offset(values[0], values[1]);
@@ -160,7 +163,8 @@ class SizeMotionConverter extends MotionConverter<Size> {
   const SizeMotionConverter();
 
   @override
-  List<double> normalize(Size value) => [value.width, value.height];
+  List<double> normalize(Size value) =>
+      List<double>.of([value.width, value.height], growable: false);
 
   @override
   Size denormalize(List<double> values) => Size(values[0], values[1]);
@@ -172,12 +176,10 @@ class RectMotionConverter extends MotionConverter<Rect> {
   const RectMotionConverter();
 
   @override
-  List<double> normalize(Rect value) => [
-        value.left,
-        value.top,
-        value.right,
-        value.bottom,
-      ];
+  List<double> normalize(Rect value) => List<double>.of(
+        [value.left, value.top, value.right, value.bottom],
+        growable: false,
+      );
 
   @override
   Rect denormalize(List<double> values) => Rect.fromLTRB(
@@ -194,7 +196,8 @@ class AlignmentMotionConverter extends MotionConverter<Alignment> {
   const AlignmentMotionConverter();
 
   @override
-  List<double> normalize(Alignment value) => [value.x, value.y];
+  List<double> normalize(Alignment value) =>
+      List<double>.of([value.x, value.y], growable: false);
 
   @override
   Alignment denormalize(List<double> values) => Alignment(values[0], values[1]);
@@ -206,12 +209,10 @@ class ColorRgbMotionConverter extends MotionConverter<Color> {
   const ColorRgbMotionConverter();
 
   @override
-  List<double> normalize(Color value) => [
-        value.r,
-        value.g,
-        value.b,
-        value.a,
-      ];
+  List<double> normalize(Color value) => List<double>.of(
+        [value.r, value.g, value.b, value.a],
+        growable: false,
+      );
 
   @override
   Color denormalize(List<double> values) => Color.from(
@@ -228,12 +229,10 @@ class EdgeInsetsMotionConverter extends MotionConverter<EdgeInsets> {
   const EdgeInsetsMotionConverter();
 
   @override
-  List<double> normalize(EdgeInsets value) => [
-        value.left,
-        value.top,
-        value.right,
-        value.bottom,
-      ];
+  List<double> normalize(EdgeInsets value) => List<double>.of(
+        [value.left, value.top, value.right, value.bottom],
+        growable: false,
+      );
 
   @override
   EdgeInsets denormalize(List<double> values) => EdgeInsets.fromLTRB(
@@ -251,12 +250,10 @@ class EdgeInsetsDirectionalMotionConverter
   const EdgeInsetsDirectionalMotionConverter();
 
   @override
-  List<double> normalize(EdgeInsetsDirectional value) => [
-        value.start,
-        value.top,
-        value.end,
-        value.bottom,
-      ];
+  List<double> normalize(EdgeInsetsDirectional value) => List<double>.of(
+        [value.start, value.top, value.end, value.bottom],
+        growable: false,
+      );
 
   @override
   EdgeInsetsDirectional denormalize(List<double> values) =>

@@ -40,11 +40,15 @@ class StepPlayback<T extends Object> {
         _loop = loop,
         _fallbackMotion = fallbackMotion,
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
-        _initialValues = converter.normalize(start),
+        _initialValues =
+            List<double>.of(converter.normalize(start), growable: false),
         _initialVelocities = switch (velocity) {
           null => List<double>.filled(converter.normalize(start).length, 0),
-          final value => converter.normalize(value),
+          final value =>
+            List<double>.of(converter.normalize(value), growable: false),
         } {
+    _currentValues = List<double>.of(_initialValues, growable: false);
+    _currentVelocities = List<double>.of(_initialVelocities, growable: false);
     if (loop == LoopMode.loop) {
       // `loop` animates back to the start after the last step. Model that as a
       // synthetic final step that returns to the start snapshot, reusing the
@@ -130,8 +134,8 @@ class StepPlayback<T extends Object> {
   /// The slot-local time at which each forward step began in this cycle.
   late final List<double?> _stepStartSeconds;
 
-  late List<double> _currentValues;
-  late List<double> _currentVelocities;
+  late final List<double> _currentValues;
+  late final List<double> _currentVelocities;
   late List<Simulation> _simulations;
   var _stepIndex = 0;
   var _direction = 1;
@@ -143,14 +147,17 @@ class StepPlayback<T extends Object> {
   var _isWaitingForSync = false;
 
   void _buildWaypoints() {
-    _waypoints = [
-      for (final step in _steps)
-        switch (step) {
-          StepTo<T>(:final value) => _converter.normalize(value),
-          StepAt<T>(:final value) => _converter.normalize(value),
-          _ => List.of(_initialValues),
-        },
-    ];
+    _waypoints = List<List<double>>.of(
+      [
+        for (final step in _steps)
+          switch (step) {
+            StepTo<T>(:final value) => _converter.normalize(value),
+            StepAt<T>(:final value) => _converter.normalize(value),
+            _ => List<double>.of(_initialValues, growable: false),
+          },
+      ],
+      growable: false,
+    );
   }
 
   List<double?> _estimateSegmentDurations({
@@ -214,10 +221,33 @@ class StepPlayback<T extends Object> {
   }
 
   /// Current normalized values.
-  List<double> get values => List.unmodifiable(_currentValues);
+  ///
+  /// The list is owned by this playback and updated in place each sample.
+  /// Callers must not mutate it; use [copyStateInto] to take a snapshot.
+  List<double> get values => _currentValues;
 
   /// Current normalized velocities.
-  List<double> get velocities => List.unmodifiable(_currentVelocities);
+  ///
+  /// The list is owned by this playback and updated in place each sample.
+  /// Callers must not mutate it; use [copyStateInto] to take a snapshot.
+  List<double> get velocities => _currentVelocities;
+
+  /// Copies the current value/velocity buffers into [values] / [velocities].
+  ///
+  /// [values] and [velocities] must already have length [_dimensions].
+  @internal
+  void copyStateInto(List<double> values, List<double> velocities) {
+    _copyDoubles(values, _currentValues);
+    _copyDoubles(velocities, _currentVelocities);
+  }
+
+  /// Adopts this playback's live buffers for zero-copy reads while animating.
+  ///
+  /// The returned lists stay valid for the lifetime of this [StepPlayback] and
+  /// are mutated in place by [advanceTo] / [seekTo].
+  @internal
+  (List<double>, List<double>) borrowStateBuffers() =>
+      (_currentValues, _currentVelocities);
 
   /// The currently active step index.
   int get currentStepIndex => _isDone ? -1 : _stepIndex;
@@ -378,8 +408,7 @@ class StepPlayback<T extends Object> {
   }
 
   void _reset() {
-    _currentValues = List.of(_initialValues);
-    _currentVelocities = List.of(_initialVelocities);
+    _snapToInitial();
     _stepIndex = 0;
     _direction = 1;
     _cycle = 0;
@@ -393,6 +422,21 @@ class StepPlayback<T extends Object> {
     }
     _startCurrentStep();
     _sample(0);
+  }
+
+  void _snapToInitial() {
+    _copyDoubles(_currentValues, _initialValues);
+    _copyDoubles(_currentVelocities, _initialVelocities);
+  }
+
+  static void _copyDoubles(List<double> target, List<double> source) {
+    assert(
+      target.length == source.length,
+      'buffer length mismatch: ${target.length} != ${source.length}',
+    );
+    for (var i = 0; i < target.length; i++) {
+      target[i] = source[i];
+    }
   }
 
   void _advanceStep() {
@@ -409,8 +453,7 @@ class StepPlayback<T extends Object> {
           // cycle from there without jumping. Timelines without a target
           // motion have no return step, so restart from their initial state.
           if (!_hasReturnStep) {
-            _currentValues = List.of(_initialValues);
-            _currentVelocities = List.of(_initialVelocities);
+            _snapToInitial();
           }
           _cycleStartSeconds = _segmentStartSeconds;
           _cycle++;
@@ -424,8 +467,7 @@ class StepPlayback<T extends Object> {
         case LoopMode.seamless:
           // Jump straight back to the start snapshot and replay. The timeline
           // is expected to end where it began, so the jump is invisible.
-          _currentValues = List.of(_initialValues);
-          _currentVelocities = List.of(_initialVelocities);
+          _snapToInitial();
           _cycleStartSeconds = _segmentStartSeconds;
           _cycle++;
           _stepIndex = 0;
@@ -495,61 +537,64 @@ class StepPlayback<T extends Object> {
     _stepStartSeconds[_stepIndex] = _segmentStartSeconds;
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
-      StepTo<T>(:final value, :final motion, :final motionPerDimension) => () {
+      StepTo<T>(:final motion, :final motionPerDimension) => () {
           final motions = _motions(motion, motionPerDimension);
-          final targets = _converter.normalize(value);
-          return [
-            for (var i = 0; i < targets.length; i++)
-              motions[i].createSimulation(
-                start: _currentValues[i],
-                end: targets[i],
-                velocity: _currentVelocities[i],
-              ),
-          ];
-        }(),
-      StepFree<T>(:final motion) => [
-          for (var i = 0; i < _currentValues.length; i++)
-            motion.createSimulation(
+          // Prefer precomputed waypoints — avoid normalize() alloc per step.
+          final targets = _waypoints[_stepIndex];
+          return List<Simulation>.generate(
+            targets.length,
+            (i) => motions[i].createSimulation(
               start: _currentValues[i],
+              end: targets[i],
               velocity: _currentVelocities[i],
             ),
-        ],
-      StepHold<T>(:final duration) => [
-          for (final value in _currentValues)
-            _HoldSimulation(
-              value: value,
-              duration: duration.toSeconds(),
-            ),
-        ],
-      StepAt<T>(
-        :final at,
-        :final value,
-        :final motion,
-        :final motionPerDimension,
-      ) =>
-        () {
+            growable: false,
+          );
+        }(),
+      StepFree<T>(:final motion) => List<Simulation>.generate(
+          _currentValues.length,
+          (i) => motion.createSimulation(
+            start: _currentValues[i],
+            velocity: _currentVelocities[i],
+          ),
+          growable: false,
+        ),
+      StepHold<T>(:final duration) => List<Simulation>.generate(
+          _currentValues.length,
+          (i) => _HoldSimulation(
+            value: _currentValues[i],
+            duration: duration.toSeconds(),
+          ),
+          growable: false,
+        ),
+      StepAt<T>(:final at, :final motion, :final motionPerDimension) => () {
           final motions = _motions(motion, motionPerDimension);
-          final targets = _converter.normalize(value);
+          final targets = _waypoints[_stepIndex];
           final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
           final atMotions = gap > 0
-              ? [
-                  for (final m in motions)
-                    m.scaleTo(Duration(microseconds: (gap * 1000000).round())),
-                ]
+              ? List<Motion>.generate(
+                  motions.length,
+                  (i) => motions[i].scaleTo(
+                    Duration(microseconds: (gap * 1000000).round()),
+                  ),
+                  growable: false,
+                )
               : motions;
-          return [
-            for (var i = 0; i < targets.length; i++)
-              atMotions[i].createSimulation(
-                start: _currentValues[i],
-                end: targets[i],
-                velocity: _currentVelocities[i],
-              ),
-          ];
+          return List<Simulation>.generate(
+            targets.length,
+            (i) => atMotions[i].createSimulation(
+              start: _currentValues[i],
+              end: targets[i],
+              velocity: _currentVelocities[i],
+            ),
+            growable: false,
+          );
         }(),
-      StepSync<T>() => [
-          for (final value in _currentValues)
-            _HoldSimulation(value: value, duration: 0),
-        ],
+      StepSync<T>() => List<Simulation>.generate(
+          _currentValues.length,
+          (i) => _HoldSimulation(value: _currentValues[i], duration: 0),
+          growable: false,
+        ),
     };
   }
 
@@ -567,14 +612,15 @@ class StepPlayback<T extends Object> {
           final resolved = _motionsOrNull(motion, motionPerDimension);
           final forwardSeconds = _forwardSegmentSeconds[_stepIndex];
           if (resolved == null || forwardSeconds == null) return resolved;
-          return [
-            for (final motion in resolved)
-              motion.scaleTo(
-                Duration(
-                  microseconds: (forwardSeconds * 1000000).round(),
-                ),
+          return List<Motion>.generate(
+            resolved.length,
+            (i) => resolved[i].scaleTo(
+              Duration(
+                microseconds: (forwardSeconds * 1000000).round(),
               ),
-          ];
+            ),
+            growable: false,
+          );
         }(),
       StepFree<T>() => null,
       StepHold<T>() => null,
@@ -582,14 +628,15 @@ class StepPlayback<T extends Object> {
     };
 
     if (motions != null) {
-      _simulations = [
-        for (var i = 0; i < targets.length; i++)
-          motions[i].createSimulation(
-            start: _currentValues[i],
-            end: targets[i],
-            velocity: _currentVelocities[i],
-          ),
-      ];
+      _simulations = List<Simulation>.generate(
+        targets.length,
+        (i) => motions[i].createSimulation(
+          start: _currentValues[i],
+          end: targets[i],
+          velocity: _currentVelocities[i],
+        ),
+        growable: false,
+      );
     } else {
       // For free/hold steps in reverse, use a hold at current values with the
       // same duration.
@@ -597,10 +644,11 @@ class StepPlayback<T extends Object> {
         StepHold<T>(:final duration) => duration.toSeconds(),
         _ => 0.0,
       };
-      _simulations = [
-        for (final value in _currentValues)
-          _HoldSimulation(value: value, duration: duration),
-      ];
+      _simulations = List<Simulation>.generate(
+        _currentValues.length,
+        (i) => _HoldSimulation(value: _currentValues[i], duration: duration),
+        growable: false,
+      );
     }
   }
 
@@ -629,12 +677,12 @@ class StepPlayback<T extends Object> {
 
   void _sample(double localSeconds) {
     final t = localSeconds < 0 ? 0.0 : localSeconds;
-    _currentValues = [
-      for (final simulation in _simulations) simulation.x(t),
-    ];
-    _currentVelocities = [
-      for (final simulation in _simulations) simulation.dx(t),
-    ];
+    final simulations = _simulations;
+    // Mutate in place — called every tick; avoid allocating new lists.
+    for (var i = 0; i < simulations.length; i++) {
+      _currentValues[i] = simulations[i].x(t);
+      _currentVelocities[i] = simulations[i].dx(t);
+    }
   }
 
   bool _segmentIsDone(double localSeconds) {
