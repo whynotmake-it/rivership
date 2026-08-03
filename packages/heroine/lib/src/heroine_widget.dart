@@ -16,6 +16,7 @@ class Heroine extends StatefulWidget {
     this.flightShuttleBuilder,
     this.zIndex,
     this.continuouslyTrackTarget = false,
+    this.transitionOnUserGestures = false,
     this.pauseTickersDuringFlight = false,
     this.duplicatePolicy = DuplicateHeroinePolicy.forbidden,
     this.shouldTransition,
@@ -108,6 +109,20 @@ class Heroine extends StatefulWidget {
   /// need to handle dynamic layout changes during the animation.
   final bool continuouslyTrackTarget;
 
+  /// Whether this heroine participates in transitions started by a back
+  /// gesture, including Android predictive back.
+  ///
+  /// Both heroines with the same [tag] must opt in. The route being revealed
+  /// must also have [PageRoute.maintainState] enabled so its heroine can be
+  /// measured when the gesture starts.
+  ///
+  /// Gesture-driven flights follow the route animation directly instead of
+  /// using [motion], allowing the heroine to track the user's finger and to
+  /// reverse cleanly when the gesture is canceled.
+  ///
+  /// Defaults to false.
+  final bool transitionOnUserGestures;
+
   /// How to handle duplicate [Heroine] widgets with the same [tag] in a single
   /// route subtree.
   ///
@@ -166,6 +181,15 @@ class Heroine extends StatefulWidget {
     final state = element.state as _HeroineState;
     final spec = state._currentFlightSpec;
     if (spec == null) return null;
+
+    // Gesture-driven flights land exactly at the destination because their
+    // geometry follows the route animation rather than a spring simulation.
+    if (spec.isUserGestureTransition) {
+      return HeroineFlightInfo(
+        handoffBoundingBox: spec.toHeroLocation.boundingBox,
+      );
+    }
+
     final mc = state._motionController;
 
     // Without a motion controller, fall back to the raw target position.
@@ -332,11 +356,24 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
   }
 
   /// Ends the flight for this heroine.
-  void _endFlight() {
-    _currentFlightSpec = null;
+  void _endFlight({bool keepPlaceholder = false}) {
     if (!mounted) return;
 
     setState(() {
+      if (keepPlaceholder) {
+        switch (_status) {
+          case _InFlight(:final spec, :final placeholderSize):
+            _status = _FromAtCruisingAltitude(
+              spec: spec,
+              placeholderSize: placeholderSize,
+            );
+            return;
+          case _:
+            break;
+        }
+      }
+
+      _currentFlightSpec = null;
       _status = const _Idle();
     });
   }

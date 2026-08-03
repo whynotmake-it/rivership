@@ -142,6 +142,13 @@ class HeroineController extends NavigatorObserver {
     if (navigator!.userGestureInProgress) {
       return;
     }
+
+    // If the gesture never moved, the route animation remains completed and
+    // does not emit a status update. Give every gesture-driven flight a chance
+    // to finish now that Navigator has ended the gesture.
+    for (final flight in _flights.values.toList(growable: false)) {
+      flight.finishUserGestureIfIdle();
+    }
   }
 
   // If we're transitioning between different page routes, start a hero
@@ -492,8 +499,8 @@ extension on BuildContext {
         }
       }
 
-      // TODO(timcreatedit): allow heroines to opt into user gesture transitions
-      if (!isUserGestureTransition) {
+      if (!isUserGestureTransition ||
+          heroWidget.transitionOnUserGestures) {
         result[tag] = heroState;
       } else {
         // If transition is not allowed, we need to make sure hero is not

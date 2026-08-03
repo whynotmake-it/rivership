@@ -31,6 +31,8 @@ void main() {
     Widget build({
       bool isHeroine = true,
       bool hasNestedHeroine = false,
+      bool transitionOnUserGestures = false,
+      HeroineShuttleBuilder? shuttleBuilder,
     }) {
       final nestedChild = Container(color: Colors.red);
       final child = hasNestedHeroine
@@ -54,6 +56,8 @@ void main() {
                 child: isHeroine
                     ? Heroine(
                         tag: tag,
+                        transitionOnUserGestures: transitionOnUserGestures,
+                        flightShuttleBuilder: shuttleBuilder,
                         child: child,
                       )
                     : child,
@@ -69,6 +73,7 @@ void main() {
       HeroineShuttleBuilder? shuttleBuilder,
       Motion? motion,
       bool hasNestedHeroine = false,
+      bool transitionOnUserGestures = false,
     }) {
       final nestedChild = Container(color: Colors.green);
       final child = hasNestedHeroine
@@ -89,6 +94,7 @@ void main() {
                   ? Heroine(
                       tag: tag,
                       motion: motion ?? const CupertinoMotion.smooth(),
+                      transitionOnUserGestures: transitionOnUserGestures,
                       flightShuttleBuilder:
                           shuttleBuilder ?? const FadeShuttleBuilder(),
                       child: child,
@@ -104,6 +110,85 @@ void main() {
       await tester.pumpWidget(build());
 
       expect(find.byType(MaterialApp), matchesGoldenFile('golden/basic.png'));
+    });
+
+    testWidgets(
+      'predictive back flight follows progress, cancels, and commits',
+      (tester) async {
+        const flightKey = ValueKey('gesture-flight');
+        final shuttleBuilder = ClippingShuttleBuilder(
+          inner: HeroineShuttleBuilder.fromHero(
+            flightShuttleBuilder: (
+              flightContext,
+              animation,
+              flightDirection,
+              fromHeroContext,
+              toHeroContext,
+            ) =>
+                const ColoredBox(
+              key: flightKey,
+              color: Colors.blue,
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(
+          build(
+            transitionOnUserGestures: true,
+            shuttleBuilder: shuttleBuilder,
+          ),
+        );
+
+        final secondRoute = MaterialPageRoute<void>(
+          builder: (context) => buildPage2(
+            transitionOnUserGestures: true,
+            shuttleBuilder: shuttleBuilder,
+          ),
+        );
+        tester
+            .state<NavigatorState>(find.byType(Navigator))
+            .push(secondRoute)
+            .ignore();
+        await tester.pumpAndSettle();
+
+        secondRoute.handleStartBackGesture(progress: 1);
+        await tester.pump();
+
+        expect(find.byKey(flightKey), findsOneWidget);
+        final startRect = tester.getRect(find.byKey(flightKey));
+
+        secondRoute.handleUpdateBackGestureProgress(progress: 0.5);
+        await tester.pump();
+
+        final middleRect = tester.getRect(find.byKey(flightKey));
+        expect(middleRect.center.dx, lessThan(startRect.center.dx));
+        expect(middleRect.center.dy, lessThan(startRect.center.dy));
+        expect(middleRect.center.dx, greaterThan(padding + heroSize / 2));
+        expect(middleRect.center.dy, greaterThan(padding + heroSize / 2));
+
+        secondRoute.handleCancelBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(flightKey), findsNothing);
+        expect(secondRoute.isCurrent, isTrue);
+
+        secondRoute
+          ..handleStartBackGesture(progress: 1)
+          ..handleUpdateBackGestureProgress(progress: 0.5);
+        await tester.pump();
+        expect(find.byKey(flightKey), findsOneWidget);
+
+        secondRoute.handleCommitBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(flightKey), findsNothing);
+        expect(secondRoute.isCurrent, isFalse);
+      },
+    );
+
+    testWidgets('predictive back flights are opt-in', (tester) async {
+      const heroine = Heroine(tag: tag, child: SizedBox());
+      expect(heroine.transitionOnUserGestures, isFalse);
     });
 
     testWidgets('wrapped passes the same constraints', (tester) async {

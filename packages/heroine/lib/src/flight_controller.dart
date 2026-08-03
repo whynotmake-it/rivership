@@ -47,6 +47,10 @@ class _FlightController {
   /// Whether the route animation has completed.
   bool _routeAnimationComplete = false;
 
+  /// Whether a user-gesture flight has restored its source and destination
+  /// placeholders. This prevents [dispose] from changing that final state.
+  bool _userGestureHeroStatesFinalized = false;
+
   /// Starts the flight animation.
   ///
   /// If [resetBoundingBox] is true, the controllers will restart from the
@@ -56,13 +60,6 @@ class _FlightController {
   /// [_FlightController.divert].
   void startFlight({bool resetBoundingBox = false}) {
     _spec.toHero._startFlight(_spec);
-
-    // For user gesture transitions, we don't show the overlay yet
-    // (the hero is still being dragged by the user)
-    if (_spec.isUserGestureTransition) {
-      return;
-    }
-
     _spec.fromHero._startFlight(_spec);
     if (overlayEntry == null) {
       _spec.overlay.insert(
@@ -70,9 +67,17 @@ class _FlightController {
       );
     }
 
+    _spec.routeAnimation.addStatusListener(_onRouteAnimationStatusChanged);
+
+    // A predictive-back flight is controlled by the route animation. Starting
+    // an independent spring here would race the user's gesture and prevent the
+    // heroine from reversing when the gesture is canceled.
+    if (_spec.isUserGestureTransition) {
+      return;
+    }
+
     // Get any velocity from a preceding gesture (e.g., drag-to-dismiss)
     final fromHeroVelocity = HeroineVelocity.of(_spec.fromHero.context);
-    _spec.routeAnimation.addStatusListener(_onRouteAnimationStatusChanged);
 
     // Initialize the current target location
     _currentTargetLocation = _spec.toHeroLocation;
@@ -229,9 +234,17 @@ class _FlightController {
   // ---------------------------------------------------------------------------
 
   void _onRouteAnimationStatusChanged(AnimationStatus status) {
-    if (_spec.isUserGestureTransition) return;
-
     if (status.isAnimating) return;
+
+    if (_spec.isUserGestureTransition) {
+      // Navigator keeps userGestureInProgress true while the route settles
+      // after the finger is released. Waiting for didStopUserGesture preserves
+      // the overlay until the predictive-back transition has really ended.
+      if (_spec.fromRoute.navigator?.userGestureInProgress != true) {
+        _finishUserGestureFlight(status);
+      }
+      return;
+    }
 
     _spec.routeAnimation.removeStatusListener(_onRouteAnimationStatusChanged);
     _routeAnimationComplete = true;
@@ -254,6 +267,34 @@ class _FlightController {
     }
   }
 
+  /// Finishes a gesture-driven flight whose route is no longer animating.
+  ///
+  /// This is also called from [HeroineController.didStopUserGesture] to handle
+  /// a gesture that starts and stops without changing the route animation.
+  void finishUserGestureIfIdle() {
+    if (!_spec.isUserGestureTransition ||
+        _spec.routeAnimation.status.isAnimating) {
+      return;
+    }
+
+    _finishUserGestureFlight(_spec.routeAnimation.status);
+  }
+
+  void _finishUserGestureFlight(AnimationStatus status) {
+    if (_userGestureHeroStatesFinalized) return;
+
+    _userGestureHeroStatesFinalized = true;
+    _spec.routeAnimation.removeStatusListener(_onRouteAnimationStatusChanged);
+    _removeOverlay();
+
+    // For a pop, dismissed means the pop was committed. Completed means the
+    // gesture was canceled and the source route remains current.
+    final popWasCommitted = status == AnimationStatus.dismissed;
+    _spec.fromHero._endFlight(keepPlaceholder: popWasCommitted);
+    _spec.toHero._endFlight(keepPlaceholder: !popWasCommitted);
+    onEnd();
+  }
+
   // ---------------------------------------------------------------------------
   // Overlay Building
   // ---------------------------------------------------------------------------
@@ -274,16 +315,24 @@ class _FlightController {
 
     return AnimatedBuilder(
       animation: _spec.routeAnimation,
-      builder: (context, child) => Positioned(
-        top: controller.value.boundingBox.center.dy -
-            controller.value.boundingBox.size.height / 2,
-        left: controller.value.boundingBox.center.dx -
-            controller.value.boundingBox.size.width / 2,
-        width: controller.value.boundingBox.size.width,
-        height: controller.value.boundingBox.size.height,
-        // TODO(timcreatedit): rotate here
-        child: child!,
-      ),
+      builder: (context, child) {
+        final boundingBox = _spec.isUserGestureTransition
+            ? Rect.lerp(
+                _spec.fromHeroLocation.boundingBox,
+                _spec.toHeroLocation.boundingBox,
+                1 - _spec.fromRoute.animation!.value,
+              )!
+            : controller.value.boundingBox;
+
+        return Positioned(
+          top: boundingBox.top,
+          left: boundingBox.left,
+          width: boundingBox.width,
+          height: boundingBox.height,
+          // TODO(timcreatedit): rotate here
+          child: child!,
+        );
+      },
       child: IgnorePointer(
         // TODO(timcreatedit): allow configuring this
         child: shuttle,
@@ -303,7 +352,9 @@ class _FlightController {
           ?.removeListener(_onMotionControllerUpdate);
     }
 
-    _spec.toHero._endFlight();
+    if (!_userGestureHeroStatesFinalized) {
+      _spec.toHero._endFlight();
+    }
     _spec.controllingHero._disposeMotionController();
 
     _spec.dispose();
