@@ -42,9 +42,9 @@ void main() {
           'file:/fonts/on-disk.ttf',
           'bundle:assets/in-bundle.otf',
         ]);
-        expect(registrations, [
-          ('Example', [1, 2]),
-        ]);
+        expect(registrations, hasLength(1));
+        expect(registrations.single.$1, 'Example');
+        expect(registrations.single.$2, [1, 2]);
       },
     );
 
