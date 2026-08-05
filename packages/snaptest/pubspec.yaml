@@ -1,6 +1,6 @@
 name: snaptest
 description: Snap photos in your widget tests.
-version: 1.0.0-dev.3
+version: 1.0.0-dev.4
 resolution: workspace
 topics: ["testing", "golden", "screenshots", "automation"]
 
@@ -21,7 +21,7 @@ dev_dependencies:
 
 dependencies:
   args: ^2.4.0
-  characters: # will be pinned by SDK
+  characters: ^1.4.1
   device_frame: ">=1.0.0 <2.0.0"
   equatable: ">=2.0.0 <3.0.0"
   flutter:
