@@ -9,6 +9,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
+import 'package:stupid_simple_sheet/src/presentation_sizing.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 abstract class GlassSheetTransitions {

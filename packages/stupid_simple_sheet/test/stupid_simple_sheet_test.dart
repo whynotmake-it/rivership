@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
+import 'package:stupid_simple_sheet/src/presentation_sizing.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 void main() {

@@ -10,7 +10,7 @@ import 'package:stupid_simple_sheet/src/snapping_point.dart';
 export 'package:motor/src/motion.dart';
 
 export 'src/dismissal_mode.dart';
-export 'src/presentation_sizing.dart';
+export 'src/presentation_sizing.dart' show PresentationSizing;
 export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
 export 'src/sheet_dismissal_transition.dart';
