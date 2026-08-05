@@ -1,3 +1,8 @@
+## Unreleased
+
+ - **REFACTOR**: independently replace the font-loading internals while
+   preserving the public API and rendering behavior.
+
 ## 1.0.0-dev.3
 
 > Note: This release has breaking changes.

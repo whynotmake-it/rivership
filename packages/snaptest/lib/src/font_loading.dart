@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
@@ -10,9 +11,7 @@ import 'package:snaptest/src/flutter_sdk_root.dart';
 import 'package:snaptest/src/snap.dart';
 
 @internal
-const fontFormats = ['.ttf', '.otf', '.ttc'];
-
-bool _fontsLoaded = false;
+const supportedFontExtensions = {'.ttf', '.otf', '.ttc'};
 
 /// Controls how Cupertino system fonts (`CupertinoSystemText` and
 /// `CupertinoSystemDisplay`) are loaded for screenshot rendering.
@@ -120,297 +119,379 @@ class _OverrideCupertinoFonts extends CupertinoFontConfig {
 Future<void> loadFonts({
   CupertinoFontConfig cupertinoFonts = const CupertinoFontConfig.override(),
 }) async {
-  if (_fontsLoaded) return;
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  await _loadMaterialFontsFromSdk();
-  await _loadFontsFromFontManifest();
-
-  switch (cupertinoFonts) {
-    case _MacOsCupertinoFonts(
-      fallbackOverride: final fallbackOverrideFontFamily,
-    ):
-      try {
-        await _loadMacOSFonts();
-      } on _MacOsFontLoadException catch (e) {
-        if (fallbackOverrideFontFamily == null) {
-          throw StateError(
-            'CupertinoFontConfig.fromMacOsSystemFonts() failed: $e\n'
-            'SF Pro fonts are only available on macOS with the fonts '
-            'installed from https://developer.apple.com/fonts/.\n'
-            'To use a fallback font instead, pass '
-            'fallbackOverrideFontFamily, or use '
-            'CupertinoFontConfig.override() for cross-platform consistency.',
-          );
-        }
-        if (fallbackOverrideFontFamily == 'Roboto') {
-          await _overrideCupertinoFontsWithRoboto();
-        } else {
-          await _overrideCupertinoFontsWithFamily(
-            fallbackOverrideFontFamily,
-          );
-        }
-      }
-    case _OverrideCupertinoFonts(:final fontFamily):
-      if (fontFamily == 'Roboto') {
-        await _overrideCupertinoFontsWithRoboto();
-      } else {
-        await _overrideCupertinoFontsWithFamily(fontFamily);
-      }
-  }
-
-  _fontsLoaded = true;
+  await _defaultFontLoading.load(cupertinoFonts);
 }
 
 /// Loads fonts from the given [fromPaths] into the Flutter engine under the
 /// specified [family].
-Future<void> loadFont(String family, List<String> fromPaths) async {
-  if (fromPaths.isEmpty) {
-    return;
-  }
+Future<void> loadFont(String family, List<String> fromPaths) =>
+    _defaultBinaryLoader.load(family, fromPaths);
 
-  await maybeRunAsync(() async {
-    final fontLoader = FontLoader(family);
-    for (final path in fromPaths) {
-      try {
-        final file = File(path);
-        if (file.existsSync()) {
-          final bytes = file.readAsBytesSync();
-          fontLoader.addFont(Future.value(bytes.buffer.asByteData()));
-        } else {
-          final data = rootBundle.load(path);
-          fontLoader.addFont(Future.value(data));
-        }
-      } catch (e, _) {
-        debugPrint("Could not load font $path: $e");
-      }
-    }
+typedef _AsyncScope =
+    Future<T?> Function<T>(
+      Future<T> Function() operation,
+    );
+typedef _FontRegistrar =
+    Future<void> Function(
+      String family,
+      List<ByteData> fonts,
+    );
+typedef _DirectoryReader =
+    List<String> Function(
+      Directory directory, {
+      required bool recursive,
+    });
 
-    await fontLoader.load();
+/// Reads font bytes and submits one complete family to Flutter.
+///
+/// The collaborators are injectable so path selection and registration can be
+/// tested without mutating Flutter's process-wide font collection.
+@internal
+class FontBinaryLoader {
+  const FontBinaryLoader({
+    required this.fileExists,
+    required this.readFile,
+    required this.readBundle,
+    required this.register,
+    required this.runAsync,
+    this.log = debugPrint,
   });
-}
 
-Future<void> _loadMaterialFontsFromSdk() async {
-  final root = flutterSdkRoot().absolute.path;
+  final bool Function(String path) fileExists;
+  final Future<ByteData> Function(String path) readFile;
+  final Future<ByteData> Function(String path) readBundle;
+  final _FontRegistrar register;
+  final _AsyncScope runAsync;
+  final void Function(String message) log;
 
-  final materialFontsDir = Directory(
-    '$root/bin/cache/artifacts/material_fonts/',
-  );
+  Future<void> load(String family, List<String> paths) async {
+    if (paths.isEmpty) return;
 
-  final files = materialFontsDir.listSync().whereType<File>().toList();
-
-  final robotoFonts = files
-      .where((file) => file.isRobotoFont)
-      .map((file) => file.path)
-      .toList();
-
-  await loadFont('Roboto', robotoFonts);
-
-  final robotoCondensedFonts = files
-      .where((file) => file.isRobotoCondensedFont)
-      .map((file) => file.path)
-      .toList();
-  await loadFont('RobotoCondensed', robotoCondensedFonts);
-
-  final materialIcons = files
-      .where((file) => file.isMaterialIconsFont)
-      .map((file) => file.path)
-      .toList();
-  await loadFont('MaterialIcons', materialIcons);
-}
-
-Future<void> _loadFontsFromFontManifest() async {
-  final fontManifestContent = await maybeRunAsync(
-    () => rootBundle.loadString('FontManifest.json'),
-  );
-
-  if (fontManifestContent == null || fontManifestContent.isEmpty) {
-    return;
-  }
-
-  final fontManifestEntries = _parseFontManifest(fontManifestContent);
-
-  for (final (family, assets) in fontManifestEntries) {
-    final packageAsset = assets
-        .where((it) => it.startsWith('packages/'))
-        .firstOrNull;
-    final packageName = packageAsset?.split('/')[1];
-
-    if (packageName == null) {
-      await loadFont(family, assets);
-    } else {
-      final fontFamilyName = family.split('/').last;
-      // We load it both ways to cover both possibilities.
-      await loadFont(fontFamilyName, assets);
-      await loadFont('packages/$packageName/$fontFamilyName', assets);
-    }
+    await runAsync<void>(() async {
+      final binaries = <ByteData>[];
+      for (final path in paths) {
+        try {
+          binaries.add(
+            await (fileExists(path) ? readFile(path) : readBundle(path)),
+          );
+        } on Object catch (error) {
+          log('Could not load font $path: $error');
+        }
+      }
+      await register(family, binaries);
+    });
   }
 }
 
-List<(String, List<String>)> _parseFontManifest(String content) {
-  final fonts = <(String, List<String>)>[];
-  final json = jsonDecode(content) as List<dynamic>;
-  for (final item in json) {
-    if (item is! Map<String, dynamic>) {
-      continue;
-    }
-    final family = item['family'] as String;
-    final assets = (item['fonts'] as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map((font) => font['asset'] as String)
-        .toList();
-    fonts.add((family, assets));
-  }
-  return fonts;
-}
+/// One family and the assets from which it should be registered.
+@immutable
+@internal
+class FontRegistration {
+  const FontRegistration(this.family, this.assets);
 
-Future<void> _overrideCupertinoFontsWithRoboto() async {
-  final root = flutterSdkRoot().absolute.path;
-
-  final materialFontsDir = Directory(
-    '$root/bin/cache/artifacts/material_fonts/',
-  );
-
-  final existingFonts = materialFontsDir
-      .listSync()
-      .whereType<File>()
-      .where(
-        (font) => fontFormats.any((element) => font.path.endsWith(element)),
-      )
-      .toList();
-
-  final robotoFonts = existingFonts
-      .where((font) {
-        final name = basename(font.path).toLowerCase();
-        return name.startsWith('Roboto-'.toLowerCase());
-      })
-      .map((file) => file.path)
-      .toList();
-  if (robotoFonts.isEmpty) {
-    debugPrint("Warning: No Roboto font found in SDK");
-  }
-  await loadFont('CupertinoSystemText', robotoFonts);
-  await loadFont('CupertinoSystemDisplay', robotoFonts);
-}
-
-Future<void> _overrideCupertinoFontsWithFamily(String fontFamily) async {
-  final fontManifestContent = await maybeRunAsync(
-    () => rootBundle.loadString('FontManifest.json'),
-  );
-
-  if (fontManifestContent == null || fontManifestContent.isEmpty) {
-    debugPrint(
-      'Warning: Could not load FontManifest.json to find "$fontFamily" fonts.',
-    );
-    return;
-  }
-
-  final entries = _parseFontManifest(fontManifestContent);
-  final assets = entries
-      .where((e) => e.$1 == fontFamily || e.$1.endsWith('/$fontFamily'))
-      .expand((e) => e.$2)
-      .toList();
-
-  if (assets.isEmpty) {
-    debugPrint(
-      'Warning: No font assets found for "$fontFamily". '
-      'Make sure it is declared in your pubspec.yaml.',
-    );
-    return;
-  }
-
-  await loadFont('CupertinoSystemText', assets);
-  await loadFont('CupertinoSystemDisplay', assets);
-}
-
-Future<void> _loadMacOSFonts() async {
-  if (!Platform.isMacOS) {
-    throw _MacOsFontLoadException(
-      '_loadMacOSFonts called on non-macOS platform',
-    );
-  }
-
-  final base = Directory('/Library/Fonts');
-
-  final sfProTextFonts = base
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.isSFProTextFont)
-      .map((file) => file.path)
-      .toList();
-
-  final sfProDisplayFonts = base
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.isSFProDisplayFont)
-      .map((file) => file.path)
-      .toList();
-
-  if (sfProTextFonts.isEmpty || sfProDisplayFonts.isEmpty) {
-    debugPrint(
-      "You are on macOS but no SF Pro fonts were found in "
-      "/Library/Fonts. Please install them from Apple's developer site: https://developer.apple.com/fonts/",
-    );
-
-    throw _MacOsFontLoadException('SF Pro fonts not found on macOS');
-  }
-
-  await loadFont('CupertinoSystemText', sfProTextFonts);
-  await loadFont('CupertinoSystemDisplay', sfProDisplayFonts);
-}
-
-extension on File {
-  bool get isFont {
-    final lower = path.toLowerCase();
-    return fontFormats.any(lower.endsWith);
-  }
-
-  bool get isRobotoFont {
-    if (!isFont) {
-      return false;
-    }
-    final name = basename(path).toLowerCase();
-    return name.startsWith('roboto-');
-  }
-
-  bool get isRobotoCondensedFont {
-    if (!isFont) {
-      return false;
-    }
-    final name = basename(path).toLowerCase();
-    return name.startsWith('robotocondensed-');
-  }
-
-  bool get isMaterialIconsFont {
-    if (!isFont) {
-      return false;
-    }
-    final name = basename(path).toLowerCase();
-    return name.startsWith('materialicons-');
-  }
-
-  bool get isSFProTextFont {
-    if (!isFont) {
-      return false;
-    }
-    final name = basename(path).toLowerCase();
-    return name.startsWith('sf-pro-text');
-  }
-
-  bool get isSFProDisplayFont {
-    if (!isFont) {
-      return false;
-    }
-    final name = basename(path).toLowerCase();
-    return name.startsWith('sf-pro-display');
-  }
-}
-
-class _MacOsFontLoadException implements Exception {
-  _MacOsFontLoadException(this.message);
-
-  final String message;
+  final String family;
+  final List<String> assets;
 
   @override
-  String toString() => 'MacOsFontLoadException: $message';
+  bool operator ==(Object other) =>
+      other is FontRegistration &&
+      family == other.family &&
+      listEquals(assets, other.assets);
+
+  @override
+  int get hashCode => Object.hash(family, Object.hashAll(assets));
 }
+
+/// A decoded family in Flutter's generated font manifest.
+@immutable
+@internal
+class FontManifestEntry {
+  const FontManifestEntry(this.family, this.assets);
+
+  final String family;
+  final List<String> assets;
+}
+
+/// Material families bundled in a Flutter SDK.
+@immutable
+@internal
+class MaterialFontInventory {
+  const MaterialFontInventory({
+    required this.roboto,
+    required this.robotoCondensed,
+    required this.materialIcons,
+  });
+
+  final List<String> roboto;
+  final List<String> robotoCondensed;
+  final List<String> materialIcons;
+}
+
+/// Groups supported files by their SDK family naming conventions.
+@internal
+MaterialFontInventory discoverMaterialFonts(Iterable<String> paths) {
+  final roboto = <String>[];
+  final condensed = <String>[];
+  final icons = <String>[];
+
+  for (final path in paths) {
+    if (!_hasSupportedExtension(path)) continue;
+    final name = basename(path).toLowerCase();
+    if (name.startsWith('roboto-')) {
+      roboto.add(path);
+    } else if (name.startsWith('robotocondensed-')) {
+      condensed.add(path);
+    } else if (name.startsWith('materialicons')) {
+      icons.add(path);
+    }
+  }
+
+  return MaterialFontInventory(
+    roboto: roboto,
+    robotoCondensed: condensed,
+    materialIcons: icons,
+  );
+}
+
+/// Decodes Flutter's generated `FontManifest.json`.
+@internal
+List<FontManifestEntry> decodeFontManifest(String content) {
+  if (content.trim().isEmpty) return const [];
+
+  final decoded = jsonDecode(content);
+  if (decoded is! List<Object?>) {
+    throw const FormatException('FontManifest.json must contain a list.');
+  }
+
+  return [
+    for (final item in decoded)
+      if (item case {'family': final String family, 'fonts': final List fonts})
+        FontManifestEntry(family, [
+          for (final font in fonts)
+            if (font case {'asset': final String asset}) asset,
+        ]),
+  ];
+}
+
+/// Expands package fonts into the names Flutter may use at runtime.
+@internal
+List<FontRegistration> fontRegistrationsForManifest(
+  Iterable<FontManifestEntry> entries,
+) {
+  final registrations = <FontRegistration>[];
+  for (final entry in entries) {
+    final packageAsset = entry.assets.where(_isPackageAsset).firstOrNull;
+    if (packageAsset == null) {
+      registrations.add(FontRegistration(entry.family, entry.assets));
+      continue;
+    }
+
+    final segments = packageAsset.split('/');
+    final package = segments.length > 1 ? segments[1] : null;
+    if (package == null || package.isEmpty) {
+      registrations.add(FontRegistration(entry.family, entry.assets));
+      continue;
+    }
+
+    final unqualifiedFamily = entry.family.split('/').last;
+    registrations
+      ..add(FontRegistration(unqualifiedFamily, entry.assets))
+      ..add(
+        FontRegistration(
+          'packages/$package/$unqualifiedFamily',
+          entry.assets,
+        ),
+      );
+  }
+  return registrations;
+}
+
+/// Returns every manifest asset matching an unqualified family name.
+@internal
+List<String> fontAssetsForFamily(
+  Iterable<FontManifestEntry> entries,
+  String family,
+) => [
+  for (final entry in entries)
+    if (entry.family == family || entry.family.endsWith('/$family'))
+      ...entry.assets,
+];
+
+/// Coordinates SDK, manifest, and Cupertino font registration.
+@internal
+class FontLoadingOrchestrator {
+  FontLoadingOrchestrator({
+    required this.sdkRoot,
+    required this.isMacOS,
+    required this.readManifest,
+    required this.listFontFiles,
+    required this.loadFamily,
+    this.log = debugPrint,
+  });
+
+  final Directory Function() sdkRoot;
+  final bool isMacOS;
+  final Future<String?> Function() readManifest;
+  final _DirectoryReader listFontFiles;
+  final Future<void> Function(String family, List<String> paths) loadFamily;
+  final void Function(String message) log;
+
+  bool _loaded = false;
+
+  Future<void> load([
+    CupertinoFontConfig cupertinoFonts = const CupertinoFontConfig.override(),
+  ]) async {
+    if (_loaded) return;
+
+    final materialDirectory = Directory(
+      join(
+        sdkRoot().absolute.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'material_fonts',
+      ),
+    );
+    final material = discoverMaterialFonts(
+      listFontFiles(materialDirectory, recursive: false),
+    );
+    await _registerMaterialFonts(material);
+
+    final manifest = decodeFontManifest(await readManifest() ?? '');
+    for (final registration in fontRegistrationsForManifest(manifest)) {
+      await loadFamily(registration.family, registration.assets);
+    }
+
+    await _configureCupertino(cupertinoFonts, material, manifest);
+    _loaded = true;
+  }
+
+  Future<void> _registerMaterialFonts(MaterialFontInventory material) async {
+    await loadFamily('Roboto', material.roboto);
+    await loadFamily('RobotoCondensed', material.robotoCondensed);
+    await loadFamily('MaterialIcons', material.materialIcons);
+  }
+
+  Future<void> _configureCupertino(
+    CupertinoFontConfig configuration,
+    MaterialFontInventory material,
+    List<FontManifestEntry> manifest,
+  ) async {
+    switch (configuration) {
+      case _OverrideCupertinoFonts(:final fontFamily):
+        await _registerCupertinoOverride(fontFamily, material, manifest);
+      case _MacOsCupertinoFonts(:final fallbackOverride):
+        final systemFonts = isMacOS ? _findMacOsSystemFonts() : null;
+        if (systemFonts != null) {
+          await loadFamily('CupertinoSystemText', systemFonts.text);
+          await loadFamily('CupertinoSystemDisplay', systemFonts.display);
+          return;
+        }
+        if (fallbackOverride == null) {
+          throw StateError(
+            'CupertinoFontConfig.fromMacOsSystemFonts() could not find both '
+            'SF Pro Text and SF Pro Display in /Library/Fonts. Install them '
+            'from https://developer.apple.com/fonts/ or configure a fallback.',
+          );
+        }
+        await _registerCupertinoOverride(
+          fallbackOverride,
+          material,
+          manifest,
+        );
+    }
+  }
+
+  Future<void> _registerCupertinoOverride(
+    String family,
+    MaterialFontInventory material,
+    List<FontManifestEntry> manifest,
+  ) async {
+    final assets = family == 'Roboto'
+        ? material.roboto
+        : fontAssetsForFamily(manifest, family);
+    if (assets.isEmpty) {
+      log(
+        'Warning: No font assets found for "$family". '
+        'Make sure it is declared in pubspec.yaml.',
+      );
+      return;
+    }
+    await loadFamily('CupertinoSystemText', assets);
+    await loadFamily('CupertinoSystemDisplay', assets);
+  }
+
+  _MacOsSystemFonts? _findMacOsSystemFonts() {
+    final candidates = listFontFiles(
+      Directory('/Library/Fonts'),
+      recursive: true,
+    );
+    final text = <String>[];
+    final display = <String>[];
+    for (final path in candidates) {
+      if (!_hasSupportedExtension(path)) continue;
+      final name = basename(path).toLowerCase();
+      if (name.startsWith('sf-pro-text')) {
+        text.add(path);
+      } else if (name.startsWith('sf-pro-display')) {
+        display.add(path);
+      }
+    }
+    if (text.isEmpty || display.isEmpty) return null;
+    return _MacOsSystemFonts(text: text, display: display);
+  }
+}
+
+class _MacOsSystemFonts {
+  const _MacOsSystemFonts({required this.text, required this.display});
+
+  final List<String> text;
+  final List<String> display;
+}
+
+bool _hasSupportedExtension(String path) =>
+    supportedFontExtensions.contains(extension(path).toLowerCase());
+
+bool _isPackageAsset(String path) => path.startsWith('packages/');
+
+List<String> _listFiles(Directory directory, {required bool recursive}) =>
+    directory
+        .listSync(recursive: recursive)
+        .whereType<File>()
+        .map((file) => file.path)
+        .toList();
+
+Future<ByteData> _readFile(String path) async {
+  final bytes = await File(path).readAsBytes();
+  return bytes.buffer.asByteData(bytes.offsetInBytes, bytes.lengthInBytes);
+}
+
+Future<void> _registerFontFamily(
+  String family,
+  List<ByteData> fonts,
+) async {
+  final loader = FontLoader(family);
+  for (final font in fonts) {
+    loader.addFont(Future.value(font));
+  }
+  await loader.load();
+}
+
+final _defaultBinaryLoader = FontBinaryLoader(
+  fileExists: (path) => File(path).existsSync(),
+  readFile: _readFile,
+  readBundle: rootBundle.load,
+  register: _registerFontFamily,
+  runAsync: maybeRunAsync,
+);
+
+final _defaultFontLoading = FontLoadingOrchestrator(
+  sdkRoot: flutterSdkRoot,
+  isMacOS: Platform.isMacOS,
+  readManifest: () => maybeRunAsync(
+    () => rootBundle.loadString('FontManifest.json'),
+  ),
+  listFontFiles: _listFiles,
+  loadFamily: loadFont,
+);
