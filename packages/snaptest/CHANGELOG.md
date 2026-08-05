@@ -1,3 +1,11 @@
+## 0.3.1
+
+ - **CHORE**: correct package licensing and attribution by licensing this
+   release under Apache-2.0, retaining the previous Snaptest MIT license, and
+   documenting the adapted and modified Spot font-loading portions. This
+   correction applies to the 0.3.1 distribution and does not alter previously
+   published archives.
+
 ## 0.3.0
 
 > Note: This release has breaking changes.
