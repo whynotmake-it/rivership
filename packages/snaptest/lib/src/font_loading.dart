@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:snaptest/src/flutter_sdk_root.dart';
 import 'package:snaptest/src/snap.dart';
@@ -128,21 +126,6 @@ Future<void> loadFonts({
 Future<void> loadFont(String family, List<String> fromPaths) =>
     _defaultBinaryLoader.load(family, fromPaths);
 
-typedef _AsyncScope =
-    Future<T?> Function<T>(
-      Future<T> Function() operation,
-    );
-typedef _FontRegistrar =
-    Future<void> Function(
-      String family,
-      List<ByteData> fonts,
-    );
-typedef _DirectoryReader =
-    List<String> Function(
-      Directory directory, {
-      required bool recursive,
-    });
-
 /// Reads font bytes and submits one complete family to Flutter.
 ///
 /// The collaborators are injectable so path selection and registration can be
@@ -161,8 +144,8 @@ class FontBinaryLoader {
   final bool Function(String path) fileExists;
   final Future<ByteData> Function(String path) readFile;
   final Future<ByteData> Function(String path) readBundle;
-  final _FontRegistrar register;
-  final _AsyncScope runAsync;
+  final Future<void> Function(String family, List<ByteData> fonts) register;
+  final Future<T?> Function<T>(Future<T> Function() operation) runAsync;
   final void Function(String message) log;
 
   Future<void> load(String family, List<String> paths) async {
@@ -266,7 +249,10 @@ List<FontManifestEntry> decodeFontManifest(String content) {
 
   return [
     for (final item in decoded)
-      if (item case {'family': final String family, 'fonts': final List fonts})
+      if (item case {
+        'family': final String family,
+        'fonts': final List<Object?> fonts,
+      })
         FontManifestEntry(family, [
           for (final font in fonts)
             if (font case {'asset': final String asset}) asset,
@@ -333,7 +319,11 @@ class FontLoadingOrchestrator {
   final Directory Function() sdkRoot;
   final bool isMacOS;
   final Future<String?> Function() readManifest;
-  final _DirectoryReader listFontFiles;
+  final List<String> Function(
+    Directory directory, {
+    required bool recursive,
+  })
+  listFontFiles;
   final Future<void> Function(String family, List<String> paths) loadFamily;
   final void Function(String message) log;
 

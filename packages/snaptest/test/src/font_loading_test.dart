@@ -252,6 +252,28 @@ void main() {
       },
     );
 
+    test('registers matching macOS text and display families', () async {
+      final harness = _Harness(isMacOS: true);
+
+      await harness.create().load(
+        const CupertinoFontConfig.fromMacOsSystemFonts(),
+      );
+
+      expect(
+        harness.loads,
+        containsAll([
+          const FontRegistration(
+            'CupertinoSystemText',
+            ['/Library/Fonts/SF-Pro-Text-Regular.otf'],
+          ),
+          const FontRegistration(
+            'CupertinoSystemDisplay',
+            ['/Library/Fonts/SF-Pro-Display-Regular.otf'],
+          ),
+        ]),
+      );
+    });
+
     test('throws without a Cupertino fallback off macOS', () async {
       final harness = _Harness();
 
@@ -276,8 +298,8 @@ class _Harness {
   final String manifest;
   final bool isMacOS;
   final loads = <FontRegistration>[];
-  var manifestReads = 0;
-  var directoryReads = 0;
+  int manifestReads = 0;
+  int directoryReads = 0;
 
   FontLoadingOrchestrator create() => FontLoadingOrchestrator(
     sdkRoot: () => Directory('/fake/flutter'),
@@ -293,6 +315,12 @@ class _Harness {
           '${directory.path}/Roboto-Regular.ttf',
           '${directory.path}/RobotoCondensed-Regular.ttf',
           '${directory.path}/MaterialIcons-Regular.otf',
+        ];
+      }
+      if (isMacOS && directory.path == '/Library/Fonts') {
+        return const [
+          '/Library/Fonts/SF-Pro-Text-Regular.otf',
+          '/Library/Fonts/SF-Pro-Display-Regular.otf',
         ];
       }
       return const [];
