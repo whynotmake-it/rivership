@@ -443,8 +443,6 @@ This ensures consistent screenshots across environments, but may differ slightly
 
 [dart_install_link]: https://dart.dev/get-dart
 [github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
-[license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[license_link]: https://opensource.org/licenses/MIT
 [mason_link]: https://github.com/felangel/mason
 [very_good_ventures_link]: https://verygood.ventures
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
