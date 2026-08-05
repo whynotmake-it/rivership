@@ -149,14 +149,14 @@ typedef _DirectoryReader =
 /// tested without mutating Flutter's process-wide font collection.
 @internal
 class FontBinaryLoader {
-  const FontBinaryLoader({
+  FontBinaryLoader({
     required this.fileExists,
     required this.readFile,
     required this.readBundle,
     required this.register,
     required this.runAsync,
-    this.log = debugPrint,
-  });
+    void Function(String message)? log,
+  }) : log = log ?? debugPrint;
 
   final bool Function(String path) fileExists;
   final Future<ByteData> Function(String path) readFile;
@@ -327,8 +327,8 @@ class FontLoadingOrchestrator {
     required this.readManifest,
     required this.listFontFiles,
     required this.loadFamily,
-    this.log = debugPrint,
-  });
+    void Function(String message)? log,
+  }) : log = log ?? debugPrint;
 
   final Directory Function() sdkRoot;
   final bool isMacOS;
