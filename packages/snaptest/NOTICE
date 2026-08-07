@@ -1,0 +1,16 @@
+Snaptest
+Copyright 2025 Tim Lehmann for whynotmake.it
+
+Portions of Snaptest's font-loading implementation were adapted from Spot
+v0.18.0:
+https://github.com/passsy/spot/tree/v0.18.0
+
+Spot is licensed under the Apache License, Version 2.0.
+Copyright 2022 Pascal Welsch
+
+Those portions were modified for use in Snaptest. A copy of the Apache
+License, Version 2.0 is included in the LICENSE file.
+
+Earlier published Snaptest archives remain unchanged and retain the license
+notices shipped in those archives. Their MIT notice does not license this
+release.
