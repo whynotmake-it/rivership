@@ -172,9 +172,7 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
     _motionController = MotionController(
       vsync: this,
       motion: spec.motion,
-      initialValue: HeroineLocation(
-        boundingBox: spec.fromHeroLocation.boundingBox,
-      ),
+      initialValue: spec.fromHeroLocation,
       converter: _HeroineLocationConverter(),
     )..addStatusListener(onSpringAnimationStatusChanged);
   }
@@ -327,18 +325,21 @@ class _HeroineState extends State<Heroine> with TickerProviderStateMixin {
           builder: (context, child) {
             return Transform.translate(
               offset: landing.offset,
-              child: SizedBox.fromSize(
-                size: landing.placeholderSize,
-                child: OverflowBox(
-                  maxHeight: double.infinity,
-                  maxWidth: double.infinity,
-                  child: Center(
-                    child: SizedBox.fromSize(
-                      size: Size(
-                        landing.sizeX,
-                        landing.sizeY,
+              child: Transform.rotate(
+                angle: landing.rotationDelta,
+                child: SizedBox.fromSize(
+                  size: landing.placeholderSize,
+                  child: OverflowBox(
+                    maxHeight: double.infinity,
+                    maxWidth: double.infinity,
+                    child: Center(
+                      child: SizedBox.fromSize(
+                        size: Size(
+                          landing.sizeX,
+                          landing.sizeY,
+                        ),
+                        child: child,
                       ),
-                      child: child,
                     ),
                   ),
                 ),
@@ -366,6 +367,7 @@ sealed class _Status {
 /// These happen while the routes are transitioning.
 abstract interface class _InFlight {
   _FlightSpec get spec;
+
   Size get placeholderSize;
 }
 
@@ -433,9 +435,28 @@ class _ToLanding extends _Status {
 
   final HeroineLocation target;
 
-  /// The current offset from the target center.
-  Offset get offset =>
-      controller.value.boundingBox.center - target.boundingBox.center;
+  /// The current offset from the target center, expressed in the destination
+  /// hero's local frame.
+  ///
+  /// The spring animates in global coordinates, but this widget renders
+  /// inside the destination's subtree under whatever rotation its ancestors
+  /// apply, so the global displacement is rotated back by the target's
+  /// resting rotation before being handed to [Transform.translate].
+  Offset get offset {
+    final delta =
+        controller.value.boundingBox.center - target.boundingBox.center;
+    if (target.rotation == 0) return delta;
+    final cos = math.cos(-target.rotation);
+    final sin = math.sin(-target.rotation);
+    return Offset(
+      delta.dx * cos - delta.dy * sin,
+      delta.dx * sin + delta.dy * cos,
+    );
+  }
+
+  /// How far the spring's rotation still is from the target's resting
+  /// rotation.
+  double get rotationDelta => controller.value.rotation - target.rotation;
 
   double get sizeX => controller.value.boundingBox.width;
 
