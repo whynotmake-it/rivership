@@ -632,11 +632,15 @@ Future<T?> _runInFakeDevice<T>(
   final binding = TestWidgetsFlutterBinding.instance;
   await binding.pump(Duration.zero);
 
-  final restoreView = setTestViewForDevice(device, orientation);
+  final deviceIsAlreadyConfigured =
+      activeDeviceVariant == (device, orientation);
+  final restoreView = deviceIsAlreadyConfigured
+      ? null
+      : setTestViewForDevice(device, orientation);
 
   final result = await maybeRunAsync(fn);
 
-  restoreView();
+  restoreView?.call();
 
   await binding.pump(Duration.zero);
 

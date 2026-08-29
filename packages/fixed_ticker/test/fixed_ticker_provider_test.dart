@@ -46,6 +46,19 @@ void main() {
       );
     });
 
+    testWidgets('shareTicks can opt out of shared scheduling', (tester) async {
+      Ticker? ticker;
+      await tester.pumpWidget(
+        _CustomIntervalSingleTickerWidget(
+          interval: const Duration(milliseconds: 100),
+          shareTicks: false,
+          onTicker: (value) => ticker = value,
+        ),
+      );
+
+      expect((ticker! as FixedTicker).shared, isFalse);
+    });
+
     testWidgets('throws on second createTicker call', (tester) async {
       FlutterError? error;
       await tester.pumpWidget(
@@ -233,6 +246,22 @@ void main() {
           (ticker as FixedTicker).interval,
           const Duration(milliseconds: 50),
         );
+      }
+    });
+
+    testWidgets('shareTicks applies to every created ticker', (tester) async {
+      final tickers = <Ticker>[];
+      await tester.pumpWidget(
+        _CustomIntervalMultiTickerWidget(
+          interval: const Duration(milliseconds: 50),
+          tickerCount: 2,
+          shareTicks: false,
+          onTickers: tickers.addAll,
+        ),
+      );
+
+      for (final ticker in tickers) {
+        expect((ticker as FixedTicker).shared, isFalse);
       }
     });
 
@@ -611,10 +640,12 @@ class _MultiTickerTestWidgetState extends State<_MultiTickerTestWidget>
 class _CustomIntervalSingleTickerWidget extends StatefulWidget {
   const _CustomIntervalSingleTickerWidget({
     required this.interval,
+    this.shareTicks = true,
     this.onTicker,
   });
 
   final Duration interval;
+  final bool shareTicks;
   final void Function(Ticker)? onTicker;
 
   @override
@@ -627,6 +658,9 @@ class _CustomIntervalSingleTickerWidgetState
     with SingleFixedTickerProviderStateMixin {
   @override
   TickerRate get tickerRate => TickerRate.interval(widget.interval);
+
+  @override
+  bool get shareTicks => widget.shareTicks;
 
   @override
   void initState() {
@@ -644,11 +678,13 @@ class _CustomIntervalMultiTickerWidget extends StatefulWidget {
   const _CustomIntervalMultiTickerWidget({
     required this.interval,
     required this.tickerCount,
+    this.shareTicks = true,
     this.onTickers,
   });
 
   final Duration interval;
   final int tickerCount;
+  final bool shareTicks;
   final void Function(List<Ticker>)? onTickers;
 
   @override
@@ -663,6 +699,9 @@ class _CustomIntervalMultiTickerWidgetState
 
   @override
   TickerRate get tickerRate => TickerRate.interval(widget.interval);
+
+  @override
+  bool get shareTicks => widget.shareTicks;
 
   @override
   void initState() {
