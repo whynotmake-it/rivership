@@ -221,6 +221,65 @@ void main() {
       }
     });
 
+    testWidgets(
+      'a rate compatible with two groups joins one without merging them', (
+      tester,
+    ) async {
+      const tenMs = Duration(milliseconds: 10);
+      const fifteenMs = Duration(milliseconds: 15);
+      const thirtyMs = Duration(milliseconds: 30);
+      final tenElapsed = <Duration>[];
+      final fifteenElapsed = <Duration>[];
+      final thirtyElapsed = <Duration>[];
+      final ten = FixedTicker(tenElapsed.add, interval: tenMs);
+      final fifteen = FixedTicker(fifteenElapsed.add, interval: fifteenMs);
+      final thirty = FixedTicker(thirtyElapsed.add, interval: thirtyMs);
+      try {
+        unawaited(ten.start());
+        await tester.pump();
+        unawaited(fifteen.start());
+        await tester.pump();
+        unawaited(thirty.start());
+        await tester.pump();
+        tenElapsed.clear();
+        fifteenElapsed.clear();
+        thirtyElapsed.clear();
+
+        // Window of 65ms after all three tickers are running. The 10ms and
+        // 15ms groups are mutually incompatible, so the 30ms rate can belong
+        // to at most one of them.
+        for (var i = 0; i < 13; i++) {
+          await tester.pump(const Duration(milliseconds: 5));
+        }
+
+        // Regression: joining the 30ms rate used to crash with a null check
+        // error while trying to absorb the 15ms group into the 10ms group.
+        expect(tenElapsed, isNotEmpty);
+        expect(fifteenElapsed, isNotEmpty);
+        expect(thirtyElapsed, hasLength(2));
+
+        // The 30ms ticker must keep its own cadence ...
+        final thirtyDeltas = [
+          for (var i = 1; i < thirtyElapsed.length; i++)
+            thirtyElapsed[i] - thirtyElapsed[i - 1],
+        ];
+        expect(thirtyDeltas, everyElement(thirtyMs));
+
+        // ... aligned with the 10ms group it joined ...
+        final tenBoundaries = tenElapsed.toSet();
+        expect(tenBoundaries.containsAll(thirtyElapsed), isTrue);
+
+        // ... while the unrelated 15ms group keeps its independent cadence.
+        final fifteenDeltas = [
+          for (var i = 1; i < fifteenElapsed.length; i++)
+            fifteenElapsed[i] - fifteenElapsed[i - 1],
+        ];
+        expect(fifteenDeltas, everyElement(fifteenMs));
+      } finally {
+        _disposeTickers([ten, fifteen, thirty]);
+      }
+    });
+
     testWidgets('removing the fastest subscriber preserves slower cadence', (
       tester,
     ) async {
