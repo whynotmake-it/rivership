@@ -21,8 +21,6 @@ class _MockTicker extends Mock implements Ticker {
 
 void main() {
   group('PhaseSequenceController', () {
-    setUp(TestWidgetsFlutterBinding.ensureInitialized);
-
     late SequenceMotionController<String, Offset> controller;
     const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();

@@ -1,4 +1,9 @@
+import 'dart:ui';
+
+import 'package:flutter/animation.dart' show AnimationStatus;
 import 'package:flutter/rendering.dart';
+import 'package:motor/src/controllers/motion_controller.dart'
+    show MotionController;
 
 /// A function that converts a value of type [T] to a list of double values.
 typedef Normalize<T> = List<double> Function(T value);
@@ -11,15 +16,32 @@ typedef Denormalize<T> = T Function(List<double> values);
 ///
 /// This allows for different value types to be animated by converting them
 /// to and from lists of doubles that can be used by the animation system.
+///
+/// If your values have a defined order (e.g., [double], [int], etc.), consider
+/// using [DirectionalMotionConverter] instead to provide directionality
+/// information to motion controllers.
 abstract class MotionConverter<T> {
   /// Creates a motion converter.
   const MotionConverter();
 
   /// Creates a motion converter with normalize and denormalize functions.
+  ///
+  /// See [MotionConverter] for more information.
   const factory MotionConverter.custom({
     required Normalize<T> normalize,
     required Denormalize<T> denormalize,
   }) = _CallbackMotionConverter<T>;
+
+  /// Creates a directional motion converter with normalize, denormalize and
+  /// compare functions.
+  ///
+  /// See [DirectionalMotionConverter] for more information about
+  /// directionality.
+  const factory MotionConverter.customDirectional({
+    required Normalize<T> normalize,
+    required Denormalize<T> denormalize,
+    required int Function(T a, T b) compare,
+  }) = _CallbackDirectionalMotionConverter<T>;
 
   /// A motion converter for single values.
   static const single = SingleMotionConverter();
@@ -50,10 +72,66 @@ abstract class MotionConverter<T> {
 
   /// Converts a list of double values back to a value of type [T].
   T denormalize(List<double> values);
+
+  /// Linearly interpolates between [a] and [b] using [t] by interpolating each
+  /// dimension individually.
+  T lerp(T a, T b, double t) {
+    final aValues = normalize(a);
+    final bValues = normalize(b);
+    final resultValues = <double>[];
+    for (var i = 0; i < aValues.length; i++) {
+      resultValues.add(lerpDouble(aValues[i], bValues[i], t)!);
+    }
+    return denormalize(resultValues);
+  }
+}
+
+/// A [MotionConverter] that provides additional information about whether a
+/// motion is forward or backwards by exposing a [compare] method.
+///
+/// Passing a [DirectionalMotionConverter] will lead to the animation status of
+/// associated [MotionController]s to correctly report [AnimationStatus.reverse]
+/// when animating backwards.
+///
+/// Most multi-dimensional types where directionality is not well-defined
+/// (e.g., [Offset], [Color], etc.) should stick to using a regular
+/// [MotionConverter] without directionality.
+///
+/// However, in certain cases, you might want to define a custom directionality.
+/// You could for example implement a custom variant of [SizeMotionConverter]
+/// that compares the area (width * height) of two [Size]s to determine which
+/// one is "greater".
+///
+/// ```dart
+/// class AreaSizeMotionConverter extends SizeMotionConverter
+///     with DirectionalMotionConverter<Size> {
+///   @override
+///   int compare(Size a, Size b) {
+///     final areaA = a.width * a.height;
+///     final areaB = b.width * b.height;
+///     return areaA.compareTo(areaB);
+///   }
+/// }
+mixin DirectionalMotionConverter<T> on MotionConverter<T> {
+  /// Compares two values of type [T] for figuring out directionality.
+  ///
+  /// Like [Comparable.compare], this should return a negative integer if
+  /// [a] is less than [b], zero if they are equal, and a positive integer if
+  /// [a] is greater than [b].
+  int compare(T a, T b);
+}
+
+/// Adds [compare] implementation to a [MotionConverter] for types that
+/// implement [Comparable].
+mixin ComparableMotionConverter<T extends Comparable<dynamic>>
+    on MotionConverter<T> implements DirectionalMotionConverter<T> {
+  @override
+  int compare(T a, T b) => a.compareTo(b);
 }
 
 /// A [MotionConverter] for double values.
-class SingleMotionConverter extends MotionConverter<double> {
+class SingleMotionConverter extends MotionConverter<double>
+    with ComparableMotionConverter<double> {
   /// Creates a [SingleMotionConverter].
   const SingleMotionConverter();
 
@@ -200,9 +278,36 @@ class _CallbackMotionConverter<T> extends MotionConverter<T> {
   final Normalize<T> _normalize;
 
   final Denormalize<T> _denormalize;
+
   @override
   List<double> normalize(T value) => _normalize(value);
 
   @override
   T denormalize(List<double> values) => _denormalize(values);
+}
+
+class _CallbackDirectionalMotionConverter<T> extends MotionConverter<T>
+    with DirectionalMotionConverter<T> {
+  const _CallbackDirectionalMotionConverter({
+    required Normalize<T> normalize,
+    required Denormalize<T> denormalize,
+    required int Function(T a, T b) compare,
+  })  : _normalize = normalize,
+        _denormalize = denormalize,
+        _compare = compare;
+
+  final Normalize<T> _normalize;
+
+  final Denormalize<T> _denormalize;
+
+  final int Function(T a, T b) _compare;
+
+  @override
+  List<double> normalize(T value) => _normalize(value);
+
+  @override
+  T denormalize(List<double> values) => _denormalize(values);
+
+  @override
+  int compare(T a, T b) => _compare(a, b);
 }
