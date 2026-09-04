@@ -1,3 +1,8 @@
+## Unreleased
+
+ - **FEAT**: add opt-in heroine transitions for user gestures, including
+   Android predictive back, with support for canceled and committed gestures.
+
 ## 0.7.2
 
  - **FEAT**: add `shouldTransition` callback to `Heroine` for route-based filtering.
