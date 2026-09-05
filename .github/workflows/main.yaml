@@ -52,7 +52,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: golden-failures-${{ steps.pkg.outputs.basename }}
+          name: golden-failures
           path: |
             **/test/**/failures/**
           if-no-files-found: ignore
