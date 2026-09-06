@@ -33,11 +33,14 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.1' # keep in sync with .fvmrc
           channel: 'stable'
           cache: true
       
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
+        with:
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
 
       - name: 🧪 Run Analyze
         run: melos run analyze
@@ -75,11 +78,14 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.1' # keep in sync with .fvmrc
           channel: 'stable'
           cache: true
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
+        with:
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
 
       - name: 🔨 Generate
         run: melos run generate

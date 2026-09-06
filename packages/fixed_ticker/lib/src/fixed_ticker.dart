@@ -210,12 +210,19 @@ class _SharedTickScheduler {
     final compatibleGroups = _groups
         .where((candidate) => candidate.canUse(interval))
         .toList();
-    final group = compatibleGroups.firstOrNull;
-    final selectedGroup = group ?? (_SharedTickGroup(this, interval)..start());
+    final selectedGroup =
+        compatibleGroups.firstOrNull ??
+        (_SharedTickGroup(this, interval)..start());
     _groups.add(selectedGroup);
     selectedGroup.prepareBase(interval);
     for (final compatibleGroup in compatibleGroups.skip(1)) {
-      selectedGroup.absorb(compatibleGroup);
+      // A rate can be compatible with two groups whose bases are not
+      // compatible with each other (e.g. 10ms, 15ms, and a new 30ms rate).
+      // Interval compatibility is not transitive, so only absorb groups that
+      // can share a common base without breaking the cadence invariant.
+      if (selectedGroup.canAbsorb(compatibleGroup)) {
+        selectedGroup.absorb(compatibleGroup);
+      }
     }
     selectedGroup.add(ticker, interval);
     _tickerGroups[ticker] = selectedGroup;
@@ -251,6 +258,22 @@ class _SharedTickGroup {
     final effectiveBase = _pendingBaseInterval ?? baseInterval;
     return _harmonicMultiple(interval, effectiveBase) != null ||
         _harmonicMultiple(effectiveBase, interval) != null;
+  }
+
+  /// Whether [other] can be merged into this group without breaking the
+  /// invariant that every member interval is an integer multiple of the
+  /// group's base.
+  ///
+  /// This holds exactly when one group's effective base (including a pending
+  /// rebase) is an integer multiple of the other's: the faster base then
+  /// divides every member interval of both groups. Groups whose bases are
+  /// unrelated (e.g. 10ms and 15ms) must stay separate even when a third rate
+  /// (e.g. 30ms) is compatible with both.
+  bool canAbsorb(_SharedTickGroup other) {
+    final base = _pendingBaseInterval ?? baseInterval;
+    final otherBase = other._pendingBaseInterval ?? other.baseInterval;
+    return _harmonicMultiple(otherBase, base) != null ||
+        _harmonicMultiple(base, otherBase) != null;
   }
 
   Duration? intervalFor(FixedTicker ticker) {
