@@ -10,6 +10,7 @@ import 'package:stupid_simple_sheet/src/snapping_point.dart';
 export 'package:motor/src/motion.dart';
 
 export 'src/dismissal_mode.dart';
+export 'src/presentation_sizing.dart' show PresentationSizing;
 export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
 export 'src/sheet_dismissal_transition.dart';
@@ -128,6 +129,7 @@ class _RelativeGestureDetector extends StatefulWidget {
     required this.onRelativeDragEnd,
     required this.dismissalMode,
     required this.child,
+    this.referenceHeight,
   });
 
   final bool scrollableCanMoveBack;
@@ -140,6 +142,7 @@ class _RelativeGestureDetector extends StatefulWidget {
   final void Function(double velocity, double referenceHeight, bool wouldScroll)
       onRelativeDragEnd;
   final DismissalMode dismissalMode;
+  final double? referenceHeight;
 
   final Widget child;
 
@@ -157,10 +160,11 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
       onlyDragWhenScrollWasAtTop: widget.onlyDragWhenScrollWasAtTop,
       scrollableCanMoveBack: widget.scrollableCanMoveBack,
       onVerticalDragStart: (details, _) {
-        _referenceHeight = SheetDismissalTransition.referenceHeightOf(
-          context,
-          widget.dismissalMode,
-        );
+        _referenceHeight = widget.referenceHeight ??
+            SheetDismissalTransition.referenceHeightOf(
+              context,
+              widget.dismissalMode,
+            );
         widget.onRelativeDragStart();
       },
       onVerticalDragEnd: (details, willScroll) {
@@ -277,6 +281,17 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// [backgroundSnapshotController]. See [StupidSimpleSheetRoute] for an
   /// example.
   RouteSnapshotMode get backgroundSnapshotMode => RouteSnapshotMode.never;
+
+  /// Overrides the reference height used to normalize drag deltas.
+  ///
+  /// Returning `null` (the default) falls back to
+  /// [SheetDismissalTransition.referenceHeightOf].
+  ///
+  /// Subclasses can override this when the sheet's visible content size does
+  /// not match the distance the sheet actually travels on screen (for example,
+  /// when the sheet is centered inside a larger translate).
+  @protected
+  double? dragReferenceHeight(BuildContext context) => null;
 
   /// The [SnapshotController] that toggles snapshotting of the background
   /// route.
@@ -423,6 +438,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         child: _RelativeGestureDetector(
           dismissalMode: dismissalMode,
           onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+          referenceHeight: dragReferenceHeight(context),
           scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),

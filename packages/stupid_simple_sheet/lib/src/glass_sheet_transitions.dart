@@ -9,6 +9,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
+import 'package:stupid_simple_sheet/src/presentation_sizing.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 abstract class GlassSheetTransitions {
@@ -42,6 +43,8 @@ abstract class GlassSheetTransitions {
     required (double, double) slideBackRange,
     required Color backgroundColor,
     required bool secondSheet,
+    double? extensionAtBottom,
+    bool hugContent = false,
     Widget? child,
   }) {
     final slideAnimation = secondSheet
@@ -78,6 +81,7 @@ abstract class GlassSheetTransitions {
             backgroundColor,
             context,
           ),
+          extensionAtBottom: extensionAtBottom,
           child: getOverlayedChild(
             context,
             child,
@@ -86,6 +90,7 @@ abstract class GlassSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
+            expandOverlay: !hugContent,
           ),
         ),
       ),
@@ -106,19 +111,70 @@ abstract class GlassSheetTransitions {
         top: Radius.circular(36),
       ),
     ),
+    PresentationSizing presentationSizing = PresentationSizing.form,
     Widget? child,
   }) {
+    final formSheet =
+        presentationSizing.resolvesToFormSheet(MediaQuery.sizeOf(context));
+    final effectiveShape = formSheet ? toFormSheetShape(shape) : shape;
+
     final secondaryChild = secondarySlideUpTransition(
       context,
       animation: animation,
       secondaryAnimation: secondaryAnimation,
-      shape: shape,
+      shape: effectiveShape,
       opacityRange: opacityRange,
       slideBackRange: slideBackRange,
       backgroundColor: backgroundColor,
       secondSheet: secondSheet,
+      extensionAtBottom: formSheet ? 0 : null,
+      hugContent: presentationSizing.sizesHeightToContent,
       child: child,
     );
+
+    if (formSheet) {
+      return Builder(
+        builder: (context) {
+          final screenSize = MediaQuery.sizeOf(context);
+          final viewInsets = MediaQuery.viewInsetsOf(context);
+          final topMargin = viewInsets.top +
+              kFormSheetMinVerticalMargin +
+              (secondSheet ? kFormSheetPaddingToPrevious : 0);
+          final bottomMargin = viewInsets.bottom +
+              kFormSheetMinVerticalMargin +
+              kFormSheetBottomInset;
+          // The space the card can occupy after margins and insets are removed.
+          final availableSize = Size(
+            screenSize.width - 2 * kFormSheetMinHorizontalMargin,
+            screenSize.height - topMargin - bottomMargin,
+          );
+          return AnimatedBuilder(
+            animation: animation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, (1 - animation.value) * screenSize.height),
+                child: child,
+              );
+            },
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: kFormSheetMinHorizontalMargin,
+                right: kFormSheetMinHorizontalMargin,
+                top: topMargin,
+                bottom: bottomMargin,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints:
+                      presentationSizing.formSheetConstraints(availableSize),
+                  child: secondaryChild,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
 
     return Builder(
       builder: (context) {
@@ -143,5 +199,23 @@ abstract class GlassSheetTransitions {
         );
       },
     );
+  }
+
+  /// Returns a version of [shape] with all corners rounded, suitable for
+  /// form sheet presentation where the sheet is not edge-attached.
+  static ShapeBorder toFormSheetShape(ShapeBorder shape) {
+    if (shape is RoundedSuperellipseBorder) {
+      final radius = shape.borderRadius.resolve(TextDirection.ltr).topLeft;
+      return RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(radius),
+      );
+    }
+    if (shape is RoundedRectangleBorder) {
+      final radius = shape.borderRadius.resolve(TextDirection.ltr).topLeft;
+      return RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(radius),
+      );
+    }
+    return shape;
   }
 }

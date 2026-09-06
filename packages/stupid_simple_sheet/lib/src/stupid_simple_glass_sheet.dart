@@ -40,6 +40,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
     this.blurBehindBarrier = true,
+    this.presentationSizing = PresentationSizing.form,
 
     /// The color applied to the route behind the first glass sheet.
     ///
@@ -121,6 +122,31 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
+  /// How the sheet is sized on screen.
+  ///
+  /// Mirrors SwiftUI's `presentationSizing`. Defaults to
+  /// [PresentationSizing.form], which presents as an iPad-style centered card
+  /// on regular-width displays and as an edge-to-edge bottom sheet on
+  /// compact-width displays. Use [PresentationSizing.page] to always present
+  /// edge-to-edge from the bottom.
+  ///
+  /// When the form sheet presentation is active, [dismissalMode] is ignored
+  /// and the sheet always dismisses by sliding.
+  final PresentationSizing presentationSizing;
+
+  /// Whether the current screen warrants form sheet presentation.
+  bool _shouldUseFormSheet(BuildContext context) {
+    return presentationSizing.resolvesToFormSheet(MediaQuery.sizeOf(context));
+  }
+
+  @override
+  double? dragReferenceHeight(BuildContext context) {
+    if (_shouldUseFormSheet(context)) {
+      return MediaQuery.sizeOf(context).height;
+    }
+    return null;
+  }
+
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       backgroundSnapshotMode == RouteSnapshotMode.never
@@ -192,6 +218,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
             secondSheet: _isSecondGlassSheet,
             dismissalMode: dismissalMode,
             shape: shape,
+            presentationSizing: presentationSizing,
             child: maybeSnapshotChild(child),
           );
         },
