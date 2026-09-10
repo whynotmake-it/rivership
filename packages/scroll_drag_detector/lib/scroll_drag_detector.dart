@@ -787,11 +787,27 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
     }
 
     final movingTowardsTrailingEdge = value > position.pixels;
-    final isRecoveringFromOutOfRangePosition =
-        (position.pixels < position.minScrollExtent &&
-                value > position.pixels) ||
-            (position.pixels > position.maxScrollExtent &&
-                value < position.pixels);
+    final isRecoveringFromOutOfRangePosition = (position.pixels <
+                position.minScrollExtent &&
+            value > position.pixels) ||
+        (position.pixels > position.maxScrollExtent && value < position.pixels);
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'F',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_OverscrollScrollPhysics.applyBoundaryConditions',
+      message: 'evaluated boundary condition',
+      data: {
+        'pixels': position.pixels,
+        'value': value,
+        'min': position.minScrollExtent,
+        'max': position.maxScrollExtent,
+        'blockLeading': blockLeadingScroll,
+        'blockTrailing': blockTrailingScroll,
+        'recovering': isRecoveringFromOutOfRangePosition,
+      },
+    );
+    // #endregion
     if (isRecoveringFromOutOfRangePosition) {
       return super.applyBoundaryConditions(position, value);
     }

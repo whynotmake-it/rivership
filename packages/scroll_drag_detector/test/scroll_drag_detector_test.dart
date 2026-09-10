@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
@@ -58,7 +59,7 @@ void main() {
         _TestScrollable(
           axis: Axis.vertical,
           reverse: false,
-          physics: const BouncingScrollPhysics(),
+          scrollBehavior: const CupertinoScrollBehavior(),
           leadingEdgeHandoff: ScrollDragHandoff.edge,
           trailingEdgeHandoff: ScrollDragHandoff.none,
           onStart: (_) {},
@@ -127,7 +128,7 @@ class _TestScrollable extends StatelessWidget {
   const _TestScrollable({
     required this.axis,
     required this.reverse,
-    this.physics,
+    this.scrollBehavior,
     required this.leadingEdgeHandoff,
     required this.trailingEdgeHandoff,
     required this.onStart,
@@ -137,7 +138,7 @@ class _TestScrollable extends StatelessWidget {
 
   final Axis axis;
   final bool reverse;
-  final ScrollPhysics? physics;
+  final ScrollBehavior? scrollBehavior;
   final ScrollDragHandoff leadingEdgeHandoff;
   final ScrollDragHandoff trailingEdgeHandoff;
   final ValueChanged<bool> onStart;
@@ -146,37 +147,42 @@ class _TestScrollable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final detector = ScrollDragDetector(
+      leadingEdgeHandoff: leadingEdgeHandoff,
+      trailingEdgeHandoff: trailingEdgeHandoff,
+      onlyDragWhenScrollWasAtTrailingEdge: onlyDragWhenScrollWasAtTrailingEdge,
+      onVerticalDragStart: axis == Axis.vertical
+          ? (details, didScroll) => onStart(didScroll)
+          : null,
+      onVerticalDragEnd: axis == Axis.vertical
+          ? (details, willScroll) => onEnd?.call(willScroll)
+          : null,
+      onHorizontalDragStart: axis == Axis.horizontal
+          ? (details, didScroll) => onStart(didScroll)
+          : null,
+      onHorizontalDragEnd: axis == Axis.horizontal
+          ? (details, willScroll) => onEnd?.call(willScroll)
+          : null,
+      child: ListView.builder(
+        scrollDirection: axis,
+        reverse: reverse,
+        itemExtent: 40,
+        itemCount: 100,
+        itemBuilder: (context, index) => const SizedBox(),
+      ),
+    );
+
     return Directionality(
       textDirection: TextDirection.ltr,
       child: SizedBox(
         width: 300,
         height: 300,
-        child: ScrollDragDetector(
-          leadingEdgeHandoff: leadingEdgeHandoff,
-          trailingEdgeHandoff: trailingEdgeHandoff,
-          onlyDragWhenScrollWasAtTrailingEdge:
-              onlyDragWhenScrollWasAtTrailingEdge,
-          onVerticalDragStart: axis == Axis.vertical
-              ? (details, didScroll) => onStart(didScroll)
-              : null,
-          onVerticalDragEnd: axis == Axis.vertical
-              ? (details, willScroll) => onEnd?.call(willScroll)
-              : null,
-          onHorizontalDragStart: axis == Axis.horizontal
-              ? (details, didScroll) => onStart(didScroll)
-              : null,
-          onHorizontalDragEnd: axis == Axis.horizontal
-              ? (details, willScroll) => onEnd?.call(willScroll)
-              : null,
-          child: ListView.builder(
-            scrollDirection: axis,
-            reverse: reverse,
-            physics: physics,
-            itemExtent: 40,
-            itemCount: 100,
-            itemBuilder: (context, index) => const SizedBox(),
-          ),
-        ),
+        child: scrollBehavior == null
+            ? detector
+            : ScrollConfiguration(
+                behavior: scrollBehavior!,
+                child: detector,
+              ),
       ),
     );
   }
