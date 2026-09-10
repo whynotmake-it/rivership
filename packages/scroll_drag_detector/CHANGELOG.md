@@ -1,3 +1,10 @@
+## Next
+
+ - **BREAKING** **FEAT**: add symmetric leading- and trailing-edge handoff
+   behavior for all four [AxisDirection] values.
+ - **DEPRECATE** `scrollableCanMoveBack` and
+   `onlyDragWhenScrollWasAtTop` in favor of the edge-based API.
+
 ## 0.1.0+2
 
  - **FIX**: immediately start clearing overscroll when letting go.

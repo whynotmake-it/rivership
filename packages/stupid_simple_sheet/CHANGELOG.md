@@ -1,3 +1,8 @@
+## Next
+
+ - **FIX**: migrate scroll-to-drag handoff to the directional
+   `scroll_drag_detector` API.
+
 ## 1.0.0-dev.2
 
  - **DOCS**: update logo.

@@ -121,7 +121,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
 class _RelativeGestureDetector extends StatefulWidget {
   const _RelativeGestureDetector({
-    required this.scrollableCanMoveBack,
+    required this.dragFromTrailingEdge,
     required this.onlyDragWhenScrollWasAtTop,
     required this.onRelativeDragStart,
     required this.onRelativeDragUpdate,
@@ -130,7 +130,7 @@ class _RelativeGestureDetector extends StatefulWidget {
     required this.child,
   });
 
-  final bool scrollableCanMoveBack;
+  final bool dragFromTrailingEdge;
   final bool onlyDragWhenScrollWasAtTop;
   final VoidCallback onRelativeDragStart;
   // ignore: avoid_positional_boolean_parameters
@@ -154,8 +154,11 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
   @override
   Widget build(BuildContext context) {
     return ScrollDragDetector(
-      onlyDragWhenScrollWasAtTop: widget.onlyDragWhenScrollWasAtTop,
-      scrollableCanMoveBack: widget.scrollableCanMoveBack,
+      leadingEdgeHandoff: ScrollDragHandoff.edge,
+      trailingEdgeHandoff: widget.dragFromTrailingEdge
+          ? ScrollDragHandoff.beforeScroll
+          : ScrollDragHandoff.none,
+      onlyDragWhenScrollWasAtLeadingEdge: widget.onlyDragWhenScrollWasAtTop,
       onVerticalDragStart: (details, _) {
         _referenceHeight = SheetDismissalTransition.referenceHeightOf(
           context,
@@ -423,7 +426,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         child: _RelativeGestureDetector(
           dismissalMode: dismissalMode,
           onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
-          scrollableCanMoveBack: (_animationTargetValue ?? animation.value) <
+          dragFromTrailingEdge: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
           onRelativeDragUpdate: (relativeDelta, referenceHeight, wouldScroll) =>

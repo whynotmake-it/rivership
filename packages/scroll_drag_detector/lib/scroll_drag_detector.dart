@@ -1,5 +1,8 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -25,6 +28,41 @@ typedef ScrollDragEndCallback = void Function(
   bool willScroll,
 );
 
+// #region agent log
+void _writeDebugLog({
+  required String hypothesisId,
+  required String location,
+  required String message,
+  required Map<String, Object?> data,
+}) {
+  try {
+    File('/opt/cursor/logs/debug.log').writeAsStringSync(
+      '${jsonEncode(<String, Object?>{
+            'hypothesisId': hypothesisId,
+            'location': location,
+            'message': message,
+            'data': data,
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          })}\n',
+      mode: FileMode.append,
+    );
+  } catch (_) {}
+}
+// #endregion
+
+/// Describes when a scrollable should hand a drag to its parent.
+enum ScrollDragHandoff {
+  /// Never hand the drag to the parent from this edge.
+  none,
+
+  /// Hand the drag to the parent after the scrollable reaches this edge.
+  edge,
+
+  /// Hand the drag to the parent before the scrollable moves in this
+  /// direction.
+  beforeScroll,
+}
+
 /// {@template scroll_drag_detector}
 /// A widget similar to GestureDetector that can smoothly transition between
 /// dragging and scrolling.
@@ -44,8 +82,20 @@ class ScrollDragDetector extends StatefulWidget {
   ///{@macro scroll_drag_detector}
   const ScrollDragDetector({
     required this.child,
-    this.scrollableCanMoveBack = true,
-    this.onlyDragWhenScrollWasAtTop = true,
+    this.leadingEdgeHandoff = ScrollDragHandoff.edge,
+    this.trailingEdgeHandoff = ScrollDragHandoff.beforeScroll,
+    this.onlyDragWhenScrollWasAtLeadingEdge = true,
+    this.onlyDragWhenScrollWasAtTrailingEdge = false,
+    @Deprecated(
+      'Use trailingEdgeHandoff instead. '
+      'This parameter will be removed in the next major version.',
+    )
+    this.scrollableCanMoveBack,
+    @Deprecated(
+      'Use onlyDragWhenScrollWasAtLeadingEdge instead. '
+      'This parameter will be removed in the next major version.',
+    )
+    this.onlyDragWhenScrollWasAtTop,
     this.onVerticalDragDown,
     this.onVerticalDragStart,
     this.onVerticalDragUpdate,
@@ -62,21 +112,61 @@ class ScrollDragDetector extends StatefulWidget {
   /// The widget below this widget in the tree.
   final Widget child;
 
-  /// Whether the scrollable can still move backwards (towards the direction
-  /// of its leading edge).
+  /// Controls handoff when the scrollable reaches its leading edge.
   ///
-  /// Set this to false when your scrollable cannot move backwards (e.g. a
-  /// sheet) is fully expanded to allow this child's scrollable to transition
-  /// back to scrolling instead of dragging.
+  /// The leading edge is the minimum scroll extent. Its physical location
+  /// depends on the scrollable's [AxisDirection], so this works for vertical
+  /// and horizontal scrollables, including reversed scroll views.
   ///
-  /// It will then send an [onVerticalDragEnd] callback.
-  final bool scrollableCanMoveBack;
+  /// Defaults to [ScrollDragHandoff.edge].
+  final ScrollDragHandoff leadingEdgeHandoff;
 
-  /// If true, scrolls will only transition to drags, when the initial drag
-  /// started at the top of the scrollable.
+  /// Controls handoff when the scrollable reaches its trailing edge.
   ///
-  /// This matches iOS sheet default behavior and defaults to true.
-  final bool onlyDragWhenScrollWasAtTop;
+  /// The trailing edge is the maximum scroll extent. Its physical location
+  /// depends on the scrollable's [AxisDirection], so this works for vertical
+  /// and horizontal scrollables, including reversed scroll views.
+  ///
+  /// Defaults to [ScrollDragHandoff.beforeScroll] to preserve the original
+  /// bottom-sheet behavior. Use [ScrollDragHandoff.edge] when the scrollable
+  /// should scroll to its trailing edge before the parent takes over.
+  final ScrollDragHandoff trailingEdgeHandoff;
+
+  /// If true, leading-edge handoff only occurs when the gesture started at the
+  /// leading edge.
+  ///
+  /// If false, an eligible gesture can hand off after scrolling to the leading
+  /// edge. Defaults to true, matching the original top-edge behavior.
+  final bool onlyDragWhenScrollWasAtLeadingEdge;
+
+  /// If true, trailing-edge handoff only occurs when the gesture started at the
+  /// trailing edge.
+  ///
+  /// If false, an [ScrollDragHandoff.edge] handoff can occur after the
+  /// scrollable reaches the trailing edge. Defaults to false so a scroll-first
+  /// trailing-edge handoff is available by configuration.
+  final bool onlyDragWhenScrollWasAtTrailingEdge;
+
+  /// @deprecated Use [trailingEdgeHandoff] instead.
+  ///
+  /// This is retained as a source-compatible migration path for the original
+  /// bottom-sheet API. A non-null value takes precedence over
+  /// [trailingEdgeHandoff].
+  @Deprecated(
+    'Use trailingEdgeHandoff instead. '
+    'This parameter will be removed in the next major version.',
+  )
+  final bool? scrollableCanMoveBack;
+
+  /// @deprecated Use [onlyDragWhenScrollWasAtLeadingEdge] instead.
+  ///
+  /// This is retained as a source-compatible migration path for the original
+  /// top-edge API.
+  @Deprecated(
+    'Use onlyDragWhenScrollWasAtLeadingEdge instead. '
+    'This parameter will be removed in the next major version.',
+  )
+  final bool? onlyDragWhenScrollWasAtTop;
 
   /// A pointer has contacted the screen with a primary button and might begin
   /// to move vertically.
@@ -167,10 +257,10 @@ class ScrollDragDetector extends StatefulWidget {
 class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   final _isDragging = ValueNotifier(false);
 
-  var _scrollStartedAtTop = false;
+  var _scrollStartedAtLeadingEdge = false;
+  var _scrollStartedAtTrailingEdge = false;
 
   DragStartDetails? _dragStartDetails;
-  ScrollMetrics? _startMetrics;
 
   bool get hasVertical =>
       widget.onVerticalDragStart != null ||
@@ -190,6 +280,25 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
       if (hasHorizontal) Axis.horizontal,
     };
   }
+
+  ScrollDragHandoff get _leadingEdgeHandoff {
+    return widget.leadingEdgeHandoff;
+  }
+
+  ScrollDragHandoff get _trailingEdgeHandoff {
+    return switch (widget.scrollableCanMoveBack) {
+      final value? =>
+        value ? ScrollDragHandoff.beforeScroll : ScrollDragHandoff.none,
+      null => widget.trailingEdgeHandoff,
+    };
+  }
+
+  bool get _onlyDragWhenScrollWasAtLeadingEdge =>
+      widget.onlyDragWhenScrollWasAtTop ??
+      widget.onlyDragWhenScrollWasAtLeadingEdge;
+
+  bool get _onlyDragWhenScrollWasAtTrailingEdge =>
+      widget.onlyDragWhenScrollWasAtTrailingEdge;
 
   @override
   void dispose() {
@@ -245,16 +354,20 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         child: ValueListenableBuilder(
           valueListenable: _isDragging,
           builder: (context, value, child) {
+            final blockLeadingScroll = !value &&
+                _leadingEdgeHandoff == ScrollDragHandoff.beforeScroll &&
+                !_onlyDragWhenScrollWasAtLeadingEdge;
+            final blockTrailingScroll = !value &&
+                _trailingEdgeHandoff == ScrollDragHandoff.beforeScroll &&
+                !_onlyDragWhenScrollWasAtTrailingEdge;
+
             return ScrollConfiguration(
-              behavior: value || widget.scrollableCanMoveBack
+              behavior: value || blockLeadingScroll || blockTrailingScroll
                   ? _DraggingScrollBehavior(
                       parent: ScrollConfiguration.of(context),
                       axes: dragAxes,
-                      startMetrics: _startMetrics,
-                      // If we aren't currently dragging, but the scrollable can
-                      // still move back, only block forward scrolls.
-                      onlyBlockForwardScroll:
-                          !value && widget.scrollableCanMoveBack,
+                      blockLeadingScroll: value || blockLeadingScroll,
+                      blockTrailingScroll: value || blockTrailingScroll,
                     )
                   : ScrollConfiguration.of(context),
               child: child!,
@@ -269,17 +382,79 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   bool _onScrollNotification(ScrollNotification notification) {
     if (!dragAxes.contains(notification.metrics.axis)) return true;
 
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'A,C,E',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_onScrollNotification',
+      message: 'received scroll notification',
+      data: {
+        'type': notification.runtimeType.toString(),
+        'isDragging': _isDragging.value,
+        'axis': notification.metrics.axis.name,
+        'axisDirection': notification.metrics.axisDirection.name,
+        'pixels': notification.metrics.pixels,
+        'extentBefore': notification.metrics.extentBefore,
+        'extentAfter': notification.metrics.extentAfter,
+        'dragDetailsPresent': switch (notification) {
+          ScrollStartNotification(:final dragDetails) => dragDetails != null,
+          ScrollUpdateNotification(:final dragDetails) => dragDetails != null,
+          OverscrollNotification(:final dragDetails) => dragDetails != null,
+          _ => false,
+        },
+      },
+    );
+    // #endregion
+
     switch (notification) {
       case ScrollStartNotification(:final dragDetails, :final metrics):
-        _scrollStartedAtTop = notification.metrics.extentBefore <= kTouchSlop;
+        _scrollStartedAtLeadingEdge = metrics.extentBefore <= kTouchSlop;
+        _scrollStartedAtTrailingEdge = metrics.extentAfter <= kTouchSlop;
         _dragStartDetails = dragDetails;
-        _startMetrics = metrics;
+        // #region agent log
+        _writeDebugLog(
+          hypothesisId: 'E',
+          location:
+              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollStartNotification',
+          message: 'captured gesture edge state',
+          data: {
+            'leadingAtStart': _scrollStartedAtLeadingEdge,
+            'trailingAtStart': _scrollStartedAtTrailingEdge,
+            'extentBefore': metrics.extentBefore,
+            'extentAfter': metrics.extentAfter,
+            'dragDetailsPresent': dragDetails != null,
+            'leadingHandoff': _leadingEdgeHandoff.name,
+            'trailingHandoff': _trailingEdgeHandoff.name,
+            'onlyLeadingAtStart': _onlyDragWhenScrollWasAtLeadingEdge,
+            'onlyTrailingAtStart': _onlyDragWhenScrollWasAtTrailingEdge,
+          },
+        );
+      // #endregion
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
         ):
-        if (dragDetails != null &&
-            _isScrollActuallyDrag(metrics, dragDetails)) {
+        final isScrollActuallyDrag =
+            dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
+        // #region agent log
+        _writeDebugLog(
+          hypothesisId: 'B,C',
+          location:
+              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollUpdateNotification',
+          message: 'classified scroll update',
+          data: {
+            'isScrollActuallyDrag': isScrollActuallyDrag,
+            'isDragging': _isDragging.value,
+            'primaryDelta': dragDetails?.primaryDelta,
+            'pixels': metrics.pixels,
+            'extentBefore': metrics.extentBefore,
+            'extentAfter': metrics.extentAfter,
+            'leadingHandoff': _leadingEdgeHandoff.name,
+            'trailingHandoff': _trailingEdgeHandoff.name,
+          },
+        );
+        // #endregion
+        if (isScrollActuallyDrag) {
           // When we are overscrolling at the top
 
           if (!_isDragging.value) {
@@ -288,26 +463,52 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
+        } else if (_isDragging.value) {
+          // #region agent log
+          _writeDebugLog(
+            hypothesisId: 'B',
+            location:
+                'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollUpdateNotification.nonHandoff',
+            message: 'active parent drag ignored non-handoff update',
+            data: {
+              'primaryDelta': dragDetails?.primaryDelta,
+              'pixels': metrics.pixels,
+              'extentBefore': metrics.extentBefore,
+              'extentAfter': metrics.extentAfter,
+            },
+          );
+          // #endregion
         }
       case OverscrollNotification(
           :final metrics,
           :final dragDetails,
           :final velocity,
         ):
-        if (dragDetails != null &&
-            _isScrollActuallyDrag(metrics, dragDetails)) {
+        final isScrollActuallyDrag =
+            dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
+        // #region agent log
+        _writeDebugLog(
+          hypothesisId: 'A,B,C',
+          location:
+              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:OverscrollNotification',
+          message: 'classified overscroll notification',
+          data: {
+            'isScrollActuallyDrag': isScrollActuallyDrag,
+            'isDragging': _isDragging.value,
+            'primaryDelta': dragDetails?.primaryDelta,
+            'velocity': velocity,
+            'pixels': metrics.pixels,
+            'extentBefore': metrics.extentBefore,
+            'extentAfter': metrics.extentAfter,
+          },
+        );
+        // #endregion
+        if (isScrollActuallyDrag) {
           // When we are overscrolling at the top
 
           if (!_isDragging.value) {
             _isDragging.value = true;
             _handleDragStart(metrics.axis);
-          } else if (dragDetails.primaryDelta case final delta?
-              when delta < 0 && !widget.scrollableCanMoveBack) {
-            // We cannot move back anymore, but the user is still dragging.
-            // So we end the drag here, but we notify that we will continue
-            // scrolling.
-            _isDragging.value = false;
-            _handleDragEnd(metrics.axis, DragEndDetails(), true);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
@@ -336,6 +537,21 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
 
       case final ScrollEndNotification n:
+        // #region agent log
+        _writeDebugLog(
+          hypothesisId: 'A,C',
+          location:
+              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollEndNotification',
+          message: 'received scroll end notification',
+          data: {
+            'isDragging': _isDragging.value,
+            'pixels': n.metrics.pixels,
+            'extentBefore': n.metrics.extentBefore,
+            'extentAfter': n.metrics.extentAfter,
+            'dragDetailsPresent': n.dragDetails != null,
+          },
+        );
+        // #endregion
         if (_isDragging.value) {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -353,37 +569,59 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     return true;
   }
 
-  /// Whether it is possible that the user could intend to drag backward
-  /// (towards the direction of the leading edge).
-  ///
-  /// If `onlyDragWhenScrollWasAtTop` is true, this is only possible if the
-  /// scroll started at the top.
-  bool get _canDragBackward =>
-      _scrollStartedAtTop || !widget.onlyDragWhenScrollWasAtTop;
-
-  /// Whether it is possible that the user could intend to drag forward
-  /// (towards the direction of the trailing edge).
-  bool get _canDragForward => widget.scrollableCanMoveBack;
-
   /// Whether the given scroll metrics and drag details indicate that the user
   /// is trying to drag instead of scroll.
   bool _isScrollActuallyDrag(ScrollMetrics metrics, DragUpdateDetails details) {
-    // We are at the top and trying to scroll further up
-    if (metrics.extentBefore <= 0 &&
-        details.primaryDelta != null &&
-        details.primaryDelta! > 0) {
-      return _canDragBackward;
+    final primaryDelta = details.primaryDelta;
+    if (primaryDelta == null || primaryDelta == 0) return false;
+
+    final isLeading = _isMovingTowardsLeadingEdge(
+      metrics.axisDirection,
+      primaryDelta,
+    );
+    final handoff = isLeading ? _leadingEdgeHandoff : _trailingEdgeHandoff;
+    if (handoff == ScrollDragHandoff.none) return false;
+
+    final startedAtEdge =
+        isLeading ? _scrollStartedAtLeadingEdge : _scrollStartedAtTrailingEdge;
+    final onlyWhenStartedAtEdge = isLeading
+        ? _onlyDragWhenScrollWasAtLeadingEdge
+        : _onlyDragWhenScrollWasAtTrailingEdge;
+    if (onlyWhenStartedAtEdge && !startedAtEdge) return false;
+
+    if (handoff == ScrollDragHandoff.edge) {
+      final atEdge = isLeading
+          ? metrics.extentBefore <= kTouchSlop
+          : metrics.extentAfter <= kTouchSlop;
+      if (!atEdge) return false;
     }
 
-    // We aren't at the top and can move further forward
-    if (details.primaryDelta != null && details.primaryDelta! < 0) {
-      return _canDragForward;
-    }
+    return true;
+  }
 
-    return false;
+  static bool _isMovingTowardsLeadingEdge(
+    AxisDirection axisDirection,
+    double primaryDelta,
+  ) {
+    return switch (axisDirection) {
+      AxisDirection.up || AxisDirection.left => primaryDelta < 0,
+      AxisDirection.down || AxisDirection.right => primaryDelta > 0,
+    };
   }
 
   void _handleDragStart(Axis axis) {
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'A,C',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleDragStart',
+      message: 'forwarded parent drag start',
+      data: {
+        'axis': axis.name,
+        'hasStartDetails': _dragStartDetails != null,
+      },
+    );
+    // #endregion
     if (_dragStartDetails case final details?) {
       if (axis == Axis.vertical) {
         widget.onVerticalDragStart?.call(details, true);
@@ -402,6 +640,19 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   void _handleDragEnd(Axis axis, DragEndDetails details, bool willScroll) {
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'A,C',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleDragEnd',
+      message: 'forwarded parent drag end',
+      data: {
+        'axis': axis.name,
+        'willScroll': willScroll,
+        'primaryVelocity': details.primaryVelocity,
+      },
+    );
+    // #endregion
     if (axis == Axis.vertical) {
       widget.onVerticalDragEnd?.call(details, willScroll);
     } else {
@@ -412,27 +663,21 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
 class _DraggingScrollBehavior extends ScrollBehavior {
   const _DraggingScrollBehavior({
-    required this.startMetrics,
     required this.parent,
     required this.axes,
-    required this.onlyBlockForwardScroll,
+    required this.blockLeadingScroll,
+    required this.blockTrailingScroll,
   });
-
-  final ScrollMetrics? startMetrics;
 
   final ScrollBehavior parent;
 
   final Set<Axis> axes;
 
-  /// If this is set to true, only forward scrolls (towards the trailing edge)
-  /// will be blocked and turned into overscrolls.
-  ///
-  /// Use this while the scrollable can still move back, but isn't actively
-  /// being dragged to make sure that backwards scrolls are still possible.
-  ///
-  /// This will not block forward scrolls from outside the bounds, to make sure
-  /// the scrollable can return to its bounds.
-  final bool onlyBlockForwardScroll;
+  /// Whether scrolls towards the leading edge should be blocked.
+  final bool blockLeadingScroll;
+
+  /// Whether scrolls towards the trailing edge should be blocked.
+  final bool blockTrailingScroll;
 
   bool doesApplyToDetails(ScrollableDetails details) {
     return switch (details.direction) {
@@ -447,8 +692,8 @@ class _DraggingScrollBehavior extends ScrollBehavior {
   ScrollPhysics getScrollPhysics(BuildContext context) =>
       _OverscrollScrollPhysics(
         axes: axes,
-        startMetrics: startMetrics,
-        onlyBlockForwardScroll: onlyBlockForwardScroll,
+        blockLeadingScroll: blockLeadingScroll,
+        blockTrailingScroll: blockTrailingScroll,
         parent: parent.getScrollPhysics(context),
       );
 
@@ -502,8 +747,8 @@ class _DraggingScrollBehavior extends ScrollBehavior {
       parent.shouldNotify(oldDelegate) ||
       (oldDelegate is _DraggingScrollBehavior &&
           (oldDelegate.axes != axes ||
-              oldDelegate.onlyBlockForwardScroll != onlyBlockForwardScroll ||
-              oldDelegate.startMetrics != startMetrics));
+              oldDelegate.blockLeadingScroll != blockLeadingScroll ||
+              oldDelegate.blockTrailingScroll != blockTrailingScroll));
 }
 
 /// Scroll physics that don't allow moving from the current position and just
@@ -511,23 +756,23 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 class _OverscrollScrollPhysics extends ScrollPhysics {
   const _OverscrollScrollPhysics({
     required this.axes,
-    required this.startMetrics,
-    required this.onlyBlockForwardScroll,
+    required this.blockLeadingScroll,
+    required this.blockTrailingScroll,
     super.parent,
   });
 
-  final bool onlyBlockForwardScroll;
-
   final Set<Axis> axes;
 
-  final ScrollMetrics? startMetrics;
+  final bool blockLeadingScroll;
+
+  final bool blockTrailingScroll;
 
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
     return _OverscrollScrollPhysics(
       axes: axes,
-      startMetrics: startMetrics,
-      onlyBlockForwardScroll: onlyBlockForwardScroll,
+      blockLeadingScroll: blockLeadingScroll,
+      blockTrailingScroll: blockTrailingScroll,
       parent: buildParent(ancestor),
     );
   }
@@ -541,12 +786,19 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
       return super.applyBoundaryConditions(position, value);
     }
 
-    final forwards = value > position.pixels;
-    final beforeStart = position.pixels < position.minScrollExtent;
+    final movingTowardsTrailingEdge = value > position.pixels;
+    final isRecoveringFromOutOfRangePosition =
+        (position.pixels < position.minScrollExtent &&
+                value > position.pixels) ||
+            (position.pixels > position.maxScrollExtent &&
+                value < position.pixels);
+    if (isRecoveringFromOutOfRangePosition) {
+      return super.applyBoundaryConditions(position, value);
+    }
 
-    // If we only block forward scrolls, allow backwards scrolls and scrolls
-    // when we are before the start.
-    if (onlyBlockForwardScroll && (!forwards || beforeStart)) {
+    final shouldBlock =
+        movingTowardsTrailingEdge ? blockTrailingScroll : blockLeadingScroll;
+    if (!shouldBlock) {
       return super.applyBoundaryConditions(position, value);
     }
 
