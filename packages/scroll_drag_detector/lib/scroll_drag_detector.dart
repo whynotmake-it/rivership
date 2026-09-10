@@ -847,7 +847,7 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
       },
     );
     // #endregion
-    if (position.outOfRange) {
+    if (isRecoveringFromOutOfRangePosition) {
       return super.applyBoundaryConditions(position, value);
     }
 
