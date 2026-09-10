@@ -1,8 +1,5 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -27,28 +24,6 @@ typedef ScrollDragEndCallback = void Function(
   DragEndDetails details,
   bool willScroll,
 );
-
-// #region agent log
-void _writeDebugLog({
-  required String hypothesisId,
-  required String location,
-  required String message,
-  required Map<String, Object?> data,
-}) {
-  try {
-    File('/opt/cursor/logs/debug.log').writeAsStringSync(
-      '${jsonEncode(<String, Object?>{
-            'hypothesisId': hypothesisId,
-            'location': location,
-            'message': message,
-            'data': data,
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-          })}\n',
-      mode: FileMode.append,
-    );
-  } catch (_) {}
-}
-// #endregion
 
 /// Describes when a scrollable should hand a drag to its parent.
 enum ScrollDragHandoff {
@@ -324,9 +299,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             },
           null => null,
         },
-        onVerticalDragEnd: hasVertical
-            ? (details) => _handleGestureEnd(Axis.vertical, details)
-            : null,
+        onVerticalDragEnd: switch (widget.onVerticalDragEnd) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
         onVerticalDragCancel: widget.onVerticalDragCancel,
         onHorizontalDragDown: widget.onHorizontalDragDown,
         onHorizontalDragStart: switch (widget.onHorizontalDragStart) {
@@ -341,9 +319,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             },
           null => null,
         },
-        onHorizontalDragEnd: hasHorizontal
-            ? (details) => _handleGestureEnd(Axis.horizontal, details)
-            : null,
+        onHorizontalDragEnd: switch (widget.onHorizontalDragEnd) {
+          final callback? => (details) {
+              callback(details, false);
+            },
+          null => null,
+        },
         onHorizontalDragCancel: widget.onHorizontalDragCancel,
         child: ValueListenableBuilder(
           valueListenable: _isDragging,
@@ -376,78 +357,17 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   bool _onScrollNotification(ScrollNotification notification) {
     if (!dragAxes.contains(notification.metrics.axis)) return true;
 
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'A,C,E',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_onScrollNotification',
-      message: 'received scroll notification',
-      data: {
-        'type': notification.runtimeType.toString(),
-        'isDragging': _isDragging.value,
-        'axis': notification.metrics.axis.name,
-        'axisDirection': notification.metrics.axisDirection.name,
-        'pixels': notification.metrics.pixels,
-        'extentBefore': notification.metrics.extentBefore,
-        'extentAfter': notification.metrics.extentAfter,
-        'dragDetailsPresent': switch (notification) {
-          ScrollStartNotification(:final dragDetails) => dragDetails != null,
-          ScrollUpdateNotification(:final dragDetails) => dragDetails != null,
-          OverscrollNotification(:final dragDetails) => dragDetails != null,
-          _ => false,
-        },
-      },
-    );
-    // #endregion
-
     switch (notification) {
       case ScrollStartNotification(:final dragDetails, :final metrics):
         _scrollStartedAtLeadingEdge = metrics.extentBefore <= kTouchSlop;
         _scrollStartedAtTrailingEdge = metrics.extentAfter <= kTouchSlop;
         _dragStartDetails = dragDetails;
-        // #region agent log
-        _writeDebugLog(
-          hypothesisId: 'E',
-          location:
-              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollStartNotification',
-          message: 'captured gesture edge state',
-          data: {
-            'leadingAtStart': _scrollStartedAtLeadingEdge,
-            'trailingAtStart': _scrollStartedAtTrailingEdge,
-            'extentBefore': metrics.extentBefore,
-            'extentAfter': metrics.extentAfter,
-            'dragDetailsPresent': dragDetails != null,
-            'leadingHandoff': _leadingEdgeHandoff.name,
-            'trailingHandoff': _trailingEdgeHandoff.name,
-            'onlyLeadingAtStart': _onlyDragWhenScrollWasAtLeadingEdge,
-            'onlyTrailingAtStart': _onlyDragWhenScrollWasAtTrailingEdge,
-          },
-        );
-      // #endregion
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
         ):
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
-        // #region agent log
-        _writeDebugLog(
-          hypothesisId: 'B,C',
-          location:
-              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollUpdateNotification',
-          message: 'classified scroll update',
-          data: {
-            'isScrollActuallyDrag': isScrollActuallyDrag,
-            'isDragging': _isDragging.value,
-            'primaryDelta': dragDetails?.primaryDelta,
-            'pixels': metrics.pixels,
-            'extentBefore': metrics.extentBefore,
-            'extentAfter': metrics.extentAfter,
-            'leadingHandoff': _leadingEdgeHandoff.name,
-            'trailingHandoff': _trailingEdgeHandoff.name,
-          },
-        );
-        // #endregion
         if (isScrollActuallyDrag) {
           // When we are overscrolling at the top
 
@@ -457,21 +377,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
-        } else if (_isDragging.value) {
-          // #region agent log
-          _writeDebugLog(
-            hypothesisId: 'B',
-            location:
-                'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollUpdateNotification.nonHandoff',
-            message: 'active parent drag ignored non-handoff update',
-            data: {
-              'primaryDelta': dragDetails?.primaryDelta,
-              'pixels': metrics.pixels,
-              'extentBefore': metrics.extentBefore,
-              'extentAfter': metrics.extentAfter,
-            },
-          );
-          // #endregion
         }
       case OverscrollNotification(
           :final metrics,
@@ -480,23 +385,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         ):
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
-        // #region agent log
-        _writeDebugLog(
-          hypothesisId: 'A,B,C',
-          location:
-              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:OverscrollNotification',
-          message: 'classified overscroll notification',
-          data: {
-            'isScrollActuallyDrag': isScrollActuallyDrag,
-            'isDragging': _isDragging.value,
-            'primaryDelta': dragDetails?.primaryDelta,
-            'velocity': velocity,
-            'pixels': metrics.pixels,
-            'extentBefore': metrics.extentBefore,
-            'extentAfter': metrics.extentAfter,
-          },
-        );
-        // #endregion
         if (isScrollActuallyDrag) {
           // When we are overscrolling at the top
 
@@ -531,21 +419,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
 
       case final ScrollEndNotification n:
-        // #region agent log
-        _writeDebugLog(
-          hypothesisId: 'A,C',
-          location:
-              'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:ScrollEndNotification',
-          message: 'received scroll end notification',
-          data: {
-            'isDragging': _isDragging.value,
-            'pixels': n.metrics.pixels,
-            'extentBefore': n.metrics.extentBefore,
-            'extentAfter': n.metrics.extentAfter,
-            'dragDetailsPresent': n.dragDetails != null,
-          },
-        );
-        // #endregion
         if (_isDragging.value) {
           _isDragging.value = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -604,18 +477,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   void _handleDragStart(Axis axis) {
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'A,C',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleDragStart',
-      message: 'forwarded parent drag start',
-      data: {
-        'axis': axis.name,
-        'hasStartDetails': _dragStartDetails != null,
-      },
-    );
-    // #endregion
     if (_dragStartDetails case final details?) {
       if (axis == Axis.vertical) {
         widget.onVerticalDragStart?.call(details, true);
@@ -633,41 +494,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     }
   }
 
-  void _handleGestureEnd(Axis axis, DragEndDetails details) {
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'G',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleGestureEnd',
-      message: 'outer gesture ended',
-      data: {
-        'axis': axis.name,
-        'primaryVelocity': details.primaryVelocity,
-        'isDragging': _isDragging.value,
-      },
-    );
-    // #endregion
-    if (axis == Axis.vertical) {
-      widget.onVerticalDragEnd?.call(details, false);
-    } else {
-      widget.onHorizontalDragEnd?.call(details, false);
-    }
-  }
-
   void _handleDragEnd(Axis axis, DragEndDetails details, bool willScroll) {
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'A,C',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleDragEnd',
-      message: 'forwarded parent drag end',
-      data: {
-        'axis': axis.name,
-        'willScroll': willScroll,
-        'primaryVelocity': details.primaryVelocity,
-      },
-    );
-    // #endregion
     if (axis == Axis.vertical) {
       widget.onVerticalDragEnd?.call(details, willScroll);
     } else {
@@ -783,29 +610,6 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
   final bool blockTrailingScroll;
 
   @override
-  Simulation? createBallisticSimulation(
-    ScrollMetrics position,
-    double velocity,
-  ) {
-    final simulation = super.createBallisticSimulation(position, velocity);
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'G',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_OverscrollScrollPhysics.createBallisticSimulation',
-      message: 'created ballistic simulation',
-      data: {
-        'pixels': position.pixels,
-        'velocity': velocity,
-        'outOfRange': position.outOfRange,
-        'simulation': simulation?.runtimeType.toString(),
-      },
-    );
-    // #endregion
-    return simulation;
-  }
-
-  @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
     return _OverscrollScrollPhysics(
       axes: axes,
@@ -829,23 +633,6 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
                 position.minScrollExtent &&
             value > position.pixels) ||
         (position.pixels > position.maxScrollExtent && value < position.pixels);
-    // #region agent log
-    _writeDebugLog(
-      hypothesisId: 'F',
-      location:
-          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_OverscrollScrollPhysics.applyBoundaryConditions',
-      message: 'evaluated boundary condition',
-      data: {
-        'pixels': position.pixels,
-        'value': value,
-        'min': position.minScrollExtent,
-        'max': position.maxScrollExtent,
-        'blockLeading': blockLeadingScroll,
-        'blockTrailing': blockTrailingScroll,
-        'recovering': isRecoveringFromOutOfRangePosition,
-      },
-    );
-    // #endregion
     if (isRecoveringFromOutOfRangePosition) {
       return super.applyBoundaryConditions(position, value);
     }
