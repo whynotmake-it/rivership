@@ -4,6 +4,8 @@
    `dragHandoff` on every sheet route.
  - **FIX**: migrate scroll-to-drag routing to the physical-direction
    `scroll_drag_detector` API.
+ - **DEPRECATE**: add `LegacySnapPhysics` for migrations that need the
+   pre-`1.0.0-dev.1` snapping response.
 
 ## 1.0.0-dev.2
 

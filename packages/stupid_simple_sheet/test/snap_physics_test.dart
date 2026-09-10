@@ -196,6 +196,42 @@ void main() {
     });
   });
 
+  group('LegacySnapPhysics', () {
+    // ignore: deprecated_member_use
+    const physics = LegacySnapPhysics();
+    final snapPoints = [0.0, 0.3, 0.6, 1.0];
+
+    test('uses closest-point snapping below the legacy fling threshold', () {
+      final result = physics.findTargetSnapPoint(
+        position: 0.4,
+        velocity: 0.5,
+        snapPoints: snapPoints,
+      );
+
+      expect(result, 0.3);
+    });
+
+    test('projects fast opening gestures using legacy scaling', () {
+      final result = physics.findTargetSnapPoint(
+        position: 0.4,
+        velocity: 2,
+        snapPoints: snapPoints,
+      );
+
+      expect(result, 1.0);
+    });
+
+    test('projects fast closing gestures using legacy scaling', () {
+      final result = physics.findTargetSnapPoint(
+        position: 0.4,
+        velocity: -2,
+        snapPoints: snapPoints,
+      );
+
+      expect(result, 0.0);
+    });
+  });
+
   group('SheetSnappingConfig', () {
     group('findClosestSnapPoint', () {
       test('finds closest point ignoring velocity', () {
