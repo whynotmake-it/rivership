@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -324,12 +325,9 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             },
           null => null,
         },
-        onVerticalDragEnd: switch (widget.onVerticalDragEnd) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
+        onVerticalDragEnd: hasVertical
+            ? (details) => _handleGestureEnd(Axis.vertical, details)
+            : null,
         onVerticalDragCancel: widget.onVerticalDragCancel,
         onHorizontalDragDown: widget.onHorizontalDragDown,
         onHorizontalDragStart: switch (widget.onHorizontalDragStart) {
@@ -344,12 +342,9 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             },
           null => null,
         },
-        onHorizontalDragEnd: switch (widget.onHorizontalDragEnd) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
+        onHorizontalDragEnd: hasHorizontal
+            ? (details) => _handleGestureEnd(Axis.horizontal, details)
+            : null,
         onHorizontalDragCancel: widget.onHorizontalDragCancel,
         child: ValueListenableBuilder(
           valueListenable: _isDragging,
@@ -639,6 +634,27 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     }
   }
 
+  void _handleGestureEnd(Axis axis, DragEndDetails details) {
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'G',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_handleGestureEnd',
+      message: 'outer gesture ended',
+      data: {
+        'axis': axis.name,
+        'primaryVelocity': details.primaryVelocity,
+        'isDragging': _isDragging.value,
+      },
+    );
+    // #endregion
+    if (axis == Axis.vertical) {
+      widget.onVerticalDragEnd?.call(details, false);
+    } else {
+      widget.onHorizontalDragEnd?.call(details, false);
+    }
+  }
+
   void _handleDragEnd(Axis axis, DragEndDetails details, bool willScroll) {
     // #region agent log
     _writeDebugLog(
@@ -766,6 +782,29 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
   final bool blockLeadingScroll;
 
   final bool blockTrailingScroll;
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    final simulation = super.createBallisticSimulation(position, velocity);
+    // #region agent log
+    _writeDebugLog(
+      hypothesisId: 'G',
+      location:
+          'packages/scroll_drag_detector/lib/scroll_drag_detector.dart:_OverscrollScrollPhysics.createBallisticSimulation',
+      message: 'created ballistic simulation',
+      data: {
+        'pixels': position.pixels,
+        'velocity': velocity,
+        'outOfRange': position.outOfRange,
+        'simulation': simulation?.runtimeType.toString(),
+      },
+    );
+    // #endregion
+    return simulation;
+  }
 
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
