@@ -67,19 +67,22 @@ void main() {
       );
 
       final scrollable = find.byType(Scrollable);
-      final position = tester.state<ScrollableState>(scrollable).position;
       final gesture = await tester.startGesture(tester.getCenter(scrollable));
       for (var i = 0; i < 15; i++) {
         await gesture.moveBy(const Offset(0, 20));
         await tester.pump();
       }
 
+      final position = tester.state<ScrollableState>(scrollable).position;
       expect(position.pixels, lessThan(position.minScrollExtent));
 
       await gesture.up();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(position.pixels, position.minScrollExtent);
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        position.minScrollExtent,
+      );
     },
   );
 
