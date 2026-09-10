@@ -52,6 +52,36 @@ void main() {
   });
 
   testWidgets(
+    'leading-edge overscroll settles after the drag ends',
+    (tester) async {
+      await tester.pumpWidget(
+        _TestScrollable(
+          axis: Axis.vertical,
+          reverse: false,
+          leadingEdgeHandoff: ScrollDragHandoff.edge,
+          trailingEdgeHandoff: ScrollDragHandoff.none,
+          onStart: (_) {},
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable);
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final gesture = await tester.startGesture(tester.getCenter(scrollable));
+      for (var i = 0; i < 15; i++) {
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pump();
+      }
+
+      expect(position.pixels, lessThan(position.minScrollExtent));
+
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(position.pixels, position.minScrollExtent);
+    },
+  );
+
+  testWidgets(
     'edge handoff can scroll to the trailing edge before taking over',
     (tester) async {
       final starts = <bool>[];
@@ -59,6 +89,7 @@ void main() {
       await tester.pumpWidget(
         _TestScrollable(
           axis: Axis.vertical,
+          reverse: false,
           leadingEdgeHandoff: ScrollDragHandoff.none,
           trailingEdgeHandoff: ScrollDragHandoff.edge,
           onlyDragWhenScrollWasAtTrailingEdge: false,
