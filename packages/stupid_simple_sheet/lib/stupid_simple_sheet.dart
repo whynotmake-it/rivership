@@ -154,7 +154,6 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
   @override
   Widget build(BuildContext context) {
     return ScrollDragDetector(
-      leadingEdgeHandoff: ScrollDragHandoff.edge,
       trailingEdgeHandoff: widget.dragFromTrailingEdge
           ? ScrollDragHandoff.beforeScroll
           : ScrollDragHandoff.none,

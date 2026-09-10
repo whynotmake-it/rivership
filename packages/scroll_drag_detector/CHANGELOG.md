@@ -1,7 +1,7 @@
 ## Next
 
  - **BREAKING** **FEAT**: add symmetric leading- and trailing-edge handoff
-   behavior for all four [AxisDirection] values.
+   behavior for all four scroll directions.
  - **DEPRECATE** `scrollableCanMoveBack` and
    `onlyDragWhenScrollWasAtTop` in favor of the edge-based API.
 

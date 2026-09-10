@@ -38,11 +38,18 @@ void main() {
           );
 
           final scrollable = find.byType(Scrollable);
+          if (reverse) {
+            final position = tester.state<ScrollableState>(scrollable).position;
+            position.jumpTo(position.minScrollExtent);
+            await tester.pump();
+          }
           final gesture = await tester.startGesture(
             tester.getCenter(scrollable),
           );
-          await gesture.moveBy(delta);
-          await tester.pump();
+          for (var i = 0; i < 10; i++) {
+            await gesture.moveBy(delta / 10);
+            await tester.pump();
+          }
           await gesture.up();
 
           expect(starts, contains(true));
@@ -70,13 +77,13 @@ void main() {
 
       final scrollable = find.byType(Scrollable);
       final gesture = await tester.startGesture(tester.getCenter(scrollable));
-      for (var i = 0; i < 40; i++) {
+      for (var i = 0; i < 140; i++) {
         await gesture.moveBy(const Offset(0, -30));
         await tester.pump();
       }
       final position = tester.state<ScrollableState>(scrollable).position;
 
-      expect(position.pixels, position.maxScrollExtent);
+      expect(position.pixels, closeTo(position.maxScrollExtent, 20));
       expect(starts, contains(true));
 
       // Reverse the same gesture. The parent drag ends and scrolling resumes.

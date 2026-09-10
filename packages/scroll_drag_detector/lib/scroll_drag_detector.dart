@@ -369,14 +369,17 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          // When we are overscrolling at the top
-
           if (!_isDragging.value) {
             _isDragging.value = true;
             _handleDragStart(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
+        } else if (_isDragging.value && dragDetails != null) {
+          // The scrollable has resumed scrolling in the opposite direction.
+          // End the parent drag while keeping the pointer gesture active.
+          _isDragging.value = false;
+          _handleDragEnd(metrics.axis, DragEndDetails(), true);
         }
       case OverscrollNotification(
           :final metrics,
@@ -386,8 +389,6 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          // When we are overscrolling at the top
-
           if (!_isDragging.value) {
             _isDragging.value = true;
             _handleDragStart(metrics.axis);
