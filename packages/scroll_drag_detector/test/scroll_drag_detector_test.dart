@@ -58,6 +58,7 @@ void main() {
         _TestScrollable(
           axis: Axis.vertical,
           reverse: false,
+          physics: const BouncingScrollPhysics(),
           leadingEdgeHandoff: ScrollDragHandoff.edge,
           trailingEdgeHandoff: ScrollDragHandoff.none,
           onStart: (_) {},
@@ -126,6 +127,7 @@ class _TestScrollable extends StatelessWidget {
   const _TestScrollable({
     required this.axis,
     required this.reverse,
+    this.physics,
     required this.leadingEdgeHandoff,
     required this.trailingEdgeHandoff,
     required this.onStart,
@@ -135,6 +137,7 @@ class _TestScrollable extends StatelessWidget {
 
   final Axis axis;
   final bool reverse;
+  final ScrollPhysics? physics;
   final ScrollDragHandoff leadingEdgeHandoff;
   final ScrollDragHandoff trailingEdgeHandoff;
   final ValueChanged<bool> onStart;
@@ -168,6 +171,7 @@ class _TestScrollable extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: axis,
             reverse: reverse,
+            physics: physics,
             itemExtent: 40,
             itemCount: 100,
             itemBuilder: (context, index) => const SizedBox(),
