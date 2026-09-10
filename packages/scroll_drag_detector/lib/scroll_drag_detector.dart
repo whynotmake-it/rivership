@@ -234,6 +234,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
   var _scrollStartedAtLeadingEdge = false;
   var _scrollStartedAtTrailingEdge = false;
+  var _dragSegment = 0;
 
   DragStartDetails? _dragStartDetails;
 
@@ -370,8 +371,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
           if (!_isDragging.value) {
-            _isDragging.value = true;
-            _handleDragStart(metrics.axis);
+            _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
@@ -390,8 +390,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
           if (!_isDragging.value) {
-            _isDragging.value = true;
-            _handleDragStart(metrics.axis);
+            _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
@@ -405,15 +404,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             _isDragging.value = false;
             _handleDragEnd(
               metrics.axis,
-              DragEndDetails(
-                primaryVelocity: -velocity,
-                velocity: Velocity(
-                  pixelsPerSecond: switch (metrics.axis) {
-                    Axis.vertical => Offset(0, -velocity),
-                    Axis.horizontal => Offset(-velocity, 0),
-                  },
-                ),
-              ),
+              _dragEndDetails(metrics, velocity),
               gestureActive,
             );
           }
@@ -422,8 +413,9 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
       case final ScrollEndNotification n:
         if (_isDragging.value) {
           _isDragging.value = false;
+          final dragSegment = _dragSegment;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
+            if (mounted && !_isDragging.value && _dragSegment == dragSegment) {
               // The user stopped scrolling, so we also end the drag.
               _handleDragEnd(
                 n.metrics.axis,
@@ -435,6 +427,31 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
     }
     return true;
+  }
+
+  void _startDrag(Axis axis) {
+    _isDragging.value = true;
+    _dragSegment++;
+    _handleDragStart(axis);
+  }
+
+  static DragEndDetails _dragEndDetails(
+    ScrollMetrics metrics,
+    double velocity,
+  ) {
+    final primaryVelocity = switch (metrics.axisDirection) {
+      AxisDirection.up || AxisDirection.left => velocity,
+      AxisDirection.down || AxisDirection.right => -velocity,
+    };
+    final pixelsPerSecond = switch (metrics.axis) {
+      Axis.vertical => Offset(0, primaryVelocity),
+      Axis.horizontal => Offset(primaryVelocity, 0),
+    };
+
+    return DragEndDetails(
+      primaryVelocity: primaryVelocity,
+      velocity: Velocity(pixelsPerSecond: pixelsPerSecond),
+    );
   }
 
   /// Whether the given scroll metrics and drag details indicate that the user

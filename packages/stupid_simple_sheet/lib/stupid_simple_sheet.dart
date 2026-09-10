@@ -173,7 +173,9 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
             willScroll,
           );
         }
-        _referenceHeight = null;
+        if (!willScroll) {
+          _referenceHeight = null;
+        }
       },
       onVerticalDragUpdate: (details, wouldScroll) {
         if (_referenceHeight case final height?) {
@@ -575,7 +577,6 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     bool willScroll,
   ) {
     _isUserDragging = false;
-    final currentValue = controller!.value;
     if (callNavigatorUserGestureMethods) {
       navigator?.didStopUserGesture();
     }
@@ -583,6 +584,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     // If the route has been popped, don't interfere with the closing animation
     if (_poppedNotifier.value) return;
 
+    // The scrollable is taking over this gesture. Keep the sheet where it is
+    // until a later drag segment ends without handing control back.
+    if (willScroll) {
+      _dragEndVelocity = null;
+      _updateSnapshotState();
+      return;
+    }
+
+    final currentValue = controller!.value;
     _dragEndVelocity = velocity;
 
     final maxExtent = effectiveSnappingConfig.maxExtent;
