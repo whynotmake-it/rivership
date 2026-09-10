@@ -378,7 +378,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         } else if (_isDragging.value && dragDetails != null) {
           // The scrollable has resumed scrolling in the opposite direction.
           // End the parent drag while keeping the pointer gesture active.
-          _isDragging.value = false;
+          _endDrag();
           _handleDragEnd(metrics.axis, DragEndDetails(), true);
         }
       case OverscrollNotification(
@@ -401,7 +401,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             // In both cases, we end the drag, and if the user's gesture is
             // still active, we notify that we will continue scrolling.
             final gestureActive = dragDetails != null;
-            _isDragging.value = false;
+            _endDrag();
             _handleDragEnd(
               metrics.axis,
               _dragEndDetails(metrics, velocity),
@@ -412,7 +412,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
       case final ScrollEndNotification n:
         if (_isDragging.value) {
-          _isDragging.value = false;
+          _endDrag();
           final dragSegment = _dragSegment;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !_isDragging.value && _dragSegment == dragSegment) {
@@ -433,6 +433,11 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     _isDragging.value = true;
     _dragSegment++;
     _handleDragStart(axis);
+  }
+
+  void _endDrag() {
+    _isDragging.value = false;
+    _dragSegment++;
   }
 
   static DragEndDetails _dragEndDetails(
