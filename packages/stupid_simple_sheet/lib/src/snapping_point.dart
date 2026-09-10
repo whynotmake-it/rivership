@@ -338,6 +338,10 @@ class FrictionSnapPhysics extends RelativeSnapPhysics {
 )
 class LegacySnapPhysics extends RelativeSnapPhysics {
   /// Creates legacy snap physics.
+  @Deprecated(
+    'Use FlingSnapPhysics or FrictionSnapPhysics instead. '
+    'This behavior is retained for migration compatibility.',
+  )
   const LegacySnapPhysics();
 
   @override
