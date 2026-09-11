@@ -1,9 +1,11 @@
 ## Next
 
- - **BREAKING** **FEAT**: add symmetric leading- and trailing-edge handoff
-   behavior for all four scroll directions.
- - **DEPRECATE** `scrollableCanMoveBack` and
-   `onlyDragWhenScrollWasAtTop` in favor of the edge-based API.
+ - **BREAKING** **FEAT**: replace the bottom-sheet-specific configuration with
+   required `up`, `down`, `left`, and `right` physical-direction modes.
+ - **FEAT**: add `ScrollDragDetector.legacy` for unchanged migration from
+   `scrollableCanMoveBack` and `onlyDragWhenScrollWasAtTop`.
+ - **FEAT**: support scroll-first boundary takeover and same-gesture reversal
+   in every physical direction, including reversed scrollables.
 
 ## 0.1.0+2
 

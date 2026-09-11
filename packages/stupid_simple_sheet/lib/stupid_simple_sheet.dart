@@ -18,6 +18,17 @@ export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 export 'src/stupid_simple_glass_sheet.dart';
 
+/// Controls whether scrolling content can hand an active gesture to its sheet.
+enum SheetDragHandoff {
+  /// The sheet can only take over when the scrollable was already at its top
+  /// boundary when the gesture began.
+  gestureStart,
+
+  /// The sheet can take over after the same gesture scrolls the content to its
+  /// top boundary.
+  continuous,
+}
+
 /// A modal route that displays a sheet that slides up from the bottom.
 ///
 /// The sheet can be dismissed by dragging down or by tapping the barrier.
@@ -51,7 +62,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.barrierDismissible = true,
     this.barrierLabel,
     this.clearBarrierImmediately = true,
-    this.onlyDragWhenScrollWasAtTop = true,
+    this.dragHandoff = SheetDragHandoff.gestureStart,
     this.callNavigatorUserGestureMethods = false,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
@@ -79,7 +90,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
   final bool clearBarrierImmediately;
 
   @override
-  final bool onlyDragWhenScrollWasAtTop;
+  final SheetDragHandoff dragHandoff;
 
   @override
   final bool callNavigatorUserGestureMethods;
@@ -122,7 +133,7 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 class _RelativeGestureDetector extends StatefulWidget {
   const _RelativeGestureDetector({
     required this.dragFromTrailingEdge,
-    required this.onlyDragWhenScrollWasAtTop,
+    required this.dragHandoff,
     required this.onRelativeDragStart,
     required this.onRelativeDragUpdate,
     required this.onRelativeDragEnd,
@@ -131,7 +142,7 @@ class _RelativeGestureDetector extends StatefulWidget {
   });
 
   final bool dragFromTrailingEdge;
-  final bool onlyDragWhenScrollWasAtTop;
+  final SheetDragHandoff dragHandoff;
   final VoidCallback onRelativeDragStart;
   // ignore: avoid_positional_boolean_parameters
   final void Function(double delta, double referenceHeight, bool wouldScroll)
@@ -154,10 +165,15 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
   @override
   Widget build(BuildContext context) {
     return ScrollDragDetector(
-      trailingEdgeHandoff: widget.dragFromTrailingEdge
-          ? ScrollDragHandoff.beforeScroll
-          : ScrollDragHandoff.none,
-      onlyDragWhenScrollWasAtLeadingEdge: widget.onlyDragWhenScrollWasAtTop,
+      up: widget.dragFromTrailingEdge
+          ? ScrollDragMode.dragFirst
+          : ScrollDragMode.none,
+      down: switch (widget.dragHandoff) {
+        SheetDragHandoff.gestureStart => ScrollDragMode.boundaryStart,
+        SheetDragHandoff.continuous => ScrollDragMode.scrollFirst,
+      },
+      left: ScrollDragMode.none,
+      right: ScrollDragMode.none,
       onVerticalDragStart: (details, _) {
         _referenceHeight = SheetDismissalTransition.referenceHeightOf(
           context,
@@ -227,16 +243,11 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// {@endtemplate}
   bool get clearBarrierImmediately => true;
 
-  /// {@template onlyDragWhenScrollWasAtTop}
-  /// Whether the sheet should only start being draggable when its scrollable
-  /// content was at the top whenever the user initiates a drag.
+  /// Controls whether scrolling content can hand an active gesture to this
+  /// sheet.
   ///
-  /// If this is true, and the user starts scrolling up from somewhere other
-  /// than the top, the scroll view will perform a normal overscroll.
-  ///
-  /// This matches iOS sheet behavior and defaults to true.
-  /// {@endtemplate}
-  bool get onlyDragWhenScrollWasAtTop => true;
+  /// Defaults to [SheetDragHandoff.gestureStart], matching iOS sheet behavior.
+  SheetDragHandoff get dragHandoff => SheetDragHandoff.gestureStart;
 
   /// Whether the sheet can be dragged.
   ///
@@ -426,7 +437,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         // sure the content inside the sheet doesn't add extra padding
         child: _RelativeGestureDetector(
           dismissalMode: dismissalMode,
-          onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+          dragHandoff: dragHandoff,
           dragFromTrailingEdge: (_animationTargetValue ?? animation.value) <
               effectiveSnappingConfig.maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),

@@ -22,7 +22,7 @@ void main() {
 
     Widget build({
       Motion motion = motion,
-      bool onlyDragWhenScrollWasAtTop = true,
+      SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
       bool draggable = true,
       bool originateAboveBottomViewInset = false,
     }) {
@@ -39,7 +39,7 @@ void main() {
                   ).push(
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
-                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      dragHandoff: dragHandoff,
                       draggable: draggable,
                       originateAboveBottomViewInset:
                           originateAboveBottomViewInset,
@@ -133,8 +133,8 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    testWidgets('only drags when started at top', (tester) async {
-      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: true));
+    testWidgets('gestureStart only drags when started at top', (tester) async {
+      await tester.pumpWidget(build());
       await tester.tap(find.byKey(const ValueKey('button')));
       await tester.pumpAndSettle();
       final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
@@ -165,9 +165,11 @@ void main() {
       expect(find.byType(GlowingOverscrollIndicator), findsOneWidget);
     });
 
-    testWidgets('drags from anywhere if onlyDragWhenScrollWasAtTop is false',
+    testWidgets('continuous handoff drags after scrolling to the top',
         (tester) async {
-      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: false));
+      await tester.pumpWidget(
+        build(dragHandoff: SheetDragHandoff.continuous),
+      );
       await tester.tap(find.byKey(const ValueKey('button')));
       await tester.pumpAndSettle();
       final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
@@ -599,7 +601,7 @@ void main() {
       DismissalMode dismissalMode = DismissalMode.slide,
       Widget? sheetChild,
       bool draggable = true,
-      bool onlyDragWhenScrollWasAtTop = true,
+      SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return MaterialApp(
@@ -616,7 +618,7 @@ void main() {
                       dismissalMode: dismissalMode,
                       draggable: draggable,
                       snappingConfig: snappingConfig,
-                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      dragHandoff: dragHandoff,
                       child: sheetChild ??
                           const ColoredBox(
                             key: ValueKey('sheet'),

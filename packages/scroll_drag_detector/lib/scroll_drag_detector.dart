@@ -25,17 +25,22 @@ typedef ScrollDragEndCallback = void Function(
   bool willScroll,
 );
 
-/// Describes when a scrollable should hand a drag to its parent.
-enum ScrollDragHandoff {
-  /// Never hand the drag to the parent from this edge.
+/// Describes how movement in one physical direction is routed between a
+/// descendant scrollable and this detector.
+enum ScrollDragMode {
+  /// The descendant scrollable keeps control in this direction.
   none,
 
-  /// Hand the drag to the parent after the scrollable reaches this edge.
-  edge,
+  /// The descendant scrollable moves first, then the detector takes over at
+  /// its boundary.
+  scrollFirst,
 
-  /// Hand the drag to the parent before the scrollable moves in this
-  /// direction.
-  beforeScroll,
+  /// The detector takes over before the descendant scrollable moves.
+  dragFirst,
+
+  /// The detector takes over at the boundary only when the gesture also began
+  /// at that boundary.
+  boundaryStart,
 }
 
 /// {@template scroll_drag_detector}
@@ -57,20 +62,10 @@ class ScrollDragDetector extends StatefulWidget {
   ///{@macro scroll_drag_detector}
   const ScrollDragDetector({
     required this.child,
-    this.leadingEdgeHandoff = ScrollDragHandoff.edge,
-    this.trailingEdgeHandoff = ScrollDragHandoff.beforeScroll,
-    this.onlyDragWhenScrollWasAtLeadingEdge = true,
-    this.onlyDragWhenScrollWasAtTrailingEdge = false,
-    @Deprecated(
-      'Use trailingEdgeHandoff instead. '
-      'This parameter will be removed in the next major version.',
-    )
-    this.scrollableCanMoveBack,
-    @Deprecated(
-      'Use onlyDragWhenScrollWasAtLeadingEdge instead. '
-      'This parameter will be removed in the next major version.',
-    )
-    this.onlyDragWhenScrollWasAtTop,
+    required this.up,
+    required this.down,
+    required this.left,
+    required this.right,
     this.onVerticalDragDown,
     this.onVerticalDragStart,
     this.onVerticalDragUpdate,
@@ -84,64 +79,54 @@ class ScrollDragDetector extends StatefulWidget {
     super.key,
   });
 
+  /// Creates a detector using the configuration supported before directional
+  /// routing was introduced.
+  ///
+  /// Use this constructor to migrate without changing the coherent interaction
+  /// behavior of a conventional, non-reversed scrollable. Reversed scrollables
+  /// use the corrected physical-direction routing.
+  const ScrollDragDetector.legacy({
+    required this.child,
+    bool scrollableCanMoveBack = true,
+    bool onlyDragWhenScrollWasAtTop = true,
+    this.onVerticalDragDown,
+    this.onVerticalDragStart,
+    this.onVerticalDragUpdate,
+    this.onVerticalDragEnd,
+    this.onVerticalDragCancel,
+    this.onHorizontalDragDown,
+    this.onHorizontalDragStart,
+    this.onHorizontalDragUpdate,
+    this.onHorizontalDragEnd,
+    this.onHorizontalDragCancel,
+    super.key,
+  })  : up = scrollableCanMoveBack
+            ? ScrollDragMode.dragFirst
+            : ScrollDragMode.none,
+        down = onlyDragWhenScrollWasAtTop
+            ? ScrollDragMode.boundaryStart
+            : ScrollDragMode.scrollFirst,
+        left = scrollableCanMoveBack
+            ? ScrollDragMode.dragFirst
+            : ScrollDragMode.none,
+        right = onlyDragWhenScrollWasAtTop
+            ? ScrollDragMode.boundaryStart
+            : ScrollDragMode.scrollFirst;
+
   /// The widget below this widget in the tree.
   final Widget child;
 
-  /// Controls handoff when the scrollable reaches its leading edge.
-  ///
-  /// The leading edge is the minimum scroll extent. Its physical location
-  /// depends on the scrollable's [AxisDirection], so this works for vertical
-  /// and horizontal scrollables, including reversed scroll views.
-  ///
-  /// Defaults to [ScrollDragHandoff.edge].
-  final ScrollDragHandoff leadingEdgeHandoff;
+  /// How upward pointer movement is routed.
+  final ScrollDragMode up;
 
-  /// Controls handoff when the scrollable reaches its trailing edge.
-  ///
-  /// The trailing edge is the maximum scroll extent. Its physical location
-  /// depends on the scrollable's [AxisDirection], so this works for vertical
-  /// and horizontal scrollables, including reversed scroll views.
-  ///
-  /// Defaults to [ScrollDragHandoff.beforeScroll] to preserve the original
-  /// bottom-sheet behavior. Use [ScrollDragHandoff.edge] when the scrollable
-  /// should scroll to its trailing edge before the parent takes over.
-  final ScrollDragHandoff trailingEdgeHandoff;
+  /// How downward pointer movement is routed.
+  final ScrollDragMode down;
 
-  /// If true, leading-edge handoff only occurs when the gesture started at the
-  /// leading edge.
-  ///
-  /// If false, an eligible gesture can hand off after scrolling to the leading
-  /// edge. Defaults to true, matching the original top-edge behavior.
-  final bool onlyDragWhenScrollWasAtLeadingEdge;
+  /// How leftward pointer movement is routed.
+  final ScrollDragMode left;
 
-  /// If true, trailing-edge handoff only occurs when the gesture started at the
-  /// trailing edge.
-  ///
-  /// If false, an [ScrollDragHandoff.edge] handoff can occur after the
-  /// scrollable reaches the trailing edge. Defaults to false so a scroll-first
-  /// trailing-edge handoff is available by configuration.
-  final bool onlyDragWhenScrollWasAtTrailingEdge;
-
-  /// @deprecated Use [trailingEdgeHandoff] instead.
-  ///
-  /// This is retained as a source-compatible migration path for the original
-  /// bottom-sheet API. A non-null value takes precedence over
-  /// [trailingEdgeHandoff].
-  @Deprecated(
-    'Use trailingEdgeHandoff instead. '
-    'This parameter will be removed in the next major version.',
-  )
-  final bool? scrollableCanMoveBack;
-
-  /// @deprecated Use [onlyDragWhenScrollWasAtLeadingEdge] instead.
-  ///
-  /// This is retained as a source-compatible migration path for the original
-  /// top-edge API.
-  @Deprecated(
-    'Use onlyDragWhenScrollWasAtLeadingEdge instead. '
-    'This parameter will be removed in the next major version.',
-  )
-  final bool? onlyDragWhenScrollWasAtTop;
+  /// How rightward pointer movement is routed.
+  final ScrollDragMode right;
 
   /// A pointer has contacted the screen with a primary button and might begin
   /// to move vertically.
@@ -230,13 +215,11 @@ class ScrollDragDetector extends StatefulWidget {
 }
 
 class _ScrollDragDetectorState extends State<ScrollDragDetector> {
-  final _isDragging = ValueNotifier(false);
-
-  var _scrollStartedAtLeadingEdge = false;
-  var _scrollStartedAtTrailingEdge = false;
-  var _dragSegment = 0;
-
-  DragStartDetails? _dragStartDetails;
+  final _draggingAxes = ValueNotifier(<Axis>{});
+  final _axisStates = <Axis, _AxisDragState>{
+    Axis.vertical: _AxisDragState(),
+    Axis.horizontal: _AxisDragState(),
+  };
 
   bool get hasVertical =>
       widget.onVerticalDragStart != null ||
@@ -257,28 +240,18 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     };
   }
 
-  ScrollDragHandoff get _leadingEdgeHandoff {
-    return widget.leadingEdgeHandoff;
-  }
-
-  ScrollDragHandoff get _trailingEdgeHandoff {
-    return switch (widget.scrollableCanMoveBack) {
-      final value? =>
-        value ? ScrollDragHandoff.beforeScroll : ScrollDragHandoff.none,
-      null => widget.trailingEdgeHandoff,
+  ScrollDragMode _modeFor(AxisDirection direction) {
+    return switch (direction) {
+      AxisDirection.up => widget.up,
+      AxisDirection.down => widget.down,
+      AxisDirection.left => widget.left,
+      AxisDirection.right => widget.right,
     };
   }
 
-  bool get _onlyDragWhenScrollWasAtLeadingEdge =>
-      widget.onlyDragWhenScrollWasAtTop ??
-      widget.onlyDragWhenScrollWasAtLeadingEdge;
-
-  bool get _onlyDragWhenScrollWasAtTrailingEdge =>
-      widget.onlyDragWhenScrollWasAtTrailingEdge;
-
   @override
   void dispose() {
-    _isDragging.dispose();
+    _draggingAxes.dispose();
     super.dispose();
   }
 
@@ -327,23 +300,24 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
           null => null,
         },
         onHorizontalDragCancel: widget.onHorizontalDragCancel,
-        child: ValueListenableBuilder(
-          valueListenable: _isDragging,
-          builder: (context, value, child) {
-            final blockLeadingScroll = !value &&
-                _leadingEdgeHandoff == ScrollDragHandoff.beforeScroll &&
-                !_onlyDragWhenScrollWasAtLeadingEdge;
-            final blockTrailingScroll = !value &&
-                _trailingEdgeHandoff == ScrollDragHandoff.beforeScroll &&
-                !_onlyDragWhenScrollWasAtTrailingEdge;
+        child: ValueListenableBuilder<Set<Axis>>(
+          valueListenable: _draggingAxes,
+          builder: (context, draggingAxes, child) {
+            final blockedDirections = <AxisDirection>{
+              for (final direction in AxisDirection.values)
+                if (dragAxes.contains(_axisFor(direction)) &&
+                    (draggingAxes.contains(_axisFor(direction)) ||
+                        _modeFor(direction) == ScrollDragMode.dragFirst))
+                  direction,
+            };
+            final blockedAxes = blockedDirections.map(_axisFor).toSet();
 
             return ScrollConfiguration(
-              behavior: value || blockLeadingScroll || blockTrailingScroll
+              behavior: blockedDirections.isNotEmpty
                   ? _DraggingScrollBehavior(
                       parent: ScrollConfiguration.of(context),
-                      axes: dragAxes,
-                      blockLeadingScroll: value || blockLeadingScroll,
-                      blockTrailingScroll: value || blockTrailingScroll,
+                      axes: blockedAxes,
+                      blockedDirections: blockedDirections,
                     )
                   : ScrollConfiguration.of(context),
               child: child!,
@@ -360,9 +334,11 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
     switch (notification) {
       case ScrollStartNotification(:final dragDetails, :final metrics):
-        _scrollStartedAtLeadingEdge = metrics.extentBefore <= kTouchSlop;
-        _scrollStartedAtTrailingEdge = metrics.extentAfter <= kTouchSlop;
-        _dragStartDetails = dragDetails;
+        final state = _axisStates[metrics.axis]!;
+        state
+          ..scrollStartedAtLeadingEdge = metrics.extentBefore <= kTouchSlop
+          ..scrollStartedAtTrailingEdge = metrics.extentAfter <= kTouchSlop
+          ..dragStartDetails = dragDetails;
       case ScrollUpdateNotification(
           :final metrics,
           :final dragDetails,
@@ -370,15 +346,16 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          if (!_isDragging.value) {
+          if (!_draggingAxes.value.contains(metrics.axis)) {
             _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
-        } else if (_isDragging.value && dragDetails != null) {
+        } else if (_draggingAxes.value.contains(metrics.axis) &&
+            dragDetails != null) {
           // The scrollable has resumed scrolling in the opposite direction.
           // End the parent drag while keeping the pointer gesture active.
-          _endDrag();
+          _endDrag(metrics.axis);
           _handleDragEnd(metrics.axis, DragEndDetails(), true);
         }
       case OverscrollNotification(
@@ -389,19 +366,19 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          if (!_isDragging.value) {
+          if (!_draggingAxes.value.contains(metrics.axis)) {
             _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
         } else {
-          if (_isDragging.value) {
+          if (_draggingAxes.value.contains(metrics.axis)) {
             // Either the user let go, or the overscroll is part of normal
             // scrolling, not dragging.
             // In both cases, we end the drag, and if the user's gesture is
             // still active, we notify that we will continue scrolling.
             final gestureActive = dragDetails != null;
-            _endDrag();
+            _endDrag(metrics.axis);
             _handleDragEnd(
               metrics.axis,
               _dragEndDetails(metrics, velocity),
@@ -411,14 +388,18 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         }
 
       case final ScrollEndNotification n:
-        if (_isDragging.value) {
-          _endDrag();
-          final dragSegment = _dragSegment;
+        final axis = n.metrics.axis;
+        if (_draggingAxes.value.contains(axis)) {
+          _endDrag(axis);
+          final state = _axisStates[axis]!;
+          final dragSegment = state.dragSegment;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_isDragging.value && _dragSegment == dragSegment) {
+            if (mounted &&
+                !_draggingAxes.value.contains(axis) &&
+                state.dragSegment == dragSegment) {
               // The user stopped scrolling, so we also end the drag.
               _handleDragEnd(
-                n.metrics.axis,
+                axis,
                 n.dragDetails ?? DragEndDetails(),
                 false,
               );
@@ -430,14 +411,16 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   void _startDrag(Axis axis) {
-    _isDragging.value = true;
-    _dragSegment++;
+    final state = _axisStates[axis]!;
+    _draggingAxes.value = {..._draggingAxes.value, axis};
+    state.dragSegment++;
     _handleDragStart(axis);
   }
 
-  void _endDrag() {
-    _isDragging.value = false;
-    _dragSegment++;
+  void _endDrag(Axis axis) {
+    final state = _axisStates[axis]!;
+    _draggingAxes.value = {..._draggingAxes.value}..remove(axis);
+    state.dragSegment++;
   }
 
   static DragEndDetails _dragEndDetails(
@@ -465,28 +448,43 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
     final primaryDelta = details.primaryDelta;
     if (primaryDelta == null || primaryDelta == 0) return false;
 
+    final mode = _modeFor(_physicalDirection(metrics.axis, primaryDelta));
+    if (mode == ScrollDragMode.none) return false;
+    if (mode == ScrollDragMode.dragFirst) return true;
+
     final isLeading = _isMovingTowardsLeadingEdge(
       metrics.axisDirection,
       primaryDelta,
     );
-    final handoff = isLeading ? _leadingEdgeHandoff : _trailingEdgeHandoff;
-    if (handoff == ScrollDragHandoff.none) return false;
+    final atBoundary = isLeading
+        ? metrics.extentBefore <= kTouchSlop
+        : metrics.extentAfter <= kTouchSlop;
+    if (!atBoundary) return false;
 
-    final startedAtEdge =
-        isLeading ? _scrollStartedAtLeadingEdge : _scrollStartedAtTrailingEdge;
-    final onlyWhenStartedAtEdge = isLeading
-        ? _onlyDragWhenScrollWasAtLeadingEdge
-        : _onlyDragWhenScrollWasAtTrailingEdge;
-    if (onlyWhenStartedAtEdge && !startedAtEdge) return false;
-
-    if (handoff == ScrollDragHandoff.edge) {
-      final atEdge = isLeading
-          ? metrics.extentBefore <= kTouchSlop
-          : metrics.extentAfter <= kTouchSlop;
-      if (!atEdge) return false;
+    if (mode == ScrollDragMode.boundaryStart) {
+      final state = _axisStates[metrics.axis]!;
+      return isLeading
+          ? state.scrollStartedAtLeadingEdge
+          : state.scrollStartedAtTrailingEdge;
     }
 
     return true;
+  }
+
+  static AxisDirection _physicalDirection(Axis axis, double primaryDelta) {
+    return switch ((axis, primaryDelta < 0)) {
+      (Axis.vertical, true) => AxisDirection.up,
+      (Axis.vertical, false) => AxisDirection.down,
+      (Axis.horizontal, true) => AxisDirection.left,
+      (Axis.horizontal, false) => AxisDirection.right,
+    };
+  }
+
+  static Axis _axisFor(AxisDirection direction) {
+    return switch (direction) {
+      AxisDirection.up || AxisDirection.down => Axis.vertical,
+      AxisDirection.left || AxisDirection.right => Axis.horizontal,
+    };
   }
 
   static bool _isMovingTowardsLeadingEdge(
@@ -500,7 +498,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   void _handleDragStart(Axis axis) {
-    if (_dragStartDetails case final details?) {
+    if (_axisStates[axis]!.dragStartDetails case final details?) {
       if (axis == Axis.vertical) {
         widget.onVerticalDragStart?.call(details, true);
       } else {
@@ -526,23 +524,26 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 }
 
+class _AxisDragState {
+  bool scrollStartedAtLeadingEdge = false;
+  bool scrollStartedAtTrailingEdge = false;
+  int dragSegment = 0;
+  DragStartDetails? dragStartDetails;
+}
+
 class _DraggingScrollBehavior extends ScrollBehavior {
   const _DraggingScrollBehavior({
     required this.parent,
     required this.axes,
-    required this.blockLeadingScroll,
-    required this.blockTrailingScroll,
+    required this.blockedDirections,
   });
 
   final ScrollBehavior parent;
 
   final Set<Axis> axes;
 
-  /// Whether scrolls towards the leading edge should be blocked.
-  final bool blockLeadingScroll;
-
-  /// Whether scrolls towards the trailing edge should be blocked.
-  final bool blockTrailingScroll;
+  /// Physical pointer directions in which scrolling should be blocked.
+  final Set<AxisDirection> blockedDirections;
 
   bool doesApplyToDetails(ScrollableDetails details) {
     return switch (details.direction) {
@@ -557,8 +558,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
   ScrollPhysics getScrollPhysics(BuildContext context) =>
       _OverscrollScrollPhysics(
         axes: axes,
-        blockLeadingScroll: blockLeadingScroll,
-        blockTrailingScroll: blockTrailingScroll,
+        blockedDirections: blockedDirections,
         parent: parent.getScrollPhysics(context),
       );
 
@@ -612,8 +612,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
       parent.shouldNotify(oldDelegate) ||
       (oldDelegate is _DraggingScrollBehavior &&
           (oldDelegate.axes != axes ||
-              oldDelegate.blockLeadingScroll != blockLeadingScroll ||
-              oldDelegate.blockTrailingScroll != blockTrailingScroll));
+              oldDelegate.blockedDirections != blockedDirections));
 }
 
 /// Scroll physics that don't allow moving from the current position and just
@@ -621,23 +620,19 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 class _OverscrollScrollPhysics extends ScrollPhysics {
   const _OverscrollScrollPhysics({
     required this.axes,
-    required this.blockLeadingScroll,
-    required this.blockTrailingScroll,
+    required this.blockedDirections,
     super.parent,
   });
 
   final Set<Axis> axes;
 
-  final bool blockLeadingScroll;
-
-  final bool blockTrailingScroll;
+  final Set<AxisDirection> blockedDirections;
 
   @override
   _OverscrollScrollPhysics applyTo(ScrollPhysics? ancestor) {
     return _OverscrollScrollPhysics(
       axes: axes,
-      blockLeadingScroll: blockLeadingScroll,
-      blockTrailingScroll: blockTrailingScroll,
+      blockedDirections: blockedDirections,
       parent: buildParent(ancestor),
     );
   }
@@ -651,7 +646,6 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
       return super.applyBoundaryConditions(position, value);
     }
 
-    final movingTowardsTrailingEdge = value > position.pixels;
     final isRecoveringFromOutOfRangePosition = (position.pixels <
                 position.minScrollExtent &&
             value > position.pixels) ||
@@ -660,9 +654,10 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
       return super.applyBoundaryConditions(position, value);
     }
 
-    final shouldBlock =
-        movingTowardsTrailingEdge ? blockTrailingScroll : blockLeadingScroll;
-    if (!shouldBlock) {
+    final direction = value < position.pixels
+        ? position.axisDirection
+        : flipAxisDirection(position.axisDirection);
+    if (!blockedDirections.contains(direction)) {
       return super.applyBoundaryConditions(position, value);
     }
 
