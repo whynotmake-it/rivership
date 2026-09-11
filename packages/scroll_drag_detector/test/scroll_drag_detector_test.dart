@@ -307,7 +307,10 @@ void main() {
     await gesture.up();
 
     expect(ends, contains(true));
-    expect(position.pixels, greaterThan(500));
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      greaterThan(500),
+    );
   });
 
   group('legacy constructor', () {
