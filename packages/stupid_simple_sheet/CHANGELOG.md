@@ -1,11 +1,15 @@
-## Next
+## 1.0.0-dev.3
+
+> Note: This release has breaking changes.
 
  - **BREAKING** **FEAT**: replace `onlyDragWhenScrollWasAtTop` with
-   `dragHandoff` on every sheet route.
+   `dragHandoff` on every sheet route. Choose whether a sheet can take over
+   only when a gesture starts at the scroll boundary or continuously when the
+   gesture reaches it.
  - **FIX**: migrate scroll-to-drag routing to the physical-direction
    `scroll_drag_detector` API.
- - **DEPRECATE**: add `LegacySnapPhysics` for migrations that need the
-   pre-`1.0.0-dev.1` snapping response.
+ - **FEAT**: add the deprecated `LegacySnapPhysics` migration helper for apps
+   that need the pre-`1.0.0-dev.1` snapping response.
 
 ## 1.0.0-dev.2
 
