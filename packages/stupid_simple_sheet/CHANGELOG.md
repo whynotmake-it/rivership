@@ -1,3 +1,10 @@
+## Next
+
+ - **BREAKING** **FEAT**: replace `onlyDragWhenScrollWasAtTop` with
+   `dragHandoff` on every sheet route.
+ - **FIX**: migrate scroll-to-drag routing to the physical-direction
+   `scroll_drag_detector` API.
+
 ## 1.0.0-dev.2
 
  - **DOCS**: update logo.

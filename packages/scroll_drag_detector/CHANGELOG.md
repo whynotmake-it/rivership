@@ -1,3 +1,12 @@
+## Next
+
+ - **BREAKING** **FEAT**: replace the bottom-sheet-specific configuration with
+   required `up`, `down`, `left`, and `right` physical-direction modes.
+ - **FEAT**: add `ScrollDragDetector.legacy` for unchanged migration from
+   `scrollableCanMoveBack` and `onlyDragWhenScrollWasAtTop`.
+ - **FEAT**: support scroll-first boundary takeover and same-gesture reversal
+   in every physical direction, including reversed scrollables.
+
 ## 0.1.0+2
 
  - **FIX**: immediately start clearing overscroll when letting go.
