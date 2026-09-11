@@ -265,6 +265,7 @@ void main() {
 
   testWidgets('mode changes take effect during an active gesture',
       (tester) async {
+    final starts = <bool>[];
     final ends = <bool>[];
     const dragFirstModes = {
       AxisDirection.up: ScrollDragMode.dragFirst,
@@ -275,7 +276,7 @@ void main() {
         axis: Axis.vertical,
         reverse: false,
         modes: dragFirstModes,
-        onStart: (_) {},
+        onStart: starts.add,
         onEnd: ends.add,
       ),
     );
@@ -285,19 +286,24 @@ void main() {
     position.jumpTo(500);
     await tester.pump();
     final gesture = await tester.startGesture(tester.getCenter(scrollable));
-    await gesture.moveBy(const Offset(0, -50));
-    await tester.pump();
+    for (var i = 0; i < 3; i++) {
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+    }
+    expect(starts, contains(true));
 
     await tester.pumpWidget(
       _TestScrollable(
         axis: Axis.vertical,
         reverse: false,
-        onStart: (_) {},
+        onStart: starts.add,
         onEnd: ends.add,
       ),
     );
-    await gesture.moveBy(const Offset(0, -50));
-    await tester.pump();
+    for (var i = 0; i < 3; i++) {
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+    }
     await gesture.up();
 
     expect(ends, contains(true));
