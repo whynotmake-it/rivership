@@ -263,6 +263,98 @@ void main() {
     },
   );
 
+  testWidgets('boundaryStart can retake the same gesture', (tester) async {
+    final starts = <bool>[];
+    final ends = <bool>[];
+    await tester.pumpWidget(
+      _TestScrollable(
+        axis: Axis.vertical,
+        reverse: false,
+        modes: const {
+          AxisDirection.down: ScrollDragMode.boundaryStart,
+        },
+        onStart: starts.add,
+        onEnd: ends.add,
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable);
+    final gesture = await tester.startGesture(tester.getCenter(scrollable));
+    for (var i = 0; i < 5; i++) {
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+    }
+    expect(starts, hasLength(1));
+
+    for (var i = 0; i < 5; i++) {
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+    }
+    expect(ends, contains(true));
+
+    for (var i = 0; i < 10; i++) {
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+    }
+    await gesture.up();
+
+    expect(starts.length, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('modes on an untracked axis do not intercept scrolling',
+      (tester) async {
+    final starts = <bool>[];
+    await tester.pumpWidget(
+      _TestScrollable(
+        axis: Axis.horizontal,
+        callbackAxis: Axis.vertical,
+        reverse: false,
+        modes: const {AxisDirection.left: ScrollDragMode.dragFirst},
+        onStart: starts.add,
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable);
+    final position = tester.state<ScrollableState>(scrollable).position;
+    position.jumpTo(500);
+    await tester.pump();
+
+    await tester.drag(scrollable, const Offset(-120, 0));
+
+    expect(starts, isEmpty);
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      greaterThan(500),
+    );
+  });
+
+  group('release velocity', () {
+    for (final reverse in [false, true]) {
+      testWidgets('stays physical when reverse=$reverse', (tester) async {
+        final ends = <DragEndDetails>[];
+        await tester.pumpWidget(
+          _TestScrollable(
+            axis: Axis.vertical,
+            reverse: reverse,
+            modes: const {AxisDirection.up: ScrollDragMode.dragFirst},
+            onStart: (_) {},
+            onEndDetails: ends.add,
+          ),
+        );
+
+        await tester.fling(
+          find.byType(Scrollable),
+          const Offset(0, -200),
+          1000,
+        );
+        await tester.pumpAndSettle();
+
+        expect(ends, isNotEmpty);
+        expect(ends.last.primaryVelocity, lessThanOrEqualTo(0));
+      });
+    }
+  });
+
   testWidgets('mode changes take effect during an active gesture',
       (tester) async {
     final starts = <bool>[];
@@ -358,33 +450,44 @@ class _TestScrollable extends StatelessWidget {
     required this.reverse,
     required this.onStart,
     this.onEnd,
+    this.onEndDetails,
+    this.callbackAxis,
     this.modes = const {},
   });
 
   final Axis axis;
+  final Axis? callbackAxis;
   final bool reverse;
   final ValueChanged<bool> onStart;
   final ValueChanged<bool>? onEnd;
+  final ValueChanged<DragEndDetails>? onEndDetails;
   final Map<AxisDirection, ScrollDragMode> modes;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveCallbackAxis = callbackAxis ?? axis;
     final detector = ScrollDragDetector(
       up: modes[AxisDirection.up] ?? ScrollDragMode.none,
       down: modes[AxisDirection.down] ?? ScrollDragMode.none,
       left: modes[AxisDirection.left] ?? ScrollDragMode.none,
       right: modes[AxisDirection.right] ?? ScrollDragMode.none,
-      onVerticalDragStart: axis == Axis.vertical
+      onVerticalDragStart: effectiveCallbackAxis == Axis.vertical
           ? (details, didScroll) => onStart(didScroll)
           : null,
-      onVerticalDragEnd: axis == Axis.vertical
-          ? (details, willScroll) => onEnd?.call(willScroll)
+      onVerticalDragEnd: effectiveCallbackAxis == Axis.vertical
+          ? (details, willScroll) {
+              onEnd?.call(willScroll);
+              onEndDetails?.call(details);
+            }
           : null,
-      onHorizontalDragStart: axis == Axis.horizontal
+      onHorizontalDragStart: effectiveCallbackAxis == Axis.horizontal
           ? (details, didScroll) => onStart(didScroll)
           : null,
-      onHorizontalDragEnd: axis == Axis.horizontal
-          ? (details, willScroll) => onEnd?.call(willScroll)
+      onHorizontalDragEnd: effectiveCallbackAxis == Axis.horizontal
+          ? (details, willScroll) {
+              onEnd?.call(willScroll);
+              onEndDetails?.call(details);
+            }
           : null,
       child: ListView.builder(
         scrollDirection: axis,
