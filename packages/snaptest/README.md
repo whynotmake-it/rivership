@@ -128,6 +128,37 @@ testWidgets('Get image', (tester) async {
 });
 ```
 
+## Getting a single pixel color
+
+Use `snap.pixel()` to read one rendered pixel as a `Color`. The offset uses the
+same Flutter logical coordinate space as `tester.getRect(...)` and `crop`:
+
+```dart
+testWidgets('Get pixel color', (tester) async {
+  const key = Key('status-dot');
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: Center(
+        child: SizedBox(
+          key: key,
+          width: 20,
+          height: 20,
+          child: ColoredBox(color: Colors.green),
+        ),
+      ),
+    ),
+  );
+
+  final color = await snap.pixel(tester.getCenter(find.byKey(key)));
+
+  expect(color, equals(Colors.green));
+});
+```
+
+`from`, `crop`, `settings`, `device`, and `orientation` work the same way they
+do for the other snap methods.
+
 ## All the Options
 
 ### Multiple screenshots per test
