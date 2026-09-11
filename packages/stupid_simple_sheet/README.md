@@ -178,6 +178,19 @@ Navigator.of(context).push(
 );
 ```
 
+If you are migrating from a pre-`1.0.0-dev.1` release and need to preserve
+its snap response, opt into the deprecated compatibility physics:
+
+```dart
+SheetSnappingConfig(
+  [0.5, 1.0],
+  physics: LegacySnapPhysics(),
+);
+```
+
+New code should use the default `FlingSnapPhysics` or opt into
+`FrictionSnapPhysics`.
+
 You can dynamically change snapping at runtime from inside the sheet:
 
 ```dart
