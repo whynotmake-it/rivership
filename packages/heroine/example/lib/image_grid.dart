@@ -15,7 +15,7 @@ class ImageGridExample extends StatelessWidget {
   const ImageGridExample({super.key});
 
   static const name = 'Image Grid';
-  static const path = 'image-grid';
+  static const path = '/image-grid';
 
   @override
   Widget build(BuildContext context) {
