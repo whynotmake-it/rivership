@@ -13,6 +13,8 @@ environment:
 
 dependencies:
   auto_route: ^10.0.1
+  example_design:
+    path: ../../example_design
   flutter:
     sdk: flutter
   liquid_glass_renderer:

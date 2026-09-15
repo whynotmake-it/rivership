@@ -9,6 +9,7 @@ environment:
 
 workspace:
   - apps/example
+  - packages/example_design
   - packages/heroine
   - packages/heroine/example
   - packages/motor
@@ -21,8 +22,6 @@ workspace:
   - packages/fixed_ticker
   - packages/fixed_ticker/example
   - packages/snaptest
-  - packages/springster
-  - packages/springster/example
   
 dev_dependencies:
   lintervention: ^0.3.1
