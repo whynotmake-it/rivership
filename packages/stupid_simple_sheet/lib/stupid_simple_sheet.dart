@@ -609,8 +609,20 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final minSnap = effectiveSnappingConfig.minExtent;
-    final cannotPop = popDisposition != RoutePopDisposition.pop;
+    final routePopDisposition = popDisposition;
+    final cannotPop = routePopDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
+
+    if (draggable && routePopDisposition == RoutePopDisposition.doNotPop) {
+      final attemptedTarget = effectiveSnappingConfig.findTargetSnapPoint(
+        position: currentValue,
+        relativeVelocity: -velocity,
+        absoluteVelocity: -velocity * referenceHeight,
+      );
+      if (attemptedTarget <= 0.001) {
+        navigator?.maybePop().ignore();
+      }
+    }
 
     // If dragged past fully open, or below min snap when route can't pop,
     // snap back to the appropriate point
@@ -637,7 +649,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         position: currentValue,
         relativeVelocity: -velocity,
         absoluteVelocity: -velocity * referenceHeight,
-        includeClosed: popDisposition == RoutePopDisposition.pop,
+        includeClosed: routePopDisposition == RoutePopDisposition.pop,
       );
 
       _stickingPoint = targetValue;
