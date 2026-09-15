@@ -2,8 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
-
-import 'sheet_constants.dart';
+import 'package:stupid_simple_sheet/src/sheet_constants.dart';
 
 /// Configuration for sheet snapping behavior.
 ///
