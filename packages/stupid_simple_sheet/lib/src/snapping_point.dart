@@ -3,6 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 
+import 'sheet_constants.dart';
+
 /// Configuration for sheet snapping behavior.
 ///
 /// Values are normalized between 0.0 and 1.0, where 0.0 is closed and 1.0
@@ -79,8 +81,9 @@ class SheetSnappingConfig {
     final allPoints = getAllPoints();
 
     // If the closed point (0.0) should be excluded, filter it out.
-    final effectivePoints =
-        includeClosed ? allPoints : allPoints.where((p) => p > 0.001).toList();
+    final effectivePoints = includeClosed
+        ? allPoints
+        : allPoints.where((p) => p > sheetPositionTolerance).toList();
 
     switch (physics) {
       case final RelativeSnapPhysics p:
@@ -109,7 +112,9 @@ class SheetSnappingConfig {
     }
 
     final relativePoints = getAllPoints()
-        .where((value) => value > 0.001) // Exclude values effectively zero
+        .where(
+          (value) => value > sheetPositionTolerance,
+        ) // Exclude values effectively zero
         .toList();
 
     return relativePoints.isNotEmpty ? relativePoints.first : 1.0;
