@@ -4,6 +4,7 @@ import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/dismissal_mode.dart';
 import 'package:stupid_simple_sheet/src/route_snapshot_mode.dart';
+import 'package:stupid_simple_sheet/src/sheet_constants.dart';
 import 'package:stupid_simple_sheet/src/sheet_dismissal_transition.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
@@ -363,13 +364,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
     final isAnimating = controller?.isAnimating ?? false;
     final value = controller?.value ?? 0.0;
-    final isVisible = value > 0.001;
+    final isVisible = value > sheetPositionTolerance;
     final isSettled = !isAnimating && !_isUserDragging && isVisible;
     final maxExtent = effectiveSnappingConfig.maxExtent;
-    final isFullyOpen = (value - maxExtent).abs() < 0.001;
+    final isFullyOpen = (value - maxExtent).abs() < sheetPositionTolerance;
 
     final isTargetingMax = _animationTargetValue != null &&
-        (_animationTargetValue! - maxExtent).abs() < 0.001;
+        (_animationTargetValue! - maxExtent).abs() < sheetPositionTolerance;
 
     final isMovingForward = isTargetingMax &&
         ((controller?.status.isAnimating ?? false) ||
@@ -609,8 +610,20 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final minSnap = effectiveSnappingConfig.minExtent;
-    final cannotPop = popDisposition != RoutePopDisposition.pop;
+    final routePopDisposition = popDisposition;
+    final cannotPop = routePopDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
+
+    if (draggable && routePopDisposition == RoutePopDisposition.doNotPop) {
+      final attemptedTarget = effectiveSnappingConfig.findTargetSnapPoint(
+        position: currentValue,
+        relativeVelocity: -velocity,
+        absoluteVelocity: -velocity * referenceHeight,
+      );
+      if (attemptedTarget <= sheetPositionTolerance) {
+        navigator?.maybePop().ignore();
+      }
+    }
 
     // If dragged past fully open, or below min snap when route can't pop,
     // snap back to the appropriate point
@@ -637,13 +650,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         position: currentValue,
         relativeVelocity: -velocity,
         absoluteVelocity: -velocity * referenceHeight,
-        includeClosed: popDisposition == RoutePopDisposition.pop,
+        includeClosed: routePopDisposition == RoutePopDisposition.pop,
       );
 
       _stickingPoint = targetValue;
 
       // If target is 0 (closed), dismiss the sheet
-      if (targetValue <= 0.001) {
+      if (targetValue <= sheetPositionTolerance) {
         navigator?.pop();
       } else {
         // Animate to the target snap point
@@ -813,7 +826,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
           effectiveSnappingConfig.findClosestSnapPoint(currentPosition);
 
       // If the current position is already at a valid snap point, don't animate
-      if ((targetPosition - currentPosition).abs() < 0.001) {
+      if ((targetPosition - currentPosition).abs() < sheetPositionTolerance) {
         return TickerFuture.complete();
       }
 
