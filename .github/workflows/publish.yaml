@@ -1,0 +1,31 @@
+name: Publish to pub.dev
+
+on:
+  push:
+    tags:
+      # Matches per-package tags like motor-v2.0.0 and motor-v2.0.0-dev.1.
+      # Must stay aligned with the tag pattern configured on pub.dev for
+      # each package: <package>-v{{version}}
+      - '*-v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  publish:
+    name: Publish ${{ github.ref_name }}
+    permissions:
+      id-token: write # required for pub.dev OIDC authentication
+      contents: write # required to create the GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+
+      - name: Ⓜ️ Publish with Melos
+        uses: bluefireteam/melos-action@v3
+        with:
+          publish: true
+          create-release: true
