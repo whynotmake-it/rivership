@@ -1,3 +1,8 @@
+## 1.0.0-dev.4
+
+ - **FIX**: notify `PopScope` when a drag attempts to dismiss a sheet whose
+   pop is blocked.
+
 ## 1.0.0-dev.3
 
 > Note: This release has breaking changes.
