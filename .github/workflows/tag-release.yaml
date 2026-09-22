@@ -1,25 +1,30 @@
 name: Tag release
+
 on:
   push:
     branches: [main]
 
 jobs:
-  publish-packages:
-    name: Create tag for a release
+  tag-release:
+    name: Create tags for a release
     permissions:
       contents: write
-    runs-on: [ ubuntu-latest ]
+    runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, 'chore(release)')
     steps:
       - name: 📚 Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          
+          # Tags must be pushed with a PAT: tags pushed with the default
+          # GITHUB_TOKEN do not trigger the publish.yaml workflow
+          # (GitHub suppresses workflow runs for GITHUB_TOKEN-created events).
+          token: ${{ secrets.RELEASE_PAT }}
+
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
 
-      - name: Ⓜ️ Set up Melos
+      - name: Ⓜ️ Tag packages with Melos
         uses: bluefireteam/melos-action@v3
         with:
           tag: true
