@@ -364,8 +364,9 @@ A few phase-specific rules:
 
 - To seed starting values or velocities, use the timeline's `from:` /
   `withVelocity:`. They are applied once, when that timeline first starts
-  playing. A per-animation `from:` / `withVelocity:` inside a phase list
-  (e.g. `size.to(x, from: y)`) is **ignored** by phase timelines.
+  playing. Animations inside a phase list can't set their own `from:` /
+  `withVelocity:` (asserted), since each phase continues from where the
+  previous one left off.
 - Phases are separated by sync barriers whose token is the phase value
   itself, so don't reuse phase values as your own `.sync` tokens.
 - `phaseLoop` is interpreted by `PhaseTrackBuilder` / `PhaseTrackController`

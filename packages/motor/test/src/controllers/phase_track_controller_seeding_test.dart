@@ -6,6 +6,23 @@ import 'package:motor/motor.dart';
 import '../util.dart';
 
 void main() {
+  test('phase animations cannot set their own from or withVelocity', () {
+    final scale = Track<double>(MotionConverter.single, initial: 0);
+
+    expect(
+      () => TrackPhaseTimeline({
+        'a': [scale.to(1, from: 0.5)],
+      }),
+      throwsAssertionError,
+    );
+    expect(
+      () => TrackPhaseTimeline({
+        'a': [scale.to(1, withVelocity: 2)],
+      }),
+      throwsAssertionError,
+    );
+  });
+
   group('PhaseTrackController from/withVelocity seeding', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 

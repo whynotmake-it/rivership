@@ -256,5 +256,6 @@ State queries map as follows:
   (`0 → 1 → 2 → 0 → …`); no divergence was found.
 - `LoopMode.pingPong` visits phases in the same order on both stacks
   (`0 → 1 → 2 → 1 → 0 → 1 → …`); each phase's own steps still play forward.
-- A per-animation `from:` inside a `TrackPhaseTimeline` phase is ignored. Use
-  the timeline's one-time `from:` / `withVelocity:` seeds instead.
+- Animations inside a `TrackPhaseTimeline` phase can't set their own `from:`
+  (asserted). Use the timeline's one-time `from:` / `withVelocity:` seeds
+  instead.

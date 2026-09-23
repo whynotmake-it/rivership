@@ -34,15 +34,26 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   /// [phaseLoop] controls what the [PhaseTrackController] does after the last
   /// phase completes.
   ///
-  /// Only the steps of each [TrackAnimation] are used: a per-animation `from`
-  /// or `withVelocity` inside [phaseAnimations] is ignored. Use the
-  /// timeline-level [from] and [withVelocity] seeds instead.
+  /// Animations inside [phaseAnimations] must not set their own `from` or
+  /// `withVelocity` (asserted): phases continue from wherever the previous
+  /// phase left off. Use the timeline-level [from] and [withVelocity] seeds
+  /// to set where the timeline starts.
   TrackPhaseTimeline(
     this.phaseAnimations, {
     this.phaseLoop = LoopMode.none,
     this.from = const [],
     this.withVelocity = const [],
-  }) : super(
+  })  : assert(
+          phaseAnimations.values.every(
+            (animations) => animations.every(
+              (animation) =>
+                  animation.from == null && animation.withVelocity == null,
+            ),
+          ),
+          'Animations inside a TrackPhaseTimeline cannot set from or '
+          'withVelocity. Use the timeline-level from and withVelocity instead.',
+        ),
+        super(
           _flatten(phaseAnimations),
           loop: LoopMode.none,
         );
