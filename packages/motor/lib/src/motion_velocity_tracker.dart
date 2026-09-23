@@ -1,9 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/gestures.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
-
-typedef _PointAtTime = (List<double> point, Duration time);
 
 /// Controls velocity tracking behavior in a [MotionController].
 ///
@@ -86,48 +87,79 @@ class MotionVelocityTracker<T> {
   static const int _assumePointerMoveStoppedMilliseconds = 40;
   static const int _sampleSize = 20;
 
-  final List<_PointAtTime?> _touchSamples =
-      List<_PointAtTime?>.filled(_sampleSize, null);
+  // The most recent samples in a ring: slot `i` holds its position's
+  // dimensions at `_positions[i * _dimensions ...]` and its time in
+  // microseconds at `_times[i]`. [_index] is the newest slot, and the
+  // [_count] slots up to it are filled.
+  Float64List? _positions;
+  final Int64List _times = Int64List(_sampleSize);
+  int _dimensions = 0;
   int _index = 0;
+  int _count = 0;
 
-  /// Wall-clock instant of the most recent sample, sourced from [clock] so the
-  /// "pointer stopped" detection is driven by the fake clock under test and by
-  /// real time in production.
-  DateTime? _lastSampleAt;
+  /// Wall-clock instant of the most recent sample, in microseconds since the
+  /// epoch, sourced from [clock] so the "pointer stopped" detection is driven
+  /// by the fake clock under test and by real time in production.
+  int? _lastSampleAtMicros;
+
+  /// When the controller last recorded a sample whose estimate it has not
+  /// applied yet.
+  @internal
+  DateTime? pendingEstimateAt;
 
   /// Adds a position sample at the given [time].
   ///
   /// Call this each time the value changes during user interaction.
   /// The tracker stores up to 20 samples in a circular buffer.
-  void addPosition(Duration time, T value) {
-    _lastSampleAt = clock.now();
+  void addPosition(Duration time, T value) =>
+      _add(time.inMicroseconds, value, clock.now());
 
-    _index = (_index + 1) % _sampleSize;
-    _touchSamples[_index] = (converter.normalize(value), time);
+  /// Adds a position sample taken at the wall-clock instant [now], which
+  /// also serves as its time. Subclasses get it through [addPosition].
+  @internal
+  void addPositionAt(DateTime now, T value) {
+    if (runtimeType == MotionVelocityTracker<T>) {
+      _add(now.microsecondsSinceEpoch, value, now);
+    } else {
+      addPosition(Duration(microseconds: now.microsecondsSinceEpoch), value);
+    }
   }
 
-  // Computes the velocity using 2 adjacent points in history.
-  List<double>? _previousVelocityAt(int index) {
-    final endIndex = (_index + index) % _sampleSize;
-    final startIndex = (_index + index - 1) % _sampleSize;
-    final end = _touchSamples[endIndex];
-    final start = _touchSamples[startIndex];
-
-    if (end == null || start == null) {
-      return null;
+  void _add(int timeMicros, T value, DateTime now) {
+    _lastSampleAtMicros = now.microsecondsSinceEpoch;
+    final point = converter.normalize(value);
+    var positions = _positions;
+    if (positions == null || point.length != _dimensions) {
+      _dimensions = point.length;
+      positions = _positions = Float64List(_sampleSize * _dimensions);
+      _count = 0;
     }
+    _index = (_index + 1) % _sampleSize;
+    positions.setRange(_index * _dimensions, (_index + 1) * _dimensions, point);
+    _times[_index] = timeMicros;
+    if (_count < _sampleSize) _count++;
+  }
 
-    final dt = (end.$2 - start.$2).inMicroseconds;
-    if (dt <= 0) {
-      return List.filled(end.$1.length, 0.0);
-    }
+  /// The slot [offset] samples before the newest (0 is the newest), or null
+  /// if that sample has not been recorded.
+  int? _slotAt(int offset) =>
+      offset < _count ? (_index - offset) % _sampleSize : null;
 
+  // Adds `weight` times the velocity between the sample `offset` before the
+  // newest and the one before it, if both exist, to `into`.
+  void _addVelocity(List<double> into, int offset, double weight) {
+    final end = _slotAt(offset);
+    final start = _slotAt(offset + 1);
+    if (end == null || start == null) return;
+    final dt = _times[end] - _times[start];
+    if (dt <= 0) return;
     final dtMs = dt.toDouble() / 1000.0;
-
-    // (end - start) * 1000 / dtMs
-    return List.generate(end.$1.length, (i) {
-      return (end.$1[i] - start.$1[i]) * 1000 / dtMs;
-    });
+    final positions = _positions!;
+    for (var i = 0; i < _dimensions; i++) {
+      final delta =
+          positions[end * _dimensions + i] - positions[start * _dimensions + i];
+      into[i] += delta * 1000 / dtMs * weight;
+    }
   }
 
   /// Returns a velocity estimate based on recent position samples.
@@ -136,14 +168,12 @@ class MotionVelocityTracker<T> {
   /// with confidence 1.0 if movement stopped more than 40ms ago. Uses weighted
   /// average of recent samples (0.6, 0.35, 0.05) for stability.
   MotionVelocityEstimate<T>? getVelocityEstimate() {
-    final newestSample = _touchSamples[_index];
-    if (newestSample == null) return null;
+    if (_count == 0) return null;
+    final dims = _dimensions;
 
-    final dims = newestSample.$1.length;
-
-    final lastSampleAt = _lastSampleAt;
+    final lastSampleAt = _lastSampleAtMicros;
     if (lastSampleAt != null &&
-        clock.now().difference(lastSampleAt).inMilliseconds >
+        (clock.now().microsecondsSinceEpoch - lastSampleAt) ~/ 1000 >
             _assumePointerMoveStoppedMilliseconds) {
       final zeroT = converter.denormalize(List.filled(dims, 0.0));
       return MotionVelocityEstimate<T>(
@@ -154,51 +184,22 @@ class MotionVelocityTracker<T> {
       );
     }
 
-    final v2 = _previousVelocityAt(-2);
-    final v1 = _previousVelocityAt(-1);
-    final v0 = _previousVelocityAt(0);
-
     final estimatedVelocityValues = List<double>.filled(dims, 0.0);
+    _addVelocity(estimatedVelocityValues, 2, 0.6);
+    _addVelocity(estimatedVelocityValues, 1, 0.35);
+    _addVelocity(estimatedVelocityValues, 0, 0.05);
 
-    void addWeighted(List<double>? v, double weight) {
-      if (v != null && v.length == dims) {
-        for (var i = 0; i < dims; i++) {
-          estimatedVelocityValues[i] += v[i] * weight;
-        }
-      }
-    }
-
-    addWeighted(v2, 0.6);
-    addWeighted(v1, 0.35);
-    addWeighted(v0, 0.05);
-
-    _PointAtTime? oldestNonNullSample;
-    for (var i = 1; i <= _sampleSize; i += 1) {
-      oldestNonNullSample = _touchSamples[(_index + i) % _sampleSize];
-      if (oldestNonNullSample != null) {
-        break;
-      }
-    }
-
-    if (oldestNonNullSample == null) {
-      final zeroT = converter.denormalize(List.filled(dims, 0.0));
-      return MotionVelocityEstimate<T>(
-        perSecond: zeroT,
-        confidence: 0.0,
-        duration: Duration.zero,
-        offset: zeroT,
-      );
-    }
-
-    // Offset
+    final newest = _index;
+    final oldest = _slotAt(_count - 1)!;
+    final positions = _positions!;
     final offsetValues = List.generate(dims, (i) {
-      return newestSample.$1[i] - oldestNonNullSample!.$1[i];
+      return positions[newest * dims + i] - positions[oldest * dims + i];
     });
 
     return MotionVelocityEstimate<T>(
       perSecond: converter.denormalize(estimatedVelocityValues),
       confidence: 1.0,
-      duration: newestSample.$2 - oldestNonNullSample.$2,
+      duration: Duration(microseconds: _times[newest] - _times[oldest]),
       offset: converter.denormalize(offsetValues),
     );
   }

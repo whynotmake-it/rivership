@@ -396,6 +396,26 @@ void main() {
     });
   });
 
+  testWidgets('a custom velocity tracker receives every sample',
+      (tester) async {
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final samples = <Object?>[];
+    final controller = TrackController(
+      vsync: tester,
+      velocityTracking: VelocityTracking.on(
+        velocityTrackerBuilder: <T>(converter) =>
+            _RecordingTracker<T>(converter, samples),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    controller
+      ..set([position.value(1)])
+      ..set([position.value(2)]);
+
+    expect(samples, [1.0, 2.0]);
+  });
+
   testWidgets('a finished curve rests, so the next motion starts from rest',
       (tester) async {
     final position = Track<double>(MotionConverter.single, initial: 0.0);
@@ -444,4 +464,16 @@ void main() {
     expect(controller.velocity(position), closeTo(10, 1e-6));
     controller.stop(canceled: true);
   });
+}
+
+class _RecordingTracker<T> extends MotionVelocityTracker<T> {
+  _RecordingTracker(super.converter, this.samples);
+
+  final List<Object?> samples;
+
+  @override
+  void addPosition(Duration time, T value) {
+    samples.add(value);
+    super.addPosition(time, value);
+  }
 }

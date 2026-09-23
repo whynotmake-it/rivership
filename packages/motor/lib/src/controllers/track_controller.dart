@@ -95,9 +95,9 @@ class TrackController extends Animation<TrackValueReader>
   /// When a sync token last lost a participant; it cannot release earlier,
   /// since the tracks waiting there were shown waiting until then.
   final Map<Object, Duration> _syncNotBefore = {};
+  // Each tracker also holds when its estimate is pending: computed only when
+  // needed, as of the latest sample.
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
-  // Velocity estimates are computed only when needed, as of the latest sample.
-  final Map<Track, DateTime> _pendingVelocityEstimates = {};
   final List<Track> _tickTracks = [];
 
   /// Upper bound on barrier releases handled within one frame.
@@ -202,7 +202,7 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Clears velocity-tracking samples so future [set] calls start fresh.
   void resetVelocityTracking() {
-    _pendingVelocityEstimates.keys.toList().forEach(_applyPendingVelocity);
+    _velocityTrackers.keys.toList().forEach(_applyPendingVelocity);
     _velocityTrackers.clear();
   }
 
@@ -241,7 +241,7 @@ class TrackController extends Animation<TrackValueReader>
     _archive(slot);
     final explicitVelocity = _velocityFor(trackValue.track, withVelocity);
     if (explicitVelocity != null) {
-      _pendingVelocityEstimates.remove(trackValue.track);
+      _velocityTrackers[trackValue.track]?.pendingEstimateAt = null;
       slot.setValueWithVelocity(trackValue.value, explicitVelocity.value);
     } else {
       slot.setValue(trackValue.value);
@@ -254,22 +254,21 @@ class TrackController extends Animation<TrackValueReader>
     if (tracker == null) return;
     // Sourced from [clock] so tests drive it with the fake clock.
     final now = clock.now();
-    tracker.addPosition(
-      Duration(microseconds: now.microsecondsSinceEpoch),
-      value,
-    );
-    _pendingVelocityEstimates[track] = now;
+    tracker
+      ..addPositionAt(now, value)
+      ..pendingEstimateAt = now;
   }
 
   /// Applies the velocity estimated from [track]'s samples as of its latest
   /// sample, which matches computing it eagerly on every [set].
   void _applyPendingVelocity(Track track) {
-    final sampledAt = _pendingVelocityEstimates.remove(track);
-    if (sampledAt == null) return;
     final tracker = _velocityTrackers[track];
+    final sampledAt = tracker?.pendingEstimateAt;
+    if (tracker == null || sampledAt == null) return;
+    tracker.pendingEstimateAt = null;
     final estimate = withClock(
       Clock.fixed(sampledAt),
-      () => tracker?.getVelocityEstimate(),
+      tracker.getVelocityEstimate,
     );
     if (estimate != null) _slots[track]?.setVelocity(estimate.perSecond);
   }
@@ -563,14 +562,16 @@ class TrackController extends Animation<TrackValueReader>
       _tokenParticipants.clear();
       _syncPasses.clear();
       _syncNotBefore.clear();
-      _pendingVelocityEstimates.clear();
+      for (final tracker in _velocityTrackers.values) {
+        tracker.pendingEstimateAt = null;
+      }
     } else {
       for (final track in tracks) {
         final slot = _slots[track];
         if (slot != null) _archive(slot);
         slot?.stop(canceled: true);
         _activeTracks.remove(track);
-        _pendingVelocityEstimates.remove(track);
+        _velocityTrackers[track]?.pendingEstimateAt = null;
       }
       _pruneTokenParticipants(tracks);
     }
@@ -596,7 +597,7 @@ class TrackController extends Animation<TrackValueReader>
       } else {
         slot.stop();
         _activeTracks.remove(track);
-        _pendingVelocityEstimates.remove(track);
+        _velocityTrackers[track]?.pendingEstimateAt = null;
       }
     }
 
@@ -629,7 +630,6 @@ class TrackController extends Animation<TrackValueReader>
     _activeTracks.remove(track);
     _runTracks.remove(track);
     _velocityTrackers.remove(track);
-    _pendingVelocityEstimates.remove(track);
     _pruneTokenParticipants([track]);
   }
 
