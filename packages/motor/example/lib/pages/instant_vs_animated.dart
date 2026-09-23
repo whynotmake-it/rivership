@@ -16,7 +16,10 @@ class InstantVsAnimatedPage extends StatefulWidget {
 
 class _InstantVsAnimatedPageState extends State<InstantVsAnimatedPage>
     with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Instant vs animated',
+  );
   final _instantSheet = Track(.single, initial: 0.0);
   final _animatedSheet = Track(.single, initial: 0.0);
 

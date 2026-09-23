@@ -24,7 +24,10 @@ const _maxPull = 170.0;
 
 class _PullToRefreshPageState extends State<PullToRefreshPage>
     with TickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Pull to refresh',
+  );
   final _pull = Track<double>(.single, initial: 0);
   final _spin = Track<double>(.single, initial: 0);
 

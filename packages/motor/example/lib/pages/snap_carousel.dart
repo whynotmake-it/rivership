@@ -33,6 +33,7 @@ class _SnapCarouselPageState extends State<SnapCarouselPage>
       motion: const CupertinoMotion(),
       vsync: this,
       initialValue: 0,
+      debugLabel: 'Carousel offset',
     );
   }
 

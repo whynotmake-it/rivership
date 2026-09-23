@@ -64,6 +64,7 @@ class _PictureInPicturePageState extends State<PictureInPicturePage>
       vsync: this,
       converter: MotionConverter.offset,
       initialValue: _corners(stage).first,
+      debugLabel: 'Picture in picture',
     );
   }
 

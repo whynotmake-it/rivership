@@ -17,7 +17,10 @@ class PhotoFlickPage extends StatefulWidget {
 
 class _PhotoFlickPageState extends State<PhotoFlickPage>
     with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Photo flick',
+  );
 
   /// The opened photo's center, relative to the stage center. Doubles as the
   /// open/close travel (slot → center → slot) and the flick position, so one

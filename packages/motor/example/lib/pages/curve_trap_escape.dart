@@ -21,7 +21,10 @@ enum _MotionKind { curve, spring }
 
 class _CurveTrapEscapePageState extends State<CurveTrapEscapePage>
     with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Curve trap',
+  );
   final _sheet = Track(.single, initial: 0.0);
   final _positionTrace = ValueRecordingNotifier();
   final _velocityTrace = ValueRecordingNotifier();

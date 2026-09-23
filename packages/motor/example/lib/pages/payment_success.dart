@@ -26,16 +26,51 @@ const _belowReceipt = Offset(0, 240);
 
 class _PaymentSuccessPageState extends State<PaymentSuccessPage>
     with TickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Payment button',
+  );
 
-  final _buttonW = Track<double>(.single, initial: _fullWidth);
-  final _textVisibility = Track<double>(.single, initial: 1);
-  final _spinnerOpacity = Track<double>(.single, initial: 0);
-  final _spinnerAngle = Track<double>(.single, initial: 0);
-  final _checkDraw = Track<double>(.single, initial: 0);
-  final _checkScale = Track<double>(.single, initial: 1);
-  final _receipt = Track<Offset>(.offset, initial: _belowReceipt);
-  final _receiptOpacity = Track<double>(.single, initial: 0);
+  final _buttonW = Track<double>(
+    .single,
+    initial: _fullWidth,
+    debugLabel: 'Button width',
+  );
+  final _textVisibility = Track<double>(
+    .single,
+    initial: 1,
+    debugLabel: 'Label',
+  );
+  final _spinnerOpacity = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Spinner opacity',
+  );
+  final _spinnerAngle = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Spinner angle',
+  );
+  final _checkDraw = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Check stroke',
+  );
+  final _checkScale = Track<double>(
+    .single,
+    initial: 1,
+    debugLabel: 'Check scale',
+  );
+  final _receipt = Track<Offset>(
+    .offset,
+    initial: _belowReceipt,
+    debugLabel: 'Receipt offset',
+  );
+  final _receiptOpacity = Track<double>(
+    .single,
+    initial: 0,
+    debugLabel: 'Receipt opacity',
+  );
 
   Timer? _holdTimer;
   bool _charging = false;

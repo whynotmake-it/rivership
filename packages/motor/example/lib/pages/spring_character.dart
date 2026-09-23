@@ -18,7 +18,10 @@ class SpringCharacterPage extends StatefulWidget {
 
 class _SpringCharacterPageState extends State<SpringCharacterPage>
     with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Spring character',
+  );
   final _sheet = Track(.single, initial: 0.0);
   final _trace = ValueRecordingNotifier();
 

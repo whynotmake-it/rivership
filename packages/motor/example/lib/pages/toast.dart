@@ -30,6 +30,7 @@ class _ToastPageState extends State<ToastPage> with TickerProviderStateMixin {
       motion: const CupertinoMotion.bouncy(),
       vsync: this,
       initialValue: 0,
+      debugLabel: 'Toast reveal',
     );
   }
 

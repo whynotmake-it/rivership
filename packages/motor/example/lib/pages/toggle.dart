@@ -83,7 +83,7 @@ class _SpringSwitch extends StatefulWidget {
 
 class _SpringSwitchState extends State<_SpringSwitch>
     with TickerProviderStateMixin {
-  late final _c = TrackController(vsync: this);
+  late final _c = TrackController(vsync: this, debugLabel: 'Spring switch');
   late final _value = Track(
     .single,
     initial: 0.0,
@@ -232,7 +232,7 @@ class _LikeButtonState extends State<_LikeButton>
   @override
   void initState() {
     super.initState();
-    _controller = TrackController(vsync: this);
+    _controller = TrackController(vsync: this, debugLabel: 'Like button');
   }
 
   @override
@@ -344,6 +344,7 @@ class _RotateToggleState extends State<_RotateToggle>
       motion: const CupertinoMotion.snappy(),
       vsync: this,
       initialValue: 0,
+      debugLabel: 'Checkbox',
     );
   }
 

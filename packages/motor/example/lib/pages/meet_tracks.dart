@@ -15,7 +15,10 @@ class MeetTracksPage extends StatefulWidget {
 
 class _MeetTracksPageState extends State<MeetTracksPage>
     with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(vsync: this);
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'Meet tracks',
+  );
 
   // A Track is an identity key: declare it once and reuse the instance.
   // Equal-looking tracks created per build are different tracks.
