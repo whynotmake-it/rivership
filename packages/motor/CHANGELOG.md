@@ -13,7 +13,7 @@
  - **FEAT**: add `TrackController`, a multi-track controller on one ticker:
    - `play`/`animate` start plans for the named tracks, `set` jumps without animating, and `stop` settles springs gracefully or halts with `canceled: true` (which keeps the direction it was moving in instead of reporting `completed`). Returned futures complete when the whole controller settles.
    - `pause`, `resume`, and `scrubTo` work on one playback timeline that only advances while the controller ticks, so pausing, restarting, and scrubbing never rewind or misalign tracks. Flutter's `timeDilation` applies as usual.
-   - Sync barriers release at the exact moment the last participant arrives, independent of the frame rate, and hold every cycle in looping plans. Scrubbing resolves them the same way playback does.
+   - Sync barriers release at the exact moment the last participant arrives (or, when a participant is stopped or redirected, no earlier than that moment), independent of the frame rate, and hold every cycle in looping plans. Scrubbing resolves them the same way playback does.
    - Playback is a function of time alone: each step's duration is resolved once and kept, so ticking live, jumping ahead, and scrubbing back always agree, and loops that repeat use constant memory.
    - `onStep` reports every step a track enters, in order, even within one frame.
    - `animationOf(track)` returns a cached `Animation<T>` for one track that composes with tweens, curves, and transitions and reports that track's own status.

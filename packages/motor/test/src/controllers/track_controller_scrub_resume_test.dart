@@ -284,6 +284,35 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets(
+        'a barrier that loses a participant releases then, not in the past',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([
+        trackA([
+          const TrackStep.to(1, motion: linear100),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(2, motion: linear100),
+        ]),
+        trackB([
+          const TrackStep.to(1, motion: linear200),
+          const TrackStep.sync(token: #meet),
+        ]),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(controller.value(trackA), closeTo(1, error));
+
+      controller.animate([trackB.to(0, motion: linear100)]);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value(trackA), closeTo(1.5, error));
+
+      controller.pause();
+      controller.scrubTo(const Duration(milliseconds: 120));
+      expect(controller.value(trackA), closeTo(1, error));
+      controller.stop(canceled: true);
+    });
+
     testWidgets('scrubs tracks started at different times on one timeline',
         (tester) async {
       controller = TrackController(vsync: tester);

@@ -91,6 +91,10 @@ class TrackController extends Animation<TrackValueReader>
 
   /// How often each track was released at each sync token.
   final Map<Object, Map<Track, int>> _syncPasses = {};
+
+  /// When a sync token last lost a participant; it cannot release earlier,
+  /// since the tracks waiting there were shown waiting until then.
+  final Map<Object, Duration> _syncNotBefore = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
   // Velocity estimates are computed only when needed, as of the latest sample.
   final Map<Track, DateTime> _pendingVelocityEstimates = {};
@@ -557,6 +561,7 @@ class TrackController extends Animation<TrackValueReader>
       _activeTracks.clear();
       _tokenParticipants.clear();
       _syncPasses.clear();
+      _syncNotBefore.clear();
       _pendingVelocityEstimates.clear();
     } else {
       for (final track in tracks) {
@@ -881,14 +886,19 @@ class TrackController extends Animation<TrackValueReader>
   /// left without participants. Stopped/redirected tracks will never reach
   /// their old barriers, so they must not hold (or trivially satisfy) them.
   void _pruneTokenParticipants(Iterable<Track> tracks) {
-    for (final participants in _tokenParticipants.values) {
+    for (final MapEntry(key: token, value: participants)
+        in _tokenParticipants.entries) {
+      if (!participants.any(tracks.contains)) continue;
       participants.removeAll(tracks);
+      _syncNotBefore[token] = _clock.now;
     }
     for (final counts in _syncPasses.values) {
       counts.removeWhere((track, _) => tracks.contains(track));
     }
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
     _syncPasses
+        .removeWhere((token, _) => !_tokenParticipants.containsKey(token));
+    _syncNotBefore
         .removeWhere((token, _) => !_tokenParticipants.containsKey(token));
   }
 
@@ -939,6 +949,10 @@ class TrackController extends Animation<TrackValueReader>
         }
       }
       if (!allArrived || releaseAt == null) continue;
+      if (_syncNotBefore[token] case final notBefore?
+          when notBefore > releaseAt) {
+        releaseAt = notBefore;
+      }
       if (anchorFrames && slots == null && token is FrameAnchoredSyncToken) {
         releaseAt = now;
       }
