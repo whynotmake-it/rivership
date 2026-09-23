@@ -42,12 +42,10 @@ class StepPlayback<T extends Object> {
         _loop = loop,
         _fallbackMotion = fallbackMotion,
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
-        _initialValues =
-            List<double>.of(converter.normalize(start), growable: false),
+        _initialValues = converter.normalize(start),
         _initialVelocities = switch (velocity) {
           null => List<double>.filled(converter.normalize(start).length, 0),
-          final value =>
-            List<double>.of(converter.normalize(value), growable: false),
+          final value => converter.normalize(value),
         } {
     _currentValues = List<double>.of(_initialValues, growable: false);
     _currentVelocities = List<double>.of(_initialVelocities, growable: false);

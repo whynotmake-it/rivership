@@ -11,27 +11,46 @@ class _TrackSlot<T extends Object> {
           converter.normalize(initialValue).length,
           0,
         ),
-        _value = initialValue;
+        _value = initialValue,
+        _copyBeforeDenormalize = !_builtInConverters.contains(
+          converter.runtimeType,
+        );
+
+  // Motor's own converters never keep the list passed to `denormalize`, so
+  // the slot's buffers can be handed to them without a copy.
+  static const _builtInConverters = {
+    SingleMotionConverter,
+    OffsetMotionConverter,
+    SizeMotionConverter,
+    RectMotionConverter,
+    AlignmentMotionConverter,
+    ColorRgbMotionConverter,
+    EdgeInsetsMotionConverter,
+    EdgeInsetsDirectionalMotionConverter,
+  };
 
   final MotionConverter<T> converter;
   final Motion? fallbackMotion;
   final List<Motion>? fallbackMotionPerDimension;
 
-  // Owned by this slot and updated in place while playing. Never handed to a
-  // converter directly: `denormalize` may keep the list it is given.
+  // Owned by this slot and updated in place while playing. Only handed to
+  // built-in converters directly: others may keep the list they are given.
   List<double> _currentValues;
   List<double> _velocityValues;
   T? _value;
   T? _velocity;
+  final bool _copyBeforeDenormalize;
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
   Duration _inspectionStartOffset = Duration.zero;
 
-  T get value => _value ??= converter.denormalize(_ownedCopy(_currentValues));
+  T get value => _value ??= _denormalize(_currentValues);
 
-  T get velocity =>
-      _velocity ??= converter.denormalize(_ownedCopy(_velocityValues));
+  T get velocity => _velocity ??= _denormalize(_velocityValues);
+
+  T _denormalize(List<double> values) => converter
+      .denormalize(_copyBeforeDenormalize ? _ownedCopy(values) : values);
 
   static List<double> _ownedCopy(List<double> values) =>
       List<double>.of(values, growable: false);
