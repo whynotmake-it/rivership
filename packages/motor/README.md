@@ -786,13 +786,13 @@ Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× 
 
 | Scenario | Flutter equivalent | Per frame | Start | Retarget |
 |---|---|---:|---:|---:|
-| 1 spring | 1 `AnimationController` | 1.7× | 4.2× | 3.5× |
-| 250 springs, one `TrackController` | 250 `AnimationController`s | 0.95× | 4.2× | 2.7× |
-| 250 curves, one `TrackController` | 250 `AnimationController`s + `CurvedAnimation` | 1.0× | 2.7× | – |
-| `Rect` spring (4D) | 4 `AnimationController`s | 0.96× | 2.2× | 1.6× |
+| 1 spring | 1 `AnimationController` | 1.8× | 4.4× | 3.4× |
+| 250 springs, one `TrackController` | 250 `AnimationController`s | 0.98× | 4.3× | 2.7× |
+| 250 curves, one `TrackController` | 250 `AnimationController`s + `CurvedAnimation` | 0.99× | 2.8× | – |
+| `Rect` spring (4D) | 4 `AnimationController`s | 0.94× | 2.2× | 1.6× |
 | `Rect` curve (4D) | 1 `AnimationController` + `RectTween` | 2.1× | 3.2× | – |
 
-"Per frame" is one frame of animation work plus reading every value once. Absolute costs are small: 250 springs cost about 46 µs per frame, and starting one spring about 2 µs.
+"Per frame" is one frame of animation work plus reading every value once. Absolute costs are small: 250 springs cost about 49 µs per frame, and starting one spring about 2 µs. Following a drag with velocity tracking (on by default) costs about 1 µs per value per frame, 6× an `AnimationController` plus a `VelocityTracker`; the fling that hands over the tracked velocity costs 1.5× to 1.6×.
 
 Method: an AOT release build drives frames through the scheduler with no widgets, checks that both sides produce the same values, and reports the median of 7 runs over 5 invocations. Methodology, memory and all scenarios are in [benchmark/ANALYSIS.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/ANALYSIS.md).
 
