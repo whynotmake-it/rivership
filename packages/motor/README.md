@@ -389,6 +389,20 @@ controller.resume();                 // continue smoothly from the scrub
 final s = controller.value(scale);   // read via the reader
 ```
 
+The reader doesn't compose with `Tween.animate` or transitions, so the
+controller also offers a real `Animation<T>` per track:
+
+```dart
+FadeTransition(opacity: controller.animationOf(opacity), child: card);
+
+final grow = Tween(begin: 0.8, end: 1.0).animate(controller.animationOf(scale));
+```
+
+`animationOf` returns the same instance for a track, listens only while it
+has listeners, notifies only when that track changes, and reports the
+track's own status (`dismissed` until it plays, `forward`/`reverse` while it
+plays, `completed` when its plan is done).
+
 A few semantics worth knowing:
 
 - `play`, `animate`, and `stop` return a `TickerFuture` that completes when

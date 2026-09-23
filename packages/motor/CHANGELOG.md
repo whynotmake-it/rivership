@@ -43,6 +43,7 @@
  - **FEAT**: add `TrackController.pause()` for silent, non-destructive playback inspection and authoring.
  - **BREAKING** **FEAT**: `TrackStep.at` always arrives at its time. If the preceding step leaves less than the `.at` motion's natural duration, it is now cut short so that motion runs its natural duration and lands on time; otherwise the motion stretches to fill the gap. Timing changes continuously with the arrival time, and an `.at` with no time left (such as `at(Duration.zero)` first) arrives instantly. Previously an overrunning step made the `.at` motion start at its time and arrive late, and a step ending just before the time compressed the motion into the remaining sliver.
  - **FIX**: `onStep` now reports every step a track enters, in order, including steps shorter than a frame and steps crossed during a long frame. A step entered again in a loop is reported again.
+ - **FEAT**: add `TrackController.animationOf(track)`, an `Animation<T>` view of one track that composes with tweens, curves, and transitions and reports that track's own status.
  - **FEAT**: `TrackBuilder`, `PhaseTrackBuilder`, and the motion builders accept an optional `debugLabel` for the controller they create, shown by inspection tools.
  - **FEAT**: while inspection tooling is attached, `scrubTo` also shows plans a track was redirected away from (up to 8 per track), and resuming from such a time continues that earlier plan.
  - **FIX**: in looping timelines, a faster track now waits for slower ones at a shared sync barrier every cycle instead of running a cycle ahead.

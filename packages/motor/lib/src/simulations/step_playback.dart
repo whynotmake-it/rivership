@@ -357,6 +357,23 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
+  /// Where the shown segment starts and which value it heads for, or null if
+  /// it has no target (a hold, free motion, or sync barrier).
+  @internal
+  ({List<double> from, List<double> to})? get shownMove {
+    final segment = _view;
+    final step = _steps[segment.stepIndex];
+    if (step is! StepTo<T> && step is! StepAt<T>) return null;
+    final index = segment.stepIndex;
+    final to = segment.direction > 0
+        ? _waypoints[index]
+        : (index > 0 ? _waypoints[index - 1] : _initialValues);
+    return (
+      from: [for (final simulation in segment.simulations) simulation.x(0)],
+      to: to,
+    );
+  }
+
   /// The resolved segments, oldest first: which step each one plays and when.
   ///
   /// The segment being resolved reports when it is going to end, unless that

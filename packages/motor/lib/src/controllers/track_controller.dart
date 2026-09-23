@@ -19,6 +19,7 @@ import 'package:motor/src/track_step.dart';
 import 'package:motor/src/track_timeline.dart';
 
 part '_track_slot.dart';
+part 'track_animation.dart';
 
 /// Reads the current value of a [Track].
 typedef TrackValueReader = T Function<T extends Object>(Track<T> track);
@@ -64,6 +65,7 @@ class TrackController extends Animation<TrackValueReader>
 
   final List<TrackValue> _from;
   final Map<Track, _TrackSlot> _slots = {};
+  final Map<Track, _TrackAnimation<Object>> _animations = {};
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
 
@@ -110,6 +112,27 @@ class TrackController extends Animation<TrackValueReader>
   AnimationStatus get status => _status;
 
   T _read<T extends Object>(Track<T> track) => _slot(track).value as T;
+
+  /// An [Animation] of [track]'s value on this controller.
+  ///
+  /// Use it wherever Flutter expects an `Animation<T>`, for example
+  /// `FadeTransition(opacity: controller.animationOf(opacity))` or
+  /// `Tween(begin: 0.8, end: 1.0).animate(controller.animationOf(progress))`.
+  ///
+  /// The same instance is returned for the same track. It listens to this
+  /// controller only while it has listeners, and notifies them only when
+  /// this track's value or status changes. Its status is
+  /// [AnimationStatus.dismissed] until the track first plays,
+  /// [AnimationStatus.forward] while it plays (including while paused, or
+  /// [AnimationStatus.reverse] for directional converters heading down), and
+  /// [AnimationStatus.completed] once its plan finished or was stopped.
+  ///
+  /// Reading the value follows the same rules as [value].
+  Animation<T> animationOf<T extends Object>(Track<T> track) =>
+      (_animations[track] ??= _TrackAnimation<T>(this, track)) as Animation<T>;
+
+  AnimationStatus _statusOf(Track track) =>
+      _slots[track]?.status ?? AnimationStatus.dismissed;
 
   /// Returns the current velocity for [track].
   T velocity<T extends Object>(Track<T> track) {
@@ -540,6 +563,7 @@ class TrackController extends Animation<TrackValueReader>
     _playbackRevision++;
     _slots[track]?.stop(canceled: true);
     _slots.remove(track);
+    _animations.remove(track);
     _activeTracks.remove(track);
     _velocityTrackers.remove(track);
     _pendingVelocityEstimates.remove(track);
