@@ -28,6 +28,9 @@ pubspec_overrides.yaml
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# Generated dartdoc output
+doc/api/
+
 # FVM Version Cache
 .fvm/
 
