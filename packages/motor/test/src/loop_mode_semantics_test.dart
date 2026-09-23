@@ -164,6 +164,31 @@ void main() {
       expect(p.values.single, closeTo(1, error));
     });
 
+    test('long-running loops keep a bounded number of segments', () {
+      final folding = playback(LoopMode.pingPong);
+      final withSync = StepPlayback<double>(
+        steps: const [
+          StepTo(1, motion: linear100),
+          StepSync(token: #beat),
+          StepTo(0, motion: linear100),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+        loop: LoopMode.loop,
+      );
+
+      for (var t = 0.0; t < 60; t += 1 / 60) {
+        folding.advanceTo(t);
+        withSync.advanceTo(t);
+        if (withSync.pendingSyncToken != null) {
+          withSync.releaseSync(atSeconds: withSync.pendingSyncArrivalSeconds);
+        }
+      }
+
+      expect(folding.debugSegmentCount, lessThan(10));
+      expect(withSync.debugSegmentCount, lessThan(10));
+    });
+
     test('loop runs start -> end -> start -> end indefinitely', () {
       final p = playback(LoopMode.loop);
 

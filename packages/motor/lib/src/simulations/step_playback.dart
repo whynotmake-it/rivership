@@ -132,6 +132,10 @@ class StepPlayback<T extends Object> {
   static const _scanLimit = 60.0;
   static const _horizon = 86400.0;
 
+  /// Cycles after which a loop that has not folded is bounded like a loop
+  /// with sync steps.
+  static const _foldAttempts = 8;
+
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
@@ -181,7 +185,8 @@ class StepPlayback<T extends Object> {
   // same state as the previous one, playback repeats with a fixed period and
   // resolution stops ("folding").
   // Plans with sync steps never fold because their release times come from
-  // other tracks; they keep only the most recent cycles instead.
+  // other tracks; they, and loops that have not folded after
+  // [_foldAttempts] cycles, keep only the most recent cycles instead.
   late final bool _canFold;
   final List<_CycleStart> _cycleStarts = [];
   double? _period;
@@ -267,6 +272,10 @@ class StepPlayback<T extends Object> {
   }
 
   bool get _viewIsLatest => _viewIndex == _segments.length - 1;
+
+  /// How many resolved segments are kept.
+  @visibleForTesting
+  int get debugSegmentCount => _segments.length;
 
   /// The currently active step index.
   int get currentStepIndex => isDone ? -1 : _view.stepIndex;
@@ -536,7 +545,7 @@ class StepPlayback<T extends Object> {
         return true;
       }
     }
-    if (!_canFold) _dropOldCycles(keep: 2);
+    if (!_canFold || _cycle >= _foldAttempts) _dropOldCycles(keep: 2);
     return false;
   }
 
