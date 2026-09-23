@@ -113,6 +113,44 @@ void main() {
       expect(calls, containsAllInOrder([(opacity, 0), (opacity, 1)]));
     });
 
+    testWidgets('reports every step entered, even within one frame',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final steps = <int>[];
+      const short = Motion.linear(Duration(milliseconds: 10));
+
+      controller.play(
+        TrackTimeline(
+          [
+            opacity([
+              const TrackStep.to(1, motion: short),
+              const TrackStep.to(0, motion: short),
+              const TrackStep.hold(Duration(milliseconds: 10)),
+            ]),
+          ],
+          loop: LoopMode.seamless,
+        ),
+        onStep: (track, stepIndex) => steps.add(stepIndex),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 35));
+      expect(steps, [0, 1, 2, 0]);
+
+      steps.clear();
+      await tester.pump(const Duration(milliseconds: 30));
+      expect(steps, [1, 2, 0]);
+
+      controller.pause();
+      steps.clear();
+      controller.scrubTo(Duration.zero);
+      controller.resume();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 5));
+      expect(steps, isEmpty);
+      controller.stop(canceled: true);
+    });
+
     testWidgets('loops timelines until stopped', (tester) async {
       controller = TrackController(vsync: tester);
 

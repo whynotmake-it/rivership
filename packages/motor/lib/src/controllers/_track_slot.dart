@@ -206,6 +206,8 @@ class _TrackSlot<T extends Object> {
   }
 
   int get currentStepIndex => _stepPlayback?.currentStepIndex ?? -1;
+
+  List<int> takeEnteredSteps() => _stepPlayback?.takeEnteredSteps() ?? const [];
 }
 
 enum _TrackSlotPlayback {

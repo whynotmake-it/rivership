@@ -200,6 +200,10 @@ class StepPlayback<T extends Object> {
   var _viewCycleShift = 0;
   var _viewTimeShift = 0.0;
 
+  // The last segment handed out by [takeEnteredSteps].
+  var _reportedIndex = -1;
+  var _reportedShift = 0;
+
   _Segment get _view => _segments[_viewIndex];
 
   void _buildWaypoints() {
@@ -353,6 +357,38 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
+  /// The indices of the steps entered since the previous call, in order.
+  ///
+  /// Every step playback passed through is included, even when one advance
+  /// crosses several. Moving back in time enters nothing. When one advance
+  /// skips whole loop cycles, only the steps of the last cycle entered are
+  /// included.
+  @internal
+  List<int> takeEnteredSteps() {
+    final targetShift = _viewCycleShift;
+    final targetIndex = _viewIndex;
+    var shift = _reportedShift;
+    var index = _reportedIndex;
+    _reportedShift = targetShift;
+    _reportedIndex = targetIndex;
+
+    final behind =
+        targetShift < shift || (targetShift == shift && targetIndex <= index);
+    if (behind) return const [];
+
+    final entered = <int>[];
+    while ((shift != targetShift || index != targetIndex) &&
+        entered.length <= _segments.length) {
+      index++;
+      if (index >= _segments.length) {
+        shift = targetShift;
+        index = _segmentIndexAt(_foldStartSeconds);
+      }
+      entered.add(_segments[index].stepIndex);
+    }
+    return entered;
+  }
+
   /// The token of the [StepSync] that resolution is held at, or `null`.
   ///
   /// Unlike [syncToken], this does not depend on the time being shown.
@@ -458,7 +494,8 @@ class StepPlayback<T extends Object> {
         final periods = ((seconds - _foldStartSeconds) / period).floor();
         _viewCycleShift = periods;
         _viewTimeShift = periods * period;
-        local = seconds - _viewTimeShift;
+        // Rounding can land a hair before the repeating window.
+        local = math.max(seconds - _viewTimeShift, _foldStartSeconds);
       }
     }
 
@@ -566,7 +603,10 @@ class StepPlayback<T extends Object> {
   void _dropOldCycles({required int keep}) {
     final oldest = _cycle - keep;
     final drop = _segments.indexWhere((segment) => segment.cycle > oldest);
-    if (drop > 0) _segments.removeRange(0, drop);
+    if (drop > 0) {
+      _segments.removeRange(0, drop);
+      _reportedIndex = math.max(-1, _reportedIndex - drop);
+    }
     _cycleStarts.removeWhere((start) => start.cycle <= oldest);
   }
 

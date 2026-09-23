@@ -68,6 +68,8 @@ class TrackBuilder extends StatefulWidget {
   final bool active;
 
   /// Called when a track enters a step.
+  ///
+  /// {@macro TrackController.onStep}
   final void Function(Track track, int stepIndex)? onStep;
 
   /// Called when coarse playback status changes.

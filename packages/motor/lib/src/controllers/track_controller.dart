@@ -62,7 +62,6 @@ class TrackController extends Animation<TrackValueReader>
 
   final List<TrackValue> _from;
   final Map<Track, _TrackSlot> _slots = {};
-  final Map<Track, int> _lastStepByTrack = {};
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
@@ -220,6 +219,11 @@ class TrackController extends Animation<TrackValueReader>
   /// Calling [stop] with `canceled: true` cancels the future. Looping playback
   /// ([LoopMode.loop]/[LoopMode.pingPong]/[LoopMode.seamless]) never stops the
   /// ticker, so the returned future never completes — do not `await` it.
+  ///
+  /// {@template TrackController.onStep}
+  /// [onStep] is called once for every step each track enters, in order,
+  /// including steps shorter than a frame. It is not called while scrubbing.
+  /// {@endtemplate}
   TickerFuture play(
     TrackTimeline timeline, {
     void Function(Track track, int stepIndex)? onStep,
@@ -247,6 +251,8 @@ class TrackController extends Animation<TrackValueReader>
   /// named in [animations]. So animating one track while others run completes
   /// only once everything has settled. Passing an empty list returns an
   /// already-complete future. Calling [stop] with `canceled: true` cancels it.
+  ///
+  /// {@macro TrackController.onStep}
   TickerFuture animate(
     List<TrackAnimation> animations, {
     LoopMode loop = LoopMode.none,
@@ -295,13 +301,6 @@ class TrackController extends Animation<TrackValueReader>
     _playbackRevision++;
 
     _onStep = onStep;
-
-    // Only the named tracks restart; clearing their last-step bookkeeping lets
-    // their fresh steps report from the start. Tracks that keep running from a
-    // previous call retain their bookkeeping so they don't re-fire onStep.
-    for (final track in timelineTracks) {
-      _lastStepByTrack.remove(track);
-    }
 
     // Previously-running tracks stay active; the named tracks (re)start.
     _activeTracks.addAll(timelineTracks);
@@ -474,10 +473,8 @@ class TrackController extends Animation<TrackValueReader>
       final slot = _slots[track];
       if (slot == null) continue;
       if (slot.settle(startOffset: _clock.now)) {
-        // Keep the track active so the ticker drives it to rest. Reset its
-        // step bookkeeping so the settle segment doesn't re-fire onStep.
+        // Keep the track active so the ticker drives it to rest.
         _activeTracks.add(track);
-        _lastStepByTrack.remove(track);
       } else {
         slot.stop(canceled: true);
         _activeTracks.remove(track);
@@ -515,7 +512,6 @@ class TrackController extends Animation<TrackValueReader>
     _activeTracks.remove(track);
     _velocityTrackers.remove(track);
     _pendingVelocityEstimates.remove(track);
-    _lastStepByTrack.remove(track);
     _pruneTokenParticipants([track]);
   }
 
@@ -853,7 +849,7 @@ class TrackController extends Animation<TrackValueReader>
         final slot = _slots[track];
         if (slot == null) continue;
         if (!slot.tick(now)) allDone = false;
-        if (notifySteps) _notifyStep(track, slot);
+        _notifyStep(track, slot, notify: notifySteps);
       }
       if (!_releaseArrivedBarriers(now)) break;
     }
@@ -875,17 +871,14 @@ class TrackController extends Animation<TrackValueReader>
     notifyStatusListeners(_status);
   }
 
-  void _notifyStep(
-    Track track,
-    _TrackSlot slot,
-  ) {
+  /// Reports the steps [track] entered since the last call to `onStep`, or
+  /// only marks them as seen when [notify] is false.
+  void _notifyStep(Track track, _TrackSlot slot, {required bool notify}) {
+    final entered = slot.takeEnteredSteps();
     final onStep = _onStep;
-    if (onStep == null) return;
-
-    final stepIndex = slot.currentStepIndex;
-    if (stepIndex < 0 || _lastStepByTrack[track] == stepIndex) return;
-
-    _lastStepByTrack[track] = stepIndex;
-    onStep(track, stepIndex);
+    if (!notify || onStep == null) return;
+    for (final step in entered) {
+      onStep(track, step);
+    }
   }
 }
