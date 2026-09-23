@@ -181,7 +181,7 @@ Future<void> loadFont(String family, List<String> fromPaths) async {
           final data = rootBundle.load(path);
           fontLoader.addFont(Future.value(data));
         }
-      } catch (e, _) {
+      } catch (e) {
         debugPrint("Could not load font $path: $e");
       }
     }
