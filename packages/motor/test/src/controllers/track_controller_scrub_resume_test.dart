@@ -314,8 +314,10 @@ void main() {
     });
 
     testWidgets(
-        'a looping plan with a barrier keeps a bounded, exact recent history',
-        (tester) async {
+        'with tooling, a looping plan with a barrier keeps a bounded, exact '
+        'recent history', (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      addTearDown(subscription.dispose);
       const linear10 = Motion.linear(Duration(milliseconds: 10));
       controller = TrackController(vsync: tester);
       controller.animate(

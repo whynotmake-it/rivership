@@ -20,6 +20,9 @@ void main() {
 
     testWidgets('generated plan $seed ($loop): a fresh scrub matches live',
         (tester) async {
+      // Loops that cannot fold keep a long history only for tooling.
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      addTearDown(subscription.dispose);
       final plan = _Plan.generate(math.Random(seed), loop);
 
       final live = TrackController(vsync: tester)..play(plan.timeline);
@@ -64,8 +67,10 @@ void main() {
 
       controller.pause();
       for (var i = frames; i >= 0; i -= 3) {
-        // At the redirect's own instant, live recorded the state before the
-        // redirect, while scrubbing shows the state after it.
+        // The redirect can release a final barrier at that exact instant,
+        // and a seamless loop then restarts at its start value in that same
+        // instant. Live recorded the value before the jump and scrubbing
+        // shows the value after it; both are valid at that instant.
         if (i == redirectAt) continue;
         controller.scrubTo(recorded[i].position);
         _expectValues(controller, plan.tracks, recorded[i], 'frame $i');

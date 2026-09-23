@@ -74,7 +74,7 @@ controller, builder, and `onStatus` callback:
 
 - In 1.x, `animateTo(1)` from 3 finished `completed`. It now finishes
   `dismissed`. Without a direction (for example `Offset`), `dismissed` still
-  means back at the initial value.
+  means exactly back at the initial value.
 - `BoundedMotionController` no longer uses its bounds for status. With a
   directional converter, `reverse()` still ends `dismissed`. Without one,
   status works as for `MotionController`, so `reverse()` ends `completed`

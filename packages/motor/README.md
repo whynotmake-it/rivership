@@ -604,7 +604,8 @@ Simple types like `double` (via `SingleMotionConverter`) are **already direction
   `AnimationStatus.dismissed`.
 
 Without a direction, status reports `forward` while animating, and once done
-`dismissed` only when back at the initial value, otherwise `completed`.
+`dismissed` only when exactly back at the initial value (springs snap to
+their target by default), otherwise `completed`.
 
 **Custom Directionality:**
 For custom types or ad-hoc usage, you can define how "direction" is calculated.

@@ -57,7 +57,7 @@
 ### Motion converters
 
  - **BREAKING** **FEAT**: add directionality support to `MotionConverter`. New `DirectionalMotionConverter` mixin, `ComparableMotionConverter` mixin, and `MotionConverter.customDirectional` factory let controllers report `AnimationStatus.reverse` when animating toward a "smaller" value. `SingleMotionConverter` (and other comparable converters) are now directional, so `MotionController.status` now reports `reverse` when animating downward — previously it always reported `forward`.
- - **BREAKING** **FEAT**: status finishes by direction everywhere (controllers, builders, `onStatus`, `animationOf`): a move down ends `dismissed`, anything else `completed`; without a direction, `dismissed` means back at the initial value. A graceful `stop()` finishes the same way, and `stop(canceled: true)` keeps the direction it was moving in. `BoundedMotionController` no longer derives status from its bounds. See MIGRATION.md.
+ - **BREAKING** **FEAT**: status finishes by direction everywhere (controllers, builders, `onStatus`, `animationOf`): a move down ends `dismissed`, anything else `completed`; without a direction, `dismissed` means exactly back at the initial value. A graceful `stop()` finishes the same way, and `stop(canceled: true)` keeps the direction it was moving in. `BoundedMotionController` no longer derives status from its bounds. See MIGRATION.md.
  - **FEAT**: add `MotionConverter.lerp` for per-dimension interpolation between two values.
 
 ### Looping and phases

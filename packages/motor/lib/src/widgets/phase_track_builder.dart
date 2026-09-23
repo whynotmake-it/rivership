@@ -191,9 +191,10 @@ class _PhaseTrackBuilderState<P extends Object>
     if (restart) {
       // Jump every track back to its start value before replaying, so a
       // restartTrigger change starts from the start rather than animating from
-      // the current values back to the first phase.
+      // the current values back to the first phase. The timeline's
+      // initialValues then apply on top, as on first play.
       _controller
-        ..set(widget.timeline.startValues)
+        ..set(widget.timeline.flattened.startValues)
         ..forgetSeeds();
     }
 

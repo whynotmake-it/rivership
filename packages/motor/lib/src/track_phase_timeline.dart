@@ -97,10 +97,6 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
   /// each phase after the first. It plays once ([LoopMode.none]).
   final TrackTimeline flattened;
 
-  /// The resolved start value of every track, from [Track.initial] (or a
-  /// zero-filled fallback). [initialValues] apply on top when played.
-  List<TrackValue> get startValues => flattened.startValues;
-
   /// How the phase sequence should loop.
   ///
   /// This is handled by [PhaseTrackController] rather than by internal

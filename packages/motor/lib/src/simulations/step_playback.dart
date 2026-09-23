@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -136,8 +137,9 @@ class StepPlayback<T extends Object> {
   /// with sync steps.
   static const _foldAttempts = 8;
 
-  /// How many segments a loop that does not fold keeps for seeking back.
-  /// Whole cycles are dropped, oldest first, but never the last two.
+  /// How many segments a loop that does not fold keeps for seeking back
+  /// while inspection tooling is attached. Whole cycles are dropped, oldest
+  /// first, but never the last two; without tooling only those two are kept.
   static const _maxKeptSegments = 1024;
 
   /// Gaps shorter than this (one microsecond) count as no time at all.
@@ -669,10 +671,12 @@ class StepPlayback<T extends Object> {
   }
 
   /// Bounds memory for loops that cannot fold by forgetting their oldest
-  /// cycles beyond [_maxKeptSegments]. Seeking before the cycles kept shows
-  /// the earliest one kept.
+  /// cycles beyond [_maxKeptSegments], or all but the last two without
+  /// inspection tooling. Seeking before the cycles kept shows the earliest
+  /// one kept.
   void _dropOldCycles() {
-    final excess = _segments.length - _maxKeptSegments;
+    final budget = MotorInspectionRegistry.isInspecting ? _maxKeptSegments : 0;
+    final excess = _segments.length - budget;
     if (excess <= 0) return;
     final oldest = math.min(_segments[excess - 1].cycle, _cycle - 2);
     final drop = _segments.indexWhere((segment) => segment.cycle > oldest);

@@ -196,8 +196,8 @@ class MotionController<T extends Object> extends Animation<T>
   /// - Once the motion finished, was stopped gracefully, or [value] was set,
   ///   it is [AnimationStatus.dismissed] if the last move went down,
   ///   otherwise [AnimationStatus.completed]. For converters without a
-  ///   direction (common for multi-dimensional types), dismissed means back
-  ///   at the initial value.
+  ///   direction (common for multi-dimensional types), dismissed means
+  ///   exactly back at the initial value.
   /// - After `stop(canceled: true)`, it keeps the direction it was moving in.
   @override
   AnimationStatus get status => _inner.status;

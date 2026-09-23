@@ -260,8 +260,8 @@ class _TrackSlot<T extends Object> {
   ///   [AnimationStatus.forward].
   /// - After a move finished, or a jump with `set`:
   ///   [AnimationStatus.dismissed] if it went down, otherwise
-  ///   [AnimationStatus.completed]. Without a direction, dismissed means back
-  ///   at the initial value.
+  ///   [AnimationStatus.completed]. Without a direction, dismissed means
+  ///   exactly back at the initial value.
   /// - After a canceled stop, the direction it was moving in.
   AnimationStatus get status {
     if (_playback == _TrackSlotPlayback.idle) return _restingStatus;

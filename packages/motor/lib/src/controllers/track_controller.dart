@@ -166,7 +166,7 @@ class TrackController extends Animation<TrackValueReader>
   /// - Once its plan finished, it was stopped, or it jumped with [set]:
   ///   [AnimationStatus.dismissed] if its last move went down, otherwise
   ///   [AnimationStatus.completed]. For converters without a direction,
-  ///   dismissed means back at the track's initial value.
+  ///   dismissed means exactly back at the track's initial value.
   /// - After [stop] with `canceled: true`, the direction it was moving in.
   ///
   /// Reading the value follows the same rules as [value].
@@ -434,9 +434,10 @@ class TrackController extends Animation<TrackValueReader>
   /// that includes plans a track has since been redirected away from, and
   /// resuming from such a time continues the earlier plan, as long as the
   /// track's current plan is still animating (otherwise [resume] has nothing
-  /// to resume). Looping plans that contain sync steps keep a bounded
-  /// history of about a thousand steps; earlier times show the start of the
-  /// earliest cycle kept.
+  /// to resume). Looping plans that cannot repeat exactly, such as loops
+  /// with sync steps (every looping phase timeline), keep only their two most
+  /// recent cycles, or about a thousand steps while inspection tooling is
+  /// attached; earlier times show the start of the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
