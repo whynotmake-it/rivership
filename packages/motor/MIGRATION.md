@@ -2,20 +2,20 @@
 
 This guide covers upgrading from Motor 1.x to 2.0. It has three parts:
 
-1. [Breaking behavior changes](#breaking-behavior-changes) — runtime behavior
-   that changed without a compile error.
+1. [Breaking changes](#breaking-changes) — every change that can break 1.x
+   code, most of them runtime behavior that changes without a compile error.
 2. [Sequences → Tracks](#sequences--tracks) — migrating off the deprecated
    `MotionSequence` stack.
 3. [Deprecation timeline](#deprecation-timeline) — what gets removed in 3.0.
 
-## Breaking behavior changes
+## Breaking changes
 
 ### Springs snap to their end value by default
 
 All spring motions now default `snapToEnd` to `true`, so values settle
-*exactly* on their target (e.g. exactly `0.0`/`1.0`) instead of stopping
-within tolerance. This prevents off-target settling from breaking
-conditionals based on a motion's value, but may reintroduce small visual
+*exactly* on their target (e.g. exactly `0.0`/`1.0`). In 1.1.0 the default
+was `false`, and springs stopped within tolerance of the target. Snapping
+keeps conditionals on a motion's value reliable, but may cause small visual
 jumps in sequences whose targets are not continuous.
 
 ```dart
@@ -68,26 +68,86 @@ controller.animateTo(0); // status: AnimationStatus.reverse when moving down
 If you branched on `status == AnimationStatus.forward` to mean "animating",
 use `controller.isAnimating` instead.
 
+### Moves down finish `dismissed`
+
 The resting status follows the direction too. A move down finishes
 `dismissed`, and anything else finishes `completed`. This applies to every
-controller, builder, and `onStatus` callback:
+controller, builder, and status listener. For converters without a direction
+(for example `Offset`), `dismissed` means exactly back at the initial value.
 
-- In 1.x, `animateTo(1)` from 3 finished `completed`. It now finishes
-  `dismissed`. Without a direction (for example `Offset`), `dismissed` still
-  means exactly back at the initial value.
-- `BoundedMotionController` no longer uses its bounds for status. With a
-  directional converter, `reverse()` still ends `dismissed`. Without one,
-  status works as for `MotionController`, so `reverse()` ends `completed`
-  unless the lower bound is the initial value.
-- A graceful `stop()` finishes like a completed move (`completed` or
-  `dismissed`). A `stop(canceled: true)` keeps the direction it was moving
-  in. In 1.x, a stopped bounded controller reported its last direction.
-- `SequenceMotionController` reports `reverse` while a phase heads down,
-  for example on a `pingPong` return pass. It still never reports
-  `completed` between loop cycles.
+```dart
+// Before (1.x): dismissed only when the last target equaled the initial
+// value.
+controller.animateTo(1); // from 3: ends completed
+
+// After (2.0):
+controller.animateTo(1); // from 3: ends dismissed
+```
+
+Setting `value` follows the same rule: a jump down reports `dismissed`, and
+a jump up reports `completed`. In 1.x, setting `value` reported `dismissed`
+only if the last animation target equaled the initial value.
 
 If you waited for `completed` to detect the end of any move, check
 `!status.isAnimating` or await the returned `TickerFuture` instead.
+
+### `BoundedMotionController` status ignores its bounds
+
+`BoundedMotionController` uses the same status rule as `MotionController`.
+In 1.x it reported `dismissed` at the lower bound and `completed` at the
+upper bound. With a directional converter, `reverse()` still ends
+`dismissed` and `forward()` ends `completed`. Without one (for example a
+bounded `Offset` controller), `reverse()` now ends `completed` unless the
+lower bound is the initial value.
+
+```dart
+// To know which bound you're at, compare the value:
+final atLowerBound = controller.value == controller.lowerBound;
+```
+
+### A graceful `stop()` finishes the move
+
+After `stop()` settles, status is `completed` or `dismissed`, as for a
+finished move. In 1.x, a stopped `BoundedMotionController` kept reporting
+its last direction. `stop(canceled: true)` stops right away and keeps the
+direction it was moving in (`forward` or `reverse`), so use that if you
+relied on the direction being kept.
+
+### Sequences report `reverse` on the way down
+
+`SequenceMotionController` and `SequenceMotionBuilder` report `reverse`
+while a phase moves down, for example on the way back in
+`LoopMode.pingPong`, and `dismissed` after a final move down. In 1.x they
+reported `forward` for the whole sequence, then `completed`. They still
+never report `completed` between loop cycles. Use `isAnimating` instead of
+comparing with `forward` or `completed`.
+
+### `animateTo` the current value keeps the direction
+
+Calling `animateTo` with the value the controller is already at keeps the
+previous direction as its status (`reverse` after a move down). In 1.x it
+reported `forward`.
+
+### `playSequence` completes after the first loop cycle
+
+For a looping sequence, the `TickerFuture` returned by
+`SequenceMotionController.playSequence` now completes at the end of the
+first cycle. In 1.x it never completed.
+
+```dart
+// Don't await a looping sequence; stop it when you're done instead.
+controller.playSequence(loopingSequence);
+// ...
+controller.stop();
+```
+
+### Curve velocity is no longer 4× too large
+
+`CurvedMotion` and `LinearMotion` reported velocities 4× too large in 1.x.
+A spring taking over a running curve, for example `animateTo` with a spring
+motion mid-curve, started 4× too fast and overshot more. It now continues
+at the curve's actual speed, like `AnimationController`. If you tuned
+springs around the old overshoot, retune them.
 
 ### `PhaseTransition` factory constructors removed
 
@@ -106,18 +166,19 @@ final u = PhaseTransitioning(from: a, to: b);
 
 ### Sealed `MotionBase` root
 
-The motion hierarchy is now rooted in the sealed `MotionBase`. Custom
-motions that previously extended the root directly must now extend `Motion`
-(target-based) or `FreeMotion` (self-directed).
+The motion hierarchy is now rooted in the sealed `MotionBase`, with `Motion`
+for motions that animate toward a target and the new `FreeMotion` for
+self-directed ones. Custom motions that extend `Motion` keep working. Code
+that switches over motion types must handle `FreeMotion`.
 
 ```dart
-// Before (1.x):
-class MyMotion extends Motion { ... } // Motion was the root
-
-// After (2.0): pick the right base for your motion.
-class MyTargetMotion extends Motion { ... }     // animates toward a target
-class MyDecayMotion extends FreeMotion { ... }  // evolves from value+velocity
+class MyTargetMotion extends Motion { ... }     // unchanged from 1.x
+class MyDecayMotion extends FreeMotion { ... }  // new: evolves from value+velocity
 ```
+
+Simulations created by custom motions must depend only on the time passed
+in, because motor samples them again when scrubbing. In 1.x they were only
+sampled forward, so a simulation that kept state between calls worked.
 
 ## Sequences → Tracks
 
