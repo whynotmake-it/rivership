@@ -180,7 +180,13 @@ final sequence = MotionSequence.spanning({
 }, motion: .linear(Duration(seconds: 2)));
 
 // After: `.at` steps hit values at absolute times from the track's start.
-final opacity = Track(.single, initial: 0.0);
+// Each `.at` needs a motion (here the track default); it is time-scaled to
+// arrive exactly at the keyframe.
+final opacity = Track(
+  .single,
+  initial: 0.0,
+  motion: .linear(const Duration(seconds: 1)),
+);
 
 final animation = opacity([
   .at(const Duration(seconds: 1), 1.0),
@@ -248,6 +254,7 @@ State queries map as follows:
 - For `LoopMode.loop`, the legacy `SequenceMotionController` and the new
   `PhaseTrackController` visit phases in the same order
   (`0 → 1 → 2 → 0 → …`); no divergence was found.
-- `LoopMode.pingPong` was intentionally not compared across stacks: the new
-  stack's *phase-level* pingPong is not yet supported. The legacy pingPong
-  order (`0 → 1 → 2 → 1 → 0 → 1 → …`) is pinned by test.
+- `LoopMode.pingPong` visits phases in the same order on both stacks
+  (`0 → 1 → 2 → 1 → 0 → 1 → …`); each phase's own steps still play forward.
+- A per-animation `from:` inside a `TrackPhaseTimeline` phase is ignored. Use
+  the timeline's one-time `from:` / `withVelocity:` seeds instead.
