@@ -75,6 +75,7 @@
  - **FIX**: `SpringMotion` equality (and `hashCode`) now includes `snapToEnd`, so spring motions differing only in `snapToEnd` compare unequal. This affects motion swaps on `MotionController`, which previously ignored a `snapToEnd` change.
  - **FIX**: `CupertinoMotion.copyWith` now reads its defaults from the stored `duration`/`bounce` fields instead of round-tripping them through `SpringDescription`, so unchanged values are preserved exactly.
  - **FIX**: motion builders no longer stop and reset their value on every rebuild while inactive; they only do so on the active→inactive transition.
+ - **FIX**: the velocity of a curve (`CurvedMotion`, `LinearMotion`) is now its actual rate of change. It was reported 4× too large, so a spring taking over a curve mid-flight started far too fast. It is now a central difference over `tolerance.time`, like `AnimationController`.
  - **FIX**: `MotionDraggable` skips the return animation when a dragged item is released already within the motion's tolerance of its target position, avoiding a spurious overlay and animation.
 
 ## 1.1.0

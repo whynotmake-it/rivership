@@ -46,13 +46,10 @@ class CurveSimulation extends Simulation implements FiniteSimulation {
 
   @override
   double dx(double time) {
-    // Calculate the approximate derivative using a small delta
-    final delta = tolerance.distance;
-    final x1 = x(time - delta);
-    final x2 = x(time + delta);
-
-    // Return the rate of change (velocity)
-    return (x2 - x1) / delta * 2;
+    // A central difference over tolerance.time, like Flutter's
+    // AnimationController does for its curves.
+    final epsilon = tolerance.time;
+    return (x(time + epsilon) - x(time - epsilon)) / (2 * epsilon);
   }
 
   @override

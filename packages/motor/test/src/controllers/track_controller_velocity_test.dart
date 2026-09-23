@@ -394,4 +394,22 @@ void main() {
       expect(controller.value(position), closeTo(10.0, error));
     });
   });
+
+  testWidgets('a spring taking over a curve starts with its velocity',
+      (tester) async {
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final controller = TrackController(vsync: tester);
+    addTearDown(controller.dispose);
+
+    controller.animate([
+      position.to(10, motion: const Motion.linear(Duration(seconds: 1))),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(controller.velocity(position), closeTo(10, 1e-6));
+
+    controller.animate([position.to(10, motion: const Motion.smoothSpring())]);
+    expect(controller.velocity(position), closeTo(10, 1e-6));
+    controller.stop(canceled: true);
+  });
 }
