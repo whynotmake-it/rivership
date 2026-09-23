@@ -25,7 +25,7 @@ List<BenchScenario> allScenarios() => [
           id: 'curve_1d_x$n',
           group: 'Curve 1D',
           values: n,
-          motorSetup: '1 TrackController, $n tracks',
+          motorSetup: '1 TrackController, $n track${n == 1 ? '' : 's'}',
           flutterSetup: '$n AC + CurvedAnimation',
           motor: (vsync, {required steady}) => _MotorSide<double>(
             vsync,
@@ -44,7 +44,7 @@ List<BenchScenario> allScenarios() => [
           id: 'spring_1d_x$n',
           group: 'Spring 1D',
           values: n,
-          motorSetup: '1 TrackController, $n tracks',
+          motorSetup: '1 TrackController, $n track${n == 1 ? '' : 's'}',
           flutterSetup: '$n AC + SpringSimulation',
           retargets: true,
           motor: (vsync, {required steady}) => _MotorSide<double>(
@@ -103,7 +103,9 @@ List<BenchScenario> allScenarios() => [
       ),
     ];
 
-/// Filters [allScenarios] by comma-separated id prefixes.
+/// Filters [allScenarios] by comma-separated ids or `_`-separated id
+/// prefixes: `spring` and `spring_1d` match `spring_1d_x10`, `spring_1d_x1`
+/// matches only itself.
 List<BenchScenario> scenariosMatching(String? filter) {
   final all = allScenarios();
   final prefixes = [
@@ -114,7 +116,7 @@ List<BenchScenario> scenariosMatching(String? filter) {
   return [
     for (final scenario in all)
       if (prefixes.any(
-        (p) => scenario.id == p || scenario.id.startsWith(p),
+        (p) => scenario.id == p || scenario.id.startsWith('${p}_'),
       ))
         scenario,
   ];

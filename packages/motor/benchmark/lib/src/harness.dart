@@ -40,13 +40,14 @@ class BenchConfig {
         operations = 5,
         runs = 2;
 
-  /// Reads `BENCH_QUICK`, `BENCH_RUNS` and `BENCH_FRAMES`.
+  /// Reads `BENCH_QUICK`, `BENCH_RUNS`, `BENCH_FRAMES` and `BENCH_WARMUP`.
   factory BenchConfig.fromEnvironment(Map<String, String> env) {
     final base = env['BENCH_QUICK'] == '1'
         ? const BenchConfig.quick()
         : const BenchConfig();
     return BenchConfig(
-      warmupFrames: base.warmupFrames,
+      warmupFrames:
+          int.tryParse(env['BENCH_WARMUP'] ?? '') ?? base.warmupFrames,
       frames: int.tryParse(env['BENCH_FRAMES'] ?? '') ?? base.frames,
       operations: base.operations,
       runs: int.tryParse(env['BENCH_RUNS'] ?? '') ?? base.runs,
@@ -226,6 +227,19 @@ Future<List<ScenarioResult>> runSuite({
   final results = <ScenarioResult>[];
   final allocationBaseline =
       profiler == null ? 0.0 : await _idleAllocations(driver, profiler);
+  if (profiler != null && scenarios.isNotEmpty) {
+    // The first pass pays for one-time lazy initialization; discard it.
+    for (final factory in [scenarios.first.motor, scenarios.first.flutter]) {
+      await _measureAllocations(
+        driver,
+        config,
+        profiler,
+        factory,
+        SideResult(),
+        allocationBaseline,
+      );
+    }
+  }
 
   for (final scenario in scenarios) {
     log?.call('→ ${scenario.id}: ${scenario.motorSetup} vs '

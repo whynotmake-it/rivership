@@ -22,8 +22,8 @@ Environment variables:
 | Variable | Effect |
 |---|---|
 | `BENCH_QUICK=1` | 2 runs × 30 frames instead of 7 × 240 |
-| `BENCH_FILTER=spring_1d,curve_offset` | Only scenarios whose id starts with one of these |
-| `BENCH_RUNS`, `BENCH_FRAMES` | Override runs and frames per run |
+| `BENCH_FILTER=spring_1d,curve_offset` | Only these ids, or ids starting with `<prefix>_` |
+| `BENCH_RUNS`, `BENCH_FRAMES`, `BENCH_WARMUP` | Override runs, frames per run and warmup frames |
 | `BENCH_JSON=path` | JSON output (default `results/latest.json`) |
 | `BENCH_BUILD=profile` | AOT profile build; enables allocation profiling |
 | `BENCH_ALLOC=0` | Skip allocation profiling |
