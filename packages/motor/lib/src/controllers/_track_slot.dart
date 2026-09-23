@@ -228,9 +228,13 @@ class _TrackSlot<T extends Object> {
     return done;
   }
 
+  /// Comes to rest once the plan finished: the next plan starts from rest,
+  /// as after [stop].
   void _finish() {
     _lastMovesDown = _movesDown;
     _restingStatus = _finishedStatus(_currentValues);
+    _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _velocitiesStale = false;
     _playback = _TrackSlotPlayback.idle;
   }
 
@@ -252,7 +256,12 @@ class _TrackSlot<T extends Object> {
     _currentValues = List<double>.filled(_currentValues.length, 0);
     _velocityValues = List<double>.filled(_velocityValues.length, 0);
     _velocitiesStale = false;
-    playback.copyStateInto(_currentValues, _velocityValues);
+    if (done) {
+      // A finished plan rests, as it did when it finished.
+      playback.copyValuesInto(_currentValues);
+    } else {
+      playback.copyStateInto(_currentValues, _velocityValues);
+    }
     return done;
   }
 

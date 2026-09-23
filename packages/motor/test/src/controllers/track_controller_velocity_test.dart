@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
+import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
@@ -393,6 +394,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.value(position), closeTo(10.0, error));
     });
+  });
+
+  testWidgets('a finished curve rests, so the next motion starts from rest',
+      (tester) async {
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    final controller = TrackController(vsync: tester);
+    addTearDown(controller.dispose);
+    final motionController = SingleMotionController(
+      motion: const Motion.curved(Duration(milliseconds: 300), Curves.easeIn),
+      vsync: tester,
+    );
+    addTearDown(motionController.dispose);
+
+    controller.animate([
+      position.to(1, motion: const Motion.linear(Duration(milliseconds: 300))),
+    ]);
+    motionController.animateTo(1);
+    await tester.pumpAndSettle();
+    expect(controller.velocity(position), 0);
+    expect(motionController.velocity, 0);
+
+    controller.animate([position.to(1, motion: const Motion.smoothSpring())]);
+    motionController
+      ..motion = const Motion.smoothSpring()
+      ..animateTo(1);
+    await tester.pump();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(controller.value(position), 1);
+      expect(motionController.value, 1);
+    }
   });
 
   testWidgets('a spring taking over a curve starts with its velocity',
