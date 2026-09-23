@@ -317,10 +317,35 @@ class TrackController extends Animation<TrackValueReader>
       );
     }
 
+    if (MotorInspectionRegistry.durationEstimationEnabled) {
+      _estimateDurations(timelineTracks);
+    }
+
     _status = AnimationStatus.forward;
     final future = _startTicker();
     _checkStatusChanged();
     return future;
+  }
+
+  /// Records per-step duration estimates for inspection tooling by resolving
+  /// forks of the new plans ahead of time, with barriers released as they
+  /// would be during playback. Tracks outside [tracks] are not waited for.
+  void _estimateDurations(Set<Track> tracks) {
+    final forks = <Track, _TrackSlot>{
+      for (final track in tracks)
+        if (_slots[track]?.fork() case final fork?) track: fork,
+    };
+    final horizon = _clock.now + const Duration(days: 1);
+    for (var pass = 0; pass < _maxBarrierPasses; pass++) {
+      for (final fork in forks.values) {
+        fork.tick(horizon);
+      }
+      if (!_releaseArrivedBarriers(horizon, slots: forks)) break;
+    }
+    for (final MapEntry(key: track, value: fork) in forks.entries) {
+      _slots[track]!._stepPlayback!.estimatedSegmentSeconds =
+          fork._stepPlayback!.forwardSegmentSeconds;
+    }
   }
 
   /// Evaluates retained track plans at [t] without starting the ticker.
@@ -627,7 +652,6 @@ class TrackController extends Animation<TrackValueReader>
       loop: loop,
       startOffset: startOffset,
       velocity: animation.withVelocity,
-      estimateDurations: MotorInspectionRegistry.durationEstimationEnabled,
     );
   }
 
@@ -738,15 +762,20 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Tracks that are not animating, or that already moved past the barrier,
   /// do not hold it. Barriers with a [FrameAnchoredSyncToken] release at
-  /// [now] instead.
-  bool _releaseArrivedBarriers(Duration now) {
+  /// [now] instead, unless resolving ahead of playback in [slots].
+  bool _releaseArrivedBarriers(
+    Duration now, {
+    Map<Track, _TrackSlot>? slots,
+  }) {
+    final live = slots == null;
+    final lookup = slots ?? _slots;
     var released = false;
     for (final entry in _tokenParticipants.entries.toList()) {
       final token = entry.key;
       Duration? releaseAt;
       var allArrived = true;
       for (final track in entry.value) {
-        final slot = _slots[track];
+        final slot = lookup[track];
         if (slot == null || !slot.isAnimating) continue;
         if (slot.pendingSyncToken == token) {
           final arrival = slot.pendingSyncArrival;
@@ -757,16 +786,16 @@ class TrackController extends Animation<TrackValueReader>
         }
       }
       if (!allArrived || releaseAt == null) continue;
-      if (token is FrameAnchoredSyncToken) releaseAt = now;
+      if (live && token is FrameAnchoredSyncToken) releaseAt = now;
 
       for (final track in entry.value) {
-        final slot = _slots[track];
+        final slot = lookup[track];
         if (slot != null && slot.pendingSyncToken == token) {
           slot.releaseSync(releaseAt);
         }
       }
       released = true;
-      onSyncReleased(token);
+      if (live) onSyncReleased(token);
     }
     return released;
   }

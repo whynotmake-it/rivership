@@ -100,6 +100,49 @@ void main() {
     subscription.dispose();
   });
 
+  testWidgets('estimates match actual durations across a barrier', (
+    tester,
+  ) async {
+    final subscription = MotorInspectionRegistry.attach(_RecordingObserver());
+    final controller = TrackController(vsync: tester);
+    final fast = Track<double>(MotionConverter.single, initial: 0);
+    final slow = Track<double>(MotionConverter.single, initial: 0);
+
+    unawaited(
+      controller.animate([
+        fast([
+          const TrackStep.to(1, motion: Motion.snappySpring()),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(0, motion: Motion.bouncySpring()),
+        ]),
+        slow([
+          const TrackStep.to(1, motion: Motion.smoothSpring()),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
+        ]),
+      ]),
+    );
+    await tester.pump();
+    List<TrackPlayback> tracks() => controller.inspectPlayback().tracks;
+    final estimates = [for (final t in tracks()) t.estimatedStepDurations];
+
+    await tester.pumpAndSettle(const Duration(milliseconds: 1));
+    final actual = [for (final t in tracks()) t.stepDurations];
+
+    for (var track = 0; track < 2; track++) {
+      for (var step = 0; step < 3; step++) {
+        expect(
+          (estimates[track][step]! - actual[track][step]!).inMicroseconds.abs(),
+          lessThan(Duration.microsecondsPerMillisecond),
+          reason: 'track $track step $step',
+        );
+      }
+    }
+
+    controller.dispose();
+    subscription.dispose();
+  });
+
   testWidgets('estimates simulated durations to the millisecond', (
     tester,
   ) async {

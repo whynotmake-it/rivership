@@ -110,7 +110,6 @@ class _TrackSlot<T extends Object> {
     required Duration startOffset,
     LoopMode loop = LoopMode.none,
     T? velocity,
-    bool estimateDurations = false,
   }) {
     _startOffset = startOffset;
     final velocityValue = velocity ?? this.velocity;
@@ -122,7 +121,6 @@ class _TrackSlot<T extends Object> {
       loop: loop,
       fallbackMotion: fallbackMotion,
       fallbackMotionPerDimension: fallbackMotionPerDimension,
-      estimateDurations: estimateDurations,
     );
     _pullPlaybackState();
     _playback = _TrackSlotPlayback.chained;
@@ -172,6 +170,21 @@ class _TrackSlot<T extends Object> {
     final done = _stepPlayback!.seekTo(seconds);
     _pullPlaybackState();
     return done;
+  }
+
+  /// A copy of this slot playing a fork of its plan, for resolving ahead.
+  _TrackSlot<T>? fork() {
+    final playback = _stepPlayback;
+    if (playback == null) return null;
+    return _TrackSlot<T>(
+      converter: converter,
+      initialValue: value,
+      fallbackMotion: fallbackMotion,
+      fallbackMotionPerDimension: fallbackMotionPerDimension,
+    )
+      .._stepPlayback = playback.fork()
+      .._startOffset = _startOffset
+      .._playback = _TrackSlotPlayback.chained;
   }
 
   void _pullPlaybackState() {

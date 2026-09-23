@@ -109,9 +109,11 @@ class TrackPlayback {
 
   /// Stable duration estimates computed when this playback plan was created.
   ///
-  /// Inspection-enabled controllers probe the same simulations used by
-  /// playback once, before the ticker starts. Entries can remain `null` for
-  /// simulations that do not report completion.
+  /// While an inspection observer is attached, controllers resolve each new
+  /// plan ahead of playback, releasing sync barriers the way playback would,
+  /// so estimates match the actual durations unless the plan is interrupted.
+  /// Only tracks started together are waited for at barriers. Entries stay
+  /// `null` for simulations that do not finish within a day.
   final List<Duration?> estimatedStepDurations;
 }
 
