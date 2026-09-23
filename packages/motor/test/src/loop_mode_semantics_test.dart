@@ -83,8 +83,7 @@ void main() {
       p.advanceTo(low);
       expect(p.values.single, isNot(closeTo(start, error)));
 
-      // Search-based ends are refined to a microsecond.
-      p.advanceTo(high + 1e-6);
+      p.advanceTo(high);
       expect(p.values.single, closeTo(start, error));
       expect(p.isDone, isFalse);
     });

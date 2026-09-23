@@ -181,8 +181,15 @@ class StepPlayback<T extends Object> {
   var _isDone = false;
   var _isWaitingForSync = false;
 
-  /// How long the running segment lasts, or null if it never finishes.
+  /// How long the running segment lasts, or null if it never finishes;
+  /// only valid once [_segmentEndFound].
   double? _segmentDuration;
+  var _segmentEndFound = false;
+
+  // The search for the running segment's end, on the grid of [_scanStep]:
+  // the last point checked, where it is not done yet, and the next one.
+  var _scanLow = 0.0;
+  var _scanHigh = 0.0;
 
   /// When the running step yields to a following [StepAt], if it has to.
   double? _cutAt;
@@ -425,9 +432,9 @@ class StepPlayback<T extends Object> {
   double? get _upcomingEnd {
     if (_isDone || _isWaitingForSync || _period != null) return null;
     if (_steps[_stepIndex] is StepSync<T>) return null;
-    final duration = _segmentDuration;
-    return _cutAt ??
-        (duration == null ? null : _segmentStartSeconds + duration);
+    if (_cutAt case final cut?) return cut;
+    final duration = _findSegmentEnd();
+    return duration == null ? null : _segmentStartSeconds + duration;
   }
 
   /// Once a loop repeats exactly, how long each repetition lasts, in seconds.
@@ -530,11 +537,10 @@ class StepPlayback<T extends Object> {
         continue;
       }
 
+      final local = seconds - _segmentStartSeconds;
+      if (!_findSegmentEndBy(local)) return;
       final completionSeconds = _segmentDuration;
-      if (completionSeconds == null ||
-          seconds - _segmentStartSeconds < completionSeconds) {
-        return;
-      }
+      if (completionSeconds == null || local < completionSeconds) return;
       _sample(completionSeconds);
       _recordForwardSegmentDuration(completionSeconds);
 
@@ -740,7 +746,7 @@ class StepPlayback<T extends Object> {
     } else {
       _startForwardStep();
     }
-    _segmentDuration = _findSegmentDuration();
+    _startSegmentEnd();
     _segments.add(
       _Segment(
         stepIndex: _stepIndex,
@@ -762,8 +768,7 @@ class StepPlayback<T extends Object> {
           final targets = _waypoints[_stepIndex];
           return [
             for (var i = 0; i < targets.length; i++)
-              createPlaybackSimulation(
-                motions[i],
+              motions[i].createSimulation(
                 start: _values[i],
                 end: targets[i],
                 velocity: _velocities[i],
@@ -805,8 +810,7 @@ class StepPlayback<T extends Object> {
               : motions;
           return [
             for (var i = 0; i < targets.length; i++)
-              createPlaybackSimulation(
-                atMotions[i],
+              atMotions[i].createSimulation(
                 start: _values[i],
                 end: targets[i],
                 velocity: _velocities[i],
@@ -851,8 +855,7 @@ class StepPlayback<T extends Object> {
     if (motions != null) {
       _simulations = [
         for (var i = 0; i < targets.length; i++)
-          createPlaybackSimulation(
-            motions[i],
+          motions[i].createSimulation(
             start: _values[i],
             end: targets[i],
             velocity: _velocities[i],
@@ -890,7 +893,7 @@ class StepPlayback<T extends Object> {
       final arrival = _absoluteTimeFor(at);
       final atDuration =
           _knownMotionDuration(motion, motionPerDimension)?.toSeconds();
-      final duration = _segmentDuration;
+      final duration = _findSegmentEnd();
       if (duration != null) {
         // A motion of unknown duration can stretch over any gap.
         final gap = arrival - (_segmentStartSeconds + duration);
@@ -921,43 +924,74 @@ class StepPlayback<T extends Object> {
     return _simulations.every((simulation) => simulation.isDone(localSeconds));
   }
 
-  /// How long the running segment's simulations take to finish, or null if
-  /// they do not finish within a day.
+  /// Starts finding when the running segment ends: the first point on a
+  /// grid of [_scanStep] from its start where its simulations report done,
+  /// refined by bisection within that step. Simulations that know when they
+  /// finish skip the search.
   ///
-  /// Found once per segment, independent of how playback is advanced, so
-  /// ticking and seeking always agree. Motor's own simulations know their
-  /// finish time. For others, a fine forward scan finds the first time they
-  /// report done, even springs whose `isDone` briefly turns true near
-  /// oscillation peaks before they settle, refined to a microsecond.
-  double? _findSegmentDuration() {
+  /// The end depends only on the segment, so ticking and seeking always
+  /// agree. It is found lazily, as time passes: see [_findSegmentEndBy].
+  void _startSegmentEnd() {
+    _segmentEndFound = false;
+    _scanLow = 0;
+    _scanHigh = 0;
     var known = 0.0;
     for (final simulation in _simulations) {
-      if (simulation is! FiniteSimulation) return _searchSegmentDuration();
+      if (simulation is! FiniteSimulation) return;
       final finish = (simulation as FiniteSimulation).finishSeconds;
-      if (finish == null) return null;
+      if (finish == null) return;
       if (finish > known) known = finish;
     }
-    return known;
+    _endSegmentAt(known);
   }
 
-  double? _searchSegmentDuration() {
-    if (_segmentIsDone(0)) return 0;
-    var low = 0.0;
-    var high = _scanStep;
-    while (!_segmentIsDone(high)) {
-      low = high;
-      high = high < _scanLimit ? high + _scanStep : high * 2;
-      if (high > _horizon) return null;
+  void _endSegmentAt(double? duration) {
+    _segmentDuration = duration;
+    _segmentEndFound = true;
+  }
+
+  /// Searches the grid points up to the first one at or past [local] seconds
+  /// into the running segment. Returns whether the end was found, which it
+  /// always is when it lies at or before [local].
+  bool _findSegmentEndBy(double local) {
+    while (!_segmentEndFound && (_scanLow < local || _scanHigh <= local)) {
+      final high = _scanHigh;
+      if (_segmentIsDone(high)) {
+        _endSegmentAt(high == 0 ? 0 : _bisectSegmentEnd(_scanLow, high));
+      } else {
+        _scanLow = high;
+        _scanHigh = high == 0
+            ? _scanStep
+            : high < _scanLimit
+                ? high + _scanStep
+                : high * 2;
+        if (_scanHigh > _horizon) _endSegmentAt(null);
+      }
     }
-    while (high - low > _instant) {
+    return _segmentEndFound;
+  }
+
+  /// How long the running segment lasts, or null if it never finishes,
+  /// searching ahead as far as needed.
+  double? _findSegmentEnd() {
+    _findSegmentEndBy(double.infinity);
+    return _segmentDuration;
+  }
+
+  /// The first time in `(notDone, done]` the segment is done, to the precision
+  /// of a double, given it is not done at [notDone] and done at [done].
+  double _bisectSegmentEnd(double notDone, double done) {
+    var low = notDone;
+    var high = done;
+    while (true) {
       final mid = (low + high) / 2;
+      if (mid <= low || mid >= high) return high;
       if (_segmentIsDone(mid)) {
         high = mid;
       } else {
         low = mid;
       }
     }
-    return high;
   }
 }
 
