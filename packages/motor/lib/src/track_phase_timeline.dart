@@ -22,7 +22,8 @@ import 'package:motor/src/track_timeline.dart';
 /// ```
 ///
 /// The barrier inserted before each phase uses that phase value as its
-/// [StepSync.token], so avoid reusing phase values as your own sync tokens.
+/// [StepSync.token], so your own sync tokens must not equal a phase value
+/// (asserted).
 ///
 /// Play it with a [PhaseTrackController] or `PhaseTrackBuilder`, which
 /// interpret [phaseLoop], [initialValues], and [initialVelocities]. The
@@ -56,6 +57,19 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
           ),
           'Animations inside a TrackPhaseTimeline cannot set from or '
           'withVelocity. Use initialValues and initialVelocities instead.',
+        ),
+        assert(
+          phaseAnimations.values.every(
+            (animations) => animations.every(
+              (animation) => animation.steps.every(
+                (step) =>
+                    step is! StepSync ||
+                    !phaseAnimations.containsKey(step.token),
+              ),
+            ),
+          ),
+          'A sync token inside a TrackPhaseTimeline equals a phase value. '
+          'Phase barriers use the phase values as tokens; use other tokens.',
         ),
         phaseAnimations = Map.unmodifiable({
           for (final MapEntry(:key, :value) in phaseAnimations.entries)
