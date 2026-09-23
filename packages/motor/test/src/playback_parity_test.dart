@@ -86,8 +86,8 @@ void main() {
 }
 
 /// Pumps [frames] frames and records every track's value and velocity, and
-/// the controller's timeline position, after each one. [onFrame] runs right after
-/// frame `i` is recorded.
+/// the controller's timeline position, after each one. [onFrame] runs right
+/// after frame `i` is recorded.
 Future<List<_Frame>> _record(
   WidgetTester tester,
   TrackController controller,
