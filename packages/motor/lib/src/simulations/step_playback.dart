@@ -54,14 +54,16 @@ class StepPlayback<T extends Object> {
         _start = start,
         _velocity = velocity,
         _initialValues = converter.normalize(start) {
-    _initialVelocities = switch (velocity) {
+    final initialVelocities = switch (velocity) {
       null => List<double>.filled(_initialValues.length, 0),
       final value => converter.normalize(value),
     };
+    // Only loops that restart need the start velocities again.
+    _initialVelocities = loop.isLooping ? initialVelocities : const [];
     _values = List<double>.of(_initialValues, growable: false);
-    _velocities = List<double>.of(_initialVelocities, growable: false);
+    _velocities = List<double>.of(initialVelocities, growable: false);
     _viewValues = List<double>.of(_initialValues, growable: false);
-    _viewVelocities = List<double>.of(_initialVelocities, growable: false);
+    _viewVelocities = List<double>.of(initialVelocities, growable: false);
     if (loop == LoopMode.loop) {
       // `loop` animates back to the start after the last step. Model that as a
       // synthetic final step that returns to the start snapshot, reusing the

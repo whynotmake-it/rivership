@@ -7,7 +7,9 @@ class _TrackSlot<T extends Object> {
     this.fallbackMotion,
     this.fallbackMotionPerDimension,
   })  : _currentValues = _ownedCopy(converter.normalize(initialValue)),
-        _initialValues = _ownedCopy(converter.normalize(initialValue)),
+        _initialValues = converter is DirectionalMotionConverter<T>
+            ? null
+            : _ownedCopy(converter.normalize(initialValue)),
         _velocityValues = List<double>.filled(
           converter.normalize(initialValue).length,
           0,
@@ -50,9 +52,10 @@ class _TrackSlot<T extends Object> {
   _ArchivedPlan<T>? _shownArchive;
   var _restoredArchive = false;
 
-  // Per-track status: the value the track started out at, its status while
-  // not playing, and the direction of its latest move.
-  final List<double> _initialValues;
+  // Per-track status: the value the track started out at (only kept for
+  // converters without a direction, whose status compares to it), its status
+  // while not playing, and the direction of its latest move.
+  final List<double>? _initialValues;
   var _restingStatus = AnimationStatus.dismissed;
   var _lastMovesDown = false;
 
@@ -297,12 +300,17 @@ class _TrackSlot<T extends Object> {
 
   /// Takes over [other]'s status, reading its values with this converter.
   void adoptStatus(_TrackSlot other) {
-    _initialValues.setAll(0, other._initialValues);
+    if (_initialValues case final values?) {
+      values.setAll(0, other._initialValues ?? values);
+    }
     _restingStatus = other._restingStatus;
     _lastMovesDown = other._lastMovesDown;
   }
 
-  bool _sameValues(List<double> values) => _equal(values, _initialValues);
+  bool _sameValues(List<double> values) {
+    final initial = _initialValues;
+    return initial != null && _equal(values, initial);
+  }
 
   static bool _equal(List<double> a, List<double> b) {
     for (var i = 0; i < a.length; i++) {
