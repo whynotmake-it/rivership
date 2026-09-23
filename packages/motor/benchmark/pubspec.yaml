@@ -14,7 +14,7 @@ dependencies:
   flutter_test:
     sdk: flutter
   motor:
-    path: ../packages/motor
+    path: ../
 
 dev_dependencies:
   lintervention: ^0.3.1

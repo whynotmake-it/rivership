@@ -1,6 +1,6 @@
 # Motor vs AnimationController benchmarks
 
-Microbenchmark suite comparing [motor](../packages/motor) to Flutter's
+Microbenchmark suite comparing [motor](../) to Flutter's
 `AnimationController`.
 
 Absolute µs include harness noise — read **Δ p50** (and p90 Δ). Prefer larger
@@ -30,7 +30,7 @@ multi-track counts; `BENCH_QUICK=1` is smoke only.
 ## Run
 
 ```sh
-cd benchmark
+cd packages/motor/benchmark
 flutter pub get
 
 # Full suite (debug VM — compare Δ, not absolute µs):

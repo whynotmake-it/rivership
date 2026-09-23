@@ -9,12 +9,12 @@ environment:
 
 workspace:
   - apps/example
-  - benchmark
   - packages/example_design
   - packages/heroine
   - packages/heroine/example
   - packages/motor
   - packages/motor_devtools
+  - packages/motor/benchmark
   - packages/motor/example
   - packages/rivership
   - packages/rivership_test

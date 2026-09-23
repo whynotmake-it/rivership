@@ -6,7 +6,7 @@ import 'package:motor_benchmark/motor_benchmark.dart';
 /// Runs the Motor vs AnimationController microbenchmark suite.
 ///
 /// ```sh
-/// cd benchmark
+/// cd packages/motor/benchmark
 /// flutter test --profile test/run_benchmarks_test.dart --reporter expanded
 ///
 /// BENCH_MODE=tick|pump|both
