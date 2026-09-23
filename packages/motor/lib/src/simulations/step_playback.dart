@@ -127,6 +127,12 @@ class StepPlayback<T extends Object> {
   /// cannot spin forever.
   static const _maxSegmentsPerCall = 1000;
 
+  // Segment durations are searched in fine steps up to [_scanLimit] seconds,
+  // then in doubling steps up to [_horizon] seconds.
+  static const _scanStep = 1 / 60;
+  static const _scanLimit = 60.0;
+  static const _horizon = 86400.0;
+
   final List<TrackStep<T>> _steps;
   final MotionConverter<T> _converter;
   final LoopMode _loop;
@@ -159,6 +165,9 @@ class StepPlayback<T extends Object> {
   var _segmentStartSeconds = 0.0;
   var _isDone = false;
   var _isWaitingForSync = false;
+
+  /// How long the running segment lasts, or null if it never finishes.
+  double? _segmentDuration;
 
   /// When the running step yields to a following [StepAt], if it has to.
   double? _cutAt;
@@ -438,12 +447,11 @@ class StepPlayback<T extends Object> {
         continue;
       }
 
-      final localSeconds = seconds - _segmentStartSeconds;
-      if (!_segmentIsDone(localSeconds)) return;
-
-      // Use the computed ideal completion time to prevent floating-point
-      // drift across loop cycles.
-      final completionSeconds = _completionTime(localSeconds);
+      final completionSeconds = _segmentDuration;
+      if (completionSeconds == null ||
+          seconds - _segmentStartSeconds < completionSeconds) {
+        return;
+      }
       _sample(completionSeconds);
       _recordForwardSegmentDuration(completionSeconds);
 
@@ -640,6 +648,7 @@ class StepPlayback<T extends Object> {
     } else {
       _startForwardStep();
     }
+    _segmentDuration = _findSegmentDuration();
     _segments.add(
       _Segment(
         stepIndex: _stepIndex,
@@ -774,11 +783,12 @@ class StepPlayback<T extends Object> {
         case StepAt<T>(:final at, :final motion, :final motionPerDimension)) {
       final arrival = _absoluteTimeFor(at);
       final window = arrival - _segmentStartSeconds;
-      if (window >= 0 && _segmentIsDone(window)) return;
-      final duration = _knownMotionDuration(motion, motionPerDimension);
-      _cutAt = duration == null
+      final duration = _segmentDuration;
+      if (window >= 0 && duration != null && duration <= window) return;
+      final atDuration = _knownMotionDuration(motion, motionPerDimension);
+      _cutAt = atDuration == null
           ? _segmentStartSeconds
-          : math.max(_segmentStartSeconds, arrival - duration.toSeconds());
+          : math.max(_segmentStartSeconds, arrival - atDuration.toSeconds());
     }
   }
 
@@ -801,31 +811,31 @@ class StepPlayback<T extends Object> {
     return _simulations.every((simulation) => simulation.isDone(localSeconds));
   }
 
-  /// The earliest time in `[0, upper]` at which the running segment is done,
-  /// given that it is done at [upper].
+  /// How long the running segment's simulations take to finish, or null if
+  /// they do not finish within a day.
   ///
-  /// Widens a window from a small start before bisecting, so a distant
-  /// [upper] (e.g. when seeking far ahead) keeps full precision.
-  double _completionTime(double upper) {
-    if (upper <= 0 || _segmentIsDone(0)) return 0;
-
+  /// Found once per segment, independent of how playback is advanced, so
+  /// ticking and seeking always agree. A fine forward scan finds the first
+  /// time the simulations report done, even for springs whose `isDone`
+  /// briefly turns true near oscillation peaks before they settle.
+  double? _findSegmentDuration() {
+    if (_segmentIsDone(0)) return 0;
     var low = 0.0;
-    var high = math.min(upper, 1 / 64);
-    while (high < upper && !_segmentIsDone(high)) {
+    var high = _scanStep;
+    while (!_segmentIsDone(high)) {
       low = high;
-      high = math.min(high * 2, upper);
+      high = high < _scanLimit ? high + _scanStep : high * 2;
+      if (high > _horizon) return null;
     }
-    // Runs once per segment; the extra precision keeps folded loop periods
-    // accurate over many repetitions.
-    for (var i = 0; i < 40; i++) {
+    while (true) {
       final mid = (low + high) / 2;
+      if (mid <= low || mid >= high) return high;
       if (_segmentIsDone(mid)) {
         high = mid;
       } else {
         low = mid;
       }
     }
-    return high;
   }
 }
 
