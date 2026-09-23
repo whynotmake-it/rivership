@@ -2,44 +2,266 @@
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_devtools/src/session.dart';
 
+final _launcher = find.byKey(const ValueKey('motor-devtools-launcher'));
+final _checkout = find.byKey(
+  const ValueKey('motor-controller-Checkout confirmation'),
+);
+
+Future<TrackController> _pumpHarness(
+  WidgetTester tester, {
+  MotorDevToolsController? devTools,
+  bool labeled = true,
+}) async {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  late TrackController controller;
+  await tester.pumpWidget(
+    MotorDevTools(
+      controller: devTools,
+      child: _MotionHarness(
+        labeled: labeled,
+        onReady: (value) => controller = value,
+      ),
+    ),
+  );
+  await tester.pump();
+  return controller;
+}
+
+/// Lets the devtools' springs settle while the harness keeps playing.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+Future<void> _openDetail(WidgetTester tester) async {
+  await tester.tap(_launcher);
+  await _settle(tester);
+  await tester.tap(_checkout);
+  await _settle(tester);
+}
+
 void main() {
-  testWidgets('discovers and identifies controllers below the wrapper', (
+  testWidgets('lists controllers by debugLabel, without its own', (
     tester,
   ) async {
-    late TrackController controller;
-    await tester.pumpWidget(
-      MotorDevTools(
-        child: _MotionHarness(onReady: (value) => controller = value),
-      ),
+    await _pumpHarness(tester);
+
+    await tester.tap(_launcher);
+    await _settle(tester);
+
+    expect(find.text('Motor'), findsOneWidget);
+    expect(find.text('1 controller'), findsOneWidget);
+    expect(find.text('Checkout confirmation'), findsOneWidget);
+    expect(find.textContaining('Card opacity'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('falls back to a numbered name and suggests a label', (
+    tester,
+  ) async {
+    await _pumpHarness(tester, labeled: false);
+
+    await tester.tap(_launcher);
+    await _settle(tester);
+    expect(find.text('Controller 1'), findsOneWidget);
+    await tester.tap(find.text('Controller 1'));
+    await _settle(tester);
+
+    expect(find.textContaining('debugLabel'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the bubble follows a drag and settles on the nearest side', (
+    tester,
+  ) async {
+    await _pumpHarness(tester);
+    final start = tester.getTopLeft(_launcher);
+    expect(start.dx, 390 - 12 - 44);
+
+    final gesture = await tester.startGesture(tester.getCenter(_launcher));
+    await gesture.moveBy(const Offset(-100, -100));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-50, -50));
+    await tester.pump();
+    final dragged = tester.getCenter(_launcher);
+    expect(dragged.dx, closeTo(start.dx + 22 - 150, 1));
+    expect(dragged.dy, closeTo(start.dy + 22 - 150, 1));
+    await gesture.up();
+    await _settle(tester);
+    expect(tester.getTopLeft(_launcher).dx, closeTo(start.dx, 0.5));
+
+    await tester.flingFrom(
+      tester.getCenter(_launcher),
+      const Offset(-120, -60),
+      1500,
     );
     await tester.pump();
+    final released = tester.getTopLeft(_launcher);
+    await _settle(tester);
+    final settled = tester.getTopLeft(_launcher);
+    expect(settled.dx, closeTo(12, 0.5));
+    expect(settled.dy, lessThan(released.dy - 60));
+    await tester.pumpWidget(const SizedBox());
+  });
 
+  testWidgets('expands into the list, opens a controller, and goes back', (
+    tester,
+  ) async {
+    final devTools = MotorDevToolsController();
+    await _pumpHarness(tester, devTools: devTools);
+
+    await tester.tap(_launcher);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final growing = tester.getSize(
+      find.byKey(const ValueKey('motor-devtools-panel')),
+    );
+    await _settle(tester);
+    expect(devTools.isOpen, isTrue);
+    expect(growing.width, 366);
+    expect(_launcher, findsNothing);
+
+    await tester.tap(_checkout);
+    await _settle(tester);
+    expect(devTools.selectedController?.debugLabel, 'Checkout confirmation');
     expect(
-      find.byKey(const ValueKey('motor-devtools-launcher')),
+      find.byKey(const ValueKey('motor-devtools-timeline')),
       findsOneWidget,
     );
-    expect(find.textContaining('1 controllers'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-launcher')));
-    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await _settle(tester);
+    expect(devTools.selectedController, isNull);
+    expect(find.byKey(const ValueKey('motor-devtools-timeline')), findsNothing);
 
-    expect(find.byKey(const ValueKey('motor-devtools-peek')), findsOneWidget);
-    expect(find.text('Checkout confirmation'), findsWidgets);
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-peek-expand')),
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-close')));
+    await _settle(tester);
+    expect(devTools.isOpen, isFalse);
+    expect(_launcher, findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    devTools.dispose();
+  });
+
+  testWidgets('pauses, resumes, and replays', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    final playPause = find.byKey(const ValueKey('motor-devtools-play-pause'));
+
+    expect(controller.isAnimating, isTrue);
+    await tester.tap(playPause);
+    await tester.pump();
+    expect(controller.isAnimating, isFalse);
+    final paused = controller.value(_MotionHarnessState.opacity);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(controller.value(_MotionHarnessState.opacity), paused);
+
+    await tester.tap(playPause);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.value(_MotionHarnessState.opacity), greaterThan(paused));
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-replay')));
+    await tester.pump();
+    expect(controller.value(_MotionHarnessState.opacity), closeTo(0, 1e-6));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('dragging the timeline scrubs and resumes on release', (
+    tester,
+  ) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    final timeline = find.byKey(const ValueKey('motor-devtools-timeline'));
+    final rect = tester.getRect(timeline);
+
+    final gesture = await tester.startGesture(
+      rect.centerRight - const Offset(1, 0),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.textContaining('1 tracks'), findsWidgets);
-    expect(controller.debugLabel, 'Checkout confirmation');
+    await gesture.moveTo(rect.center + const Offset(-40, 0));
+    await gesture.moveTo(rect.center);
+    await tester.pump();
+    expect(controller.isAnimating, isFalse);
+    expect(controller.value(_MotionHarnessState.opacity), closeTo(0.5, 0.01));
 
+    await gesture.up();
+    await tester.pump();
+    expect(controller.isAnimating, isTrue);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('changes speed and motion for the session only', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.25')));
+    await tester.pump();
+    expect(controller.playbackSpeed, 0.25);
+
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-motion-spring')),
+    );
+    await tester.pump();
+    expect(controller.motionOverrides.values.single, isA<CupertinoMotion>());
+    expect(controller.value(_MotionHarnessState.opacity), closeTo(0, 1e-6));
+
+    final duration = find.byKey(const ValueKey('motor-devtools-duration'));
+    await tester.ensureVisible(duration);
+    await _settle(tester);
+    await tester.tapAt(
+      tester.getRect(duration).bottomRight - const Offset(2, 10),
+    );
+    await tester.pump();
+    expect(
+      (controller.motionOverrides.values.single as CupertinoMotion).duration,
+      greaterThan(const Duration(milliseconds: 1400)),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-motion-authored')),
+    );
+    await tester.pump();
+    expect(controller.motionOverrides, isEmpty);
+
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-motion-linear')),
+    );
+    await tester.pump();
+    expect(controller.motionOverrides, isNotEmpty);
+
+    await tester.pumpWidget(
+      MotorDevTools(
+        enabled: false,
+        child: _MotionHarness(onReady: (_) {}),
+      ),
+    );
+    expect(controller.playbackSpeed, 1);
+    expect(controller.motionOverrides, isEmpty);
+    expect(controller.motionOverride, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('follows the platform brightness', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await _pumpHarness(tester);
+    await tester.tap(_launcher);
+    await _settle(tester);
+
+    final title = tester.widget<Text>(find.text('Motor'));
+    expect(title.style?.color, const Color(0xFFFAFAFA));
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -66,7 +288,7 @@ void main() {
     expect(controller.value(track), closeTo(1, 1e-6));
     expect(controller.motionOverrides, {track: tuned});
 
-    controller.setMotionOverride(track, null);
+    controller.clearMotionOverrides();
     expect(controller.motionOverrides, isEmpty);
     expect(controller.motionOverride, isNull);
 
@@ -79,145 +301,16 @@ void main() {
       const MotorDevTools(enabled: false, child: SizedBox()),
     );
 
-    expect(find.byKey(const ValueKey('motor-devtools-launcher')), findsNothing);
+    expect(_launcher, findsNothing);
     expect(MotorInspectionRegistry.hasObservers, isFalse);
-  });
-
-  testWidgets('controls local speed and creates reversible motion overrides', (
-    tester,
-  ) async {
-    late TrackController controller;
-    await tester.pumpWidget(
-      MotorDevTools(
-        child: _MotionHarness(onReady: (value) => controller = value),
-      ),
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-launcher')));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-peek-expand')),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(
-      find.byKey(
-        const ValueKey('motor-controller-Checkout confirmation'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(const ValueKey('motor-devtools-timeline')),
-      findsWidgets,
-    );
-    expect(find.text('MOTION STUDIO'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.25')));
-    await tester.pump();
-    expect(controller.playbackSpeed, 0.25);
-
-    final springField = find.byKey(
-      const ValueKey('motor-devtools-spring-field'),
-    );
-    await tester.ensureVisible(springField);
-    await tester.tap(springField);
-    await tester.pump();
-    expect(controller.motionOverrides, isNotEmpty);
-
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('motor-devtools-reset-motion')),
-    );
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-reset-motion')),
-    );
-    await tester.pump();
-    expect(controller.motionOverrides, isEmpty);
-
-    final curveMode = find.byKey(
-      const ValueKey('motor-devtools-mode-curve'),
-    );
-    await tester.ensureVisible(curveMode);
-    await tester.tap(curveMode);
-    await tester.pump();
-    final easeOut = find.text('Ease out');
-    await tester.ensureVisible(easeOut);
-    await tester.tap(easeOut);
-    await tester.pump();
-    expect(controller.motionOverrides, isNotEmpty);
-
-    await tester.pumpWidget(
-      MotorDevTools(
-        enabled: false,
-        child: _MotionHarness(onReady: (_) {}),
-      ),
-    );
-    expect(controller.playbackSpeed, 1);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('dragging the timeline pauses, scrubs, and resumes playback', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MotorDevTools(child: _MotionHarness(onReady: (_) {})),
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-launcher')));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-peek-expand')),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(
-      find.byKey(
-        const ValueKey('motor-controller-Checkout confirmation'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final timeline = find.byKey(
-      const ValueKey('motor-devtools-full-timeline'),
-    );
-    final gesture = await tester.startGesture(tester.getCenter(timeline));
-    await gesture.moveBy(const Offset(60, 0));
-    await tester.pump();
-    await gesture.up();
-    await tester.pump();
-
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('compact launcher drags and expands through peek mode', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MotorDevTools(child: _MotionHarness(onReady: (_) {})),
-    );
-    await tester.pump();
-    final launcher = find.byKey(const ValueKey('motor-devtools-launcher'));
-    final before = tester.getTopLeft(launcher);
-
-    await tester.drag(launcher, const Offset(-360, -360));
-    await tester.pumpAndSettle();
-    final after = tester.getTopLeft(launcher);
-
-    expect(after.dx, lessThan(before.dx));
-    expect(after.dy, lessThan(before.dy));
-
-    await tester.tap(launcher);
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('motor-devtools-peek')), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
   });
 }
 
 class _MotionHarness extends StatefulWidget {
-  const _MotionHarness({required this.onReady});
+  const _MotionHarness({required this.onReady, this.labeled = true});
 
   final ValueChanged<TrackController> onReady;
+  final bool labeled;
 
   @override
   State<_MotionHarness> createState() => _MotionHarnessState();
@@ -238,16 +331,18 @@ class _MotionHarnessState extends State<_MotionHarness>
     super.initState();
     controller = TrackController(
       vsync: this,
-      debugLabel: 'Checkout confirmation',
+      debugLabel: widget.labeled ? 'Checkout confirmation' : null,
     );
     widget.onReady(controller);
-    controller.animate([
-      opacity.to(
-        1,
-        motion: const Motion.linear(Duration(seconds: 2)),
-        from: 0,
-      ),
-    ]);
+    unawaited(
+      controller.animate([
+        opacity.to(
+          1,
+          motion: const Motion.linear(Duration(seconds: 10)),
+          from: 0,
+        ),
+      ]),
+    );
   }
 
   @override

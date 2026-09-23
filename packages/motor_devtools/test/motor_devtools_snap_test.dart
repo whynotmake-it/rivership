@@ -6,47 +6,56 @@ import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:snaptest/snaptest.dart';
 
+const _rendered = SnaptestSettings.rendered(
+  pathPrefix: '.snaptest/motor_devtools/',
+);
+
 void main() {
-  snapTest(
-    'Motor DevTools rendered state matrix',
-    devices: {Devices.ios.iPhone16},
-    settings: const SnaptestSettings.rendered(
-      pathPrefix: '.snaptest/motor_devtools/',
-    ),
-    (tester) => _exerciseStateMatrix(
-      tester,
-      (name) async => snap(
-        name: 'rendered $name',
-        settings: const SnaptestSettings.rendered(
-          pathPrefix: '.snaptest/motor_devtools/',
-        ),
+  for (final brightness in Brightness.values) {
+    snapTest(
+      'Motor DevTools rendered ${brightness.name}',
+      devices: {Devices.ios.iPhone16},
+      settings: _rendered,
+      (tester) => _exerciseStateMatrix(
+        tester,
+        brightness,
+        (name) => snap(name: 'rendered $name', settings: _rendered),
       ),
-    ),
-  );
+    );
+  }
 
   snapTest(
     'Motor DevTools golden state matrix',
     devices: {Devices.ios.iPhone16},
     (tester) => _exerciseStateMatrix(
       tester,
-      (name) async => snap.golden(name: name),
+      Brightness.light,
+      (name) => snap.golden(name: name),
     ),
   );
 }
 
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 15; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 Future<void> _exerciseStateMatrix(
   WidgetTester tester,
+  Brightness brightness,
   Future<void> Function(String name) capture,
 ) async {
-  final devToolsController = MotorDevToolsController();
+  tester.platformDispatcher.platformBrightnessTestValue = brightness;
+  addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+  final devTools = MotorDevToolsController();
   late _TimelineFixture fixture;
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      builder: (context, child) => MotorDevTools(
-        controller: devToolsController,
-        child: child!,
-      ),
+      theme: ThemeData(brightness: brightness),
+      builder: (context, child) =>
+          MotorDevTools(controller: devTools, child: child!),
       home: _TimelineHarness(onReady: (value) => fixture = value),
     ),
   );
@@ -54,75 +63,42 @@ Future<void> _exerciseStateMatrix(
   fixture.controller.pause();
   fixture.controller.scrubTo(const Duration(milliseconds: 350));
   await tester.pump();
+  final prefix = brightness == Brightness.dark ? 'dark ' : '';
 
-  await capture('motor devtools 01 compact');
+  await capture('${prefix}motor devtools 01 bubble');
+
+  await tester.tap(find.byKey(const ValueKey('motor-devtools-launcher')));
+  await _settle(tester);
+  await capture('${prefix}motor devtools 02 controller list');
 
   await tester.tap(
-    find.byKey(const ValueKey('motor-devtools-launcher')),
+    find.byKey(const ValueKey('motor-controller-Verification timeline')),
   );
-  await tester.pumpAndSettle();
-  await capture('motor devtools 02 one track peek');
+  await _settle(tester);
+  await capture('${prefix}motor devtools 03 controller detail');
 
-  final peekTimeline = find.byKey(
-    const ValueKey('motor-devtools-peek-timeline'),
+  final timeline = tester.getRect(
+    find.byKey(const ValueKey('motor-devtools-timeline')),
   );
-  final timelineRect = tester.getRect(peekTimeline);
-  final stripStart = timelineRect.left + 78;
-  final stripEnd = timelineRect.right - 2;
-  final stripWidth = stripEnd - stripStart;
-  final gesture = await tester.startGesture(
-    Offset(stripEnd, timelineRect.center.dy),
-  );
+  final gesture = await tester.startGesture(timeline.centerLeft);
+  await gesture.moveTo(timeline.center + Offset(timeline.width * 0.25, 0));
   await tester.pump();
-  await gesture.moveTo(
-    Offset(stripStart + stripWidth * 0.25, timelineRect.center.dy),
-  );
-  await tester.pump();
-  expect(fixture.controller.value(fixture.primary), closeTo(0.25, 0.02));
+  await capture('${prefix}motor devtools 04 scrubbing');
   await gesture.up();
-  fixture.controller.pause();
   await tester.pump();
-  await capture('motor devtools 03 scrub backward');
 
-  final forwardGesture = await tester.startGesture(
-    Offset(stripStart + stripWidth * 0.25, timelineRect.center.dy),
+  await tester.tap(
+    find.byKey(const ValueKey('motor-devtools-motion-spring')),
   );
   await tester.pump();
-  await forwardGesture.moveTo(
-    Offset(stripStart + stripWidth * 0.75, timelineRect.center.dy),
-  );
-  await tester.pump();
-  expect(fixture.controller.value(fixture.primary), greaterThan(0.7));
-  expect(fixture.controller.value(fixture.primary), lessThan(0.9));
-  await forwardGesture.up();
-  fixture.controller.pause();
-  await tester.pump();
-  await capture('motor devtools 04 scrub forward');
-
-  devToolsController.open();
-  await tester.pumpAndSettle();
-  await capture('motor devtools 05 controller list');
-
-  devToolsController.showController(fixture.controller);
-  await tester.pumpAndSettle();
-  await capture('motor devtools 06 full timeline');
-
-  final springField = find.byKey(
-    const ValueKey('motor-devtools-spring-field'),
-  );
-  await tester.ensureVisible(springField);
-  await tester.pumpAndSettle();
-  await capture('motor devtools 07 spring field');
-
-  final curveMode = find.byKey(
-    const ValueKey('motor-devtools-mode-curve'),
-  );
-  await tester.tap(curveMode);
-  await tester.pumpAndSettle();
-  await capture('motor devtools 08 curve lab');
+  fixture.controller
+    ..pause()
+    ..scrubTo(const Duration(milliseconds: 500));
+  await _settle(tester);
+  await capture('${prefix}motor devtools 05 motion override');
 
   await tester.pumpWidget(const SizedBox());
-  devToolsController.dispose();
+  devTools.dispose();
 }
 
 class _TimelineHarness extends StatefulWidget {
@@ -135,19 +111,25 @@ class _TimelineHarness extends StatefulWidget {
 }
 
 class _TimelineHarnessState extends State<_TimelineHarness>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static final primary = Track<double>(
     MotionConverter.single,
     initial: 0,
-    debugLabel: 'Primary progress',
+    debugLabel: 'Card scale',
   );
   static final secondary = Track<double>(
     MotionConverter.single,
     initial: 0,
-    debugLabel: 'Secondary progress',
+    debugLabel: 'Card opacity',
+  );
+  static final offset = Track<Offset>(
+    MotionConverter.offset,
+    initial: Offset.zero,
+    debugLabel: 'Badge offset',
   );
 
   late final TrackController controller;
+  late final MotionController<double> other;
 
   @override
   void initState() {
@@ -156,12 +138,15 @@ class _TimelineHarnessState extends State<_TimelineHarness>
       vsync: this,
       debugLabel: 'Verification timeline',
     );
-    widget.onReady(
-      _TimelineFixture(
-        controller: controller,
-        primary: primary,
-      ),
+    other = MotionController<double>(
+      motion: const Motion.smoothSpring(),
+      vsync: this,
+      converter: MotionConverter.single,
+      initialValue: 0,
+      debugLabel: 'Sheet drag',
     );
+    TrackController(vsync: this);
+    widget.onReady(_TimelineFixture(controller: controller));
     controller.animate([
       primary.to(
         1,
@@ -178,8 +163,22 @@ class _TimelineHarnessState extends State<_TimelineHarness>
               bounce: 0.2,
             ),
           ),
+          TrackStep.sync(token: 'done'),
         ],
         from: 0,
+      ),
+      offset(
+        const [
+          TrackStep.to(
+            Offset(0, 24),
+            motion: Motion.curved(
+              Duration(milliseconds: 400),
+              Curves.easeOutCubic,
+            ),
+          ),
+          TrackStep.sync(token: 'done'),
+          TrackStep.to(Offset.zero, motion: Motion.snappySpring()),
+        ],
       ),
     ]);
   }
@@ -187,31 +186,24 @@ class _TimelineHarnessState extends State<_TimelineHarness>
   @override
   void dispose() {
     controller.dispose();
+    other.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => const Material(
-    color: Color(0xFFF4F4F5),
-    child: Center(
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    child: const Center(
       child: Text(
         'Preview surface',
-        style: TextStyle(
-          color: Color(0xFF18181B),
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
       ),
     ),
   );
 }
 
 class _TimelineFixture {
-  const _TimelineFixture({
-    required this.controller,
-    required this.primary,
-  });
+  const _TimelineFixture({required this.controller});
 
   final TrackController controller;
-  final Track<double> primary;
 }

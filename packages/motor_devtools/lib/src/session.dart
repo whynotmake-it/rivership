@@ -22,6 +22,12 @@ extension MotorDevToolsSession on TrackController {
     motionOverride = overrides.isEmpty ? null : (track) => overrides[track];
   }
 
+  /// Restores the authored motions of every track.
+  void clearMotionOverrides() {
+    _overrides[this] = null;
+    motionOverride = null;
+  }
+
   /// Replays the most recently submitted plan from its recorded start values.
   void replay() {
     final plans = inspectPlayback().plans;

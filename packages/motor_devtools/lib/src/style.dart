@@ -1,0 +1,668 @@
+import 'dart:math' as math;
+
+import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
+
+/// The debug label of the devtools' own controllers, which the controller
+/// list leaves out.
+const internalDebugLabel = 'motor_devtools';
+
+/// Colors and text styles of the devtools, for one brightness.
+@immutable
+class DevToolsPalette {
+  const DevToolsPalette._({
+    required this.brightness,
+    required this.surface,
+    required this.fill,
+    required this.pressed,
+    required this.hairline,
+    required this.text,
+    required this.secondary,
+    required this.tertiary,
+    required this.accent,
+    required this.shadow,
+  });
+
+  /// Picks the palette for [brightness].
+  factory DevToolsPalette.of(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  /// The light palette.
+  static const light = DevToolsPalette._(
+    brightness: Brightness.light,
+    surface: Color(0xFFFFFFFF),
+    fill: Color(0xFFF4F4F5),
+    pressed: Color(0xFFE9E9EC),
+    hairline: Color(0x14000000),
+    text: Color(0xFF18181B),
+    secondary: Color(0xFF71717A),
+    tertiary: Color(0xFFA1A1AA),
+    accent: Color(0xFF3D63DD),
+    shadow: Color(0x24000000),
+  );
+
+  /// The dark palette.
+  static const dark = DevToolsPalette._(
+    brightness: Brightness.dark,
+    surface: Color(0xFF1C1C1F),
+    fill: Color(0xFF28282C),
+    pressed: Color(0xFF323237),
+    hairline: Color(0x17FFFFFF),
+    text: Color(0xFFFAFAFA),
+    secondary: Color(0xFFA1A1AA),
+    tertiary: Color(0xFF71717A),
+    accent: Color(0xFF8AA4FF),
+    shadow: Color(0x66000000),
+  );
+
+  /// The brightness this palette is for.
+  final Brightness brightness;
+
+  /// The panel and bubble background.
+  final Color surface;
+
+  /// Background of controls and inset areas.
+  final Color fill;
+
+  /// Background of a pressed control.
+  final Color pressed;
+
+  /// Separators and outlines.
+  final Color hairline;
+
+  /// Primary text and marks.
+  final Color text;
+
+  /// Secondary text.
+  final Color secondary;
+
+  /// Tertiary text and inactive marks.
+  final Color tertiary;
+
+  /// The single accent: the playhead and live state.
+  final Color accent;
+
+  /// The floating surface's shadow.
+  final Color shadow;
+
+  /// A title, such as a controller name.
+  TextStyle get title => TextStyle(
+    color: text,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+    height: 1.2,
+  );
+
+  /// Body text.
+  TextStyle get body => TextStyle(
+    color: text,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    letterSpacing: -0.1,
+    height: 1.25,
+  );
+
+  /// Small secondary text.
+  TextStyle get caption => TextStyle(
+    color: secondary,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w400,
+    height: 1.25,
+  );
+
+  /// A small section heading.
+  TextStyle get label => TextStyle(
+    color: secondary,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+    height: 1.2,
+  );
+
+  /// Numbers that update live.
+  TextStyle get numeric => TextStyle(
+    color: secondary,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w500,
+    height: 1.25,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+}
+
+/// Provides the [DevToolsPalette] to the devtools subtree.
+class DevToolsTheme extends InheritedWidget {
+  /// Provides [palette] to [child].
+  const DevToolsTheme({required this.palette, required super.child, super.key});
+
+  /// The palette in effect.
+  final DevToolsPalette palette;
+
+  /// The nearest palette.
+  static DevToolsPalette of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DevToolsTheme>()?.palette ??
+      DevToolsPalette.light;
+
+  @override
+  bool updateShouldNotify(DevToolsTheme oldWidget) =>
+      oldWidget.palette != palette;
+}
+
+/// A quick, lightly damped spring for small interface feedback.
+const quickMotion = Motion.smoothSpring(duration: Duration(milliseconds: 260));
+
+/// A tap target that dims and shrinks slightly while pressed.
+class Pressable extends StatefulWidget {
+  /// Creates a pressable area around [child].
+  const Pressable({
+    required this.child,
+    required this.onTap,
+    this.semanticLabel,
+    this.pressedScale = 0.96,
+    super.key,
+  });
+
+  /// The content.
+  final Widget child;
+
+  /// Called on tap, or null to disable.
+  final VoidCallback? onTap;
+
+  /// The accessibility label.
+  final String? semanticLabel;
+
+  /// The scale while pressed.
+  final double pressedScale;
+
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  var _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? (_) => _setPressed(true) : null,
+        onTapUp: enabled ? (_) => _setPressed(false) : null,
+        onTapCancel: enabled ? () => _setPressed(false) : null,
+        onTap: widget.onTap,
+        child: SingleMotionBuilder(
+          value: _pressed ? 1 : 0,
+          motion: quickMotion,
+          debugLabel: internalDebugLabel,
+          child: widget.child,
+          builder: (context, value, child) => Opacity(
+            opacity: enabled ? 1 - value * 0.3 : 0.4,
+            child: Transform.scale(
+              scale: 1 - (1 - widget.pressedScale) * value,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The painted icons used by the devtools, so they need no icon font.
+enum Glyph {
+  /// Three staggered lanes: the devtools mark.
+  mark,
+
+  /// A play triangle.
+  play,
+
+  /// Two pause bars.
+  pause,
+
+  /// A circular replay arrow.
+  replay,
+
+  /// A chevron pointing left.
+  back,
+
+  /// A chevron pointing right.
+  forward,
+
+  /// A cross.
+  close,
+}
+
+/// Paints a [Glyph].
+class GlyphIcon extends StatelessWidget {
+  /// Paints [glyph] at [size] in [color].
+  const GlyphIcon(this.glyph, {required this.color, this.size = 16, super.key});
+
+  /// The icon to paint.
+  final Glyph glyph;
+
+  /// The icon's color.
+  final Color color;
+
+  /// The icon's square extent.
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: CustomPaint(painter: _GlyphPainter(glyph, color)),
+  );
+}
+
+class _GlyphPainter extends CustomPainter {
+  const _GlyphPainter(this.glyph, this.color);
+
+  final Glyph glyph;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    canvas.scale(s / 24);
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final fill = Paint()..color = color;
+    switch (glyph) {
+      case Glyph.mark:
+        stroke.strokeWidth = 2.6;
+        canvas
+          ..drawLine(const Offset(4, 7), const Offset(14, 7), stroke)
+          ..drawLine(const Offset(8, 12), const Offset(20, 12), stroke)
+          ..drawLine(const Offset(6, 17), const Offset(12, 17), stroke);
+      case Glyph.play:
+        canvas.drawPath(
+          Path()
+            ..moveTo(8, 5.5)
+            ..lineTo(18.5, 12)
+            ..lineTo(8, 18.5)
+            ..close(),
+          fill..strokeJoin = StrokeJoin.round,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(8, 5.5)
+            ..lineTo(18.5, 12)
+            ..lineTo(8, 18.5)
+            ..close(),
+          stroke..strokeWidth = 1.5,
+        );
+      case Glyph.pause:
+        for (final x in const [7.5, 14.5]) {
+          canvas.drawRRect(
+            RRect.fromLTRBR(x, 5.5, x + 2.5, 18.5, const Radius.circular(1)),
+            fill,
+          );
+        }
+      case Glyph.replay:
+        final rect = Rect.fromCircle(center: const Offset(12, 12.5), radius: 7);
+        canvas.drawArc(rect, -math.pi * 0.35, math.pi * 1.6, false, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(10.5, 2.5)
+            ..lineTo(14.5, 5.3)
+            ..lineTo(10.8, 8.5),
+          stroke,
+        );
+      case Glyph.back:
+        canvas.drawPath(
+          Path()
+            ..moveTo(14.5, 6)
+            ..lineTo(8.5, 12)
+            ..lineTo(14.5, 18),
+          stroke,
+        );
+      case Glyph.forward:
+        canvas.drawPath(
+          Path()
+            ..moveTo(9.5, 6)
+            ..lineTo(15.5, 12)
+            ..lineTo(9.5, 18),
+          stroke,
+        );
+      case Glyph.close:
+        canvas
+          ..drawLine(const Offset(7, 7), const Offset(17, 17), stroke)
+          ..drawLine(const Offset(17, 7), const Offset(7, 17), stroke);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GlyphPainter oldDelegate) =>
+      oldDelegate.glyph != glyph || oldDelegate.color != color;
+}
+
+/// A round icon button.
+class GlyphButton extends StatelessWidget {
+  /// Creates a button showing [glyph].
+  const GlyphButton(
+    this.glyph, {
+    required this.onTap,
+    required this.semanticLabel,
+    this.filled = false,
+    this.size = 32,
+    super.key,
+  });
+
+  /// The icon.
+  final Glyph glyph;
+
+  /// Called on tap.
+  final VoidCallback? onTap;
+
+  /// The accessibility label.
+  final String semanticLabel;
+
+  /// Whether the button has a solid background, for the primary action.
+  final bool filled;
+
+  /// The button's diameter.
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: semanticLabel,
+      pressedScale: 0.9,
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: filled ? palette.text : palette.fill,
+          shape: BoxShape.circle,
+        ),
+        child: GlyphIcon(
+          glyph,
+          color: filled ? palette.surface : palette.text,
+          size: size * 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+/// A row of mutually exclusive options with a sliding selection.
+class Segmented<T> extends StatelessWidget {
+  /// Creates a segmented control over [options].
+  const Segmented({
+    required this.options,
+    required this.selected,
+    required this.labelOf,
+    required this.onSelected,
+    this.keyOf,
+    super.key,
+  });
+
+  /// The options, in order.
+  final List<T> options;
+
+  /// The selected option, or null for none.
+  final T? selected;
+
+  /// The text shown for an option.
+  final String Function(T option) labelOf;
+
+  /// Called when an option is tapped.
+  final ValueChanged<T> onSelected;
+
+  /// An optional key for each option's tap target.
+  final Key Function(T option)? keyOf;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    final index = selected == null ? -1 : options.indexOf(selected as T);
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: palette.fill,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth / options.length;
+          return Stack(
+            children: [
+              if (index >= 0)
+                SingleMotionBuilder(
+                  value: index * width,
+                  motion: quickMotion,
+                  debugLabel: internalDebugLabel,
+                  builder: (context, left, child) =>
+                      Positioned(left: left, top: 0, bottom: 0, child: child!),
+                  child: Container(
+                    width: width,
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: BorderRadius.circular(7),
+                      boxShadow: [
+                        BoxShadow(
+                          color: palette.shadow.withValues(alpha: 0.12),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Row(
+                children: [
+                  for (final option in options)
+                    Expanded(
+                      child: Pressable(
+                        key: keyOf?.call(option),
+                        onTap: () => onSelected(option),
+                        semanticLabel: labelOf(option),
+                        pressedScale: 1,
+                        child: Center(
+                          child: Text(
+                            labelOf(option),
+                            maxLines: 1,
+                            style: palette.caption.copyWith(
+                              color: option == selected
+                                  ? palette.text
+                                  : palette.secondary,
+                              fontWeight: FontWeight.w500,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// A minimal horizontal slider.
+class ValueSlider extends StatelessWidget {
+  /// Creates a slider between [min] and [max].
+  const ValueSlider({
+    required this.label,
+    required this.valueLabel,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    required this.onChangeEnd,
+    super.key,
+  });
+
+  /// The name of the value.
+  final String label;
+
+  /// The formatted value.
+  final String valueLabel;
+
+  /// The current value.
+  final double value;
+
+  /// The smallest value.
+  final double min;
+
+  /// The largest value.
+  final double max;
+
+  /// Called while dragging.
+  final ValueChanged<double> onChanged;
+
+  /// Called once the user lets go.
+  final VoidCallback onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(label, style: palette.caption),
+            const Spacer(),
+            Text(valueLabel, style: palette.numeric),
+          ],
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            void update(Offset position) {
+              final fraction = (position.dx / constraints.maxWidth).clamp(
+                0.0,
+                1.0,
+              );
+              onChanged(min + (max - min) * fraction);
+            }
+
+            final fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
+            return Semantics(
+              slider: true,
+              label: label,
+              value: valueLabel,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (details) => update(details.localPosition),
+                onTapUp: (_) => onChangeEnd(),
+                onHorizontalDragStart: (details) =>
+                    update(details.localPosition),
+                onHorizontalDragUpdate: (details) =>
+                    update(details.localPosition),
+                onHorizontalDragEnd: (_) => onChangeEnd(),
+                child: SizedBox(
+                  height: 28,
+                  child: CustomPaint(
+                    painter: _SliderPainter(fraction, palette),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SliderPainter extends CustomPainter {
+  const _SliderPainter(this.fraction, this.palette);
+
+  final double fraction;
+  final DevToolsPalette palette;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const knob = 8.0;
+    final y = size.height / 2;
+    final x = knob + (size.width - knob * 2) * fraction;
+    canvas
+      ..drawRRect(
+        RRect.fromLTRBR(
+          0,
+          y - 1.5,
+          size.width,
+          y + 1.5,
+          const Radius.circular(2),
+        ),
+        Paint()..color = palette.fill,
+      )
+      ..drawRRect(
+        RRect.fromLTRBR(0, y - 1.5, x, y + 1.5, const Radius.circular(2)),
+        Paint()..color = palette.text,
+      )
+      ..drawCircle(
+        Offset(x, y + 0.5),
+        knob,
+        Paint()
+          ..color = palette.shadow
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      )
+      ..drawCircle(Offset(x, y), knob, Paint()..color = palette.surface)
+      ..drawCircle(
+        Offset(x, y),
+        knob,
+        Paint()
+          ..color = palette.hairline
+          ..style = PaintingStyle.stroke,
+      );
+  }
+
+  @override
+  bool shouldRepaint(_SliderPainter oldDelegate) =>
+      oldDelegate.fraction != fraction || oldDelegate.palette != palette;
+}
+
+/// A hairline separator.
+class Hairline extends StatelessWidget {
+  /// Creates a horizontal hairline.
+  const Hairline({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 1, color: DevToolsTheme.of(context).hairline);
+}
+
+/// Formats [duration] compactly, such as `420 ms` or `1.25 s`.
+String formatDuration(Duration duration) {
+  final ms = duration.inMicroseconds / Duration.microsecondsPerMillisecond;
+  if (ms.abs() < 1000) return '${ms.round()} ms';
+  return '${(ms / 1000).toStringAsFixed(2)} s';
+}
+
+/// Formats a track value for display.
+String formatValue(Object? value) => switch (value) {
+  final double v => v.toStringAsFixed(2),
+  final num v => '$v',
+  Offset(:final dx, :final dy) =>
+    '${dx.toStringAsFixed(1)}, ${dy.toStringAsFixed(1)}',
+  Size(:final width, :final height) =>
+    '${width.toStringAsFixed(1)} × ${height.toStringAsFixed(1)}',
+  Alignment(:final x, :final y) =>
+    '${x.toStringAsFixed(2)}, ${y.toStringAsFixed(2)}',
+  final Color c => '#${c.toARGB32().toRadixString(16).padLeft(8, '0')}',
+  null => '–',
+  _ => '$value',
+};
