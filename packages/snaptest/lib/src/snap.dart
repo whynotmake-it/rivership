@@ -569,7 +569,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
       }
 
       try {
-        return _cropImage(captured.image, crop, captured);
+        return await _cropImage(captured.image, crop, captured);
       } finally {
         captured.image.dispose();
       }
