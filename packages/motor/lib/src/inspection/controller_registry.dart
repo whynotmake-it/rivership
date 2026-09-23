@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 
@@ -7,6 +6,7 @@ import 'package:motor/src/controllers/track_controller.dart';
 /// This is intended for optional developer tooling. Motor does not retain a
 /// controller registry until the first observer attaches, so applications
 /// that do not import a tool pay only a nullable hook check per controller.
+@experimental
 abstract interface class MotorInspectionObserver {
   /// Called after [controller] is created.
   void didRegisterController(TrackController controller);
@@ -16,6 +16,7 @@ abstract interface class MotorInspectionObserver {
 }
 
 /// A removable attachment to [MotorInspectionRegistry].
+@experimental
 class MotorInspectionSubscription {
   MotorInspectionSubscription._(this._observer);
 
@@ -38,6 +39,7 @@ class MotorInspectionSubscription {
 /// observer detaches. Controllers created before the first observer attaches
 /// are never reported. When no observer is attached, Motor keeps no global
 /// collection of controllers.
+@experimental
 abstract final class MotorInspectionRegistry {
   static final _observers = <MotorInspectionObserver>{};
   static Set<TrackController>? _activeControllers;

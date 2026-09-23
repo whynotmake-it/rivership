@@ -7,6 +7,7 @@ import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
 
 /// A point-in-time view of everything a [TrackController] is playing.
+@experimental
 @immutable
 class PlaybackSnapshot {
   /// Creates an immutable playback snapshot.
@@ -31,6 +32,7 @@ class PlaybackSnapshot {
 }
 
 /// One track's live, read-only playback state.
+@experimental
 @immutable
 class TrackPlayback {
   /// Creates an immutable track playback snapshot.
@@ -113,6 +115,7 @@ class TrackPlayback {
 }
 
 /// Read-only playback inspection for [TrackController].
+@experimental
 extension TrackControllerInspection on TrackController {
   /// Builds a snapshot of the controller's current playback state.
   ///

@@ -1,3 +1,6 @@
+// The inspector showcases motor's experimental inspection API.
+// ignore_for_file: experimental_member_use
+
 import 'dart:math' as math;
 
 import 'package:example_design/example_design.dart';

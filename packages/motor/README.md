@@ -41,7 +41,7 @@ dependencies:
   motor: ^2.0.0
 ```
 
-Or install via `dart pub`:
+Or install from the command line:
 
 ```sh
 flutter pub add motor
@@ -410,7 +410,8 @@ A few semantics worth knowing:
 Debug overlays and developer tools can observe a controller without reaching
 into Motor internals. Import the separate inspection library and request an
 immutable snapshot. This library is aimed at tooling (like `motor_devtools`)
-rather than app code, and may change more freely than the core API:
+rather than app code. It is marked `@experimental` and may change in minor
+releases:
 
 ```dart
 import 'package:motor/inspection.dart';
