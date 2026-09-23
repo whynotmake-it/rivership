@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/simulations/finite_simulation.dart';
@@ -47,10 +49,20 @@ class CurveSimulation extends Simulation implements FiniteSimulation {
   @override
   double dx(double time) {
     // A central difference over tolerance.time, like Flutter's
-    // AnimationController does for its curves.
-    final epsilon = tolerance.time;
-    return (x(time + epsilon) - x(time - epsilon)) / (2 * epsilon);
+    // AnimationController does for its curves, but kept within the curve:
+    // at and after its end this is the slope it ended with, which is what a
+    // following step inherits.
+    final seconds = duration.toSeconds();
+    final at = time.clamp(0.0, seconds);
+    final low = math.max(0.0, at - tolerance.time);
+    final high = math.min(seconds, at + tolerance.time);
+    if (high <= low) return 0;
+    return (_valueWithin(high) - _valueWithin(low)) / (high - low);
   }
+
+  /// The value at [time] within the curve, including exactly at its end.
+  double _valueWithin(double time) =>
+      start + (end - start) * curve.transform(time / duration.toSeconds());
 
   @override
   bool isDone(double time) => time > duration.toSeconds();

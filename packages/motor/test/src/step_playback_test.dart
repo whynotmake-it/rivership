@@ -11,6 +11,23 @@ void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
   const linear200 = Motion.linear(Duration(milliseconds: 200));
 
+  test('a step after a curve inherits the slope the curve ended with', () {
+    final playback = StepPlayback<double>(
+      steps: const [
+        TrackStep.to(10, motion: Motion.linear(Duration(seconds: 1))),
+        TrackStep.to(10, motion: Motion.smoothSpring()),
+      ],
+      converter: MotionConverter.single,
+      start: 0,
+    );
+
+    playback.advanceTo(0.5);
+    expect(playback.velocities.single, closeTo(10, 1e-6));
+    playback.advanceTo(1 + 1e-9);
+    expect(playback.currentStepIndex, 1);
+    expect(playback.velocities.single, closeTo(10, 1e-3));
+  });
+
   group('StepPlayback timeline construction', () {
     test('hold then to plays sequentially', () {
       final playback = StepPlayback<double>(
