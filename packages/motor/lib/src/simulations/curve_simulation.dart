@@ -1,8 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 
 @internal
-class CurveSimulation extends Simulation {
+class CurveSimulation extends Simulation implements FiniteSimulation {
   CurveSimulation({
     required this.duration,
     required this.curve,
@@ -49,6 +50,9 @@ class CurveSimulation extends Simulation {
 
   @override
   bool isDone(double time) => time > duration.toSeconds();
+
+  @override
+  double get finishSeconds => justAfter(duration.toSeconds());
 }
 
 extension on Duration {

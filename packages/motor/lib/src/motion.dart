@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
+import 'package:motor/src/simulations/settling_spring_simulation.dart';
 
 export 'motion_curve.dart';
 
@@ -1114,7 +1119,7 @@ class FrictionMotion extends FreeMotion {
       'constantDeceleration: $constantDeceleration)';
 }
 
-class _FixedDurationSimulation extends Simulation {
+class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
   _FixedDurationSimulation({
     required this.parent,
     required this.duration,
@@ -1150,6 +1155,9 @@ class _FixedDurationSimulation extends Simulation {
 
   @override
   bool isDone(double time) => time >= _durationInSeconds - tolerance.time;
+
+  @override
+  double get finishSeconds => math.max(0, _durationInSeconds - tolerance.time);
 
   double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
@@ -1430,4 +1438,31 @@ extension MotionTrimming on Motion {
 
 extension on Duration {
   double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
+}
+
+/// Creates the simulation playback uses for [motion].
+///
+/// Motor's own springs get a spring that knows up front when it settles;
+/// every other motion creates its own simulation.
+@internal
+Simulation createPlaybackSimulation(
+  Motion motion, {
+  required double start,
+  required double end,
+  required double velocity,
+}) {
+  if (motion is SpringMotion &&
+      (motion.runtimeType == _DescriptionSpringMotion ||
+          motion.runtimeType == CupertinoMotion ||
+          motion.runtimeType == MaterialSpringMotion)) {
+    return SettlingSpringSimulation(
+      motion.description,
+      start,
+      end,
+      velocity,
+      snapToEnd: motion.snapToEnd,
+      tolerance: motion.tolerance,
+    );
+  }
+  return motion.createSimulation(start: start, end: end, velocity: velocity);
 }

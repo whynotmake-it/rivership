@@ -8,6 +8,7 @@ import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/track_step.dart';
 
 /// Playback for a list of [TrackStep]s.
@@ -761,7 +762,8 @@ class StepPlayback<T extends Object> {
           final targets = _waypoints[_stepIndex];
           return [
             for (var i = 0; i < targets.length; i++)
-              motions[i].createSimulation(
+              createPlaybackSimulation(
+                motions[i],
                 start: _values[i],
                 end: targets[i],
                 velocity: _velocities[i],
@@ -803,7 +805,8 @@ class StepPlayback<T extends Object> {
               : motions;
           return [
             for (var i = 0; i < targets.length; i++)
-              atMotions[i].createSimulation(
+              createPlaybackSimulation(
+                atMotions[i],
                 start: _values[i],
                 end: targets[i],
                 velocity: _velocities[i],
@@ -848,7 +851,8 @@ class StepPlayback<T extends Object> {
     if (motions != null) {
       _simulations = [
         for (var i = 0; i < targets.length; i++)
-          motions[i].createSimulation(
+          createPlaybackSimulation(
+            motions[i],
             start: _values[i],
             end: targets[i],
             velocity: _velocities[i],
@@ -921,10 +925,22 @@ class StepPlayback<T extends Object> {
   /// they do not finish within a day.
   ///
   /// Found once per segment, independent of how playback is advanced, so
-  /// ticking and seeking always agree. A fine forward scan finds the first
-  /// time the simulations report done, even for springs whose `isDone`
-  /// briefly turns true near oscillation peaks before they settle.
+  /// ticking and seeking always agree. Motor's own simulations know their
+  /// finish time. For others, a fine forward scan finds the first time they
+  /// report done, even springs whose `isDone` briefly turns true near
+  /// oscillation peaks before they settle, refined to a microsecond.
   double? _findSegmentDuration() {
+    var known = 0.0;
+    for (final simulation in _simulations) {
+      if (simulation is! FiniteSimulation) return _searchSegmentDuration();
+      final finish = (simulation as FiniteSimulation).finishSeconds;
+      if (finish == null) return null;
+      if (finish > known) known = finish;
+    }
+    return known;
+  }
+
+  double? _searchSegmentDuration() {
     if (_segmentIsDone(0)) return 0;
     var low = 0.0;
     var high = _scanStep;
@@ -933,15 +949,15 @@ class StepPlayback<T extends Object> {
       high = high < _scanLimit ? high + _scanStep : high * 2;
       if (high > _horizon) return null;
     }
-    while (true) {
+    while (high - low > _instant) {
       final mid = (low + high) / 2;
-      if (mid <= low || mid >= high) return high;
       if (_segmentIsDone(mid)) {
         high = mid;
       } else {
         low = mid;
       }
     }
+    return high;
   }
 }
 
@@ -1000,7 +1016,7 @@ class _CycleStart {
   }
 }
 
-class _HoldSimulation extends Simulation {
+class _HoldSimulation extends Simulation implements FiniteSimulation {
   _HoldSimulation({
     required this.value,
     required this.duration,
@@ -1017,6 +1033,9 @@ class _HoldSimulation extends Simulation {
 
   @override
   bool isDone(double time) => time >= duration;
+
+  @override
+  double get finishSeconds => duration;
 }
 
 extension on Duration {
