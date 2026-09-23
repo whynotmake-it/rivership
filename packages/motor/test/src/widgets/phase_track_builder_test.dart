@@ -107,6 +107,39 @@ void main() {
       expect(settleCount, 2);
     });
 
+    testWidgets('restartTrigger restores the timeline seed', (tester) async {
+      final scale = Track<double>(
+        MotionConverter.single,
+        initial: 0,
+        motion: linear100,
+      );
+      double? captured;
+      final timeline = TrackPhaseTimeline(
+        {
+          _Phase.idle: [scale.to(1)],
+        },
+        from: [scale.value(5)],
+      );
+
+      Widget build(int trigger) => PhaseTrackBuilder<_Phase>(
+            restartTrigger: trigger,
+            timeline: timeline,
+            builder: (context, value, phase, child) {
+              captured = value<double>(scale);
+              return const SizedBox();
+            },
+          );
+
+      await tester.pumpWidget(build(0));
+      await tester.pumpAndSettle();
+      expect(captured, closeTo(1, error));
+
+      await tester.pumpWidget(build(1));
+      expect(captured, closeTo(5, error));
+      await tester.pumpAndSettle();
+      expect(captured, closeTo(1, error));
+    });
+
     testWidgets('manual phase change does not re-apply timeline.from',
         (tester) async {
       final scale = Track<double>(
@@ -288,8 +321,7 @@ void main() {
       expect(captured, closeTo(1, error));
     });
 
-    testWidgets('changing velocityTracking recreates playback',
-        (tester) async {
+    testWidgets('changing velocityTracking recreates playback', (tester) async {
       final scale = Track<double>(MotionConverter.single, initial: 0);
       double? captured;
 

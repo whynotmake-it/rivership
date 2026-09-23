@@ -89,10 +89,10 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
 
   /// Restarts playback from the start when this value changes.
   ///
-  /// Jumps every track back to its start value (its `from` override or the
-  /// track's origin) and replays from the initial phase, rather than animating
-  /// from the current values. Useful for triggering replays without rebuilding
-  /// the widget.
+  /// Jumps every track back to its start value (the timeline's `from` seed or
+  /// the track's `initial`) and replays from the initial phase, rather than
+  /// animating from the current values. Useful for triggering replays without
+  /// rebuilding the widget.
   final Object? restartTrigger;
 
   /// {@macro motor.velocityTracking}
@@ -208,7 +208,9 @@ class _PhaseTrackBuilderState<P extends Object>
       // Jump every track back to its start value before replaying, so a
       // restartTrigger change starts from the start rather than animating from
       // the current values back to the first phase.
-      _controller.set(widget.timeline.startValues);
+      _controller
+        ..set(widget.timeline.startValues)
+        ..forgetSeeds();
     }
 
     if (widget.playing) {

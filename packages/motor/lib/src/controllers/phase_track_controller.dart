@@ -1,4 +1,5 @@
 import 'package:flutter/animation.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/phase_transition.dart';
@@ -137,6 +138,11 @@ class PhaseTrackController<P extends Object> extends TrackController {
   ///
   /// Velocity-only seeds (a track in `withVelocity` but not `from`) keep the
   /// track's current value while applying the seeded velocity.
+  /// Makes the next [playPhases] or [goToPhase] apply the timeline's
+  /// one-time `from`/`withVelocity` seeds again, as when restarting.
+  @internal
+  void forgetSeeds() => _seededTimeline = null;
+
   void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
     if (_seededTimeline == timeline) return;
     _seededTimeline = timeline;
