@@ -16,21 +16,39 @@ What the layers measure:
 
 ## Results per phase (p50 Δ vs AnimationController)
 
-| Scenario | Baseline pump | Phase 0.5 pump | Phase 1 pump | Baseline tick | Phase 0.5 tick | Phase 1 tick |
-|---|---:|---:|---:|---:|---:|---:|
-| Single curve (1D) | +15.4% | -2.4% | +17.2% | +135.6% | +190.3% | +175.0% |
-| Single spring (1D) | +8.6% | -2.1% | +7.1% | +224.2% | +250.0% | +268.7% |
-| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +354.1% | +327.5% | +333.3% |
-| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +85.5% | +155.4% | +154.7% |
-| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +226.4% | +296.6% | +237.5% |
-| Multi-track ×50 | +18.5% | -2.5% | +2.6% | +167.9% | +236.1% | +211.5% |
-| Multi-track ×100 | +24.6% | -0.3% | +3.7% | +196.4% | +247.5% | +261.8% |
-| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +208.2% | +302.7% | +274.8% |
-| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +254.1% | +304.7% | +321.9% |
-| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +129.9% | +170.5% | +200.0% |
-| Widget rebuild | -32.2% | -32.8% | -32.8% | +6.1% | -12.1% | -8.8% |
-| Manual set (tracking off, noise) | n/a | n/a | n/a | +2.6% | +45.0% | +64.4% |
-| Velocity tracking on vs off | n/a | n/a | n/a | +4732% | +2736% | +3064% |
+### Pump (per-frame cost)
+
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 |
+|---|---:|---:|---:|---:|
+| Single curve (1D) | +15.4% | -2.4% | +17.2% | +19.0% |
+| Single spring (1D) | +8.6% | -2.1% | +7.1% | +3.1% |
+| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +3.7% |
+| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +5.4% |
+| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +3.6% |
+| Multi-track ×50 | +18.5% | -2.5% | +2.6% | -2.2% |
+| Multi-track ×100 | +24.6% | -0.3% | +3.7% | -2.1% |
+| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +11.0% |
+| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +16.2% |
+| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +37.0% |
+| Widget rebuild | -32.2% | -32.8% | -32.8% | -26.0% |
+
+### Tick (value reads)
+
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 |
+|---|---:|---:|---:|---:|
+| Single curve (1D) | +135.6% | +190.3% | +175.0% | +140.8% |
+| Single spring (1D) | +224.2% | +250.0% | +268.7% | +245.2% |
+| Offset spring (2D) | +354.1% | +327.5% | +333.3% | +340.0% |
+| Multi-track ×1 | +85.5% | +155.4% | +154.7% | +74.6% |
+| Multi-track ×10 | +226.4% | +296.6% | +237.5% | +246.2% |
+| Multi-track ×50 | +167.9% | +236.1% | +211.5% | +208.5% |
+| Multi-track ×100 | +196.4% | +247.5% | +261.8% | +232.3% |
+| Multi-track ×250 | +208.2% | +302.7% | +274.8% | +285.3% |
+| Multi-track ×500 | +254.1% | +304.7% | +321.9% | +305.2% |
+| Interrupt / retarget | +129.9% | +170.5% | +200.0% | +225.6% |
+| Widget rebuild | +6.1% | -12.1% | -8.8% | -15.8% |
+| Manual set (tracking off, noise) | +2.6% | +45.0% | +64.4% | +274.9% |
+| Velocity tracking on vs off | +4732% | +2736% | +3064% | +3484% |
 
 - **Baseline**: `motor/2.0` at `3d517dd`, before any performance work.
 - **Phase 0.5**: `ebb9068`. It adds in-place sampling, lazily cached
@@ -42,16 +60,21 @@ What the layers measure:
   curve 75.8 µs versus 74 to 83 µs across the Phase 0.5 runs, and
   interrupt/retarget 45.6 µs versus 44.6 to 46.8 µs. The larger interrupt Δ
   comes from a faster `AnimationController` run.
+- **Phase 2**: `c77fc41`..`3cc55f0`. The segment table, plus value reads
+  without the Phase 0.5 cache. Pump is unchanged within noise (Motor at 500
+  tracks: 157 to 160 µs, Phase 1: 160 to 163 µs). Value reads at 500 tracks
+  recovered: 14.8 to 15.0 µs in the full suite (Phase 0.5: 15.6 to 16.0 µs)
+  and 11.8 to 12.0 µs in filtered runs (baseline: 12.5 to 13.0 µs, Phase
+  0.5: 15.6 to 17.0 µs).
 
 Reading the table:
 
 - Per-frame cost (pump) improved most where it matters: many tracks on one
   controller. At 500 tracks the gap went from +62.5% to +13.2%.
-- Known cost: value reads at many tracks got slower in Phase 0.5. At 500
-  tracks Motor's read time per frame went from 12.5 to 13.6 µs to 15.6 to
-  17.0 µs across full and filtered reruns, about 25% (roughly 3 µs per
-  frame). The pump gain is far larger, but this is a real regression, and it
-  is a Phase 2 target. The lazy value cache bookkeeping is the main suspect.
+- Value reads at many tracks got about 25% slower in Phase 0.5 (500 tracks:
+  12.5 to 13.6 µs became 15.6 to 17.0 µs). The lazy value cache was the
+  cause: maintaining it every frame cost more than it saved. Phase 2 removed
+  it, and filtered runs are now slightly below the baseline.
 - The small single-value tick rows are noisy (sub-microsecond values, p90
   often 2x the p50), so run-to-run swings of tens of percent are common.
 - Manual set is noise, not a regression: filtered reruns measure +97% to
@@ -70,8 +93,8 @@ Reading the table:
 ## Next targets
 
 - Interrupt/retarget: each retarget builds a new playback and simulations.
-  The segment-table redesign (plan phase 2) should reduce this.
-- Value reads: the per-track slot lookup and denormalization, including
-  the ~25% Phase 0.5 regression at 500 tracks.
+  The segment table did not change this (Motor about 45 µs per frame in
+  every phase).
+- Value reads: the per-track slot lookup and denormalization.
 - Velocity tracking: sample time comes from `clock.now()` inside the
   tracker; avoiding the second clock read needs a tracker API change.
