@@ -43,7 +43,7 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
   /// phase left off. Use [initialValues] and [initialVelocities] to set
   /// where the timeline starts.
   TrackPhaseTimeline(
-    this.phaseAnimations, {
+    Map<P, List<TrackAnimation>> phaseAnimations, {
     this.phaseLoop = LoopMode.none,
     this.initialValues = const [],
     this.initialVelocities = const [],
@@ -57,6 +57,10 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
           'Animations inside a TrackPhaseTimeline cannot set from or '
           'withVelocity. Use initialValues and initialVelocities instead.',
         ),
+        phaseAnimations = Map.unmodifiable({
+          for (final MapEntry(:key, :value) in phaseAnimations.entries)
+            key: List<TrackAnimation>.unmodifiable(value),
+        }),
         flattened = TrackTimeline(_flatten(phaseAnimations));
 
   /// The phase-to-animation mapping as provided by the caller.

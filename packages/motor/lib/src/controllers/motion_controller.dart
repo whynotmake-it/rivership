@@ -167,7 +167,11 @@ class MotionController<T extends Object> extends Animation<T>
     if (_inner.isAnimating) _inner.stop(tracks: [_track], canceled: true);
     final oldTrack = _track;
     _converter = value;
-    _track = Track<T>(value, initial: reinterpreted);
+    _track = Track<T>(
+      value,
+      initial: reinterpreted,
+      debugLabel: oldTrack.debugLabel,
+    );
     _inner
       ..forgetTrack(oldTrack)
       ..set(

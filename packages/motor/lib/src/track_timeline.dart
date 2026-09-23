@@ -15,9 +15,9 @@ import 'package:motor/src/track.dart';
 class TrackTimeline with EquatableMixin {
   /// Creates a timeline from track [animations].
   TrackTimeline(
-    this.animations, {
+    List<TrackAnimation> animations, {
     this.loop = LoopMode.none,
-  });
+  }) : animations = List.unmodifiable(animations);
 
   /// Track animations in this timeline.
   final List<TrackAnimation> animations;

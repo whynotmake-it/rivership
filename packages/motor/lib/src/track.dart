@@ -246,6 +246,7 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   /// Resolution order: [from] -> [Track.initial] -> a zero-filled value whose
   /// dimensionality matches this animation's first concrete target
   /// (`TrackStep.to`/`TrackStep.at`). Throws if none of these can supply a value.
+  @internal
   T resolveStartValue() {
     if (from case final value?) return value;
     if (track.initial case final value?) return value;
