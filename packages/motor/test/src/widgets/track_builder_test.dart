@@ -281,6 +281,101 @@ void main() {
       expect(captured, equals(0));
     });
 
+    group('active', () {
+      double? captured;
+
+      Widget build({required bool active}) => TrackBuilder(
+            animations: [
+              opacity.to(
+                1,
+                motion: const Motion.linear(Duration(milliseconds: 100)),
+              ),
+            ],
+            active: active,
+            builder: (context, value, child) {
+              captured = value<double>(opacity);
+              return const SizedBox();
+            },
+          );
+
+      testWidgets('turning true starts playback', (tester) async {
+        await tester.pumpWidget(build(active: false));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(captured, equals(0));
+
+        await tester.pumpWidget(build(active: true));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(captured, closeTo(0.5, error));
+        await tester.pumpAndSettle();
+        expect(captured, closeTo(1, error));
+      });
+
+      testWidgets('turning false freezes the current values', (tester) async {
+        await tester.pumpWidget(build(active: true));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        await tester.pumpWidget(build(active: false));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(captured, closeTo(0.5, error));
+        expect(tester.hasRunningAnimations, isFalse);
+      });
+    });
+
+    testWidgets('restartTrigger replays a timeline from its start values',
+        (tester) async {
+      double? captured;
+      final timeline = TrackTimeline([
+        opacity.to(1, motion: const Motion.linear(Duration(milliseconds: 100))),
+      ]);
+
+      Widget build(int trigger) => TrackBuilder.timeline(
+            timeline,
+            restartTrigger: trigger,
+            builder: (context, value, child) {
+              captured = value<double>(opacity);
+              return const SizedBox();
+            },
+          );
+
+      await tester.pumpWidget(build(0));
+      await tester.pumpAndSettle();
+      expect(captured, closeTo(1, error));
+
+      await tester.pumpWidget(build(1));
+      expect(captured, closeTo(0, error));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(captured, closeTo(0.5, error));
+    });
+
+    testWidgets('swapping onAnimationStatusChanged moves the listener',
+        (tester) async {
+      final first = <AnimationStatus>[];
+      final second = <AnimationStatus>[];
+
+      Widget build(ValueChanged<AnimationStatus> onStatus, double target) =>
+          TrackBuilder(
+            animations: [
+              opacity.to(
+                target,
+                motion: const Motion.linear(Duration(milliseconds: 100)),
+              ),
+            ],
+            onAnimationStatusChanged: onStatus,
+            builder: (context, value, child) => const SizedBox(),
+          );
+
+      await tester.pumpWidget(build(first.add, 1));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(build(second.add, 0));
+      await tester.pumpAndSettle();
+
+      expect(first, [AnimationStatus.forward, AnimationStatus.completed]);
+      expect(second, [AnimationStatus.reverse, AnimationStatus.dismissed]);
+    });
+
     testWidgets('falls back to a zero start when initial is omitted',
         (tester) async {
       final noInitial = Track<double>(MotionConverter.single);
