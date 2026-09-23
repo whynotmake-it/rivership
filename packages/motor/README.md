@@ -261,7 +261,7 @@ offset([                               // multiple steps, run in order
 The available steps are the verbs of the system:
 
 - **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle.
-- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). If the previous steps finish early, the motion is stretched to fill the gap. If the previous step would still be running, it is cut short just early enough for the `.at` motion to run its natural duration and land on `time`. Times must not go backwards past preceding `.hold`s (asserted).
+- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). If the previous step ends early enough, the motion is stretched to fill the gap; otherwise the previous step is cut short just early enough for the `.at` motion to run its natural duration and land on `time`. The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
 - **`.hold(duration)`** — keep the current value for `duration`.
 - **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
 - **`.sync(token:)`** — a barrier (see below).

@@ -209,6 +209,76 @@ void main() {
       expect(playback.values.single, closeTo(0, error));
     });
 
+    StepPlayback<double> towardAtOneSecond(Duration previous) =>
+        StepPlayback<double>(
+          steps: [
+            TrackStep.to(1, motion: Motion.linear(previous)),
+            const TrackStep.at(Duration(seconds: 1), 0, motion: linear200),
+          ],
+          converter: MotionConverter.single,
+          start: 0,
+        );
+
+    test('TrackStep.at stretches when there is room for its motion', () {
+      // The first step ends at 500ms, leaving 500ms >= 200ms: the .at motion
+      // stretches over the whole gap.
+      final playback = towardAtOneSecond(const Duration(milliseconds: 500));
+
+      playback.advanceTo(0.75);
+      expect(playback.values.single, closeTo(0.5, error));
+      playback.advanceTo(1);
+      expect(playback.values.single, closeTo(0, error));
+    });
+
+    test('TrackStep.at cuts the previous step when there is too little room',
+        () {
+      // The first step would end at 900ms, leaving only 100ms: it is cut at
+      // 800ms so the .at motion runs its natural 200ms.
+      final playback = towardAtOneSecond(const Duration(milliseconds: 900));
+
+      playback.advanceTo(0.8);
+      expect(playback.values.single, closeTo(0.8 / 0.9, error));
+      playback.advanceTo(0.9);
+      expect(playback.values.single, closeTo(0.4 / 0.9, error));
+      playback.advanceTo(1);
+      expect(playback.values.single, closeTo(0, error));
+    });
+
+    test('TrackStep.at timing changes continuously with the previous end', () {
+      for (final (a, b) in const [
+        (Duration(milliseconds: 799), Duration(milliseconds: 801)),
+        (Duration(milliseconds: 999), Duration(milliseconds: 1001)),
+      ]) {
+        final early = towardAtOneSecond(a);
+        final late = towardAtOneSecond(b);
+        for (final t in [0.7, 0.8, 0.85, 0.9, 0.95, 1.0]) {
+          early.advanceTo(t);
+          late.advanceTo(t);
+          expect(
+            early.values.single,
+            closeTo(late.values.single, 0.01),
+            reason: 'previous step of $a vs $b at ${t}s',
+          );
+        }
+      }
+    });
+
+    test('TrackStep.at with no time left arrives immediately', () {
+      final playback = StepPlayback<double>(
+        steps: const [
+          TrackStep.at(Duration.zero, 5, motion: linear100),
+          TrackStep.to(0, motion: linear100),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+
+      playback.advanceTo(0);
+      expect(playback.values.single, closeTo(5, error));
+      playback.advanceTo(0.05);
+      expect(playback.values.single, closeTo(2.5, error));
+    });
+
     test('TrackStep.at at exactly the cumulative time is valid (gap == 0)', () {
       // hold(100ms) then at(100ms) => gap is exactly 0, which is allowed.
       final playback = StepPlayback<double>(

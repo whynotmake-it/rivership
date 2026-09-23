@@ -37,18 +37,20 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// start of the current cycle when looping), and [value] is reached exactly
   /// at [at]:
   ///
-  /// - If the preceding steps finish before [at], the motion is time-scaled
-  ///   to fill the gap.
-  /// - If the preceding step would still be running at [at], it is cut short
-  ///   so that the motion runs for its natural duration and ends at [at]. The
-  ///   cut never happens before that step started; if there is not enough
-  ///   time, the motion is compressed. A motion without a known duration
-  ///   starts right when the preceding step starts.
+  /// - If the preceding step ends at least the motion's natural duration
+  ///   before [at], the motion is stretched to fill the gap.
+  /// - Otherwise the preceding step is cut short so that the motion runs for
+  ///   its natural duration and ends at [at]. The cut never happens before
+  ///   that step started; if there is not enough time, the motion is
+  ///   compressed, and with no time at all [value] is reached instantly. A
+  ///   motion without a known duration starts when the preceding step starts.
   ///
-  /// [value] arrives late only when this step cannot start before [at], for
-  /// example because a preceding sync barrier is released after [at]. [at]
-  /// must not be earlier than the total duration of preceding holds
-  /// (asserted).
+  /// Only the step immediately before is ever cut, and it can be another
+  /// [TrackStep.at]: the later keyframe wins. [value] arrives late only when
+  /// this step cannot start before [at], for example because a preceding sync
+  /// barrier is released after [at], or because [at] had already passed when
+  /// the preceding step started (that step is then skipped). [at] must not be
+  /// earlier than the total duration of preceding holds (asserted).
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If

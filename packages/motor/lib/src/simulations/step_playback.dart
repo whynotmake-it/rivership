@@ -132,6 +132,9 @@ class StepPlayback<T extends Object> {
   static const _scanLimit = 60.0;
   static const _horizon = 86400.0;
 
+  /// Gaps shorter than this (one microsecond) count as no time at all.
+  static const _instant = 1e-6;
+
   final List<TrackStep<T>> _steps;
   final T _start;
   final T? _velocity;
@@ -399,7 +402,6 @@ class StepPlayback<T extends Object> {
         !_isWaitingForSync &&
         _period == null &&
         resolved++ < _maxSegmentsPerCall) {
-
       final cut = _cutAt;
       if (cut != null && seconds >= cut) {
         final local = cut - _segmentStartSeconds;
@@ -658,6 +660,15 @@ class StepPlayback<T extends Object> {
           final motions = _motions(motion, motionPerDimension);
           final targets = _waypoints[_stepIndex];
           final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
+          if (gap.abs() < _instant) {
+            // No time left: arrive right away.
+            return [
+              for (final target in targets)
+                _HoldSimulation(value: target, duration: 0),
+            ];
+          }
+          // A positive gap is filled exactly; a negative one means the
+          // arrival time already passed, so the motion runs as authored.
           final atMotions = gap > 0
               ? [
                   for (final m in motions)
@@ -734,9 +745,11 @@ class StepPlayback<T extends Object> {
   /// Decides when the running step yields to a following [StepAt].
   ///
   /// A [StepAt] arrives at its value exactly at its time. If the running step
-  /// finishes by then, the [StepAt] fills the remaining gap. Otherwise the
-  /// running step is cut short early enough for the [StepAt]'s motion to run
-  /// for its natural duration, but never before the running step started.
+  /// ends at least the [StepAt] motion's natural duration before then, the
+  /// [StepAt] stretches to fill the gap. Otherwise the running step is cut
+  /// short so the motion runs its natural duration, but never before the
+  /// running step started. Both cases meet where the gap equals the natural
+  /// duration, so timing changes continuously with the arrival time.
   void _scheduleCutForNextAt() {
     _cutAt = null;
     if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
@@ -745,13 +758,16 @@ class StepPlayback<T extends Object> {
     if (_steps[next]
         case StepAt<T>(:final at, :final motion, :final motionPerDimension)) {
       final arrival = _absoluteTimeFor(at);
-      final window = arrival - _segmentStartSeconds;
+      final atDuration =
+          _knownMotionDuration(motion, motionPerDimension)?.toSeconds();
       final duration = _segmentDuration;
-      if (window >= 0 && duration != null && duration <= window) return;
-      final atDuration = _knownMotionDuration(motion, motionPerDimension);
+      if (atDuration != null && duration != null) {
+        final gap = arrival - (_segmentStartSeconds + duration);
+        if (gap >= atDuration) return;
+      }
       _cutAt = atDuration == null
           ? _segmentStartSeconds
-          : math.max(_segmentStartSeconds, arrival - atDuration.toSeconds());
+          : math.max(_segmentStartSeconds, arrival - atDuration);
     }
   }
 
