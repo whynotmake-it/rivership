@@ -88,7 +88,11 @@ class TrackPlayback {
     required List<Duration?> stepStarts,
     required List<Duration?> stepDurations,
     required List<Duration?> estimatedStepDurations,
+    List<PlaybackSegment> segments = const [],
+    this.loopPeriod,
+    this.loopRepeatStart,
   })  : steps = List.unmodifiable(steps),
+        segments = List.unmodifiable(segments),
         stepStarts = List.unmodifiable(stepStarts),
         stepDurations = List.unmodifiable(stepDurations),
         estimatedStepDurations = List.unmodifiable(estimatedStepDurations);
@@ -151,6 +155,49 @@ class TrackPlayback {
   /// Only tracks started together are waited for at barriers. Entries stay
   /// `null` for simulations that do not finish within a day.
   final List<Duration?> estimatedStepDurations;
+
+  /// The resolved segments of this plan, oldest first, on the slot-local
+  /// axis. Resolution can run ahead of [playhead].
+  final List<PlaybackSegment> segments;
+
+  /// Once a looping plan repeats exactly, the length of one repetition.
+  ///
+  /// Segments starting at [loopRepeatStart] or later then repeat forever with
+  /// this period and are not resolved again.
+  final Duration? loopPeriod;
+
+  /// Where the repeating part of a looping plan starts, when [loopPeriod] is
+  /// set.
+  final Duration? loopRepeatStart;
+}
+
+/// One resolved step of a [TrackPlayback].
+@experimental
+@immutable
+class PlaybackSegment {
+  /// Creates a resolved segment.
+  const PlaybackSegment({
+    required this.stepIndex,
+    required this.direction,
+    required this.cycle,
+    required this.start,
+    required this.end,
+  });
+
+  /// The index into [TrackPlayback.steps] this segment plays.
+  final int stepIndex;
+
+  /// `1` while playing forward, `-1` on a pingPong reverse pass.
+  final int direction;
+
+  /// The loop cycle this segment belongs to.
+  final int cycle;
+
+  /// When the segment starts, on the slot-local axis.
+  final Duration start;
+
+  /// When it ends, or `null` while it has no known end yet.
+  final Duration? end;
 }
 
 /// Read-only playback inspection for [TrackController].

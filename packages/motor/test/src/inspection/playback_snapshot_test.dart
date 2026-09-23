@@ -165,6 +165,44 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('lists resolved segments and the loop repetition',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.play(
+        TrackTimeline(
+          [
+            first([
+              const TrackStep.to(1, motion: linear50),
+              const TrackStep.hold(Duration(milliseconds: 50)),
+            ]),
+          ],
+          loop: LoopMode.seamless,
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      var playback = controller.inspectPlayback().tracks.single;
+      expect(playback.segments.single.stepIndex, 0);
+      expect(playback.segments.single.end, const Duration(milliseconds: 50));
+      expect(playback.loopPeriod, isNull);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      playback = controller.inspectPlayback().tracks.single;
+      expect(playback.loopPeriod, const Duration(milliseconds: 100));
+      // Every cycle restarts from the same state, so the first one repeats.
+      expect(
+        [for (final segment in playback.segments) segment.stepIndex],
+        [0, 1],
+      );
+      expect(playback.loopRepeatStart, Duration.zero);
+      expect(
+        playback.segments.last.end,
+        playback.loopRepeatStart! + playback.loopPeriod!,
+      );
+      controller.stop(canceled: true);
+    });
+
     testWidgets('revision changes only when plans mutate', (tester) async {
       controller = TrackController(vsync: tester);
       final initial = controller.playbackRevision;

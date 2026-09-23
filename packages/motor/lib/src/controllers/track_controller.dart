@@ -597,6 +597,20 @@ class TrackController extends Animation<TrackValueReader>
             for (final seconds in playback.estimatedSegmentSeconds)
               _durationFromSeconds(seconds),
           ],
+          segments: [
+            for (final segment in playback.segmentsView)
+              PlaybackSegment(
+                stepIndex: segment.stepIndex,
+                direction: segment.direction,
+                cycle: segment.cycle,
+                start: _durationFromSeconds(segment.start)!,
+                end: _durationFromSeconds(segment.end),
+              ),
+          ],
+          loopPeriod: _durationFromSeconds(playback.loopPeriodSeconds),
+          loopRepeatStart: playback.loopPeriodSeconds == null
+              ? null
+              : _durationFromSeconds(playback.loopRepeatStartSeconds),
         ),
       );
     }

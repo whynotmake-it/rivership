@@ -357,6 +357,41 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
+  /// The resolved segments, oldest first: which step each one plays and when.
+  ///
+  /// The segment being resolved reports when it is going to end, unless that
+  /// is unknown (it waits at a sync barrier or never finishes).
+  @internal
+  List<({int stepIndex, int direction, int cycle, double start, double? end})>
+      get segmentsView => [
+            for (final segment in _segments)
+              (
+                stepIndex: segment.stepIndex,
+                direction: segment.direction,
+                cycle: segment.cycle,
+                start: segment.start,
+                end: segment.end ??
+                    (identical(segment, _segments.last) ? _upcomingEnd : null),
+              ),
+          ];
+
+  double? get _upcomingEnd {
+    if (_isDone || _isWaitingForSync || _period != null) return null;
+    if (_steps[_stepIndex] is StepSync<T>) return null;
+    final duration = _segmentDuration;
+    return _cutAt ??
+        (duration == null ? null : _segmentStartSeconds + duration);
+  }
+
+  /// Once a loop repeats exactly, how long each repetition lasts, in seconds.
+  /// Segments from [loopRepeatStartSeconds] on then repeat with this period.
+  @internal
+  double? get loopPeriodSeconds => _period;
+
+  /// Where the repeating part of a folded loop starts, in seconds.
+  @internal
+  double get loopRepeatStartSeconds => _foldStartSeconds;
+
   /// The indices of the steps entered since the previous call, in order.
   ///
   /// The synthetic return step of [LoopMode.loop] is not included.
