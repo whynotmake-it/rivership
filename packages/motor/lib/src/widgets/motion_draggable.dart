@@ -61,8 +61,12 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter,
     this.feedbackMatchesConstraints = false,
+    this.debugLabel,
     super.key,
   });
+
+  /// {@macro motor.debugLabel}
+  final String? debugLabel;
 
   /// The data that will be dropped by this draggable.
   final T? data;
@@ -286,6 +290,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       vsync: this,
       converter: const OffsetMotionConverter(),
       initialValue: Offset.zero,
+      debugLabel: widget.debugLabel,
     );
     controller.addListener(_redirectReturn);
     super.initState();

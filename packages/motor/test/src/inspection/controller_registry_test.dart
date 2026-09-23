@@ -189,33 +189,47 @@ void main() {
         const SizedBox();
 
     await tester.pumpWidget(
-      Column(
-        children: [
-          TrackBuilder(
-            debugLabel: 'Tracks',
-            animations: [track.to(1, motion: motion)],
-            builder: (context, value, child) => const SizedBox(),
-          ),
-          PhaseTrackBuilder<int>(
-            debugLabel: 'Phases',
-            timeline: TrackPhaseTimeline({
-              0: [track.to(1, motion: motion)],
-            }),
-            builder: (context, value, phase, child) => const SizedBox(),
-          ),
-          SingleMotionBuilder(
-            debugLabel: 'Single value',
-            value: 1,
-            motion: motion,
-            builder: build,
-          ),
-        ],
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (context) => Column(
+                children: [
+                  TrackBuilder(
+                    debugLabel: 'Tracks',
+                    animations: [track.to(1, motion: motion)],
+                    builder: (context, value, child) => const SizedBox(),
+                  ),
+                  PhaseTrackBuilder<int>(
+                    debugLabel: 'Phases',
+                    timeline: TrackPhaseTimeline({
+                      0: [track.to(1, motion: motion)],
+                    }),
+                    builder: (context, value, phase, child) => const SizedBox(),
+                  ),
+                  SingleMotionBuilder(
+                    debugLabel: 'Single value',
+                    value: 1,
+                    motion: motion,
+                    builder: build,
+                  ),
+                  const MotionDraggable(
+                    debugLabel: 'Draggable',
+                    data: 1,
+                    child: SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
     expect(
       [for (final controller in observer.registered) controller.debugLabel],
-      containsAll(['Tracks', 'Phases', 'Single value']),
+      containsAll(['Tracks', 'Phases', 'Single value', 'Draggable']),
     );
 
     await tester.pumpWidget(const SizedBox());

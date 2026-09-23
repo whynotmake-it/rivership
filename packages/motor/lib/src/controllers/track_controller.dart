@@ -80,6 +80,7 @@ class TrackController extends Animation<TrackValueReader>
   static const _maxBarrierPasses = 100;
   Motion? Function(Track<Object> track)? _motionOverride;
   final List<PlaybackPlan> _plans = [];
+  var _hasInspectionData = false;
 
   /// How many submitted plans are kept for inspection tooling.
   static const _maxRecordedPlans = 16;
@@ -388,13 +389,16 @@ class TrackController extends Animation<TrackValueReader>
   /// barriers, so it shows what playback would show at [t]. Times already
   /// played are shown as they played. While inspection tooling is attached,
   /// that includes plans a track has since been redirected away from, and
-  /// resuming from such a time continues the earlier plan. Looping plans
+  /// resuming from such a time continues the earlier plan, as long as the
+  /// track's current plan is still animating (otherwise [resume] has nothing
+  /// to resume). Looping plans
   /// that contain sync steps keep only their two most recent cycles; earlier
   /// times show the start of the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
+    _dropInspectionDataIfDetached();
     _playbackRevision++;
     _clock.seek(t);
     for (final entry in _slots.entries) {
@@ -440,7 +444,21 @@ class TrackController extends Animation<TrackValueReader>
   /// Keeps [slot]'s current plan for scrubbing back while inspection tooling
   /// is attached.
   void _archive(_TrackSlot slot) {
-    if (MotorInspectionRegistry.isInspecting) slot.archive(_clock.now);
+    _dropInspectionDataIfDetached();
+    if (MotorInspectionRegistry.isInspecting) {
+      slot.archive(_clock.now);
+      _hasInspectionData = true;
+    }
+  }
+
+  /// Forgets archived plans and plan history once no tool is attached.
+  void _dropInspectionDataIfDetached() {
+    if (!_hasInspectionData || MotorInspectionRegistry.isInspecting) return;
+    _hasInspectionData = false;
+    _plans.clear();
+    for (final slot in _slots.values) {
+      slot.clearArchive();
+    }
   }
 
   void _recordPlan(
@@ -448,6 +466,7 @@ class TrackController extends Animation<TrackValueReader>
     required LoopMode loop,
     required Duration start,
   }) {
+    _hasInspectionData = true;
     _plans.add(
       PlaybackPlan(
         start: start,
@@ -589,6 +608,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Builds a read-only snapshot for `package:motor/inspection.dart`.
   @internal
   PlaybackSnapshot internalInspectPlayback() {
+    _dropInspectionDataIfDetached();
     final tracks = <TrackPlayback>[];
     for (final entry in _slots.entries) {
       final playback = entry.value.shownPlayback;
@@ -920,6 +940,7 @@ class TrackController extends Animation<TrackValueReader>
   /// released tracks advance again, so one large frame gap resolves the same
   /// way as many small ones.
   bool _advanceTracks(Duration now, {bool scrubbing = false}) {
+    _dropInspectionDataIfDetached();
     var allDone = true;
     for (var pass = 0; pass < _maxBarrierPasses; pass++) {
       allDone = true;
@@ -932,6 +953,7 @@ class TrackController extends Animation<TrackValueReader>
         if (slot == null) continue;
         if (!slot.tick(now, scrubbing: scrubbing)) allDone = false;
         if (slot.takeRestoredArchive()) {
+          _pruneTokenParticipants([track]);
           _joinSyncTokens(track, slot.shownPlayback?.stepsView ?? const []);
         }
         _notifyStep(track, slot, notify: !scrubbing);

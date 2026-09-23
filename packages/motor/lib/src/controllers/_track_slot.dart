@@ -44,7 +44,7 @@ class _TrackSlot<T extends Object> {
   // Plans replaced while inspection tooling was attached, oldest first, so
   // scrubbing can show them. The current plan started at [_planStart].
   static const _maxArchivedPlans = 8;
-  final List<_ArchivedPlan<T>> _archive = [];
+  List<_ArchivedPlan<T>>? _archive;
   Duration _planStart = Duration.zero;
   _ArchivedPlan<T>? _shownArchive;
   var _restoredArchive = false;
@@ -145,20 +145,27 @@ class _TrackSlot<T extends Object> {
 
   /// Records the current plan before it is replaced at [now].
   void archive(Duration now) {
-    _archive.add(
-      _ArchivedPlan<T>(
-        start: _planStart,
-        startOffset: _startOffset,
-        playback: _stepPlayback,
-        values: List.of(_currentValues),
-        velocities: List.of(_velocityValues),
-      ),
-    );
-    if (_archive.length > _maxArchivedPlans) _archive.removeAt(0);
+    final archive = (_archive ??= [])
+      ..add(
+        _ArchivedPlan<T>(
+          start: _planStart,
+          startOffset: _startOffset,
+          playback: _stepPlayback,
+          values: List.of(_currentValues),
+          velocities: List.of(_velocityValues),
+        ),
+      );
+    if (archive.length > _maxArchivedPlans) archive.removeAt(0);
     _planStart = now;
   }
 
-  bool get hasArchive => _archive.isNotEmpty;
+  bool get hasArchive => _archive?.isNotEmpty ?? false;
+
+  /// Forgets all archived plans, for example after tooling detached.
+  void clearArchive() {
+    _archive = null;
+    _shownArchive = null;
+  }
 
   /// The playback shown right now, which is an archived one while scrubbed
   /// back before the current plan.
@@ -180,10 +187,11 @@ class _TrackSlot<T extends Object> {
   /// the current one again, discarding the plans after it.
   bool tick(Duration elapsed, {bool scrubbing = false}) {
     _shownArchive = null;
-    if (elapsed < _planStart) {
-      final index = _archive.lastIndexWhere((plan) => plan.start <= elapsed);
+    final archive = _archive;
+    if (archive != null && elapsed < _planStart) {
+      final index = archive.lastIndexWhere((plan) => plan.start <= elapsed);
       if (index >= 0) {
-        if (scrubbing) return _showArchive(_archive[index], elapsed);
+        if (scrubbing) return _showArchive(archive[index], elapsed);
         _restoreArchive(index);
       }
     }
@@ -222,8 +230,9 @@ class _TrackSlot<T extends Object> {
   }
 
   void _restoreArchive(int index) {
-    final plan = _archive[index];
-    _archive.removeRange(index, _archive.length);
+    final archive = _archive!;
+    final plan = archive[index];
+    archive.removeRange(index, archive.length);
     _planStart = plan.start;
     _startOffset = plan.startOffset;
     _stepPlayback = plan.playback;

@@ -417,6 +417,73 @@ void main() {
       subscription.dispose();
     });
 
+    testWidgets('a restored plan leaves the sync barriers it replaced',
+        (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      const linear100 = Motion.linear(Duration(milliseconds: 100));
+      final other = Track<double>(MotionConverter.single, initial: 0);
+      final controller = TrackController(vsync: tester)
+        ..animate(
+          [
+            track([
+              const TrackStep.to(1, motion: linear100),
+              const TrackStep.to(0, motion: linear100),
+            ]),
+          ],
+          loop: LoopMode.loop,
+        )
+        ..animate([
+          other([
+            const TrackStep.to(1, motion: linear1s),
+            const TrackStep.sync(token: #meet),
+            const TrackStep.to(0, motion: linear100),
+          ]),
+        ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Redirect track into a plan that also meets at #meet, then scrub back
+      // into its barrier-free loop and resume there.
+      controller.animate([
+        track([
+          const TrackStep.to(1, motion: linear100),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(0, motion: linear100),
+        ]),
+      ]);
+      await tester.pump(const Duration(milliseconds: 100));
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 200))
+        ..resume();
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(controller.value(other), closeTo(0, error));
+      controller.stop(canceled: true);
+      controller.dispose();
+      subscription.dispose();
+    });
+
+    testWidgets('forgets history once tooling detaches', (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      final controller = await redirected(tester);
+      subscription.dispose();
+
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 300));
+      // The current plan started at 500ms from 0.5; there is no earlier plan
+      // to show anymore.
+      expect(controller.value(track), closeTo(0.5, error));
+      expect(controller.inspectPlayback().plans, isEmpty);
+
+      controller.stop(canceled: true);
+      controller.dispose();
+    });
+
     testWidgets('keeps no history without inspection tooling', (tester) async {
       final controller = await redirected(tester);
 
