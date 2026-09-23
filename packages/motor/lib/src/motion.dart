@@ -170,6 +170,8 @@ abstract class Motion extends MotionBase {
   ///   * [velocity] - The initial velocity for the simulation, defaults to 0.
   ///
   /// Returns a [Simulation] that can be used by an [AnimationController].
+  /// Its `x`, `dx` and `isDone` must depend only on the time passed in:
+  /// motor re-samples simulations when scrubbing and seeking.
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -206,6 +208,9 @@ abstract class FreeMotion extends MotionBase {
   }) = FrictionMotion;
 
   /// Creates a self-directed simulation.
+  ///
+  /// Its `x`, `dx` and `isDone` must depend only on the time passed in:
+  /// motor re-samples simulations when scrubbing and seeking.
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,

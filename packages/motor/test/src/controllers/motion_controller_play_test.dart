@@ -194,7 +194,7 @@ void main() {
     });
 
     testWidgets(
-        'TrackStep.at interrupts an unfinished segment at its scheduled time',
+        'TrackStep.at cuts an unfinished segment short to arrive on time',
         (tester) async {
       final steps = <int>[];
       controller = MotionController<double>(
@@ -218,14 +218,18 @@ void main() {
         ),
       );
 
+      // The first step would run for 1s, so it is cut at 20ms, leaving the
+      // .at motion its natural 100ms to arrive at 120ms.
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-
+      await tester.pump(const Duration(milliseconds: 70));
       expect(steps, containsAllInOrder([0, 1]));
-      expect(controller.value, lessThan(1.2));
+      expect(controller.value, closeTo(0.1, error));
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 50));
       expect(controller.value, closeTo(0, error));
+
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(controller.isAnimating, isFalse);
     });
 
     testWidgets('calls onStep when the active step changes', (tester) async {

@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
@@ -8,10 +9,16 @@ import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/track_step.dart';
 
-/// Stateful playback for a list of [TrackStep]s.
+/// Playback for a list of [TrackStep]s.
 ///
-/// Unlike [Simulation], this advances segment-by-segment and only leaves a
-/// segment once all of its simulations report that they are done.
+/// Steps are resolved lazily into a table of segments, each holding the
+/// simulations of one step and the time range it occupies. Ticking and
+/// seeking both sample that table, so any time that has been resolved can be
+/// revisited without replaying from the start. A segment is left only once
+/// all of its simulations report that they are done.
+///
+/// Simulations must be pure functions of time: re-sampling a segment has to
+/// reproduce the values it produced during playback.
 class StepPlayback<T extends Object> {
   /// Creates playback from [steps].
   ///
@@ -47,8 +54,10 @@ class StepPlayback<T extends Object> {
           null => List<double>.filled(converter.normalize(start).length, 0),
           final value => converter.normalize(value),
         } {
-    _currentValues = List<double>.of(_initialValues, growable: false);
-    _currentVelocities = List<double>.of(_initialVelocities, growable: false);
+    _values = List<double>.of(_initialValues, growable: false);
+    _velocities = List<double>.of(_initialVelocities, growable: false);
+    _viewValues = List<double>.of(_initialValues, growable: false);
+    _viewVelocities = List<double>.of(_initialVelocities, growable: false);
     if (loop == LoopMode.loop) {
       // `loop` animates back to the start after the last step. Model that as a
       // synthetic final step that returns to the start snapshot, reusing the
@@ -64,10 +73,12 @@ class StepPlayback<T extends Object> {
         _hasReturnStep = true;
       }
     }
+    _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
-    _stepStartSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
-    _reset();
+    _recordCycleStart();
+    _startCurrentStep();
+    _show(0);
     _estimatedSegmentSeconds = estimateDurations
         ? _estimateSegmentDurations(start: start, velocity: velocity)
         : List<double?>.filled(_steps.length, null);
@@ -112,6 +123,10 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
+  /// Upper bound on segments resolved in one call, so zero-length loops
+  /// cannot spin forever.
+  static const _maxSegmentsPerCall = 1000;
+
   final List<TrackStep<T>> _steps;
   final MotionConverter<T> _converter;
   final LoopMode _loop;
@@ -131,21 +146,43 @@ class StepPlayback<T extends Object> {
   /// Stable predicted durations for the forward playback plan.
   late final List<double?> _estimatedSegmentSeconds;
 
-  /// The slot-local time at which each forward step began in this cycle.
-  late final List<double?> _stepStartSeconds;
-
-  /// Sampled in place on every tick; see [copyStateInto].
-  late final List<double> _currentValues;
-  late final List<double> _currentVelocities;
+  // Resolution state: the segment currently being resolved, at the end of
+  // the table.
+  final List<_Segment> _segments = [];
+  late final List<double> _values;
+  late final List<double> _velocities;
   late List<Simulation> _simulations;
   var _stepIndex = 0;
   var _direction = 1;
   var _cycle = 0;
   var _cycleStartSeconds = 0.0;
   var _segmentStartSeconds = 0.0;
-  var _lastElapsedSeconds = 0.0;
   var _isDone = false;
   var _isWaitingForSync = false;
+
+  /// When the running step yields to a following [StepAt], if it has to.
+  double? _cutAt;
+
+  // Loop cycles. A cycle ends where the forward pass ends (for pingPong it
+  // spans the reverse and the next forward pass). Once a cycle starts in the
+  // same state as the previous one, playback repeats with a fixed period and
+  // resolution stops ("folding").
+  // Plans with sync steps never fold because their release times come from
+  // other tracks; they keep only the most recent cycles instead.
+  late final bool _canFold;
+  final List<_CycleStart> _cycleStarts = [];
+  double? _period;
+  var _foldStartSeconds = 0.0;
+
+  // What the most recent advance or seek shows.
+  late final List<double> _viewValues;
+  late final List<double> _viewVelocities;
+  var _lastElapsedSeconds = 0.0;
+  var _viewIndex = 0;
+  var _viewCycleShift = 0;
+  var _viewTimeShift = 0.0;
+
+  _Segment get _view => _segments[_viewIndex];
 
   void _buildWaypoints() {
     _waypoints = [
@@ -170,8 +207,8 @@ class StepPlayback<T extends Object> {
       fallbackMotion: _fallbackMotion,
       fallbackMotionPerDimension: _fallbackMotionPerDimension,
     );
-    // One distant seek resolves every finite segment with binary search.
-    // Truly unbounded simulations remain null instead of blocking startup.
+    // One distant seek resolves every finite segment. Truly unbounded
+    // simulations remain null instead of blocking startup.
     // ignore: cascade_invocations
     estimator.seekTo(const Duration(days: 1).inSeconds.toDouble());
     final simulated = estimator.forwardSegmentSeconds;
@@ -219,16 +256,16 @@ class StepPlayback<T extends Object> {
   }
 
   /// Current normalized values, as a live read-only view.
-  List<double> get values => UnmodifiableListView(_currentValues);
+  List<double> get values => UnmodifiableListView(_viewValues);
 
   /// Current normalized velocities, as a live read-only view.
-  List<double> get velocities => UnmodifiableListView(_currentVelocities);
+  List<double> get velocities => UnmodifiableListView(_viewVelocities);
 
   /// Copies the current normalized values and velocities into [values] and
   /// [velocities] without allocating.
   void copyStateInto(List<double> values, List<double> velocities) {
-    _copyInto(values, _currentValues);
-    _copyInto(velocities, _currentVelocities);
+    _copyInto(values, _viewValues);
+    _copyInto(velocities, _viewVelocities);
   }
 
   static void _copyInto(List<double> target, List<double> source) {
@@ -242,24 +279,27 @@ class StepPlayback<T extends Object> {
   }
 
   void _restoreInitialState() {
-    _copyInto(_currentValues, _initialValues);
-    _copyInto(_currentVelocities, _initialVelocities);
+    _copyInto(_values, _initialValues);
+    _copyInto(_velocities, _initialVelocities);
   }
 
+  bool get _viewIsLatest => _viewIndex == _segments.length - 1;
+
   /// The currently active step index.
-  int get currentStepIndex => _isDone ? -1 : _stepIndex;
+  int get currentStepIndex => isDone ? -1 : _view.stepIndex;
 
   /// Whether playback has completed.
-  bool get isDone => _isDone;
+  bool get isDone =>
+      _isDone && _lastElapsedSeconds >= (_segments.last.end ?? double.infinity);
 
   /// Whether playback is paused at a [StepSync], waiting for external release.
-  bool get isWaitingForSync => _isWaitingForSync;
+  bool get isWaitingForSync => _isWaitingForSync && _viewIsLatest;
 
   /// The token of the [StepSync] currently being waited on, or `null` if
   /// playback is not waiting at a sync barrier.
   Object? get syncToken {
-    if (!_isWaitingForSync) return null;
-    return (_steps[_stepIndex] as StepSync<T>).token;
+    if (!isWaitingForSync) return null;
+    return (_steps[_view.stepIndex] as StepSync<T>).token;
   }
 
   /// The actual playback plan, including a synthetic loop-return step.
@@ -284,17 +324,28 @@ class StepPlayback<T extends Object> {
   List<double?> get estimatedSegmentSeconds =>
       List.unmodifiable(_estimatedSegmentSeconds);
 
-  /// Recorded forward step start times, in slot-local seconds.
+  /// Start times of the forward steps reached so far in the shown cycle, in
+  /// slot-local seconds.
   @internal
-  List<double?> get stepStartSeconds => List.unmodifiable(_stepStartSeconds);
+  List<double?> get stepStartSeconds {
+    final starts = List<double?>.filled(_steps.length, null);
+    final view = _view;
+    for (var i = 0; i <= _viewIndex; i++) {
+      final segment = _segments[i];
+      if (segment.cycle == view.cycle && segment.direction > 0) {
+        starts[segment.stepIndex] = segment.start + _viewTimeShift;
+      }
+    }
+    return starts;
+  }
 
   /// The current playback direction: `1` forward or `-1` reverse.
   @internal
-  int get direction => _direction;
+  int get direction => _view.direction;
 
   /// The number of loop boundaries crossed by this playback.
   @internal
-  int get cycle => _cycle;
+  int get cycle => _view.cycle + _viewCycleShift;
 
   /// The most recent slot-local elapsed time, in seconds.
   @internal
@@ -302,16 +353,17 @@ class StepPlayback<T extends Object> {
 
   /// The slot-local time at which the current loop leg began, in seconds.
   @internal
-  double get cycleStartSeconds => _cycleStartSeconds;
+  double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
   /// Whether this playback has already crossed [token] in its current leg.
   @internal
   bool hasPassedSync(Object token) {
+    final view = _view;
     for (var index = 0; index < _steps.length; index++) {
       final step = _steps[index];
       if (step is! StepSync<T> || step.token != token) continue;
-      if (_direction > 0 && _stepIndex > index) return true;
-      if (_direction < 0 && _stepIndex < index) return true;
+      if (view.direction > 0 && view.stepIndex > index) return true;
+      if (view.direction < 0 && view.stepIndex < index) return true;
     }
     return false;
   }
@@ -323,102 +375,125 @@ class StepPlayback<T extends Object> {
   void releaseSync() {
     if (!_isWaitingForSync) return;
     _isWaitingForSync = false;
-    _segmentStartSeconds = _lastElapsedSeconds;
+    _closeSegment(_lastElapsedSeconds);
     _advanceStep();
+    _show(_lastElapsedSeconds);
   }
 
-  /// Advances playback to [elapsedSeconds].
+  /// Advances playback to [elapsedSeconds], waiting at sync barriers.
   ///
-  /// Processes all step boundaries that fall within the elapsed window so that
-  /// large time gaps (e.g. from ticker muting during navigation) are resolved
-  /// in a single call rather than one step per tick.
-  bool advanceTo(double elapsedSeconds) {
+  /// Resolves all step boundaries that fall within the elapsed window, so
+  /// large time gaps (e.g. from ticker muting during navigation) are handled
+  /// in a single call. Times that were already resolved are sampled from the
+  /// segment table.
+  bool advanceTo(double elapsedSeconds) =>
+      _moveTo(elapsedSeconds, passBarriers: false);
+
+  /// Seeks playback to [elapsedSeconds].
+  ///
+  /// Unlike [advanceTo], unreleased sync barriers are passed through as
+  /// zero-length holds when resolving new segments.
+  bool seekTo(double elapsedSeconds) =>
+      _moveTo(elapsedSeconds, passBarriers: true);
+
+  bool _moveTo(double elapsedSeconds, {required bool passBarriers}) {
     assert(elapsedSeconds >= 0, 'elapsed must be non-negative');
-    if (elapsedSeconds < _lastElapsedSeconds) {
-      return seekTo(elapsedSeconds);
-    }
-
     _lastElapsedSeconds = elapsedSeconds;
-    if (_isDone || _isWaitingForSync) return _isDone;
+    _resolveUntil(elapsedSeconds, passBarriers: passBarriers);
+    _show(elapsedSeconds);
+    return isDone;
+  }
 
-    var iterations = 0;
-    while (!_isDone && !_isWaitingForSync && iterations++ < 1000) {
-      if (_moveToScheduledStepIfDue(elapsedSeconds)) {
+  void _resolveUntil(double seconds, {required bool passBarriers}) {
+    var resolved = 0;
+    while (!_isDone && _period == null && resolved++ < _maxSegmentsPerCall) {
+      if (_isWaitingForSync) {
+        if (!passBarriers || seconds <= _segmentStartSeconds) return;
+        _isWaitingForSync = false;
+        _closeSegment(_segmentStartSeconds);
+        _advanceStep();
         continue;
       }
 
-      final localSeconds = elapsedSeconds - _segmentStartSeconds;
-      _sample(localSeconds);
-      if (!_segmentIsDone(localSeconds)) return false;
+      final cut = _cutAt;
+      if (cut != null && seconds >= cut) {
+        final local = cut - _segmentStartSeconds;
+        _sample(local);
+        _recordForwardSegmentDuration(local);
+        _closeSegment(cut);
+        _advanceStep();
+        continue;
+      }
+
+      final localSeconds = seconds - _segmentStartSeconds;
+      if (!_segmentIsDone(localSeconds)) return;
 
       // Use the computed ideal completion time to prevent floating-point
       // drift across loop cycles.
       final completionSeconds = _completionTime(localSeconds);
       _sample(completionSeconds);
-      _segmentStartSeconds += completionSeconds;
       _recordForwardSegmentDuration(completionSeconds);
 
-      // If the current step is a StepSync, enter waitForSync instead of
-      // advancing. The TrackController will call releaseSync() when all
-      // tracks are synchronized.
-      if (_steps[_stepIndex] is StepSync<T>) {
+      if (_steps[_stepIndex] is StepSync<T> && !passBarriers) {
+        // Hold here until the TrackController calls releaseSync().
+        _segmentStartSeconds += completionSeconds;
         _isWaitingForSync = true;
-        return false;
+        return;
       }
 
+      _closeSegment(_segmentStartSeconds + completionSeconds);
       _advanceStep();
     }
-
-    return _isDone;
   }
 
-  /// Seeks playback to [elapsedSeconds].
-  ///
-  /// This replays from the beginning and discovers segment boundaries lazily
-  /// with binary search only when a segment reports completion.
-  bool seekTo(double elapsedSeconds) {
-    assert(elapsedSeconds >= 0, 'elapsed must be non-negative');
-    _reset();
-    _lastElapsedSeconds = elapsedSeconds;
+  /// Ends the segment being resolved at [seconds], where the next one starts.
+  void _closeSegment(double seconds) {
+    _segments.last.end = seconds;
+    _segmentStartSeconds = seconds;
+  }
 
-    var iterations = 0;
-    while (!_isDone && iterations++ < 1000) {
-      if (_moveToScheduledStepIfDue(elapsedSeconds)) {
-        continue;
+  /// Samples the segment table at [seconds] into the view buffers.
+  void _show(double seconds) {
+    var local = seconds;
+    _viewCycleShift = 0;
+    _viewTimeShift = 0;
+    if (_period case final period? when period > 0) {
+      final foldEnd = _foldStartSeconds + period;
+      if (seconds >= foldEnd) {
+        final periods = ((seconds - _foldStartSeconds) / period).floor();
+        _viewCycleShift = periods;
+        _viewTimeShift = periods * period;
+        local = seconds - _viewTimeShift;
       }
-
-      final localSeconds = elapsedSeconds - _segmentStartSeconds;
-      _sample(localSeconds);
-
-      if (!_segmentIsDone(localSeconds)) return false;
-
-      final completionSeconds = _completionTime(localSeconds);
-      _sample(completionSeconds);
-      _segmentStartSeconds += completionSeconds;
-      _recordForwardSegmentDuration(completionSeconds);
-      _advanceStep();
-
-      if (_segmentStartSeconds > elapsedSeconds) return _isDone;
     }
 
-    return _isDone;
+    final last = _segments.length - 1;
+    _viewIndex =
+        _segments[last].start <= local ? last : _segmentIndexAt(local);
+    final segment = _segments[_viewIndex];
+    final end = segment.end;
+    var t = (end != null && end < local ? end : local) - segment.start;
+    if (t < 0) t = 0;
+    final simulations = segment.simulations;
+    for (var i = 0; i < simulations.length; i++) {
+      _viewValues[i] = simulations[i].x(t);
+      _viewVelocities[i] = simulations[i].dx(t);
+    }
   }
 
-  void _reset() {
-    _restoreInitialState();
-    _stepIndex = 0;
-    _direction = 1;
-    _cycle = 0;
-    _cycleStartSeconds = 0;
-    _segmentStartSeconds = 0;
-    _lastElapsedSeconds = 0;
-    _isDone = false;
-    _isWaitingForSync = false;
-    for (var i = 0; i < _stepStartSeconds.length; i++) {
-      _stepStartSeconds[i] = null;
+  /// The index of the last segment starting at or before [seconds].
+  int _segmentIndexAt(double seconds) {
+    var low = 0;
+    var high = _segments.length - 1;
+    while (low < high) {
+      final mid = (low + high + 1) >> 1;
+      if (_segments[mid].start <= seconds) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
     }
-    _startCurrentStep();
-    _sample(0);
+    return low;
   }
 
   void _advanceStep() {
@@ -437,23 +512,20 @@ class StepPlayback<T extends Object> {
           if (!_hasReturnStep) {
             _restoreInitialState();
           }
-          _cycleStartSeconds = _segmentStartSeconds;
-          _cycle++;
           _stepIndex = 0;
         case LoopMode.pingPong:
           // Reverse direction from the last step.
           _direction = -1;
-          _cycleStartSeconds = _segmentStartSeconds;
-          _cycle++;
           _stepIndex = _steps.length - 1;
         case LoopMode.seamless:
           // Jump straight back to the start snapshot and replay. The timeline
           // is expected to end where it began, so the jump is invisible.
           _restoreInitialState();
-          _cycleStartSeconds = _segmentStartSeconds;
-          _cycle++;
           _stepIndex = 0;
       }
+      _cycleStartSeconds = _segmentStartSeconds;
+      _cycle++;
+      if (_startCycle()) return;
     } else if (_direction < 0 && _stepIndex < 0) {
       // PingPong: reached start while reversing — go forward again from
       // step 0 which targets the first step value.
@@ -463,6 +535,45 @@ class StepPlayback<T extends Object> {
     }
 
     _startCurrentStep();
+  }
+
+  /// Records the start of a new loop cycle and folds playback when the cycle
+  /// repeats an earlier one. Returns true when resolution stops.
+  bool _startCycle() {
+    _recordCycleStart();
+    if (_canFold && _cycleStarts.length > 1) {
+      final current = _cycleStarts.last;
+      final earlier = _cycleStarts[_cycleStarts.length - 2];
+      if (current.repeats(earlier)) {
+        _cycleStarts.removeLast();
+        _period = current.start - earlier.start;
+        _foldStartSeconds = earlier.start;
+        return true;
+      }
+    }
+    if (!_canFold) _dropOldCycles(keep: 2);
+    return false;
+  }
+
+  void _recordCycleStart() {
+    _cycleStarts.add(
+      _CycleStart(
+        cycle: _cycle,
+        direction: _direction,
+        start: _segmentStartSeconds,
+        values: List.of(_values),
+        velocities: List.of(_velocities),
+      ),
+    );
+  }
+
+  /// Bounds memory for loops that cannot fold by forgetting all but the
+  /// last [keep] cycles. Seeking before them shows the earliest one kept.
+  void _dropOldCycles({required int keep}) {
+    final oldest = _cycle - keep;
+    final drop = _segments.indexWhere((segment) => segment.cycle > oldest);
+    if (drop > 0) _segments.removeRange(0, drop);
+    _cycleStarts.removeWhere((start) => start.cycle <= oldest);
   }
 
   void _recordForwardSegmentDuration(double seconds) {
@@ -514,9 +625,23 @@ class StepPlayback<T extends Object> {
   void _startCurrentStep() {
     if (_direction < 0) {
       _startReverseStep();
-      return;
+    } else {
+      _startForwardStep();
     }
-    _stepStartSeconds[_stepIndex] = _segmentStartSeconds;
+    _segments.add(
+      _Segment(
+        stepIndex: _stepIndex,
+        direction: _direction,
+        cycle: _cycle,
+        cycleStart: _cycleStartSeconds,
+        start: _segmentStartSeconds,
+        simulations: _simulations,
+      ),
+    );
+    _scheduleCutForNextAt();
+  }
+
+  void _startForwardStep() {
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
       StepTo<T>(:final motion, :final motionPerDimension) => () {
@@ -525,21 +650,21 @@ class StepPlayback<T extends Object> {
           return [
             for (var i = 0; i < targets.length; i++)
               motions[i].createSimulation(
-                start: _currentValues[i],
+                start: _values[i],
                 end: targets[i],
-                velocity: _currentVelocities[i],
+                velocity: _velocities[i],
               ),
           ];
         }(),
       StepFree<T>(:final motion) => [
-          for (var i = 0; i < _currentValues.length; i++)
+          for (var i = 0; i < _values.length; i++)
             motion.createSimulation(
-              start: _currentValues[i],
-              velocity: _currentVelocities[i],
+              start: _values[i],
+              velocity: _velocities[i],
             ),
         ],
       StepHold<T>(:final duration) => [
-          for (final value in _currentValues)
+          for (final value in _values)
             _HoldSimulation(
               value: value,
               duration: duration.toSeconds(),
@@ -558,14 +683,14 @@ class StepPlayback<T extends Object> {
           return [
             for (var i = 0; i < targets.length; i++)
               atMotions[i].createSimulation(
-                start: _currentValues[i],
+                start: _values[i],
                 end: targets[i],
-                velocity: _currentVelocities[i],
+                velocity: _velocities[i],
               ),
           ];
         }(),
       StepSync<T>() => [
-          for (final value in _currentValues)
+          for (final value in _values)
             _HoldSimulation(value: value, duration: 0),
         ],
     };
@@ -603,9 +728,9 @@ class StepPlayback<T extends Object> {
       _simulations = [
         for (var i = 0; i < targets.length; i++)
           motions[i].createSimulation(
-            start: _currentValues[i],
+            start: _values[i],
             end: targets[i],
-            velocity: _currentVelocities[i],
+            velocity: _velocities[i],
           ),
       ];
     } else {
@@ -616,31 +741,33 @@ class StepPlayback<T extends Object> {
         _ => 0.0,
       };
       _simulations = [
-        for (final value in _currentValues)
+        for (final value in _values)
           _HoldSimulation(value: value, duration: duration),
       ];
     }
   }
 
-  bool _moveToScheduledStepIfDue(double elapsedSeconds) {
-    if (_direction < 0) return false;
-
-    final nextStepIndex = _stepIndex + _direction;
-    if (nextStepIndex < 0 || nextStepIndex >= _steps.length) return false;
-
-    final nextStep = _steps[nextStepIndex];
-    if (nextStep case StepAt<T>(:final at)) {
-      final absoluteAt = _absoluteTimeFor(at);
-      if (elapsedSeconds < absoluteAt) return false;
-
-      _sample(absoluteAt - _segmentStartSeconds);
-      _recordForwardSegmentDuration(absoluteAt - _segmentStartSeconds);
-      _segmentStartSeconds = absoluteAt;
-      _advanceStep();
-      return true;
+  /// Decides when the running step yields to a following [StepAt].
+  ///
+  /// A [StepAt] arrives at its value exactly at its time. If the running step
+  /// finishes by then, the [StepAt] fills the remaining gap. Otherwise the
+  /// running step is cut short early enough for the [StepAt]'s motion to run
+  /// for its natural duration, but never before the running step started.
+  void _scheduleCutForNextAt() {
+    _cutAt = null;
+    if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
+    final next = _stepIndex + 1;
+    if (next >= _steps.length) return;
+    if (_steps[next]
+        case StepAt<T>(:final at, :final motion, :final motionPerDimension)) {
+      final arrival = _absoluteTimeFor(at);
+      final window = arrival - _segmentStartSeconds;
+      if (window >= 0 && _segmentIsDone(window)) return;
+      final duration = _knownMotionDuration(motion, motionPerDimension);
+      _cutAt = duration == null
+          ? _segmentStartSeconds
+          : math.max(_segmentStartSeconds, arrival - duration.toSeconds());
     }
-
-    return false;
   }
 
   double _absoluteTimeFor(Duration at) => _cycleStartSeconds + at.toSeconds();
@@ -649,13 +776,12 @@ class StepPlayback<T extends Object> {
     final t = localSeconds < 0 ? 0.0 : localSeconds;
     final simulations = _simulations;
     assert(
-      simulations.length == _currentValues.length,
-      'step has ${simulations.length} dimensions, expected '
-      '${_currentValues.length}',
+      simulations.length == _values.length,
+      'step has ${simulations.length} dimensions, expected ${_values.length}',
     );
     for (var i = 0; i < simulations.length; i++) {
-      _currentValues[i] = simulations[i].x(t);
-      _currentVelocities[i] = simulations[i].dx(t);
+      _values[i] = simulations[i].x(t);
+      _velocities[i] = simulations[i].dx(t);
     }
   }
 
@@ -663,12 +789,23 @@ class StepPlayback<T extends Object> {
     return _simulations.every((simulation) => simulation.isDone(localSeconds));
   }
 
+  /// The earliest time in `[0, upper]` at which the running segment is done,
+  /// given that it is done at [upper].
+  ///
+  /// Widens a window from a small start before bisecting, so a distant
+  /// [upper] (e.g. when seeking far ahead) keeps full precision.
   double _completionTime(double upper) {
     if (upper <= 0 || _segmentIsDone(0)) return 0;
 
     var low = 0.0;
-    var high = upper;
-    for (var i = 0; i < 24; i++) {
+    var high = math.min(upper, 1 / 64);
+    while (high < upper && !_segmentIsDone(high)) {
+      low = high;
+      high = math.min(high * 2, upper);
+    }
+    // Runs once per segment; the extra precision keeps folded loop periods
+    // accurate over many repetitions.
+    for (var i = 0; i < 40; i++) {
       final mid = (low + high) / 2;
       if (_segmentIsDone(mid)) {
         high = mid;
@@ -677,6 +814,57 @@ class StepPlayback<T extends Object> {
       }
     }
     return high;
+  }
+}
+
+/// One resolved step: its simulations and the time range it occupies.
+class _Segment {
+  _Segment({
+    required this.stepIndex,
+    required this.direction,
+    required this.cycle,
+    required this.cycleStart,
+    required this.start,
+    required this.simulations,
+  });
+
+  final int stepIndex;
+  final int direction;
+  final int cycle;
+  final double cycleStart;
+  final double start;
+  final List<Simulation> simulations;
+
+  /// When the segment ends, or null while it is still running.
+  double? end;
+}
+
+/// The state playback was in when a loop cycle started.
+class _CycleStart {
+  _CycleStart({
+    required this.cycle,
+    required this.direction,
+    required this.start,
+    required this.values,
+    required this.velocities,
+  });
+
+  final int cycle;
+  final int direction;
+  final double start;
+  final List<double> values;
+  final List<double> velocities;
+
+  bool repeats(_CycleStart other) =>
+      direction == other.direction &&
+      _near(values, other.values) &&
+      _near(velocities, other.velocities);
+
+  static bool _near(List<double> a, List<double> b) {
+    for (var i = 0; i < a.length; i++) {
+      if ((a[i] - b[i]).abs() > 1e-9 * math.max(1, a[i].abs())) return false;
+    }
+    return true;
   }
 }
 

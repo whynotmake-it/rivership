@@ -189,6 +189,26 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
+    test('TrackStep.at arrives on time when the previous step overruns', () {
+      // The first step would take 1s, so it is cut at 300ms to leave the
+      // .at motion its natural 200ms to arrive at 500ms.
+      final playback = StepPlayback<double>(
+        steps: const [
+          TrackStep.to(10, motion: Motion.linear(Duration(seconds: 1))),
+          TrackStep.at(Duration(milliseconds: 500), 0, motion: linear200),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+
+      playback.advanceTo(0.3);
+      expect(playback.values.single, closeTo(3, error));
+      playback.advanceTo(0.4);
+      expect(playback.values.single, closeTo(1.5, error));
+      playback.advanceTo(0.5);
+      expect(playback.values.single, closeTo(0, error));
+    });
+
     test('TrackStep.at at exactly the cumulative time is valid (gap == 0)', () {
       // hold(100ms) then at(100ms) => gap is exactly 0, which is allowed.
       final playback = StepPlayback<double>(

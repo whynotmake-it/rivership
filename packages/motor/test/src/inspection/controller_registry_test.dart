@@ -99,6 +99,40 @@ void main() {
     controller.dispose();
     subscription.dispose();
   });
+
+  testWidgets('estimates simulated durations to the millisecond', (
+    tester,
+  ) async {
+    final subscription = MotorInspectionRegistry.attach(_RecordingObserver());
+    final controller = TrackController(vsync: tester);
+    final track = Track<double>(MotionConverter.single, initial: 0);
+
+    unawaited(
+      controller.animate([
+        track.free(const FrictionMotion(), withVelocity: 1000),
+      ]),
+    );
+    await tester.pump();
+    final estimate = controller
+        .inspectPlayback()
+        .tracks
+        .single
+        .estimatedStepDurations
+        .single;
+
+    await tester.pumpAndSettle(const Duration(milliseconds: 1));
+    final actual =
+        controller.inspectPlayback().tracks.single.stepDurations.single;
+
+    expect(estimate, isNotNull);
+    expect(
+      (estimate! - actual!).inMicroseconds.abs(),
+      lessThan(Duration.microsecondsPerMillisecond),
+    );
+
+    controller.dispose();
+    subscription.dispose();
+  });
 }
 
 class _RecordingObserver implements MotorInspectionObserver {

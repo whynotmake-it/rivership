@@ -34,12 +34,21 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// A keyframe that targets [value] at absolute time [at].
   ///
   /// [at] is measured from the start of the track animation (and from the
-  /// start of the current cycle when looping). If the preceding steps finish
-  /// before [at], the motion is time-scaled so [value] is reached exactly at
-  /// [at]. If a preceding step is still running at [at], it is cut short and
-  /// this step starts at [at] with its motion's natural duration, so [value]
-  /// is reached later than [at]. [at] must not be earlier than the total
-  /// duration of preceding holds (asserted).
+  /// start of the current cycle when looping), and [value] is reached exactly
+  /// at [at]:
+  ///
+  /// - If the preceding steps finish before [at], the motion is time-scaled
+  ///   to fill the gap.
+  /// - If the preceding step would still be running at [at], it is cut short
+  ///   so that the motion runs for its natural duration and ends at [at]. The
+  ///   cut never happens before that step started; if there is not enough
+  ///   time, the motion is compressed. A motion without a known duration
+  ///   starts right when the preceding step starts.
+  ///
+  /// [value] arrives late only when this step cannot start before [at], for
+  /// example because a preceding sync barrier is released after [at]. [at]
+  /// must not be earlier than the total duration of preceding holds
+  /// (asserted).
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
@@ -171,8 +180,10 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// example to make a slower and a faster track meet before the next move.
 /// [TrackPhaseTimeline] inserts these automatically at phase boundaries.
 ///
-/// During seek operations, sync steps are treated as zero-duration holds and
-/// passed through freely.
+/// During seek operations, barriers that have not been released yet are
+/// treated as zero-duration holds and passed through freely. Barriers that
+/// were already released keep their recorded release time, so seeking back
+/// shows the timeline as it played.
 @immutable
 class StepSync<T extends Object> extends TrackStep<T> {
   /// Creates a sync step with a [token] for grouped release.

@@ -52,12 +52,9 @@ void main() {
       playback.releaseSync();
       expect(playback.isWaitingForSync, isFalse);
 
-      // Now advance a small amount — should be animating toward 2.0
-      // First step completes at ~0.1s, sync at same time, so segment start
-      // for third step is ~0.1s. At 0.15s, local time is ~0.05s = halfway.
-      playback.advanceTo(0.15);
-      expect(playback.values.first, greaterThan(1.0));
-      expect(playback.values.first, lessThan(2.0));
+      // The last step starts at the release time, 0.2s.
+      playback.advanceTo(0.25);
+      expect(playback.values.first, closeTo(1.5, error));
 
       playback.advanceTo(0.5);
       expect(playback.values.first, closeTo(2.0, error));
@@ -94,6 +91,33 @@ void main() {
       playback.advanceTo(0.6);
       expect(playback.isDone, isTrue);
       expect(playback.values.first, closeTo(3.0, error));
+    });
+
+    test('seeking back over a released barrier shows the recorded release', () {
+      final playback = StepPlayback<double>(
+        steps: [
+          const StepTo(1.0, motion: linear100),
+          const StepSync(token: #phaseB),
+          const StepTo(2.0, motion: linear100),
+        ],
+        converter: MotionConverter.single,
+        start: 0.0,
+      );
+
+      playback.advanceTo(0.2);
+      playback.releaseSync();
+      playback.advanceTo(0.25);
+      expect(playback.values.first, closeTo(1.5, error));
+
+      playback.seekTo(0.15);
+      expect(playback.values.first, closeTo(1.0, error));
+      expect(playback.isWaitingForSync, isFalse);
+
+      playback.seekTo(0.05);
+      expect(playback.values.first, closeTo(0.5, error));
+
+      playback.advanceTo(0.3);
+      expect(playback.values.first, closeTo(2.0, error));
     });
 
     test('passes through sync steps freely when seeking', () {

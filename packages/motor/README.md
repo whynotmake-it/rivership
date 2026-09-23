@@ -261,7 +261,7 @@ offset([                               // multiple steps, run in order
 The available steps are the verbs of the system:
 
 - **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle.
-- **`.at(time, value, motion:)`** — a keyframe on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). If the previous steps finish before `time`, the motion is time-scaled so `value` is reached exactly at `time`. If a previous step is still running at `time`, it is cut short and the `.at` step *starts* at `time`, running for its motion's natural duration. Times must not go backwards past preceding `.hold`s (asserted).
+- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). If the previous steps finish early, the motion is stretched to fill the gap. If the previous step would still be running, it is cut short just early enough for the `.at` motion to run its natural duration and land on `time`. Times must not go backwards past preceding `.hold`s (asserted).
 - **`.hold(duration)`** — keep the current value for `duration`.
 - **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
 - **`.sync(token:)`** — a barrier (see below).
@@ -325,7 +325,8 @@ No more hand-tuning durations just to line things up. Barriers only
 coordinate tracks playing on the same controller (one `TrackBuilder` or
 `TrackController`). A track that is stopped or redirected before reaching a
 barrier stops participating, so it never holds the others hostage. When
-scrubbing, barriers are passed through as zero-length holds.
+scrubbing, barriers that have not been released yet are passed through as
+zero-length holds; released ones keep the moment they were released.
 
 #### Phases — named states
 
