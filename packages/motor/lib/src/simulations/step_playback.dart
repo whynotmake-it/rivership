@@ -954,7 +954,10 @@ class StepPlayback<T extends Object> {
   }
 
   bool _segmentIsDone(double localSeconds) {
-    return _simulations.every((simulation) => simulation.isDone(localSeconds));
+    for (final simulation in _simulations) {
+      if (!simulation.isDone(localSeconds)) return false;
+    }
+    return true;
   }
 
   /// Starts finding when the running segment ends: the first point on a
