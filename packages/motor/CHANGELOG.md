@@ -65,7 +65,7 @@
 
 ### Performance
 
- - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocity estimates). With 500 tracks on one controller, per-frame cost relative to one `AnimationController` per track went from +62% to about +20% in the [benchmark suite](./benchmark/) (thanks to [definev](https://github.com/definev) for the harness and the original allocation work).
+ - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocity estimates). With 500 tracks on one controller, per-frame cost relative to one `AnimationController` per track went from +62% to about +11% to +18% in the [benchmark suite](./benchmark/) (thanks to [definev](https://github.com/definev) for the harness and the original allocation work).
 
 ### Fixes
 

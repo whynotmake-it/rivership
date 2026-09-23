@@ -14,41 +14,58 @@ What the layers measure:
 - **tick**: time spent in `read()` inside the listener, i.e. reading values.
   It does not include advancing simulations.
 
+## Summary
+
+Final state (`motor/2.0` after Phase 5, two full runs), per-frame cost
+(pump) relative to one `AnimationController` per animated value:
+
+- One value: single spring +7% to +14%, single curve +16% to +24%.
+- Many tracks on one controller: within about 3% of `AnimationController`
+  from 50 to 250 tracks, and +11% to +18% at 500 tracks (baseline: +62%).
+- Interrupt/retarget: about +35% (Motor about 45 µs per frame), from
+  building a new playback and resolving its first segment on every
+  retarget.
+- Widget rebuild: `TrackBuilder` is 26% to 30% cheaper than
+  `AnimatedBuilder`.
+- Value reads (tick) cost about 3x `AnimationController.value`, because each
+  read looks a track up and denormalizes it; velocity tracking adds about
+  3 µs per `set`.
+
 ## Results per phase (p50 Δ vs AnimationController)
 
 ### Pump (per-frame cost)
 
-| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
-|---|---:|---:|---:|---:|---:|---:|
-| Single curve (1D) | +15.4% | -2.4% | +17.2% | +19.0% | +20.2% | +19.0% |
-| Single spring (1D) | +8.6% | -2.1% | +7.1% | +3.1% | +6.0% | +8.1% |
-| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +3.7% | +5.5% | +5.9% |
-| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +5.4% | -1.3% | +1.2% |
-| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +3.6% | +3.2% | +1.7% |
-| Multi-track ×50 | +18.5% | -2.5% | +2.6% | -2.2% | +1.5% | -2.7% |
-| Multi-track ×100 | +24.6% | -0.3% | +3.7% | -2.1% | +0.8% | -2.6% |
-| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +11.0% | +5.7% | +5.4% |
-| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +16.2% | +16.8% | +20.1% |
-| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +37.0% | +44.1% | +34.5% |
-| Widget rebuild | -32.2% | -32.8% | -32.8% | -26.0% | -25.9% | -32.2% |
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Final |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Single curve (1D) | +15.4% | -2.4% | +17.2% | +19.0% | +20.2% | +19.0% | +16.2% |
+| Single spring (1D) | +8.6% | -2.1% | +7.1% | +3.1% | +6.0% | +8.1% | +6.6% |
+| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +3.7% | +5.5% | +5.9% | +6.5% |
+| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +5.4% | -1.3% | +1.2% | +3.0% |
+| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +3.6% | +3.2% | +1.7% | +12.3% |
+| Multi-track ×50 | +18.5% | -2.5% | +2.6% | -2.2% | +1.5% | -2.7% | +1.1% |
+| Multi-track ×100 | +24.6% | -0.3% | +3.7% | -2.1% | +0.8% | -2.6% | -1.1% |
+| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +11.0% | +5.7% | +5.4% | +2.7% |
+| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +16.2% | +16.8% | +20.1% | +17.5% |
+| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +37.0% | +44.1% | +34.5% | +33.7% |
+| Widget rebuild | -32.2% | -32.8% | -32.8% | -26.0% | -25.9% | -32.2% | -26.6% |
 
 ### Tick (value reads)
 
-| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
-|---|---:|---:|---:|---:|---:|---:|
-| Single curve (1D) | +135.6% | +190.3% | +175.0% | +140.8% | +203.1% | +130.7% |
-| Single spring (1D) | +224.2% | +250.0% | +268.7% | +245.2% | +264.7% | +289.7% |
-| Offset spring (2D) | +354.1% | +327.5% | +333.3% | +340.0% | +293.3% | +352.6% |
-| Multi-track ×1 | +85.5% | +155.4% | +154.7% | +74.6% | +141.3% | +88.9% |
-| Multi-track ×10 | +226.4% | +296.6% | +237.5% | +246.2% | +222.6% | +230.2% |
-| Multi-track ×50 | +167.9% | +236.1% | +211.5% | +208.5% | +198.5% | +202.3% |
-| Multi-track ×100 | +196.4% | +247.5% | +261.8% | +232.3% | +234.3% | +238.6% |
-| Multi-track ×250 | +208.2% | +302.7% | +274.8% | +285.3% | +291.2% | +296.4% |
-| Multi-track ×500 | +254.1% | +304.7% | +321.9% | +305.2% | +303.0% | +295.0% |
-| Interrupt / retarget | +129.9% | +170.5% | +200.0% | +225.6% | +264.8% | +223.6% |
-| Widget rebuild | +6.1% | -12.1% | -8.8% | -15.8% | -12.2% | -42.3% |
-| Manual set (tracking off, noise) | +2.6% | +45.0% | +64.4% | +274.9% | +279.5% | -3.6% |
-| Velocity tracking on vs off | +4732% | +2736% | +3064% | +3484% | +3112% | +2876% |
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Final |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Single curve (1D) | +135.6% | +190.3% | +175.0% | +140.8% | +203.1% | +130.7% | +86.7% |
+| Single spring (1D) | +224.2% | +250.0% | +268.7% | +245.2% | +264.7% | +289.7% | +266.7% |
+| Offset spring (2D) | +354.1% | +327.5% | +333.3% | +340.0% | +293.3% | +352.6% | +354.1% |
+| Multi-track ×1 | +85.5% | +155.4% | +154.7% | +74.6% | +141.3% | +88.9% | +105.7% |
+| Multi-track ×10 | +226.4% | +296.6% | +237.5% | +246.2% | +222.6% | +230.2% | +277.4% |
+| Multi-track ×50 | +167.9% | +236.1% | +211.5% | +208.5% | +198.5% | +202.3% | +192.6% |
+| Multi-track ×100 | +196.4% | +247.5% | +261.8% | +232.3% | +234.3% | +238.6% | +239.5% |
+| Multi-track ×250 | +208.2% | +302.7% | +274.8% | +285.3% | +291.2% | +296.4% | +249.3% |
+| Multi-track ×500 | +254.1% | +304.7% | +321.9% | +305.2% | +303.0% | +295.0% | +283.2% |
+| Interrupt / retarget | +129.9% | +170.5% | +200.0% | +225.6% | +264.8% | +223.6% | +214.9% |
+| Widget rebuild | +6.1% | -12.1% | -8.8% | -15.8% | -12.2% | -42.3% | -32.9% |
+| Manual set (tracking off, noise) | +2.6% | +45.0% | +64.4% | +274.9% | +279.5% | -3.6% | +224.3% |
+| Velocity tracking on vs off | +4732% | +2736% | +3064% | +3484% | +3112% | +2876% | +3332% |
 
 - **Baseline**: `motor/2.0` at `3d517dd`, before any performance work.
 - **Phase 0.5**: `ebb9068`. It adds in-place sampling, lazily cached
@@ -78,6 +95,10 @@ What the layers measure:
   against Phase 3, Motor at 500 tracks is 164 to 169 µs per frame versus
   157 to 161 µs (about +3%), likely the per-frame archive bookkeeping in
   each track slot. Interrupt/retarget is unchanged at about 45 µs.
+- **Final**: after Phase 5 (`fdb0262`, per-track `Animation` views) and the
+  review fixes up to `681bf60`. `animationOf` adds no per-frame cost unless
+  one is listened to. Values are from the first of two runs; the second
+  gave +11.2% at 500 tracks and +36.8% for interrupt/retarget.
 
 Reading the table:
 
