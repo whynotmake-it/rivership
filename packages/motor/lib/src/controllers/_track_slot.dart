@@ -11,7 +11,6 @@ class _TrackSlot<T extends Object> {
           converter.normalize(initialValue).length,
           0,
         ),
-        _value = initialValue,
         _copyBeforeDenormalize = !_builtInConverters.contains(
           converter.runtimeType,
         );
@@ -37,27 +36,20 @@ class _TrackSlot<T extends Object> {
   // built-in converters directly: others may keep the list they are given.
   List<double> _currentValues;
   List<double> _velocityValues;
-  T? _value;
-  T? _velocity;
   final bool _copyBeforeDenormalize;
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
 
-  T get value => _value ??= _denormalize(_currentValues);
+  T get value => _denormalize(_currentValues);
 
-  T get velocity => _velocity ??= _denormalize(_velocityValues);
+  T get velocity => _denormalize(_velocityValues);
 
   T _denormalize(List<double> values) => converter
       .denormalize(_copyBeforeDenormalize ? _ownedCopy(values) : values);
 
   static List<double> _ownedCopy(List<double> values) =>
       List<double>.of(values, growable: false);
-
-  void _invalidateCache() {
-    _value = null;
-    _velocity = null;
-  }
 
   bool get isAnimating => _playback != _TrackSlotPlayback.idle;
 
@@ -78,8 +70,6 @@ class _TrackSlot<T extends Object> {
   void setValue(T value) {
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = List<double>.filled(_currentValues.length, 0);
-    _value = value;
-    _velocity = null;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
@@ -87,8 +77,6 @@ class _TrackSlot<T extends Object> {
   void setValueWithVelocity(T value, T velocity) {
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = _ownedCopy(converter.normalize(velocity));
-    _value = value;
-    _velocity = velocity;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
@@ -96,7 +84,6 @@ class _TrackSlot<T extends Object> {
   /// Replaces the velocity without touching the value or playback.
   void setVelocity(T velocity) {
     _velocityValues = _ownedCopy(converter.normalize(velocity));
-    _velocity = velocity;
   }
 
   void play(
@@ -170,7 +157,6 @@ class _TrackSlot<T extends Object> {
 
   void _pullPlaybackState() {
     _stepPlayback!.copyStateInto(_currentValues, _velocityValues);
-    _invalidateCache();
   }
 
   /// Redirects this slot to settle at its current value using the fallback
@@ -198,7 +184,6 @@ class _TrackSlot<T extends Object> {
   void stop({bool canceled = false}) {
     _stepPlayback = null;
     _velocityValues = List<double>.filled(_currentValues.length, 0);
-    _velocity = null;
     _playback = _TrackSlotPlayback.idle;
   }
 
