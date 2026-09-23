@@ -1,14 +1,17 @@
 # Motor DevTools
 
-An optional in-app inspector and motion studio for
-[`motor`](https://pub.dev/packages/motor). It discovers Motor controllers,
-shows their live track timelines, pauses and scrubs playback, and lets a
-designer audition motion changes without recompiling the app.
+An optional in-app inspector for [`motor`](https://pub.dev/packages/motor).
+A small bubble floats above your app. Tap it to see every live Motor
+controller; tap a controller to pause it, scrub its timeline, slow it down,
+replay it, or try a different motion on one of its tracks.
+
+| Bubble | Controllers | Controller | Scrubbing |
+|---|---|---|---|
+| ![The floating bubble](doc/bubble.png) | ![The controller list](doc/controller-list.png) | ![A controller's timeline and controls](doc/controller-detail.png) | ![Scrubbing a sync barrier in dark mode](doc/scrubbing-dark.png) |
 
 ## Use it
 
-Add `motor_devtools` next to `motor`, then wrap the application above the
-controllers you want to inspect:
+Add `motor_devtools` next to `motor`, then wrap your app:
 
 ```dart
 import 'package:flutter/foundation.dart';
@@ -23,11 +26,15 @@ MaterialApp(
 );
 ```
 
-The wrapper also works above `MaterialApp` or `CupertinoApp`. The `builder`
-position is recommended because it naturally retains the application's media
-and localization configuration.
+`MotorDevTools` also works around a `MaterialApp`, `CupertinoApp`, or
+`WidgetsApp`. It brings its own neutral styling, follows the platform's light
+or dark mode, and does not depend on Material or Cupertino.
 
-Give controllers and tracks useful names so they are easy to find:
+## Name your controllers
+
+The list shows each controller's `debugLabel`. Unnamed controllers show up as
+"Controller 1", "Controller 2", and so on, so name the ones you care about.
+Every controller and builder takes a `debugLabel`, and so does every track:
 
 ```dart
 final controller = TrackController(
@@ -40,52 +47,59 @@ final cardScale = Track<double>(
   initial: 0,
   debugLabel: 'Card scale',
 );
+
+SingleMotionBuilder(
+  value: expanded ? 1 : 0,
+  motion: const Motion.smoothSpring(),
+  debugLabel: 'Sheet expansion',
+  builder: (context, value, child) => ...,
+);
 ```
 
-Open the floating Motor launcher to:
+`MotionController`, `SingleMotionController`, `BoundedMotionController`,
+`TrackBuilder`, `PhaseTrackBuilder`, `MotionBuilder`, `VelocityMotionBuilder`
+and `MotionDraggable` all accept `debugLabel` too.
 
-- see every live `TrackController` and `MotionController`;
-- drag the launcher anywhere, then snap it to the nearest corner;
-- move between a compact status button, a one-track timeline, and the full
-  inspector with taps, double taps, buttons, or vertical fling gestures;
-- inspect measured and estimated segments in each track timeline;
-- pause, drag to scrub, resume, or replay the latest clip;
-- run one controller at 0.25×, 0.5×, or full speed;
-- select tracks from a tactile card carousel;
-- tune spring duration and bounce together on a two-dimensional response field;
-- or choose an easing curve and duration in Curve Lab.
+## What you can do
 
-Motion Studio changes are session-only. They apply to target-based steps in
-the selected track, replay the most recently submitted clip immediately, and
-restore the authored motion when reset or when the wrapper is disabled.
+- **Move the bubble.** Drag it anywhere, or fling it. It settles on the
+  nearest side of the screen.
+- **See every controller.** The list shows whether each one is playing,
+  paused or idle, and which tracks it animates.
+- **Pause, resume and replay.** Play resumes where you paused or scrubbed to,
+  and replays the latest plan once it has finished.
+- **Scrub.** Drag across the timeline, or tap it, to move the controller to
+  that point. Each lane is a track: bars are motions, thin lines are holds,
+  dots are waits at a sync barrier. The part left of the playhead has
+  played. Looping plans show one cycle at a time.
+- **Slow down.** Run one controller at 0.1×, 0.25×, 0.5× or full speed
+  without touching Flutter's global time dilation.
+- **Try another motion.** Swap a track's motion for a spring, an ease or a
+  linear motion, and tune its duration and bounce. The latest plan replays
+  right away.
 
-## In action
+Speed and motion changes last for the session. They are undone when
+`MotorDevTools` is disabled or removed.
 
-| Compact launcher | One-track peek |
-|---|---|
-| ![Compact draggable launcher](doc/compact-launcher.png) | ![Draggable one-track peek](doc/controller-list.png) |
-
-| Timeline and playback | Spring field | Curve Lab |
-|---|---|---|
-| ![Live multi-track timeline and slow-motion controls](doc/timeline-and-controls.png) | ![Spring response field in Motion Studio](doc/motion-studio.png) | ![Duration and easing controls in Curve Lab](doc/curve-lab.png) |
+To open or close the panel from code, pass a `MotorDevToolsController`.
 
 ## Production builds
 
-`enabled` is a normal runtime flag, so teams can intentionally ship the panel
-to testers or customers:
+`enabled` is a normal runtime flag, so you can deliberately ship the tools to
+testers:
 
 ```dart
 MotorDevTools(
-  enabled: kDebugMode || featureFlags.customerMotionLab,
+  enabled: kDebugMode || featureFlags.motionLab,
   child: app,
 )
 ```
 
-When disabled, the wrapper returns its child directly and does not attach the
-controller registry. Motor itself retains no global controller collection
-until a devtools observer attaches. Apps that do not depend on or import
-`motor_devtools` can tree-shake the package entirely.
+When disabled, `MotorDevTools` returns its child and does not attach to
+Motor's inspection registry. Motor keeps no global list of controllers until
+a tool attaches, and apps that never import `motor_devtools` can tree-shake
+it entirely. Debug labels are plain strings in your app, so don't put secrets
+in them.
 
-For a remotely gated production panel, keep the package imported and put the
-flag behind an authenticated gesture or feature flag. Do not use controller
-debug labels for secrets; they are ordinary strings in the application.
+The tools use motor's inspection API (`package:motor/inspection.dart`), which
+is experimental and may change in minor releases.

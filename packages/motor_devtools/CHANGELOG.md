@@ -1,14 +1,18 @@
 ## 0.1.0
 
-- Add automatic discovery for named Motor controllers.
-- Add live multi-track timelines with pause and scrub interaction.
-- Add controller-local slow-motion and replay controls.
-- Add a draggable compact launcher, one-track peek, and smoothly expanding
-  full inspector with vertical fling gestures.
-- Add interactive track cards, a duration/bounce spring field, and a
-  duration/easing Curve Lab for session-only motion tuning.
-- Support opt-in production use and restore session changes when disabled.
-- Stabilize timeline geometry before playback, render reverse legs correctly,
-  and support repeated forward/backward scrubbing after completion.
-- Add device-variant rendered screenshots and blocked-text golden coverage for
-  every launcher and Motion Studio state.
+- Add a floating bubble that follows drags, flings with its release
+  velocity, and settles on the nearest side of the screen.
+- Expand the bubble into a list of every live Motor controller, named by its
+  `debugLabel`, with a numbered fallback and a hint to add a label.
+- Add a controller view with play/pause, replay, controller-local playback
+  speed, and a live timeline that scrubs on drag or tap. The timeline shows
+  motions, holds, and sync waits per track, releases sync barriers the way
+  playback does, and pages through loops one cycle at a time.
+- Add session-only motion overrides per track (spring, ease, or linear, with
+  duration and bounce) that replay the latest plan immediately and are undone
+  when the tools are disabled.
+- Animate the tools themselves with Motor, use neutral styling that follows
+  the platform's light or dark mode, and depend on neither Material nor
+  Cupertino.
+- Support opt-in production use; when disabled, the inspection registry is
+  not attached.
