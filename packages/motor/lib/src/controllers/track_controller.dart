@@ -64,6 +64,7 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
+  final List<Track> _tickTracks = [];
   final Map<Track, Motion> _motionOverrides = {};
   List<TrackAnimation> _lastAnimations = const [];
   List<TrackValue> _lastStartValues = const [];
@@ -176,8 +177,7 @@ class TrackController extends Animation<TrackValueReader>
     final estimate =
         (tracker as MotionVelocityTracker<T>).getVelocityEstimate();
     if (estimate != null) {
-      _slots[track]!._velocityValues =
-          track.converter.normalize(estimate.perSecond);
+      _slots[track]!.setVelocity(estimate.perSecond);
     }
   }
 
@@ -770,13 +770,19 @@ class TrackController extends Animation<TrackValueReader>
   bool onPlaybackCompleted() => false;
 
   void _tick(Duration elapsed) {
-    final logicalElapsed = Duration(
-      microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
-    );
+    final logicalElapsed = _playbackSpeed == 1
+        ? elapsed
+        : Duration(
+            microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
+          );
     _lastElapsed = logicalElapsed;
     var allDone = true;
 
-    for (final track in _activeTracks.toList()) {
+    // Snapshot the active set: onStep callbacks may start or stop tracks.
+    final tracks = _tickTracks
+      ..clear()
+      ..addAll(_activeTracks);
+    for (final track in tracks) {
       final slot = _slots[track];
       if (slot == null) continue;
       if (!slot.tick(logicalElapsed)) {

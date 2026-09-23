@@ -67,8 +67,7 @@ void main() {
       expect(controller.status, AnimationStatus.completed);
     });
 
-    testWidgets('uses animation from overrides for lazy slots',
-        (tester) async {
+    testWidgets('uses animation from overrides for lazy slots', (tester) async {
       controller = TrackController(vsync: tester);
       controller.play(
         TrackTimeline(
@@ -714,8 +713,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('asserts when there is no value to infer from',
-        (tester) async {
+    testWidgets('asserts when there is no value to infer from', (tester) async {
       controller = TrackController(vsync: tester);
       final track = Track<double>(MotionConverter.single);
 
@@ -753,6 +751,35 @@ void main() {
 
       // Disposing mid-flight must tear down the ticker. If it left a ticker or
       // timer pending, the test binding would fail this test.
+      controller.dispose();
+    });
+
+    testWidgets(
+        'values read earlier do not change when a converter keeps its input',
+        (tester) async {
+      final points = Track<List<double>>(
+        MotionConverter<List<double>>.custom(
+          normalize: (value) => value,
+          denormalize: (values) => values,
+        ),
+        initial: const [0, 0],
+      );
+      final controller = TrackController(vsync: tester);
+      controller.animate([
+        points.to(
+          const [100, 100],
+          motion: const Motion.linear(Duration(milliseconds: 100)),
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      final earlier = controller.value(points);
+      final snapshot = List.of(earlier);
+
+      await tester.pump(const Duration(milliseconds: 40));
+
+      expect(earlier, snapshot);
+      expect(controller.value(points), isNot(snapshot));
       controller.dispose();
     });
 

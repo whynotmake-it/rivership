@@ -6,26 +6,40 @@ class _TrackSlot<T extends Object> {
     required T initialValue,
     this.fallbackMotion,
     this.fallbackMotionPerDimension,
-  })  : _currentValues = converter.normalize(initialValue),
+  })  : _currentValues = _ownedCopy(converter.normalize(initialValue)),
         _velocityValues = List<double>.filled(
           converter.normalize(initialValue).length,
           0,
-        );
+        ),
+        _value = initialValue;
 
   final MotionConverter<T> converter;
   final Motion? fallbackMotion;
   final List<Motion>? fallbackMotionPerDimension;
 
+  // Owned by this slot and updated in place while playing. Never handed to a
+  // converter directly: `denormalize` may keep the list it is given.
   List<double> _currentValues;
   List<double> _velocityValues;
+  T? _value;
+  T? _velocity;
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
   Duration _inspectionStartOffset = Duration.zero;
 
-  T get value => converter.denormalize(_currentValues);
+  T get value => _value ??= converter.denormalize(_ownedCopy(_currentValues));
 
-  T get velocity => converter.denormalize(_velocityValues);
+  T get velocity =>
+      _velocity ??= converter.denormalize(_ownedCopy(_velocityValues));
+
+  static List<double> _ownedCopy(List<double> values) =>
+      List<double>.of(values, growable: false);
+
+  void _invalidateCache() {
+    _value = null;
+    _velocity = null;
+  }
 
   bool get isAnimating => _playback != _TrackSlotPlayback.idle;
 
@@ -43,17 +57,27 @@ class _TrackSlot<T extends Object> {
       _stepPlayback?.hasPassedSync(token) ?? false;
 
   void setValue(T value) {
-    _currentValues = converter.normalize(value);
+    _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _value = value;
+    _velocity = null;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
 
   void setValueWithVelocity(T value, T velocity) {
-    _currentValues = converter.normalize(value);
-    _velocityValues = converter.normalize(velocity);
+    _currentValues = _ownedCopy(converter.normalize(value));
+    _velocityValues = _ownedCopy(converter.normalize(velocity));
+    _value = value;
+    _velocity = velocity;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
+  }
+
+  /// Replaces the velocity without touching the value or playback.
+  void setVelocity(T velocity) {
+    _velocityValues = _ownedCopy(converter.normalize(velocity));
+    _velocity = velocity;
   }
 
   void play(
@@ -76,8 +100,7 @@ class _TrackSlot<T extends Object> {
       fallbackMotionPerDimension: fallbackMotionPerDimension,
       estimateDurations: estimateDurations,
     );
-    _currentValues = List.of(_stepPlayback!.values);
-    _velocityValues = List.of(_stepPlayback!.velocities);
+    _pullPlaybackState();
     _playback = _TrackSlotPlayback.chained;
   }
 
@@ -134,19 +157,20 @@ class _TrackSlot<T extends Object> {
   }
 
   bool _tickStepPlayback(double seconds) {
-    final playback = _stepPlayback!;
-    final done = playback.advanceTo(seconds);
-    _currentValues = List.of(playback.values);
-    _velocityValues = List.of(playback.velocities);
+    final done = _stepPlayback!.advanceTo(seconds);
+    _pullPlaybackState();
     return done;
   }
 
   bool _seekStepPlayback(double seconds) {
-    final playback = _stepPlayback!;
-    final done = playback.seekTo(seconds);
-    _currentValues = List.of(playback.values);
-    _velocityValues = List.of(playback.velocities);
+    final done = _stepPlayback!.seekTo(seconds);
+    _pullPlaybackState();
     return done;
+  }
+
+  void _pullPlaybackState() {
+    _stepPlayback!.copyStateInto(_currentValues, _velocityValues);
+    _invalidateCache();
   }
 
   /// Redirects this slot to settle at its current value using the fallback
@@ -174,6 +198,7 @@ class _TrackSlot<T extends Object> {
   void stop({bool canceled = false}) {
     _stepPlayback = null;
     _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _velocity = null;
     _playback = _TrackSlotPlayback.idle;
   }
 
