@@ -150,7 +150,7 @@ parameters, use `SpringMotion`:
 
 ```dart
 final customMaterial = SpringMotion(
-  SpringDescription.withDampingRatio(ratio: 0.8, stiffness: 500),
+  SpringDescription.withDampingRatio(mass: 1, ratio: 0.8, stiffness: 500),
 );
 ```
 

@@ -595,7 +595,6 @@ class TrackController extends Animation<TrackValueReader>
     _playbackRevision++;
     _slots[track]?.stop(canceled: true);
     _slots.remove(track);
-    _animations.remove(track);
     _activeTracks.remove(track);
     _velocityTrackers.remove(track);
     _pendingVelocityEstimates.remove(track);

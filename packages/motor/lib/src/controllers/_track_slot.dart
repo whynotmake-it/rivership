@@ -49,10 +49,8 @@ class _TrackSlot<T extends Object> {
   _ArchivedPlan<T>? _shownArchive;
   var _restoredArchive = false;
 
-  // Whether this track ever started a plan, and whether its latest move with
-  // a target headed down, for per-track status.
+  // Whether this track ever started a plan, for per-track status.
   var _started = false;
-  var _reverse = false;
 
   T get value => _denormalize(_currentValues);
 
@@ -252,16 +250,9 @@ class _TrackSlot<T extends Object> {
   AnimationStatus get status {
     if (!_started) return AnimationStatus.dismissed;
     if (_playback == _TrackSlotPlayback.idle) return AnimationStatus.completed;
-    if (converter case final DirectionalMotionConverter<T> directional) {
-      if (_stepPlayback?.shownMove case (:final from, :final to)) {
-        final order = directional.compare(
-          converter.denormalize(from),
-          converter.denormalize(to),
-        );
-        if (order != 0) _reverse = order > 0;
-      }
-    }
-    return _reverse ? AnimationStatus.reverse : AnimationStatus.forward;
+    return (shownPlayback?.shownMovesDown ?? false)
+        ? AnimationStatus.reverse
+        : AnimationStatus.forward;
   }
 
   /// Makes a retained plan playable again, e.g. after it completed.

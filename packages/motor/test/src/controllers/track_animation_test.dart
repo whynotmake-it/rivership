@@ -122,6 +122,24 @@ void main() {
       ]);
     });
 
+    testWidgets('reports the direction of the latest move, whenever read',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final level = Track<double>(MotionConverter.single, initial: 1);
+      controller.animate([
+        level([
+          const TrackStep.to(0, motion: linear100),
+          const TrackStep.hold(Duration(seconds: 1)),
+        ]),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // First read happens during the hold that follows the downward move.
+      expect(controller.animationOf(level).status, AnimationStatus.reverse);
+      controller.stop(canceled: true);
+    });
+
     testWidgets('stops listening to the controller without listeners',
         (tester) async {
       controller = TrackController(vsync: tester);

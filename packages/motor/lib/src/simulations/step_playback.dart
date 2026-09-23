@@ -357,21 +357,43 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
-  /// Where the shown segment starts and which value it heads for, or null if
-  /// it has no target (a hold, free motion, or sync barrier).
+  /// Whether the shown segment heads for a smaller value than it started
+  /// from, as judged by a [DirectionalMotionConverter].
+  ///
+  /// Segments without a target (holds, free motions, sync barriers) take the
+  /// direction of the most recent segment that has one. Always false for
+  /// converters without a direction.
   @internal
-  ({List<double> from, List<double> to})? get shownMove {
-    final segment = _view;
-    final step = _steps[segment.stepIndex];
-    if (step is! StepTo<T> && step is! StepAt<T>) return null;
+  bool get shownMovesDown {
+    final converter = _converter;
+    if (converter is! DirectionalMotionConverter<T>) return false;
+    for (var index = _viewIndex; index >= 0; index--) {
+      final segment = _segments[index];
+      final movesDown = segment.movesDown ??= _movesDown(segment, converter);
+      if (movesDown != null) return movesDown;
+    }
+    return false;
+  }
+
+  /// Whether [segment] heads down, or null if it has no target.
+  bool? _movesDown(
+    _Segment segment,
+    DirectionalMotionConverter<T> converter,
+  ) {
     final index = segment.stepIndex;
+    final step = _steps[index];
+    if (step is! StepTo<T> && step is! StepAt<T>) return null;
     final to = segment.direction > 0
         ? _waypoints[index]
         : (index > 0 ? _waypoints[index - 1] : _initialValues);
-    return (
-      from: [for (final simulation in segment.simulations) simulation.x(0)],
-      to: to,
+    final from = [
+      for (final simulation in segment.simulations) simulation.x(0),
+    ];
+    final order = converter.compare(
+      converter.denormalize(from),
+      converter.denormalize(to),
     );
+    return order > 0;
   }
 
   /// The resolved segments, oldest first: which step each one plays and when.
@@ -931,6 +953,10 @@ class _Segment {
 
   /// When the segment ends, or null while it is still running.
   double? end;
+
+  /// Whether the segment heads for a smaller value, once computed; null
+  /// until then, and also when the segment has no target.
+  bool? movesDown;
 }
 
 /// The state playback was in when a loop cycle started.
