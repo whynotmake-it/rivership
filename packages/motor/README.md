@@ -780,6 +780,22 @@ final customSpring = SpringMotion(
 
 ---
 
+## Performance
+
+Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× means motor is cheaper):
+
+| Scenario | Flutter equivalent | Per frame | Start | Retarget |
+|---|---|---:|---:|---:|
+| 1 spring | 1 `AnimationController` | 1.7× | 4.2× | 3.5× |
+| 250 springs, one `TrackController` | 250 `AnimationController`s | 0.95× | 4.2× | 2.7× |
+| 250 curves, one `TrackController` | 250 `AnimationController`s + `CurvedAnimation` | 1.0× | 2.7× | – |
+| `Rect` spring (4D) | 4 `AnimationController`s | 0.96× | 2.2× | 1.6× |
+| `Rect` curve (4D) | 1 `AnimationController` + `RectTween` | 2.1× | 3.2× | – |
+
+"Per frame" is one frame of animation work plus reading every value once. Absolute costs are small: 250 springs cost about 46 µs per frame, and starting one spring about 2 µs.
+
+Method: an AOT release build drives frames through the scheduler with no widgets, checks that both sides produce the same values, and reports the median of 7 runs over 5 invocations. Methodology, memory and all scenarios are in [benchmark/ANALYSIS.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/ANALYSIS.md).
+
 ## Acknowledgements
 
 Motor's unified motion system builds upon excellent work from the Flutter community:
