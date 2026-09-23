@@ -1,10 +1,13 @@
 // ignore_for_file: cascade_invocations
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
+import 'package:motor_devtools/src/session.dart';
 
 void main() {
   testWidgets('discovers and identifies controllers below the wrapper', (
@@ -38,6 +41,37 @@ void main() {
     expect(controller.debugLabel, 'Checkout confirmation');
 
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('replays the latest plan with a motion override', (
+    tester,
+  ) async {
+    final subscription = MotorInspectionRegistry.attach(_NoopObserver());
+    final controller = TrackController(vsync: tester);
+    final track = Track<double>(MotionConverter.single, initial: 0);
+    const authored = Motion.linear(Duration(seconds: 1));
+    const tuned = Motion.linear(Duration(milliseconds: 100));
+
+    unawaited(controller.animate([track.to(1, motion: authored)]));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(controller.value(track), closeTo(0.3, 1e-6));
+
+    controller
+      ..setMotionOverride(track, tuned)
+      ..replay();
+    await tester.pump();
+    expect(controller.value(track), closeTo(0, 1e-6));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(controller.value(track), closeTo(1, 1e-6));
+    expect(controller.motionOverrides, {track: tuned});
+
+    controller.setMotionOverride(track, null);
+    expect(controller.motionOverrides, isEmpty);
+    expect(controller.motionOverride, isNull);
+
+    controller.dispose();
+    subscription.dispose();
   });
 
   testWidgets('can be completely disabled at runtime', (tester) async {
@@ -227,4 +261,12 @@ class _MotionHarnessState extends State<_MotionHarness>
     color: Color(0xFFF2F0EA),
     child: SizedBox.expand(),
   );
+}
+
+class _NoopObserver implements MotorInspectionObserver {
+  @override
+  void didRegisterController(TrackController controller) {}
+
+  @override
+  void didUnregisterController(TrackController controller) {}
 }

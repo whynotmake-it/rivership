@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/src/motor_timeline.dart';
+import 'package:motor_devtools/src/session.dart';
 
 const _surface = Color(0xFF090909);
 const _raised = Color(0xFF111111);

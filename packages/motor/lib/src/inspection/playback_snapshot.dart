@@ -178,19 +178,17 @@ extension TrackControllerInspection on TrackController {
   @experimental
   set playbackSpeed(double value) => internalPlaybackSpeed = value;
 
-  /// Designer overrides keyed by track identity.
-  @experimental
-  Map<Track<Object>, Motion> get motionOverrides => internalMotionOverrides;
-
-  /// Replaces target-based step motions for [track] on future playback.
+  /// Chooses motions that replace the authored ones in future playback.
   ///
-  /// Passing null restores the authored motion. Call [replay] to hear the
-  /// change immediately on the controller's most recently submitted clip.
+  /// Called with each track when a plan starts. A returned motion replaces
+  /// the motion of that track's target steps (`TrackStep.to` and
+  /// `TrackStep.at`); null keeps the authored motions. Plans already playing
+  /// are not affected.
   @experimental
-  void setMotionOverride(Track track, Motion? motion) =>
-      internalSetMotionOverride(track, motion);
+  Motion? Function(Track<Object> track)? get motionOverride =>
+      internalMotionOverride;
 
-  /// Replays the most recently submitted clip from its original start values.
   @experimental
-  TickerFuture replay() => internalReplay();
+  set motionOverride(Motion? Function(Track<Object> track)? value) =>
+      internalMotionOverride = value;
 }

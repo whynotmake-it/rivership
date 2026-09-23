@@ -4,10 +4,10 @@
 /// here is `@experimental`: it may change in minor releases, unlike the core
 /// `package:motor/motor.dart` API.
 ///
-/// Snapshots (`PlaybackSnapshot`, `TrackPlayback`) are read-only. The
-/// `TrackControllerInspection` extension additionally exposes authoring hooks
-/// that do change playback of a single controller: `playbackSpeed`,
-/// `setMotionOverride`, and `replay`.
+/// Snapshots (`PlaybackSnapshot`, `TrackPlayback`, `PlaybackPlan`) are
+/// read-only. The `TrackControllerInspection` extension additionally exposes
+/// two hooks that do change playback of a single controller:
+/// `playbackSpeed` and `motionOverride`.
 library motor.inspection;
 
 export 'src/inspection/controller_registry.dart';

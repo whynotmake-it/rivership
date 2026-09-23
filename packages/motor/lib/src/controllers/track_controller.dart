@@ -71,7 +71,7 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Upper bound on barrier releases handled within one frame.
   static const _maxBarrierPasses = 100;
-  final Map<Track, Motion> _motionOverrides = {};
+  Motion? Function(Track<Object> track)? _motionOverride;
   final List<PlaybackPlan> _plans = [];
 
   /// How many submitted plans are kept for inspection tooling.
@@ -270,7 +270,6 @@ class TrackController extends Animation<TrackValueReader>
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
-    bool record = true,
   }) {
     assert(
       () {
@@ -311,7 +310,7 @@ class TrackController extends Animation<TrackValueReader>
 
     if (MotorInspectionRegistry.isInspecting) {
       _estimateDurations(timelineTracks);
-      if (record) _recordPlan(animations, loop: loop, start: startOffset);
+      _recordPlan(animations, loop: loop, start: startOffset);
     }
 
     _status = AnimationStatus.forward;
@@ -422,7 +421,7 @@ class TrackController extends Animation<TrackValueReader>
       track.value(_slots[track]!.value as T);
 
   TrackAnimation _applyMotionOverride(TrackAnimation animation) {
-    final override = _motionOverrides[animation.track];
+    final override = _motionOverride?.call(animation.track);
     if (override == null) return animation;
     return animation.withMotionOverride(override);
   }
@@ -601,36 +600,14 @@ class TrackController extends Animation<TrackValueReader>
     notifyListeners();
   }
 
-  /// Exposes active designer motion overrides to tooling.
+  /// Exposes the motion override callback to tooling.
   @internal
-  Map<Track<Object>, Motion> get internalMotionOverrides => Map.unmodifiable(
-        _motionOverrides.cast<Track<Object>, Motion>(),
-      );
+  Motion? Function(Track<Object> track)? get internalMotionOverride =>
+      _motionOverride;
 
-  /// Sets or clears a designer motion override for [track].
   @internal
-  void internalSetMotionOverride(Track track, Motion? motion) {
-    if (motion == null) {
-      _motionOverrides.remove(track);
-    } else {
-      _motionOverrides[track] = motion;
-    }
-    notifyListeners();
-  }
-
-  /// Replays the most recently submitted clip from its recorded start values.
-  @internal
-  TickerFuture internalReplay() {
-    if (_plans.isEmpty) return TickerFuture.complete();
-    final plan = _plans.last;
-    _hardStop(null);
-    set(plan.startValues);
-    return _startAnimations(
-      animations: plan.animations,
-      loop: plan.loop,
-      onStep: _onStep,
-      record: false,
-    );
+  set internalMotionOverride(Motion? Function(Track<Object> track)? value) {
+    _motionOverride = value;
   }
 
   static Duration? _durationFromSeconds(double? seconds) => seconds == null

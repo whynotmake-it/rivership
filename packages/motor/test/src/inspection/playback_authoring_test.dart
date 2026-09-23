@@ -33,33 +33,34 @@ void main() {
     normal.dispose();
   });
 
-  testWidgets('motion override replays the last clip from its authored start', (
+  testWidgets('motion override replaces target step motions in new plans', (
     tester,
   ) async {
-    final subscription = MotorInspectionRegistry.attach(_Observer());
     final controller = TrackController(vsync: tester);
     final track = Track<double>(MotionConverter.single, initial: 0);
+    final other = Track<double>(MotionConverter.single, initial: 0);
     const authored = Motion.linear(Duration(seconds: 1));
     const tuned = Motion.linear(Duration(milliseconds: 100));
 
-    controller.animate([track.to(1, motion: authored)]);
+    controller.motionOverride = (t) => identical(t, track) ? tuned : null;
+    controller.animate([
+      track([const TrackStep.to(1, motion: authored)]),
+      other.to(1, motion: authored),
+    ]);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(controller.value(track), closeTo(0.3, 0.02));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(controller.value(track), closeTo(0.5, error));
+    expect(controller.value(other), closeTo(0.05, error));
 
-    controller.setMotionOverride(track, tuned);
-    controller.replay();
+    // Without the override, the authored 1s motion runs from 0.5 back to 0.
+    controller.motionOverride = null;
+    controller.animate([track.to(0, motion: authored)]);
     await tester.pump();
-    expect(controller.value(track), closeTo(0, error));
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.value(track), closeTo(0.45, error));
 
-    expect(controller.value(track), closeTo(1, error));
-    expect(controller.motionOverrides[track], tuned);
-
-    controller.setMotionOverride(track, null);
-    expect(controller.motionOverrides, isEmpty);
+    controller.stop(canceled: true);
     controller.dispose();
-    subscription.dispose();
   });
 
   testWidgets('records submitted plans with their start values', (

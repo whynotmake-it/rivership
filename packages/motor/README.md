@@ -433,12 +433,12 @@ loop cycle and direction, barrier state, playhead, recorded starts, and actual
 step durations. Listen to the controller and compare `playbackRevision` when a
 tool needs to distinguish a rewritten plan from an ordinary animation tick.
 
-Besides snapshots, the library exposes a few authoring hooks that **do** change
-playback of that one controller: `playbackSpeed` (controller-local slow
-motion), `setMotionOverride(track, motion)` (swap the motion of a track's
-target steps for future playback), and `replay()` (restart the most recently
-submitted clip from its recorded start values). `MotorInspectionRegistry`
-lets a tool discover every controller created while it is attached.
+While a tool is attached through `MotorInspectionRegistry`, which discovers
+every controller created from then on, snapshots also list the most recently
+submitted plans with their start values, so the tool can replay one with
+`set` and `animate`. Two hooks **do** change playback of that one controller:
+`playbackSpeed` (controller-local slow motion) and `motionOverride` (swap the
+motions of a track's target steps in future playback).
 
 The example gallery uses this API for its live, draggable timeline inspector.
 
