@@ -108,11 +108,6 @@ class MotionVelocityTracker<T> {
   /// by the fake clock under test and by real time in production.
   int? _lastSampleAtMicros;
 
-  /// When the controller last recorded a sample whose estimate it has not
-  /// applied yet.
-  @internal
-  DateTime? pendingEstimateAt;
-
   /// Adds a position sample at the given [time].
   ///
   /// Call this each time the value changes during user interaction.

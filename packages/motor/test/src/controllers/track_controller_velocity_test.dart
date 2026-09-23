@@ -396,6 +396,25 @@ void main() {
     });
   });
 
+  testWidgets('asserts when a value changes its number of dimensions',
+      (tester) async {
+    final values = Track<List<double>>(
+      MotionConverter.custom(
+        normalize: (value) => value,
+        denormalize: (values) => values,
+      ),
+      initial: const [0, 0, 0],
+    );
+    final controller = TrackController(vsync: tester);
+    addTearDown(controller.dispose);
+    final three = values.value(const [1, 2, 3]);
+    final one = values.value(const [5]);
+
+    controller.set([three]);
+    expect(controller.value(values), [1, 2, 3]);
+    expect(() => controller.set([one]), throwsAssertionError);
+  });
+
   testWidgets('a custom velocity tracker receives every sample',
       (tester) async {
     final position = Track<double>(MotionConverter.single, initial: 0.0);

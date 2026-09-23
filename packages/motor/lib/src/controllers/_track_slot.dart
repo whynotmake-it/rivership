@@ -63,6 +63,10 @@ class _TrackSlot<T extends Object> {
 
   T get velocity => _denormalize(_velocities);
 
+  /// When the controller last recorded a velocity sample for this track
+  /// whose estimate it has not applied yet.
+  DateTime? pendingVelocityAt;
+
   // While playing, velocities are only pulled from the playback when read.
   var _velocitiesStale = false;
 
@@ -125,6 +129,14 @@ class _TrackSlot<T extends Object> {
   // The slot's buffers are its own (archives and views copy them), so a
   // jump writes into them instead of replacing them.
   void _setValues(List<double> values) {
+    assert(
+      values.length == _currentValues.length,
+      'New values must have the same number of dimensions as the track',
+    );
+    if (values.length != _currentValues.length) {
+      _currentValues = _ownedCopy(values);
+      _velocityValues = List<double>.filled(values.length, 0);
+    }
     _jumpTo(values);
     _currentValues.setAll(0, values);
     _velocitiesStale = false;
