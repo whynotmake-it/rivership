@@ -8,6 +8,7 @@ import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/simulations/curve_simulation.dart';
 import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/track_step.dart';
 
@@ -209,6 +210,9 @@ class StepPlayback<T extends Object> {
   // What the most recent advance or seek shows.
   late final List<double> _viewValues;
   late final List<double> _viewVelocities;
+  List<Simulation> _viewSimulations = const [];
+  var _viewTime = 0.0;
+  var _viewVelocitiesStale = false;
   var _lastElapsedSeconds = 0.0;
   var _viewIndex = 0;
   var _viewCycleShift = 0;
@@ -265,12 +269,25 @@ class StepPlayback<T extends Object> {
   List<double> get values => UnmodifiableListView(_viewValues);
 
   /// Current normalized velocities, as a live read-only view.
-  List<double> get velocities => UnmodifiableListView(_viewVelocities);
+  List<double> get velocities {
+    _showVelocities();
+    return UnmodifiableListView(_viewVelocities);
+  }
 
   /// Copies the current normalized values and velocities into [values] and
   /// [velocities] without allocating.
   void copyStateInto(List<double> values, List<double> velocities) {
-    _copyInto(values, _viewValues);
+    copyValuesInto(values);
+    copyVelocitiesInto(velocities);
+  }
+
+  /// Copies the current normalized values into [values] without allocating.
+  void copyValuesInto(List<double> values) => _copyInto(values, _viewValues);
+
+  /// Copies the current normalized velocities into [velocities] without
+  /// allocating. They are only computed when asked for.
+  void copyVelocitiesInto(List<double> velocities) {
+    _showVelocities();
     _copyInto(velocities, _viewVelocities);
   }
 
@@ -585,9 +602,31 @@ class StepPlayback<T extends Object> {
     var t = (end != null && end < local ? end : local) - segment.start;
     if (t < 0) t = 0;
     final simulations = segment.simulations;
+    CurveSimulation? shared;
+    var progress = 0.0;
     for (var i = 0; i < simulations.length; i++) {
-      _viewValues[i] = simulations[i].x(t);
-      _viewVelocities[i] = simulations[i].dx(t);
+      final simulation = simulations[i];
+      if (simulation is CurveSimulation) {
+        if (shared == null || !simulation.sharesTiming(shared)) {
+          shared = simulation;
+          progress = simulation.progressAt(t);
+        }
+        _viewValues[i] = simulation.valueAt(progress);
+      } else {
+        _viewValues[i] = simulation.x(t);
+      }
+    }
+    _viewSimulations = simulations;
+    _viewTime = t;
+    _viewVelocitiesStale = true;
+  }
+
+  void _showVelocities() {
+    if (!_viewVelocitiesStale) return;
+    _viewVelocitiesStale = false;
+    final simulations = _viewSimulations;
+    for (var i = 0; i < simulations.length; i++) {
+      _viewVelocities[i] = simulations[i].dx(_viewTime);
     }
   }
 

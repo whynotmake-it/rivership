@@ -58,7 +58,18 @@ class _TrackSlot<T extends Object> {
 
   T get value => _denormalize(_currentValues);
 
-  T get velocity => _denormalize(_velocityValues);
+  T get velocity => _denormalize(_velocities);
+
+  // While playing, velocities are only pulled from the playback when read.
+  var _velocitiesStale = false;
+
+  List<double> get _velocities {
+    if (_velocitiesStale) {
+      _velocitiesStale = false;
+      _stepPlayback?.copyVelocitiesInto(_velocityValues);
+    }
+    return _velocityValues;
+  }
 
   T _denormalize(List<double> values) => converter
       .denormalize(_copyBeforeDenormalize ? _ownedCopy(values) : values);
@@ -102,6 +113,7 @@ class _TrackSlot<T extends Object> {
     _jumpTo(converter.normalize(value));
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _velocitiesStale = false;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
@@ -110,6 +122,7 @@ class _TrackSlot<T extends Object> {
     _jumpTo(converter.normalize(value));
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = _ownedCopy(converter.normalize(velocity));
+    _velocitiesStale = false;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
   }
@@ -117,6 +130,7 @@ class _TrackSlot<T extends Object> {
   /// Replaces the velocity without touching the value or playback.
   void setVelocity(T velocity) {
     _velocityValues = _ownedCopy(converter.normalize(velocity));
+    _velocitiesStale = false;
   }
 
   void play(
@@ -156,7 +170,7 @@ class _TrackSlot<T extends Object> {
           startOffset: _startOffset,
           playback: _stepPlayback,
           values: List.of(_currentValues),
-          velocities: List.of(_velocityValues),
+          velocities: List.of(_velocities),
         ),
       );
     if (archive.length > _maxArchivedPlans) archive.removeAt(0);
@@ -223,6 +237,7 @@ class _TrackSlot<T extends Object> {
     if (playback == null) {
       _currentValues = List.of(plan.values);
       _velocityValues = List.of(plan.velocities);
+      _velocitiesStale = false;
       return true;
     }
     final local = elapsed - plan.startOffset;
@@ -233,6 +248,7 @@ class _TrackSlot<T extends Object> {
     );
     _currentValues = List<double>.filled(_currentValues.length, 0);
     _velocityValues = List<double>.filled(_velocityValues.length, 0);
+    _velocitiesStale = false;
     playback.copyStateInto(_currentValues, _velocityValues);
     return done;
   }
@@ -246,6 +262,7 @@ class _TrackSlot<T extends Object> {
     _stepPlayback = plan.playback;
     _currentValues = List.of(plan.values);
     _velocityValues = List.of(plan.velocities);
+    _velocitiesStale = false;
     _playback = plan.playback == null
         ? _TrackSlotPlayback.idle
         : _TrackSlotPlayback.chained;
@@ -336,7 +353,8 @@ class _TrackSlot<T extends Object> {
   }
 
   void _pullPlaybackState() {
-    _stepPlayback!.copyStateInto(_currentValues, _velocityValues);
+    _stepPlayback!.copyValuesInto(_currentValues);
+    _velocitiesStale = true;
   }
 
   /// Redirects this slot to settle at its current value using the fallback
@@ -372,6 +390,7 @@ class _TrackSlot<T extends Object> {
     }
     _stepPlayback = null;
     _velocityValues = List<double>.filled(_currentValues.length, 0);
+    _velocitiesStale = false;
     _playback = _TrackSlotPlayback.idle;
   }
 

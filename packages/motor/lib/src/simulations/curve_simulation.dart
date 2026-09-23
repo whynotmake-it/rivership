@@ -25,17 +25,24 @@ class CurveSimulation extends Simulation implements FiniteSimulation {
   final double end;
 
   @override
-  double x(double time) {
+  double x(double time) => valueAt(progressAt(time));
+
+  /// How far along the curve [time] is, or infinity once past the end.
+  ///
+  /// Simulations that [sharesTiming] can share one progress per time.
+  double progressAt(double time) {
     final relativeTime = time / duration.toSeconds();
-
-    if (relativeTime > 1) {
-      return end;
-    }
-
-    final t = curve.transform(relativeTime.clamp(0, 1));
-
-    return start + (end - start) * t;
+    if (relativeTime > 1) return double.infinity;
+    return curve.transform(relativeTime.clamp(0, 1));
   }
+
+  /// The value at [progress] from [progressAt].
+  double valueAt(double progress) =>
+      progress == double.infinity ? end : start + (end - start) * progress;
+
+  /// Whether [other] follows the same curve over the same duration.
+  bool sharesTiming(CurveSimulation other) =>
+      identical(curve, other.curve) && duration == other.duration;
 
   @override
   double dx(double time) {
