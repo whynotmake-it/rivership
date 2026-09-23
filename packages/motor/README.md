@@ -418,8 +418,11 @@ A few semantics worth knowing:
 - `scrubTo(t)` positions every track on one controller timeline that only
   advances while the controller ticks, so tracks started at different times
   stay aligned, and playback continues from `t`.
-- `status` goes `dismissed` → `forward` → `completed`. It never reports
-  `reverse`; use `MotionController` if you need directional status.
+- The controller's own `status` goes `dismissed` → `forward` → `completed`
+  and never reports `reverse`. For a single track's status, including
+  `reverse` for directional converters, use `animationOf(track).status`.
+- `onStep` fires for every step a track enters, in order, even when several
+  fall within one frame.
 
 `PhaseTrackController` adds phase navigation on top (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) — it's what `PhaseTrackBuilder` uses internally.
 
@@ -442,15 +445,18 @@ for (final playback in snapshot.tracks) {
 }
 ```
 
-Each snapshot includes the controller status and revision plus per-track steps,
-loop cycle and direction, barrier state, playhead, recorded starts, and actual
-step durations. Listen to the controller and compare `playbackRevision` when a
-tool needs to distinguish a rewritten plan from an ordinary animation tick.
+Each snapshot includes the controller status and revision plus, per track,
+the plan's steps, its resolved segments (with the repeat period once a loop
+repeats), loop cycle and direction, barrier state, playhead, and recorded and
+estimated step durations. Listen to the controller and compare
+`playbackRevision` when a tool needs to distinguish a rewritten plan from an
+ordinary animation tick.
 
 While a tool is attached through `MotorInspectionRegistry`, which discovers
 every controller created from then on, snapshots also list the most recently
 submitted plans with their start values, so the tool can replay one with
-`set` and `animate`. Two hooks **do** change playback of that one controller:
+`set` and `animate`, duration estimates match the actual durations, and
+scrubbing back also shows plans a track was redirected away from. Two hooks **do** change playback of that one controller:
 `playbackSpeed` (controller-local slow motion) and `motionOverride` (swap the
 motions of a track's target steps in future playback).
 

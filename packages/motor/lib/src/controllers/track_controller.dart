@@ -27,11 +27,13 @@ typedef TrackValueReader = T Function<T extends Object>(Track<T> track);
 /// Controls a single active [TrackTimeline] from a ticker.
 ///
 /// This is an `Animation<TrackValueReader>`, so [value] is a reader function:
-/// call it with a [Track] to get that track's current value. This shape remains
-/// usable with `ValueListenable` and `ListenableBuilder` infrastructure, but
-/// does not compose with [Tween.animate] or [Animation.drive] like an
-/// `Animation<double>` does. Read specific tracks with `value(track)` inside a
-/// listener instead.
+/// call it with a [Track] to get that track's current value. It works with
+/// `ListenableBuilder` and other `Listenable` infrastructure. To use a single
+/// track with [Tween.animate], [Animation.drive], or transition widgets, get
+/// an `Animation<T>` for it from [animationOf].
+///
+/// All tracks share one playback timeline that only advances while the
+/// controller ticks; [pause], [resume], and [scrubTo] move along it.
 class TrackController extends Animation<TrackValueReader>
     with
         AnimationLocalListenersMixin,

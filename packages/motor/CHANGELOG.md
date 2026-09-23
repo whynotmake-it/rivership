@@ -5,33 +5,35 @@
 > `MotionSequence`, `SequenceMotionController`, and `SequenceMotionBuilder` stay
 > source-compatible, but several runtime behaviors have changed (see below).
 
-### Docs
+### Tracks: a new multi-property animation system
 
- - **DOCS**: fix broken README samples and clarify SDK syntax, timeline equality, track value readers, sync-barrier seeking, and custom motion extension points.
+ - **FEAT**: add `Track<T>`, the identity-based key for one animated property. A track carries a `MotionConverter`, an optional `initial` value, an optional default `motion`/`motionPerDimension`, and an optional `debugLabel`. Build instructions with `track.to(...)`, `track(...)` (multi-step), `track.free(...)`, `track.value(...)`, and `track.velocity(...)`.
+ - **FEAT**: add `TrackStep<T>`, the unit of a track animation: `TrackStep.to` (animate to a target), `TrackStep.at` (a keyframe that arrives exactly at an absolute time), `TrackStep.hold`, `TrackStep.free` (run a self-directed `FreeMotion`), and `TrackStep.sync` (a barrier shared by tracks through a token). `.at` stretches its motion over the gap when the preceding step ends early enough, and otherwise cuts the preceding step so its motion runs its natural duration; the two cases meet continuously, and with no time left the value arrives instantly.
+ - **FEAT**: add `TrackAnimation<T>` (one track's steps plus its own `from`/`withVelocity`), `TrackTimeline` (a reusable, value-equatable multi-track clip that owns its `LoopMode`), and `TrackPhaseTimeline<P>` (phases flattened into one timeline with sync barriers at phase boundaries, one-time `from`/`withVelocity` seeds, and `phaseLoop`).
+ - **FEAT**: add `TrackController`, a multi-track controller on one ticker:
+   - `play`/`animate` start plans for the named tracks, `set` jumps without animating, and `stop` settles springs gracefully or halts with `canceled: true` (which does not report `completed`). Returned futures complete when the whole controller settles.
+   - `pause`, `resume`, and `scrubTo` work on one playback timeline that only advances while the controller ticks, so pausing, restarting, and scrubbing never rewind or misalign tracks. Flutter's `timeDilation` applies as usual.
+   - Sync barriers release at the exact moment the last participant arrives, independent of the frame rate, and hold every cycle in looping plans. Scrubbing resolves them the same way playback does.
+   - Playback is a function of time alone: each step's duration is resolved once and kept, so ticking live, jumping ahead, and scrubbing back always agree, and loops that repeat use constant memory.
+   - `onStep` reports every step a track enters, in order, even within one frame.
+   - `animationOf(track)` returns a cached `Animation<T>` for one track that composes with tweens, curves, and transitions and reports that track's own status.
+ - **FEAT**: add `PhaseTrackController<P>` with `playPhases`, `goToPhase`, `setTimeline`, and `currentPhase`, reporting `PhaseTransitioning`/`PhaseSettled`. `phaseLoop` supports `loop`, `seamless`, and `pingPong` (phases in reverse order on the way back).
+ - **FEAT**: add `TrackBuilder` (inline `animations:` + `loop:`, or `TrackBuilder.timeline(...)`) and `PhaseTrackBuilder<P>` (manual `currentPhase` or auto-advancing `playing`). Equal animation lists and timelines do not restart playback on rebuild; `restartTrigger` replays from the start.
+
+### Inspection and tooling
+
+ - **FEAT**: add an `@experimental` inspection library at `package:motor/inspection.dart`, which may change in minor releases. `MotorInspectionRegistry` lets a tool discover controllers created while it is attached. `inspectPlayback()` returns immutable snapshots with each track's plan, resolved segments, loop cycle and repetition, playhead, barrier state, recorded and estimated step durations, and the controller's recent plans. Two hooks change playback: controller-local `playbackSpeed` and `motionOverride`.
+ - **FEAT**: while a tool is attached, controllers keep their recent plans, resolve new plans ahead for accurate duration estimates, and let `scrubTo` show plans a track was redirected away from (resuming there continues them). Without a tool none of this is kept.
+ - **FEAT**: controllers, builders (`TrackBuilder`, `PhaseTrackBuilder`, the motion builders, `MotionDraggable`), and tracks accept an optional `debugLabel` shown by inspection tools.
+ - **FEAT**: the separate `motor_devtools` package provides an in-app inspector built on this library.
 
 ### Deprecations
 
  - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, and `SequenceMotionBuilder` — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.
 
-### Naming
-
- - **BREAKING** **REFACTOR**: rename the track-step type `Step` to `TrackStep` (file `src/step.dart` → `src/track_step.dart`) and `SyncStep` to `StepSync`, so importing motor alongside `package:flutter/material.dart` (which exports the `Stepper` row widget `Step`) no longer requires `hide Step` workarounds, and the step subclasses are uniformly prefixed (`StepTo`, `StepAt`, `StepHold`, `StepFree`, `StepSync`). This only affects code written against the unreleased 2.0 dev branch; dot-shorthand call sites (`.to(...)`, `.sync(...)`) are unaffected.
-
-### Tracks: a new multi-property animation system
-
- - **FEAT**: add optional `debugLabel` values to tracks and controllers, plus an opt-in lifecycle registry, controller-local playback speed, replay, and target-motion overrides for external inspection tooling. The core retains no global controller collection until an observer attaches.
- - **FEAT**: add an `@experimental` playback inspection API at `package:motor/inspection.dart` (it may change in minor releases), exposing immutable snapshots of live track plans, timing, loop, synchronization, and playhead state for debug tooling.
- - **FEAT**: add `Track<T>`, the immutable, identity-based key for a single animated property. A track carries a `MotionConverter`, an optional `initial` value, and an optional default `motion`/`motionPerDimension`. Build instructions with `track.to(...)`, `track(...)` (multi-step), `track.free(...)`, `track.value(...)`, and `track.velocity(...)`.
- - **FEAT**: add `TrackStep<T>` as the unit of a track animation: `TrackStep.to` (animate to a target), `TrackStep.at` (reach a target at an absolute time), `TrackStep.hold` (hold the current value), `TrackStep.free` (run a self-directed `FreeMotion`), and `TrackStep.sync` (a barrier that waits for sibling tracks sharing a token before releasing them together).
- - **FEAT**: add `TrackAnimation<T>` (the per-track instruction, carrying its own `from`/`withVelocity`), `TrackTimeline` (a reusable, value-equatable multi-track clip that owns its `LoopMode`), and `TrackPhaseTimeline<P>` (a phase-organized timeline that flattens phases into one timeline with `StepSync` barriers at boundaries, plus one-time `from`/`withVelocity` seeds and `phaseLoop`).
- - **FEAT**: add `TrackController`, a multi-track controller backed by one ticker. Supports lazy per-track initialization, `play`/`animate`/`set`/`scrubTo`/`resume`/`stop`, per-track graceful settling, velocity preservation across redirection, sync barriers, `onStep` callbacks, and whole-controller `TickerFuture` completion semantics.
- - **FEAT**: add `PhaseTrackController<P>`, a `TrackController` that understands phases via `playPhases`, `goToPhase`, `setTimeline`, and `currentPhase`, reporting `PhaseTransitioning`/`PhaseSettled` through a transition callback.
- - **FEAT**: add `TrackBuilder` (declarative multi-track playback) with a default constructor (inline `animations:` + `loop:`, mirroring `TrackController.animate`) and a `TrackBuilder.timeline(...)` constructor (mirroring `TrackController.play`). Inline animation lists compare deeply and timelines compare by value, so an equal-but-new list on rebuild does not restart playback. `restartTrigger` jumps every track back to its start value and replays.
- - **FEAT**: add `PhaseTrackBuilder<P>`, the track-based replacement for phase-driven UI. It supports manual phase control (via `currentPhase`) and auto-advance (via `playing`), with `restartTrigger`, `active`, and transition callbacks.
-
 ### Motion type hierarchy
 
- - **BREAKING** **FEAT**: introduce the sealed `MotionBase` root. `Motion` now extends `MotionBase` and remains the target-based motion type (all existing `Motion.*` factories are unchanged). Custom motions that previously extended the motion root directly must now extend `Motion` (target-based) or `FreeMotion` (self-directed); the root itself is sealed.
+ - **BREAKING** **FEAT**: introduce the sealed `MotionBase` root. `Motion` now extends `MotionBase` and remains the target-based motion type (all existing `Motion.*` factories are unchanged). Custom motions that previously extended the motion root directly must now extend `Motion` (target-based) or `FreeMotion` (self-directed); the root itself is sealed. Simulations created by custom motions must be pure functions of time, because motor re-samples them when scrubbing.
  - **FEAT**: add `FreeMotion`, a self-directed motion that evolves from a position and velocity without an end value (decay, friction, gravity, …). Includes `FreeMotion.friction` / `FrictionMotion` (with `drag` and `constantDeceleration`), plus `finalValue` and `project` to anticipate the resting value without running the full simulation.
  - **FEAT**: add `MotionBase.scaleTo(Duration)` to force a motion to complete in an exact duration. It is exact for curves, linear, and none, and falls back to `FixedDurationMotion` / `FixedDurationFreeMotion` wrappers for springs and free motions.
  - **FEAT**: add `Motion.duration`, exposing the characteristic duration of a motion (exact for fixed-duration motions, the settling time for springs, `null` when unknown).
@@ -40,21 +42,8 @@
 
 ### Controllers
 
- - **FEAT**: add `TrackController.pause()` for silent, non-destructive playback inspection and authoring.
- - **BREAKING** **FEAT**: `TrackStep.at` always arrives at its time. If the preceding step leaves less than the `.at` motion's natural duration, it is now cut short so that motion runs its natural duration and lands on time; otherwise the motion stretches to fill the gap. Timing changes continuously with the arrival time, and an `.at` with no time left (such as `at(Duration.zero)` first) arrives instantly. Previously an overrunning step made the `.at` motion start at its time and arrive late, and a step ending just before the time compressed the motion into the remaining sliver.
- - **FIX**: `onStep` now reports every step a track enters, in order, including steps shorter than a frame and steps crossed during a long frame. A step entered again in a loop is reported again.
- - **FEAT**: add `TrackController.animationOf(track)`, an `Animation<T>` view of one track that composes with tweens, curves, and transitions and reports that track's own status.
- - **FEAT**: `TrackBuilder`, `PhaseTrackBuilder`, and the motion builders accept an optional `debugLabel` for the controller they create, shown by inspection tools.
- - **FEAT**: while inspection tooling is attached, `scrubTo` also shows plans a track was redirected away from (up to 8 per track), and resuming from such a time continues that earlier plan.
- - **FIX**: in looping timelines, a faster track now waits for slower ones at a shared sync barrier every cycle instead of running a cycle ahead.
- - **FIX**: sync barriers release at the exact moment the last participant arrives instead of on the following frame, so timing no longer depends on the frame rate, and one long frame resolves the same way as many short ones.
- - **FIX**: scrubbing and seeking no longer replay a track from its start. Resolved time is kept, so seeking back shows the timeline as it played, `scrubTo` resolves sync barriers exactly as playback does instead of passing through them, seeking far into a loop lands on the right position instead of stopping after 1000 steps, and long-running loops use constant memory.
- - **FIX**: inspection duration estimates for simulated steps (free motions, springs of unknown duration) are accurate to well under a millisecond.
- - **FIX**: controllers keep one playback timeline across pauses and ticker restarts. Calling `play`/`animate` while paused no longer rewinds the paused tracks, `scrubTo` positions tracks started at different times consistently, and changing `playbackSpeed` no longer pauses and resumes the controller.
- - **FIX**: `resume()` after `scrubTo()` now continues from the scrubbed position instead of rewinding, and scrubbing past a sync barrier no longer stalls peers that arrive later.
- - **FIX**: retain completed playback plans for inspection, keep scrubbing on the authored timeline axis across repeated pause/resume gestures, and capture stable per-step duration estimates only while inspection tooling is attached.
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
- - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback, plus `trackedVelocityEstimate`.
+ - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback (each target step needs its own motion), plus `trackedVelocityEstimate`.
  - **REFACTOR**: the deprecated sequence APIs (`SequenceMotionController` and `SequenceMotionBuilder`) now run on the 2.0 track engine; the internal legacy controller copy is deleted. `SequenceMotionController` is a subtype of the exported `MotionController` again, restoring 1.x source compatibility. Phase timing is unchanged (pinned by the legacy sequence semantics tests). Observable deltas:
    - `playSequence`'s returned `TickerFuture` for LOOPING sequences now resolves at the end of the first cycle instead of never (matching `PhaseTrackController.playPhases` — do not `await` a looping sequence).
    - phase-boundary values are sampled at the simulation's exact completion time (a sub-tolerance difference, visible only to non-snapping springs).
@@ -74,20 +63,14 @@
  - **REFACTOR**: extract `LoopMode` into its own file (still re-exported from `motion_sequence.dart`, so this is source-compatible). `LoopMode` (`none`, `loop`, `pingPong`, `seamless`) now drives track and timeline playback as well.
  - **BREAKING** **REFACTOR**: `PhaseTransition` drops the `PhaseTransition.settled` / `PhaseTransition.transitioning` factory constructors and adds a `phase` getter (the current or target phase). Construct `PhaseSettled` / `PhaseTransitioning` directly.
 
+### Performance
+
+ - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocity estimates). With 500 tracks on one controller, per-frame cost relative to one `AnimationController` per track went from +62% to about +20% in the [benchmark suite](./benchmark/) (thanks to [definev](https://github.com/definev) for the harness and the original allocation work).
+
 ### Fixes
 
- - **FIX**: stopping a track no longer releases sync barriers early for the remaining tracks.
- - **FIX**: `PhaseTrackBuilder` now recreates its controller and restarts playback when `velocityTracking` changes at runtime.
  - **FIX**: two-keyframe `SpanningSequence`s with `LoopMode.seamless` now use the full return slice instead of a degenerate zero-extent motion.
- - **FIX**: `LoopMode.loop` timelines without a target motion now restart from their initial values after free, hold, or sync-only steps instead of continuing from the final state.
- - **FIX**: canceled controller stops no longer report `AnimationStatus.completed`; they stop immediately without emitting a status notification.
- - **FIX**: looping `PhaseTrackController` playback now reports `AnimationStatus.forward` once at startup instead of flapping through `completed` between cycles.
- - **FIX**: `PhaseTrackController` now plays `pingPong` phase loops in reverse phase order after each forward pass instead of replaying phases forward like `loop`.
- - **FIX**: `TrackStep.at` segments in `pingPong` loops now mirror their forward scheduled duration on the reverse leg instead of using the motion's unscaled duration and re-triggering absolute-time boundaries.
- - **FIX**: swapping a `MotionController`'s `converter` no longer leaks the replaced track's internal state in the underlying `TrackController`.
- - **FIX**: `PhaseTrackController` now re-applies a timeline's one-time `from`/`withVelocity` seeds when a *different* timeline starts playing on the same controller. Previously the seeds were applied only once per controller, so swapping timelines (e.g. changing `PhaseTrackBuilder.timeline`) silently kept the previous timeline's values. Replaying an equal-value timeline still does not re-seed.
- - **FIX**: `PhaseTrackBuilder` resumes playback when `active` is toggled from `false` back to `true`. Previously only the deactivation transition was handled, so a reactivated builder stayed frozen.
- - **FIX**: `SpringMotion` equality (and `hashCode`) now includes `snapToEnd`, so spring motions differing only in `snapToEnd` compare unequal. This affects rebuild-restart detection in `TrackBuilder` and motion swaps on `MotionController`, which previously ignored a `snapToEnd` change.
+ - **FIX**: `SpringMotion` equality (and `hashCode`) now includes `snapToEnd`, so spring motions differing only in `snapToEnd` compare unequal. This affects motion swaps on `MotionController`, which previously ignored a `snapToEnd` change.
  - **FIX**: `CupertinoMotion.copyWith` now reads its defaults from the stored `duration`/`bounce` fields instead of round-tripping them through `SpringDescription`, so unchanged values are preserved exactly.
  - **FIX**: motion builders no longer stop and reset their value on every rebuild while inactive; they only do so on the active→inactive transition.
  - **FIX**: `MotionDraggable` skips the return animation when a dragged item is released already within the motion's tolerance of its target position, avoiding a spurious overlay and animation.
