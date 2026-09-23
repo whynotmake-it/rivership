@@ -18,37 +18,37 @@ What the layers measure:
 
 ### Pump (per-frame cost)
 
-| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 |
-|---|---:|---:|---:|---:|
-| Single curve (1D) | +15.4% | -2.4% | +17.2% | +19.0% |
-| Single spring (1D) | +8.6% | -2.1% | +7.1% | +3.1% |
-| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +3.7% |
-| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +5.4% |
-| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +3.6% |
-| Multi-track ×50 | +18.5% | -2.5% | +2.6% | -2.2% |
-| Multi-track ×100 | +24.6% | -0.3% | +3.7% | -2.1% |
-| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +11.0% |
-| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +16.2% |
-| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +37.0% |
-| Widget rebuild | -32.2% | -32.8% | -32.8% | -26.0% |
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 |
+|---|---:|---:|---:|---:|---:|
+| Single curve (1D) | +15.4% | -2.4% | +17.2% | +19.0% | +20.2% |
+| Single spring (1D) | +8.6% | -2.1% | +7.1% | +3.1% | +6.0% |
+| Offset spring (2D) | +7.9% | +4.0% | +6.7% | +3.7% | +5.5% |
+| Multi-track ×1 | +1.1% | -0.4% | -0.3% | +5.4% | -1.3% |
+| Multi-track ×10 | +11.5% | +4.9% | +3.4% | +3.6% | +3.2% |
+| Multi-track ×50 | +18.5% | -2.5% | +2.6% | -2.2% | +1.5% |
+| Multi-track ×100 | +24.6% | -0.3% | +3.7% | -2.1% | +0.8% |
+| Multi-track ×250 | +38.3% | +10.0% | +4.9% | +11.0% | +5.7% |
+| Multi-track ×500 | +62.5% | +13.2% | +21.6% | +16.2% | +16.8% |
+| Interrupt / retarget | +21.9% | +23.8% | +35.7% | +37.0% | +44.1% |
+| Widget rebuild | -32.2% | -32.8% | -32.8% | -26.0% | -25.9% |
 
 ### Tick (value reads)
 
-| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 |
-|---|---:|---:|---:|---:|
-| Single curve (1D) | +135.6% | +190.3% | +175.0% | +140.8% |
-| Single spring (1D) | +224.2% | +250.0% | +268.7% | +245.2% |
-| Offset spring (2D) | +354.1% | +327.5% | +333.3% | +340.0% |
-| Multi-track ×1 | +85.5% | +155.4% | +154.7% | +74.6% |
-| Multi-track ×10 | +226.4% | +296.6% | +237.5% | +246.2% |
-| Multi-track ×50 | +167.9% | +236.1% | +211.5% | +208.5% |
-| Multi-track ×100 | +196.4% | +247.5% | +261.8% | +232.3% |
-| Multi-track ×250 | +208.2% | +302.7% | +274.8% | +285.3% |
-| Multi-track ×500 | +254.1% | +304.7% | +321.9% | +305.2% |
-| Interrupt / retarget | +129.9% | +170.5% | +200.0% | +225.6% |
-| Widget rebuild | +6.1% | -12.1% | -8.8% | -15.8% |
-| Manual set (tracking off, noise) | +2.6% | +45.0% | +64.4% | +274.9% |
-| Velocity tracking on vs off | +4732% | +2736% | +3064% | +3484% |
+| Scenario | Baseline | Phase 0.5 | Phase 1 | Phase 2 | Phase 3 |
+|---|---:|---:|---:|---:|---:|
+| Single curve (1D) | +135.6% | +190.3% | +175.0% | +140.8% | +203.1% |
+| Single spring (1D) | +224.2% | +250.0% | +268.7% | +245.2% | +264.7% |
+| Offset spring (2D) | +354.1% | +327.5% | +333.3% | +340.0% | +293.3% |
+| Multi-track ×1 | +85.5% | +155.4% | +154.7% | +74.6% | +141.3% |
+| Multi-track ×10 | +226.4% | +296.6% | +237.5% | +246.2% | +222.6% |
+| Multi-track ×50 | +167.9% | +236.1% | +211.5% | +208.5% | +198.5% |
+| Multi-track ×100 | +196.4% | +247.5% | +261.8% | +232.3% | +234.3% |
+| Multi-track ×250 | +208.2% | +302.7% | +274.8% | +285.3% | +291.2% |
+| Multi-track ×500 | +254.1% | +304.7% | +321.9% | +305.2% | +303.0% |
+| Interrupt / retarget | +129.9% | +170.5% | +200.0% | +225.6% | +264.8% |
+| Widget rebuild | +6.1% | -12.1% | -8.8% | -15.8% | -12.2% |
+| Manual set (tracking off, noise) | +2.6% | +45.0% | +64.4% | +274.9% | +279.5% |
+| Velocity tracking on vs off | +4732% | +2736% | +3064% | +3484% | +3112% |
 
 - **Baseline**: `motor/2.0` at `3d517dd`, before any performance work.
 - **Phase 0.5**: `ebb9068`. It adds in-place sampling, lazily cached
@@ -66,6 +66,12 @@ What the layers measure:
   recovered: 14.8 to 15.0 µs in the full suite (Phase 0.5: 15.6 to 16.0 µs)
   and 11.8 to 12.0 µs in filtered runs (baseline: 12.5 to 13.0 µs, Phase
   0.5: 15.6 to 17.0 µs).
+- **Phase 3**: `73eb665`..`28073f3`. Exact barrier release, estimates from
+  resolving plans ahead, deterministic segment ends, continuous `.at`, and
+  `onStep` for every step. Pump is unchanged within noise except
+  interrupt/retarget: Motor 47.6 µs per frame (Phase 2: 44.5 to 45.8 µs).
+  Each retarget now scans its new segment's end once up front (1/60 s
+  steps), which makes ticking and seeking agree for bouncy springs.
 
 Reading the table:
 
@@ -92,9 +98,9 @@ Reading the table:
 
 ## Next targets
 
-- Interrupt/retarget: each retarget builds a new playback and simulations.
-  The segment table did not change this (Motor about 45 µs per frame in
-  every phase).
+- Interrupt/retarget: each retarget builds a new playback and simulations,
+  and since Phase 3 also scans the new segment's end. Knowing a spring's
+  settle time analytically would cut the scan.
 - Value reads: the per-track slot lookup and denormalization.
 - Velocity tracking: sample time comes from `clock.now()` inside the
   tracker; avoiding the second clock read needs a tracker API change.
