@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
@@ -387,14 +387,32 @@ class TrackController extends Animation<TrackValueReader>
       );
     }
 
-    if (MotorInspectionRegistry.isInspecting) {
-      _estimateDurations(timelineTracks);
-      _recordPlan(animations, loop: loop, start: startOffset);
-    }
-
+    final inspecting = MotorInspectionRegistry.isInspecting;
+    if (inspecting) _recordPlan(animations, loop: loop, start: startOffset);
     final future = _startTicker();
+    if (inspecting) _tryEstimateDurations(timelineTracks);
     _updateStatus();
     return future;
+  }
+
+  /// Estimates step durations for inspection tooling. Resolving ahead may
+  /// reach steps that playback never does, so a failure there is reported
+  /// without failing the call that started playback.
+  void _tryEstimateDurations(Set<Track> tracks) {
+    try {
+      _estimateDurations(tracks);
+    } catch (error, stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'motor',
+          context: ErrorDescription(
+            'while estimating step durations for inspection tooling',
+          ),
+        ),
+      );
+    }
   }
 
   /// Records per-step duration estimates for inspection tooling by resolving

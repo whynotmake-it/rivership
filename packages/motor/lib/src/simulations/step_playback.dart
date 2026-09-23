@@ -79,6 +79,18 @@ class StepPlayback<T extends Object> {
         _hasReturnStep = true;
       }
     }
+    assert(
+      _steps.every(
+        (step) => switch (step) {
+          StepTo<T>(:final motion, :final motionPerDimension) ||
+          StepAt<T>(:final motion, :final motionPerDimension) =>
+            _motionsOrNull(motion, motionPerDimension) != null,
+          _ => true,
+        },
+      ),
+      'A TrackStep has no motion and no fallback motion was provided. '
+      'Either pass a motion to the step or set a default motion on the Track.',
+    );
     _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();

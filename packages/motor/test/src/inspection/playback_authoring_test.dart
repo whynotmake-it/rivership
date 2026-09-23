@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -99,6 +100,60 @@ void main() {
     expect(controller.inspectPlayback().plans, isEmpty);
     controller.dispose();
   });
+  for (final inspecting in [false, true]) {
+    testWidgets(
+        'a step without a motion fails when played '
+        '${inspecting ? 'with' : 'without'} tooling', (tester) async {
+      final subscription =
+          inspecting ? MotorInspectionRegistry.attach(_Observer()) : null;
+      addTearDown(() => subscription?.dispose());
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final track = Track<double>(MotionConverter.single, initial: 0);
+      const linear = Motion.linear(Duration(seconds: 1));
+      final steps = [
+        const TrackStep.to(1.0, motion: linear),
+        const TrackStep.to(2.0),
+      ];
+
+      // A regression would start the ticker; stop it so the test fails
+      // instead of hanging on the active ticker.
+      try {
+        expect(
+          () => controller.animate([
+            track(steps),
+          ]),
+          throwsAssertionError,
+        );
+      } finally {
+        controller.stop(canceled: true);
+      }
+    });
+  }
+
+  testWidgets('a failure while resolving ahead for tooling does not stop play',
+      (tester) async {
+    final subscription = MotorInspectionRegistry.attach(_Observer());
+    addTearDown(subscription.dispose);
+    final controller = TrackController(vsync: tester);
+    addTearDown(controller.dispose);
+    final track = Track<double>(MotionConverter.single, initial: 0);
+
+    controller.animate([
+      track([
+        const TrackStep.to(1, motion: Motion.linear(Duration(seconds: 1))),
+        const TrackStep.to(2, motion: _ThrowingMotion()),
+      ]),
+    ]);
+
+    expect(tester.takeException(), isStateError);
+    expect(controller.isAnimating, isTrue);
+    expect(controller.inspectPlayback().plans, hasLength(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(controller.value(track), closeTo(0.5, error));
+    controller.stop(canceled: true);
+  });
 }
 
 class _Observer implements MotorInspectionObserver {
@@ -107,4 +162,29 @@ class _Observer implements MotorInspectionObserver {
 
   @override
   void didUnregisterController(TrackController controller) {}
+}
+
+/// A motion whose simulation cannot be created.
+class _ThrowingMotion extends Motion {
+  const _ThrowingMotion();
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      throw StateError('no simulation');
+
+  @override
+  bool operator ==(Object other) => other is _ThrowingMotion;
+
+  @override
+  int get hashCode => (_ThrowingMotion).hashCode;
 }
