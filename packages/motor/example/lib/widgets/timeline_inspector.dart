@@ -73,6 +73,7 @@ class _TimelineInspectorState extends State<TimelineInspector>
       ),
       vsync: this,
       initialValue: 1,
+      debugLabel: 'Timeline inspector redraw',
     );
   }
 
