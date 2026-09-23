@@ -359,6 +359,8 @@ class StepPlayback<T extends Object> {
 
   /// The indices of the steps entered since the previous call, in order.
   ///
+  /// The synthetic return step of [LoopMode.loop] is not included.
+  ///
   /// Every step playback passed through is included, even when one advance
   /// crosses several. Moving back in time enters nothing. When one advance
   /// skips whole loop cycles, only the steps of the last cycle entered are
@@ -377,14 +379,16 @@ class StepPlayback<T extends Object> {
     if (behind) return const [];
 
     final entered = <int>[];
+    var walked = 0;
     while ((shift != targetShift || index != targetIndex) &&
-        entered.length <= _segments.length) {
+        walked++ <= _segments.length) {
       index++;
       if (index >= _segments.length) {
         shift = targetShift;
         index = _segmentIndexAt(_foldStartSeconds);
       }
-      entered.add(_segments[index].stepIndex);
+      final step = _segments[index].stepIndex;
+      if (!_hasReturnStep || step != _steps.length - 1) entered.add(step);
     }
     return entered;
   }
@@ -401,19 +405,6 @@ class StepPlayback<T extends Object> {
   /// When resolution arrived at the pending [StepSync], in slot-local seconds.
   @internal
   double get pendingSyncArrivalSeconds => _segmentStartSeconds;
-
-  /// Whether resolution has already moved past [token] in its current leg.
-  @internal
-  bool hasResolvedPastSync(Object token) {
-    for (var index = 0; index < _steps.length; index++) {
-      final step = _steps[index];
-      if (step is! StepSync<T> || step.token != token) continue;
-      if (_isDone) return true;
-      if (_direction > 0 && _stepIndex > index) return true;
-      if (_direction < 0 && _stepIndex < index) return true;
-    }
-    return false;
-  }
 
   /// Releases the pending [StepSync] at [atSeconds], in slot-local seconds.
   ///
@@ -810,9 +801,10 @@ class StepPlayback<T extends Object> {
       final atDuration =
           _knownMotionDuration(motion, motionPerDimension)?.toSeconds();
       final duration = _segmentDuration;
-      if (atDuration != null && duration != null) {
+      if (duration != null) {
+        // A motion of unknown duration can stretch over any gap.
         final gap = arrival - (_segmentStartSeconds + duration);
-        if (gap >= atDuration) return;
+        if (gap >= (atDuration ?? 0)) return;
       }
       _cutAt = atDuration == null
           ? _segmentStartSeconds

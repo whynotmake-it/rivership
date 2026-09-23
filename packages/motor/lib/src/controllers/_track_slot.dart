@@ -68,9 +68,6 @@ class _TrackSlot<T extends Object> {
   Duration get pendingSyncArrival =>
       _startOffset + _fromSeconds(_stepPlayback!.pendingSyncArrivalSeconds);
 
-  bool hasResolvedPastSync(Object token) =>
-      _stepPlayback?.hasResolvedPastSync(token) ?? true;
-
   /// Releases the pending barrier at [at], on the controller clock.
   void releaseSync(Duration at) {
     final playback = _stepPlayback;

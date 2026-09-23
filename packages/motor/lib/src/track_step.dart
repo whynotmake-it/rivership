@@ -43,7 +43,8 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   ///   its natural duration and ends at [at]. The cut never happens before
   ///   that step started; if there is not enough time, the motion is
   ///   compressed, and with no time at all [value] is reached instantly. A
-  ///   motion without a known duration starts when the preceding step starts.
+  ///   motion without a known duration stretches whenever the preceding step
+  ///   ends before [at], and otherwise starts when that step starts.
   ///
   /// Only the step immediately before is ever cut, and it can be another
   /// [TrackStep.at]: the later keyframe wins. [value] arrives late only when

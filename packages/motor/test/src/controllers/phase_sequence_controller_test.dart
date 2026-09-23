@@ -699,4 +699,34 @@ void main() {
       expect(controller.isPlayingSequence, isFalse);
     });
   });
+
+  testWidgets('scrubbing a sequence matches playback', (tester) async {
+    const linear = Motion.linear(Duration(milliseconds: 100));
+    final sequence = MotionSequence.steps([0.0, 1.0, 2.0, 3.0], motion: linear);
+    SequenceMotionController<int, double> controller() =>
+        SequenceMotionController<int, double>(
+          motion: linear,
+          vsync: tester,
+          converter: const SingleMotionConverter(),
+          initialValue: 0,
+        );
+
+    // 1ms frames keep the frame-anchored phase starts within 1ms of exact.
+    final live = controller()..playSequence(sequence);
+    await tester.pump();
+    for (var i = 0; i < 250; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+
+    final scrubbed = controller()..playSequence(sequence);
+    scrubbed.debugInnerController
+      ..pause()
+      ..scrubTo(const Duration(milliseconds: 250));
+    expect(scrubbed.value, closeTo(live.value, 0.05));
+
+    live.stop(canceled: true);
+    scrubbed.stop(canceled: true);
+    live.dispose();
+    scrubbed.dispose();
+  });
 }

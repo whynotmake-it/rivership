@@ -274,6 +274,49 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('a faster track in a loop waits for a slower one each cycle',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate(
+        [
+          trackA([
+            const StepTo(1.0, motion: linear100),
+            const StepSync(token: #beat),
+            const StepTo(0.0, motion: linear100),
+          ]),
+          trackB([
+            const StepTo(
+              1.0,
+              motion: Motion.linear(Duration(milliseconds: 300)),
+            ),
+            const StepSync(token: #beat),
+            const StepTo(
+              0.0,
+              motion: Motion.linear(Duration(milliseconds: 500)),
+            ),
+          ]),
+        ],
+        loop: LoopMode.seamless,
+      );
+      await tester.pump();
+
+      // Both meet at 300ms. trackA's next cycle reaches the barrier at 500ms
+      // and has to wait for trackB, which gets there at 1100ms.
+      await tester.pump(const Duration(milliseconds: 600));
+      for (final ms in [600, 800, 1000]) {
+        expect(
+          controller.value(trackA),
+          closeTo(1.0, error),
+          reason: '${ms}ms',
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      // Now at 1200ms: released at 1100ms, 100ms into the next steps.
+      expect(controller.value(trackA), closeTo(0.0, error));
+      expect(controller.value(trackB), closeTo(0.8, error));
+      controller.stop(canceled: true);
+    });
+
     testWidgets('one large frame gap matches many small frames',
         (tester) async {
       List<TrackAnimation> plan() => [

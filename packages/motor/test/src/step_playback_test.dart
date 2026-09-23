@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations
 
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
@@ -263,6 +264,24 @@ void main() {
       }
     });
 
+    test('TrackStep.at with an unknown-duration motion keeps an early step',
+        () {
+      final playback = StepPlayback<double>(
+        steps: const [
+          TrackStep.to(1, motion: linear100),
+          TrackStep.at(Duration(seconds: 1), 2, motion: _UnknownDuration()),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+
+      playback.advanceTo(0.1);
+      expect(playback.values.single, closeTo(1, error));
+      // Scaling a motion of unknown duration relies on a probed estimate.
+      playback.advanceTo(1);
+      expect(playback.values.single, closeTo(2, 0.01));
+    });
+
     test('TrackStep.at with no time left arrives immediately', () {
       final playback = StepPlayback<double>(
         steps: const [
@@ -329,4 +348,31 @@ void main() {
       expect(playback.isDone, isTrue);
     });
   });
+}
+
+/// A linear motion that does not report its duration.
+class _UnknownDuration extends Motion {
+  const _UnknownDuration();
+
+  static const _linear = Motion.linear(Duration(milliseconds: 100));
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      _linear.createSimulation(start: start, end: end, velocity: velocity);
+
+  @override
+  bool operator ==(Object other) => other is _UnknownDuration;
+
+  @override
+  int get hashCode => (_UnknownDuration).hashCode;
 }

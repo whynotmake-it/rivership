@@ -151,6 +151,32 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('does not report the internal return step of a loop',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      final steps = <int>[];
+      const short = Motion.linear(Duration(milliseconds: 10));
+
+      controller.play(
+        TrackTimeline(
+          [
+            opacity([
+              const TrackStep.to(1, motion: short),
+              const TrackStep.to(0.5, motion: short),
+            ]),
+          ],
+          loop: LoopMode.loop,
+        ),
+        onStep: (track, stepIndex) => steps.add(stepIndex),
+      );
+
+      await tester.pump();
+      // Each cycle takes 30ms: two steps, then the return to the start.
+      await tester.pump(const Duration(milliseconds: 55));
+      expect(steps, [0, 1, 0, 1]);
+      controller.stop(canceled: true);
+    });
+
     testWidgets('loops timelines until stopped', (tester) async {
       controller = TrackController(vsync: tester);
 

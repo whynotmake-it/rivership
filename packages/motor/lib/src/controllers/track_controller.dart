@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
@@ -64,6 +66,9 @@ class TrackController extends Animation<TrackValueReader>
   final Map<Track, _TrackSlot> _slots = {};
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
+
+  /// How often each track was released at each sync token.
+  final Map<Object, Map<Track, int>> _syncPasses = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
   // Velocity estimates are computed only when needed, as of the latest sample.
   final Map<Track, DateTime> _pendingVelocityEstimates = {};
@@ -223,7 +228,8 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// {@template TrackController.onStep}
   /// [onStep] is called once for every step each track enters, in order,
-  /// including steps shorter than a frame. It is not called while scrubbing.
+  /// including steps shorter than a frame. It is not called while scrubbing,
+  /// or for the internal step that returns a [LoopMode.loop] to its start.
   /// {@endtemplate}
   TickerFuture play(
     TrackTimeline timeline, {
@@ -328,11 +334,17 @@ class TrackController extends Animation<TrackValueReader>
         if (_slots[track]?.fork() case final fork?) track: fork,
     };
     final horizon = _clock.now + const Duration(days: 1);
+    final passes = {
+      for (final MapEntry(:key, :value) in _syncPasses.entries)
+        key: Map.of(value),
+    };
     for (var pass = 0; pass < _maxBarrierPasses; pass++) {
       for (final fork in forks.values) {
         fork.tick(horizon);
       }
-      if (!_releaseArrivedBarriers(horizon, slots: forks)) break;
+      if (!_releaseArrivedBarriers(horizon, slots: forks, passes: passes)) {
+        break;
+      }
     }
     for (final MapEntry(key: track, value: fork) in forks.entries) {
       _slots[track]!._stepPlayback!.estimatedSegmentSeconds =
@@ -364,7 +376,7 @@ class TrackController extends Animation<TrackValueReader>
       _activeTracks.add(entry.key);
       entry.value.reactivate();
     }
-    _advanceTracks(t, notifySteps: false);
+    _advanceTracks(t, scrubbing: true);
     notifyListeners();
   }
 
@@ -454,6 +466,7 @@ class TrackController extends Animation<TrackValueReader>
       }
       _activeTracks.clear();
       _tokenParticipants.clear();
+      _syncPasses.clear();
       _pendingVelocityEstimates.clear();
     } else {
       for (final track in tracks) {
@@ -719,8 +732,12 @@ class TrackController extends Animation<TrackValueReader>
     _pruneTokenParticipants(timelineTracks);
     for (final animation in animations) {
       for (final step in animation.steps) {
-        if (step is StepSync) {
-          (_tokenParticipants[step.token] ??= {}).add(animation.track);
+        if (step is! StepSync) continue;
+        (_tokenParticipants[step.token] ??= {}).add(animation.track);
+        // Join the round the other participants are in.
+        final counts = _syncPasses[step.token] ??= {};
+        if (!counts.containsKey(animation.track)) {
+          counts[animation.track] = counts.values.fold(0, math.max);
         }
       }
     }
@@ -733,48 +750,74 @@ class TrackController extends Animation<TrackValueReader>
     for (final participants in _tokenParticipants.values) {
       participants.removeAll(tracks);
     }
+    for (final counts in _syncPasses.values) {
+      counts.removeWhere((track, _) => tracks.contains(track));
+    }
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
+    _syncPasses
+        .removeWhere((token, _) => !_tokenParticipants.containsKey(token));
   }
 
   /// Releases every barrier whose participants have all arrived, at the
   /// latest arrival. Returns whether any barrier was released.
   ///
-  /// Tracks that are not animating, or that already moved past the barrier,
-  /// do not hold it. Barriers with a [FrameAnchoredSyncToken] release at
-  /// [now] instead, unless resolving ahead of playback in [slots].
+  /// A track's arrivals at a token are counted in rounds: its next arrival is
+  /// round `passes + 1`, where `passes` counts how often it was released at
+  /// that token. A round releases once every other animating participant has
+  /// arrived at the same round or already passed it, so in a loop a fast
+  /// track cannot lap a slow one. Barriers with a [FrameAnchoredSyncToken]
+  /// release at [now] when [anchorFrames] is true.
+  ///
+  /// [slots] and [passes] default to the controller's own; estimation passes
+  /// forks and a copy of the pass counts to resolve ahead of playback.
   bool _releaseArrivedBarriers(
     Duration now, {
     Map<Track, _TrackSlot>? slots,
+    Map<Object, Map<Track, int>>? passes,
+    bool anchorFrames = true,
   }) {
-    final live = slots == null;
     final lookup = slots ?? _slots;
+    final passCounts = passes ?? _syncPasses;
     var released = false;
-    for (final entry in _tokenParticipants.entries.toList()) {
-      final token = entry.key;
+    for (final MapEntry(key: token, value: participants)
+        in _tokenParticipants.entries.toList()) {
+      final counts = passCounts[token] ??= {};
+      int? round;
+      for (final track in participants) {
+        if (lookup[track]?.pendingSyncToken != token) continue;
+        final arrival = (counts[track] ?? 0) + 1;
+        if (round == null || arrival < round) round = arrival;
+      }
+      if (round == null) continue;
+
       Duration? releaseAt;
       var allArrived = true;
-      for (final track in entry.value) {
+      for (final track in participants) {
         final slot = lookup[track];
         if (slot == null || !slot.isAnimating) continue;
-        if (slot.pendingSyncToken == token) {
+        final passed = counts[track] ?? 0;
+        if (slot.pendingSyncToken == token && passed + 1 == round) {
           final arrival = slot.pendingSyncArrival;
           if (releaseAt == null || arrival > releaseAt) releaseAt = arrival;
-        } else if (!slot.hasResolvedPastSync(token)) {
+        } else if (passed < round) {
           allArrived = false;
           break;
         }
       }
       if (!allArrived || releaseAt == null) continue;
-      if (live && token is FrameAnchoredSyncToken) releaseAt = now;
+      if (anchorFrames && slots == null && token is FrameAnchoredSyncToken) {
+        releaseAt = now;
+      }
 
-      for (final track in entry.value) {
+      for (final track in participants) {
         final slot = lookup[track];
-        if (slot != null && slot.pendingSyncToken == token) {
-          slot.releaseSync(releaseAt);
-        }
+        if (slot == null || slot.pendingSyncToken != token) continue;
+        if ((counts[track] ?? 0) + 1 != round) continue;
+        slot.releaseSync(releaseAt);
+        counts[track] = round;
       }
       released = true;
-      if (live) onSyncReleased(token);
+      if (slots == null) onSyncReleased(token);
     }
     return released;
   }
@@ -819,7 +862,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Barriers released on the way are released at their exact time, and the
   /// released tracks advance again, so one large frame gap resolves the same
   /// way as many small ones.
-  bool _advanceTracks(Duration now, {bool notifySteps = true}) {
+  bool _advanceTracks(Duration now, {bool scrubbing = false}) {
     var allDone = true;
     for (var pass = 0; pass < _maxBarrierPasses; pass++) {
       allDone = true;
@@ -831,9 +874,9 @@ class TrackController extends Animation<TrackValueReader>
         final slot = _slots[track];
         if (slot == null) continue;
         if (!slot.tick(now)) allDone = false;
-        _notifyStep(track, slot, notify: notifySteps);
+        _notifyStep(track, slot, notify: !scrubbing);
       }
-      if (!_releaseArrivedBarriers(now)) break;
+      if (!_releaseArrivedBarriers(now, anchorFrames: !scrubbing)) break;
     }
     return allDone;
   }
