@@ -325,8 +325,7 @@ No more hand-tuning durations just to line things up. Barriers only
 coordinate tracks playing on the same controller (one `TrackBuilder` or
 `TrackController`). A track that is stopped or redirected before reaching a
 barrier stops participating, so it never holds the others hostage. When
-scrubbing, barriers that have not been released yet are passed through as
-zero-length holds; released ones keep the moment they were released.
+scrubbing, barriers are resolved exactly as during playback.
 
 #### Phases — named states
 

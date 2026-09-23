@@ -181,10 +181,8 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// example to make a slower and a faster track meet before the next move.
 /// [TrackPhaseTimeline] inserts these automatically at phase boundaries.
 ///
-/// During seek operations, barriers that have not been released yet are
-/// treated as zero-duration holds and passed through freely. Barriers that
-/// were already released keep their recorded release time, so seeking back
-/// shows the timeline as it played.
+/// Scrubbing with [TrackController.scrubTo] resolves barriers the same way,
+/// so it shows what playback would show at that time.
 @immutable
 class StepSync<T extends Object> extends TrackStep<T> {
   /// Creates a sync step with a [token] for grouped release.

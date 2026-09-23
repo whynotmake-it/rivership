@@ -109,18 +109,18 @@ void main() {
       playback.advanceTo(0.25);
       expect(playback.values.first, closeTo(1.5, error));
 
-      playback.seekTo(0.15);
+      playback.advanceTo(0.15);
       expect(playback.values.first, closeTo(1.0, error));
       expect(playback.isWaitingForSync, isFalse);
 
-      playback.seekTo(0.05);
+      playback.advanceTo(0.05);
       expect(playback.values.first, closeTo(0.5, error));
 
       playback.advanceTo(0.3);
       expect(playback.values.first, closeTo(2.0, error));
     });
 
-    test('passes through sync steps freely when seeking', () {
+    test('waits at an unreleased barrier even when jumping far ahead', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -133,11 +133,10 @@ void main() {
         start: 0.0,
       );
 
-      // Seek far ahead — should pass through all sync barriers
-      playback.seekTo(10.0);
-      expect(playback.isWaitingForSync, isFalse);
-      expect(playback.isDone, isTrue);
-      expect(playback.values.first, closeTo(3.0, error));
+      playback.advanceTo(10.0);
+      expect(playback.isWaitingForSync, isTrue);
+      expect(playback.isDone, isFalse);
+      expect(playback.values.first, closeTo(1.0, error));
     });
 
     test('holds the current value with zero velocity while waiting', () {

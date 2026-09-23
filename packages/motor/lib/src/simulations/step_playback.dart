@@ -384,35 +384,21 @@ class StepPlayback<T extends Object> {
   /// Resolves all step boundaries that fall within the elapsed window, so
   /// large time gaps (e.g. from ticker muting during navigation) are handled
   /// in a single call. Times that were already resolved are sampled from the
-  /// segment table.
-  bool advanceTo(double elapsedSeconds) =>
-      _moveTo(elapsedSeconds, passBarriers: false);
-
-  /// Seeks playback to [elapsedSeconds].
-  ///
-  /// Unlike [advanceTo], unreleased sync barriers are passed through as
-  /// zero-length holds when resolving new segments.
-  bool seekTo(double elapsedSeconds) =>
-      _moveTo(elapsedSeconds, passBarriers: true);
-
-  bool _moveTo(double elapsedSeconds, {required bool passBarriers}) {
+  /// segment table, so earlier times can be revisited.
+  bool advanceTo(double elapsedSeconds) {
     assert(elapsedSeconds >= 0, 'elapsed must be non-negative');
     _lastElapsedSeconds = elapsedSeconds;
-    _resolveUntil(elapsedSeconds, passBarriers: passBarriers);
+    _resolveUntil(elapsedSeconds);
     _show(elapsedSeconds);
     return isDone;
   }
 
-  void _resolveUntil(double seconds, {required bool passBarriers}) {
+  void _resolveUntil(double seconds) {
     var resolved = 0;
-    while (!_isDone && _period == null && resolved++ < _maxSegmentsPerCall) {
-      if (_isWaitingForSync) {
-        if (!passBarriers || seconds <= _segmentStartSeconds) return;
-        _isWaitingForSync = false;
-        _closeSegment(_segmentStartSeconds);
-        _advanceStep();
-        continue;
-      }
+    while (!_isDone &&
+        !_isWaitingForSync &&
+        _period == null &&
+        resolved++ < _maxSegmentsPerCall) {
 
       final cut = _cutAt;
       if (cut != null && seconds >= cut) {
@@ -432,7 +418,7 @@ class StepPlayback<T extends Object> {
       _sample(completionSeconds);
       _recordForwardSegmentDuration(completionSeconds);
 
-      if (_steps[_stepIndex] is StepSync<T> && !passBarriers) {
+      if (_steps[_stepIndex] is StepSync<T>) {
         // Hold here until the TrackController calls releaseSync().
         _segmentStartSeconds += completionSeconds;
         _isWaitingForSync = true;

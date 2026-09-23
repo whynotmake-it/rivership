@@ -23,6 +23,16 @@ void main() {
     );
   }
 
+  /// Models a lone TrackController participant: the barrier is released at
+  /// the moment it is reached.
+  void releaseAtArrival(StepPlayback<double> playback, double elapsed) {
+    while (playback.pendingSyncToken != null) {
+      playback
+        ..releaseSync(atSeconds: playback.pendingSyncArrivalSeconds)
+        ..advanceTo(elapsed);
+    }
+  }
+
   void advanceIncrementally(
     StepPlayback<double> playback,
     double target, {
@@ -32,9 +42,7 @@ void main() {
     while (elapsed < target) {
       elapsed = math.min(elapsed + 0.001, target);
       playback.advanceTo(elapsed);
-      if (releaseSync && playback.isWaitingForSync) {
-        playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
-      }
+      if (releaseSync) releaseAtArrival(playback, elapsed);
     }
   }
 
@@ -48,7 +56,8 @@ void main() {
     final sought = playback(steps, loop: loop);
 
     advanceIncrementally(advanced, target, releaseSync: releaseSync);
-    sought.seekTo(target);
+    sought.advanceTo(target);
+    if (releaseSync) releaseAtArrival(sought, target);
 
     expect(
       advanced.values.single,
@@ -63,7 +72,7 @@ void main() {
     expect(advanced.isDone, sought.isDone, reason: 'isDone at $target seconds');
   }
 
-  test('advanceTo and seekTo agree on a plain timeline', () {
+  test('small steps and one jump agree on a plain timeline', () {
     final steps = <TrackStep<double>>[
       const TrackStep.to(1, motion: linear100),
       const TrackStep.hold(Duration(milliseconds: 50)),
@@ -75,7 +84,7 @@ void main() {
     }
   });
 
-  test('advanceTo and seekTo agree across loop cycles', () {
+  test('small steps and one jump agree across loop cycles', () {
     final steps = <TrackStep<double>>[
       const TrackStep.to(1, motion: linear100),
     ];
@@ -85,22 +94,19 @@ void main() {
     }
   });
 
-  test('advanceTo and seekTo agree when sync is released', () {
+  test('small steps and one jump agree when sync is released', () {
     final steps = <TrackStep<double>>[
       const TrackStep.to(1, motion: linear100),
       const TrackStep.sync(token: #barrier),
       const TrackStep.to(2, motion: linear100),
     ];
 
-    // seekTo passes sync barriers freely by design (step.dart:161-162). The
-    // incremental side models a lone TrackController participant by releasing
-    // the barrier as soon as it is reached.
     for (final target in [0.05, 0.1, 0.21]) {
       expectParity(steps, target, releaseSync: true);
     }
   });
 
-  test('backward advanceTo delegates to seekTo', () {
+  test('advancing backward matches jumping straight there', () {
     final steps = <TrackStep<double>>[
       const TrackStep.to(1, motion: linear100),
       const TrackStep.hold(Duration(milliseconds: 50)),
@@ -111,7 +117,7 @@ void main() {
 
     advanced.advanceTo(0.15);
     advanced.advanceTo(0.05);
-    sought.seekTo(0.05);
+    sought.advanceTo(0.05);
 
     expect(advanced.values.single, closeTo(sought.values.single, error));
     expect(

@@ -143,21 +143,21 @@ void main() {
 
     test('seeking far into a loop lands on the matching cycle position', () {
       // Cycles last 200ms: 100ms forward, then 100ms back.
-      final loop = playback(LoopMode.loop)..seekTo(1000.25);
+      final loop = playback(LoopMode.loop)..advanceTo(1000.25);
       expect(loop.values.single, closeTo(0.5, error));
 
-      final pingPong = playback(LoopMode.pingPong)..seekTo(1000.15);
+      final pingPong = playback(LoopMode.pingPong)..advanceTo(1000.15);
       expect(pingPong.values.single, closeTo(0.5, error));
 
       // Cycles last 100ms and jump back to the start.
-      final seamless = playback(LoopMode.seamless)..seekTo(1000.05);
+      final seamless = playback(LoopMode.seamless)..advanceTo(1000.05);
       expect(seamless.values.single, closeTo(0.5, error));
     });
 
     test('seeking back after running a loop shows the earlier cycle', () {
       final p = playback(LoopMode.pingPong)
         ..advanceTo(5.15)
-        ..seekTo(0.05);
+        ..advanceTo(0.05);
       expect(p.values.single, closeTo(0.5, error));
 
       p.advanceTo(0.1);

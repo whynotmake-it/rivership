@@ -28,7 +28,7 @@ void main() {
       converter: MotionConverter.single,
       start: 0,
     );
-    playback.seekTo(t.inMicroseconds / Duration.microsecondsPerSecond);
+    playback.advanceTo(t.inMicroseconds / Duration.microsecondsPerSecond);
     return playback.values.single;
   }
 
@@ -41,8 +41,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('scrubTo matches seekTo-derived values on active tracks',
-        (tester) async {
+    testWidgets('scrubTo matches the plan values at each time', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.animate([trackA(stepsA), trackB(stepsB)]);
@@ -84,8 +83,8 @@ void main() {
 
       // CHARACTERIZATION: current behavior — see plans/005. stop(canceled:
       // true) deactivates every track and drops its playback, so scrubbing
-      // afterwards does not evaluate the old timeline (plan 001 assumed it
-      // would match seekTo); values stay frozen where the stop landed.
+      // afterwards does not evaluate the old timeline; values stay frozen
+      // where the stop landed.
       for (final t in const [
         Duration(milliseconds: 20),
         Duration(milliseconds: 125),
@@ -149,8 +148,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('scrubbing past a barrier releases waiting peers',
-        (tester) async {
+    testWidgets('scrubbing resolves barriers like playback', (tester) async {
       controller = TrackController(vsync: tester);
       const linear50 = Motion.linear(Duration(milliseconds: 50));
       const linear150 = Motion.linear(Duration(milliseconds: 150));
@@ -169,17 +167,24 @@ void main() {
 
       await tester.pump();
       controller.pause();
+
+      // trackA waits at the barrier until trackB arrives at 150ms.
       controller.scrubTo(const Duration(milliseconds: 100));
-      expect(controller.value(trackA), greaterThan(1));
-      expect(controller.value(trackB), lessThan(1));
+      expect(controller.value(trackA), closeTo(1, error));
+      expect(controller.value(trackB), closeTo(2 / 3, error));
+
+      controller.scrubTo(const Duration(milliseconds: 170));
+      expect(controller.value(trackA), closeTo(1.1, error));
+      expect(controller.value(trackB), closeTo(1.1, error));
+
+      controller.scrubTo(const Duration(milliseconds: 100));
+      expect(controller.value(trackA), closeTo(1, error));
 
       controller.resume();
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 20));
-
-      expect(controller.value(trackA), greaterThan(1));
-      expect(controller.value(trackB), greaterThan(1));
+      await tester.pump(const Duration(milliseconds: 70));
+      expect(controller.value(trackA), closeTo(1.1, error));
+      expect(controller.value(trackB), closeTo(1.1, error));
       controller.stop(canceled: true);
     });
 

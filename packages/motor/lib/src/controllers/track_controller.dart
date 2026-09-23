@@ -356,10 +356,11 @@ class TrackController extends Animation<TrackValueReader>
   /// at different times stay aligned. Playback continues from [t] afterwards.
   /// Completed plans are retained, so scrubbing works after playback ends.
   ///
-  /// Seeking replays each plan from its start, treats sync barriers as
-  /// zero-duration holds and passes through them freely (see [StepSync]).
-  /// Tracks scrubbed past a barrier count as having arrived, so peers that
-  /// later reach it are released normally.
+  /// Scrubbing resolves plans exactly like playback does, including sync
+  /// barriers, so it shows what playback would show at [t]. Times already
+  /// played are shown as they played. Looping plans that contain sync steps
+  /// keep only their two most recent cycles; earlier times show the start of
+  /// the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
@@ -369,9 +370,9 @@ class TrackController extends Animation<TrackValueReader>
     for (final entry in _slots.entries) {
       if (!entry.value.hasPlayback) continue;
       _activeTracks.add(entry.key);
-      entry.value.scrubTo(t);
+      entry.value.reactivate();
     }
-    _releaseArrivedBarriers(t);
+    _advanceTracks(t, notifySteps: false);
     notifyListeners();
   }
 
@@ -840,7 +841,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Barriers released on the way are released at their exact time, and the
   /// released tracks advance again, so one large frame gap resolves the same
   /// way as many small ones.
-  bool _advanceTracks(Duration now) {
+  bool _advanceTracks(Duration now, {bool notifySteps = true}) {
     var allDone = true;
     for (var pass = 0; pass < _maxBarrierPasses; pass++) {
       allDone = true;
@@ -852,7 +853,7 @@ class TrackController extends Animation<TrackValueReader>
         final slot = _slots[track];
         if (slot == null) continue;
         if (!slot.tick(now)) allDone = false;
-        _notifyStep(track, slot);
+        if (notifySteps) _notifyStep(track, slot);
       }
       if (!_releaseArrivedBarriers(now)) break;
     }

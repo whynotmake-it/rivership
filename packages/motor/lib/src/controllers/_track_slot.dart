@@ -147,27 +147,13 @@ class _TrackSlot<T extends Object> {
     return done;
   }
 
-  bool scrubTo(Duration elapsed) {
-    if (_stepPlayback == null) return true;
-    if (_playback == _TrackSlotPlayback.idle) {
-      _playback = _TrackSlotPlayback.chained;
-    }
-
-    final seconds = _localSeconds(elapsed);
-    return switch (_playback) {
-      _TrackSlotPlayback.idle => true,
-      _TrackSlotPlayback.chained => _seekStepPlayback(seconds),
-    };
+  /// Makes a retained plan playable again, e.g. after it completed.
+  void reactivate() {
+    if (_stepPlayback != null) _playback = _TrackSlotPlayback.chained;
   }
 
   bool _tickStepPlayback(double seconds) {
     final done = _stepPlayback!.advanceTo(seconds);
-    _pullPlaybackState();
-    return done;
-  }
-
-  bool _seekStepPlayback(double seconds) {
-    final done = _stepPlayback!.seekTo(seconds);
     _pullPlaybackState();
     return done;
   }
