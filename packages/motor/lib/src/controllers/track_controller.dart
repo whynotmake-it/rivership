@@ -72,9 +72,10 @@ class TrackController extends Animation<TrackValueReader>
   /// Upper bound on barrier releases handled within one frame.
   static const _maxBarrierPasses = 100;
   final Map<Track, Motion> _motionOverrides = {};
-  List<TrackAnimation> _lastAnimations = const [];
-  List<TrackValue> _lastStartValues = const [];
-  LoopMode _lastLoop = LoopMode.none;
+  final List<PlaybackPlan> _plans = [];
+
+  /// How many submitted plans are kept for inspection tooling.
+  static const _maxRecordedPlans = 16;
   final _clock = PlaybackClock();
   var _playbackRevision = 0;
 
@@ -269,7 +270,7 @@ class TrackController extends Animation<TrackValueReader>
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
-    bool rememberForReplay = true,
+    bool record = true,
   }) {
     assert(
       () {
@@ -290,14 +291,6 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
-    if (rememberForReplay) {
-      _lastAnimations = List.unmodifiable(animations);
-      _lastStartValues = List.unmodifiable([
-        for (final animation in animations) _startValueFor(animation),
-      ]);
-      _lastLoop = loop;
-    }
-
     _playbackRevision++;
 
     _onStep = onStep;
@@ -316,8 +309,9 @@ class TrackController extends Animation<TrackValueReader>
       );
     }
 
-    if (MotorInspectionRegistry.durationEstimationEnabled) {
+    if (MotorInspectionRegistry.isInspecting) {
       _estimateDurations(timelineTracks);
+      if (record) _recordPlan(animations, loop: loop, start: startOffset);
     }
 
     _status = AnimationStatus.forward;
@@ -406,14 +400,26 @@ class TrackController extends Animation<TrackValueReader>
     notifyListeners();
   }
 
-  TrackValue<T> _startValueFor<T extends Object>(
-    TrackAnimation<T> animation,
-  ) {
-    final slot = _slots[animation.track];
-    final value =
-        animation.from ?? slot?.value ?? animation.resolveStartValue();
-    return animation.track.value(value as T);
+  void _recordPlan(
+    List<TrackAnimation> animations, {
+    required LoopMode loop,
+    required Duration start,
+  }) {
+    _plans.add(
+      PlaybackPlan(
+        start: start,
+        animations: animations,
+        loop: loop,
+        startValues: [
+          for (final animation in animations) _currentValueOf(animation.track),
+        ],
+      ),
+    );
+    if (_plans.length > _maxRecordedPlans) _plans.removeAt(0);
   }
+
+  TrackValue<T> _currentValueOf<T extends Object>(Track<T> track) =>
+      track.value(_slots[track]!.value as T);
 
   TrackAnimation _applyMotionOverride(TrackAnimation animation) {
     final override = _motionOverrides[animation.track];
@@ -571,6 +577,7 @@ class TrackController extends Animation<TrackValueReader>
     }
     return PlaybackSnapshot(
       revision: _playbackRevision,
+      plans: _plans,
       tickerElapsed: lastElapsedDuration,
       status: status,
       tracks: tracks,
@@ -614,17 +621,15 @@ class TrackController extends Animation<TrackValueReader>
   /// Replays the most recently submitted clip from its recorded start values.
   @internal
   TickerFuture internalReplay() {
-    if (_lastAnimations.isEmpty) return TickerFuture.complete();
-    final animations = _lastAnimations;
-    final starts = _lastStartValues;
-    final loop = _lastLoop;
+    if (_plans.isEmpty) return TickerFuture.complete();
+    final plan = _plans.last;
     _hardStop(null);
-    set(starts);
+    set(plan.startValues);
     return _startAnimations(
-      animations: animations,
-      loop: loop,
+      animations: plan.animations,
+      loop: plan.loop,
       onStep: _onStep,
-      rememberForReplay: false,
+      record: false,
     );
   }
 

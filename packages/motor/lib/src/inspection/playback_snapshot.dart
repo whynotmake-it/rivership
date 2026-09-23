@@ -16,7 +16,9 @@ class PlaybackSnapshot {
     required this.tickerElapsed,
     required this.status,
     required List<TrackPlayback> tracks,
-  }) : tracks = List.unmodifiable(tracks);
+    List<PlaybackPlan> plans = const [],
+  })  : plans = List.unmodifiable(plans),
+        tracks = List.unmodifiable(tracks);
 
   /// Monotonic counter that changes whenever the controller's plan changes.
   final int revision;
@@ -29,6 +31,40 @@ class PlaybackSnapshot {
 
   /// Playback details for every slot that still retains a playback plan.
   final List<TrackPlayback> tracks;
+
+  /// The most recent plans submitted with `play` or `animate`, oldest first.
+  ///
+  /// Recorded only while an inspection observer is attached, up to 16.
+  final List<PlaybackPlan> plans;
+}
+
+/// A plan submitted to a [TrackController] with `play` or `animate`.
+@experimental
+@immutable
+class PlaybackPlan {
+  /// Creates a record of a submitted plan.
+  PlaybackPlan({
+    required this.start,
+    required List<TrackAnimation> animations,
+    required this.loop,
+    required List<TrackValue> startValues,
+  })  : animations = List.unmodifiable(animations),
+        startValues = List.unmodifiable(startValues);
+
+  /// When the plan started, on the controller's playback clock.
+  final Duration start;
+
+  /// The animations as they were submitted.
+  final List<TrackAnimation> animations;
+
+  /// The loop mode the animations were played with.
+  final LoopMode loop;
+
+  /// Each animated track's value when the plan started.
+  ///
+  /// Setting these with `TrackController.set` and submitting [animations]
+  /// again replays the plan.
+  final List<TrackValue> startValues;
 }
 
 /// One track's live, read-only playback state.
