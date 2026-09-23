@@ -29,7 +29,7 @@ What the layers measure:
 | Multi-track ×500 | +62.5% | +13.2% | +21.6% | +254.1% | +304.7% | +321.9% |
 | Interrupt / retarget | +21.9% | +23.8% | +35.7% | +129.9% | +170.5% | +200.0% |
 | Widget rebuild | -32.2% | -32.8% | -32.8% | +6.1% | -12.1% | -8.8% |
-| Manual set (tracking off) | n/a | n/a | n/a | +2.6% | +45.0% | +64.4% |
+| Manual set (tracking off, noise) | n/a | n/a | n/a | +2.6% | +45.0% | +64.4% |
 | Velocity tracking on vs off | n/a | n/a | n/a | +4732% | +2736% | +3064% |
 
 - **Baseline**: `motor/2.0` at `3d517dd`, before any performance work.
@@ -47,11 +47,20 @@ Reading the table:
 
 - Per-frame cost (pump) improved most where it matters: many tracks on one
   controller. At 500 tracks the gap went from +62.5% to +13.2%.
-- The tick layer is noisy at this scale (sub-microsecond values, p90 often
-  2x the p50), so run-to-run swings of tens of percent are common. Sustained
-  signals: reads cost more than `AnimationController.value` because each read
-  looks a track up and denormalizes it, and tracked velocity still costs about
-  3 µs per `set`. Most of that is the `clock.now()` inside
+- Known cost: value reads at many tracks got slower in Phase 0.5. At 500
+  tracks Motor's read time per frame went from 12.5 to 13.6 µs to 15.6 to
+  17.0 µs across full and filtered reruns, about 25% (roughly 3 µs per
+  frame). The pump gain is far larger, but this is a real regression, and it
+  is a Phase 2 target. The lazy value cache bookkeeping is the main suspect.
+- The small single-value tick rows are noisy (sub-microsecond values, p90
+  often 2x the p50), so run-to-run swings of tens of percent are common.
+- Manual set is noise, not a regression: filtered reruns measure +97% to
+  +130% at the baseline and +107% to +140% after Phase 0.5, and the
+  full-suite value depends on scenario order (-3%, +111%, +10% in three
+  runs).
+- Reads cost more than `AnimationController.value` in general because each
+  read looks a track up and denormalizes it. Tracked velocity still costs
+  about 3 µs per `set`, mostly the `clock.now()` inside
   `MotionVelocityTracker.addPosition`.
 - The fork's original report measured -12% at 500 tracks after its changes,
   but on different hardware. It also included buffer aliasing between
@@ -62,6 +71,7 @@ Reading the table:
 
 - Interrupt/retarget: each retarget builds a new playback and simulations.
   The segment-table redesign (plan phase 2) should reduce this.
-- Value reads: the per-track slot lookup and denormalization.
+- Value reads: the per-track slot lookup and denormalization, including
+  the ~25% Phase 0.5 regression at 500 tracks.
 - Velocity tracking: sample time comes from `clock.now()` inside the
   tracker; avoiding the second clock read needs a tracker API change.

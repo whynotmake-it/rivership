@@ -300,6 +300,22 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('scrubbing back while running keeps the run elapsed time',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      controller.scrubTo(const Duration(milliseconds: 200));
+      expect(controller.lastElapsedDuration, const Duration(milliseconds: 500));
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(controller.lastElapsedDuration, const Duration(milliseconds: 600));
+      expect(controller.value(trackA), closeTo(0.3, error));
+      controller.stop(canceled: true);
+    });
+
     testWidgets('changing timeDilation mid-run does not jump', (tester) async {
       controller = TrackController(vsync: tester);
       controller.animate([trackA.to(1, motion: linear1s)]);

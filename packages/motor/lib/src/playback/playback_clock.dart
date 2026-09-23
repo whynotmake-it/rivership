@@ -49,6 +49,7 @@ class PlaybackClock {
 
   /// Moves the timeline to [position], for example when scrubbing.
   void seek(Duration position) {
+    _runStart += position - _now;
     _now = position;
     _rebase(_lastTickerElapsed);
   }

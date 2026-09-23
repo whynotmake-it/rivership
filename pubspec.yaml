@@ -61,6 +61,7 @@ melos:
         concurrency: 6
       packageFilters:
         dirExists: test
+        ignore: [motor_benchmark]
       description: Run `flutter test test` for selected packages.
 
     test:
@@ -75,6 +76,7 @@ melos:
         concurrency: 6
       packageFilters:
         dirExists: test
+        ignore: [motor_benchmark]
       description: Generate coverage for the selected package.
 
     coverage:
