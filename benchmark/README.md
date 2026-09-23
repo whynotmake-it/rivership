@@ -10,8 +10,8 @@ multi-track counts; `BENCH_QUICK=1` is smoke only.
 
 | Mode | Measures |
 |---|---|
-| `tick` | Time inside the animation listener (notify + value read) |
-| `pump` | Wall time of `tester.pump` loops (framework + tick) |
+| `tick` | Time spent reading values inside the animation listener (excludes advancing simulations) |
+| `pump` | Wall time of `tester.pump` loops (simulations, listeners, framework) |
 | `both` (default) | Record both layers per run |
 
 ## Scenarios
