@@ -85,7 +85,8 @@ class TrackPlayback {
   /// The active synchronization token, or `null` when not waiting.
   final Object? syncToken;
 
-  /// The track's start position on the controller ticker axis.
+  /// When the track's current plan started on the controller's playback
+  /// clock, the same timeline used by `TrackController.scrubTo`.
   final Duration startOffset;
 
   /// The latest elapsed position on this track's slot-local axis.

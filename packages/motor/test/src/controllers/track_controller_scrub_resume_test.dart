@@ -1,6 +1,7 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
 import 'package:flutter/animation.dart';
+import 'package:flutter/scheduler.dart' show timeDilation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -247,6 +248,94 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.value(trackA), closeTo(0, error));
       expect(controller.value(trackB), closeTo(2, error));
+    });
+  });
+
+  group('TrackController timeline', () {
+    const linear1s = Motion.linear(Duration(seconds: 1));
+    late TrackController controller;
+    final trackA = Track<double>(MotionConverter.single, initial: 0);
+    final trackB = Track<double>(MotionConverter.single, initial: 0);
+
+    tearDown(() {
+      controller.dispose();
+    });
+
+    testWidgets('animating another track while paused continues paused tracks',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      controller.pause();
+
+      controller.animate([trackB.to(1, motion: linear1s)]);
+      await tester.pump();
+      expect(controller.value(trackA), closeTo(0.5, error));
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(controller.value(trackA), closeTo(0.6, error));
+      expect(controller.value(trackB), closeTo(0.1, error));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('scrubs tracks started at different times on one timeline',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      controller
+        ..pause()
+        ..resume();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      controller.animate([trackB.to(1, motion: linear1s)]);
+      await tester.pump();
+
+      controller.scrubTo(const Duration(milliseconds: 250));
+
+      expect(controller.value(trackA), closeTo(0.25, error));
+      expect(controller.value(trackB), closeTo(0.1, error));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('changing timeDilation mid-run does not jump', (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      final before = controller.value(trackA);
+
+      timeDilation = 2;
+      try {
+        // Flutter resets its time epoch here, so this frame advances nothing.
+        await tester.pump(const Duration(milliseconds: 100));
+        final afterReset = controller.value(trackA);
+        expect(afterReset, inInclusiveRange(before, before + 0.05 + error));
+
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value(trackA), closeTo(afterReset + 0.05, error));
+      } finally {
+        timeDilation = 1;
+      }
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('changing playback speed mid-run does not jump',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([trackA.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      controller.playbackSpeed = 0.5;
+      await tester.pump();
+      expect(controller.value(trackA), closeTo(0.2, error));
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(controller.value(trackA), closeTo(0.25, error));
+      controller.stop(canceled: true);
     });
   });
 }

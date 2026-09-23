@@ -399,7 +399,11 @@ A few semantics worth knowing:
   `AnimationStatus.completed` for a canceled stop.
 - `pause()` stops the ticker without changing `status` (so `isAnimating` is
   `false` while `status` stays `forward`). It is meant for inspection and
-  authoring; for UI logic prefer `stop`.
+  authoring; for UI logic prefer `stop`. Starting another animation resumes
+  paused tracks from where they stopped.
+- `scrubTo(t)` positions every track on one controller timeline that only
+  advances while the controller ticks, so tracks started at different times
+  stay aligned, and playback continues from `t`.
 - `status` goes `dismissed` → `forward` → `completed`. It never reports
   `reverse`; use `MotionController` if you need directional status.
 

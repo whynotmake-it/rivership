@@ -9,6 +9,7 @@ import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/playback/playback_clock.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
@@ -71,7 +72,7 @@ class TrackController extends Animation<TrackValueReader>
   List<TrackAnimation> _lastAnimations = const [];
   List<TrackValue> _lastStartValues = const [];
   LoopMode _lastLoop = LoopMode.none;
-  double _playbackSpeed = 1;
+  final _clock = PlaybackClock();
   var _playbackRevision = 0;
 
   /// The number of tracks this controller currently holds state for.
@@ -80,7 +81,6 @@ class TrackController extends Animation<TrackValueReader>
 
   Ticker? _ticker;
   TickerFuture? _tickerFuture;
-  Duration _lastElapsed = Duration.zero;
   void Function(Track track, int stepIndex)? _onStep;
   AnimationStatus _status = AnimationStatus.dismissed;
   AnimationStatus _lastReportedStatus = AnimationStatus.dismissed;
@@ -133,7 +133,8 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   /// The elapsed duration of the current run, or null when not animating.
-  Duration? get lastElapsedDuration => isAnimating ? _lastElapsed : null;
+  Duration? get lastElapsedDuration =>
+      isAnimating ? _clock.sinceTickerStart : null;
 
   /// Sets one or more track values without starting an animation.
   ///
@@ -303,7 +304,7 @@ class TrackController extends Animation<TrackValueReader>
 
     _mergeTokenParticipants(animations, timelineTracks);
 
-    final startOffset = isAnimating ? _lastElapsed : Duration.zero;
+    final startOffset = _clock.now;
     for (final animation in animations) {
       _playAnimation(
         _applyMotionOverride(animation),
@@ -320,9 +321,10 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Evaluates retained track plans at [t] without starting the ticker.
   ///
-  /// [t] is a position on the controller's timeline: zero is the moment the
-  /// ticker started the current run, and tracks added later by [animate]
-  /// while it was running are offset by the time at which they joined.
+  /// [t] is a position on the controller's timeline, which starts at zero and
+  /// only advances while the controller is ticking. Each track is evaluated
+  /// relative to the moment it was started on that timeline, so tracks started
+  /// at different times stay aligned. Playback continues from [t] afterwards.
   /// Completed plans are retained, so scrubbing works after playback ends.
   ///
   /// Seeking replays each plan from its start, treats sync barriers as
@@ -334,7 +336,7 @@ class TrackController extends Animation<TrackValueReader>
   /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
     _playbackRevision++;
-    _lastElapsed = t;
+    _clock.seek(t);
     for (final entry in _slots.entries) {
       if (!entry.value.hasPlayback) continue;
       _activeTracks.add(entry.key);
@@ -349,7 +351,9 @@ class TrackController extends Animation<TrackValueReader>
   /// While paused, [isAnimating] is false because the ticker is stopped. No
   /// status event is dispatched: pausing is an inspection and authoring action,
   /// not a completed or canceled animation outcome. Use [scrubTo] to inspect a
-  /// position and [resume] to continue from it.
+  /// position and [resume] to continue from it. Starting any playback with
+  /// [play] or [animate] also resumes the paused tracks from where they
+  /// stopped.
   void pause() {
     final ticker = _ticker;
     if (ticker == null || !ticker.isActive) return;
@@ -366,9 +370,6 @@ class TrackController extends Animation<TrackValueReader>
     if (isAnimating) return;
     if (!_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
       return;
-    }
-    for (final track in _activeTracks) {
-      _slots[track]?.rebaseTo(Duration.zero);
     }
     _status = AnimationStatus.forward;
     _startTicker();
@@ -442,7 +443,7 @@ class TrackController extends Animation<TrackValueReader>
     for (final track in targets) {
       final slot = _slots[track];
       if (slot == null) continue;
-      if (slot.settle(startOffset: _lastElapsed)) {
+      if (slot.settle(startOffset: _clock.now)) {
         // Keep the track active so the ticker drives it to rest. Reset its
         // step bookkeeping so the settle segment doesn't re-fire onStep.
         _activeTracks.add(track);
@@ -524,7 +525,7 @@ class TrackController extends Animation<TrackValueReader>
           cycle: playback.cycle,
           isWaitingForSync: playback.isWaitingForSync,
           syncToken: playback.syncToken,
-          startOffset: entry.value.inspectionStartOffset,
+          startOffset: entry.value.startOffset,
           playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
           cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
           stepStarts: [
@@ -556,17 +557,14 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Exposes the inspection playback speed to tooling.
   @internal
-  double get internalPlaybackSpeed => _playbackSpeed;
+  double get internalPlaybackSpeed => _clock.rate;
 
   /// Changes the logical playback rate without affecting other controllers.
   @internal
   set internalPlaybackSpeed(double value) {
     assert(value > 0, 'playbackSpeed must be greater than zero.');
-    if (value <= 0 || value == _playbackSpeed) return;
-    final wasAnimating = isAnimating;
-    if (wasAnimating) pause();
-    _playbackSpeed = value;
-    if (wasAnimating) resume();
+    if (value <= 0 || value == _clock.rate) return;
+    _clock.rate = value;
     notifyListeners();
   }
 
@@ -765,10 +763,7 @@ class TrackController extends Animation<TrackValueReader>
       // shares a single completion signal (whole-controller semantics).
       return _tickerFuture ??= TickerFuture.complete();
     }
-    // A restarted Ticker reports elapsed from zero again (stop() nulls its
-    // start time). Reset our mirror so animations started later in the same
-    // frame use a correct zero start offset instead of a stale elapsed value.
-    _lastElapsed = Duration.zero;
+    _clock.tickerStarted();
     return _tickerFuture = ticker.start();
   }
 
@@ -790,12 +785,7 @@ class TrackController extends Animation<TrackValueReader>
   bool onPlaybackCompleted() => false;
 
   void _tick(Duration elapsed) {
-    final logicalElapsed = _playbackSpeed == 1
-        ? elapsed
-        : Duration(
-            microseconds: (elapsed.inMicroseconds * _playbackSpeed).round(),
-          );
-    _lastElapsed = logicalElapsed;
+    final now = _clock.tick(elapsed);
     var allDone = true;
 
     // Snapshot the active set: onStep callbacks may start or stop tracks.
@@ -805,7 +795,7 @@ class TrackController extends Animation<TrackValueReader>
     for (final track in tracks) {
       final slot = _slots[track];
       if (slot == null) continue;
-      if (!slot.tick(logicalElapsed)) {
+      if (!slot.tick(now)) {
         allDone = false;
       }
       _notifyStep(track, slot);

@@ -43,7 +43,6 @@ class _TrackSlot<T extends Object> {
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
-  Duration _inspectionStartOffset = Duration.zero;
 
   T get value => _value ??= _denormalize(_currentValues);
 
@@ -64,7 +63,8 @@ class _TrackSlot<T extends Object> {
 
   bool get hasPlayback => _stepPlayback != null;
 
-  Duration get inspectionStartOffset => _inspectionStartOffset;
+  /// When the current plan started, on the controller's playback clock.
+  Duration get startOffset => _startOffset;
 
   bool get isWaitingForSync => _stepPlayback?.isWaitingForSync ?? false;
 
@@ -107,7 +107,6 @@ class _TrackSlot<T extends Object> {
     bool estimateDurations = false,
   }) {
     _startOffset = startOffset;
-    _inspectionStartOffset = startOffset;
     final velocityValue = velocity ?? this.velocity;
     _stepPlayback = StepPlayback<T>(
       steps: steps,
@@ -125,12 +124,6 @@ class _TrackSlot<T extends Object> {
 
   double _localSeconds(Duration elapsed) {
     final local = elapsed - _startOffset;
-    final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
-    return seconds < 0 ? 0 : seconds;
-  }
-
-  double _inspectionSeconds(Duration elapsed) {
-    final local = elapsed - _inspectionStartOffset;
     final seconds = local.inMicroseconds / Duration.microsecondsPerSecond;
     return seconds < 0 ? 0 : seconds;
   }
@@ -156,23 +149,11 @@ class _TrackSlot<T extends Object> {
       _playback = _TrackSlotPlayback.chained;
     }
 
-    final seconds = _inspectionSeconds(elapsed);
+    final seconds = _localSeconds(elapsed);
     return switch (_playback) {
       _TrackSlotPlayback.idle => true,
       _TrackSlotPlayback.chained => _seekStepPlayback(seconds),
     };
-  }
-
-  /// Re-bases the controller axis around this slot's current local playhead.
-  ///
-  /// A restarted ticker begins at zero. Making the start offset negative by
-  /// the already-consumed local time keeps `ticker - startOffset` continuous.
-  void rebaseTo(Duration tickerElapsed) {
-    final seconds = _stepPlayback?.lastElapsedSeconds ?? 0;
-    final localPlayhead = Duration(
-      microseconds: (seconds * Duration.microsecondsPerSecond).round(),
-    );
-    _startOffset = tickerElapsed - localPlayhead;
   }
 
   bool _tickStepPlayback(double seconds) {

@@ -41,6 +41,7 @@
 ### Controllers
 
  - **FEAT**: add `TrackController.pause()` for silent, non-destructive playback inspection and authoring.
+ - **FIX**: controllers keep one playback timeline across pauses and ticker restarts. Calling `play`/`animate` while paused no longer rewinds the paused tracks, `scrubTo` positions tracks started at different times consistently, and changing `playbackSpeed` no longer pauses and resumes the controller.
  - **FIX**: `resume()` after `scrubTo()` now continues from the scrubbed position instead of rewinding, and scrubbing past a sync barrier no longer stalls peers that arrive later.
  - **FIX**: retain completed playback plans for inspection, keep scrubbing on the authored timeline axis across repeated pause/resume gestures, and capture stable per-step duration estimates only while inspection tooling is attached.
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
