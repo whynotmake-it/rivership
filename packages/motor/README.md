@@ -662,16 +662,15 @@ final single = SingleMotionController(
 
 controller.animateTo(const Offset(100, 0));
 controller.play([ // multi-step playback on one value
-  .to(const Offset(0, 100), motion: .smoothSpring()),
+  .to(const Offset(0, 100)), // uses the controller's motion
   .hold(const Duration(milliseconds: 200)),
-  .to(Offset.zero, motion: .bouncySpring()),
+  .to(Offset.zero, motion: .smoothSpring()),
 ], loop: .pingPong);
 ```
 
 `MotionController` is a thin wrapper around a single-track `TrackController`,
 so everything in [Tracks & Steps](#tracks--steps-) applies to `play` as well.
-Note that `play` does **not** fall back to the controller's `motion`: every
-`.to` / `.at` step must carry its own motion.
+Steps without their own motion use the controller's `motion`.
 
 Motion controllers work similarly to Flutter's `AnimationController` but with key advantages:
 - **Motion-agnostic**: Switch between springs and curves without changing controller code

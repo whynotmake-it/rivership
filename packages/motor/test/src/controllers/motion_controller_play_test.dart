@@ -129,6 +129,30 @@ void main() {
       expect(controller.isAnimating, isFalse);
     });
 
+    testWidgets('uses the controller motion for steps without one',
+        (tester) async {
+      controller = MotionController<double>(
+        motion: const Motion.linear(Duration(milliseconds: 100)),
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+
+      unawaited(
+        controller.play([
+          const TrackStep.to(10),
+          const TrackStep.at(Duration(milliseconds: 300), 0),
+        ]),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(controller.value, closeTo(5, error));
+
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(controller.value, closeTo(0, error));
+      unawaited(controller.stop(canceled: true));
+    });
+
     testWidgets('waits for the active simulation to finish each step',
         (tester) async {
       final steps = <int>[];

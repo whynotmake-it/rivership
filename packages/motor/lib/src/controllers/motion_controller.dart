@@ -307,8 +307,8 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// Plays [steps] from the current value.
   ///
-  /// Every `TrackStep.to` / `TrackStep.at` must carry its own motion: this
-  /// method does not fall back to [motion] / [motionPerDimension].
+  /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
+  /// controller's [motionPerDimension].
   ///
   /// Non-looping playback completes when all chained simulations finish.
   /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
@@ -321,7 +321,10 @@ class MotionController<T extends Object> extends Animation<T>
 
     _lastTarget = null;
     final future = _inner.play(
-      TrackTimeline([_track(steps)], loop: loop ?? LoopMode.none),
+      TrackTimeline(
+        [_track(_withDefaultMotions(steps))],
+        loop: loop ?? LoopMode.none,
+      ),
       onStep: onStep == null ? null : (track, index) => onStep(index),
     );
     _inner.resetVelocityTracking();
@@ -329,6 +332,22 @@ class MotionController<T extends Object> extends Animation<T>
     _checkStatusChanged();
     return future;
   }
+
+  List<TrackStep<T>> _withDefaultMotions(List<TrackStep<T>> steps) => [
+        for (final step in steps)
+          switch (step) {
+            StepTo<T>(motion: null, motionPerDimension: null, :final value) =>
+              TrackStep.to(value, motionPerDimension: _motionPerDimension),
+            StepAt<T>(
+              motion: null,
+              motionPerDimension: null,
+              :final at,
+              :final value,
+            ) =>
+              TrackStep.at(at, value, motionPerDimension: _motionPerDimension),
+            _ => step,
+          },
+      ];
 
   /// Stops the current simulation, and depending on the value of [canceled],
   /// either settles the simulation at the current value, or interrupts the

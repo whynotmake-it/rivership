@@ -43,7 +43,7 @@
 ### Controllers
 
  - **REFACTOR**: `MotionController` is now a thin wrapper over a single-track `TrackController`, so the single-value and multi-track stacks share one engine. This is an internal change and should be fully compatible with 1.x.
- - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback (each target step needs its own motion), plus `trackedVelocityEstimate`.
+ - **FEAT**: add `MotionController.play(List<TrackStep<T>>, {loop, onStep})` for step-based and looping single-value playback (steps without a motion use the controller's), plus `trackedVelocityEstimate`.
  - **REFACTOR**: the deprecated sequence APIs (`SequenceMotionController` and `SequenceMotionBuilder`) now run on the 2.0 track engine; the internal legacy controller copy is deleted. `SequenceMotionController` is a subtype of the exported `MotionController` again, restoring 1.x source compatibility. Phase timing is unchanged (pinned by the legacy sequence semantics tests). Observable deltas:
    - `playSequence`'s returned `TickerFuture` for LOOPING sequences now resolves at the end of the first cycle instead of never (matching `PhaseTrackController.playPhases` — do not `await` a looping sequence).
    - phase-boundary values are sampled at the simulation's exact completion time (a sub-tolerance difference, visible only to non-snapping springs).
