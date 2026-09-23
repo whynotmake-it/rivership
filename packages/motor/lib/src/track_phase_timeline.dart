@@ -19,12 +19,24 @@ import 'package:motor/src/track_timeline.dart';
 ///   Phase.disabled: [size.to(Size(100, 40)), color.to(Colors.grey)],
 /// });
 /// ```
+///
+/// The barrier inserted before each phase uses that phase value as its
+/// [StepSync.token], so avoid reusing phase values as your own sync tokens.
+///
+/// Only a [PhaseTrackController] (or `PhaseTrackBuilder`) interprets
+/// [phaseLoop], [from], and [withVelocity]. Played as a plain
+/// [TrackTimeline] (e.g. via `TrackController.play`), the inherited `loop` is
+/// always [LoopMode.none] and the phases run once, in order.
 class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   /// Creates a phase timeline from a map of phases to track animations.
   ///
   /// The iteration order of [phaseAnimations] determines phase ordering.
-  /// The [loop] parameter controls whether the [PhaseTrackController] will
-  /// restart playback after the last phase completes.
+  /// [phaseLoop] controls what the [PhaseTrackController] does after the last
+  /// phase completes.
+  ///
+  /// Only the steps of each [TrackAnimation] are used: a per-animation `from`
+  /// or `withVelocity` inside [phaseAnimations] is ignored. Use the
+  /// timeline-level [from] and [withVelocity] seeds instead.
   TrackPhaseTimeline(
     this.phaseAnimations, {
     this.phaseLoop = LoopMode.none,
@@ -54,9 +66,14 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   /// How the phase sequence should loop.
   ///
   /// This is handled by [PhaseTrackController] rather than by internal
-  /// step playback looping. When [phaseLoop] is [LoopMode.loop], the
-  /// controller replays the timeline from the first phase after the last
-  /// phase completes.
+  /// step playback looping, and only while auto-advancing (`playPhases`):
+  ///
+  /// - [LoopMode.loop] animates from the last phase back to the first and
+  ///   replays the timeline.
+  /// - [LoopMode.seamless] jumps to the first phase's values and continues
+  ///   with the second phase.
+  /// - [LoopMode.pingPong] visits the phases in reverse order, then forward
+  ///   again. Each phase's own steps still play forward.
   final LoopMode phaseLoop;
 
   /// The ordered list of phases.

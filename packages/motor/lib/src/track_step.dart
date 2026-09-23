@@ -31,7 +31,15 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// Holds the current value for [duration].
   const factory TrackStep.hold(Duration duration) = StepHold<T>;
 
-  /// Starts an animation that reaches [value] at absolute time [at].
+  /// A keyframe that targets [value] at absolute time [at].
+  ///
+  /// [at] is measured from the start of the track animation (and from the
+  /// start of the current cycle when looping). If the preceding steps finish
+  /// before [at], the motion is time-scaled so [value] is reached exactly at
+  /// [at]. If a preceding step is still running at [at], it is cut short and
+  /// this step starts at [at] with its motion's natural duration, so [value]
+  /// is reached later than [at]. [at] must not be earlier than the total
+  /// duration of preceding holds (asserted).
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If

@@ -112,6 +112,7 @@ abstract class MotionConverter<T> {
 ///     return areaA.compareTo(areaB);
 ///   }
 /// }
+/// ```
 mixin DirectionalMotionConverter<T> on MotionConverter<T> {
   /// Compares two values of type [T] for figuring out directionality.
   ///

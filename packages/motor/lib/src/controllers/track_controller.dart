@@ -33,6 +33,14 @@ class TrackController extends Animation<TrackValueReader>
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
   /// Creates a track controller.
+  ///
+  /// [from] seeds the value a track takes the first time this controller sees
+  /// it, in place of [Track.initial]. Seeds are consulted only when a track's
+  /// state is first created; later [play]/[animate] calls do not re-apply
+  /// them, and an animation's own `from` still jumps the track when it plays.
+  ///
+  /// [velocityTracking] controls whether [set] estimates velocity from
+  /// successive position samples.
   TrackController({
     required TickerProvider vsync,
     List<TrackValue>? from,
@@ -85,6 +93,10 @@ class TrackController extends Animation<TrackValueReader>
   bool get isAnimating => _ticker?.isActive ?? false;
 
   /// Returns a reader for the current track values.
+  ///
+  /// Reading a track this controller has never seen returns its constructor
+  /// `from` seed or [Track.initial], and registers the track with the
+  /// controller. Reading a track with neither throws.
   @override
   TrackValueReader get value => _read;
 
@@ -293,9 +305,15 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Evaluates retained track plans at [t] without starting the ticker.
   ///
-  /// Seeking treats sync barriers as zero-duration holds and passes through
-  /// them freely (see [StepSync]). Tracks scrubbed past a barrier count as
-  /// having arrived, so peers that later reach it are released normally.
+  /// [t] is a position on the controller's timeline: zero is the moment the
+  /// ticker started the current run, and tracks added later by [animate]
+  /// while it was running are offset by the time at which they joined.
+  /// Completed plans are retained, so scrubbing works after playback ends.
+  ///
+  /// Seeking replays each plan from its start, treats sync barriers as
+  /// zero-duration holds and passes through them freely (see [StepSync]).
+  /// Tracks scrubbed past a barrier count as having arrived, so peers that
+  /// later reach it are released normally.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
@@ -326,8 +344,9 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Resumes paused playback from each track's current local playhead.
   ///
-  /// Calling this while the ticker is already active or after playback has
-  /// completed is a no-op.
+  /// Calling this while the ticker is already active, or when no track has
+  /// anything left to play, is a no-op. Scrubbing a completed plan back with
+  /// [scrubTo] makes it resumable again.
   void resume() {
     if (isAnimating) return;
     if (!_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {

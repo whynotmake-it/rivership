@@ -306,6 +306,9 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// Plays [steps] from the current value.
   ///
+  /// Every `TrackStep.to` / `TrackStep.at` must carry its own motion: this
+  /// method does not fall back to [motion] / [motionPerDimension].
+  ///
   /// Non-looping playback completes when all chained simulations finish.
   /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
   TickerFuture play(

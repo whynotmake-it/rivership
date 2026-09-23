@@ -11,8 +11,9 @@ enum LoopMode {
   /// The animation will play forward and then reverse back to the start.
   pingPong,
 
-  /// The animation will loop seamlessly by treating the first and last values
-  /// as identical, creating smooth circular transitions without jarring jumps.
+  /// The animation will jump back to its start without animating and play
+  /// again. Author the final step to end on the starting value so the jump is
+  /// invisible, which makes circular motion (e.g. rotations) seamless.
   seamless;
 
   /// Whether the animation should loop.

@@ -32,16 +32,20 @@ class MotorInspectionSubscription {
 
 /// The opt-in bridge between Motor controllers and external inspection tools.
 ///
-/// A root devtools widget attaches an observer before mounting its child.
-/// Controllers created beneath that root are then discovered automatically.
-/// When no observer is attached, Motor keeps no global collection of
-/// controllers.
+/// A devtools widget typically attaches an observer before mounting its
+/// child. From then on, every [TrackController] created anywhere in the
+/// process (not just beneath that widget) is reported, until the last
+/// observer detaches. Controllers created before the first observer attaches
+/// are never reported. When no observer is attached, Motor keeps no global
+/// collection of controllers.
 abstract final class MotorInspectionRegistry {
   static final _observers = <MotorInspectionObserver>{};
   static Set<TrackController>? _activeControllers;
 
-  /// Attaches [observer] and reports controllers already known to another
-  /// active observer.
+  /// Attaches [observer] and immediately reports controllers already known to
+  /// another active observer.
+  ///
+  /// Dispose the returned subscription to detach.
   static MotorInspectionSubscription attach(
     MotorInspectionObserver observer,
   ) {
