@@ -6,16 +6,19 @@ memory from one AOT profile build (`BENCH_BUILD=profile`).
 
 - **Baseline:** `motor/2.0` at `3cc5de9`, before the optimization pass
   (three invocations of 7 runs each).
-- **Final:** `motor/2.0` at `e1869d9`, after it (five invocations). An
-  earlier final run at `af172d6` gave the same ratios within noise.
+- **Final:** `motor/2.0` at `3e3e6d1`, after it (five invocations).
+  Earlier final runs at `af172d6` and `e1869d9` gave the same animation
+  ratios within noise.
 
-The optimization pass changed three things:
+The optimization pass changed four things:
 - `f5fb928`/`43ea1d9`: segment ends are found as time passes, not searched
   up front.
 - `3acafda`: velocities are computed only when read, and dimensions that
   share a curve evaluate it once per frame.
-- `5fc7a94`/`38fc0ce`: fewer allocations on start, and less memory retained
-  per track.
+- `5fc7a94`/`38fc0ce`/`737d99b`: fewer allocations on start and per frame,
+  and less memory retained per track.
+- `ffd0c3c`/`3e3e6d1`: velocity samples go into a preallocated buffer, and
+  `set` does less bookkeeping.
 
 `4477802` also fixes `CurveSimulation.dx`, which reported 4× the real
 velocity.
@@ -28,46 +31,45 @@ only final numbers.
 
 - **Per frame, motor matches `AnimationController` once there is more than
   one value.**
-  - 10 to 1000 values on one controller cost 0.91× to 1.07× the equivalent
+  - 10 to 1000 values on one controller cost 0.89× to 1.06× the equivalent
     `AnimationController`s, for curves and springs alike (baseline: 1.15×
     to 1.81×).
-  - A single value still costs about 1.9×. That's a fixed overhead of about
-    0.25 µs per controller per frame.
+  - A single value still costs about 1.8×. That's a fixed overhead of about
+    0.2 µs per controller per frame.
 - **Multi-dimensional values:**
-  - Springs are at parity with one controller per dimension: 0.92× to
-    1.37×.
-  - Curves cost 1.75× to 2.1× what one controller plus a tween costs
+  - Springs are at parity with one controller per dimension: 0.94× to
+    1.39×.
+  - Curves cost 1.8× to 2.15× what one controller plus a tween costs
     (baseline: 2.8× to 4.5×).
-- **Starting and retargeting got much cheaper.** Spring starts and
-  retargets are 4× to 8× faster than the baseline, and curve starts 1.4× to
-  3× faster.
-  - Starting now costs 2.2× to 4.4× the Flutter side, and retargeting a
-    spring 1.6× to 3.4× (baseline: 5× to 39× and 9× to 25×).
-  - 1000 springs start in 1.05 ms versus 0.25 ms, and one spring retargets
-    in 1.8 µs versus 0.5 µs.
-- **Velocity tracking (on by default) adds about 0.6 µs per tracked value
-  per `set`**, with each sample allocating about 370 B more.
-  - That is about 8× what a Flutter `VelocityTracker` adds (0.06 to
-    0.08 µs and 64 B).
-  - Following a drag costs about 1 µs per frame for one value, and 0.2 ms
-    per frame for 250 values.
-  - Almost all of it is storing each sample in `MotionVelocityTracker`'s
-    ring buffer (details under Results).
-  - The fling handoff with tracked velocity costs 1.0× to 1.55× the Flutter
-    equivalent.
+- **Starting and retargeting got much cheaper.** Spring starts are 5× to
+  9.5× faster than the baseline, spring retargets 5× to 10×, and curve
+  starts 1.7× to 3.4×.
+  - Starting now costs 2.1× to 4.2× the Flutter side, and retargeting a
+    spring 1.4× to 3.1× (baseline: 5× to 39× and 9× to 25×).
+  - 1000 springs start in 0.85 ms versus 0.21 ms, and one spring retargets
+    in 1.4 µs versus 0.5 µs.
+- **Following a drag with velocity tracking (on by default) is close to the
+  Flutter equivalent.**
+  - Tracking adds 0.02 to 0.08 µs per value per sample, about what a
+    Flutter `VelocityTracker` adds (0.05 to 0.08 µs).
+  - A tracked drag of 250 values costs 1.2× to 1.5× the
+    `AnimationController`s plus `VelocityTracker`s, and a single value
+    about 2× (0.31 µs versus 0.13 µs per frame).
+  - The fling handoff costs 0.7× to 1.4×.
+  - What's left of the gap is `set` itself: about 0.1 µs per track of
+    bookkeeping even with tracking off.
 - **Value reads:**
-  - Curve tracks read faster than `CurvedAnimation.value` (0.7×).
-  - Spring tracks read about 1.9× slower than `AnimationController.value`
-    (about 31 versus 16 ns).
+  - Curve tracks read faster than `CurvedAnimation.value` (0.6× to 0.7×).
+  - Spring tracks read about 1.8× slower than `AnimationController.value`
+    (about 26 versus 14 ns).
 - **Memory:**
-  - Retained memory is about 1.5 KB per track (baseline: 1.8 KB), still
-    about twice an `AnimationController` at scale.
-  - Curve garbage per frame went down: 0.31× the Flutter side at 1000
-    values.
-  - Spring garbage per frame went **up**, from 121 to 217 B per track per
-    frame (0.29× → 0.52× of Flutter at scale). The likely cause is the
-    per-frame lazy end check. It's still half of what N controllers
-    allocate.
+  - Motor allocates less per frame at scale: 0.25× (springs) and 0.31×
+    (curves) of the Flutter side at 1000 values, which is 105 and 121 B
+    per track.
+  - Tracking retains about 0.5 KB per track, versus about 1.5 KB per
+    `VelocityTracker`.
+  - Each track retains about 1.5 KB (baseline: 1.8 KB), still about twice
+    an `AnimationController` at scale.
 
 ## Method
 
@@ -160,22 +162,22 @@ Frame plus one read of every value. The absolute µs are from the final run.
 
 | Scenario | Flutter setup | Flutter µs | Motor µs | Baseline | **Final** | Engine frame only | Read ns/value (Flutter → Motor) |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Curve 1D ×1 | 1 AC + CurvedAnimation | 0.28 | 0.53 | 2.46× | **1.91×** | 2.16× | 48 → 34 |
-| Curve 1D ×10 | 10 AC + CurvedAnimation | 1.91 | 1.87 | 1.53× | **0.97×** | 1.10× | 47 → 29 |
-| Curve 1D ×50 | 50 AC + CurvedAnimation | 8.76 | 7.84 | 1.57× | **0.91×** | 0.97× | 46 → 30 |
-| Curve 1D ×250 | 250 AC + CurvedAnimation | 39.1 | 38.6 | 1.73× | **0.99×** | 1.11× | 46 → 33 |
-| Curve 1D ×1000 | 1000 AC + CurvedAnimation | 157 | 161 | 1.81× | **1.07×** | 1.19× | 47 → 34 |
-| Spring 1D ×1 | 1 AC + SpringSimulation | 0.33 | 0.61 | 1.86× | **1.84×** | 1.84× | 18 → 31 |
-| Spring 1D ×10 | 10 AC + SpringSimulation | 2.23 | 2.35 | 1.18× | **1.06×** | 1.01× | 16 → 28 |
-| Spring 1D ×50 | 50 AC + SpringSimulation | 9.97 | 9.81 | 1.15× | **0.98×** | 0.91× | 15 → 29 |
-| Spring 1D ×250 | 250 AC + SpringSimulation | 49.8 | 48.5 | 1.19× | **0.98×** | 0.88× | 16 → 34 |
-| Spring 1D ×1000 | 1000 AC + SpringSimulation | 197 | 211 | 1.28× | **1.07×** | 0.99× | 16 → 32 |
-| Curve Offset (2D) | 1 AC + CurvedAnimation + Tween<Offset> | 0.30 | 0.55 | 2.81× | **1.75×** | 2.07× | 69 → 41 |
-| Spring Offset (2D) | 2 AC (one per dimension) | 0.53 | 0.72 | 1.47× | **1.37×** | 1.36× | 28 → 41 |
-| Curve Rect (4D) | 1 AC + CurvedAnimation + RectTween | 0.29 | 0.58 | 4.49× | **2.06×** | 2.35× | 56 → 47 |
-| Spring Rect (4D) | 4 AC (one per dimension) | 0.91 | 0.86 | 1.19× | **0.94×** | 0.93× | 46 → 50 |
-| Curve Color (4D) | 1 AC + CurvedAnimation + ColorTween | 0.29 | 0.60 | 4.30× | **2.10×** | 2.42× | 64 → 64 |
-| Spring Color (4D) | 4 AC (one per dimension) | 0.92 | 0.88 | 1.18× | **0.92×** | 0.91× | 58 → 64 |
+| Curve 1D ×1 | 1 AC + CurvedAnimation | 0.23 | 0.44 | 2.46× | **1.88×** | 2.13× | 40 → 28 |
+| Curve 1D ×10 | 10 AC + CurvedAnimation | 1.45 | 1.53 | 1.53× | **1.04×** | 1.18× | 38 → 23 |
+| Curve 1D ×50 | 50 AC + CurvedAnimation | 7.14 | 6.43 | 1.57× | **0.90×** | 0.99× | 38 → 25 |
+| Curve 1D ×250 | 250 AC + CurvedAnimation | 31.5 | 31.1 | 1.73× | **1.01×** | 1.15× | 38 → 26 |
+| Curve 1D ×1000 | 1000 AC + CurvedAnimation | 128 | 132 | 1.81× | **1.06×** | 1.21× | 39 → 28 |
+| Spring 1D ×1 | 1 AC + SpringSimulation | 0.27 | 0.47 | 1.86× | **1.76×** | 1.77× | 15 → 26 |
+| Spring 1D ×10 | 10 AC + SpringSimulation | 1.87 | 1.85 | 1.18× | **0.99×** | 0.94× | 14 → 23 |
+| Spring 1D ×50 | 50 AC + SpringSimulation | 8.38 | 7.69 | 1.15× | **0.92×** | 0.85× | 13 → 24 |
+| Spring 1D ×250 | 250 AC + SpringSimulation | 42.9 | 39.0 | 1.19× | **0.89×** | 0.82× | 14 → 26 |
+| Spring 1D ×1000 | 1000 AC + SpringSimulation | 160 | 162 | 1.28× | **1.01×** | 0.92× | 14 → 26 |
+| Curve Offset (2D) | 1 AC + CurvedAnimation + Tween<Offset> | 0.25 | 0.46 | 2.81× | **1.77×** | 2.13× | 57 → 34 |
+| Spring Offset (2D) | 2 AC (one per dimension) | 0.41 | 0.56 | 1.47× | **1.39×** | 1.38× | 22 → 34 |
+| Curve Rect (4D) | 1 AC + CurvedAnimation + RectTween | 0.23 | 0.49 | 4.49× | **2.09×** | 2.40× | 46 → 40 |
+| Spring Rect (4D) | 4 AC (one per dimension) | 0.70 | 0.66 | 1.19× | **0.94×** | 0.93× | 36 → 41 |
+| Curve Color (4D) | 1 AC + CurvedAnimation + ColorTween | 0.24 | 0.51 | 4.30× | **2.15×** | 2.50× | 53 → 52 |
+| Spring Color (4D) | 4 AC (one per dimension) | 0.74 | 0.69 | 1.18× | **0.94×** | 0.92× | 45 → 51 |
 
 ### Start and retarget (release)
 
@@ -183,22 +185,22 @@ The call plus the next frame, in µs per operation, final run.
 
 | Scenario | Start: Flutter µs | Motor µs | Baseline | **Final** | Retarget: Flutter µs | Motor µs | Baseline | **Final** |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Curve 1D ×1 | 0.47 | 1.77 | 6.3× | **3.8×** | – | – | – | – |
-| Curve 1D ×10 | 3.18 | 7.88 | 7.3× | **2.5×** | – | – | – | – |
-| Curve 1D ×50 | 17.7 | 38.8 | 6.8× | **2.4×** | – | – | – | – |
-| Curve 1D ×250 | 72.5 | 183 | 7.8× | **2.7×** | – | – | – | – |
-| Curve 1D ×1000 | 287 | 692 | 8.6× | **2.4×** | – | – | – | – |
-| Spring 1D ×1 | 0.44 | 1.93 | 21.2× | **4.4×** | 0.54 | 1.82 | 17.2× | **3.4×** |
-| Spring 1D ×10 | 3.00 | 10.5 | 27.2× | **3.5×** | 4.06 | 10.2 | 20.4× | **2.5×** |
-| Spring 1D ×50 | 11.8 | 45.5 | 33.5× | **3.9×** | 18.1 | 47.5 | 21.7× | **2.6×** |
-| Spring 1D ×250 | 56.6 | 234 | 38.9× | **4.3×** | 83.2 | 226 | 23.3× | **2.7×** |
-| Spring 1D ×1000 | 249 | 1,053 | 38.1× | **4.3×** | 365 | 976 | 25.4× | **2.7×** |
-| Curve Offset (2D) | 0.66 | 1.76 | 4.9× | **2.7×** | – | – | – | – |
-| Spring Offset (2D) | 0.63 | 2.00 | 17.2× | **3.1×** | 0.83 | 1.99 | 13.4× | **2.4×** |
-| Curve Rect (4D) | 0.63 | 2.02 | 6.6× | **3.2×** | – | – | – | – |
-| Spring Rect (4D) | 1.14 | 2.50 | 16.0× | **2.2×** | 1.59 | 2.54 | 11.3× | **1.6×** |
-| Curve Color (4D) | 0.63 | 2.08 | 6.7× | **3.2×** | – | – | – | – |
-| Spring Color (4D) | 1.16 | 2.57 | 12.9× | **2.2×** | 1.65 | 2.57 | 8.9× | **1.6×** |
+| Curve 1D ×1 | 0.38 | 1.45 | 6.3× | **3.8×** | – | – | – | – |
+| Curve 1D ×10 | 2.65 | 6.32 | 7.3× | **2.5×** | – | – | – | – |
+| Curve 1D ×50 | 12.7 | 29.8 | 6.8× | **2.4×** | – | – | – | – |
+| Curve 1D ×250 | 55.8 | 145 | 7.8× | **2.6×** | – | – | – | – |
+| Curve 1D ×1000 | 241 | 568 | 8.6× | **2.4×** | – | – | – | – |
+| Spring 1D ×1 | 0.37 | 1.51 | 21.2× | **4.2×** | 0.45 | 1.42 | 17.2× | **3.1×** |
+| Spring 1D ×10 | 2.53 | 8.10 | 27.2× | **3.3×** | 3.50 | 8.07 | 20.4× | **2.3×** |
+| Spring 1D ×50 | 10.1 | 37.0 | 33.5× | **3.7×** | 16.1 | 37.3 | 21.7× | **2.3×** |
+| Spring 1D ×250 | 52.8 | 203 | 38.9× | **3.9×** | 78.6 | 189 | 23.3× | **2.3×** |
+| Spring 1D ×1000 | 211 | 847 | 38.1× | **4.0×** | 319 | 784 | 25.4× | **2.4×** |
+| Curve Offset (2D) | 0.55 | 1.50 | 4.9× | **2.7×** | – | – | – | – |
+| Spring Offset (2D) | 0.54 | 1.59 | 17.2× | **2.9×** | 0.75 | 1.59 | 13.4× | **2.2×** |
+| Curve Rect (4D) | 0.52 | 1.68 | 6.6× | **3.2×** | – | – | – | – |
+| Spring Rect (4D) | 0.95 | 2.00 | 16.0× | **2.1×** | 1.38 | 1.98 | 11.3× | **1.5×** |
+| Curve Color (4D) | 0.53 | 1.71 | 6.7× | **3.2×** | – | – | – | – |
+| Spring Color (4D) | 0.96 | 1.97 | 12.9× | **2.1×** | 1.40 | 2.02 | 8.9× | **1.4×** |
 
 ### Memory (profile)
 
@@ -206,66 +208,55 @@ Absolute values are from the final run.
 
 | Scenario | Allocated B/frame: Flutter | Motor | Baseline | **Final** | Retained KB: Flutter | Motor | Baseline | **Final** |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Curve 1D ×1 | 499 | 867 | 1.83× | **1.74×** | 1.00 | 3.31 | 3.59× | **3.31×** |
-| Curve 1D ×10 | 4,227 | 1,971 | 0.58× | **0.47×** | 8.42 | 16.7 | 2.13× | **1.98×** |
-| Curve 1D ×50 | 20,099 | 6,835 | 0.46× | **0.34×** | 40.7 | 75.6 | 1.99× | **1.86×** |
-| Curve 1D ×250 | 96,602 | 30,771 | 0.44× | **0.32×** | 203 | 367 | 1.96× | **1.81×** |
+| Curve 1D ×1 | 499 | 867 | 1.83× | **1.74×** | 1.00 | 3.23 | 3.59× | **3.23×** |
+| Curve 1D ×10 | 4,227 | 1,971 | 0.58× | **0.47×** | 8.42 | 16.6 | 2.13× | **1.97×** |
+| Curve 1D ×50 | 20,099 | 6,835 | 0.46× | **0.34×** | 40.7 | 75.5 | 1.99× | **1.85×** |
+| Curve 1D ×250 | 96,643 | 30,771 | 0.44× | **0.32×** | 203 | 367 | 1.96× | **1.81×** |
 | Curve 1D ×1000 | 385,635 | 120,915 | 0.44× | **0.31×** | 813 | 1,464 | 1.96× | **1.80×** |
-| Spring 1D ×1 | 531 | 963 | 1.63× | **1.81×** | 0.95 | 3.34 | 3.82× | **3.51×** |
-| Spring 1D ×10 | 4,464 | 2,931 | 0.43× | **0.66×** | 7.58 | 17.0 | 2.41× | **2.24×** |
-| Spring 1D ×50 | 21,699 | 11,635 | 0.31× | **0.54×** | 36.4 | 77.2 | 2.26× | **2.12×** |
-| Spring 1D ×250 | 104,643 | 54,771 | 0.29× | **0.52×** | 182 | 375 | 2.23× | **2.06×** |
-| Spring 1D ×1000 | 417,552 | 216,915 | 0.29× | **0.52×** | 726 | 1,495 | 2.22× | **2.06×** |
-| Curve Offset (2D) | 643 | 931 | 1.62× | **1.45×** | 0.97 | 3.73 | 4.18× | **3.85×** |
-| Spring Offset (2D) | 915 | 1,027 | 1.03× | **1.12×** | 1.83 | 3.81 | 2.21× | **2.09×** |
-| Curve Rect (4D) | 579 | 979 | 2.10× | **1.69×** | 0.97 | 4.19 | 4.73× | **4.32×** |
-| Spring Rect (4D) | 1,603 | 1,075 | 0.64× | **0.67×** | 3.34 | 4.36 | 1.37× | **1.30×** |
-| Curve Color (4D) | 579 | 979 | 2.10× | **1.69×** | 0.97 | 4.19 | 4.73× | **4.32×** |
-| Spring Color (4D) | 1,603 | 1,075 | 0.64× | **0.67×** | 3.34 | 4.36 | 1.37× | **1.30×** |
+| Spring 1D ×1 | 531 | 851 | 1.63× | **1.60×** | 0.95 | 3.27 | 3.82× | **3.43×** |
+| Spring 1D ×10 | 4,547 | 1,811 | 0.43× | **0.40×** | 7.58 | 16.9 | 2.41× | **2.23×** |
+| Spring 1D ×50 | 21,699 | 6,035 | 0.31× | **0.28×** | 36.4 | 77.1 | 2.26× | **2.12×** |
+| Spring 1D ×250 | 104,643 | 26,771 | 0.29× | **0.26×** | 182 | 375 | 2.23× | **2.06×** |
+| Spring 1D ×1000 | 417,635 | 104,915 | 0.29× | **0.25×** | 726 | 1,495 | 2.22× | **2.06×** |
+| Curve Offset (2D) | 643 | 931 | 1.62× | **1.45×** | 0.97 | 3.66 | 4.18× | **3.77×** |
+| Spring Offset (2D) | 915 | 915 | 1.03× | **1.00×** | 1.83 | 3.73 | 2.21× | **2.04×** |
+| Curve Rect (4D) | 579 | 979 | 2.10× | **1.69×** | 0.97 | 4.11 | 4.73× | **4.24×** |
+| Spring Rect (4D) | 1,603 | 963 | 0.64× | **0.60×** | 3.34 | 4.28 | 1.37× | **1.28×** |
+| Curve Color (4D) | 579 | 979 | 2.10× | **1.69×** | 0.97 | 4.11 | 4.73× | **4.24×** |
+| Spring Color (4D) | 1,603 | 963 | 0.64× | **0.60×** | 3.34 | 4.28 | 1.37× | **1.28×** |
 
 ### Following a gesture and velocity tracking (release; memory from profile)
 
 | Scenario | Flutter setup | Drag: Flutter µs | Motor µs | Motor / Flutter | Fling: Flutter µs | Motor µs | Motor / Flutter | Allocated B/sample: Flutter → Motor | Retained KB: Flutter → Motor |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Drag 1D, tracking on ×1 | 1 AC + 1 VelocityTracker | 0.16 | 0.95 | **6.1×** | 1.52 | 2.40 | 1.55× | 275 → 1,379 | 2.31 → 5.03 |
-| Drag 1D, tracking on ×250 | 250 AC + 250 VelocityTracker | 31.6 | 202 | **6.4×** | 327 | 340 | 1.03× | 68,003 → 201,203 | 496 → 838 |
-| Drag Offset, tracking on ×1 | 2 AC + 1 VelocityTracker | 0.21 | 0.97 | **4.8×** | 1.74 | 2.61 | 1.50× | 483 → 1,523 | 2.77 → 5.80 |
-| Drag Offset, tracking on ×250 | 500 AC + 250 VelocityTracker | 46.6 | 210 | **4.5×** | 419 | 430 | 1.01× | 120,003 → 237,203 | 610 → 1,029 |
-| Drag 1D, tracking off ×1 | 1 AC | 0.10 | 0.38 | **4.0×** | 0.45 | 1.79 | 3.82× | 211 → 1,011 | 0.48 → 1.75 |
-| Drag 1D, tracking off ×250 | 250 AC | 11.4 | 50.5 | **4.4×** | 58.6 | 147 | 2.53× | 52,003 → 109,203 | 119 → 83.6 |
-| Drag Offset, tracking off ×1 | 2 AC | 0.14 | 0.37 | **2.7×** | 0.66 | 1.84 | 2.78× | 419 → 1,107 | 0.94 → 1.88 |
-| Drag Offset, tracking off ×250 | 500 AC | 25.9 | 55.2 | **2.1×** | 121 | 183 | 1.52× | 104,003 → 133,203 | 232 → 115 |
+| Drag 1D, tracking on ×1 | 1 AC + 1 VelocityTracker | 0.13 | 0.31 | **2.36×** | 1.24 | 1.73 | 1.40× | 275 → 787 | 2.31 → 2.42 |
+| Drag 1D, tracking on ×250 | 250 AC + 250 VelocityTracker | 26.1 | 37.9 | **1.46×** | 259 | 224 | 0.87× | 68,003 → 57,187 | 496 → 207 |
+| Drag Offset, tracking on ×1 | 2 AC + 1 VelocityTracker | 0.17 | 0.33 | **1.91×** | 1.41 | 1.83 | 1.31× | 483 → 915 | 2.77 → 2.70 |
+| Drag Offset, tracking on ×250 | 500 AC + 250 VelocityTracker | 39.2 | 45.9 | **1.17×** | 352 | 257 | 0.71× | 120,003 → 89,187 | 610 → 277 |
+| Drag 1D, tracking off ×1 | 1 AC | 0.08 | 0.24 | **3.04×** | 0.38 | 1.32 | 3.61× | 211 → 595 | 0.48 → 1.67 |
+| Drag 1D, tracking off ×250 | 250 AC | 10.1 | 33.7 | **3.55×** | 51.3 | 126 | 2.53× | 52,003 → 41,059 | 119 → 83.5 |
+| Drag Offset, tracking off ×1 | 2 AC | 0.11 | 0.25 | **2.28×** | 0.57 | 1.46 | 2.47× | 419 → 675 | 0.94 → 1.80 |
+| Drag Offset, tracking off ×250 | 500 AC | 19.9 | 37.5 | **1.90×** | 102 | 154 | 1.51× | 104,003 → 61,059 | 232 → 115 |
 
 The same numbers, with tracking on versus off:
 
 | Values | Motor: off → on, µs/sample | Motor: added per value | Flutter: no tracker → VelocityTracker | Flutter: added per value |
 |---|---:|---:|---:|---:|
-| 1D ×1 | 0.38 → 0.95 (2.5×) | +0.57 µs | 0.10 → 0.16 | +0.06 µs |
-| 1D ×250 | 50.5 → 202 (4.0×) | +0.61 µs | 11.4 → 31.6 | +0.08 µs |
-| Offset ×1 | 0.37 → 0.97 (2.6×) | +0.60 µs | 0.14 → 0.21 | +0.07 µs |
-| Offset ×250 | 55.2 → 210 (3.8×) | +0.62 µs | 25.9 → 46.6 | +0.08 µs |
+| 1D ×1 | 0.24 → 0.31 (1.30×) | +0.070 µs | 0.08 → 0.13 | +0.048 µs |
+| 1D ×250 | 33.7 → 37.9 (1.12×) | +0.017 µs | 10.1 → 26.1 | +0.064 µs |
+| Offset ×1 | 0.25 → 0.33 (1.33×) | +0.082 µs | 0.11 → 0.17 | +0.056 µs |
+| Offset ×250 | 37.5 → 45.9 (1.22×) | +0.033 µs | 19.9 → 39.2 | +0.077 µs |
 
-Where motor's roughly 0.6 µs per tracked sample goes (AOT release,
-measured separately):
+Before `ffd0c3c`, each tracked sample cost about 0.6 µs and 370 B. About
+0.4 µs of that went to storing a freshly allocated `List<double>`, record
+and `Duration` into `MotionVelocityTracker`'s long-lived ring buffer. Samples
+now go into a preallocated buffer, so tracking adds 0.02 to 0.08 µs per
+value per sample and about 64 B per value per sample at scale, the same
+as `VelocityTracker`.
+Estimating the velocity is lazy: it runs once at the fling, not per sample.
 
-- About 0.4 µs is `MotionVelocityTracker.addPosition` storing the sample in
-  its 20-slot ring buffer. Each sample is a freshly allocated normalized
-  `List<double>`, a record and a `Duration`, stored into the long-lived
-  buffer. The same allocations cost about 4 ns when they don't escape, and
-  Flutter's `VelocityTracker.addPosition` stores its sample in about 60 ns.
-  Storing samples in a preallocated flat buffer would remove most of this
-  without changing behavior or API.
-- The remaining 0.1 to 0.2 µs is the controller's bookkeeping in
-  `_trackVelocitySample`:
-  a second `clock.now()` (about 50 ns), a `Duration`, and the pending
-  estimate map.
-- Estimating the velocity is lazy. It runs once at the fling, not per
-  sample, and costs about 0.1 µs.
-- Retained memory for tracking is about 3 KB per tracked track (the
-  filled ring buffer), versus about 1.5 KB per `VelocityTracker`.
-
-Even with tracking off, `set` costs 2× to 4.5× `AnimationController.value
-=`: about 0.2 µs per track of slot bookkeeping and notification.
+Even with tracking off, `set` costs 1.9× to 3.6× `AnimationController.value
+=`: about 0.1 µs per track of slot bookkeeping and notification.
 
 ### Why AOT: baseline ratios under `flutter test`
 
@@ -282,16 +273,14 @@ the equivalence still hold.
 
 ## Next targets
 
-1. **Per-controller fixed cost.** A single value still costs about 1.9× per
-   frame, about 0.25 µs per controller per frame. This matters most for the
+1. **Per-controller fixed cost.** A single value still costs about 1.8× per
+   frame, about 0.2 µs per controller per frame. This matters most for the
    common one-controller-per-widget case.
-2. **Velocity sample storage:** about 0.4 µs of every tracked `set` (see
-   Results).
-3. **Spring allocations per frame** rose about 96 B per track in the
-   optimization pass.
-4. **Start and retarget** are still 2× to 4×: building a plan, its steps
+2. **Start and retarget** are still 2× to 4×: building a plan, its steps
    and its simulations per call.
-5. **Reads and retained memory:** spring reads cost about 1.9×, and a track
+3. **`set` bookkeeping:** about 0.1 µs per track, which makes a
+   single-value drag about 2×.
+4. **Reads and retained memory:** spring reads cost about 1.8×, and a track
    retains about 1.5 KB versus about 0.75 to 0.85 KB per
    `AnimationController`.
 
