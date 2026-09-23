@@ -417,9 +417,19 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
 }
 
 /// Provides methods to modify a given [MotionSequence].
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension SequenceModificationX<P, T extends Object> on MotionSequence<P, T> {
   /// Retains [phases] and values while using a single [motion] for all
   /// transitions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<P, T> withSingleMotion(Motion motion) {
     return SingleMotionPhaseSequence(this, motion);
   }
@@ -427,10 +437,20 @@ extension SequenceModificationX<P, T extends Object> on MotionSequence<P, T> {
 
 /// A phase sequence that wraps a [parent] uses a single motion for all
 /// of its transitions.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class SingleMotionPhaseSequence<P, T extends Object>
     extends MotionSequence<P, T> {
   /// Creates a [SingleMotionPhaseSequence] with the given parent sequence
   /// and motion.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const SingleMotionPhaseSequence(
     this.parent,
     this.motion,
@@ -623,6 +643,11 @@ Map<double, T> _normalizeTimelineValues<T extends Object>(
 }
 
 /// Extension methods for creating step sequences from value-motion pairs.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension IterableMotionConversionX<T extends Object>
     on Iterable<ValueWithMotion<T>> {
   /// Creates a step sequence from this list of values with motions.
@@ -633,6 +658,11 @@ extension IterableMotionConversionX<T extends Object>
   ///   (Colors.green, Motion.bouncySpring()),
   /// ].toSteps();
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<int, T> toSteps({
     LoopMode loop = LoopMode.none,
   }) =>
@@ -640,6 +670,11 @@ extension IterableMotionConversionX<T extends Object>
 }
 
 /// Extension methods for creating state sequences from maps.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension MapConversionX<P, T extends Object> on Map<P, T> {
   /// Creates a state sequence from this phase-to-value mapping.
   ///
@@ -649,6 +684,11 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
   ///   ButtonState.pressed: Offset(0, 5),
   /// }.toStates(motion: Motion.bouncySpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<P, T> toStates({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -661,6 +701,11 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
 }
 
 /// Extension methods for creating spanning sequences from position maps.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
   /// Creates a spanning sequence from this position-to-value mapping.
   ///
@@ -673,6 +718,11 @@ extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
   ///   3.0: endState,
   /// }.spanning(motion: LinearMotion(Duration(seconds: 2)));
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -685,6 +735,11 @@ extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
 }
 
 /// Extension methods for creating sequences from lists.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension IterableConversionX<T extends Object> on Iterable<T> {
   /// Creates a step sequence from this list using indices as phases.
   ///
@@ -697,6 +752,11 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
   ///   Colors.blue,
   /// ].toSteps(motion: Motion.smoothSpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<int, T> toSteps({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,
@@ -717,6 +777,11 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
   /// ].spanning(motion: LinearMotion(Duration(seconds: 2)));
   /// // Equivalent to: {0.0: pos1, 1.0: pos2, 2.0: pos3}
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,

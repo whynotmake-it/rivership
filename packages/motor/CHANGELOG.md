@@ -29,7 +29,7 @@
 
 ### Deprecations
 
- - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, and `SequenceMotionBuilder` — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.
+ - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, `SequenceMotionBuilder`, and the helpers that build sequences (`toSteps`, `toStates`, `spanning`, `withSingleMotion`, `SingleMotionPhaseSequence`) — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.
 
 ### Motion type hierarchy
 
