@@ -69,7 +69,9 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// When playback reaches this step, the track holds its current value until
   /// every other active track that shares the same [token] (by `==`) also
   /// reaches a matching sync step. The controller then releases them together,
-  /// so the tracks continue in lockstep.
+  /// so the tracks continue in lockstep. Each track waits at rest, so the
+  /// step after the barrier starts from rest, without the velocity the step
+  /// before it ended with.
   ///
   /// Use this to keep independent tracks aligned at key moments without
   /// hand-tuning each track's durations.
@@ -177,6 +179,10 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// continue in unison independent of the frame rate. In a looping plan the
 /// barrier holds every cycle: a track that comes around again waits for the
 /// others to reach the barrier of that same cycle.
+///
+/// A track waits at rest, so the step after the barrier starts from rest,
+/// without the velocity the step before it ended with. This holds for phase
+/// boundaries in a [TrackPhaseTimeline] too.
 ///
 /// Tracks stopped or redirected before reaching their barrier are removed from
 /// the barrier's participant set. The remaining tracks keep waiting for each
