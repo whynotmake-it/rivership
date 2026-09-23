@@ -207,4 +207,33 @@ void main() {
       });
     });
   });
+
+  group('MotionConverter.lerp', () {
+    test('interpolates each dimension', () {
+      expect(MotionConverter.single.lerp(2, 4, 0.25), 2.5);
+      expect(
+        MotionConverter.offset.lerp(Offset.zero, const Offset(10, -20), 0.5),
+        const Offset(5, -10),
+      );
+    });
+
+    test('returns the ends at 0 and 1 and extrapolates beyond', () {
+      const a = Offset(1, 2);
+      const b = Offset(3, 6);
+      expect(MotionConverter.offset.lerp(a, b, 0), a);
+      expect(MotionConverter.offset.lerp(a, b, 1), b);
+      expect(MotionConverter.offset.lerp(a, b, 2), const Offset(5, 10));
+    });
+
+    test('works for custom converters', () {
+      final converter = MotionConverter<Size>.custom(
+        normalize: (value) => [value.width, value.height],
+        denormalize: (values) => Size(values[0], values[1]),
+      );
+      expect(
+        converter.lerp(Size.zero, const Size(8, 4), 0.75),
+        const Size(6, 3),
+      );
+    });
+  });
 }
