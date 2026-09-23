@@ -362,16 +362,16 @@ the last phase when `playing: true` (`.loop` animates back to the first phase,
 
 A few phase-specific rules:
 
-- To seed starting values or velocities, use the timeline's `from:` /
-  `withVelocity:`. They are applied once, when that timeline first starts
-  playing. Animations inside a phase list can't set their own `from:` /
-  `withVelocity:` (asserted), since each phase continues from where the
-  previous one left off.
+- To set starting values or velocities, use the timeline's
+  `initialValues:` / `initialVelocities:`. They are applied once, when that
+  timeline first starts playing. Animations inside a phase list can't set
+  their own `from:` / `withVelocity:` (asserted), since each phase continues
+  from where the previous one left off.
 - Phases are separated by sync barriers whose token is the phase value
   itself, so don't reuse phase values as your own `.sync` tokens.
-- `phaseLoop` is interpreted by `PhaseTrackBuilder` / `PhaseTrackController`
-  only. Playing a `TrackPhaseTimeline` through `TrackBuilder.timeline` or
-  `TrackController.play` runs the phases once, in order.
+- A `TrackPhaseTimeline` is played by `PhaseTrackBuilder` /
+  `PhaseTrackController`. Its `flattened` clip plays the phases once, in
+  order, anywhere a `TrackTimeline` is accepted.
 
 #### Imperative control
 

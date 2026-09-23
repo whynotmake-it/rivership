@@ -118,7 +118,7 @@ void main() {
         {
           _Phase.idle: [scale.to(1)],
         },
-        from: [scale.value(5)],
+        initialValues: [scale.value(5)],
       );
 
       Widget build(int trigger) => PhaseTrackBuilder<_Phase>(
@@ -158,7 +158,7 @@ void main() {
               _Phase.idle: [scale.to(1)],
               _Phase.pressed: [scale.to(2)],
             },
-            from: [scale.value(5)],
+            initialValues: [scale.value(5)],
           ),
           builder: (context, value, phase, child) {
             captured = value<double>(scale);

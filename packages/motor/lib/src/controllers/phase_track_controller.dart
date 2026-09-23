@@ -5,7 +5,6 @@ import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
-import 'package:motor/src/track_timeline.dart';
 
 /// A [TrackController] extension that understands phases.
 ///
@@ -21,16 +20,13 @@ import 'package:motor/src/track_timeline.dart';
 /// [PhaseTransitioning] when a new phase begins animating, and [PhaseSettled]
 /// when playback for the active phase comes to rest.
 ///
-/// Because [TrackPhaseTimeline] extends [TrackTimeline], the standard [play]
-/// method also works for non-phase playback.
-///
 /// With [LoopMode.pingPong], phases are visited in reverse order after the
 /// forward pass. Each phase's own steps still play forward.
 class PhaseTrackController<P extends Object> extends TrackController {
   /// Creates a phase track controller.
   PhaseTrackController({
     required super.vsync,
-    super.from,
+    super.initialValues,
     super.velocityTracking,
     super.debugLabel,
   });
@@ -91,7 +87,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _currentPhase = startPhase;
 
     if (effectiveIndex == 0) {
-      return play(timeline);
+      return play(timeline.flattened);
     } else {
       // Start partway through the timeline by playing only the animations
       // from [startPhase] onward. Looping (handled in [onPlaybackCompleted])
@@ -127,35 +123,37 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
 
     final anims = timeline.phaseAnimations[phase]!;
-    // Note: `from`/`withVelocity` are only applied once via [_seedFromIfNeeded];
+    // Note: `initialValues`/`initialVelocities` are only applied once via [_seedFromIfNeeded];
     // re-applying them on every phase change would snap tracks back to their
     // initial values/velocities.
     return animate(anims);
   }
 
-  /// Applies the timeline's one-time `from`/`withVelocity` seeds exactly once,
+  /// Applies the timeline's one-time `initialValues`/`initialVelocities` seeds exactly once,
   /// the first time a timeline begins playing.
   ///
-  /// Velocity-only seeds (a track in `withVelocity` but not `from`) keep the
-  /// track's current value while applying the seeded velocity.
+  /// A track listed in `initialVelocities` but not `initialValues` keeps its
+  /// current value and only takes the velocity.
   /// Makes the next [playPhases] or [goToPhase] apply the timeline's
-  /// one-time `from`/`withVelocity` seeds again, as when restarting.
+  /// one-time `initialValues`/`initialVelocities` seeds again, as when restarting.
   @internal
   void forgetSeeds() => _seededTimeline = null;
 
   void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
     if (_seededTimeline == timeline) return;
     _seededTimeline = timeline;
-    if (timeline.from.isEmpty && timeline.withVelocity.isEmpty) return;
+    if (timeline.initialValues.isEmpty && timeline.initialVelocities.isEmpty) {
+      return;
+    }
 
-    final values = <TrackValue>[...timeline.from];
-    for (final velocity in timeline.withVelocity) {
-      final hasFrom = timeline.from.any(
+    final values = <TrackValue>[...timeline.initialValues];
+    for (final velocity in timeline.initialVelocities) {
+      final hasFrom = timeline.initialValues.any(
         (override) => identical(override.track, velocity.track),
       );
       if (!hasFrom) values.add(_currentValueSnapshot(velocity.track));
     }
-    set(values, withVelocity: timeline.withVelocity);
+    set(values, withVelocity: timeline.initialVelocities);
   }
 
   TrackValue<T> _currentValueSnapshot<T extends Object>(Track<T> track) =>
@@ -233,13 +231,13 @@ class PhaseTrackController<P extends Object> extends TrackController {
 
       // loop (and single-phase seamless): animate from the current values back
       // to the first phase and replay the whole timeline. Unlike `play`, this
-      // does not re-apply `timeline.from`, so the loop animates back to the
-      // first phase rather than snapping to the seed value each cycle.
+      // does not re-apply `timeline.initialValues`, so the loop animates back
+      // to the first phase rather than snapping to them each cycle.
       _currentPhase = first;
       if (previous != null && previous != first) {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
-      animate(timeline.animations);
+      animate(timeline.flattened.animations);
       return true;
     }
 

@@ -70,7 +70,7 @@ void main() {
     final track = Track<double>(MotionConverter.single);
     final controller = TrackController(
       vsync: tester,
-      from: [track.value(5)],
+      initialValues: [track.value(5)],
     );
 
     controller.animate(

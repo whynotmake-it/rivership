@@ -257,5 +257,5 @@ State queries map as follows:
 - `LoopMode.pingPong` visits phases in the same order on both stacks
   (`0 → 1 → 2 → 1 → 0 → 1 → …`); each phase's own steps still play forward.
 - Animations inside a `TrackPhaseTimeline` phase can't set their own `from:`
-  (asserted). Use the timeline's one-time `from:` / `withVelocity:` seeds
-  instead.
+  (asserted). Use the timeline's one-time `initialValues:` /
+  `initialVelocities:` instead.

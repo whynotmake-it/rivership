@@ -120,7 +120,7 @@ class _DragCardState extends State<_DragCard>
 
       final timeline = TrackPhaseTimeline(
         // We pass the drag velocity from the gesture tracking system
-        withVelocity: [_offset.value(velocity)],
+        initialVelocities: [_offset.value(velocity)],
         {
           _Phase.clearing: [
             _offset.to(target, motion: .smoothSpring().trimmed(fromEnd: .9)),

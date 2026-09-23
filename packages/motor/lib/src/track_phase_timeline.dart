@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
@@ -23,11 +24,14 @@ import 'package:motor/src/track_timeline.dart';
 /// The barrier inserted before each phase uses that phase value as its
 /// [StepSync.token], so avoid reusing phase values as your own sync tokens.
 ///
-/// Only a [PhaseTrackController] (or `PhaseTrackBuilder`) interprets
-/// [phaseLoop], [from], and [withVelocity]. Played as a plain
-/// [TrackTimeline] (e.g. via `TrackController.play`), the inherited `loop` is
-/// always [LoopMode.none] and the phases run once, in order.
-class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
+/// Play it with a [PhaseTrackController] or `PhaseTrackBuilder`, which
+/// interpret [phaseLoop], [initialValues], and [initialVelocities]. The
+/// flattened phases are also available as a plain clip through [flattened].
+///
+/// Timelines compare by value, so an equal timeline on rebuild does not
+/// restart playback.
+// ignore: deprecated_member_use
+class TrackPhaseTimeline<P extends Object> with EquatableMixin {
   /// Creates a phase timeline from a map of phases to track animations.
   ///
   /// The iteration order of [phaseAnimations] determines phase ordering.
@@ -36,13 +40,13 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   ///
   /// Animations inside [phaseAnimations] must not set their own `from` or
   /// `withVelocity` (asserted): phases continue from wherever the previous
-  /// phase left off. Use the timeline-level [from] and [withVelocity] seeds
-  /// to set where the timeline starts.
+  /// phase left off. Use [initialValues] and [initialVelocities] to set
+  /// where the timeline starts.
   TrackPhaseTimeline(
     this.phaseAnimations, {
     this.phaseLoop = LoopMode.none,
-    this.from = const [],
-    this.withVelocity = const [],
+    this.initialValues = const [],
+    this.initialVelocities = const [],
   })  : assert(
           phaseAnimations.values.every(
             (animations) => animations.every(
@@ -51,28 +55,33 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
             ),
           ),
           'Animations inside a TrackPhaseTimeline cannot set from or '
-          'withVelocity. Use the timeline-level from and withVelocity instead.',
+          'withVelocity. Use initialValues and initialVelocities instead.',
         ),
-        super(
-          _flatten(phaseAnimations),
-          loop: LoopMode.none,
-        );
+        flattened = TrackTimeline(_flatten(phaseAnimations));
 
   /// The phase-to-animation mapping as provided by the caller.
   final Map<P, List<TrackAnimation>> phaseAnimations;
 
-  /// One-time initial-value seeds applied before the first phase plays.
+  /// Values the tracks jump to when this timeline first starts playing.
   ///
-  /// Unlike per-animation `from`, these are applied only once (when a timeline
-  /// first begins playing) so navigating between phases animates from the
-  /// current values rather than snapping back to the seed each time.
-  final List<TrackValue> from;
+  /// They are applied once per timeline, so navigating between phases
+  /// animates from the current values rather than snapping back.
+  final List<TrackValue> initialValues;
 
-  /// One-time per-track initial velocities applied before the first phase.
+  /// Velocities the tracks start with when this timeline first starts
+  /// playing.
   ///
   /// Each entry's [TrackValue.value] is interpreted as that track's starting
   /// velocity.
-  final List<TrackValue> withVelocity;
+  final List<TrackValue> initialVelocities;
+
+  /// All phases in order, flattened into one clip with a sync barrier before
+  /// each phase after the first. It plays once ([LoopMode.none]).
+  final TrackTimeline flattened;
+
+  /// The resolved start value of every track, from [Track.initial] (or a
+  /// zero-filled fallback). [initialValues] apply on top when played.
+  List<TrackValue> get startValues => flattened.startValues;
 
   /// How the phase sequence should loop.
   ///
@@ -98,12 +107,13 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
   ///
   /// The returned list has no leading sync barrier, so playback begins
   /// immediately at [startPhase] and then advances through the remaining
-  /// phases in order. Returns the full [animations] when [startPhase] is the
+  /// phases in order. Returns all of [flattened]'s animations when
+  /// [startPhase] is the
   /// first phase (or not found).
   @internal
   List<TrackAnimation> animationsFrom(P startPhase) {
     final index = phases.indexOf(startPhase);
-    if (index <= 0) return animations;
+    if (index <= 0) return flattened.animations;
 
     final subset = <P, List<TrackAnimation>>{
       for (final phase in phases.skip(index)) phase: phaseAnimations[phase]!,
@@ -196,7 +206,7 @@ class TrackPhaseTimeline<P extends Object> extends TrackTimeline {
         ...phases,
         for (final phase in phases) ...phaseAnimations[phase]!,
         phaseLoop,
-        ...from,
-        ...withVelocity,
+        ...initialValues,
+        ...initialVelocities,
       ];
 }

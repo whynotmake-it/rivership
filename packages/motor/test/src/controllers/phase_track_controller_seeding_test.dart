@@ -42,14 +42,14 @@ void main() {
             'a1': [scale.to(1)],
             'a2': [scale.to(2)],
           },
-          from: [scale.value(10)],
+          initialValues: [scale.value(10)],
         );
 
     TrackPhaseTimeline<String> timelineB() => TrackPhaseTimeline(
           {
             'b1': [scale.to(3)],
           },
-          from: [scale.value(99)],
+          initialValues: [scale.value(99)],
         );
 
     testWidgets('playing a different timeline applies its own from seed',
@@ -113,7 +113,7 @@ void main() {
         {
           'a2': [scale.to(100)],
         },
-        from: [scale.value(10)],
+        initialValues: [scale.value(10)],
       );
 
       controller.playPhases(timelineA2);
@@ -136,7 +136,7 @@ void main() {
           {
             'v1': [pos.to(0, motion: spring)],
           },
-          withVelocity: [pos.velocity(200)],
+          initialVelocities: [pos.velocity(200)],
         ),
       );
       // Velocity-only seeds must not move the value.
@@ -164,7 +164,7 @@ void main() {
           {
             'w1': [pos.to(0, motion: spring)],
           },
-          withVelocity: [pos.velocity(-200)],
+          initialVelocities: [pos.velocity(-200)],
         ),
       );
       expect(controller.value(pos), closeTo(0, 0.05));

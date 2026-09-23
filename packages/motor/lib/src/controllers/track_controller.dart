@@ -41,19 +41,20 @@ class TrackController extends Animation<TrackValueReader>
         AnimationEagerListenerMixin {
   /// Creates a track controller.
   ///
-  /// [from] seeds the value a track takes the first time this controller sees
-  /// it, in place of [Track.initial]. Seeds are consulted only when a track's
-  /// state is first created; later [play]/[animate] calls do not re-apply
-  /// them, and an animation's own `from` still jumps the track when it plays.
+  /// [initialValues] sets the value a track takes the first time this
+  /// controller sees it, in place of [Track.initial]. They are consulted only
+  /// when a track's state is first created; later [play]/[animate] calls do
+  /// not re-apply them, and an animation's own `from` still jumps the track
+  /// when it plays.
   ///
   /// [velocityTracking] controls whether [set] estimates velocity from
   /// successive position samples.
   TrackController({
     required TickerProvider vsync,
-    List<TrackValue>? from,
+    List<TrackValue>? initialValues,
     VelocityTracking velocityTracking = const VelocityTracking.on(),
     this.debugLabel,
-  })  : _from = List<TrackValue>.of(from ?? const []),
+  })  : _initialValues = List<TrackValue>.of(initialValues ?? const []),
         _velocityTracking = velocityTracking {
     _ticker = vsync.createTicker(_tick);
     MotorInspectionRegistry.registerController(this);
@@ -76,7 +77,7 @@ class TrackController extends Animation<TrackValueReader>
   /// A human-readable name shown by optional inspection tools.
   final String? debugLabel;
 
-  final List<TrackValue> _from;
+  final List<TrackValue> _initialValues;
   final Map<Track, _TrackSlot> _slots = {};
   final Map<Track, _TrackAnimation<Object>> _animations = {};
   final Set<Track> _activeTracks = {};
@@ -757,7 +758,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Resolves the initial value for a track that has never been seen before.
   ///
   /// Resolution order: an explicit [initialOverride] (used by [set]), then the
-  /// constructor-level [_from] seeds, then the animation's own start value
+  /// constructor-level [_initialValues], then the animation's own start value
   /// (`from` -> [Track.initial] -> zero-filled fallback), then [Track.initial].
   /// Asserts when none of these can supply a value.
   T _resolveInitialValue<T extends Object>(
@@ -766,7 +767,7 @@ class TrackController extends Animation<TrackValueReader>
     T? initialOverride,
   ) {
     if (initialOverride != null) return initialOverride;
-    for (final override in _from.reversed) {
+    for (final override in _initialValues.reversed) {
       if (override case TrackValue<T>(track: final overrideTrack)
           when identical(overrideTrack, track)) {
         return override.value;

@@ -30,7 +30,7 @@ void main() {
     testWidgets('resolves constructor from overrides', (tester) async {
       controller = TrackController(
         vsync: tester,
-        from: [opacity.value(0.5)],
+        initialValues: [opacity.value(0.5)],
       );
 
       expect(controller.value(opacity), equals(0.5));
@@ -432,7 +432,7 @@ void main() {
     testWidgets('animate redirects from current track value', (tester) async {
       controller = TrackController(
         vsync: tester,
-        from: [opacity.value(0.5)],
+        initialValues: [opacity.value(0.5)],
       );
       const motion = Motion.linear(Duration(milliseconds: 100));
 
