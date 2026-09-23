@@ -51,7 +51,7 @@ void main() {
       final random = math.Random(seed + 1000);
       final plan = _Plan.generate(random, loop);
       final redirectAt = 30 + random.nextInt(frames - 60);
-      final redirect = plan.tracks.first(_steps(random, const []));
+      final redirect = plan.tracks.first.call(_steps(random, const []));
 
       final controller = TrackController(vsync: tester)..play(plan.timeline);
       final recorded = await _record(
