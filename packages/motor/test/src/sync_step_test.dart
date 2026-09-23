@@ -8,13 +8,13 @@ import 'util.dart';
 
 void main() {
   // ─────────────────────────────────────────────────────────────────────────
-  // A. StepPlayback with StepSync (unit-level, no widgets)
+  // StepPlayback with StepSync (unit-level, no widgets)
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('StepPlayback StepSync', () {
+  group('StepPlayback with StepSync', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
-    test('A1: single sync step blocks playback', () {
+    test('blocks playback at a sync step', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -35,7 +35,7 @@ void main() {
       expect(playback.values.first, closeTo(1.0, error));
     });
 
-    test('A2: releaseSync advances past barrier', () {
+    test('advances past the barrier on releaseSync', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -64,7 +64,7 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
-    test('A3: multiple sync steps in sequence', () {
+    test('waits at each of several sequential sync steps', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -96,7 +96,7 @@ void main() {
       expect(playback.values.first, closeTo(3.0, error));
     });
 
-    test('A4: seekTo passes through sync steps freely', () {
+    test('passes through sync steps freely when seeking', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -116,7 +116,7 @@ void main() {
       expect(playback.values.first, closeTo(3.0, error));
     });
 
-    test('A5: sync step preserves current values and zero velocity', () {
+    test('holds the current value with zero velocity while waiting', () {
       final playback = StepPlayback<double>(
         steps: [
           const StepTo(1.0, motion: linear100),
@@ -142,7 +142,7 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // B. TrackController sync coordination (widget tests)
+  // TrackController sync coordination (widget tests)
   // ─────────────────────────────────────────────────────────────────────────
 
   group('TrackController sync coordination', () {
@@ -158,8 +158,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('B6: two tracks with same-token sync release together',
-        (tester) async {
+    testWidgets('releases tracks sharing a token together', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.animate([
@@ -195,7 +194,7 @@ void main() {
       expect(controller.value(trackB), closeTo(2.0, error));
     });
 
-    testWidgets('B7: different tokens release independently', (tester) async {
+    testWidgets('releases different tokens independently', (tester) async {
       controller = TrackController(vsync: tester);
 
       // trackA has steps: to(1) -> sync(#x) -> to(2)
@@ -234,7 +233,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('B8: large elapsed gap resolves sync barriers without collapse',
+    testWidgets('resolves every barrier across a large elapsed gap',
         (tester) async {
       controller = TrackController(vsync: tester);
 
@@ -260,7 +259,7 @@ void main() {
       expect(controller.isAnimating, isFalse);
     });
 
-    testWidgets('B9: stop(canceled) and re-animate rebuilds sync state',
+    testWidgets('rebuilds sync state when re-animating after stop(canceled)',
         (tester) async {
       controller = TrackController(vsync: tester);
 
@@ -309,7 +308,7 @@ void main() {
       expect(controller.value(trackB), closeTo(2.0, error));
     });
 
-    testWidgets('B10: track not part of sync group does not block release',
+    testWidgets('does not wait for tracks outside the sync group',
         (tester) async {
       controller = TrackController(vsync: tester);
       final trackC = Track<double>(MotionConverter.single, initial: 0.0);
@@ -351,7 +350,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('B11: three tracks wait for the slowest participant',
+    testWidgets('holds three tracks until the slowest participant arrives',
         (tester) async {
       controller = TrackController(vsync: tester);
       final trackC = Track<double>(MotionConverter.single, initial: 0.0);
@@ -394,7 +393,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('B12: stopped participant no longer blocks the barrier',
+    testWidgets('stops waiting for a participant that was stopped',
         (tester) async {
       controller = TrackController(vsync: tester);
       final trackC = Track<double>(MotionConverter.single, initial: 0.0);
@@ -567,7 +566,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('B13: redirecting a waiting participant avoids deadlock',
+    testWidgets('does not deadlock when a waiting participant is redirected',
         (tester) async {
       controller = TrackController(vsync: tester);
 
@@ -601,8 +600,7 @@ void main() {
       expect(controller.value(trackB), closeTo(2, error));
     });
 
-    testWidgets('B14: onSyncReleased fires once per token release',
-        (tester) async {
+    testWidgets('calls onSyncReleased once per released token', (tester) async {
       final recordingController = _RecordingTrackController(vsync: tester);
       controller = recordingController;
 
@@ -631,10 +629,10 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // C. TrackPhaseTimeline + PhaseTrackController integration
+  // TrackPhaseTimeline + PhaseTrackController integration
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('PhaseTrackController integration', () {
+  group('PhaseTrackController phases', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
 
     late PhaseTrackController<String> controller;
@@ -645,7 +643,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('C11: playPhases advances through all phases in order',
+    testWidgets('playPhases advances through all phases in order',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -678,8 +676,7 @@ void main() {
       expect(controller.value(size), closeTo(3.0, error));
     });
 
-    testWidgets("C12: goToPhase plays only that phase's animations",
-        (tester) async {
+    testWidgets("goToPhase plays only that phase's animations", (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
       final timeline = TrackPhaseTimeline({
@@ -699,7 +696,8 @@ void main() {
       expect(controller.currentPhase, equals('large'));
     });
 
-    testWidgets('C13: looping restarts from first phase after last completes',
+    testWidgets(
+        'a looping timeline restarts from the first phase after the last',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -738,7 +736,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('C14: goToPhase interrupts autoplay cleanly', (tester) async {
+    testWidgets('goToPhase interrupts autoplay cleanly', (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
       controller.playPhases(
@@ -762,7 +760,7 @@ void main() {
       expect(controller.currentPhase, equals('done'));
     });
 
-    testWidgets('C15: single-phase timeline plays without sync steps',
+    testWidgets('a single-phase timeline plays without sync steps',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -785,10 +783,10 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // D. Edge cases
+  // Edge cases
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('Edge cases', () {
+  group('PhaseTrackController edge cases', () {
     const linear100 = Motion.linear(Duration(milliseconds: 100));
     const linear200 = Motion.linear(Duration(milliseconds: 200));
 
@@ -800,7 +798,8 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('D16: track present in only some phases participates in sync',
+    testWidgets(
+        'a track present in only some phases still participates in sync',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -826,7 +825,7 @@ void main() {
       expect(controller.value(trackB), closeTo(1.0, error));
     });
 
-    testWidgets('D17: rapid playPhases calls only play the latest',
+    testWidgets('back-to-back playPhases calls only play the latest timeline',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -849,7 +848,8 @@ void main() {
       expect(controller.value(trackA), closeTo(20.0, error));
     });
 
-    testWidgets('D18: disposing controller during sync does not crash',
+    testWidgets(
+        'disposing the controller while waiting at a barrier does not throw',
         (tester) async {
       controller = PhaseTrackController<String>(vsync: tester);
 
@@ -873,7 +873,7 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // E. Type safety regression: non-double tracks with playPhases
+  // Type safety regression: non-double tracks with playPhases
   // ─────────────────────────────────────────────────────────────────────────
 
   group('PhaseTrackController type safety with Track<Offset>', () {
@@ -892,7 +892,7 @@ void main() {
     });
 
     testWidgets(
-      'E1: playPhases with Track<Offset> after reading value does not throw',
+      'playPhases after reading the value does not throw',
       (tester) async {
         controller = PhaseTrackController<String>(vsync: tester);
 
@@ -923,7 +923,7 @@ void main() {
     );
 
     testWidgets(
-      'E2: playPhases with Track<Offset> without prior set() completes',
+      'playPhases without a prior set() completes',
       (tester) async {
         controller = PhaseTrackController<String>(vsync: tester);
 
@@ -946,7 +946,7 @@ void main() {
     );
 
     testWidgets(
-      'E3: playPhases after set() with Track<Offset> does not throw',
+      'playPhases after set() does not throw',
       (tester) async {
         controller = PhaseTrackController<String>(vsync: tester);
 
@@ -974,7 +974,7 @@ void main() {
     );
 
     testWidgets(
-      'E4: playPhases with multiple typed tracks after reading does not throw',
+      'playPhases with several typed tracks after reading does not throw',
       (tester) async {
         controller = PhaseTrackController<String>(vsync: tester);
         final scale = Track<double>(

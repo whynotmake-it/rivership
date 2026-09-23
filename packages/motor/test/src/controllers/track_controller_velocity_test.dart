@@ -14,7 +14,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('A1: set updates track values immediately', (tester) async {
+    testWidgets('updates track values immediately', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.set([position.value(5.0)]);
@@ -22,7 +22,7 @@ void main() {
       expect(controller.value(position), equals(5.0));
     });
 
-    testWidgets('A2: set does not start the ticker', (tester) async {
+    testWidgets('does not start the ticker', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.set([position.value(5.0)]);
@@ -30,8 +30,7 @@ void main() {
       expect(controller.isAnimating, isFalse);
     });
 
-    testWidgets('A3: set with explicit velocity stores that velocity',
-        (tester) async {
+    testWidgets('stores an explicit velocity', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.set(
@@ -43,8 +42,7 @@ void main() {
       expect(controller.velocity(position), equals(100.0));
     });
 
-    testWidgets(
-        'A4: set without explicit velocity auto-tracks via position samples',
+    testWidgets('estimates velocity from position samples when none is given',
         (tester) async {
       controller = TrackController(vsync: tester);
 
@@ -62,7 +60,8 @@ void main() {
       expect(controller.velocity(position), greaterThan(0));
     });
 
-    testWidgets('A5: play after set uses tracked velocity', (tester) async {
+    testWidgets('feeds its tracked velocity into the next play',
+        (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
 
@@ -95,8 +94,8 @@ void main() {
     });
 
     testWidgets(
-        'A6: VelocityTracking.off disables auto-tracking but allows explicit',
-        (tester) async {
+        'ignores position samples but accepts explicit velocity when '
+        'VelocityTracking is off', (tester) async {
       controller = TrackController(
         vsync: tester,
         velocityTracking: const VelocityTracking.off(),
@@ -121,10 +120,10 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // B. withVelocity: parameter
+  // withVelocity: parameter
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('withVelocity: parameter', () {
+  group('TrackAnimation withVelocity', () {
     late TrackController controller;
     final position = Track<double>(MotionConverter.single, initial: 0.0);
 
@@ -132,8 +131,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('B7: TrackValue velocity is used as initial playback velocity',
-        (tester) async {
+    testWidgets('is used as the initial playback velocity', (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
 
@@ -153,7 +151,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('B8: TrackValue without velocity uses zero initial velocity',
+    testWidgets('defaults to a zero initial velocity when omitted',
         (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
@@ -174,8 +172,7 @@ void main() {
       expect(controller.value(position), closeTo(1.0, error));
     });
 
-    testWidgets('B9: from: velocity overrides tracked velocity',
-        (tester) async {
+    testWidgets('overrides the tracked velocity', (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
 
@@ -206,7 +203,7 @@ void main() {
     });
   });
 
-  group('withVelocity on animate', () {
+  group('TrackController.animate with withVelocity', () {
     late TrackController controller;
     final position = Track<double>(MotionConverter.single, initial: 0.0);
 
@@ -266,10 +263,10 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // C. Integration
+  // Integration
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('Integration', () {
+  group('TrackController velocity', () {
     late TrackController controller;
     final position = Track<double>(MotionConverter.single, initial: 0.0);
     final scale = Track<double>(MotionConverter.single, initial: 1.0);
@@ -278,7 +275,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('C10: set followed by animate carries velocity',
+    testWidgets('set followed by animate carries velocity over',
         (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
@@ -299,7 +296,7 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('C11: stop zeros velocity', (tester) async {
+    testWidgets('stop resets velocity to zero', (tester) async {
       controller = TrackController(vsync: tester);
 
       controller.set(
@@ -312,7 +309,7 @@ void main() {
       expect(controller.velocity(position), equals(0.0));
     });
 
-    testWidgets('C12: set on one track does not affect another',
+    testWidgets('set on one track leaves other tracks untouched',
         (tester) async {
       controller = TrackController(vsync: tester);
 
@@ -329,8 +326,7 @@ void main() {
       expect(controller.velocity(scale), equals(0.0));
     });
 
-    testWidgets('C13: per-animation from is applied before playing',
-        (tester) async {
+    testWidgets('per-animation from is applied before playing', (tester) async {
       controller = TrackController(vsync: tester);
       const linear = Motion.linear(Duration(milliseconds: 100));
 
