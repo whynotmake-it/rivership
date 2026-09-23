@@ -78,12 +78,6 @@ class TrackController extends Animation<TrackValueReader>
   @visibleForTesting
   int get debugTrackCount => _slots.length;
 
-  /// A monotonic timestamp for velocity sampling, sourced from [clock] so it is
-  /// driven by the fake clock under test (advancing with `tester.pump`) and by
-  /// wall-clock time in production.
-  Duration get _velocityNow =>
-      Duration(microseconds: clock.now().microsecondsSinceEpoch);
-
   Ticker? _ticker;
   TickerFuture? _tickerFuture;
   Duration _lastElapsed = Duration.zero;
@@ -180,8 +174,13 @@ class TrackController extends Animation<TrackValueReader>
   void _trackVelocitySample<T extends Object>(Track<T> track, T value) {
     final tracker = _trackerFor(track);
     if (tracker == null) return;
-    tracker.addPosition(_velocityNow, value);
-    _pendingVelocityEstimates[track] = clock.now();
+    // Sourced from [clock] so tests drive it with the fake clock.
+    final now = clock.now();
+    tracker.addPosition(
+      Duration(microseconds: now.microsecondsSinceEpoch),
+      value,
+    );
+    _pendingVelocityEstimates[track] = now;
   }
 
   /// Applies the velocity estimated from [track]'s samples as of its latest
