@@ -360,22 +360,23 @@ class StepPlayback<T extends Object> {
   /// Whether the shown segment heads for a smaller value than it started
   /// from, as judged by a [DirectionalMotionConverter].
   ///
-  /// Segments without a target (holds, free motions, sync barriers) take the
-  /// direction of the most recent segment that has one. Always false for
-  /// converters without a direction.
+  /// Segments without a direction (holds, free motions, sync barriers, moves
+  /// to the value they start from) take the direction of the most recent
+  /// segment that has one. Null when there is none, or for converters
+  /// without a direction.
   @internal
-  bool get shownMovesDown {
+  bool? get shownMovesDown {
     final converter = _converter;
-    if (converter is! DirectionalMotionConverter<T>) return false;
+    if (converter is! DirectionalMotionConverter<T>) return null;
     for (var index = _viewIndex; index >= 0; index--) {
       final segment = _segments[index];
       final movesDown = segment.movesDown ??= _movesDown(segment, converter);
       if (movesDown != null) return movesDown;
     }
-    return false;
+    return null;
   }
 
-  /// Whether [segment] heads down, or null if it has no target.
+  /// Whether [segment] heads down, or null if it has no direction.
   bool? _movesDown(
     _Segment segment,
     DirectionalMotionConverter<T> converter,
@@ -393,7 +394,7 @@ class StepPlayback<T extends Object> {
       converter.denormalize(from),
       converter.denormalize(to),
     );
-    return order > 0;
+    return order == 0 ? null : order > 0;
   }
 
   /// The resolved segments, oldest first: which step each one plays and when.
@@ -955,7 +956,7 @@ class _Segment {
   double? end;
 
   /// Whether the segment heads for a smaller value, once computed; null
-  /// until then, and also when the segment has no target.
+  /// until then, and also when the segment has no direction.
   bool? movesDown;
 }
 

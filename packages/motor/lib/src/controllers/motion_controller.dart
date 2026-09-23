@@ -22,15 +22,9 @@ part 'sequence_motion_controller.dart';
 /// differences have been made to make it generalize easier for different types
 /// of motion.
 ///
-/// 1. [status] behavior depends on the [MotionConverter]:
-///   - If the converter is directional (e.g. [SingleMotionConverter]), [status]
-///     will report [AnimationStatus.forward] or [AnimationStatus.reverse]
-///     appropriately.
-///   - For non-directional converters (common for multi-dimensional types),
-///     [status] will always be [AnimationStatus.forward] while animating.
-///   - When stopped, it generally returns [AnimationStatus.completed] unless
-///     at the initial value (or lower bound), where it returns
-///     [AnimationStatus.dismissed].
+/// 1. [status] follows the direction of the motion, as judged by the
+///   [converter], and ends in [AnimationStatus.dismissed] after moving down.
+///   See [status] for details.
 /// 2. [stop] will not stop the animation right away, unless `canceled` is true.
 ///   Instead, it will wait until the simulation is done, and then settle at
 ///   the current value. This allows for a more graceful stop, for example, a
@@ -109,13 +103,13 @@ class MotionController<T extends Object> extends Animation<T>
           'the number of motions must match the number of dimensions',
         ),
         _converter = converter,
-        _initialValue = initialValue,
         _motionPerDimension = List.of(motionPerDimension),
         _animationBehavior = behavior {
-    _inner = TrackController(
+    _inner = _MotionTrackController(
       vsync: vsync,
       velocityTracking: velocityTracking,
       debugLabel: debugLabel,
+      onCompleted: _onRunCompleted,
     );
     _track = Track<T>(
       converter,
@@ -124,13 +118,12 @@ class MotionController<T extends Object> extends Animation<T>
     );
     _inner
       ..addListener(notifyListeners)
-      ..addStatusListener(_handleInnerStatus);
+      ..addStatusListener(notifyStatusListeners);
   }
 
   late final TrackController _inner;
   MotionConverter<T> _converter;
   late Track<T> _track;
-  final T _initialValue;
   List<Motion> _motionPerDimension;
   final AnimationBehavior _animationBehavior;
 
@@ -138,11 +131,8 @@ class MotionController<T extends Object> extends Animation<T>
   @visibleForTesting
   TrackController get debugInnerController => _inner;
 
-  /// The most recent animation target, used to evaluate the resting [status].
+  /// The most recent animation target, for redirecting to it.
   T? _lastTarget;
-
-  AnimationStatus _status = AnimationStatus.dismissed;
-  AnimationStatus _lastReportedStatus = AnimationStatus.dismissed;
 
   /// Converts the value of type T to a `List<double>` for internal processing.
   MotionConverter<T> get converter => _converter;
@@ -173,10 +163,11 @@ class MotionController<T extends Object> extends Animation<T>
       debugLabel: oldTrack.debugLabel,
     );
     _inner
-      ..forgetTrack(oldTrack)
-      ..set(
-        [_track.value(reinterpreted)],
-        withVelocity: [_track.velocity(reinterpretedVelocity)],
+      ..replaceTrack(
+        oldTrack,
+        _track,
+        value: reinterpreted,
+        velocity: reinterpretedVelocity,
       )
       ..resetVelocityTracking();
     notifyListeners();
@@ -194,19 +185,22 @@ class MotionController<T extends Object> extends Animation<T>
   set value(T newValue) {
     if (_inner.isAnimating) _inner.stop(canceled: true);
     _inner.set([_track.value(newValue)]);
-    _status = _getStatusWhenDone();
-    _checkStatusChanged();
   }
 
   /// The current status of this [Animation].
   ///
-  /// This reports [AnimationStatus.forward] or [AnimationStatus.reverse] based
-  /// on the directionality defined by the [converter].
-  ///
-  /// If the [converter] is not a [DirectionalMotionConverter], this will always
-  /// report [AnimationStatus.forward] while animating.
+  /// - It is [AnimationStatus.dismissed] until the value first moves.
+  /// - While animating, it is [AnimationStatus.reverse] when heading for a
+  ///   smaller value (directional converters such as [SingleMotionConverter]
+  ///   only), otherwise [AnimationStatus.forward].
+  /// - Once the motion finished, was stopped gracefully, or [value] was set,
+  ///   it is [AnimationStatus.dismissed] if the last move went down,
+  ///   otherwise [AnimationStatus.completed]. For converters without a
+  ///   direction (common for multi-dimensional types), dismissed means back
+  ///   at the initial value.
+  /// - After `stop(canceled: true)`, it keeps the direction it was moving in.
   @override
-  AnimationStatus get status => _status;
+  AnimationStatus get status => _inner.status;
 
   /// Whether this animation is currently animating in either the forward or
   /// reverse direction.
@@ -291,9 +285,6 @@ class MotionController<T extends Object> extends Animation<T>
     T? withVelocity,
   }) {
     _lastTarget = target;
-    _status = converter.motionIsForward(from: from ?? value, to: target)
-        ? AnimationStatus.forward
-        : AnimationStatus.reverse;
     final future = _inner.animate(
       [
         _track.to(
@@ -305,7 +296,6 @@ class MotionController<T extends Object> extends Animation<T>
       ],
     );
     _inner.resetVelocityTracking();
-    _checkStatusChanged();
     return future;
   }
 
@@ -332,8 +322,6 @@ class MotionController<T extends Object> extends Animation<T>
       onStep: onStep == null ? null : (track, index) => onStep(index),
     );
     _inner.resetVelocityTracking();
-    _status = AnimationStatus.forward;
-    _checkStatusChanged();
     return future;
   }
 
@@ -361,11 +349,12 @@ class MotionController<T extends Object> extends Animation<T>
   /// If you set it to true, the simulation will be stopped immediately.
   /// Otherwise, the simulation will redirect to settle at the current value, if
   /// [Motion.needsSettle] is true for any [motionPerDimension].
+  ///
+  /// A canceled stop keeps [status] at the direction it was moving in;
+  /// otherwise the move counts as finished once it comes to rest.
   TickerFuture stop({bool canceled = false}) {
-    if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
-      _inner.stop(canceled: true);
-      return TickerFuture.complete();
-    }
+    if (canceled) return _inner.stop(canceled: true);
+    if (_motionPerDimension.every((e) => !e.needsSettle)) return _inner.stop();
     return animateTo(value);
   }
 
@@ -378,35 +367,33 @@ class MotionController<T extends Object> extends Animation<T>
     }
   }
 
-  /// Evaluates the current status when we're at the end of the animation.
-  AnimationStatus _getStatusWhenDone() => switch (_lastTarget) {
-        final v? when v == _initialValue => AnimationStatus.dismissed,
-        _ => AnimationStatus.completed,
-      };
-
-  void _handleInnerStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      _status = _getStatusWhenDone();
-      _checkStatusChanged();
-    }
-  }
-
-  void _checkStatusChanged() {
-    if (_status != _lastReportedStatus) {
-      _lastReportedStatus = _status;
-      notifyStatusListeners(_status);
-    }
-  }
+  /// Called when a playback run finished; a continuation started here hides
+  /// the run boundary from status listeners.
+  void _onRunCompleted() {}
 
   /// Frees any resources used by this object.
   @override
   void dispose() {
     _inner
       ..removeListener(notifyListeners)
-      ..removeStatusListener(_handleInnerStatus)
+      ..removeStatusListener(notifyStatusListeners)
       ..dispose();
     super.dispose();
   }
+}
+
+class _MotionTrackController extends TrackController {
+  _MotionTrackController({
+    required super.vsync,
+    required super.velocityTracking,
+    required super.debugLabel,
+    required this.onCompleted,
+  });
+
+  final VoidCallback onCompleted;
+
+  @override
+  void onPlaybackCompleted() => onCompleted();
 }
 
 /// A [MotionController] that is bounded.
@@ -419,16 +406,12 @@ class MotionController<T extends Object> extends Animation<T>
 /// (although) it can still overshoot as part of the [motion]s that are used.
 ///
 /// This also adds [forward] and [reverse] methods that will animate towards
-/// the [lowerBound] and [upperBound] respectively.
+/// the [upperBound] and [lowerBound] respectively.
 ///
-/// Furthermore, [status] behaves differently for bounded controllers:
-///   - It will return [AnimationStatus.reverse] when animating towards the
-///     [lowerBound], and [AnimationStatus.forward] when animating towards the
-///     [upperBound].
-///   - [status] will return [AnimationStatus.dismissed] if the controller is
-///     stopped and at its lower bound.
-///   - [status] will return the last reported direction if the controller is
-///     stopped and not at its lower or upper bound.
+/// [status] works as for [MotionController]: with a directional converter,
+/// [reverse] reports [AnimationStatus.reverse] and then
+/// [AnimationStatus.dismissed], and [forward] reports
+/// [AnimationStatus.forward] and then [AnimationStatus.completed].
 /// {@endtemplate}
 class BoundedMotionController<T extends Object> extends MotionController<T> {
   /// Creates a [BoundedMotionController].
@@ -464,8 +447,6 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   final List<double> _lowerBound;
   final List<double> _upperBound;
 
-  bool _forward = true;
-
   /// The lower bound of the animation value.
   ///
   /// {@template motor.spring_simulation.bounds_overshoot_warning}
@@ -496,23 +477,12 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }
 
   @override
-  AnimationStatus _getStatusWhenDone() => switch (_lastTarget) {
-        final v? when v == lowerBound => AnimationStatus.dismissed,
-        final v? when v == upperBound => AnimationStatus.completed,
-        _ when !_forward => AnimationStatus.reverse,
-        _ => AnimationStatus.forward,
-      };
-
-  @override
   TickerFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
-  }) {
-    final clamped = _clamp(target);
-    _forward = converter.motionIsForward(from: from ?? value, to: clamped);
-    return super.animateTo(clamped, from: from, withVelocity: withVelocity);
-  }
+  }) =>
+      super.animateTo(_clamp(target), from: from, withVelocity: withVelocity);
 
   /// Animates towards [upperBound].
   TickerFuture forward({
@@ -523,9 +493,8 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Animates towards [lowerBound].
   ///
-  /// **Note**: [status] might still return [AnimationStatus.forward] when
-  /// this is called, depending on the directionality of [converter].
-  /// See [status] for more information.
+  /// **Note**: [status] reports [AnimationStatus.forward] when [converter]
+  /// has no direction. See [status] for more information.
   TickerFuture reverse({
     T? from,
     T? withVelocity,
@@ -535,13 +504,11 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   @override
   TickerFuture stop({bool canceled = false}) {
     if (canceled || motionPerDimension.every((e) => !e.needsSettle)) {
-      return super.stop(canceled: true);
+      return super.stop(canceled: canceled);
     }
-    // Settle at the clamped current value, keeping the last direction.
+    // Settle at the clamped current value.
     final target = _clamp(value);
     _lastTarget = target;
-    _status = _getStatusWhenDone();
-    _checkStatusChanged();
     return _inner.animate([
       _track.to(target, motionPerDimension: motionPerDimension),
     ]);
@@ -556,18 +523,4 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
 
   return a.length == b.length &&
       [for (final (i, m) in a.indexed) m == b.elementAt(i)].every((e) => e);
-}
-
-extension<T> on MotionConverter<T> {
-  bool motionIsForward({required T from, required T to}) {
-    if (this case final DirectionalMotionConverter<T> directional) {
-      return switch (directional.compare(from, to)) {
-        > 0 => false,
-        _ => true,
-      };
-    }
-
-    // Always consider motion forward for non-directional converters.
-    return true;
-  }
 }

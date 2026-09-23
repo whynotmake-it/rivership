@@ -167,11 +167,7 @@ class SequenceMotionController<P, T extends Object>
         PhaseTransitioning(from: previous, to: run.first),
       );
     }
-    final future = super.play(steps, loop: LoopMode.none, onStep: _onChainStep);
-    // play() nulls _lastTarget; restore it so _getStatusWhenDone() reports
-    // completed/dismissed against the current phase target, like legacy.
-    _lastTarget = sequence.valueForPhase(run.first);
-    return future;
+    return super.play(steps, loop: LoopMode.none, onStep: _onChainStep);
   }
 
   /// Translates the chain's step indices into phase transitions.
@@ -194,10 +190,6 @@ class SequenceMotionController<P, T extends Object>
     // sequenceProgress is defined over the sequence's forward phase order,
     // so look the phase up there (not in the possibly-reversed _chainRun).
     _currentSequencePhaseIndex = _activeSequence!.phases.indexOf(to);
-    // Keep the base class's resting-status bookkeeping pointed at the phase
-    // we are now heading for (it compares this against the initial value to
-    // report completed vs dismissed once everything settles).
-    _lastTarget = _activeSequence!.valueForPhase(to);
     _onPhaseTransition?.call(PhaseTransitioning(from: from, to: to));
   }
 
@@ -233,24 +225,17 @@ class SequenceMotionController<P, T extends Object>
     );
   }
 
-  /// Intercepts the inner controller's completion to chain the next cycle.
+  /// Chains the next cycle when a run finishes.
   ///
-  /// Overriding this (instead of adding a status listener) matters: the base
-  /// class would otherwise report [AnimationStatus.completed] between loop
-  /// cycles, while a looping sequence should stay `forward` throughout.
-  /// Everything here runs synchronously inside the completion tick, so the
-  /// next chain's ticker is backdated to this frame and each cycle anchors
-  /// where the previous one ended — the same timing the legacy controller
+  /// This runs inside the completion hook, so status listeners never see
+  /// [AnimationStatus.completed] between loop cycles. Everything here runs
+  /// synchronously inside the completion tick, so each cycle anchors where
+  /// the previous one ended — the same timing the legacy controller
   /// produced. Deferring any of this to a post-frame callback would lose
   /// that anchoring.
   @override
-  void _handleInnerStatus(AnimationStatus status) {
-    // Not our completion to intercept: either no sequence is playing, or the
-    // inner controller reported something other than "done".
-    if (!_isPlayingSequence || status != AnimationStatus.completed) {
-      super._handleInnerStatus(status);
-      return;
-    }
+  void _onRunCompleted() {
+    if (!_isPlayingSequence) return;
     final sequence = _activeSequence!;
     final phases = sequence.phases;
     switch (sequence.loop) {
@@ -320,9 +305,6 @@ class SequenceMotionController<P, T extends Object>
       _onPhaseTransition?.call(PhaseSettled(finalPhase));
     }
     _onPhaseTransition = null;
-    // Now let the base class evaluate the resting status (completed, or
-    // dismissed when the final phase value equals the initial value).
-    super._handleInnerStatus(AnimationStatus.completed);
   }
 
   /// Silently abandons the active sequence, emitting no events.

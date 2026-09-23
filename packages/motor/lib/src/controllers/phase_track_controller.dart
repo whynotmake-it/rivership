@@ -180,7 +180,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   }
 
   @override
-  bool onPlaybackCompleted() {
+  void onPlaybackCompleted() {
     final timeline = _activeTimeline;
 
     if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {
@@ -206,7 +206,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
           );
           animate(timeline.animationsFrom(next));
         }
-        return true;
+        return;
       }
 
       if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
@@ -226,7 +226,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _currentPhase = second;
         _onTransition?.call(PhaseTransitioning(from: first, to: second));
         animate(timeline.animationsFrom(second));
-        return true;
+        return;
       }
 
       // loop (and single-phase seamless): animate from the current values back
@@ -238,13 +238,12 @@ class PhaseTrackController<P extends Object> extends TrackController {
         _onTransition?.call(PhaseTransitioning(from: previous, to: first));
       }
       animate(timeline.flattened.animations);
-      return true;
+      return;
     }
 
     final phase = _currentPhase;
     if (phase != null) {
       _onTransition?.call(PhaseSettled(phase));
     }
-    return false;
   }
 }

@@ -118,7 +118,7 @@ void main() {
         AnimationStatus.forward,
         AnimationStatus.completed,
         AnimationStatus.reverse,
-        AnimationStatus.completed,
+        AnimationStatus.dismissed,
       ]);
     });
 

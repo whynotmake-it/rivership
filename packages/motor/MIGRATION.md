@@ -68,6 +68,27 @@ controller.animateTo(0); // status: AnimationStatus.reverse when moving down
 If you branched on `status == AnimationStatus.forward` to mean "animating",
 use `controller.isAnimating` instead.
 
+The resting status follows the direction too. A move down finishes
+`dismissed`, and anything else finishes `completed`. This applies to every
+controller, builder, and `onStatus` callback:
+
+- In 1.x, `animateTo(1)` from 3 finished `completed`. It now finishes
+  `dismissed`. Without a direction (for example `Offset`), `dismissed` still
+  means back at the initial value.
+- `BoundedMotionController` no longer uses its bounds for status. With a
+  directional converter, `reverse()` still ends `dismissed`. Without one,
+  status works as for `MotionController`, so `reverse()` ends `completed`
+  unless the lower bound is the initial value.
+- A graceful `stop()` finishes like a completed move (`completed` or
+  `dismissed`). A `stop(canceled: true)` keeps the direction it was moving
+  in. In 1.x, a stopped bounded controller reported its last direction.
+- `SequenceMotionController` reports `reverse` while a phase heads down,
+  for example on a `pingPong` return pass. It still never reports
+  `completed` between loop cycles.
+
+If you waited for `completed` to detect the end of any move, check
+`!status.isAnimating` or await the returned `TickerFuture` instead.
+
 ### `PhaseTransition` factory constructors removed
 
 `PhaseTransition.settled` and `PhaseTransition.transitioning` are gone.

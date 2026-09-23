@@ -11,12 +11,13 @@
  - **FEAT**: add `TrackStep<T>`, the unit of a track animation: `TrackStep.to` (animate to a target), `TrackStep.at` (a keyframe that arrives exactly at an absolute time), `TrackStep.hold`, `TrackStep.free` (run a self-directed `FreeMotion`), and `TrackStep.sync` (a barrier shared by tracks through a token). `.at` stretches its motion over the gap when the preceding step ends early enough, and otherwise cuts the preceding step so its motion runs its natural duration; the two cases meet continuously, and with no time left the value arrives instantly.
  - **FEAT**: add `TrackAnimation<T>` (one track's steps plus its own `from`/`withVelocity`), `TrackTimeline` (a reusable, value-equatable multi-track clip that owns its `LoopMode`), and `TrackPhaseTimeline<P>` (named phases with sync barriers at phase boundaries, one-time `initialValues`/`initialVelocities`, `phaseLoop`, and the phases as a plain clip via `flattened`). `TrackController(initialValues:)` sets a track's value the first time the controller sees it.
  - **FEAT**: add `TrackController`, a multi-track controller on one ticker:
-   - `play`/`animate` start plans for the named tracks, `set` jumps without animating, and `stop` settles springs gracefully or halts with `canceled: true` (which does not report `completed`). Returned futures complete when the whole controller settles.
+   - `play`/`animate` start plans for the named tracks, `set` jumps without animating, and `stop` settles springs gracefully or halts with `canceled: true` (which keeps the direction it was moving in instead of reporting `completed`). Returned futures complete when the whole controller settles.
    - `pause`, `resume`, and `scrubTo` work on one playback timeline that only advances while the controller ticks, so pausing, restarting, and scrubbing never rewind or misalign tracks. Flutter's `timeDilation` applies as usual.
    - Sync barriers release at the exact moment the last participant arrives, independent of the frame rate, and hold every cycle in looping plans. Scrubbing resolves them the same way playback does.
    - Playback is a function of time alone: each step's duration is resolved once and kept, so ticking live, jumping ahead, and scrubbing back always agree, and loops that repeat use constant memory.
    - `onStep` reports every step a track enters, in order, even within one frame.
    - `animationOf(track)` returns a cached `Animation<T>` for one track that composes with tweens, curves, and transitions and reports that track's own status.
+   - `status` combines the tracks moved since the controller was last idle: `reverse` while all moving tracks head down, otherwise `forward`; once done, `dismissed` if all are dismissed, otherwise `completed`.
  - **FEAT**: add `PhaseTrackController<P>` with `playPhases`, `goToPhase`, `setTimeline`, and `currentPhase`, reporting `PhaseTransitioning`/`PhaseSettled`. `phaseLoop` supports `loop`, `seamless`, and `pingPong` (phases in reverse order on the way back).
  - **FEAT**: add `TrackBuilder` (inline `animations:` + `loop:`, or `TrackBuilder.timeline(...)`) and `PhaseTrackBuilder<P>` (manual `currentPhase` or auto-advancing `playing`). Equal animation lists and timelines do not restart playback on rebuild; `restartTrigger` replays from the start (including the timeline's seeds). Both accept `velocityTracking`, which can change without restarting playback, as can `TrackController.velocityTracking`.
 
@@ -56,6 +57,7 @@
 ### Motion converters
 
  - **BREAKING** **FEAT**: add directionality support to `MotionConverter`. New `DirectionalMotionConverter` mixin, `ComparableMotionConverter` mixin, and `MotionConverter.customDirectional` factory let controllers report `AnimationStatus.reverse` when animating toward a "smaller" value. `SingleMotionConverter` (and other comparable converters) are now directional, so `MotionController.status` now reports `reverse` when animating downward — previously it always reported `forward`.
+ - **BREAKING** **FEAT**: status finishes by direction everywhere (controllers, builders, `onStatus`, `animationOf`): a move down ends `dismissed`, anything else `completed`; without a direction, `dismissed` means back at the initial value. A graceful `stop()` finishes the same way, and `stop(canceled: true)` keeps the direction it was moving in. `BoundedMotionController` no longer derives status from its bounds. See MIGRATION.md.
  - **FEAT**: add `MotionConverter.lerp` for per-dimension interpolation between two values.
 
 ### Looping and phases

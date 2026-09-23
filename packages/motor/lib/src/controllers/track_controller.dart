@@ -81,6 +81,12 @@ class TrackController extends Animation<TrackValueReader>
   final Map<Track, _TrackSlot> _slots = {};
   final Map<Track, _TrackAnimation<Object>> _animations = {};
   final Set<Track> _activeTracks = {};
+
+  /// The tracks moved since the controller was last idle, which make up
+  /// [status].
+  final Set<Track> _runTracks = {};
+  var _statusDirty = false;
+  var _holdStatus = false;
   final Map<Object, Set<Track>> _tokenParticipants = {};
 
   /// How often each track was released at each sync token.
@@ -123,6 +129,16 @@ class TrackController extends Animation<TrackValueReader>
   @override
   TrackValueReader get value => _read;
 
+  /// The status of the tracks moved since this controller was last idle.
+  ///
+  /// While any of them moves, this is [AnimationStatus.reverse] if all
+  /// moving tracks head down, otherwise [AnimationStatus.forward]. Once none
+  /// moves, it is [AnimationStatus.dismissed] if all of them are dismissed,
+  /// otherwise [AnimationStatus.completed]. See [animationOf] for the status
+  /// of a single track; a track stopped with `canceled: true` counts as
+  /// moving in its last direction.
+  ///
+  /// Pausing and scrubbing do not change it.
   @override
   AnimationStatus get status => _status;
 
@@ -136,11 +152,18 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// The same instance is returned for the same track. It listens to this
   /// controller only while it has listeners, and notifies them only when
-  /// this track's value or status changes. Its status is
-  /// [AnimationStatus.dismissed] until the track first plays,
-  /// [AnimationStatus.forward] while it plays (including while paused, or
-  /// [AnimationStatus.reverse] for directional converters heading down), and
-  /// [AnimationStatus.completed] once its plan finished or was stopped.
+  /// this track's value or status changes. Its status is:
+  ///
+  /// - [AnimationStatus.dismissed] until the track first moves.
+  /// - While it plays (including while paused), [AnimationStatus.reverse]
+  ///   when heading for a smaller value, as judged by a
+  ///   [DirectionalMotionConverter], otherwise [AnimationStatus.forward].
+  ///   Steps without a direction (holds, barriers) keep the previous one.
+  /// - Once its plan finished, it was stopped, or it jumped with [set]:
+  ///   [AnimationStatus.dismissed] if its last move went down, otherwise
+  ///   [AnimationStatus.completed]. For converters without a direction,
+  ///   dismissed means back at the track's initial value.
+  /// - After [stop] with `canceled: true`, the direction it was moving in.
   ///
   /// Reading the value follows the same rules as [value].
   Animation<T> animationOf<T extends Object>(Track<T> track) =>
@@ -198,10 +221,12 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> withVelocity = const [],
   }) {
     _playbackRevision++;
+    _joinRun(values.map((trackValue) => trackValue.track));
     for (final trackValue in values) {
       _setTrackValue(trackValue, withVelocity);
     }
     notifyListeners();
+    _updateStatus();
   }
 
   void _setTrackValue<T extends Object>(
@@ -340,6 +365,7 @@ class TrackController extends Animation<TrackValueReader>
     _onStep = onStep;
 
     // Previously-running tracks stay active; the named tracks (re)start.
+    _joinRun(timelineTracks);
     _activeTracks.addAll(timelineTracks);
 
     _mergeTokenParticipants(animations, timelineTracks);
@@ -358,9 +384,8 @@ class TrackController extends Animation<TrackValueReader>
       _recordPlan(animations, loop: loop, start: startOffset);
     }
 
-    _status = AnimationStatus.forward;
     final future = _startTicker();
-    _checkStatusChanged();
+    _updateStatus();
     return future;
   }
 
@@ -449,9 +474,8 @@ class TrackController extends Animation<TrackValueReader>
     if (!_activeTracks.any((track) => _slots[track]?.isAnimating ?? false)) {
       return;
     }
-    _status = AnimationStatus.forward;
     _startTicker();
-    _checkStatusChanged();
+    _updateStatus();
     notifyListeners();
   }
 
@@ -549,6 +573,7 @@ class TrackController extends Animation<TrackValueReader>
       _ticker?.stop(canceled: true);
     }
     notifyListeners();
+    _updateStatus();
     return TickerFuture.complete();
   }
 
@@ -563,7 +588,7 @@ class TrackController extends Animation<TrackValueReader>
         // Keep the track active so the ticker drives it to rest.
         _activeTracks.add(track);
       } else {
-        slot.stop(canceled: true);
+        slot.stop();
         _activeTracks.remove(track);
         _pendingVelocityEstimates.remove(track);
       }
@@ -573,9 +598,8 @@ class TrackController extends Animation<TrackValueReader>
     _releaseArrivedBarriers(_clock.now);
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
-      _status = AnimationStatus.completed;
       notifyListeners();
-      _checkStatusChanged();
+      _updateStatus();
       return TickerFuture.complete();
     }
 
@@ -583,7 +607,7 @@ class TrackController extends Animation<TrackValueReader>
     // via the normal _tick completion path.
     final future = _startTicker();
     notifyListeners();
-    _checkStatusChanged();
+    _updateStatus();
     return future;
   }
 
@@ -597,9 +621,29 @@ class TrackController extends Animation<TrackValueReader>
     _slots[track]?.stop(canceled: true);
     _slots.remove(track);
     _activeTracks.remove(track);
+    _runTracks.remove(track);
     _velocityTrackers.remove(track);
     _pendingVelocityEstimates.remove(track);
     _pruneTokenParticipants([track]);
+  }
+
+  /// Replaces [old] with [replacement] at [value] and [velocity], keeping
+  /// its status, e.g. for a converter swap with the same dimensions.
+  @internal
+  void replaceTrack<T extends Object>(
+    Track old,
+    Track<T> replacement, {
+    required T value,
+    required T velocity,
+  }) {
+    final oldSlot = _slots[old];
+    final inRun = _runTracks.contains(old);
+    forgetTrack(old);
+    final slot = _slot(replacement, initialOverride: value);
+    if (oldSlot != null) slot.adoptStatus(oldSlot);
+    slot.setValueWithVelocity(value, velocity);
+    if (inRun) _runTracks.add(replacement);
+    notifyListeners();
   }
 
   /// Recreates the ticker using [vsync].
@@ -933,17 +977,20 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Called after every active track finishes a non-looping playback run.
   ///
-  /// Return true when a subclass synchronously starts a continuation and wants
-  /// the run boundary hidden from status listeners. The controller then keeps
-  /// its current status instead of reporting [AnimationStatus.completed].
+  /// A subclass may synchronously start a continuation here. Status listeners
+  /// then only see the continuation's status, not the run boundary.
   @protected
   @visibleForOverriding
-  bool onPlaybackCompleted() => false;
+  void onPlaybackCompleted() {}
 
   void _tick(Duration elapsed) {
     final now = _clock.tick(elapsed);
     final allDone = _advanceTracks(now);
-    if (allDone) _completePlayback();
+    if (allDone) {
+      _completePlayback();
+    } else if (_statusDirty) {
+      _updateStatus();
+    }
     notifyListeners();
   }
 
@@ -964,7 +1011,12 @@ class TrackController extends Animation<TrackValueReader>
       for (final track in tracks) {
         final slot = _slots[track];
         if (slot == null) continue;
-        if (!slot.tick(now, scrubbing: scrubbing)) allDone = false;
+        final wasAnimating = slot.isAnimating;
+        if (slot.tick(now, scrubbing: scrubbing)) {
+          if (wasAnimating) _statusDirty = true;
+        } else {
+          allDone = false;
+        }
         if (slot.takeRestoredArchive()) {
           _pruneTokenParticipants([track]);
           _joinSyncTokens(track, slot.shownPlayback?.stepsView ?? const []);
@@ -979,13 +1031,50 @@ class TrackController extends Animation<TrackValueReader>
   void _completePlayback() {
     _ticker?.stop();
     _activeTracks.clear();
-    if (!onPlaybackCompleted()) {
-      _status = AnimationStatus.completed;
-      _checkStatusChanged();
+    // A continuation started by the hook starts a new run; either way only
+    // the resulting status is reported.
+    _holdStatus = true;
+    try {
+      onPlaybackCompleted();
+    } finally {
+      _holdStatus = false;
     }
+    _updateStatus();
   }
 
-  void _checkStatusChanged() {
+  /// Adds [tracks] to the current run, starting a new run when no track is
+  /// active.
+  void _joinRun(Iterable<Track> tracks) {
+    if (_activeTracks.isEmpty) _runTracks.clear();
+    _runTracks.addAll(tracks);
+  }
+
+  /// Recomputes [status] from the run's tracks and reports a change.
+  void _updateStatus() {
+    if (_holdStatus) return;
+    _statusDirty = false;
+    var anyReverse = false;
+    var allDismissed = true;
+    AnimationStatus? status;
+    for (final track in _runTracks) {
+      switch (_statusOf(track)) {
+        case AnimationStatus.forward:
+          status = AnimationStatus.forward;
+        case AnimationStatus.reverse:
+          anyReverse = true;
+        case AnimationStatus.completed:
+          allDismissed = false;
+        case AnimationStatus.dismissed:
+          break;
+      }
+      if (status != null) break;
+    }
+    _status = status ??
+        (anyReverse
+            ? AnimationStatus.reverse
+            : allDismissed
+                ? AnimationStatus.dismissed
+                : AnimationStatus.completed);
     if (_status == _lastReportedStatus) return;
     _lastReportedStatus = _status;
     notifyStatusListeners(_status);
@@ -995,6 +1084,7 @@ class TrackController extends Animation<TrackValueReader>
   /// only marks them as seen when [notify] is false.
   void _notifyStep(Track track, _TrackSlot slot, {required bool notify}) {
     final entered = slot.takeEnteredSteps();
+    if (entered.isNotEmpty) _statusDirty = true;
     final onStep = _onStep;
     if (!notify || onStep == null) return;
     for (final step in entered) {

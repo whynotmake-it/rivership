@@ -219,7 +219,7 @@ void main() {
       controller = TrackController(vsync: tester);
       controller.animate([trackA(stepsA)]);
       await tester.pumpAndSettle();
-      expect(controller.status, AnimationStatus.completed);
+      expect(controller.status, AnimationStatus.dismissed);
 
       controller.scrubTo(const Duration(milliseconds: 50));
       expect(controller.value(trackA), closeTo(0.5, error));
@@ -229,7 +229,7 @@ void main() {
       controller.resume();
       await tester.pumpAndSettle();
       expect(controller.value(trackA), closeTo(0, error));
-      expect(controller.status, AnimationStatus.completed);
+      expect(controller.status, AnimationStatus.dismissed);
     });
 
     testWidgets('resync preserves values and the animation still completes',

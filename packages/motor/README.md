@@ -401,17 +401,19 @@ final grow = Tween(begin: 0.8, end: 1.0).animate(controller.animationOf(scale));
 
 `animationOf` returns the same instance for a track, listens only while it
 has listeners, notifies only when that track changes, and reports the
-track's own status (`dismissed` until it plays, `forward`/`reverse` while it
-plays, `completed` when its plan is done).
+track's own status: `dismissed` until it moves, `forward`/`reverse` while it
+plays, and once done `dismissed` if its last move went down, otherwise
+`completed`.
 
 A few semantics worth knowing:
 
 - `play`, `animate`, and `stop` return a `TickerFuture` that completes when
   the **whole controller** settles, not just the tracks you named. Looping
   playback never completes, so don't `await` it.
-- `stop()` lets tracks whose default motion is a spring settle gracefully;
-  `stop(canceled: true)` halts immediately. Neither reports
-  `AnimationStatus.completed` for a canceled stop.
+- `stop()` lets tracks whose default motion is a spring settle gracefully,
+  then finishes like a completed move; `stop(canceled: true)` halts
+  immediately and keeps the direction it was moving in (`forward` or
+  `reverse`), never `completed`.
 - `pause()` stops the ticker without changing `status` (so `isAnimating` is
   `false` while `status` stays `forward`). It is meant for inspection and
   authoring; for UI logic prefer `stop`. Starting another animation resumes
@@ -419,9 +421,10 @@ A few semantics worth knowing:
 - `scrubTo(t)` positions every track on one controller timeline that only
   advances while the controller ticks, so tracks started at different times
   stay aligned, and playback continues from `t`.
-- The controller's own `status` goes `dismissed` → `forward` → `completed`
-  and never reports `reverse`. For a single track's status, including
-  `reverse` for directional converters, use `animationOf(track).status`.
+- The controller's own `status` combines the tracks moved since it was last
+  idle: `reverse` while every moving track heads down, otherwise `forward`;
+  once none moves, `dismissed` if every one of them is dismissed, otherwise
+  `completed`. For a single track's status, use `animationOf(track).status`.
 - `onStep` fires for every step a track enters, in order, even when several
   fall within one frame.
 
@@ -595,8 +598,13 @@ Motor supports this via `DirectionalMotionConverter`.
 
 **Built-in Support:**
 Simple types like `double` (via `SingleMotionConverter`) are **already directional**.
-- Animating `0 -> 1` reports `AnimationStatus.forward`.
-- Animating `1 -> 0` reports `AnimationStatus.reverse`.
+- Animating `0 -> 1` reports `AnimationStatus.forward`, then
+  `AnimationStatus.completed`.
+- Animating `1 -> 0` reports `AnimationStatus.reverse`, then
+  `AnimationStatus.dismissed`.
+
+Without a direction, status reports `forward` while animating, and once done
+`dismissed` only when back at the initial value, otherwise `completed`.
 
 **Custom Directionality:**
 For custom types or ad-hoc usage, you can define how "direction" is calculated.

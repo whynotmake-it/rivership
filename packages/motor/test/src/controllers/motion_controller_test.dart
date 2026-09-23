@@ -500,17 +500,21 @@ void main() {
         await tester.pump();
         expect(controller.status, equals(AnimationStatus.reverse));
         await tester.pumpAndSettle();
+        expect(
+          controller.status,
+          equals(AnimationStatus.dismissed),
+          reason: 'A downward move finishes dismissed',
+        );
+
+        unawaited(controller.animateTo(2));
+        await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.completed));
 
         unawaited(controller.animateTo(0));
         await tester.pump();
         expect(controller.status, equals(AnimationStatus.reverse));
         await tester.pumpAndSettle();
-        expect(
-          controller.status,
-          equals(AnimationStatus.dismissed),
-          reason: 'Back at the initial value, we should be dismissed',
-        );
+        expect(controller.status, equals(AnimationStatus.dismissed));
       });
     });
 
@@ -902,13 +906,10 @@ void main() {
       });
 
       testWidgets(
-          'reports forward for a non-directional converter even when '
-          'animating to smaller values', (tester) async {
+          'reports forward for a non-directional converter, and dismissed '
+          'only back at the initial value', (tester) async {
         // OffsetMotionConverter is not directional, so the controller cannot
-        // know that animating toward the lower bound is "backwards". It reports
-        // forward while animating, then dismissed once it rests at the lower
-        // bound. (On Motor 1.x reverse() forced AnimationStatus.reverse here
-        // regardless of converter; see the directional test below.)
+        // know that animating toward the lower bound is "backwards".
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
@@ -921,6 +922,10 @@ void main() {
         unawaited(controller.reverse());
         await tester.pump();
         expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.forward());
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
@@ -953,7 +958,8 @@ void main() {
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
 
-      testWidgets('returns last direction when stopped', (tester) async {
+      testWidgets('finishes by direction when stopped, keeps it when canceled',
+          (tester) async {
         // Use a converter that orders based on x direction only
         final xDirectionConverter = MotionConverter.customDirectional(
           normalize: (value) => [value.dx, value.dy],
@@ -977,8 +983,7 @@ void main() {
         expect(controller.status, equals(AnimationStatus.forward));
         unawaited(controller.stop());
         await tester.pumpAndSettle();
-
-        expect(controller.status, equals(AnimationStatus.forward));
+        expect(controller.status, equals(AnimationStatus.completed));
 
         unawaited(controller.reverse());
         await tester.pump();
@@ -986,6 +991,18 @@ void main() {
         expect(controller.status, equals(AnimationStatus.reverse));
         unawaited(controller.stop());
         await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
+
+        unawaited(controller.forward());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        unawaited(controller.stop(canceled: true));
+        expect(controller.status, equals(AnimationStatus.forward));
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        unawaited(controller.stop(canceled: true));
         expect(controller.status, equals(AnimationStatus.reverse));
 
         unawaited(controller.reverse());

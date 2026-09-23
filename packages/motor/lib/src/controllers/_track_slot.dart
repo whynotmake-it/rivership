@@ -7,6 +7,7 @@ class _TrackSlot<T extends Object> {
     this.fallbackMotion,
     this.fallbackMotionPerDimension,
   })  : _currentValues = _ownedCopy(converter.normalize(initialValue)),
+        _initialValues = _ownedCopy(converter.normalize(initialValue)),
         _velocityValues = List<double>.filled(
           converter.normalize(initialValue).length,
           0,
@@ -49,8 +50,11 @@ class _TrackSlot<T extends Object> {
   _ArchivedPlan<T>? _shownArchive;
   var _restoredArchive = false;
 
-  // Whether this track ever started a plan, for per-track status.
-  var _started = false;
+  // Per-track status: the value the track started out at, its status while
+  // not playing, and the direction of its latest move.
+  final List<double> _initialValues;
+  var _restingStatus = AnimationStatus.dismissed;
+  var _lastMovesDown = false;
 
   T get value => _denormalize(_currentValues);
 
@@ -95,6 +99,7 @@ class _TrackSlot<T extends Object> {
       );
 
   void setValue(T value) {
+    _jumpTo(converter.normalize(value));
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = List<double>.filled(_currentValues.length, 0);
     _stepPlayback = null;
@@ -102,6 +107,7 @@ class _TrackSlot<T extends Object> {
   }
 
   void setValueWithVelocity(T value, T velocity) {
+    _jumpTo(converter.normalize(value));
     _currentValues = _ownedCopy(converter.normalize(value));
     _velocityValues = _ownedCopy(converter.normalize(velocity));
     _stepPlayback = null;
@@ -120,7 +126,7 @@ class _TrackSlot<T extends Object> {
     T? velocity,
   }) {
     _startOffset = startOffset;
-    _started = true;
+    _lastMovesDown = _movesDown;
     final velocityValue = velocity ?? this.velocity;
     _stepPlayback = StepPlayback<T>(
       steps: steps,
@@ -201,10 +207,14 @@ class _TrackSlot<T extends Object> {
       _TrackSlotPlayback.chained => _tickStepPlayback(seconds),
     };
 
-    if (done) {
-      _playback = _TrackSlotPlayback.idle;
-    }
+    if (done) _finish();
     return done;
+  }
+
+  void _finish() {
+    _lastMovesDown = _movesDown;
+    _restingStatus = _finishedStatus(_currentValues);
+    _playback = _TrackSlotPlayback.idle;
   }
 
   bool _showArchive(_ArchivedPlan<T> plan, Duration elapsed) {
@@ -242,17 +252,61 @@ class _TrackSlot<T extends Object> {
     _restoredArchive = true;
   }
 
-  /// This track's status: dismissed until it first plays, forward or reverse
-  /// while playing, and completed once its plan finished or was stopped.
+  /// This track's status.
   ///
-  /// Reverse is reported for directional converters while the current step
-  /// heads for a smaller value than it started from.
+  /// - [AnimationStatus.dismissed] until it first moves.
+  /// - While playing, [AnimationStatus.reverse] when heading for a smaller
+  ///   value (directional converters only), otherwise
+  ///   [AnimationStatus.forward].
+  /// - After a move finished, or a jump with `set`:
+  ///   [AnimationStatus.dismissed] if it went down, otherwise
+  ///   [AnimationStatus.completed]. Without a direction, dismissed means back
+  ///   at the initial value.
+  /// - After a canceled stop, the direction it was moving in.
   AnimationStatus get status {
-    if (!_started) return AnimationStatus.dismissed;
-    if (_playback == _TrackSlotPlayback.idle) return AnimationStatus.completed;
-    return (shownPlayback?.shownMovesDown ?? false)
-        ? AnimationStatus.reverse
-        : AnimationStatus.forward;
+    if (_playback == _TrackSlotPlayback.idle) return _restingStatus;
+    return _movesDown ? AnimationStatus.reverse : AnimationStatus.forward;
+  }
+
+  bool get _isDirectional => converter is DirectionalMotionConverter<T>;
+
+  /// The direction of the shown move, or of the latest one with a direction.
+  bool get _movesDown => shownPlayback?.shownMovesDown ?? _lastMovesDown;
+
+  AnimationStatus _finishedStatus(List<double> values) {
+    final down = _isDirectional ? _lastMovesDown : _sameValues(values);
+    return down ? AnimationStatus.dismissed : AnimationStatus.completed;
+  }
+
+  /// Takes over [other]'s status, reading its values with this converter.
+  void adoptStatus(_TrackSlot other) {
+    _initialValues.setAll(0, other._initialValues);
+    _restingStatus = other._restingStatus;
+    _lastMovesDown = other._lastMovesDown;
+  }
+
+  bool _sameValues(List<double> values) => _equal(values, _initialValues);
+
+  static bool _equal(List<double> a, List<double> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// Updates the status for a jump to [values] without animating. Jumping to
+  /// the current value keeps the status.
+  void _jumpTo(List<double> values) {
+    if (_equal(values, _currentValues)) return;
+    if (converter case final DirectionalMotionConverter<T> directional) {
+      final order = directional.compare(
+        converter.denormalize(_ownedCopy(_currentValues)),
+        converter.denormalize(_ownedCopy(values)),
+      );
+      if (order == 0) return;
+      _lastMovesDown = order > 0;
+    }
+    _restingStatus = _finishedStatus(values);
   }
 
   /// Makes a retained plan playable again, e.g. after it completed.
@@ -307,7 +361,15 @@ class _TrackSlot<T extends Object> {
     return null;
   }
 
+  /// Stops right away. A canceled stop keeps the direction the track was
+  /// moving in as its status; otherwise the move counts as finished.
   void stop({bool canceled = false}) {
+    if (_playback != _TrackSlotPlayback.idle) {
+      _lastMovesDown = _movesDown;
+      _restingStatus = canceled
+          ? (_lastMovesDown ? AnimationStatus.reverse : AnimationStatus.forward)
+          : _finishedStatus(_currentValues);
+    }
     _stepPlayback = null;
     _velocityValues = List<double>.filled(_currentValues.length, 0);
     _playback = _TrackSlotPlayback.idle;
