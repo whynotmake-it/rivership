@@ -170,7 +170,8 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// When a track reaches a [StepSync] during live playback, it holds its
 /// current value until every other active track with the same [token] (by
 /// `==`) also reaches a matching sync step. The [TrackController] then
-/// releases them simultaneously so they continue in unison.
+/// releases them simultaneously, at the moment the last one arrived, so they
+/// continue in unison independent of the frame rate.
 ///
 /// Tracks stopped or redirected before reaching their barrier are removed from
 /// the barrier's participant set. The remaining tracks keep waiting for each

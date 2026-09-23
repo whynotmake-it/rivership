@@ -62,10 +62,29 @@ class _TrackSlot<T extends Object> {
 
   Object? get syncToken => _stepPlayback?.syncToken;
 
-  void releaseSync() => _stepPlayback?.releaseSync();
+  Object? get pendingSyncToken => _stepPlayback?.pendingSyncToken;
 
-  bool hasPassedSync(Object token) =>
-      _stepPlayback?.hasPassedSync(token) ?? false;
+  /// When this slot arrived at its pending barrier, on the controller clock.
+  Duration get pendingSyncArrival =>
+      _startOffset + _fromSeconds(_stepPlayback!.pendingSyncArrivalSeconds);
+
+  bool hasResolvedPastSync(Object token) =>
+      _stepPlayback?.hasResolvedPastSync(token) ?? true;
+
+  /// Releases the pending barrier at [at], on the controller clock.
+  void releaseSync(Duration at) {
+    final playback = _stepPlayback;
+    if (playback == null) return;
+    final local = at - _startOffset;
+    playback.releaseSync(
+      atSeconds: local.inMicroseconds / Duration.microsecondsPerSecond,
+    );
+    _pullPlaybackState();
+  }
+
+  static Duration _fromSeconds(double seconds) => Duration(
+        microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+      );
 
   void setValue(T value) {
     _currentValues = _ownedCopy(converter.normalize(value));

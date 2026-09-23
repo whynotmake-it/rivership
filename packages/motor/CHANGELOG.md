@@ -42,6 +42,7 @@
 
  - **FEAT**: add `TrackController.pause()` for silent, non-destructive playback inspection and authoring.
  - **BREAKING** **FEAT**: `TrackStep.at` always arrives at its time. When the preceding step would still be running, it is now cut short early enough for the `.at` motion to run its natural duration and land on time, instead of starting the `.at` motion at that time and arriving late.
+ - **FIX**: sync barriers release at the exact moment the last participant arrives instead of on the following frame, so timing no longer depends on the frame rate, and one long frame resolves the same way as many short ones.
  - **FIX**: scrubbing and seeking no longer replay a track from its start. Resolved time is kept, so seeking back shows the timeline as it played (including recorded sync barrier release times), seeking far into a loop lands on the right position instead of stopping after 1000 steps, and long-running loops use constant memory.
  - **FIX**: inspection duration estimates for simulated steps (free motions, springs of unknown duration) are accurate to well under a millisecond.
  - **FIX**: controllers keep one playback timeline across pauses and ticker restarts. Calling `play`/`animate` while paused no longer rewinds the paused tracks, `scrubTo` positions tracks started at different times consistently, and changing `playbackSpeed` no longer pauses and resumes the controller.

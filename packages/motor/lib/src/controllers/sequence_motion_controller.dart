@@ -142,9 +142,9 @@ class SequenceMotionController<P, T extends Object>
         ),
       ),
       for (var i = 1; i < run.length; i++) ...[
-        // A fresh identity keeps each phase barrier independent.
-        // ignore: prefer_const_constructors
-        TrackStep.sync(token: Object()),
+        // A fresh token keeps each phase barrier independent; releasing on
+        // the observing frame keeps the legacy phase timing.
+        TrackStep.sync(token: FrameAnchoredSyncToken()),
         TrackStep.to(
           sequence.valueForPhase(run[i]),
           motion: sequence.motionForPhase(

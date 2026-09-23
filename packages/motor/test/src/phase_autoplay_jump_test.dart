@@ -45,7 +45,7 @@ void main() {
       expect(playback.isWaitingForSync, isTrue);
 
       // Now the other track caught up — release the barrier.
-      playback.releaseSync();
+      playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       expect(playback.isWaitingForSync, isFalse);
 
       // On the very next "tick" the controller calls advanceTo with a time

@@ -355,27 +355,40 @@ class StepPlayback<T extends Object> {
   @internal
   double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
-  /// Whether this playback has already crossed [token] in its current leg.
+  /// The token of the [StepSync] that resolution is held at, or `null`.
+  ///
+  /// Unlike [syncToken], this does not depend on the time being shown.
   @internal
-  bool hasPassedSync(Object token) {
-    final view = _view;
+  Object? get pendingSyncToken {
+    if (!_isWaitingForSync) return null;
+    return (_steps[_stepIndex] as StepSync<T>).token;
+  }
+
+  /// When resolution arrived at the pending [StepSync], in slot-local seconds.
+  @internal
+  double get pendingSyncArrivalSeconds => _segmentStartSeconds;
+
+  /// Whether resolution has already moved past [token] in its current leg.
+  @internal
+  bool hasResolvedPastSync(Object token) {
     for (var index = 0; index < _steps.length; index++) {
       final step = _steps[index];
       if (step is! StepSync<T> || step.token != token) continue;
-      if (view.direction > 0 && view.stepIndex > index) return true;
-      if (view.direction < 0 && view.stepIndex < index) return true;
+      if (_isDone) return true;
+      if (_direction > 0 && _stepIndex > index) return true;
+      if (_direction < 0 && _stepIndex < index) return true;
     }
     return false;
   }
 
-  /// Releases the playback past the current [StepSync].
+  /// Releases the pending [StepSync] at [atSeconds], in slot-local seconds.
   ///
-  /// Called by [TrackController] when all active tracks have reached their
-  /// sync step and are ready to advance together.
-  void releaseSync() {
+  /// Called by [TrackController] once every track sharing the barrier has
+  /// arrived. Playback between the arrival and [atSeconds] holds still.
+  void releaseSync({required double atSeconds}) {
     if (!_isWaitingForSync) return;
     _isWaitingForSync = false;
-    _closeSegment(_lastElapsedSeconds);
+    _closeSegment(math.max(atSeconds, _segmentStartSeconds));
     _advanceStep();
     _show(_lastElapsedSeconds);
   }
@@ -468,8 +481,7 @@ class StepPlayback<T extends Object> {
     }
 
     final last = _segments.length - 1;
-    _viewIndex =
-        _segments[last].start <= local ? last : _segmentIndexAt(local);
+    _viewIndex = _segments[last].start <= local ? last : _segmentIndexAt(local);
     final segment = _segments[_viewIndex];
     final end = segment.end;
     var t = (end != null && end < local ? end : local) - segment.start;

@@ -2,6 +2,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/inspection/playback_snapshot.dart';
@@ -68,6 +69,9 @@ class TrackController extends Animation<TrackValueReader>
   // Velocity estimates are computed only when needed, as of the latest sample.
   final Map<Track, DateTime> _pendingVelocityEstimates = {};
   final List<Track> _tickTracks = [];
+
+  /// Upper bound on barrier releases handled within one frame.
+  static const _maxBarrierPasses = 100;
   final Map<Track, Motion> _motionOverrides = {};
   List<TrackAnimation> _lastAnimations = const [];
   List<TrackValue> _lastStartValues = const [];
@@ -342,7 +346,7 @@ class TrackController extends Animation<TrackValueReader>
       _activeTracks.add(entry.key);
       entry.value.scrubTo(t);
     }
-    _releaseSatisfiedBarriers();
+    _releaseArrivedBarriers(t);
     notifyListeners();
   }
 
@@ -429,7 +433,7 @@ class TrackController extends Animation<TrackValueReader>
       }
       _pruneTokenParticipants(tracks);
     }
-    _releaseSatisfiedBarriers();
+    _releaseArrivedBarriers(_clock.now);
     if (_activeTracks.isEmpty) {
       _ticker?.stop(canceled: true);
     }
@@ -456,7 +460,7 @@ class TrackController extends Animation<TrackValueReader>
     }
 
     _pruneTokenParticipants(targets);
-    _releaseSatisfiedBarriers();
+    _releaseArrivedBarriers(_clock.now);
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
       _status = AnimationStatus.completed;
@@ -729,31 +733,42 @@ class TrackController extends Animation<TrackValueReader>
     _tokenParticipants.removeWhere((_, participants) => participants.isEmpty);
   }
 
-  /// Releases barriers whose participants have arrived or already crossed.
-  void _releaseSatisfiedBarriers() {
+  /// Releases every barrier whose participants have all arrived, at the
+  /// latest arrival. Returns whether any barrier was released.
+  ///
+  /// Tracks that are not animating, or that already moved past the barrier,
+  /// do not hold it. Barriers with a [FrameAnchoredSyncToken] release at
+  /// [now] instead.
+  bool _releaseArrivedBarriers(Duration now) {
+    var released = false;
     for (final entry in _tokenParticipants.entries.toList()) {
       final token = entry.key;
-      final participants = entry.value;
-      var anyWaiting = false;
-      final allReady = participants.every((track) {
+      Duration? releaseAt;
+      var allArrived = true;
+      for (final track in entry.value) {
         final slot = _slots[track];
-        if (slot == null || !slot.isAnimating) return true;
-        if (slot.isWaitingForSync && slot.syncToken == token) {
-          anyWaiting = true;
-          return true;
-        }
-        return slot.hasPassedSync(token);
-      });
-      if (!allReady || !anyWaiting) continue;
-
-      for (final track in participants) {
-        final slot = _slots[track];
-        if (slot != null && slot.isWaitingForSync && slot.syncToken == token) {
-          slot.releaseSync();
+        if (slot == null || !slot.isAnimating) continue;
+        if (slot.pendingSyncToken == token) {
+          final arrival = slot.pendingSyncArrival;
+          if (releaseAt == null || arrival > releaseAt) releaseAt = arrival;
+        } else if (!slot.hasResolvedPastSync(token)) {
+          allArrived = false;
+          break;
         }
       }
+      if (!allArrived || releaseAt == null) continue;
+      if (token is FrameAnchoredSyncToken) releaseAt = now;
+
+      for (final track in entry.value) {
+        final slot = _slots[track];
+        if (slot != null && slot.pendingSyncToken == token) {
+          slot.releaseSync(releaseAt);
+        }
+      }
+      released = true;
       onSyncReleased(token);
     }
+    return released;
   }
 
   TickerFuture _startTicker() {
@@ -786,26 +801,33 @@ class TrackController extends Animation<TrackValueReader>
 
   void _tick(Duration elapsed) {
     final now = _clock.tick(elapsed);
-    var allDone = true;
-
-    // Snapshot the active set: onStep callbacks may start or stop tracks.
-    final tracks = _tickTracks
-      ..clear()
-      ..addAll(_activeTracks);
-    for (final track in tracks) {
-      final slot = _slots[track];
-      if (slot == null) continue;
-      if (!slot.tick(now)) {
-        allDone = false;
-      }
-      _notifyStep(track, slot);
-    }
-
-    _releaseSatisfiedBarriers();
-
+    final allDone = _advanceTracks(now);
     if (allDone) _completePlayback();
-
     notifyListeners();
+  }
+
+  /// Advances every active track to [now] and returns whether all are done.
+  ///
+  /// Barriers released on the way are released at their exact time, and the
+  /// released tracks advance again, so one large frame gap resolves the same
+  /// way as many small ones.
+  bool _advanceTracks(Duration now) {
+    var allDone = true;
+    for (var pass = 0; pass < _maxBarrierPasses; pass++) {
+      allDone = true;
+      // Snapshot the active set: onStep callbacks may start or stop tracks.
+      final tracks = _tickTracks
+        ..clear()
+        ..addAll(_activeTracks);
+      for (final track in tracks) {
+        final slot = _slots[track];
+        if (slot == null) continue;
+        if (!slot.tick(now)) allDone = false;
+        _notifyStep(track, slot);
+      }
+      if (!_releaseArrivedBarriers(now)) break;
+    }
+    return allDone;
   }
 
   void _completePlayback() {

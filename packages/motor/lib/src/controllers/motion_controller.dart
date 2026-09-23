@@ -1,6 +1,7 @@
 import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';

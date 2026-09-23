@@ -33,7 +33,7 @@ void main() {
       elapsed = math.min(elapsed + 0.001, target);
       playback.advanceTo(elapsed);
       if (releaseSync && playback.isWaitingForSync) {
-        playback.releaseSync();
+        playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       }
     }
   }

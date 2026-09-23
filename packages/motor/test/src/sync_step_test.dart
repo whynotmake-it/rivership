@@ -49,7 +49,7 @@ void main() {
       playback.advanceTo(0.2);
       expect(playback.isWaitingForSync, isTrue);
 
-      playback.releaseSync();
+      playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       expect(playback.isWaitingForSync, isFalse);
 
       // The last step starts at the release time, 0.2s.
@@ -80,14 +80,14 @@ void main() {
       expect(playback.syncToken, equals(#phaseB));
 
       // Release first sync, reach second sync
-      playback.releaseSync();
+      playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       playback.advanceTo(0.4);
       expect(playback.isWaitingForSync, isTrue);
       expect(playback.syncToken, equals(#phaseC));
       expect(playback.values.first, closeTo(2.0, error));
 
       // Release second sync, finish
-      playback.releaseSync();
+      playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       playback.advanceTo(0.6);
       expect(playback.isDone, isTrue);
       expect(playback.values.first, closeTo(3.0, error));
@@ -105,7 +105,7 @@ void main() {
       );
 
       playback.advanceTo(0.2);
-      playback.releaseSync();
+      playback.releaseSync(atSeconds: playback.lastElapsedSeconds);
       playback.advanceTo(0.25);
       expect(playback.values.first, closeTo(1.5, error));
 
@@ -240,20 +240,82 @@ void main() {
 
       await tester.pump();
 
-      // At 60ms: trackA reached sync(#x). trackB is still animating but
-      // has no sync(#x), so trackA's barrier should release (all tracks
-      // with token #x are ready).
+      // trackA reaches sync(#x) at 50ms. No other track shares #x, so it is
+      // released right there and is 10ms into its last step at 60ms.
       await tester.pump(const Duration(milliseconds: 60));
-      // trackA should be released and animating past 1.0
-      expect(controller.value(trackA), closeTo(1.0, 0.01));
-
-      // One more tick for the release to take effect
-      await tester.pump(const Duration(milliseconds: 10));
-      expect(controller.value(trackA), greaterThan(1.0));
+      expect(controller.value(trackA), closeTo(1.1, error));
 
       // trackB still animating toward 1.0
       expect(controller.value(trackB), lessThan(1.0));
 
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('releases a barrier when the last participant arrives',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.animate([
+        trackA([
+          const StepTo(1.0, motion: linear50),
+          const StepSync(token: #meet),
+          const StepTo(2.0, motion: linear100),
+        ]),
+        trackB([
+          const StepTo(1.0, motion: linear150),
+          const StepSync(token: #meet),
+          const StepTo(2.0, motion: linear100),
+        ]),
+      ]);
+      await tester.pump();
+
+      // trackB arrives at 150ms; both continue from there.
+      await tester.pump(const Duration(milliseconds: 170));
+      expect(controller.value(trackA), closeTo(1.2, error));
+      expect(controller.value(trackB), closeTo(1.2, error));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('one large frame gap matches many small frames',
+        (tester) async {
+      List<TrackAnimation> plan() => [
+            trackA([
+              const StepTo(1.0, motion: linear50),
+              const StepSync(token: #meet),
+              const StepTo(2.0, motion: linear100),
+              const StepSync(token: #again),
+              const StepTo(3.0, motion: linear100),
+            ]),
+            trackB([
+              const StepTo(1.0, motion: linear150),
+              const StepSync(token: #meet),
+              const StepTo(2.0, motion: linear50),
+              const StepSync(token: #again),
+              const StepTo(3.0, motion: linear100),
+            ]),
+          ];
+
+      controller = TrackController(vsync: tester);
+      controller.animate(plan());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final largeGap = [controller.value(trackA), controller.value(trackB)];
+      controller
+        ..stop(canceled: true)
+        ..dispose();
+
+      controller = TrackController(vsync: tester);
+      controller.animate(plan());
+      await tester.pump();
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      final smallFrames = [controller.value(trackA), controller.value(trackB)];
+
+      // Both barriers release at 150ms and 250ms: 50ms into the last step.
+      expect(largeGap[0], closeTo(2.5, error));
+      expect(largeGap[1], closeTo(2.5, error));
+      expect(smallFrames[0], closeTo(largeGap[0], error));
+      expect(smallFrames[1], closeTo(largeGap[1], error));
       controller.stop(canceled: true);
     });
 

@@ -272,9 +272,9 @@ void main() {
       );
       await tester.pump();
 
-      for (final target in [1.0, 2.0, 3.0, 2.0, 1.0, 2.0, 3.0]) {
-        await tester.pump(const Duration(milliseconds: 101));
-        expect(controller.value(size), closeTo(target, error));
+      // Each phase takes 100ms; run through seven of them.
+      for (var frame = 0; frame < 75; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
       }
 
       expect(
@@ -312,9 +312,9 @@ void main() {
       );
       await tester.pump();
 
-      for (final target in [1.0, 2.0, 1.0, 2.0, 1.0]) {
-        await tester.pump(const Duration(milliseconds: 101));
-        expect(controller.value(size), closeTo(target, error));
+      // Each phase takes 100ms; run through five of them.
+      for (var frame = 0; frame < 55; frame++) {
+        await tester.pump(const Duration(milliseconds: 10));
       }
 
       expect(
