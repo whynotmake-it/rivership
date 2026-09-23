@@ -53,11 +53,11 @@ class StepPlayback<T extends Object> {
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
         _start = start,
         _velocity = velocity,
-        _initialValues = converter.normalize(start),
-        _initialVelocities = switch (velocity) {
-          null => List<double>.filled(converter.normalize(start).length, 0),
-          final value => converter.normalize(value),
-        } {
+        _initialValues = converter.normalize(start) {
+    _initialVelocities = switch (velocity) {
+      null => List<double>.filled(_initialValues.length, 0),
+      final value => converter.normalize(value),
+    };
     _values = List<double>.of(_initialValues, growable: false);
     _velocities = List<double>.of(_initialVelocities, growable: false);
     _viewValues = List<double>.of(_initialValues, growable: false);
@@ -80,10 +80,9 @@ class StepPlayback<T extends Object> {
     _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints();
-    _recordCycleStart();
+    if (loop.isLooping) _recordCycleStart();
     _startCurrentStep();
     _show(0);
-    _estimatedSegmentSeconds = List<double?>.filled(_steps.length, null);
   }
 
   /// Returns the per-dimension motions of the first step that targets a value,
@@ -155,7 +154,7 @@ class StepPlayback<T extends Object> {
   final Motion? _fallbackMotion;
   final List<Motion>? _fallbackMotionPerDimension;
   final List<double> _initialValues;
-  final List<double> _initialVelocities;
+  late final List<double> _initialVelocities;
   var _hasReturnStep = false;
 
   /// Target values for each step, used by pingPong to reverse.
@@ -166,7 +165,7 @@ class StepPlayback<T extends Object> {
   late final List<double?> _forwardSegmentSeconds;
 
   /// Stable predicted durations for the forward playback plan.
-  late List<double?> _estimatedSegmentSeconds;
+  List<double?>? _estimatedSegmentSeconds;
 
   // Resolution state: the segment currently being resolved, at the end of
   // the table.
@@ -203,7 +202,7 @@ class StepPlayback<T extends Object> {
   // other tracks; they, and loops that have not folded after
   // [_foldAttempts] cycles, keep only the most recent cycles instead.
   late final bool _canFold;
-  final List<_CycleStart> _cycleStarts = [];
+  late final List<_CycleStart> _cycleStarts = [];
   double? _period;
   var _foldStartSeconds = 0.0;
 
@@ -230,7 +229,7 @@ class StepPlayback<T extends Object> {
         switch (step) {
           StepTo<T>(:final value) => _converter.normalize(value),
           StepAt<T>(:final value) => _converter.normalize(value),
-          _ => List.of(_initialValues),
+          _ => _initialValues,
         },
     ];
   }
@@ -348,8 +347,9 @@ class StepPlayback<T extends Object> {
 
   /// Predicted forward segment durations, set by inspection tooling.
   @internal
-  List<double?> get estimatedSegmentSeconds =>
-      List.unmodifiable(_estimatedSegmentSeconds);
+  List<double?> get estimatedSegmentSeconds => List.unmodifiable(
+        _estimatedSegmentSeconds ?? List<double?>.filled(_steps.length, null),
+      );
 
   @internal
   set estimatedSegmentSeconds(List<double?> value) {
@@ -802,18 +802,10 @@ class StepPlayback<T extends Object> {
   void _startForwardStep() {
     final step = _steps[_stepIndex];
     _simulations = switch (step) {
-      StepTo<T>(:final motion, :final motionPerDimension) => () {
-          final motions = _motions(motion, motionPerDimension);
-          final targets = _waypoints[_stepIndex];
-          return [
-            for (var i = 0; i < targets.length; i++)
-              motions[i].createSimulation(
-                start: _values[i],
-                end: targets[i],
-                velocity: _velocities[i],
-              ),
-          ];
-        }(),
+      StepTo<T>(:final motion, :final motionPerDimension) => _simulateTo(
+          _motions(motion, motionPerDimension),
+          _waypoints[_stepIndex],
+        ),
       StepFree<T>(:final motion) => [
           for (var i = 0; i < _values.length; i++)
             motion.createSimulation(
@@ -828,39 +820,39 @@ class StepPlayback<T extends Object> {
               duration: duration.toSeconds(),
             ),
         ],
-      StepAt<T>(:final at, :final motion, :final motionPerDimension) => () {
-          final motions = _motions(motion, motionPerDimension);
-          final targets = _waypoints[_stepIndex];
-          final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
-          if (gap.abs() < _instant) {
-            // No time left: arrive right away.
-            return [
-              for (final target in targets)
-                _HoldSimulation(value: target, duration: 0),
-            ];
-          }
-          // A positive gap is filled exactly; a negative one means the
-          // arrival time already passed, so the motion runs as authored.
-          final atMotions = gap > 0
-              ? [
-                  for (final m in motions)
-                    m.scaleTo(Duration(microseconds: (gap * 1000000).round())),
-                ]
-              : motions;
-          return [
-            for (var i = 0; i < targets.length; i++)
-              atMotions[i].createSimulation(
-                start: _values[i],
-                end: targets[i],
-                velocity: _velocities[i],
-              ),
-          ];
-        }(),
+      StepAt<T>(:final at, :final motion, :final motionPerDimension) =>
+        _simulateAt(at, _motions(motion, motionPerDimension)),
       StepSync<T>() => [
           for (final value in _values)
             _HoldSimulation(value: value, duration: 0),
         ],
     };
+  }
+
+  List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) => [
+        for (var i = 0; i < targets.length; i++)
+          motions[i].createSimulation(
+            start: _values[i],
+            end: targets[i],
+            velocity: _velocities[i],
+          ),
+      ];
+
+  List<Simulation> _simulateAt(Duration at, List<Motion> motions) {
+    final targets = _waypoints[_stepIndex];
+    final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
+    if (gap.abs() < _instant) {
+      // No time left: arrive right away.
+      return [
+        for (final target in targets)
+          _HoldSimulation(value: target, duration: 0),
+      ];
+    }
+    // A positive gap is filled exactly; a negative one means the arrival
+    // time already passed, so the motion runs as authored.
+    if (gap <= 0) return _simulateTo(motions, targets);
+    final duration = Duration(microseconds: (gap * 1000000).round());
+    return _simulateTo([for (final m in motions) m.scaleTo(duration)], targets);
   }
 
   /// Starts a step in reverse direction for pingPong mode.
