@@ -67,11 +67,13 @@ void main() {
 
       controller.pause();
       for (var i = frames; i >= 0; i -= 3) {
-        // The redirect can release a final barrier at that exact instant,
-        // and a seamless loop then restarts at its start value in that same
-        // instant. Live recorded the value before the jump and scrubbing
-        // shows the value after it; both are valid at that instant.
-        if (i == redirectAt) continue;
+        // Every frame at the redirect's timeline position shows the state
+        // before it live, and after it when scrubbed; both are valid there.
+        // That includes idle frames before the redirect, since the timeline
+        // does not advance while idle. A release at that instant can
+        // restart a seamless loop at its start value, and a new curve step
+        // starts moving right away.
+        if (recorded[i].position == recorded[redirectAt].position) continue;
         controller.scrubTo(recorded[i].position);
         _expectValues(controller, plan.tracks, recorded[i], 'frame $i');
       }
@@ -83,8 +85,8 @@ void main() {
   }
 }
 
-/// Pumps [frames] frames and records every track's value, and the
-/// controller's timeline position, after each one. [onFrame] runs right after
+/// Pumps [frames] frames and records every track's value and velocity, and
+/// the controller's timeline position, after each one. [onFrame] runs right after
 /// frame `i` is recorded.
 Future<List<_Frame>> _record(
   WidgetTester tester,
@@ -102,6 +104,7 @@ Future<List<_Frame>> _record(
       (
         position: controller.inspectPlayback().position,
         values: [for (final track in tracks) controller.value(track)],
+        velocities: [for (final track in tracks) controller.velocity(track)],
       ),
     );
     onFrame?.call(i);
@@ -109,7 +112,11 @@ Future<List<_Frame>> _record(
   return recorded;
 }
 
-typedef _Frame = ({Duration position, List<double> values});
+typedef _Frame = ({
+  Duration position,
+  List<double> values,
+  List<double> velocities,
+});
 
 void _expectValues(
   TrackController controller,
@@ -122,6 +129,12 @@ void _expectValues(
       controller.value(tracks[t]),
       closeTo(expected.values[t], 1e-6),
       reason: 'track $t at $reason',
+    );
+    final velocity = expected.velocities[t];
+    expect(
+      controller.velocity(tracks[t]),
+      closeTo(velocity, 1e-6 * math.max(1, velocity.abs())),
+      reason: 'track $t velocity at $reason',
     );
   }
 }
