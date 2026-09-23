@@ -726,6 +726,7 @@ class TrackController extends Animation<TrackValueReader>
       tickerElapsed: lastElapsedDuration,
       status: status,
       tracks: tracks,
+      position: _clock.now,
     );
   }
 

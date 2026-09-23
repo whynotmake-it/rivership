@@ -17,11 +17,16 @@ class PlaybackSnapshot {
     required this.status,
     required List<TrackPlayback> tracks,
     List<PlaybackPlan> plans = const [],
+    this.position = Duration.zero,
   })  : plans = List.unmodifiable(plans),
         tracks = List.unmodifiable(tracks);
 
   /// Monotonic counter that changes whenever the controller's plan changes.
   final int revision;
+
+  /// Where the controller is on its playback timeline, in the time that
+  /// `scrubTo` takes. It only advances while the controller ticks.
+  final Duration position;
 
   /// The controller ticker's elapsed time, or `null` while it is stopped.
   final Duration? tickerElapsed;

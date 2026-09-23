@@ -217,6 +217,33 @@ void main() {
       expect(controller.playbackRevision, initial + 2);
     });
 
+    testWidgets('position follows the controller timeline', (tester) async {
+      controller = TrackController(vsync: tester);
+      expect(controller.inspectPlayback().position, Duration.zero);
+
+      controller.animate([first.to(1, motion: linear100)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(
+        controller.inspectPlayback().position,
+        const Duration(milliseconds: 40),
+      );
+
+      controller.pause();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(
+        controller.inspectPlayback().position,
+        const Duration(milliseconds: 40),
+      );
+
+      controller.scrubTo(const Duration(milliseconds: 10));
+      expect(
+        controller.inspectPlayback().position,
+        const Duration(milliseconds: 10),
+      );
+      controller.stop(canceled: true);
+    });
+
     testWidgets('interruption replaces the inspected plan', (tester) async {
       controller = TrackController(vsync: tester);
       controller.animate([first.to(1, motion: linear100)]);

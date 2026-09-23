@@ -23,7 +23,7 @@
 
 ### Inspection and tooling
 
- - **FEAT**: add an `@experimental` inspection library at `package:motor/inspection.dart`, which may change in minor releases. `MotorInspectionRegistry` lets a tool discover controllers created while it is attached. `inspectPlayback()` returns immutable snapshots with each track's plan, resolved segments, loop cycle and repetition, playhead, barrier state, recorded and estimated step durations, and the controller's recent plans. Two hooks change playback: controller-local `playbackSpeed` and `motionOverride`.
+ - **FEAT**: add an `@experimental` inspection library at `package:motor/inspection.dart`, which may change in minor releases. `MotorInspectionRegistry` lets a tool discover controllers created while it is attached. `inspectPlayback()` returns immutable snapshots with each track's plan, resolved segments, loop cycle and repetition, playhead, barrier state, recorded and estimated step durations, the controller's timeline `position`, and its recent plans. Two hooks change playback: controller-local `playbackSpeed` and `motionOverride`.
  - **FEAT**: while a tool is attached, controllers keep their recent plans, resolve new plans ahead for accurate duration estimates, and let `scrubTo` show plans a track was redirected away from (resuming there continues them). Without a tool none of this is kept.
  - **FEAT**: controllers, builders (`TrackBuilder`, `PhaseTrackBuilder`, the motion builders, `MotionDraggable`), and tracks accept an optional `debugLabel` shown by inspection tools.
  - **FEAT**: the separate `motor_devtools` package provides an in-app inspector built on this library.
