@@ -84,13 +84,22 @@ melos:
       description: Generate coverage for all packages.
     
     benchmark:
-      run: flutter test test/run_benchmarks_test.dart --reporter expanded
+      run: ./tool/run_aot.sh
       exec:
         concurrency: 1
         failFast: true
       packageFilters:
         scope: motor_benchmark
-      description: Run Motor vs AnimationController microbenchmarks.
+      description: Run Motor vs AnimationController benchmarks as an AOT desktop app (BENCH_BUILD=profile adds allocations).
+
+    benchmark:smoke:
+      run: BENCH_QUICK=1 flutter test test/run_benchmarks_test.dart
+      exec:
+        concurrency: 1
+        failFast: true
+      packageFilters:
+        scope: motor_benchmark
+      description: Quick benchmark smoke run under flutter test (JIT).
 
     generate:select:
       description: Run code generation for selected packages.

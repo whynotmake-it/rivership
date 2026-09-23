@@ -1,5 +1,6 @@
 .dart_tool/
 .build/
+build/
 results/
-*.json
-!pubspec.yaml
+linux/
+macos/

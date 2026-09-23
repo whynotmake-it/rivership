@@ -1,60 +1,45 @@
 # Motor vs AnimationController benchmarks
 
-Microbenchmark suite comparing [motor](../) to Flutter's
-`AnimationController`.
-
-Absolute µs include harness noise — read **Δ p50** (and p90 Δ). Prefer larger
-multi-track counts; `BENCH_QUICK=1` is smoke only.
-
-## Layers (`BENCH_MODE`)
-
-| Mode | Measures |
-|---|---|
-| `tick` | Time spent reading values inside the animation listener (excludes advancing simulations) |
-| `pump` | Wall time of `tester.pump` loops (simulations, listeners, framework) |
-| `both` (default) | Record both layers per run |
-
-## Scenarios
-
-| ID | Comparison |
-|---|---|
-| `single_curve` | Looping curve, 1D |
-| `single_spring` | Status-driven spring ping-pong (matched hot path) |
-| `offset_spring` | Offset spring vs 2× AC |
-| `multi_track_1/10/50/100/250/500` | 1 ticker × N tracks vs N controllers |
-| `interrupt_retarget` | Mid-flight retarget |
-| `widget_rebuild` | `TrackBuilder` vs `AnimatedBuilder` |
-| `manual_set` | `set` (velocity off) vs `AC.value=` |
-| `velocity_tracking_overhead` | Motor tracking on vs off |
+Compares [motor](../) with the `AnimationController` setup you would write
+for the same motion. Results and methodology: [ANALYSIS.md](ANALYSIS.md).
 
 ## Run
 
 ```sh
-cd packages/motor/benchmark
-flutter pub get
+# AOT desktop build (Linux or macOS), the numbers to publish:
+melos run benchmark
+BENCH_BUILD=profile melos run benchmark   # adds allocation numbers
 
-# Full suite (debug VM — compare Δ, not absolute µs):
-flutter test test/run_benchmarks_test.dart --reporter expanded
-
-# Smoke:
-BENCH_QUICK=1 flutter test test/run_benchmarks_test.dart --reporter expanded
-
-# Tick-only + multi-track scale + JSON:
-BENCH_MODE=tick BENCH_FILTER=multi_track,single_curve \
-  BENCH_JSON=results/multi.json \
-  flutter test test/run_benchmarks_test.dart --reporter expanded
+# Smoke run under flutter test (JIT, ~10 s), for CI:
+melos run benchmark:smoke
 ```
 
-Also: `melos run benchmark` from the repo root.
+Or from this directory: `./tool/run_aot.sh`, or
+`BENCH_QUICK=1 flutter test test/run_benchmarks_test.dart`.
 
-## Output
+Environment variables:
 
-- Markdown tables per layer: baseline/primary **p50**, **Δ p50**, **p90 Δ**
-- JSON at `results/latest.json` (and `BENCH_JSON` if set)
+| Variable | Effect |
+|---|---|
+| `BENCH_QUICK=1` | 2 runs × 30 frames instead of 7 × 240 |
+| `BENCH_FILTER=spring_1d,curve_offset` | Only scenarios whose id starts with one of these |
+| `BENCH_RUNS`, `BENCH_FRAMES` | Override runs and frames per run |
+| `BENCH_JSON=path` | JSON output (default `results/latest.json`) |
+| `BENCH_BUILD=profile` | AOT profile build; enables allocation profiling |
+| `BENCH_ALLOC=0` | Skip allocation profiling |
 
-## Guarantees
+`run_aot.sh` generates the desktop runner (`linux/` or `macos/`, gitignored)
+on first use. Linux needs the usual Flutter desktop packages (clang, cmake,
+ninja, GTK 3 headers, libstdc++ for the newest installed GCC) and a display.
 
-- Animations **must stay active** for the measured window (asserted)
-- Spring sides both use **status-driven** retarget (same hot path shape)
-- Filter prefixes match `id` or `id_*` (so `multi_track_10` does not eat `multi_track_100`)
-- Controllers are **stopped** before dispose to avoid hanging the test binding
+## Scenarios
+
+| Id | Motor | Flutter equivalent |
+|---|---|---|
+| `curve_1d_x{1,10,50,250,1000}` | 1 `TrackController`, N `CurvedMotion` tracks | N `AnimationController` + `CurvedAnimation` |
+| `spring_1d_x{…}` | 1 `TrackController`, N spring tracks | N unbounded `AnimationController` + `SpringSimulation` |
+| `curve_{offset,rect,color}` | 1 multi-dimensional track | 1 `AnimationController` + `CurvedAnimation` + tween |
+| `spring_{offset,rect,color}` | 1 multi-dimensional track | 1 `AnimationController` per dimension |
+
+Every run checks that both sides read the same values after warmup, and fails
+if they don't.

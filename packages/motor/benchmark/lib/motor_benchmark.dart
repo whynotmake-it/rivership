@@ -1,69 +1,52 @@
+import 'dart:io';
+
+import 'package:flutter/scheduler.dart';
+import 'package:motor_benchmark/src/allocations.dart';
 import 'package:motor_benchmark/src/harness.dart';
-import 'package:motor_benchmark/src/scenarios/interrupt_retarget.dart';
-import 'package:motor_benchmark/src/scenarios/manual_set.dart';
-import 'package:motor_benchmark/src/scenarios/multi_track_scale.dart';
-import 'package:motor_benchmark/src/scenarios/offset_spring.dart';
-import 'package:motor_benchmark/src/scenarios/single_curve.dart';
-import 'package:motor_benchmark/src/scenarios/single_spring.dart';
-import 'package:motor_benchmark/src/scenarios/widget_rebuild.dart';
+import 'package:motor_benchmark/src/scenarios.dart';
 
+export 'package:motor_benchmark/src/allocations.dart';
+export 'package:motor_benchmark/src/driver.dart';
 export 'package:motor_benchmark/src/harness.dart';
-export 'package:motor_benchmark/src/scenarios/interrupt_retarget.dart';
-export 'package:motor_benchmark/src/scenarios/manual_set.dart';
-export 'package:motor_benchmark/src/scenarios/multi_track_scale.dart';
-export 'package:motor_benchmark/src/scenarios/offset_spring.dart';
-export 'package:motor_benchmark/src/scenarios/single_curve.dart';
-export 'package:motor_benchmark/src/scenarios/single_spring.dart';
-export 'package:motor_benchmark/src/scenarios/widget_rebuild.dart';
+export 'package:motor_benchmark/src/scenarios.dart';
 
-/// All built-in Motor vs AnimationController scenarios.
-List<BenchScenario> allScenarios() => [
-      const SingleCurveScenario(),
-      const SingleSpringScenario(),
-      const OffsetSpringScenario(),
-      const MultiTrackScaleScenario(1),
-      const MultiTrackScaleScenario(10),
-      const MultiTrackScaleScenario(50),
-      const MultiTrackScaleScenario(100),
-      const MultiTrackScaleScenario(250),
-      const MultiTrackScaleScenario(500),
-      const InterruptRetargetScenario(),
-      const WidgetRebuildScenario(),
-      const ManualSetScenario(),
-      const VelocityTrackingOverheadScenario(),
-    ];
-
-/// Filters [allScenarios] by comma-separated ids (exact or prefix match).
-List<BenchScenario> scenariosMatching(String? filter) {
-  final all = allScenarios();
-  if (filter == null || filter.trim().isEmpty) return all;
-  final ids = filter
-      .split(',')
-      .map((s) => s.trim())
-      .where((s) => s.isNotEmpty)
-      .toList();
-  return [
-    for (final id in ids)
-      ...all.where(
-        (s) => s.id == id || s.id.startsWith('${id}_'),
-      ),
-  ];
-}
-
-/// Parses `BENCH_MODE` (`tick` | `pump` | `both`).
-BenchMode parseBenchMode(String? raw) {
-  switch (raw?.trim().toLowerCase()) {
-    case 'tick':
-      return BenchMode.tick;
-    case 'pump':
-      return BenchMode.pump;
-    case 'both':
-    case null:
-    case '':
-      return BenchMode.both;
-    default:
-      throw ArgumentError(
-        'Unknown BENCH_MODE="$raw". Use tick, pump, or both.',
-      );
+/// Runs the scenarios selected by the environment, prints markdown tables and
+/// writes JSON.
+///
+/// Environment: `BENCH_QUICK=1`, `BENCH_FILTER=<id prefixes>`,
+/// `BENCH_RUNS`, `BENCH_FRAMES`, `BENCH_JSON=<path>` (default
+/// `results/latest.json`), `BENCH_ALLOC=0` to skip allocation profiling.
+Future<List<ScenarioResult>> runFromEnvironment(
+  SchedulerBinding binding,
+) async {
+  final env = Platform.environment;
+  final config = BenchConfig.fromEnvironment(env);
+  final scenarios = scenariosMatching(env['BENCH_FILTER']);
+  if (scenarios.isEmpty) {
+    throw ArgumentError(
+      'No scenario matches BENCH_FILTER=${env['BENCH_FILTER']}. Known ids: '
+      '${allScenarios().map((s) => s.id).join(', ')}',
+    );
   }
+  final profiler =
+      env['BENCH_ALLOC'] == '0' ? null : await AllocationProfiler.connect();
+  final results = await runSuite(
+    binding: binding,
+    config: config,
+    scenarios: scenarios,
+    profiler: profiler,
+    log: _print,
+  );
+  await profiler?.dispose();
+  _print(formatResults(results, config));
+  final file = writeResultsJson(
+    results,
+    config,
+    env['BENCH_JSON'] ?? 'results/latest.json',
+  );
+  _print('Wrote ${file.absolute.path}');
+  return results;
 }
+
+// ignore: avoid_print
+void _print(String message) => print(message);

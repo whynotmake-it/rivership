@@ -2,545 +2,483 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/physics.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:motor/motor.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:motor_benchmark/src/allocations.dart';
+import 'package:motor_benchmark/src/driver.dart';
 
-/// Which cost to measure.
-enum BenchMode {
-  /// Time only inside the animation listener (notify + value read).
-  /// Simulation advance happens before notify; prefer [pump] for full tick cost.
-  tick,
+/// Something measured per scenario and side.
+enum Metric {
+  total('Frame + reads', 'µs/frame'),
+  frame('Frame (engine)', 'µs/frame'),
+  read('Value read', 'ns/value'),
+  start('Start from rest', 'µs/op'),
+  retarget('Retarget mid-flight', 'µs/op'),
+  allocated('Allocated', 'B/frame'),
+  retained('Retained', 'KB');
 
-  /// Wall time of `tester.pump` + work (includes framework scheduling).
-  pump,
+  const Metric(this.label, this.unit);
 
-  /// Record both [tick] and [pump] samples per run.
-  both,
+  final String label;
+  final String unit;
 }
 
 /// Shared knobs for every scenario.
+@immutable
 class BenchConfig {
   const BenchConfig({
     this.warmupFrames = 60,
-    this.measuredFrames = 240,
-    this.frameStep = const Duration(milliseconds: 16),
-    this.repeats = 7,
-    this.mode = BenchMode.both,
+    this.frames = 240,
+    this.operations = 30,
+    this.runs = 7,
   });
 
-  /// Quick smoke configuration.
+  /// Smoke configuration for CI: seconds, not minutes.
   const BenchConfig.quick()
-      : warmupFrames = 15,
-        measuredFrames = 60,
-        frameStep = const Duration(milliseconds: 16),
-        repeats = 3,
-        mode = BenchMode.both;
+      : warmupFrames = 10,
+        frames = 30,
+        operations = 5,
+        runs = 2;
 
-  final int warmupFrames;
-  final int measuredFrames;
-  final Duration frameStep;
-  final int repeats;
-  final BenchMode mode;
-
-  bool get measuresTick => mode == BenchMode.tick || mode == BenchMode.both;
-  bool get measuresPump => mode == BenchMode.pump || mode == BenchMode.both;
-
-  BenchConfig copyWith({
-    int? warmupFrames,
-    int? measuredFrames,
-    Duration? frameStep,
-    int? repeats,
-    BenchMode? mode,
-  }) {
+  /// Reads `BENCH_QUICK`, `BENCH_RUNS` and `BENCH_FRAMES`.
+  factory BenchConfig.fromEnvironment(Map<String, String> env) {
+    final base = env['BENCH_QUICK'] == '1'
+        ? const BenchConfig.quick()
+        : const BenchConfig();
     return BenchConfig(
-      warmupFrames: warmupFrames ?? this.warmupFrames,
-      measuredFrames: measuredFrames ?? this.measuredFrames,
-      frameStep: frameStep ?? this.frameStep,
-      repeats: repeats ?? this.repeats,
-      mode: mode ?? this.mode,
+      warmupFrames: base.warmupFrames,
+      frames: int.tryParse(env['BENCH_FRAMES'] ?? '') ?? base.frames,
+      operations: base.operations,
+      runs: int.tryParse(env['BENCH_RUNS'] ?? '') ?? base.runs,
     );
   }
-}
 
-/// One measured sample for one side and one layer.
-class SideSample {
-  const SideSample({
-    required this.side,
-    required this.layer,
-    required this.elapsed,
-    required this.frames,
-    required this.sink,
-  });
+  /// Untimed frames after starting, before measuring.
+  final int warmupFrames;
 
-  final String side;
-  final BenchMode layer;
-  final Duration elapsed;
+  /// Timed frames per run.
   final int frames;
-  final double sink;
 
-  double get microsPerFrame =>
-      frames == 0 ? 0 : elapsed.inMicroseconds / frames;
+  /// Timed starts and retargets per run.
+  final int operations;
+
+  /// Measured runs per side. One extra warm-up run is discarded.
+  final int runs;
 
   Map<String, Object?> toJson() => {
-        'side': side,
-        'layer': layer.name,
-        'elapsedMicros': elapsed.inMicroseconds,
+        'warmupFrames': warmupFrames,
         'frames': frames,
-        'microsPerFrame': microsPerFrame,
-        'sink': sink,
+        'operations': operations,
+        'runs': runs,
       };
 }
 
-/// Distribution over repeated [SideSample]s for one side/layer.
-class SideStats {
-  const SideStats({
-    required this.p50,
-    required this.p90,
-    required this.mean,
-    required this.stddev,
-    required this.n,
-  });
+/// One side of a comparison: a set of animated values and the controllers
+/// driving them.
+abstract class BenchSide {
+  /// Animates every value from its current state toward the high target
+  /// ([forward]) or the low one.
+  void start({required bool forward});
 
-  final double p50;
-  final double p90;
-  final double mean;
-  final double stddev;
-  final int n;
+  /// Reads every value once and folds them into a number, so reads can't be
+  /// optimized away. Both sides fold equal values to equal numbers.
+  double read();
 
-  factory SideStats.from(List<SideSample> samples) {
-    assert(samples.isNotEmpty, 'SideStats requires samples');
-    final values = [
-      for (final s in samples) s.microsPerFrame,
-    ]..sort();
-    final n = values.length;
-    final mean = values.reduce((a, b) => a + b) / n;
-    final variance =
-        values.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) / n;
-    return SideStats(
-      p50: _percentile(values, 0.50),
-      p90: _percentile(values, 0.90),
-      mean: mean,
-      stddev: math.sqrt(variance),
-      n: n,
-    );
-  }
+  bool get isAnimating;
 
-  static double _percentile(List<double> sorted, double p) {
-    if (sorted.length == 1) return sorted.first;
-    final rank = p * (sorted.length - 1);
-    final lo = rank.floor();
-    final hi = rank.ceil();
-    if (lo == hi) return sorted[lo];
-    final t = rank - lo;
-    return sorted[lo] * (1 - t) + sorted[hi] * t;
-  }
+  void stop();
 
-  Map<String, Object?> toJson() => {
-        'p50': p50,
-        'p90': p90,
-        'mean': mean,
-        'stddev': stddev,
-        'n': n,
-      };
+  void dispose();
 }
 
-/// Aggregated outcome for one scenario.
-class ScenarioResult {
-  const ScenarioResult({
+/// Creates a [BenchSide]. [steady] asks for motions long enough to stay in
+/// flight for the whole measured window; otherwise realistic short motions.
+typedef SideFactory = BenchSide Function(
+  TickerProvider vsync, {
+  required bool steady,
+});
+
+/// A motor setup and its equivalent built from Flutter's
+/// `AnimationController`.
+@immutable
+class BenchScenario {
+  const BenchScenario({
     required this.id,
-    required this.name,
-    required this.description,
-    required this.params,
+    required this.group,
+    required this.values,
+    required this.motorSetup,
+    required this.flutterSetup,
     required this.motor,
     required this.flutter,
-    this.primaryLabel = 'Motor',
-    this.baselineLabel = 'Flutter',
+    this.retargets = false,
   });
 
   final String id;
-  final String name;
-  final String description;
-  final Map<String, Object?> params;
-  final List<SideSample> motor;
-  final List<SideSample> flutter;
-  final String primaryLabel;
-  final String baselineLabel;
 
-  List<SideSample> motorLayer(BenchMode layer) =>
-      motor.where((s) => s.layer == layer).toList();
+  /// Rows sharing a group are printed together, e.g. `spring 1D`.
+  final String group;
 
-  List<SideSample> flutterLayer(BenchMode layer) =>
-      flutter.where((s) => s.layer == layer).toList();
+  /// How many animated values the scenario has.
+  final int values;
+  final String motorSetup;
+  final String flutterSetup;
+  final SideFactory motor;
+  final SideFactory flutter;
 
-  SideStats motorStats(BenchMode layer) => SideStats.from(motorLayer(layer));
+  /// Whether mid-flight retargets are measured (springs only: they keep
+  /// velocity; a retargeted curve has no equivalent on the Flutter side).
+  final bool retargets;
+}
 
-  SideStats flutterStats(BenchMode layer) =>
-      SideStats.from(flutterLayer(layer));
+/// Per-run samples for one side of one scenario.
+class SideResult {
+  final Map<Metric, List<double>> samples = {};
 
-  /// Positive => primary (Motor) slower.
-  double deltaPercent(BenchMode layer) {
-    final baseline = flutterStats(layer).p50;
-    if (baseline == 0) return 0;
-    return (motorStats(layer).p50 - baseline) / baseline * 100;
+  /// The value [BenchSide.read] returned after warmup, for the equivalence
+  /// check between sides.
+  double? checkValue;
+
+  void add(Metric metric, double value) => (samples[metric] ??= []).add(value);
+
+  Stats? stats(Metric metric) {
+    final values = samples[metric];
+    return values == null || values.isEmpty ? null : Stats.from(values);
   }
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'params': params,
-        'primaryLabel': primaryLabel,
-        'baselineLabel': baselineLabel,
-        'layers': {
-          for (final layer in {
-            for (final s in [...motor, ...flutter]) s.layer,
-          })
-            layer.name: {
-              'primary': motorStats(layer).toJson(),
-              'baseline': flutterStats(layer).toJson(),
-              'deltaPercentP50': deltaPercent(layer),
-            },
-        },
-        'samples': {
-          'primary': [for (final s in motor) s.toJson()],
-          'baseline': [for (final s in flutter) s.toJson()],
-        },
+        for (final MapEntry(:key, :value) in samples.entries)
+          key.name: {...Stats.from(value).toJson(), 'runs': value},
+        'checkValue': checkValue,
       };
 }
 
-/// Contract implemented by every benchmark scenario.
-abstract class BenchScenario {
-  String get id;
-  String get name;
-  String get description;
-  Map<String, Object?> get params => const {};
+/// Median and spread over runs.
+@immutable
+class Stats {
+  const Stats({required this.median, required this.min, required this.max});
 
-  Future<ScenarioResult> run(WidgetTester tester, BenchConfig config);
+  factory Stats.from(List<double> values) {
+    final sorted = [...values]..sort();
+    final mid = sorted.length ~/ 2;
+    final median =
+        sorted.length.isOdd ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    return Stats(median: median, min: sorted.first, max: sorted.last);
+  }
+
+  final double median;
+  final double min;
+  final double max;
+
+  /// Half the range, relative to the median.
+  double get spread => median == 0 ? 0 : (max - min) / 2 / median.abs();
+
+  Map<String, Object?> toJson() => {'median': median, 'min': min, 'max': max};
 }
 
-/// Measures animation work for [config.mode].
+class ScenarioResult {
+  ScenarioResult(this.scenario);
+
+  final BenchScenario scenario;
+  final motor = SideResult();
+  final flutter = SideResult();
+
+  /// Motor's median divided by Flutter's.
+  double? ratio(Metric metric) {
+    final m = motor.stats(metric)?.median;
+    final f = flutter.stats(metric)?.median;
+    if (m == null || f == null || f == 0) return null;
+    return m / f;
+  }
+
+  /// Whether both sides produced the same values after warmup.
+  bool get equivalent {
+    final m = motor.checkValue;
+    final f = flutter.checkValue;
+    if (m == null || f == null) return false;
+    return (m - f).abs() <= 1e-3 * math.max(1, f.abs());
+  }
+
+  Map<String, Object?> toJson() => {
+        'id': scenario.id,
+        'group': scenario.group,
+        'values': scenario.values,
+        'motorSetup': scenario.motorSetup,
+        'flutterSetup': scenario.flutterSetup,
+        'equivalent': equivalent,
+        'motor': motor.toJson(),
+        'flutter': flutter.toJson(),
+      };
+}
+
+/// Runs [scenarios] and returns their results.
 ///
-/// - `tick`: stopwatch only inside the animation listener while
-///   frames are pumped (notify + value read; sim advance is just before notify).
-/// - `pump`: wall clock around the measured pump loop.
-/// - Asserts [isAnimating] stays true through warmup and measure.
-Future<List<SideSample>> measureSide({
-  required WidgetTester tester,
+/// Each scenario gets `config.runs + 1` runs per side, alternating which side
+/// goes first; the first run warms up the code and is discarded. When
+/// [profiler] is given, allocations are measured in a separate untimed pass.
+Future<List<ScenarioResult>> runSuite({
+  required SchedulerBinding binding,
   required BenchConfig config,
-  required String side,
-  required Listenable listenable,
-  required void Function() start,
-  required double Function() read,
-  required void Function() dispose,
-  required bool Function() isAnimating,
+  required List<BenchScenario> scenarios,
+  AllocationProfiler? profiler,
+  void Function(String message)? log,
 }) async {
-  var sink = 0.0;
-  var notifyCount = 0;
-  final tickSw = Stopwatch();
-  var accumulateTicks = false;
+  final driver = FrameDriver(binding);
+  final results = <ScenarioResult>[];
+  final allocationBaseline =
+      profiler == null ? 0.0 : await _idleAllocations(driver, profiler);
 
-  void listener() {
-    notifyCount++;
-    if (accumulateTicks) {
-      tickSw.start();
-      sink += read();
-      tickSw.stop();
-    } else {
-      sink += read();
+  for (final scenario in scenarios) {
+    log?.call('→ ${scenario.id}: ${scenario.motorSetup} vs '
+        '${scenario.flutterSetup}');
+    final result = ScenarioResult(scenario);
+    for (var run = 0; run <= config.runs; run++) {
+      final sides = [
+        (scenario.motor, result.motor),
+        (scenario.flutter, result.flutter),
+      ];
+      for (final (factory, side) in run.isEven ? sides : sides.reversed) {
+        final into = run == 0 ? SideResult() : side;
+        _measureSteady(driver, config, factory, into, scenario.values);
+        _measureOperations(driver, config, factory, into, scenario);
+        if (run == 0) side.checkValue = into.checkValue;
+      }
+      // Let pending microtasks (ticker futures) run between runs.
+      await Future<void>.delayed(Duration.zero);
     }
+    if (profiler != null) {
+      for (final (factory, side) in [
+        (scenario.motor, result.motor),
+        (scenario.flutter, result.flutter),
+      ]) {
+        await _measureAllocations(
+          driver,
+          config,
+          profiler,
+          factory,
+          side,
+          allocationBaseline,
+        );
+      }
+    }
+    results.add(result);
   }
+  return results;
+}
 
-  listenable.addListener(listener);
-  start();
-  listener();
+/// Read passes per timed frame, so every timed read block covers enough
+/// reads to dwarf the stopwatch's own cost.
+int _readPasses(int values) => math.max(1, 256 ~/ math.max(1, values));
 
+void _measureSteady(
+  FrameDriver driver,
+  BenchConfig config,
+  SideFactory factory,
+  SideResult into,
+  int values,
+) {
+  final side = factory(const BenchVsync(), steady: true);
+  side.start(forward: true);
   for (var i = 0; i < config.warmupFrames; i++) {
-    await tester.pump(config.frameStep);
-    expect(
-      isAnimating(),
-      isTrue,
-      reason: '$side stopped animating during warmup frame $i',
-    );
+    driver.frame();
+    _expectAnimating(side, 'warmup frame $i');
   }
+  into.checkValue = side.read();
 
-  final notifiesBefore = notifyCount;
-  tickSw
-    ..stop()
-    ..reset();
-  accumulateTicks = config.measuresTick;
-
-  final pumpSw = Stopwatch();
-  if (config.measuresPump) pumpSw.start();
-
-  var stayedAnimating = true;
-  for (var i = 0; i < config.measuredFrames; i++) {
-    await tester.pump(config.frameStep);
-    if (!isAnimating()) stayedAnimating = false;
-  }
-
-  if (config.measuresPump) pumpSw.stop();
-  accumulateTicks = false;
-  listenable.removeListener(listener);
-
-  expect(
-    stayedAnimating,
-    isTrue,
-    reason: '$side stopped animating during measured window',
-  );
-  expect(
-    notifyCount,
-    greaterThan(notifiesBefore),
-    reason: '$side produced no animation notifications during measure',
-  );
-  expect(sink.isFinite, isTrue);
-
-  dispose();
-
-  return [
-    if (config.measuresTick)
-      SideSample(
-        side: side,
-        layer: BenchMode.tick,
-        elapsed: tickSw.elapsed,
-        frames: config.measuredFrames,
-        sink: sink,
-      ),
-    if (config.measuresPump)
-      SideSample(
-        side: side,
-        layer: BenchMode.pump,
-        elapsed: pumpSw.elapsed,
-        frames: config.measuredFrames,
-        sink: sink,
-      ),
-  ];
-}
-
-/// Times a pure synchronous loop (no ticker).
-SideSample measureSyncLoop({
-  required String side,
-  required int iterations,
-  required void Function(int i) body,
-  required double Function() read,
-}) {
+  final frameTimer = Stopwatch();
+  final readTimer = Stopwatch();
   var sink = 0.0;
-  final warmup = math.max(1, iterations ~/ 10);
-  for (var i = 0; i < warmup; i++) {
-    body(i);
-    sink += read();
+  var reads = 0;
+  final passes = _readPasses(values);
+  for (var i = 0; i < config.frames; i++) {
+    driver.frame(frameTimer);
+    _expectAnimating(side, 'measured frame $i');
+    readTimer.start();
+    for (var p = 0; p < passes; p++) {
+      sink += side.read();
+    }
+    readTimer.stop();
+    reads += passes;
   }
+  _expectFinite(sink);
+  side
+    ..stop()
+    ..dispose();
 
-  final sinkBefore = sink;
-  final sw = Stopwatch()..start();
-  for (var i = 0; i < iterations; i++) {
-    body(i);
-    sink += read();
-  }
-  sw.stop();
-
-  expect(sink.isFinite, isTrue);
-  expect(sink, isNot(equals(sinkBefore)));
-  return SideSample(
-    side: side,
-    layer: BenchMode.tick,
-    elapsed: sw.elapsed,
-    frames: iterations,
-    sink: sink,
-  );
+  final frameMicros = _micros(frameTimer) / config.frames;
+  final readMicrosPerPass = _micros(readTimer) / reads;
+  into
+    ..add(Metric.frame, frameMicros)
+    ..add(Metric.read, readMicrosPerPass * 1000 / values)
+    ..add(Metric.total, frameMicros + readMicrosPerPass);
 }
 
-/// Runs both sides [BenchConfig.repeats] times, alternating order.
-Future<ScenarioResult> runPaired({
-  required WidgetTester tester,
-  required BenchConfig config,
-  required BenchScenario scenario,
-  required Future<List<SideSample>> Function() motorOnce,
-  required Future<List<SideSample>> Function() flutterOnce,
-  String primaryLabel = 'Motor',
-  String baselineLabel = 'Flutter',
-}) async {
-  final motor = <SideSample>[];
-  final flutter = <SideSample>[];
+void _measureOperations(
+  FrameDriver driver,
+  BenchConfig config,
+  SideFactory factory,
+  SideResult into,
+  BenchScenario scenario,
+) {
+  final side = factory(const BenchVsync(), steady: false);
+  final timer = Stopwatch();
 
-  for (var i = 0; i < config.repeats; i++) {
-    if (i.isEven) {
-      motor.addAll(await motorOnce());
-      flutter.addAll(await flutterOnce());
-    } else {
-      flutter.addAll(await flutterOnce());
-      motor.addAll(await motorOnce());
+  // Start from rest: the call plus the frame that follows it, since engines
+  // may defer work to their first tick.
+  for (var i = 0; i < config.operations; i++) {
+    side.stop();
+    timer.start();
+    side.start(forward: i.isEven);
+    timer.stop();
+    driver.frame(timer);
+    _expectAnimating(side, 'start $i');
+    driver
+      ..frame()
+      ..frame();
+  }
+  into.add(Metric.start, _micros(timer) / config.operations);
+
+  if (scenario.retargets) {
+    side
+      ..stop()
+      ..start(forward: true);
+    for (var i = 0; i < 3; i++) {
+      driver.frame();
+    }
+    timer.reset();
+    for (var i = 0; i < config.operations; i++) {
+      timer.start();
+      side.start(forward: i.isOdd);
+      timer.stop();
+      driver.frame(timer);
+      _expectAnimating(side, 'retarget $i');
+      for (var f = 0; f < 3; f++) {
+        driver.frame();
+      }
+    }
+    into.add(Metric.retarget, _micros(timer) / config.operations);
+  }
+
+  _expectFinite(side.read());
+  side
+    ..stop()
+    ..dispose();
+}
+
+Future<double> _idleAllocations(
+  FrameDriver driver,
+  AllocationProfiler profiler,
+) =>
+    profiler.allocatedPerCall(driver.frame);
+
+Future<void> _measureAllocations(
+  FrameDriver driver,
+  BenchConfig config,
+  AllocationProfiler profiler,
+  SideFactory factory,
+  SideResult into,
+  double idleFrameBytes,
+) async {
+  final before = await profiler.liveBytes();
+  final side = factory(const BenchVsync(), steady: true)..start(forward: true);
+  for (var i = 0; i < config.warmupFrames; i++) {
+    driver.frame();
+  }
+  final after = await profiler.liveBytes();
+  into.add(Metric.retained, (after - before) / 1024);
+
+  var sink = 0.0;
+  final perFrame = await profiler.allocatedPerCall(() {
+    driver.frame();
+    sink += side.read();
+  });
+  _expectFinite(sink);
+  _expectAnimating(side, 'allocation pass');
+  side
+    ..stop()
+    ..dispose();
+  into.add(Metric.allocated, math.max(0, perFrame - idleFrameBytes));
+}
+
+double _micros(Stopwatch timer) => timer.elapsedTicks * 1e6 / timer.frequency;
+
+void _expectAnimating(BenchSide side, String when) {
+  if (!side.isAnimating) {
+    throw StateError('Animation stopped before the end of the window ($when).');
+  }
+}
+
+void _expectFinite(double sink) {
+  if (!sink.isFinite) throw StateError('Non-finite read sink: $sink');
+}
+
+/// Formats [results] as one markdown table per metric.
+String formatResults(List<ScenarioResult> results, BenchConfig config) {
+  final buf = StringBuffer();
+  for (final metric in Metric.values) {
+    final rows = results.where((r) => r.motor.stats(metric) != null).toList();
+    if (rows.isEmpty) continue;
+    buf
+      ..writeln()
+      ..writeln('### ${metric.label} (${metric.unit})')
+      ..writeln()
+      ..writeln('| Scenario | Values | Flutter setup | Flutter | Motor | '
+          'Motor / Flutter |')
+      ..writeln('|---|---:|---|---:|---:|---:|');
+    for (final r in rows) {
+      final ratio = r.ratio(metric);
+      buf.writeln('| ${r.scenario.group} | ${r.scenario.values} | '
+          '${r.scenario.flutterSetup} | '
+          '${_cell(r.flutter.stats(metric))} | '
+          '${_cell(r.motor.stats(metric))} | '
+          '${ratio == null ? '–' : '${ratio.toStringAsFixed(2)}×'} |');
     }
   }
-
-  return ScenarioResult(
-    id: scenario.id,
-    name: scenario.name,
-    description: scenario.description,
-    params: scenario.params,
-    motor: motor,
-    flutter: flutter,
-    primaryLabel: primaryLabel,
-    baselineLabel: baselineLabel,
-  );
-}
-
-/// Pretty-prints results as markdown tables (one per measured layer).
-void printResults(List<ScenarioResult> results, BenchConfig config) {
-  if (results.isEmpty) {
-    // ignore: avoid_print
-    print('No benchmark results.');
-    return;
-  }
-
-  final layers = <BenchMode>[
-    if (config.measuresTick) BenchMode.tick,
-    if (config.measuresPump) BenchMode.pump,
+  final allocationRuns =
+      results.any((r) => r.motor.stats(Metric.allocated) != null);
+  buf
+    ..writeln()
+    ..writeln('_Median of ${config.runs} runs (± half the range, relative); '
+        '${config.frames} frames and ${config.operations} operations per run'
+        '${allocationRuns ? '; allocations from one untimed pass' : ''}. '
+        'Mode: ${_buildMode()}._');
+  final mismatched = [
+    for (final r in results)
+      if (!r.equivalent) r.scenario.id,
   ];
-
-  final buf = StringBuffer()..writeln();
-
-  for (final layer in layers) {
-    buf
-      ..writeln('## Motor vs AnimationController — `${layer.name}` layer')
-      ..writeln()
-      ..writeln(
-        '| Scenario | Params | ${results.first.baselineLabel} p50 | '
-        '${results.first.primaryLabel} p50 | Δ p50 | p90 Δ |',
-      )
-      ..writeln('|---|---|---:|---:|---:|---:|');
-
-    for (final r in results) {
-      if (r.motorLayer(layer).isEmpty) continue;
-      final params =
-          r.params.entries.map((e) => '${e.key}=${e.value}').join(', ');
-      final delta = r.deltaPercent(layer);
-      final sign = delta > 0 ? '+' : '';
-      final base = r.flutterStats(layer);
-      final prim = r.motorStats(layer);
-      final p90Delta =
-          base.p90 == 0 ? 0.0 : (prim.p90 - base.p90) / base.p90 * 100;
-      final p90Sign = p90Delta > 0 ? '+' : '';
-      buf.writeln(
-        '| ${r.name} | $params | '
-        '${base.p50.toStringAsFixed(1)} | '
-        '${prim.p50.toStringAsFixed(1)} | '
-        '$sign${delta.toStringAsFixed(1)}% | '
-        '$p90Sign${p90Delta.toStringAsFixed(1)}% |',
-      );
-    }
-
-    buf
-      ..writeln()
-      ..writeln(
-        '_µs/frame (or µs/op for sync). Positive Δ = ${results.first.primaryLabel} '
-        'slower. p50/p90 over ${results.first.motorLayer(layer).length} runs. '
-        '`${layer.name}`: ${switch (layer) {
-          BenchMode.tick => 'listener notify + value read only',
-          BenchMode.pump => 'full tester.pump wall time',
-          BenchMode.both => '',
-        }}_',
-      )
-      ..writeln();
+  if (mismatched.isNotEmpty) {
+    buf.writeln('\n**Not equivalent:** ${mismatched.join(', ')}');
   }
-
-  // ignore: avoid_print
-  print(buf);
+  return buf.toString();
 }
 
-/// Writes [results] as JSON. Returns the path written.
+String _cell(Stats? stats) {
+  if (stats == null) return '–';
+  final digits = stats.median.abs() >= 100 ? 0 : 1;
+  return '${stats.median.toStringAsFixed(digits)} '
+      '±${(stats.spread * 100).toStringAsFixed(0)}%';
+}
+
+String _buildMode() => kReleaseMode
+    ? 'release (AOT)'
+    : kProfileMode
+        ? 'profile (AOT)'
+        : 'debug (JIT, asserts on)';
+
+/// Writes [results] as JSON to [path] and returns the file.
 File writeResultsJson(
   List<ScenarioResult> results,
-  BenchConfig config, {
-  String? path,
-}) {
-  final relative =
-      path ?? 'results/bench_${DateTime.now().millisecondsSinceEpoch}.json';
-  final file = File(relative);
-  file.parent.createSync(recursive: true);
-  final payload = <String, Object?>{
-    'generatedAt': DateTime.now().toIso8601String(),
-    'config': <String, Object?>{
-      'warmupFrames': config.warmupFrames,
-      'measuredFrames': config.measuredFrames,
-      'frameStepMs': config.frameStep.inMilliseconds,
-      'repeats': config.repeats,
-      'mode': config.mode.name,
-    },
-    'results': [
-      for (final r in results) r.toJson(),
-    ],
-  };
-  final encoded = const JsonEncoder.withIndent('  ').convert(payload);
-  file.writeAsStringSync(encoded);
-  File('${file.parent.path}/latest.json').writeAsStringSync(encoded);
+  BenchConfig config,
+  String path,
+) {
+  final file = File(path)..parent.createSync(recursive: true);
+  file.writeAsStringSync(
+    const JsonEncoder.withIndent('  ').convert({
+      'generatedAt': DateTime.now().toIso8601String(),
+      'mode': _buildMode(),
+      'dart': Platform.version,
+      'config': config.toJson(),
+      'results': [for (final r in results) r.toJson()],
+    }),
+  );
   return file;
-}
-
-double hashDoubles(Iterable<double> values) {
-  var acc = 0.0;
-  var i = 0;
-  for (final v in values) {
-    acc += v * (1 + (i++ % 7));
-  }
-  return math.sin(acc);
-}
-
-/// Status-driven spring ping-pong for [AnimationController] (matches Motor).
-VoidCallback attachFlutterSpringPingPong(
-  AnimationController controller,
-  SpringDescription description, {
-  double low = 0,
-  double high = 1,
-}) {
-  var target = high;
-  void kick() {
-    controller.animateWith(
-      SpringSimulation(
-        description,
-        controller.value,
-        target,
-        controller.velocity,
-      ),
-    );
-  }
-
-  void onStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    target = target == low ? high : low;
-    kick();
-  }
-
-  controller.addStatusListener(onStatus);
-  kick();
-  return () => controller.removeStatusListener(onStatus);
-}
-
-/// Status-driven spring ping-pong for [MotionController] (matches Flutter).
-///
-/// Motor reports [AnimationStatus.dismissed] when settling at the controller's
-/// initial value and [AnimationStatus.completed] otherwise — so both must
-/// retarget, or long windows (full suite) stop after the first return trip.
-VoidCallback attachMotorSpringPingPong<T extends Object>(
-  MotionController<T> controller, {
-  required T low,
-  required T high,
-}) {
-  var target = high;
-  void kick() => controller.animateTo(target);
-
-  void onStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed &&
-        status != AnimationStatus.dismissed) {
-      return;
-    }
-    target = target == low ? high : low;
-    kick();
-  }
-
-  controller.addStatusListener(onStatus);
-  kick();
-  return () => controller.removeStatusListener(onStatus);
 }
