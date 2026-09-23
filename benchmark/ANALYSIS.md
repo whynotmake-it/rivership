@@ -70,5 +70,3 @@ Status-driven spring ping-pong must listen for both `completed` and `dismissed` 
 ## Limits
 
 Debug VM · WidgetTester (not AOT device) · tick does not include all simulation advance before notify · n=7. Guidance for hot-path design, not a production SLA.
-
-Canvas: `canvases/motor-bench-analysis.canvas.tsx`

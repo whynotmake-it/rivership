@@ -196,7 +196,7 @@ class ScenarioResult {
         'baselineLabel': baselineLabel,
         'layers': {
           for (final layer in {
-            for (final s in [...motor, ...flutter]) s.layer
+            for (final s in [...motor, ...flutter]) s.layer,
           })
             layer.name: {
               'primary': motorStats(layer).toJson(),

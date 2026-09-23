@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -145,7 +147,7 @@ class WidgetRebuildScenario implements BenchScenario {
         ),
       ),
     );
-    controller.repeat(reverse: true);
+    unawaited(controller.repeat(reverse: true));
 
     for (var i = 0; i < config.warmupFrames; i++) {
       await tester.pump(config.frameStep);
