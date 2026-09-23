@@ -98,7 +98,8 @@ class MotionVelocityTracker<T> {
   // microseconds at `_times[i]`. [_index] is the newest slot, and the
   // [_count] slots up to it are filled.
   Float64List? _positions;
-  final Int64List _times = Int64List(_sampleSize);
+  // A plain list: JavaScript builds don't support Int64List.
+  final List<int> _times = List<int>.filled(_sampleSize, 0);
   int _dimensions = 0;
   int _index = 0;
   int _count = 0;
