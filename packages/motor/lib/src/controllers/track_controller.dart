@@ -64,6 +64,8 @@ class TrackController extends Animation<TrackValueReader>
   final Set<Track> _activeTracks = {};
   final Map<Object, Set<Track>> _tokenParticipants = {};
   final Map<Track, MotionVelocityTracker<Object>> _velocityTrackers = {};
+  // Velocity estimates are computed only when needed, as of the latest sample.
+  final Map<Track, DateTime> _pendingVelocityEstimates = {};
   final List<Track> _tickTracks = [];
   final Map<Track, Motion> _motionOverrides = {};
   List<TrackAnimation> _lastAnimations = const [];
@@ -107,7 +109,10 @@ class TrackController extends Animation<TrackValueReader>
   T _read<T extends Object>(Track<T> track) => _slot(track).value as T;
 
   /// Returns the current velocity for [track].
-  T velocity<T extends Object>(Track<T> track) => _slot(track).velocity as T;
+  T velocity<T extends Object>(Track<T> track) {
+    _applyPendingVelocity(track);
+    return _slot(track).velocity as T;
+  }
 
   /// Returns the tracked velocity estimate for [track], or null if velocity
   /// tracking is disabled or no samples have been recorded.
@@ -129,6 +134,7 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Clears velocity-tracking samples so future [set] calls start fresh.
   void resetVelocityTracking() {
+    _pendingVelocityEstimates.keys.toList().forEach(_applyPendingVelocity);
     _velocityTrackers.clear();
   }
 
@@ -163,6 +169,7 @@ class TrackController extends Animation<TrackValueReader>
     final slot = _slot(trackValue.track, initialOverride: trackValue.value);
     final explicitVelocity = _velocityFor(trackValue.track, withVelocity);
     if (explicitVelocity != null) {
+      _pendingVelocityEstimates.remove(trackValue.track);
       slot.setValueWithVelocity(trackValue.value, explicitVelocity.value);
     } else {
       slot.setValue(trackValue.value);
@@ -174,11 +181,20 @@ class TrackController extends Animation<TrackValueReader>
     final tracker = _trackerFor(track);
     if (tracker == null) return;
     tracker.addPosition(_velocityNow, value);
-    final estimate =
-        (tracker as MotionVelocityTracker<T>).getVelocityEstimate();
-    if (estimate != null) {
-      _slots[track]!.setVelocity(estimate.perSecond);
-    }
+    _pendingVelocityEstimates[track] = clock.now();
+  }
+
+  /// Applies the velocity estimated from [track]'s samples as of its latest
+  /// sample, which matches computing it eagerly on every [set].
+  void _applyPendingVelocity(Track track) {
+    final sampledAt = _pendingVelocityEstimates.remove(track);
+    if (sampledAt == null) return;
+    final tracker = _velocityTrackers[track];
+    final estimate = withClock(
+      Clock.fixed(sampledAt),
+      () => tracker?.getVelocityEstimate(),
+    );
+    if (estimate != null) _slots[track]?.setVelocity(estimate.perSecond);
   }
 
   MotionVelocityTracker<Object>? _trackerFor(Track track) {
@@ -404,10 +420,12 @@ class TrackController extends Animation<TrackValueReader>
       }
       _activeTracks.clear();
       _tokenParticipants.clear();
+      _pendingVelocityEstimates.clear();
     } else {
       for (final track in tracks) {
         _slots[track]?.stop(canceled: true);
         _activeTracks.remove(track);
+        _pendingVelocityEstimates.remove(track);
       }
       _pruneTokenParticipants(tracks);
     }
@@ -433,6 +451,7 @@ class TrackController extends Animation<TrackValueReader>
       } else {
         slot.stop(canceled: true);
         _activeTracks.remove(track);
+        _pendingVelocityEstimates.remove(track);
       }
     }
 
@@ -465,6 +484,7 @@ class TrackController extends Animation<TrackValueReader>
     _slots.remove(track);
     _activeTracks.remove(track);
     _velocityTrackers.remove(track);
+    _pendingVelocityEstimates.remove(track);
     _lastStepByTrack.remove(track);
     _pruneTokenParticipants([track]);
   }
@@ -596,6 +616,7 @@ class TrackController extends Animation<TrackValueReader>
     required LoopMode loop,
     required Duration startOffset,
   }) {
+    _applyPendingVelocity(animation.track);
     final slot = _slot(animation.track, forAnimation: animation);
     if (animation.from case final from?) {
       slot.setValue(from);

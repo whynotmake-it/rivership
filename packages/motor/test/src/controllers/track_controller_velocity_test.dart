@@ -93,6 +93,38 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('keeps its tracked velocity when play starts later',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+
+      controller.set([position.value(0.0)]);
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(1.0)]);
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(2.0)]);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      controller.play(TrackTimeline([position.to(2.0, motion: spring)]));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value(position), greaterThan(2.0));
+      controller.stop(canceled: true);
+    });
+
+    testWidgets('stop discards velocity tracked from earlier samples',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.set([position.value(0.0)]);
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(1.0)]);
+      controller.stop(canceled: true);
+
+      expect(controller.velocity(position), 0.0);
+    });
+
     testWidgets(
         'ignores position samples but accepts explicit velocity when '
         'VelocityTracking is off', (tester) async {
