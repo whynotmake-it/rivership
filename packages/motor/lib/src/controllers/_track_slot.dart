@@ -113,18 +113,20 @@ class _TrackSlot<T extends Object> {
       );
 
   void setValue(T value) {
-    _jumpTo(converter.normalize(value));
-    _currentValues = _ownedCopy(converter.normalize(value));
-    _velocityValues = List<double>.filled(_currentValues.length, 0);
-    _velocitiesStale = false;
-    _stepPlayback = null;
-    _playback = _TrackSlotPlayback.idle;
+    _setValues(converter.normalize(value));
+    _velocityValues.fillRange(0, _velocityValues.length, 0);
   }
 
   void setValueWithVelocity(T value, T velocity) {
-    _jumpTo(converter.normalize(value));
-    _currentValues = _ownedCopy(converter.normalize(value));
+    _setValues(converter.normalize(value));
     _velocityValues = _ownedCopy(converter.normalize(velocity));
+  }
+
+  // The slot's buffers are its own (archives and views copy them), so a
+  // jump writes into them instead of replacing them.
+  void _setValues(List<double> values) {
+    _jumpTo(values);
+    _currentValues.setAll(0, values);
     _velocitiesStale = false;
     _stepPlayback = null;
     _playback = _TrackSlotPlayback.idle;
@@ -334,8 +336,8 @@ class _TrackSlot<T extends Object> {
     if (_equal(values, _currentValues)) return;
     if (converter case final DirectionalMotionConverter<T> directional) {
       final order = directional.compare(
-        converter.denormalize(_ownedCopy(_currentValues)),
-        converter.denormalize(_ownedCopy(values)),
+        _denormalize(_currentValues),
+        _denormalize(values),
       );
       if (order == 0) return;
       _lastMovesDown = order > 0;

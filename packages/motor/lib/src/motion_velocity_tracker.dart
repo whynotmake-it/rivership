@@ -44,7 +44,7 @@ class _VelocityTrackingOn extends VelocityTracking {
       return velocityTrackerBuilder!(converter);
     }
 
-    return MotionVelocityTracker<T>(converter);
+    return MotionVelocityTracker<T>._builtIn(converter);
   }
 }
 
@@ -79,7 +79,13 @@ class _VelocityTrackingOff extends VelocityTracking {
 /// ```
 class MotionVelocityTracker<T> {
   /// Creates a motion velocity tracker with the given [converter].
-  MotionVelocityTracker(this.converter);
+  MotionVelocityTracker(this.converter) : _builtIn = false;
+
+  MotionVelocityTracker._builtIn(this.converter) : _builtIn = true;
+
+  // Whether this is the tracker motor creates by default, which is not a
+  // subclass, so samples can skip the overridable addPosition.
+  final bool _builtIn;
 
   /// The converter used to normalize and denormalize values.
   final MotionConverter<T> converter;
@@ -118,7 +124,7 @@ class MotionVelocityTracker<T> {
   /// also serves as its time. Subclasses get it through [addPosition].
   @internal
   void addPositionAt(DateTime now, T value) {
-    if (runtimeType == MotionVelocityTracker<T>) {
+    if (_builtIn) {
       _add(now.microsecondsSinceEpoch, value, now);
     } else {
       addPosition(Duration(microseconds: now.microsecondsSinceEpoch), value);
@@ -135,7 +141,10 @@ class MotionVelocityTracker<T> {
       _count = 0;
     }
     _index = (_index + 1) % _sampleSize;
-    positions.setRange(_index * _dimensions, (_index + 1) * _dimensions, point);
+    final base = _index * _dimensions;
+    for (var i = 0; i < _dimensions; i++) {
+      positions[base + i] = point[i];
+    }
     _times[_index] = timeMicros;
     if (_count < _sampleSize) _count++;
   }

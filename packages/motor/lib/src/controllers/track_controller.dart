@@ -225,38 +225,42 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> withVelocity = const [],
   }) {
     _playbackRevision++;
-    _joinRun(values.map((trackValue) => trackValue.track));
+    if (_activeTracks.isEmpty) _runTracks.clear();
+    // Values set together are sampled at the same instant.
+    DateTime? now;
     for (final trackValue in values) {
-      _setTrackValue(trackValue, withVelocity);
+      _runTracks.add(trackValue.track);
+      final tracker = _setTrackValue(trackValue, withVelocity);
+      if (tracker != null) {
+        // Sourced from [clock] so tests drive it with the fake clock.
+        final sampledAt = now ??= clock.now();
+        tracker
+          ..addPositionAt(sampledAt, trackValue.value)
+          ..pendingEstimateAt = sampledAt;
+      }
     }
     notifyListeners();
     _updateStatus();
   }
 
-  void _setTrackValue<T extends Object>(
+  /// Sets one track's value, and returns its velocity tracker if the value
+  /// should be recorded as a sample.
+  MotionVelocityTracker<Object>? _setTrackValue<T extends Object>(
     TrackValue<T> trackValue,
     List<TrackValue> withVelocity,
   ) {
     final slot = _slot(trackValue.track, initialOverride: trackValue.value);
     _archive(slot);
-    final explicitVelocity = _velocityFor(trackValue.track, withVelocity);
+    final explicitVelocity = withVelocity.isEmpty
+        ? null
+        : _velocityFor(trackValue.track, withVelocity);
     if (explicitVelocity != null) {
       _velocityTrackers[trackValue.track]?.pendingEstimateAt = null;
       slot.setValueWithVelocity(trackValue.value, explicitVelocity.value);
-    } else {
-      slot.setValue(trackValue.value);
-      _trackVelocitySample(trackValue.track, trackValue.value);
+      return null;
     }
-  }
-
-  void _trackVelocitySample<T extends Object>(Track<T> track, T value) {
-    final tracker = _trackerFor(track);
-    if (tracker == null) return;
-    // Sourced from [clock] so tests drive it with the fake clock.
-    final now = clock.now();
-    tracker
-      ..addPositionAt(now, value)
-      ..pendingEstimateAt = now;
+    slot.setValue(trackValue.value);
+    return _trackerFor(trackValue.track);
   }
 
   /// Applies the velocity estimated from [track]'s samples as of its latest
