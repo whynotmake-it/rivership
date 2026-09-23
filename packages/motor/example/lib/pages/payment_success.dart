@@ -168,7 +168,10 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                 // off to the settle below before the wobble begins.
                 motion: .bouncySpring(extraBounce: .4).trimmed(fromEnd: .5),
               ),
-              .to(1),
+              .to(
+                1,
+                motion: .smoothSpring(duration: Duration(milliseconds: 300)),
+              ),
             ]),
             _receipt([
               .sync(token: #ready),
@@ -482,9 +485,12 @@ class _Receipt extends StatelessWidget {
                 color: t.textTertiary,
               ),
               const SizedBox(width: 8),
-              Text(
-                'Confirmed just now',
-                style: TextStyle(color: t.textTertiary, fontSize: 12),
+              Flexible(
+                child: Text(
+                  'Confirmed just now',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: t.textTertiary, fontSize: 12),
+                ),
               ),
             ],
           ),

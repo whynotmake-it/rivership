@@ -68,12 +68,13 @@ void main() {
     await tester.pumpWidget(const CupertinoApp(home: PaymentSuccessPage()));
     await tester.pump();
 
-    // Press and hold the pay button long enough to commit (hold timer is
-    // 420ms), then let the orchestration run through the sync barrier.
+    // Press and hold the pay button long enough to commit (the hold timer
+    // is 650ms and starts after the 100ms press timeout), then let the
+    // orchestration run through the sync barrier.
     final gesture = await tester.startGesture(
       tester.getCenter(find.text('Pay  \$42.00')),
     );
-    await tester.pump(const Duration(milliseconds: 700)); // commit fires
+    await tester.pump(const Duration(milliseconds: 900)); // commit fires
     await gesture.up();
     // Run the timeline: morph + processing dwell + post-barrier check/receipt.
     for (var i = 0; i < 120; i++) {
@@ -81,6 +82,17 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     expect(find.text('Payment sent'), findsOneWidget);
+    // The check pops up, then settles back to its normal size.
+    final check = find.ancestor(
+      of: find.byWidgetPredicate(
+        (widget) =>
+            widget is CustomPaint &&
+            widget.painter.runtimeType.toString() == '_CheckPainter',
+      ),
+      matching: find.byType(Transform),
+    );
+    final scale = tester.widget<Transform>(check.first).transform;
+    expect(scale.getMaxScaleOnAxis(), closeTo(1, 1e-3));
   });
 
   testWidgets('Curve Trap handles a mid-flight reversal', (tester) async {
