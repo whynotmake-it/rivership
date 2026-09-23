@@ -41,6 +41,14 @@ class _TrackSlot<T extends Object> {
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
 
+  // Plans replaced while inspection tooling was attached, oldest first, so
+  // scrubbing can show them. The current plan started at [_planStart].
+  static const _maxArchivedPlans = 8;
+  final List<_ArchivedPlan<T>> _archive = [];
+  Duration _planStart = Duration.zero;
+  _ArchivedPlan<T>? _shownArchive;
+  var _restoredArchive = false;
+
   T get value => _denormalize(_currentValues);
 
   T get velocity => _denormalize(_velocityValues);
@@ -129,7 +137,50 @@ class _TrackSlot<T extends Object> {
     return seconds < 0 ? 0 : seconds;
   }
 
-  bool tick(Duration elapsed) {
+  /// Records the current plan before it is replaced at [now].
+  void archive(Duration now) {
+    _archive.add(
+      _ArchivedPlan<T>(
+        start: _planStart,
+        startOffset: _startOffset,
+        playback: _stepPlayback,
+        values: List.of(_currentValues),
+        velocities: List.of(_velocityValues),
+      ),
+    );
+    if (_archive.length > _maxArchivedPlans) _archive.removeAt(0);
+    _planStart = now;
+  }
+
+  bool get hasArchive => _archive.isNotEmpty;
+
+  /// The playback shown right now, which is an archived one while scrubbed
+  /// back before the current plan.
+  StepPlayback<T>? get shownPlayback =>
+      _shownArchive == null ? _stepPlayback : _shownArchive!.playback;
+
+  Duration get shownStartOffset => _shownArchive?.startOffset ?? _startOffset;
+
+  /// Whether the last [tick] continued an archived plan, which then replaced
+  /// the current one.
+  bool takeRestoredArchive() {
+    final restored = _restoredArchive;
+    _restoredArchive = false;
+    return restored;
+  }
+
+  /// Advances to [elapsed]. Times before the current plan show the archived
+  /// plan that was active then; unless [scrubbing], that plan also becomes
+  /// the current one again, discarding the plans after it.
+  bool tick(Duration elapsed, {bool scrubbing = false}) {
+    _shownArchive = null;
+    if (elapsed < _planStart) {
+      final index = _archive.lastIndexWhere((plan) => plan.start <= elapsed);
+      if (index >= 0) {
+        if (scrubbing) return _showArchive(_archive[index], elapsed);
+        _restoreArchive(index);
+      }
+    }
     if (_playback == _TrackSlotPlayback.idle) return true;
 
     final seconds = _localSeconds(elapsed);
@@ -142,6 +193,40 @@ class _TrackSlot<T extends Object> {
       _playback = _TrackSlotPlayback.idle;
     }
     return done;
+  }
+
+  bool _showArchive(_ArchivedPlan<T> plan, Duration elapsed) {
+    _shownArchive = plan;
+    final playback = plan.playback;
+    if (playback == null) {
+      _currentValues = List.of(plan.values);
+      _velocityValues = List.of(plan.velocities);
+      return true;
+    }
+    final local = elapsed - plan.startOffset;
+    final done = playback.advanceTo(
+      local.isNegative
+          ? 0
+          : local.inMicroseconds / Duration.microsecondsPerSecond,
+    );
+    _currentValues = List<double>.filled(_currentValues.length, 0);
+    _velocityValues = List<double>.filled(_velocityValues.length, 0);
+    playback.copyStateInto(_currentValues, _velocityValues);
+    return done;
+  }
+
+  void _restoreArchive(int index) {
+    final plan = _archive[index];
+    _archive.removeRange(index, _archive.length);
+    _planStart = plan.start;
+    _startOffset = plan.startOffset;
+    _stepPlayback = plan.playback;
+    _currentValues = List.of(plan.values);
+    _velocityValues = List.of(plan.velocities);
+    _playback = plan.playback == null
+        ? _TrackSlotPlayback.idle
+        : _TrackSlotPlayback.chained;
+    _restoredArchive = true;
   }
 
   /// Makes a retained plan playable again, e.g. after it completed.
@@ -210,4 +295,29 @@ class _TrackSlot<T extends Object> {
 enum _TrackSlotPlayback {
   idle,
   chained,
+}
+
+/// A plan that a slot replaced, kept for scrubbing back.
+class _ArchivedPlan<T extends Object> {
+  _ArchivedPlan({
+    required this.start,
+    required this.startOffset,
+    required this.playback,
+    required this.values,
+    required this.velocities,
+  });
+
+  /// When this plan became current, on the controller clock.
+  final Duration start;
+
+  /// The playback's start offset, when it has one.
+  final Duration startOffset;
+
+  /// The replaced playback, or null if the track was holding a set value.
+  final StepPlayback<T>? playback;
+
+  /// The track's state when the plan was replaced, used when there is no
+  /// playback.
+  final List<double> values;
+  final List<double> velocities;
 }

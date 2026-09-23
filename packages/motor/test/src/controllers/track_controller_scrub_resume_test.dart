@@ -359,4 +359,82 @@ void main() {
       controller.stop(canceled: true);
     });
   });
+
+  group('TrackController history', () {
+    const linear1s = Motion.linear(Duration(seconds: 1));
+    final track = Track<double>(MotionConverter.single, initial: 0);
+
+    Future<TrackController> redirected(WidgetTester tester) async {
+      final controller = TrackController(vsync: tester)
+        ..animate([track.to(1, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      controller.animate([track.to(0, motion: linear1s)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      return controller;
+    }
+
+    testWidgets('scrubbing back past a redirect shows the earlier plan',
+        (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      final controller = await redirected(tester);
+      expect(controller.value(track), closeTo(0.4, error));
+
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 300));
+      expect(controller.value(track), closeTo(0.3, error));
+      final shown = controller.inspectPlayback().tracks.single.steps.single;
+      expect((shown as StepTo<Object>).value, 1);
+
+      controller.scrubTo(const Duration(milliseconds: 600));
+      expect(controller.value(track), closeTo(0.45, error));
+
+      controller.stop(canceled: true);
+      controller.dispose();
+      subscription.dispose();
+    });
+
+    testWidgets('resuming before a redirect continues the earlier plan',
+        (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      final controller = await redirected(tester);
+
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 300))
+        ..resume();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controller.value(track), closeTo(0.7, error));
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(controller.value(track), closeTo(1, error));
+
+      controller.stop(canceled: true);
+      controller.dispose();
+      subscription.dispose();
+    });
+
+    testWidgets('keeps no history without inspection tooling', (tester) async {
+      final controller = await redirected(tester);
+
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 300));
+      expect(controller.value(track), closeTo(0.5, error));
+
+      controller.stop(canceled: true);
+      controller.dispose();
+    });
+  });
+}
+
+class _Observer implements MotorInspectionObserver {
+  @override
+  void didRegisterController(TrackController controller) {}
+
+  @override
+  void didUnregisterController(TrackController controller) {}
 }

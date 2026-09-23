@@ -171,6 +171,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> withVelocity,
   ) {
     final slot = _slot(trackValue.track, initialOverride: trackValue.value);
+    _archive(slot);
     final explicitVelocity = _velocityFor(trackValue.track, withVelocity);
     if (explicitVelocity != null) {
       _pendingVelocityEstimates.remove(trackValue.track);
@@ -362,9 +363,11 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Scrubbing resolves plans exactly like playback does, including sync
   /// barriers, so it shows what playback would show at [t]. Times already
-  /// played are shown as they played. Looping plans that contain sync steps
-  /// keep only their two most recent cycles; earlier times show the start of
-  /// the earliest cycle kept.
+  /// played are shown as they played. While inspection tooling is attached,
+  /// that includes plans a track has since been redirected away from, and
+  /// resuming from such a time continues the earlier plan. Looping plans
+  /// that contain sync steps keep only their two most recent cycles; earlier
+  /// times show the start of the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
@@ -372,7 +375,7 @@ class TrackController extends Animation<TrackValueReader>
     _playbackRevision++;
     _clock.seek(t);
     for (final entry in _slots.entries) {
-      if (!entry.value.hasPlayback) continue;
+      if (!entry.value.hasPlayback && !entry.value.hasArchive) continue;
       _activeTracks.add(entry.key);
       entry.value.reactivate();
     }
@@ -409,6 +412,12 @@ class TrackController extends Animation<TrackValueReader>
     _startTicker();
     _checkStatusChanged();
     notifyListeners();
+  }
+
+  /// Keeps [slot]'s current plan for scrubbing back while inspection tooling
+  /// is attached.
+  void _archive(_TrackSlot slot) {
+    if (MotorInspectionRegistry.isInspecting) slot.archive(_clock.now);
   }
 
   void _recordPlan(
@@ -462,6 +471,7 @@ class TrackController extends Animation<TrackValueReader>
     _playbackRevision++;
     if (tracks == null) {
       for (final slot in _slots.values) {
+        _archive(slot);
         slot.stop(canceled: true);
       }
       _activeTracks.clear();
@@ -470,7 +480,9 @@ class TrackController extends Animation<TrackValueReader>
       _pendingVelocityEstimates.clear();
     } else {
       for (final track in tracks) {
-        _slots[track]?.stop(canceled: true);
+        final slot = _slots[track];
+        if (slot != null) _archive(slot);
+        slot?.stop(canceled: true);
         _activeTracks.remove(track);
         _pendingVelocityEstimates.remove(track);
       }
@@ -490,6 +502,7 @@ class TrackController extends Animation<TrackValueReader>
     for (final track in targets) {
       final slot = _slots[track];
       if (slot == null) continue;
+      _archive(slot);
       if (slot.settle(startOffset: _clock.now)) {
         // Keep the track active so the ticker drives it to rest.
         _activeTracks.add(track);
@@ -554,7 +567,7 @@ class TrackController extends Animation<TrackValueReader>
   PlaybackSnapshot internalInspectPlayback() {
     final tracks = <TrackPlayback>[];
     for (final entry in _slots.entries) {
-      final playback = entry.value._stepPlayback;
+      final playback = entry.value.shownPlayback;
       if (playback == null) continue;
       tracks.add(
         TrackPlayback(
@@ -569,7 +582,7 @@ class TrackController extends Animation<TrackValueReader>
           cycle: playback.cycle,
           isWaitingForSync: playback.isWaitingForSync,
           syncToken: playback.syncToken,
-          startOffset: entry.value.startOffset,
+          startOffset: entry.value.shownStartOffset,
           playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
           cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
           stepStarts: [
@@ -636,6 +649,7 @@ class TrackController extends Animation<TrackValueReader>
   }) {
     _applyPendingVelocity(animation.track);
     final slot = _slot(animation.track, forAnimation: animation);
+    _archive(slot);
     if (animation.from case final from?) {
       slot.setValue(from);
     }
@@ -731,14 +745,19 @@ class TrackController extends Animation<TrackValueReader>
   ) {
     _pruneTokenParticipants(timelineTracks);
     for (final animation in animations) {
-      for (final step in animation.steps) {
-        if (step is! StepSync) continue;
-        (_tokenParticipants[step.token] ??= {}).add(animation.track);
-        // Join the round the other participants are in.
-        final counts = _syncPasses[step.token] ??= {};
-        if (!counts.containsKey(animation.track)) {
-          counts[animation.track] = counts.values.fold(0, math.max);
-        }
+      _joinSyncTokens(animation.track, animation.steps);
+    }
+  }
+
+  /// Adds [track] as a participant of every sync token in [steps], joining
+  /// the round the other participants are in.
+  void _joinSyncTokens(Track track, Iterable<TrackStep<Object>> steps) {
+    for (final step in steps) {
+      if (step is! StepSync) continue;
+      (_tokenParticipants[step.token] ??= {}).add(track);
+      final counts = _syncPasses[step.token] ??= {};
+      if (!counts.containsKey(track)) {
+        counts[track] = counts.values.fold(0, math.max);
       }
     }
   }
@@ -873,7 +892,10 @@ class TrackController extends Animation<TrackValueReader>
       for (final track in tracks) {
         final slot = _slots[track];
         if (slot == null) continue;
-        if (!slot.tick(now)) allDone = false;
+        if (!slot.tick(now, scrubbing: scrubbing)) allDone = false;
+        if (slot.takeRestoredArchive()) {
+          _joinSyncTokens(track, slot.shownPlayback?.stepsView ?? const []);
+        }
         _notifyStep(track, slot, notify: !scrubbing);
       }
       if (!_releaseArrivedBarriers(now, anchorFrames: !scrubbing)) break;
