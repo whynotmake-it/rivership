@@ -18,7 +18,7 @@
    - `onStep` reports every step a track enters, in order, even within one frame.
    - `animationOf(track)` returns a cached `Animation<T>` for one track that composes with tweens, curves, and transitions and reports that track's own status.
  - **FEAT**: add `PhaseTrackController<P>` with `playPhases`, `goToPhase`, `setTimeline`, and `currentPhase`, reporting `PhaseTransitioning`/`PhaseSettled`. `phaseLoop` supports `loop`, `seamless`, and `pingPong` (phases in reverse order on the way back).
- - **FEAT**: add `TrackBuilder` (inline `animations:` + `loop:`, or `TrackBuilder.timeline(...)`) and `PhaseTrackBuilder<P>` (manual `currentPhase` or auto-advancing `playing`). Equal animation lists and timelines do not restart playback on rebuild; `restartTrigger` replays from the start.
+ - **FEAT**: add `TrackBuilder` (inline `animations:` + `loop:`, or `TrackBuilder.timeline(...)`) and `PhaseTrackBuilder<P>` (manual `currentPhase` or auto-advancing `playing`). Equal animation lists and timelines do not restart playback on rebuild; `restartTrigger` replays from the start (including the timeline's seeds). Both accept `velocityTracking`, which can change without restarting playback, as can `TrackController.velocityTracking`.
 
 ### Inspection and tooling
 

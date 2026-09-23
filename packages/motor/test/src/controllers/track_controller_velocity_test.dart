@@ -93,6 +93,25 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets('stops estimating once velocity tracking is turned off',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+      controller.set([position.value(0.0)]);
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(1.0)]);
+      final tracked = controller.velocity(position);
+      expect(tracked, greaterThan(0));
+
+      controller.velocityTracking = const VelocityTracking.off();
+      expect(controller.velocity(position), tracked);
+
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(2.0)]);
+      await tester.pump(const Duration(milliseconds: 16));
+      controller.set([position.value(3.0)]);
+      expect(controller.velocity(position), 0.0);
+    });
+
     testWidgets('keeps its tracked velocity when play starts later',
         (tester) async {
       controller = TrackController(vsync: tester);

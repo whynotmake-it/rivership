@@ -321,7 +321,7 @@ void main() {
       expect(captured, closeTo(1, error));
     });
 
-    testWidgets('changing velocityTracking recreates playback', (tester) async {
+    testWidgets('changing velocityTracking keeps playing', (tester) async {
       final scale = Track<double>(MotionConverter.single, initial: 0);
       double? captured;
 
@@ -351,8 +351,8 @@ void main() {
       expect(midway, closeTo(0.5, error));
 
       await tester.pumpWidget(build(const VelocityTracking.off()));
-      await tester.pump(const Duration(milliseconds: 16));
-      expect(captured, lessThan(midway));
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(captured, closeTo(0.6, error));
 
       await tester.pumpAndSettle();
       expect(captured, closeTo(1, error));

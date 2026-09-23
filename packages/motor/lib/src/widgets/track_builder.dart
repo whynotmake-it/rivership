@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_timeline.dart';
 
@@ -27,6 +28,7 @@ class TrackBuilder extends StatefulWidget {
     this.loop = LoopMode.none,
     this.restartTrigger,
     this.active = true,
+    this.velocityTracking = const VelocityTracking.on(),
     this.onStep,
     this.onAnimationStatusChanged,
     this.child,
@@ -40,6 +42,7 @@ class TrackBuilder extends StatefulWidget {
     required this.builder,
     this.restartTrigger,
     this.active = true,
+    this.velocityTracking = const VelocityTracking.on(),
     this.onStep,
     this.onAnimationStatusChanged,
     this.child,
@@ -68,6 +71,9 @@ class TrackBuilder extends StatefulWidget {
 
   /// Whether playback is active.
   final bool active;
+
+  /// {@macro motor.velocityTracking}
+  final VelocityTracking velocityTracking;
 
   /// Called when a track enters a step.
   ///
@@ -102,6 +108,7 @@ class _TrackBuilderState extends State<TrackBuilder>
     super.initState();
     _controller = TrackController(
       vsync: this,
+      velocityTracking: widget.velocityTracking,
       debugLabel: widget.debugLabel,
     );
     if (widget.onAnimationStatusChanged != null) {
@@ -113,6 +120,7 @@ class _TrackBuilderState extends State<TrackBuilder>
   @override
   void didUpdateWidget(TrackBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _controller.velocityTracking = widget.velocityTracking;
 
     if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
       if (oldWidget.onAnimationStatusChanged != null) {

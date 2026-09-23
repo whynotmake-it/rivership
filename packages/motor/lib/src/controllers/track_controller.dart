@@ -51,16 +51,27 @@ class TrackController extends Animation<TrackValueReader>
   TrackController({
     required TickerProvider vsync,
     List<TrackValue>? from,
-    this.velocityTracking = const VelocityTracking.on(),
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
     this.debugLabel,
-  }) : _from = List<TrackValue>.of(from ?? const []) {
+  })  : _from = List<TrackValue>.of(from ?? const []),
+        _velocityTracking = velocityTracking {
     _ticker = vsync.createTicker(_tick);
     MotorInspectionRegistry.registerController(this);
   }
 
   /// Controls whether [set] automatically tracks velocity from position
   /// samples. Explicit velocity on [TrackValue] always works regardless.
-  final VelocityTracking velocityTracking;
+  ///
+  /// Changing it keeps the velocities estimated so far and starts sampling
+  /// afresh.
+  VelocityTracking get velocityTracking => _velocityTracking;
+  VelocityTracking _velocityTracking;
+
+  set velocityTracking(VelocityTracking value) {
+    if (value == _velocityTracking) return;
+    resetVelocityTracking();
+    _velocityTracking = value;
+  }
 
   /// A human-readable name shown by optional inspection tools.
   final String? debugLabel;
