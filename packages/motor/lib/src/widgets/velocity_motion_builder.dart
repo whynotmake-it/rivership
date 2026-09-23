@@ -50,6 +50,7 @@ class VelocityMotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   });
 
@@ -65,6 +66,7 @@ class VelocityMotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super.motionPerDimension();
 
@@ -111,6 +113,7 @@ class SingleVelocityMotionBuilder extends VelocityMotionBuilder<double> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super(converter: const SingleMotionConverter());
 }

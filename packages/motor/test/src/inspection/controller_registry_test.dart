@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -174,6 +175,50 @@ void main() {
     );
 
     controller.dispose();
+    subscription.dispose();
+  });
+
+  testWidgets('builders pass their debug labels to their controllers', (
+    tester,
+  ) async {
+    final observer = _RecordingObserver();
+    final subscription = MotorInspectionRegistry.attach(observer);
+    final track = Track<double>(MotionConverter.single, initial: 0);
+    const motion = Motion.linear(Duration(milliseconds: 100));
+    Widget build(BuildContext context, Object value, Widget? child) =>
+        const SizedBox();
+
+    await tester.pumpWidget(
+      Column(
+        children: [
+          TrackBuilder(
+            debugLabel: 'Tracks',
+            animations: [track.to(1, motion: motion)],
+            builder: (context, value, child) => const SizedBox(),
+          ),
+          PhaseTrackBuilder<int>(
+            debugLabel: 'Phases',
+            timeline: TrackPhaseTimeline({
+              0: [track.to(1, motion: motion)],
+            }),
+            builder: (context, value, phase, child) => const SizedBox(),
+          ),
+          SingleMotionBuilder(
+            debugLabel: 'Single value',
+            value: 1,
+            motion: motion,
+            builder: build,
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      [for (final controller in observer.registered) controller.debugLabel],
+      containsAll(['Tracks', 'Phases', 'Single value']),
+    );
+
+    await tester.pumpWidget(const SizedBox());
     subscription.dispose();
   });
 }

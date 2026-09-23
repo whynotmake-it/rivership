@@ -35,6 +35,7 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   });
 
@@ -49,6 +50,7 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super.motionPerDimension();
 
@@ -88,6 +90,7 @@ class SingleMotionBuilder extends MotionBuilder<double> {
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super(converter: const SingleMotionConverter());
 }

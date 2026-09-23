@@ -16,6 +16,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.from,
     this.child,
+    this.debugLabel,
     super.key,
   }) : motionPerDimension = null;
 
@@ -29,6 +30,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.from,
     this.child,
+    this.debugLabel,
     super.key,
   }) : motion = null;
 
@@ -49,6 +51,9 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// during the lifecycle of this widget will be ignored.
   /// {@endtemplate}
   final T? from;
+
+  /// {@macro motor.debugLabel}
+  final String? debugLabel;
 
   /// {@template motor.MotionBuilder.motion}
   /// The motion to use for the animation.
@@ -120,6 +125,7 @@ abstract class BaseMotionBuilderState<T extends Object>
           initialValue: widget.from ?? widget.value,
           converter: widget.converter,
           velocityTracking: widget.velocityTracking,
+          debugLabel: widget.debugLabel,
         ),
       null => MotionController.motionPerDimension(
           motionPerDimension: widget.motionPerDimension!,
@@ -127,6 +133,7 @@ abstract class BaseMotionBuilderState<T extends Object>
           initialValue: widget.from ?? widget.value,
           converter: widget.converter,
           velocityTracking: widget.velocityTracking,
+          debugLabel: widget.debugLabel,
         ),
     };
 

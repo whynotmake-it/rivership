@@ -440,6 +440,9 @@ submitted plans with their start values, so the tool can replay one with
 `playbackSpeed` (controller-local slow motion) and `motionOverride` (swap the
 motions of a track's target steps in future playback).
 
+Give controllers, builders, and tracks a `debugLabel` so tools can show
+readable names, for example `TrackBuilder(debugLabel: 'Checkout card', ...)`.
+
 The example gallery uses this API for its live, draggable timeline inspector.
 
 ### Sequence Animations (deprecated)

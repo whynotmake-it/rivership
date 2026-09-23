@@ -30,6 +30,7 @@ class TrackBuilder extends StatefulWidget {
     this.onStep,
     this.onAnimationStatusChanged,
     this.child,
+    this.debugLabel,
     super.key,
   }) : timeline = null;
 
@@ -42,6 +43,7 @@ class TrackBuilder extends StatefulWidget {
     this.onStep,
     this.onAnimationStatusChanged,
     this.child,
+    this.debugLabel,
     super.key,
   })  : animations = null,
         loop = LoopMode.none;
@@ -81,6 +83,12 @@ class TrackBuilder extends StatefulWidget {
   /// Optional child.
   final Widget? child;
 
+  /// {@template motor.debugLabel}
+  /// A name for the controller this widget creates, shown by inspection tools
+  /// such as `motor_devtools`. Read once, when the controller is created.
+  /// {@endtemplate}
+  final String? debugLabel;
+
   @override
   State<TrackBuilder> createState() => _TrackBuilderState();
 }
@@ -92,7 +100,10 @@ class _TrackBuilderState extends State<TrackBuilder>
   @override
   void initState() {
     super.initState();
-    _controller = TrackController(vsync: this);
+    _controller = TrackController(
+      vsync: this,
+      debugLabel: widget.debugLabel,
+    );
     if (widget.onAnimationStatusChanged != null) {
       _controller.addStatusListener(widget.onAnimationStatusChanged!);
     }

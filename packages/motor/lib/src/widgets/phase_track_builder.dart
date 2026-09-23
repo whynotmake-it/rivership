@@ -65,6 +65,7 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
     this.onTransition,
     this.onAnimationStatusChanged,
     this.child,
+    this.debugLabel,
     super.key,
   });
 
@@ -116,6 +117,9 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
   /// Optional child passed to [builder].
   final Widget? child;
 
+  /// {@macro motor.debugLabel}
+  final String? debugLabel;
+
   @override
   State<PhaseTrackBuilder<P>> createState() => _PhaseTrackBuilderState<P>();
 }
@@ -130,6 +134,7 @@ class _PhaseTrackBuilderState<P extends Object>
     _controller = PhaseTrackController<P>(
       vsync: this,
       velocityTracking: widget.velocityTracking,
+      debugLabel: widget.debugLabel,
     );
     if (widget.onAnimationStatusChanged != null) {
       _controller.addStatusListener(widget.onAnimationStatusChanged!);
@@ -155,6 +160,7 @@ class _PhaseTrackBuilderState<P extends Object>
       _controller = PhaseTrackController<P>(
         vsync: this,
         velocityTracking: widget.velocityTracking,
+        debugLabel: widget.debugLabel,
       );
       if (widget.onAnimationStatusChanged != null) {
         _controller.addStatusListener(widget.onAnimationStatusChanged!);
