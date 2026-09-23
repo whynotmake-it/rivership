@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:motor_benchmark/src/allocations.dart';
@@ -14,6 +15,8 @@ enum Metric {
   read('Value read', 'ns/value'),
   start('Start from rest', 'µs/op'),
   retarget('Retarget mid-flight', 'µs/op'),
+  drag('Drag sample (set every value)', 'µs/sample'),
+  fling('Fling handoff', 'µs/op'),
   allocated('Allocated', 'B/frame'),
   retained('Retained', 'KB');
 
@@ -92,6 +95,20 @@ abstract class BenchSide {
   void dispose();
 }
 
+/// Values that follow a gesture, then fling with the tracked velocity.
+abstract class GestureSide implements BenchSide {
+  /// Sets every value from the pointer at [position], sampled at [time].
+  void sample(double position, Duration time);
+
+  /// Animates every value toward the pointer at [target], handing over the
+  /// velocity tracked from the samples.
+  void fling(double target);
+
+  @override
+  void start({required bool forward}) =>
+      throw UnsupportedError('Gesture sides fling instead of starting.');
+}
+
 /// Creates a [BenchSide]. [steady] asks for motions long enough to stay in
 /// flight for the whole measured window; otherwise realistic short motions.
 typedef SideFactory = BenchSide Function(
@@ -112,6 +129,7 @@ class BenchScenario {
     required this.motor,
     required this.flutter,
     this.retargets = false,
+    this.gesture = false,
   });
 
   final String id;
@@ -129,6 +147,9 @@ class BenchScenario {
   /// Whether mid-flight retargets are measured (springs only: they keep
   /// velocity; a retargeted curve has no equivalent on the Flutter side).
   final bool retargets;
+
+  /// Whether the sides are [GestureSide]s, measured by drag and fling.
+  final bool gesture;
 }
 
 /// Per-run samples for one side of one scenario.
@@ -227,20 +248,6 @@ Future<List<ScenarioResult>> runSuite({
   final results = <ScenarioResult>[];
   final allocationBaseline =
       profiler == null ? 0.0 : await _idleAllocations(driver, profiler);
-  if (profiler != null && scenarios.isNotEmpty) {
-    // The first pass pays for one-time lazy initialization; discard it.
-    for (final factory in [scenarios.first.motor, scenarios.first.flutter]) {
-      await _measureAllocations(
-        driver,
-        config,
-        profiler,
-        factory,
-        SideResult(),
-        allocationBaseline,
-      );
-    }
-  }
-
   for (final scenario in scenarios) {
     log?.call('→ ${scenario.id}: ${scenario.motorSetup} vs '
         '${scenario.flutterSetup}');
@@ -252,8 +259,15 @@ Future<List<ScenarioResult>> runSuite({
       ];
       for (final (factory, side) in run.isEven ? sides : sides.reversed) {
         final into = run == 0 ? SideResult() : side;
-        _measureSteady(driver, config, factory, into, scenario.values);
-        _measureOperations(driver, config, factory, into, scenario);
+        if (scenario.gesture) {
+          _withFrameClock(
+            driver,
+            () => _measureGesture(driver, config, factory, into),
+          );
+        } else {
+          _measureSteady(driver, config, factory, into, scenario.values);
+          _measureOperations(driver, config, factory, into, scenario);
+        }
         if (run == 0) side.checkValue = into.checkValue;
       }
       // Let pending microtasks (ticker futures) run between runs.
@@ -264,14 +278,31 @@ Future<List<ScenarioResult>> runSuite({
         (scenario.motor, result.motor),
         (scenario.flutter, result.flutter),
       ]) {
-        await _measureAllocations(
-          driver,
-          config,
-          profiler,
-          factory,
-          side,
-          allocationBaseline,
-        );
+        // The first pass pays for one-time lazy initialization; discard it.
+        for (final into in [SideResult(), side]) {
+          if (scenario.gesture) {
+            await _withFrameClock(
+              driver,
+              () => _measureGestureAllocations(
+                driver,
+                config,
+                profiler,
+                factory,
+                into,
+                allocationBaseline,
+              ),
+            );
+          } else {
+            await _measureAllocations(
+              driver,
+              config,
+              profiler,
+              factory,
+              into,
+              allocationBaseline,
+            );
+          }
+        }
       }
     }
     results.add(result);
@@ -376,6 +407,102 @@ void _measureOperations(
   side
     ..stop()
     ..dispose();
+}
+
+/// Runs [body] with `package:clock` reading the frame timestamps, so motor's
+/// velocity samples are 60 Hz apart, like the Flutter side's.
+T _withFrameClock<T>(FrameDriver driver, T Function() body) {
+  // UTC: a local-time DateTime looks up the time zone, which is far slower
+  // than the DateTime.now() it stands in for.
+  DateTime now() => DateTime.fromMicrosecondsSinceEpoch(
+        driver.now.inMicroseconds,
+        isUtc: true,
+      );
+  return withClock(Clock(now), body);
+}
+
+/// Pointer travel per frame, in logical pixels.
+const _dragStep = 2.0;
+
+/// Feeds [count] gesture samples, one per frame, starting at [from].
+double _drag(
+  FrameDriver driver,
+  GestureSide side,
+  double from,
+  int count, [
+  Stopwatch? timer,
+]) {
+  var position = from;
+  for (var i = 0; i < count; i++) {
+    driver.frame();
+    position += _dragStep;
+    timer?.start();
+    side.sample(position, driver.now);
+    timer?.stop();
+  }
+  return position;
+}
+
+void _measureGesture(
+  FrameDriver driver,
+  BenchConfig config,
+  SideFactory factory,
+  SideResult into,
+) {
+  final side = factory(const BenchVsync(), steady: false) as GestureSide;
+
+  // Equivalence: both sides must hand over the same velocity.
+  var position = _drag(driver, side, 0, config.warmupFrames);
+  side.fling(position + 50);
+  for (var i = 0; i < 3; i++) {
+    driver.frame();
+  }
+  into.checkValue = side.read();
+  side.stop();
+
+  final timer = Stopwatch();
+  position = _drag(driver, side, position, config.frames, timer);
+  into.add(Metric.drag, _micros(timer) / config.frames);
+
+  timer.reset();
+  for (var i = 0; i < config.operations; i++) {
+    position = _drag(driver, side, position, 5);
+    timer.start();
+    side.fling(position + 50);
+    timer.stop();
+    driver.frame(timer);
+    _expectAnimating(side, 'fling $i');
+    driver.frame();
+    side.stop();
+  }
+  into.add(Metric.fling, _micros(timer) / config.operations);
+
+  _expectFinite(side.read());
+  side.dispose();
+}
+
+Future<void> _measureGestureAllocations(
+  FrameDriver driver,
+  BenchConfig config,
+  AllocationProfiler profiler,
+  SideFactory factory,
+  SideResult into,
+  double idleFrameBytes,
+) async {
+  final before = await profiler.liveBytes();
+  final side = factory(const BenchVsync(), steady: false) as GestureSide;
+  var position = _drag(driver, side, 0, config.warmupFrames);
+  final after = await profiler.liveBytes();
+  into.add(Metric.retained, (after - before) / 1024);
+
+  final perFrame = await profiler.allocatedPerCall(() {
+    driver.frame();
+    position += _dragStep;
+    side.sample(position, driver.now);
+  });
+  _expectFinite(side.read());
+  side.dispose();
+  into.add(Metric.allocated, math.max(0, perFrame - idleFrameBytes));
 }
 
 Future<double> _idleAllocations(

@@ -9,10 +9,14 @@ import 'package:motor_benchmark/motor_benchmark.dart';
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
+  // testWidgets because VelocityTracker reads the test binding's clock;
+  // runAsync because the suite yields to real microtasks between runs.
+  testWidgets(
     'Motor vs AnimationController benchmarks',
-    () async {
-      final results = await runFromEnvironment(binding);
+    (tester) async {
+      final results = (await tester.runAsync(
+        () => runFromEnvironment(binding),
+      ))!;
       for (final result in results) {
         expect(
           result.equivalent,
@@ -21,7 +25,7 @@ void main() {
               'values (${result.motor.checkValue} vs '
               '${result.flutter.checkValue})',
         );
-        for (final metric in [Metric.frame, Metric.read, Metric.start]) {
+        for (final metric in result.motor.samples.keys) {
           expect(result.motor.stats(metric)!.median, greaterThan(0));
           expect(result.flutter.stats(metric)!.median, greaterThan(0));
         }

@@ -1,4 +1,5 @@
 import 'package:flutter/animation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/physics.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_benchmark/src/harness.dart';
@@ -101,7 +102,236 @@ List<BenchScenario> allScenarios() => [
         ),
         fold: (c) => c.r + c.g + c.b + c.a,
       ),
+      for (final tracked in [true, false]) ...[
+        for (final n in _gestureCounts)
+          _gesture<double>(
+            tracked: tracked,
+            name: '1D',
+            count: n,
+            converter: const SingleMotionConverter(),
+            valueAt: (p) => p,
+            dims: 1,
+            fold: _foldDouble,
+          ),
+        for (final n in _gestureCounts)
+          _gesture<Offset>(
+            tracked: tracked,
+            name: 'Offset',
+            count: n,
+            converter: const OffsetMotionConverter(),
+            valueAt: (p) => Offset(p, p / 2),
+            dims: 2,
+            fold: (o) => o.dx + o.dy,
+          ),
+      ],
     ];
+
+const _gestureCounts = [1, 250];
+
+/// Values following a drag via `set` every frame, then flinging with the
+/// tracked velocity, against `AnimationController.value =` plus one
+/// [VelocityTracker] per value (or no tracker, when [tracked] is false).
+///
+/// A value at pointer position `p` is `valueAt(p)`; the Flutter side's
+/// dimension `d` of it is `p` for `d == 0` and `p / 2` otherwise.
+BenchScenario _gesture<T extends Object>({
+  required bool tracked,
+  required String name,
+  required int count,
+  required MotionConverter<T> converter,
+  required T Function(double position) valueAt,
+  required int dims,
+  required double Function(T value) fold,
+}) {
+  final tracking = tracked ? 'on' : 'off';
+  return BenchScenario(
+    id: 'drag_${tracked ? 'tracked' : 'untracked'}_${name.toLowerCase()}_x$count',
+    group: 'Drag $name, tracking $tracking',
+    values: count,
+    gesture: true,
+    motorSetup: '1 TrackController, $count track${count == 1 ? '' : 's'}, '
+        'velocityTracking $tracking',
+    flutterSetup: '${count * dims} AC'
+        '${tracked ? ' + $count VelocityTracker' : ''}',
+    motor: (vsync, {required steady}) => _MotorGestureSide<T>(
+      vsync,
+      count: count,
+      tracked: tracked,
+      converter: converter,
+      valueAt: valueAt,
+      fold: fold,
+    ),
+    flutter: (vsync, {required steady}) => _FlutterGestureSide(
+      vsync,
+      count: count,
+      tracked: tracked,
+      dims: dims,
+    ),
+  );
+}
+
+/// [count] tracks on one [TrackController], set from a drag. Track `k`
+/// follows the pointer offset by `k`.
+class _MotorGestureSide<T extends Object> extends GestureSide {
+  _MotorGestureSide(
+    TickerProvider vsync, {
+    required int count,
+    required bool tracked,
+    required MotionConverter<T> converter,
+    required this.valueAt,
+    required this.fold,
+  })  : _tracks = List.generate(
+          count,
+          (_) => Track<T>(converter, motion: _shortSpring),
+        ),
+        _controller = TrackController(
+          vsync: vsync,
+          velocityTracking: tracked
+              ? const VelocityTracking.on()
+              : const VelocityTracking.off(),
+        );
+
+  final T Function(double position) valueAt;
+  final double Function(T value) fold;
+  final List<Track<T>> _tracks;
+  final TrackController _controller;
+
+  @override
+  void sample(double position, Duration time) {
+    _controller.set([
+      for (var k = 0; k < _tracks.length; k++)
+        _tracks[k].value(valueAt(position + k)),
+    ]);
+  }
+
+  @override
+  void fling(double target) {
+    _controller.animate([
+      for (var k = 0; k < _tracks.length; k++)
+        _tracks[k]([TrackStep.to(valueAt(target + k))]),
+    ]);
+  }
+
+  @override
+  double read() {
+    var sum = 0.0;
+    for (final track in _tracks) {
+      sum += fold(_controller.value(track));
+    }
+    return sum;
+  }
+
+  @override
+  bool get isAnimating => _controller.isAnimating;
+
+  @override
+  void stop() => _controller.stop();
+
+  @override
+  void dispose() => _controller.dispose();
+}
+
+/// [count] values of [dims] unbounded `AnimationController`s each, set from
+/// a drag, with one [VelocityTracker] per value when tracked.
+class _FlutterGestureSide extends GestureSide {
+  _FlutterGestureSide(
+    TickerProvider vsync, {
+    required int count,
+    required bool tracked,
+    required int dims,
+  })  : _spring = _shortSpring.description,
+        _values = List.generate(
+          count,
+          (_) => List.generate(
+            dims,
+            (_) => AnimationController.unbounded(vsync: vsync),
+            growable: false,
+          ),
+          growable: false,
+        ),
+        _trackers = tracked
+            ? List.generate(
+                count,
+                (_) => VelocityTracker.withKind(PointerDeviceKind.touch),
+                growable: false,
+              )
+            : null;
+
+  final SpringDescription _spring;
+  final List<List<AnimationController>> _values;
+  final List<VelocityTracker>? _trackers;
+
+  static double _dimension(int d, double position) =>
+      d == 0 ? position : position / 2;
+
+  @override
+  void sample(double position, Duration time) {
+    for (var k = 0; k < _values.length; k++) {
+      final dims = _values[k];
+      final p = position + k;
+      for (var d = 0; d < dims.length; d++) {
+        dims[d].value = _dimension(d, p);
+      }
+      _trackers?[k].addPosition(
+        time,
+        Offset(dims[0].value, dims.length > 1 ? dims[1].value : 0),
+      );
+    }
+  }
+
+  @override
+  void fling(double target) {
+    for (var k = 0; k < _values.length; k++) {
+      final dims = _values[k];
+      final velocity =
+          _trackers?[k].getVelocity().pixelsPerSecond ?? Offset.zero;
+      for (var d = 0; d < dims.length; d++) {
+        final c = dims[d];
+        c.animateWith(
+          SpringSimulation(
+            _spring,
+            c.value,
+            _dimension(d, target + k),
+            d == 0 ? velocity.dx : velocity.dy,
+            snapToEnd: true,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  double read() {
+    var sum = 0.0;
+    for (final dims in _values) {
+      for (final c in dims) {
+        sum += c.value;
+      }
+    }
+    return sum;
+  }
+
+  @override
+  bool get isAnimating => _values.any((dims) => dims.any((c) => c.isAnimating));
+
+  @override
+  void stop() {
+    for (final dims in _values) {
+      for (final c in dims) {
+        c.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final dims in _values) {
+      for (final c in dims) {
+        c.dispose();
+      }
+    }
+  }
+}
 
 /// Filters [allScenarios] by comma-separated ids or `_`-separated id
 /// prefixes: `spring` and `spring_1d` match `spring_1d_x10`, `spring_1d_x1`

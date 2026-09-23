@@ -27,6 +27,9 @@ class FrameDriver {
   /// Timestamps start far ahead of any real engine frame and only increase.
   Duration _now = const Duration(days: 1000);
 
+  /// The timestamp of the latest frame.
+  Duration get now => _now;
+
   /// Runs one frame, adding the time spent in the ticker phase to [timer].
   void frame([Stopwatch? timer]) {
     _now += frameInterval;

@@ -39,6 +39,7 @@ ninja, GTK 3 headers, libstdc++ for the newest installed GCC) and a display.
 | `curve_1d_x{1,10,50,250,1000}` | 1 `TrackController`, N `CurvedMotion` tracks | N `AnimationController` + `CurvedAnimation` |
 | `spring_1d_x{…}` | 1 `TrackController`, N spring tracks | N unbounded `AnimationController` + `SpringSimulation` |
 | `curve_{offset,rect,color}` | 1 multi-dimensional track | 1 `AnimationController` + `CurvedAnimation` + tween |
+| `drag_{tracked,untracked}_{1d,offset}_x{1,250}` | `set` every frame, velocity tracking on or off, then a fling | `AnimationController.value =` + one `VelocityTracker` per value (or none), then `animateWith` |
 | `spring_{offset,rect,color}` | 1 multi-dimensional track | 1 `AnimationController` per dimension |
 
 Every run checks that both sides read the same values after warmup, and fails

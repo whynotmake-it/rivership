@@ -9,6 +9,7 @@ environment:
   flutter: ">=3.32.0"
 
 dependencies:
+  clock: ^1.1.0
   flutter:
     sdk: flutter
   flutter_test:
