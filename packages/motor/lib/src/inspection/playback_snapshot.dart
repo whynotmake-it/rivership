@@ -121,30 +121,37 @@ extension TrackControllerInspection on TrackController {
   ///
   /// This copies only the small plan and timing lists, so inspectors may call
   /// it from a controller listener on every tick.
+  @experimental
   PlaybackSnapshot inspectPlayback() => internalInspectPlayback();
 
   /// Monotonic counter that changes whenever the playing plan changes.
+  @experimental
   int get playbackRevision => internalPlaybackRevision;
 
   /// The controller-local playback rate used by inspection tooling.
   ///
   /// A value of `0.25` runs this controller at quarter speed without changing
   /// Flutter's global time dilation or affecting unrelated animations.
+  @experimental
   double get playbackSpeed => internalPlaybackSpeed;
 
   /// Changes the controller-local playback rate.
+  @experimental
   set playbackSpeed(double value) => internalPlaybackSpeed = value;
 
   /// Designer overrides keyed by track identity.
+  @experimental
   Map<Track<Object>, Motion> get motionOverrides => internalMotionOverrides;
 
   /// Replaces target-based step motions for [track] on future playback.
   ///
   /// Passing null restores the authored motion. Call [replay] to hear the
   /// change immediately on the controller's most recently submitted clip.
+  @experimental
   void setMotionOverride(Track track, Motion? motion) =>
       internalSetMotionOverride(track, motion);
 
   /// Replays the most recently submitted clip from its original start values.
+  @experimental
   TickerFuture replay() => internalReplay();
 }
