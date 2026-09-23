@@ -136,6 +136,10 @@ class StepPlayback<T extends Object> {
   /// with sync steps.
   static const _foldAttempts = 8;
 
+  /// How many segments a loop that does not fold keeps for seeking back.
+  /// Whole cycles are dropped, oldest first, but never the last two.
+  static const _maxKeptSegments = 1024;
+
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
@@ -648,7 +652,7 @@ class StepPlayback<T extends Object> {
         return true;
       }
     }
-    if (!_canFold || _cycle >= _foldAttempts) _dropOldCycles(keep: 2);
+    if (!_canFold || _cycle >= _foldAttempts) _dropOldCycles();
     return false;
   }
 
@@ -664,10 +668,13 @@ class StepPlayback<T extends Object> {
     );
   }
 
-  /// Bounds memory for loops that cannot fold by forgetting all but the
-  /// last [keep] cycles. Seeking before them shows the earliest one kept.
-  void _dropOldCycles({required int keep}) {
-    final oldest = _cycle - keep;
+  /// Bounds memory for loops that cannot fold by forgetting their oldest
+  /// cycles beyond [_maxKeptSegments]. Seeking before the cycles kept shows
+  /// the earliest one kept.
+  void _dropOldCycles() {
+    final excess = _segments.length - _maxKeptSegments;
+    if (excess <= 0) return;
+    final oldest = math.min(_segments[excess - 1].cycle, _cycle - 2);
     final drop = _segments.indexWhere((segment) => segment.cycle > oldest);
     if (drop > 0) {
       _segments.removeRange(0, drop);

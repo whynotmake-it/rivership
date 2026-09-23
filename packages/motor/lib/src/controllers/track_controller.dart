@@ -434,9 +434,9 @@ class TrackController extends Animation<TrackValueReader>
   /// that includes plans a track has since been redirected away from, and
   /// resuming from such a time continues the earlier plan, as long as the
   /// track's current plan is still animating (otherwise [resume] has nothing
-  /// to resume). Looping plans
-  /// that contain sync steps keep only their two most recent cycles; earlier
-  /// times show the start of the earliest cycle kept.
+  /// to resume). Looping plans that contain sync steps keep a bounded
+  /// history of about a thousand steps; earlier times show the start of the
+  /// earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.

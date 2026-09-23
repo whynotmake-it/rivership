@@ -177,7 +177,7 @@ void main() {
         loop: LoopMode.loop,
       );
 
-      for (var t = 0.0; t < 60; t += 1 / 60) {
+      for (var t = 0.0; t < 120; t += 1 / 60) {
         folding.advanceTo(t);
         withSync.advanceTo(t);
         if (withSync.pendingSyncToken != null) {
@@ -186,7 +186,9 @@ void main() {
       }
 
       expect(folding.debugSegmentCount, lessThan(10));
-      expect(withSync.debugSegmentCount, lessThan(10));
+      // Loops that cannot fold keep about a thousand segments of history.
+      expect(withSync.debugSegmentCount, greaterThan(1000));
+      expect(withSync.debugSegmentCount, lessThanOrEqualTo(1030));
     });
 
     test('loop runs start -> end -> start -> end indefinitely', () {

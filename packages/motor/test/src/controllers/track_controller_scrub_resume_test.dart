@@ -313,6 +313,42 @@ void main() {
       controller.stop(canceled: true);
     });
 
+    testWidgets(
+        'a looping plan with a barrier keeps a bounded, exact recent history',
+        (tester) async {
+      const linear10 = Motion.linear(Duration(milliseconds: 10));
+      controller = TrackController(vsync: tester);
+      controller.animate(
+        [
+          trackA([
+            const TrackStep.to(1, motion: linear10),
+            const TrackStep.to(0, motion: linear10),
+            const TrackStep.sync(token: #cycle),
+          ]),
+        ],
+        loop: LoopMode.loop,
+      );
+      await tester.pump();
+      final recorded = <(Duration, double)>[];
+      for (var i = 0; i < 1000; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        recorded.add(
+          (controller.inspectPlayback().position, controller.value(trackA)),
+        );
+      }
+      controller.pause();
+
+      expect(
+        controller.inspectPlayback().tracks.single.segments.length,
+        lessThanOrEqualTo(1100),
+      );
+      for (final (position, value) in recorded.skip(800)) {
+        controller.scrubTo(position);
+        expect(controller.value(trackA), closeTo(value, error));
+      }
+      controller.stop(canceled: true);
+    });
+
     testWidgets('scrubs tracks started at different times on one timeline',
         (tester) async {
       controller = TrackController(vsync: tester);
