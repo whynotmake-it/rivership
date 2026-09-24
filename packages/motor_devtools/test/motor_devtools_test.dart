@@ -273,14 +273,17 @@ void main() {
     final graph = find.byKey(const ValueKey('motor-devtools-spring-graph'));
     await tester.ensureVisible(graph);
     await _settle(tester);
-    final playing = controller.value(_MotionHarnessState.opacity);
+    while (controller.isAnimating) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
     await tester.tapAt(tester.getRect(graph).topRight + const Offset(-1, 1));
     await tester.pump();
     expect(
-      controller.value(_MotionHarnessState.opacity),
-      greaterThanOrEqualTo(playing),
+      controller.isAnimating,
+      isFalse,
       reason: 'tuning on the graph does not replay the controller',
     );
+    expect(find.textContaining('1.50 s · '), findsWidgets);
     final tuned = controller.motionOverrides.values.single as CupertinoMotion;
     expect(tuned.duration, const Duration(milliseconds: 1500));
     expect(tuned.bounce, closeTo(0.8, 0.02));

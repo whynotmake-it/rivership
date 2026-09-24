@@ -363,7 +363,11 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   }) {
     _tuned.add(controller);
     controller.setMotionOverride(track, motion);
-    if (replay) controller.replay();
+    if (replay) {
+      controller.replay();
+    } else {
+      setState(() {});
+    }
   }
 
   void _restoreSession() {
