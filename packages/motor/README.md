@@ -763,6 +763,38 @@ In Flutter, the `AnimationController` can be either bounded or unbounded. `Motio
 - exposes `forward` and `reverse` methods, which internally animate towards the `upperBound` and `lowerBound` respectively.
 - will clamp the animation value to be within the bounds, but they can still overshoot as part of their `Motion` simulation.
 
+### Fixed tick rates
+
+Motor's widgets can tick at a lower, fixed rate using [`fixed_ticker`](https://pub.dev/packages/fixed_ticker). This saves frame work for animations that don't need every display frame, like a background pulse. Pass `tickerRate` to one widget, or wrap a subtree in a `TickerRateScope`:
+
+```dart
+TickerRateScope(
+  rate: TickerRate.fps(30),
+  child: TrackBuilder(
+    animations: [shimmer.to(1, motion: Motion.linear(Duration(seconds: 2)))],
+    loop: LoopMode.loop,
+    tickerRate: TickerRate.fps(10), // overrides the scope
+    builder: (context, value, child) => ...,
+  ),
+)
+```
+
+`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder`, `MotionDraggable` and `MotionPadding`. `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
+
+Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a state that mixes in `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin`:
+
+```dart
+class _MyState extends State<MyWidget>
+    with SingleFixedTickerProviderStateMixin {
+  @override
+  TickerRate get tickerRate => TickerRate.fps(30); // or leave it to TickerRateScope
+
+  late final controller = TrackController(vsync: this);
+}
+```
+
+Playback depends only on time, so a fixed rate shows fewer frames of the same animation. Scrubbing and inspection tools work as usual. In widget tests, use `pumpAndSettleFixedTickers()` from `package:fixed_ticker/testing.dart` instead of `pumpAndSettle()`.
+
 ## Custom Springs 🔧
 
 For predefined spring configurations, see the [`CupertinoMotion`](#cupertinomotion) section above.

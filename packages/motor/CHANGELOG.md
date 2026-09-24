@@ -83,6 +83,10 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
  - **REFACTOR**: extract `LoopMode` into its own file (still re-exported from `motion_sequence.dart`, so this is source-compatible). `LoopMode` (`none`, `loop`, `pingPong`, `seamless`) now drives track and timeline playback as well.
  - **FEAT**: `PhaseTransition` has a `phase` getter (the current or target phase). Its factory constructors are removed; see [Breaking changes](#breaking-changes).
 
+### Fixed tick rates
+
+ - **FEAT**: motor widgets can tick at a fixed rate with [`fixed_ticker`](https://pub.dev/packages/fixed_ticker). `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder`, `MotionDraggable` and `MotionPadding` take an optional `tickerRate` and follow the nearest `TickerRateScope`; `tickerRate` overrides the scope. Without either, they tick every frame as before. Controllers are unchanged: pass them a `FixedTickerProviderStateMixin` state for a fixed rate. `TickerRate`, `TickerRateScope`, `FixedTickerProviderStateMixin` and `SingleFixedTickerProviderStateMixin` are exported from `package:motor`.
+
 ### Performance
 
  - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocities and segment ends). In AOT release benchmarks against the equivalent `AnimationController` setup, 10 to 1000 tracks on one controller cost 0.89× to 1.06× per frame, a single value about 1.8×, starting or retargeting a spring 1.4× to 4.2× (down from up to 39×), and following a drag with velocity tracking 1.2× to 2.4×. Methodology and all results are in [benchmark/ANALYSIS.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/ANALYSIS.md) (thanks to [definev](https://github.com/definev) for the original harness and allocation work).
