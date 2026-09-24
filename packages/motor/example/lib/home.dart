@@ -228,8 +228,8 @@ const _Letter _resting = (weight: 560, width: 106, shift: 0);
 const _Letter _hovered = (weight: 900, width: 118, shift: 0);
 
 /// The title, set in Archivo's weight and width axes. Its letters slide in
-/// one after another, thin and narrow to bold and wide. Hover a letter to
-/// make it heavier, tap the title to play it again.
+/// together and fill out from thin and narrow to bold and wide, one after
+/// another. Hover a letter to make it heavier, tap the title to play it again.
 class _Title extends StatefulWidget {
   const _Title({required this.size});
 
@@ -241,15 +241,33 @@ class _Title extends StatefulWidget {
 
 class _TitleState extends State<_Title> with SingleTickerProviderStateMixin {
   static const _word = 'Motor';
-  static const Motion _spring = .smoothSpring(
-    extraBounce: .1,
-    duration: Duration(milliseconds: 650),
+  static const _slide = Motion.bouncySpring(
+    extraBounce: .3,
+    duration: Duration(milliseconds: 1000),
   );
 
   late final _title = TrackController(vsync: this, debugLabel: 'Title');
+
+  // As in the 1.1 example, every letter starts at once, and each one's weight
+  // and width spring is 200 ms longer than the one before it, so the letters
+  // stagger by settling later rather than by waiting.
   final _letters = [
-    for (final letter in _word.split(''))
-      Track<_Letter>(_letterConverter, initial: _hidden, debugLabel: letter),
+    for (final (index, letter) in _word.split('').indexed)
+      Track<_Letter>.motionPerDimension(
+        _letterConverter,
+        motionPerDimension: [
+          ...List.filled(
+            2,
+            Motion.bouncySpring(
+              extraBounce: .3,
+              duration: Duration(milliseconds: 1000 + 200 * index),
+            ),
+          ),
+          _slide,
+        ],
+        initial: _hidden,
+        debugLabel: letter,
+      ),
   ];
 
   @override
@@ -269,18 +287,13 @@ class _TitleState extends State<_Title> with SingleTickerProviderStateMixin {
       ..set([for (final letter in _letters) letter.value(_hidden)])
       ..play(
         TrackTimeline([
-          for (final (index, letter) in _letters.indexed)
-            letter([
-              .hold(Duration(milliseconds: 90 * index)),
-              .to(_resting, motion: _spring),
-            ]),
+          for (final letter in _letters) letter([.to(_resting)]),
         ]),
       );
   }
 
-  void _hover(int index, {required bool on}) => _title.animate([
-    _letters[index].to(on ? _hovered : _resting, motion: _spring),
-  ]);
+  void _hover(int index, {required bool on}) =>
+      _title.animate([_letters[index].to(on ? _hovered : _resting)]);
 
   @override
   Widget build(BuildContext context) {
