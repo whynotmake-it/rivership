@@ -31,15 +31,15 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final sequence = MotionSequence.states({
-///   ButtonState.idle: Offset(100, 40),
-///   ButtonState.pressed: Offset(95, 38),
-///   ButtonState.loading: Offset(40, 40),
-/// }, motion: Motion.smoothSpring());
+/// final MotionSequence<ButtonState, Offset> sequence = .states({
+///   .idle: Offset(100, 40),
+///   .pressed: Offset(95, 38),
+///   .loading: Offset(40, 40),
+/// }, motion: .smoothSpring());
 ///
 /// SequenceMotionBuilder(
 ///   sequence: sequence,
-///   converter: MotionConverter.offset,
+///   converter: .offset,
 ///   playing: true, // Auto-progress through phases
 ///   onTransition: (transition) {
 ///     // Handle phase transitions

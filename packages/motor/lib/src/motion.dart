@@ -257,7 +257,7 @@ abstract class FreeMotion extends MotionBase {
   /// final resting = friction.project(
   ///   from: currentOffset,
   ///   velocity: flingVelocity,
-  ///   converter: MotionConverter.offset,
+  ///   converter: .offset,
   /// );
   /// ```
   T? project<T>({
