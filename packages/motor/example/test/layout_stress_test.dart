@@ -75,6 +75,35 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the now-playing player lays out while it overshoots', (
+    tester,
+  ) async {
+    // Tall enough that the page doesn't scroll, so the drag reaches the
+    // player.
+    final router = await _pumpApp(tester, const Size(1280, 1400));
+    unawaited(router.navigate(const NamedRoute('Phases')));
+    await _frames(tester);
+    final player = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_NowPlaying',
+    );
+    // A quick drag up from card hands the springs enough speed to shrink
+    // the player well below its mini size, and past zero.
+    for (final speed in [30.0, 50.0, 80.0]) {
+      await tester.tap(find.text('CARD'));
+      await _frames(tester, 60);
+      final drag = await tester.startGesture(tester.getCenter(player));
+      for (var i = 0; i < 5; i++) {
+        await drag.moveBy(Offset(0, -speed));
+        await tester.pump(const Duration(milliseconds: 8));
+      }
+      await drag.up();
+      for (var i = 0; i < 150; i++) {
+        await tester.pump(const Duration(milliseconds: 8));
+      }
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('no page throws in a tiny window', (tester) async {
     final router = await _pumpApp(tester, const Size(1280, 800));
     final errors = <String>[];

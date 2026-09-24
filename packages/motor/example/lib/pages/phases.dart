@@ -364,42 +364,46 @@ class _NowPlaying extends StatelessWidget {
               radius: (radius - art.left).clamp(0, art.width / 2),
             ),
           ),
+          // The text keeps its own height, centred on the artwork, which is
+          // shorter than the text while its spring overshoots.
           Positioned(
             left: art.right + 14,
-            top: art.top,
+            top: art.center.dy,
             width: 170,
-            height: art.height,
-            child: Reveal(
-              progress: inline,
-              offset: const Offset(-6, 0),
-              child: Column(
-                mainAxisAlignment: .center,
-                crossAxisAlignment: .start,
-                children: [
-                  Text(
-                    'Slow Motion',
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    style: t.title.copyWith(fontSize: 16),
-                  ),
-                  ClipRect(
-                    child: Align(
-                      alignment: .topLeft,
-                      heightFactor: roomy,
-                      child: Opacity(
-                        opacity: roomy,
-                        child: Column(
-                          crossAxisAlignment: .start,
-                          children: [
-                            Text('The Springs', style: t.caption),
-                            const SizedBox(height: 12),
-                            const _Progress(width: 150),
-                          ],
+            child: FractionalTranslation(
+              translation: const Offset(0, -.5),
+              child: Reveal(
+                progress: inline,
+                offset: const Offset(-6, 0),
+                child: Column(
+                  mainAxisSize: .min,
+                  crossAxisAlignment: .start,
+                  children: [
+                    Text(
+                      'Slow Motion',
+                      maxLines: 1,
+                      overflow: .ellipsis,
+                      style: t.title.copyWith(fontSize: 16),
+                    ),
+                    ClipRect(
+                      child: Align(
+                        alignment: .topLeft,
+                        heightFactor: roomy,
+                        child: Opacity(
+                          opacity: roomy,
+                          child: Column(
+                            crossAxisAlignment: .start,
+                            children: [
+                              Text('The Springs', style: t.caption),
+                              const SizedBox(height: 12),
+                              const _Progress(width: 150),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
