@@ -13,6 +13,8 @@ environment:
 
 dependencies:
   auto_route: ^10.0.1
+  example_design:
+    path: ../../example_design
   flutter:
     sdk: flutter
   # Web builds on Flutter 3.44: https://github.com/whynotmake-it/flutter_liquid_glass/pull/154
