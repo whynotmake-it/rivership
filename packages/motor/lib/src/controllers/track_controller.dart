@@ -558,7 +558,8 @@ class TrackController extends Animation<TrackValueReader>
 
   @override
   void dispose() {
-    _ticker?.stop();
+    // Like AnimationController, pending futures are canceled, not completed.
+    _ticker?.stop(canceled: true);
     _ticker?.dispose();
     _ticker = null;
     super.dispose();

@@ -236,4 +236,24 @@ void main() {
       expect(controller.value(size), closeTo(2, 1e-4));
     });
   });
+
+  testWidgets('dispose cancels the pending future', (tester) async {
+    final track = Track<double>(MotionConverter.single, initial: 0);
+    final controller = TrackController(vsync: tester);
+    var completed = false;
+    var canceled = false;
+    final future = controller.animate([track.to(1, motion: linear100)]);
+    future.then((_) => completed = true);
+    future.orCancel.catchError((Object error) {
+      canceled = error is TickerCanceled;
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+
+    controller.dispose();
+    await tester.pump();
+
+    expect(completed, isFalse);
+    expect(canceled, isTrue);
+  });
 }
