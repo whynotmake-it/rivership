@@ -1,8 +1,10 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_devtools/src/timeline.dart';
 
 class _Observer implements MotorInspectionObserver {
@@ -127,6 +129,46 @@ void main() {
 
     controller.stop(canceled: true);
     controller.dispose();
+  });
+
+  testWidgets('MotorTimeline shows lanes read-only and detaches', (
+    tester,
+  ) async {
+    subscription.dispose();
+    final controller = TrackController(vsync: tester);
+    Widget timeline(List<MotorTimelineLane>? lanes) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: MotorTimeline(controller: controller, lanes: lanes),
+    );
+    await tester.pumpWidget(timeline(null));
+    expect(MotorInspectionRegistry.hasObservers, isTrue);
+    controller.animate([
+      a.to(1, motion: const Motion.linear(Duration(milliseconds: 400))),
+      b.to(1, motion: const Motion.linear(Duration(milliseconds: 200))),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('a'), findsOneWidget);
+    expect(find.text('b'), findsOneWidget);
+    expect(find.text('0.25'), findsOneWidget);
+
+    await tester.tap(find.byType(MotorTimeline), warnIfMissed: false);
+    await tester.pump();
+    expect(controller.isAnimating, isTrue);
+
+    await tester.pumpWidget(
+      timeline([
+        MotorTimelineLane('Both', [a, b]),
+      ]),
+    );
+    expect(find.text('Both'), findsOneWidget);
+    expect(find.text('a'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    expect(MotorInspectionRegistry.hasObservers, isFalse);
+    controller.dispose();
+    subscription = MotorInspectionRegistry.attach(_Observer());
   });
 
   testWidgets('keeps a given window, as while scrubbing', (tester) async {

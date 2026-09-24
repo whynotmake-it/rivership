@@ -330,8 +330,12 @@ class Timeline extends StatefulWidget {
     this.selectedTrack,
     this.interactive = true,
     this.collapsible = true,
+    this.lanes,
     super.key,
   });
+
+  /// The lanes to show, or null for one per track.
+  final List<MotorTimelineLane>? lanes;
 
   /// The controller to show.
   final TrackController controller;
@@ -401,6 +405,25 @@ class _TimelineState extends State<Timeline> {
     );
   }
 
+  Widget _laneFor(MotorTimelineLane lane, TimelineLayout layout) {
+    final members = [
+      for (final playback in layout.lanes)
+        if (lane.tracks.contains(playback.playback.track)) playback,
+    ];
+    return _LaneRow(
+      label: lane.label,
+      segments: members.length == 1
+          ? members.single.segments
+          : summarySegments(members),
+      layout: layout,
+      value: lane.tracks.length == 1
+          ? formatValue(widget.controller.value<Object>(lane.tracks.single))
+          : null,
+      waiting: members.any((member) => member.playback.isWaitingForSync),
+      color: lane.color,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
@@ -415,14 +438,25 @@ class _TimelineState extends State<Timeline> {
         final lanes = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final (index, lane) in layout.lanes.indexed)
-              _LaneRow(
-                lane: lane,
-                index: index,
-                layout: layout,
-                value: widget.controller.value(lane.playback.track),
-                selected: identical(widget.selectedTrack, lane.playback.track),
-              ),
+            if (widget.lanes case final lanes?)
+              for (final lane in lanes) _laneFor(lane, layout)
+            else
+              for (final (index, lane) in layout.lanes.indexed)
+                _LaneRow(
+                  label:
+                      lane.playback.track.debugLabel ??
+                      guessTrackName(lane.playback, index),
+                  segments: lane.segments,
+                  layout: layout,
+                  value: formatValue(
+                    widget.controller.value<Object>(lane.playback.track),
+                  ),
+                  waiting: lane.playback.isWaitingForSync,
+                  selected: identical(
+                    widget.selectedTrack,
+                    lane.playback.track,
+                  ),
+                ),
           ],
         );
         return LayoutBuilder(
@@ -506,6 +540,102 @@ class _TimelineState extends State<Timeline> {
       },
     );
   }
+}
+
+/// One lane of a [MotorTimeline]: one or more tracks drawn together.
+@immutable
+class MotorTimelineLane {
+  /// Draws [tracks] in one lane named [label].
+  const MotorTimelineLane(this.label, this.tracks, {this.color});
+
+  /// The lane's name.
+  final String label;
+
+  /// The tracks drawn in this lane. Several tracks are merged.
+  final List<Track<Object>> tracks;
+
+  /// The color of the lane's bars, or null for the text color.
+  final Color? color;
+}
+
+/// A read-only, live timeline of [controller]'s tracks: one lane per track
+/// with its steps, sync waits, and a playhead.
+///
+/// It takes its font and color from the ambient [DefaultTextStyle]. While
+/// shown, it attaches motor's inspection registry so that plans started
+/// from then on carry duration estimates. Apps that show it therefore keep
+/// motor's inspection hooks, also when `kMotorDevTools` is false.
+///
+/// ```dart
+/// MotorTimeline(
+///   controller: controller,
+///   lanes: [
+///     MotorTimelineLane('Card', [cardOffset], color: Colors.orange),
+///     MotorTimelineLane('Dots', [dotA, dotB]),
+///   ],
+/// )
+/// ```
+class MotorTimeline extends StatefulWidget {
+  /// Creates a read-only timeline of [controller].
+  const MotorTimeline({
+    required this.controller,
+    this.lanes,
+    this.playheadColor,
+    super.key,
+  });
+
+  /// The controller to show.
+  final TrackController controller;
+
+  /// The lanes to show, in order, or null for one lane per track.
+  final List<MotorTimelineLane>? lanes;
+
+  /// The playhead's color.
+  final Color? playheadColor;
+
+  @override
+  State<MotorTimeline> createState() => _MotorTimelineState();
+}
+
+class _MotorTimelineState extends State<MotorTimeline> {
+  late final MotorInspectionSubscription _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = MotorInspectionRegistry.attach(_QuietObserver());
+  }
+
+  @override
+  void dispose() {
+    _subscription.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness =
+        MediaQuery.maybePlatformBrightnessOf(context) ?? Brightness.light;
+    final base = DevToolsPalette.of(brightness);
+    final text = DefaultTextStyle.of(context).style.color ?? base.text;
+    return DevToolsTheme(
+      palette: base.withText(text, accent: widget.playheadColor),
+      child: Timeline(
+        controller: widget.controller,
+        interactive: false,
+        collapsible: false,
+        lanes: widget.lanes,
+      ),
+    );
+  }
+}
+
+class _QuietObserver implements MotorInspectionObserver {
+  @override
+  void didRegisterController(TrackController controller) {}
+
+  @override
+  void didUnregisterController(TrackController controller) {}
 }
 
 /// All of a controller's tracks merged into one lane.
@@ -616,24 +746,26 @@ class _Ruler extends StatelessWidget {
 
 class _LaneRow extends StatelessWidget {
   const _LaneRow({
-    required this.lane,
-    required this.index,
+    required this.label,
+    required this.segments,
     required this.layout,
-    required this.value,
-    required this.selected,
+    this.value,
+    this.waiting = false,
+    this.selected = false,
+    this.color,
   });
 
-  final TimelineLane lane;
-  final int index;
+  final String label;
+  final List<TimelineSegment> segments;
   final TimelineLayout layout;
-  final Object value;
+  final String? value;
+  final bool waiting;
   final bool selected;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    final playback = lane.playback;
-    final label = playback.track.debugLabel ?? guessTrackName(playback, index);
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Column(
@@ -652,7 +784,7 @@ class _LaneRow extends StatelessWidget {
                   ),
                 ),
               ),
-              if (playback.isWaitingForSync)
+              if (waiting)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Text(
@@ -660,7 +792,16 @@ class _LaneRow extends StatelessWidget {
                     style: palette.caption.copyWith(color: palette.tertiary),
                   ),
                 ),
-              Text(formatValue(value), style: palette.numeric),
+              if (value case final value? when value.isNotEmpty)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 160),
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.numeric,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 5),
@@ -668,10 +809,11 @@ class _LaneRow extends StatelessWidget {
             height: 8,
             child: CustomPaint(
               painter: _LanePainter(
-                segments: lane.segments,
+                segments: segments,
                 window: layout.window,
                 position: layout.position,
                 palette: palette,
+                color: color,
               ),
             ),
           ),
@@ -687,9 +829,11 @@ class _LanePainter extends CustomPainter {
     required this.window,
     required this.position,
     required this.palette,
+    this.color,
   });
 
   final List<TimelineSegment> segments;
+  final Color? color;
   final TimelineWindow window;
   final Duration position;
   final DevToolsPalette palette;
@@ -729,10 +873,11 @@ class _LanePainter extends CustomPainter {
         mid + height / 2,
         Radius.circular(height / 2),
       );
-      final future = palette.text.withValues(
+      final base = color ?? palette.text;
+      final future = base.withValues(
         alpha: segment.kind == SegmentKind.hold ? 0.16 : 0.13,
       );
-      final past = palette.text.withValues(
+      final past = base.withValues(
         alpha: segment.kind == SegmentKind.hold ? 0.45 : 0.82,
       );
       final paint = Paint()..color = future;

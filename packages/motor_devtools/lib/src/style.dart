@@ -55,6 +55,21 @@ class DevToolsPalette {
     shadow: Color(0x66000000),
   );
 
+  /// This palette with [text] as its text color, and its secondary colors
+  /// derived from it.
+  DevToolsPalette withText(Color text, {Color? accent}) => DevToolsPalette._(
+    brightness: brightness,
+    surface: surface,
+    fill: text.withValues(alpha: 0.05),
+    pressed: text.withValues(alpha: 0.1),
+    hairline: text.withValues(alpha: 0.08),
+    text: text,
+    secondary: text.withValues(alpha: 0.62),
+    tertiary: text.withValues(alpha: 0.4),
+    accent: accent ?? this.accent,
+    shadow: shadow,
+  );
+
   /// The brightness this palette is for.
   final Brightness brightness;
 
@@ -851,5 +866,6 @@ String formatValue(Object? value) => switch (value) {
     '${x.toStringAsFixed(2)}, ${y.toStringAsFixed(2)}',
   final Color c => '#${c.toARGB32().toRadixString(16).padLeft(8, '0')}',
   null => '–',
+  _ when '$value'.contains('Instance of') => '',
   _ => '$value',
 };
