@@ -50,7 +50,73 @@ Future<void> _openDetail(WidgetTester tester) async {
   await _settle(tester);
 }
 
+final _surface = find.byKey(const ValueKey('motor-devtools-surface'));
+
 void main() {
+  testWidgets('drags the open window from non-interactive areas', (
+    tester,
+  ) async {
+    await _pumpHarness(tester);
+    tester.view.physicalSize = const Size(900, 700);
+    await _settle(tester);
+    await tester.tap(_launcher);
+    await _settle(tester);
+    final resting = tester.getRect(_surface);
+    expect(resting.right, closeTo(900 - 12, 0.5));
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('1 controller')),
+    );
+    for (var i = 0; i < 10; i++) {
+      await gesture.moveBy(const Offset(-30, -10));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final moved = tester.getRect(_surface);
+    expect(moved.size, resting.size);
+    expect(moved.left, lessThan(resting.left - 200));
+    expect(moved.top, lessThan(resting.top - 60));
+
+    await gesture.up();
+    await tester.pump();
+    expect(tester.getRect(_surface).left, closeTo(moved.left, 1));
+    await _settle(tester);
+    final settled = tester.getRect(_surface);
+    expect(settled.left, closeTo(12, 0.5));
+    expect(settled.size, resting.size);
+    expect(find.text('1 controller'), findsOneWidget);
+  });
+
+  testWidgets('drags that start on controls keep their own behavior', (
+    tester,
+  ) async {
+    await _pumpHarness(tester);
+    await _openDetail(tester);
+    final resting = tester.getRect(_surface);
+
+    Future<void> dragFrom(Finder finder, Offset step) async {
+      final gesture = await tester.startGesture(tester.getCenter(finder));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(step);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(tester.getRect(_surface), resting);
+      await gesture.up();
+      await _settle(tester);
+      expect(tester.getRect(_surface), resting);
+    }
+
+    // Mostly vertical, which a window drag would otherwise win.
+    await dragFrom(
+      find.byKey(const ValueKey('motor-devtools-timeline')),
+      const Offset(-4, -12),
+    );
+    await dragFrom(
+      find.byKey(const ValueKey('motor-devtools-close')).first,
+      const Offset(-10, -12),
+    );
+    expect(find.text('Checkout confirmation'), findsWidgets);
+  });
+
   testWidgets('lists controllers by debugLabel, without its own', (
     tester,
   ) async {

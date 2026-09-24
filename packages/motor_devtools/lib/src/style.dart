@@ -195,11 +195,38 @@ class DevToolsTheme extends InheritedWidget {
 const quickMotion = Motion.smoothSpring(duration: Duration(milliseconds: 220));
 
 /// The devtools' rounded shape: a superellipse with corner [radius].
-RoundedSuperellipseBorder rounded(double radius, {Color? side}) =>
-    RoundedSuperellipseBorder(
-      borderRadius: BorderRadius.circular(radius),
-      side: side == null ? BorderSide.none : BorderSide(color: side),
-    );
+RoundedSuperellipseBorder rounded(
+  double radius, {
+  Color? side,
+  double sideWidth = 1,
+}) => RoundedSuperellipseBorder(
+  borderRadius: BorderRadius.circular(radius),
+  side: side == null
+      ? BorderSide.none
+      : BorderSide(color: side, width: sideWidth),
+);
+
+/// Pointers that went down on a control with gestures of its own.
+final heldPointers = <int>{};
+
+/// Holds pointers that go down on [child], so a drag that starts there keeps
+/// [child]'s own behavior rather than moving the devtools window.
+class HoldsPointer extends StatelessWidget {
+  /// Holds pointers that go down on [child].
+  const HoldsPointer({required this.child, super.key});
+
+  /// The control.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    behavior: HitTestBehavior.opaque,
+    onPointerDown: (event) => heldPointers.add(event.pointer),
+    onPointerUp: (event) => heldPointers.remove(event.pointer),
+    onPointerCancel: (event) => heldPointers.remove(event.pointer),
+    child: child,
+  );
+}
 
 /// A tap target that dims and shrinks slightly while pressed.
 class Pressable extends StatefulWidget {
@@ -242,22 +269,24 @@ class _PressableState extends State<Pressable> {
       button: true,
       enabled: enabled,
       label: widget.semanticLabel,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: enabled ? (_) => _setPressed(true) : null,
-        onTapUp: enabled ? (_) => _setPressed(false) : null,
-        onTapCancel: enabled ? () => _setPressed(false) : null,
-        onTap: widget.onTap,
-        child: SingleMotionBuilder(
-          value: _pressed ? 1 : 0,
-          motion: quickMotion,
-          debugLabel: internalDebugLabel,
-          child: widget.child,
-          builder: (context, value, child) => Opacity(
-            opacity: enabled ? 1 - value * 0.3 : 0.4,
-            child: Transform.scale(
-              scale: 1 - (1 - widget.pressedScale) * value,
-              child: child,
+      child: HoldsPointer(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: enabled ? (_) => _setPressed(true) : null,
+          onTapUp: enabled ? (_) => _setPressed(false) : null,
+          onTapCancel: enabled ? () => _setPressed(false) : null,
+          onTap: widget.onTap,
+          child: SingleMotionBuilder(
+            value: _pressed ? 1 : 0,
+            motion: quickMotion,
+            debugLabel: internalDebugLabel,
+            child: widget.child,
+            builder: (context, value, child) => Opacity(
+              opacity: enabled ? 1 - value * 0.3 : 0.4,
+              child: Transform.scale(
+                scale: 1 - (1 - widget.pressedScale) * value,
+                child: child,
+              ),
             ),
           ),
         ),
@@ -629,19 +658,21 @@ class ValueSlider extends StatelessWidget {
               slider: true,
               label: label,
               value: valueLabel,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) => update(details.localPosition),
-                onTapUp: (_) => onChangeEnd(),
-                onHorizontalDragStart: (details) =>
-                    update(details.localPosition),
-                onHorizontalDragUpdate: (details) =>
-                    update(details.localPosition),
-                onHorizontalDragEnd: (_) => onChangeEnd(),
-                child: SizedBox(
-                  height: 28,
-                  child: CustomPaint(
-                    painter: _SliderPainter(fraction, palette),
+              child: HoldsPointer(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (details) => update(details.localPosition),
+                  onTapUp: (_) => onChangeEnd(),
+                  onHorizontalDragStart: (details) =>
+                      update(details.localPosition),
+                  onHorizontalDragUpdate: (details) =>
+                      update(details.localPosition),
+                  onHorizontalDragEnd: (_) => onChangeEnd(),
+                  child: SizedBox(
+                    height: 28,
+                    child: CustomPaint(
+                      painter: _SliderPainter(fraction, palette),
+                    ),
                   ),
                 ),
               ),

@@ -54,6 +54,10 @@ class _FloatingBubbleState extends State<FloatingBubble>
   static const _closeMotion = Motion.smoothSpring(
     duration: Duration(milliseconds: 260),
   );
+  static const _settleMotion = Motion.cupertino(
+    duration: Duration(milliseconds: 420),
+    bounce: 0.12,
+  );
 
   late final _expansion = SingleMotionController(
     motion: _openMotion,
@@ -63,6 +67,17 @@ class _FloatingBubbleState extends State<FloatingBubble>
   );
 
   MotionController<Offset>? _position;
+
+  /// How far the open panel is from its resting place, while it is dragged
+  /// and settles.
+  late final _shift = MotionController<Offset>(
+    motion: _settleMotion,
+    vsync: this,
+    converter: MotionConverter.offset,
+    initialValue: Offset.zero,
+    debugLabel: internalDebugLabel,
+  );
+  final _shellKey = GlobalKey();
   var _dragging = false;
   Size? _stage;
   EdgeInsets _padding = EdgeInsets.zero;
@@ -96,6 +111,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
   void dispose() {
     _expansion.dispose();
     _position?.dispose();
+    _shift.dispose();
     super.dispose();
   }
 
@@ -123,10 +139,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
     _stage = stage;
     _padding = padding;
     final position = _position ??= MotionController<Offset>(
-      motion: const Motion.cupertino(
-        duration: Duration(milliseconds: 420),
-        bounce: 0.12,
-      ),
+      motion: _settleMotion,
       vsync: this,
       converter: MotionConverter.offset,
       initialValue: _restingOffset,
@@ -162,6 +175,44 @@ class _FloatingBubbleState extends State<FloatingBubble>
     setState(() => _dragging = false);
   }
 
+  void _panelDragStart(DragStartDetails details) {
+    setState(() => _dragging = true);
+    _shift.stop(canceled: true);
+  }
+
+  void _panelDragUpdate(DragUpdateDetails details) {
+    _shift.value = _shift.value + details.delta;
+  }
+
+  /// Picks the side and height the panel was flung towards, moves the hidden
+  /// bubble there, and springs the panel from where it was let go.
+  void _panelDragEnd(DragEndDetails details) {
+    final shell = _shellKey.currentContext?.findRenderObject();
+    if (shell is! _RenderShell) return;
+    final velocity = details.velocity.pixelsPerSecond;
+    final from = shell.panel;
+    final projected = from.shift(velocity * 0.18);
+    final bounds = _bounds;
+    _onRight = projected.center.dx > _stage!.width / 2;
+    final bubbleTop = projected.center.dy < _stage!.height / 2
+        ? projected.top
+        : projected.bottom - _size;
+    _heightFraction = bounds.height <= 0
+        ? 0
+        : ((bubbleTop - bounds.top) / bounds.height).clamp(0.0, 1.0);
+    _position!
+      ..stop(canceled: true)
+      ..value = _restingOffset;
+    final rest = shell.restingPanel(
+      _restingOffset & const Size.square(_size),
+      onRight: _onRight,
+    );
+    _shift
+      ..value = from.topLeft - rest.topLeft
+      ..animateTo(Offset.zero, withVelocity: velocity);
+    setState(() => _dragging = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
@@ -170,12 +221,14 @@ class _FloatingBubbleState extends State<FloatingBubble>
       builder: (context, constraints) {
         _layout(constraints.biggest, padding);
         return AnimatedBuilder(
-          animation: Listenable.merge([_position, _expansion]),
+          animation: Listenable.merge([_position, _expansion, _shift]),
           builder: (context, _) {
             final t = _expansion.value;
             final radius = _size / 2 + (18 - _size / 2) * t.clamp(0.0, 1.0);
             return _Shell(
+              key: _shellKey,
               bubble: _position!.value & const Size.square(_size),
+              shift: _shift.value,
               expansion: t,
               onRight: _onRight,
               padding: padding,
@@ -184,7 +237,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
               contentOpacity: ((t - 0.3) / 0.7).clamp(0.0, 1.0),
               children: [
                 SingleMotionBuilder(
-                  value: _dragging ? 1 : 0,
+                  value: _dragging && !widget.isOpen ? 1 : 0,
                   motion: quickMotion,
                   debugLabel: internalDebugLabel,
                   builder: (context, lift, child) => Transform.scale(
@@ -217,8 +270,19 @@ class _FloatingBubbleState extends State<FloatingBubble>
                 if (t > 0.001 || widget.isOpen)
                   IgnorePointer(
                     ignoring: !widget.isOpen,
-                    child: KeyedSubtree(
+                    child: RawGestureDetector(
                       key: const ValueKey('motor-devtools-panel'),
+                      behavior: HitTestBehavior.opaque,
+                      gestures: {
+                        _WindowDrag:
+                            GestureRecognizerFactoryWithHandlers<_WindowDrag>(
+                              _WindowDrag.new,
+                              (recognizer) => recognizer
+                                ..onStart = _panelDragStart
+                                ..onUpdate = _panelDragUpdate
+                                ..onEnd = _panelDragEnd,
+                            ),
+                      },
                       child: widget.panel,
                     ),
                   ),
@@ -237,6 +301,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
 class _Shell extends MultiChildRenderObjectWidget {
   const _Shell({
     required this.bubble,
+    required this.shift,
     required this.expansion,
     required this.onRight,
     required this.padding,
@@ -244,9 +309,11 @@ class _Shell extends MultiChildRenderObjectWidget {
     required this.frame,
     required this.contentOpacity,
     required super.children,
+    super.key,
   });
 
   final Rect bubble;
+  final Offset shift;
   final double expansion;
   final bool onRight;
   final EdgeInsets padding;
@@ -257,6 +324,7 @@ class _Shell extends MultiChildRenderObjectWidget {
   @override
   _RenderShell createRenderObject(BuildContext context) => _RenderShell()
     ..bubble = bubble
+    ..shift = shift
     ..expansion = expansion
     ..onRight = onRight
     ..padding = padding
@@ -268,6 +336,7 @@ class _Shell extends MultiChildRenderObjectWidget {
   void updateRenderObject(BuildContext context, _RenderShell renderObject) {
     renderObject
       ..bubble = bubble
+      ..shift = shift
       ..expansion = expansion
       ..onRight = onRight
       ..padding = padding
@@ -288,6 +357,10 @@ class _RenderShell extends RenderBox
   Rect _bubble = Rect.zero;
   Rect get bubble => _bubble;
   set bubble(Rect value) => _update(_bubble != value, () => _bubble = value);
+
+  Offset _shift = Offset.zero;
+  Offset get shift => _shift;
+  set shift(Offset value) => _update(_shift != value, () => _shift = value);
 
   double _expansion = 0;
   double get expansion => _expansion;
@@ -334,6 +407,28 @@ class _RenderShell extends RenderBox
   }
 
   Rect _rect = Rect.zero;
+  Size _panelSize = Size.zero;
+  Rect _panel = Rect.zero;
+
+  /// Where the open panel is, as of the last layout.
+  Rect get panel => _panel;
+
+  /// Where the open panel rests for a bubble at [bubble] on the side given
+  /// by [onRight].
+  Rect restingPanel(Rect bubble, {required bool onRight}) {
+    final Size(:width, :height) = _panelSize;
+    final left = onRight
+        ? size.width - _padding.right - _margin - width
+        : _padding.left + _margin;
+    final anchorTop = bubble.center.dy < size.height / 2;
+    final minTop = _padding.top + _margin;
+    final maxTop = size.height - _padding.bottom - _margin - height;
+    final top = (anchorTop ? bubble.top : bubble.bottom - height)
+        .clamp(minTop, math.max(minTop, maxTop))
+        .toDouble();
+    return Rect.fromLTWH(left, top, width, height);
+  }
+
   final _clip = LayerHandle<ClipRSuperellipseLayer>();
   final _opacity = LayerHandle<OpacityLayer>();
 
@@ -368,16 +463,10 @@ class _RenderShell extends RenderBox
       );
       height = content.size.height;
     }
-    final left = _onRight
-        ? size.width - _padding.right - _margin - width
-        : _padding.left + _margin;
+    _panelSize = Size(width, height);
     final anchorTop = _bubble.center.dy < size.height / 2;
-    final minTop = _padding.top + _margin;
-    final maxTop = size.height - _padding.bottom - _margin - height;
-    final top = (anchorTop ? _bubble.top : _bubble.bottom - height)
-        .clamp(minTop, math.max(minTop, maxTop))
-        .toDouble();
-    final panel = Rect.fromLTWH(left, top, width, height);
+    final panel = restingPanel(_bubble, onRight: _onRight).shift(_shift);
+    _panel = panel;
     final rect = Rect.lerp(_bubble, panel, _expansion)!;
     _rect = Rect.fromLTWH(
       rect.left,
@@ -433,13 +522,13 @@ class _RenderShell extends RenderBox
     // drawn again on top.
     context.canvas.drawRSuperellipse(
       RSuperellipse.fromRectAndRadius(
-        _rect.shift(offset).deflate(0.5),
-        Radius.circular(math.max(0, _radius - 0.5)),
+        _rect.shift(offset).deflate(0.25),
+        Radius.circular(math.max(0, _radius - 0.25)),
       ),
       Paint()
         ..color = _frame
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
+        ..strokeWidth = 0.5,
     );
   }
 
@@ -485,7 +574,7 @@ class _Surface extends StatelessWidget {
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: palette.surface,
-        shape: rounded(radius, side: palette.frame),
+        shape: rounded(radius, side: palette.frame, sideWidth: 0.5),
       ),
       child: ClipRSuperellipse(
         borderRadius: BorderRadius.circular(radius),
@@ -569,4 +658,11 @@ class _BubbleFace extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pans the open window, except for pointers that a control holds.
+class _WindowDrag extends PanGestureRecognizer {
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      !heldPointers.contains(event.pointer) && super.isPointerAllowed(event);
 }

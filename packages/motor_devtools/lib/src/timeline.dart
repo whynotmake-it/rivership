@@ -398,23 +398,25 @@ class _TimelineState extends State<Timeline> {
   }) {
     if (!widget.interactive) return child;
     double fractionAt(Offset position) => position.dx / width;
-    return GestureDetector(
-      key: key,
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (details) =>
-          _startScrub(fractionAt(details.localPosition), window),
-      onTapUp: (_) => _endScrub(),
-      onTapCancel: _endScrub,
-      onHorizontalDragStart: (details) {
-        if (_frozen == null) {
-          _startScrub(fractionAt(details.localPosition), window);
-        }
-      },
-      onHorizontalDragUpdate: (details) =>
-          _updateScrub(fractionAt(details.localPosition)),
-      onHorizontalDragEnd: (_) => _endScrub(),
-      onHorizontalDragCancel: _endScrub,
-      child: child,
+    return HoldsPointer(
+      child: GestureDetector(
+        key: key,
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (details) =>
+            _startScrub(fractionAt(details.localPosition), window),
+        onTapUp: (_) => _endScrub(),
+        onTapCancel: _endScrub,
+        onHorizontalDragStart: (details) {
+          if (_frozen == null) {
+            _startScrub(fractionAt(details.localPosition), window);
+          }
+        },
+        onHorizontalDragUpdate: (details) =>
+            _updateScrub(fractionAt(details.localPosition)),
+        onHorizontalDragEnd: (_) => _endScrub(),
+        onHorizontalDragCancel: _endScrub,
+        child: child,
+      ),
     );
   }
 

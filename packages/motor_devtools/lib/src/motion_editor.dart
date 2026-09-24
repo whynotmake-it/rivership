@@ -465,60 +465,62 @@ class SpringGraph extends StatelessWidget {
           value:
               '${formatDuration(duration)}, bounce '
               '${bounce.toStringAsFixed(2)}',
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) => update(details.localPosition),
-            onTapUp: (_) => onChangeEnd(),
-            onPanStart: (details) => update(details.localPosition),
-            onPanUpdate: (details) => update(details.localPosition),
-            onPanEnd: (_) => onChangeEnd(),
-            child: SizedBox.fromSize(
-              size: size,
-              child: MotionBuilder<Offset>(
-                value: handle,
-                motion: const Motion.snappySpring(
-                  duration: Duration(milliseconds: 220),
-                ),
-                converter: MotionConverter.offset,
-                debugLabel: internalDebugLabel,
-                builder: (context, handle, _) => Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ClipRSuperellipse(
-                        borderRadius: BorderRadius.circular(10),
-                        child: CustomPaint(
-                          painter: _GraphBackgroundPainter(palette),
-                          foregroundPainter: _HandlePainter(handle, palette),
-                          child: MotionPreview(
-                            motion: CupertinoMotion(
-                              duration: duration,
-                              bounce: bounce,
+          child: HoldsPointer(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) => update(details.localPosition),
+              onTapUp: (_) => onChangeEnd(),
+              onPanStart: (details) => update(details.localPosition),
+              onPanUpdate: (details) => update(details.localPosition),
+              onPanEnd: (_) => onChangeEnd(),
+              child: SizedBox.fromSize(
+                size: size,
+                child: MotionBuilder<Offset>(
+                  value: handle,
+                  motion: const Motion.snappySpring(
+                    duration: Duration(milliseconds: 220),
+                  ),
+                  converter: MotionConverter.offset,
+                  debugLabel: internalDebugLabel,
+                  builder: (context, handle, _) => Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRSuperellipse(
+                          borderRadius: BorderRadius.circular(10),
+                          child: CustomPaint(
+                            painter: _GraphBackgroundPainter(palette),
+                            foregroundPainter: _HandlePainter(handle, palette),
+                            child: MotionPreview(
+                              motion: CupertinoMotion(
+                                duration: duration,
+                                bounce: bounce,
+                              ),
+                              inGraph: true,
                             ),
-                            inGraph: true,
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      left: 10,
-                      bottom: 8,
-                      child: Text('Duration →', style: palette.axis),
-                    ),
-                    Positioned(
-                      left: 10,
-                      top: 8,
-                      child: Text('Bouncy ↑', style: palette.axis),
-                    ),
-                    Positioned(
-                      right: 10,
-                      top: 8,
-                      child: Text(
-                        '${formatDuration(duration)} · '
-                        '${bounce.toStringAsFixed(2)}',
-                        style: palette.numeric.copyWith(color: palette.text),
+                      Positioned(
+                        left: 10,
+                        bottom: 8,
+                        child: Text('Duration →', style: palette.axis),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        left: 10,
+                        top: 8,
+                        child: Text('Bouncy ↑', style: palette.axis),
+                      ),
+                      Positioned(
+                        right: 10,
+                        top: 8,
+                        child: Text(
+                          '${formatDuration(duration)} · '
+                          '${bounce.toStringAsFixed(2)}',
+                          style: palette.numeric.copyWith(color: palette.text),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
