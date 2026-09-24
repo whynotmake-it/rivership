@@ -67,15 +67,15 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('falls back to a numbered name and suggests a label', (
+  testWidgets('guesses a name for unlabeled controllers and suggests one', (
     tester,
   ) async {
     await _pumpHarness(tester, labeled: false);
 
     await tester.tap(_launcher);
     await _settle(tester);
-    expect(find.text('Controller 1'), findsOneWidget);
-    await tester.tap(find.text('Controller 1'));
+    expect(find.text('MotionHarness'), findsOneWidget);
+    await tester.tap(find.text('MotionHarness'));
     await _settle(tester);
 
     expect(find.textContaining('debugLabel'), findsOneWidget);
@@ -210,36 +210,43 @@ void main() {
     await tester.pump();
     expect(controller.playbackSpeed, 0.25);
 
+    expect(
+      find.byKey(const ValueKey('motor-devtools-motion-Spring')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+    await _settle(tester);
     await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-motion-spring')),
+      find.byKey(const ValueKey('motor-devtools-motion-Spring')),
     );
     await tester.pump();
     expect(controller.motionOverrides.values.single, isA<CupertinoMotion>());
     expect(controller.value(_MotionHarnessState.opacity), closeTo(0, 1e-6));
 
-    final duration = find.byKey(const ValueKey('motor-devtools-duration'));
-    await tester.ensureVisible(duration);
+    final graph = find.byKey(const ValueKey('motor-devtools-spring-graph'));
+    await tester.ensureVisible(graph);
     await _settle(tester);
-    await tester.tapAt(
-      tester.getRect(duration).bottomRight - const Offset(2, 10),
-    );
+    await tester.tapAt(tester.getRect(graph).topRight + const Offset(-1, 1));
     await tester.pump();
+    final tuned = controller.motionOverrides.values.single as CupertinoMotion;
+    expect(tuned.duration, const Duration(milliseconds: 1500));
+    expect(tuned.bounce, closeTo(0.8, 0.02));
     expect(
-      (controller.motionOverrides.values.single as CupertinoMotion).duration,
-      greaterThan(const Duration(milliseconds: 1400)),
+      find.textContaining(
+        'Motion.cupertino(duration: Duration(milliseconds: 1500), bounce: 0.7',
+      ),
+      findsOneWidget,
     );
 
     await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-motion-authored')),
+      find.byKey(const ValueKey('motor-devtools-motion-Authored')),
     );
     await tester.pump();
     expect(controller.motionOverrides, isEmpty);
 
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-motion-linear')),
-    );
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion-Curve')));
     await tester.pump();
-    expect(controller.motionOverrides, isNotEmpty);
+    expect(controller.motionOverrides.values.single, isA<CurvedMotion>());
 
     await tester.pumpWidget(
       MotorDevTools(
@@ -250,6 +257,34 @@ void main() {
     expect(controller.playbackSpeed, 1);
     expect(controller.motionOverrides, isEmpty);
     expect(controller.motionOverride, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets("offers the app's own motions", (tester) async {
+    const brand = Motion.cupertino(
+      duration: Duration(milliseconds: 420),
+      bounce: 0.3,
+    );
+    late TrackController controller;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MotorDevTools(
+        motions: const {'Brand': brand},
+        child: _MotionHarness(onReady: (value) => controller = value),
+      ),
+    );
+    await tester.pump();
+    await _openDetail(tester);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+    await _settle(tester);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion-Brand')));
+    await tester.pump();
+
+    expect(controller.motionOverrides.values.single, brand);
+    expect(find.textContaining('Card opacity · Brand'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

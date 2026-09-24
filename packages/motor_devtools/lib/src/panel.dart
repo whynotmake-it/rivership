@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/src/motion_editor.dart';
+import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/session.dart';
 import 'package:motor_devtools/src/style.dart';
 import 'package:motor_devtools/src/timeline.dart';
@@ -43,8 +45,12 @@ class DevToolsPanel extends StatefulWidget {
     required this.onClose,
     required this.onSpeedChanged,
     required this.onOverrideChanged,
+    this.appMotions = const {},
     super.key,
   });
+
+  /// Motions registered by the app, by name.
+  final Map<String, Motion> appMotions;
 
   /// The live controllers, oldest first.
   final List<TrackController> controllers;
@@ -134,6 +140,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
                             widget.onSpeedChanged(detail, speed),
                         onOverrideChanged: (track, motion) =>
                             widget.onOverrideChanged(detail, track, motion),
+                        appMotions: widget.appMotions,
                       ),
                     ),
                   ),
@@ -341,6 +348,14 @@ class _ControllerRow extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 56,
+                    height: 6,
+                    child: SummaryLane(
+                      snapshot: controller.inspectPlayback(),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   GlyphIcon(Glyph.forward, color: palette.tertiary),
                 ],
@@ -407,11 +422,13 @@ class _ControllerDetail extends StatefulWidget {
     required this.onClose,
     required this.onSpeedChanged,
     required this.onOverrideChanged,
+    required this.appMotions,
     super.key,
   });
 
   final TrackController controller;
   final String name;
+  final Map<String, Motion> appMotions;
   final VoidCallback onBack;
   final VoidCallback onClose;
   final ValueChanged<double> onSpeedChanged;
@@ -425,6 +442,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
   static const _speeds = [0.1, 0.25, 0.5, 1.0];
 
   Track<Object>? _selectedTrack;
+  var _motionOpen = false;
 
   void _togglePlayback() {
     final controller = widget.controller;
@@ -447,12 +465,17 @@ class _ControllerDetailState extends State<_ControllerDetail> {
         builder: (context, _) {
           final state = PlaybackState.of(controller);
           final tracks = [
-            for (final playback in controller.inspectPlayback().tracks)
-              playback.track,
+            for (final (index, playback)
+                in controller.inspectPlayback().tracks.indexed)
+              (
+                playback.track,
+                playback.track.debugLabel ?? guessTrackName(playback, index),
+              ),
           ];
-          if (!tracks.contains(_selectedTrack)) {
-            _selectedTrack = tracks.firstOrNull;
+          if (!tracks.any((entry) => identical(entry.$1, _selectedTrack))) {
+            _selectedTrack = tracks.firstOrNull?.$1;
           }
+          final overrides = controller.motionOverrides;
           final speed = controller.playbackSpeed;
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -516,22 +539,38 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                       selectedTrack: _selectedTrack,
                     ),
                     if (_selectedTrack case final track?) ...[
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 8),
                       const Hairline(),
-                      const SizedBox(height: 16),
-                      _MotionEditor(
-                        tracks: tracks,
-                        track: track,
-                        current: controller.motionOverrides[track],
-                        overridden: controller.motionOverrides.keys.toSet(),
-                        onTrackSelected: (track) =>
-                            setState(() => _selectedTrack = track),
-                        onChanged: (motion) =>
-                            widget.onOverrideChanged(track, motion),
+                      DisclosureRow(
+                        key: const ValueKey('motor-devtools-motion'),
+                        title: 'Motion',
+                        trailing: _motionSummary(
+                          tracks.firstWhere((t) => identical(t.$1, track)).$2,
+                          overrides[track],
+                        ),
+                        open: _motionOpen,
+                        onTap: () => setState(() => _motionOpen = !_motionOpen),
+                      ),
+                      Disclosure(
+                        open: _motionOpen,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 4),
+                          child: MotionEditor(
+                            tracks: tracks,
+                            track: track,
+                            current: overrides[track],
+                            tuned: overrides.keys.toSet(),
+                            appMotions: widget.appMotions,
+                            onTrackSelected: (track) =>
+                                setState(() => _selectedTrack = track),
+                            onChanged: (motion) =>
+                                widget.onOverrideChanged(track, motion),
+                          ),
+                        ),
                       ),
                     ],
                     if (controller.debugLabel == null) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -539,8 +578,8 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          'Name this controller by passing debugLabel to it '
-                          'or to its builder.',
+                          'Pass debugLabel to the controller or its builder '
+                          'to name it.',
                           style: palette.caption,
                         ),
                       ),
@@ -555,204 +594,22 @@ class _ControllerDetailState extends State<_ControllerDetail> {
     );
   }
 
+  String _motionSummary(String track, Motion? motion) {
+    final name = widget.appMotions.entries
+        .where((entry) => entry.value == motion)
+        .firstOrNull
+        ?.key;
+    final kind = switch (motion) {
+      null => 'authored',
+      _ when name != null => name,
+      CupertinoMotion(:final duration, :final bounce) =>
+        'spring ${formatDuration(duration)}, ${bounce.toStringAsFixed(2)}',
+      CurvedMotion(:final duration) => 'curve ${formatDuration(duration)}',
+      _ => 'custom',
+    };
+    return '$track · $kind';
+  }
+
   static String _speedLabel(double speed) =>
       '${speed == speed.roundToDouble() ? speed.round() : speed}×';
-}
-
-enum _MotionKind {
-  authored('Authored'),
-  spring('Spring'),
-  ease('Ease'),
-  linear('Linear');
-
-  const _MotionKind(this.label);
-
-  final String label;
-
-  static _MotionKind of(Motion? motion) => switch (motion) {
-    null => authored,
-    CupertinoMotion() => spring,
-    LinearMotion() => linear,
-    _ => ease,
-  };
-}
-
-class _MotionEditor extends StatefulWidget {
-  const _MotionEditor({
-    required this.tracks,
-    required this.track,
-    required this.current,
-    required this.overridden,
-    required this.onTrackSelected,
-    required this.onChanged,
-  });
-
-  final List<Track<Object>> tracks;
-  final Track<Object> track;
-  final Motion? current;
-  final Set<Track<Object>> overridden;
-  final ValueChanged<Track<Object>> onTrackSelected;
-  final ValueChanged<Motion?> onChanged;
-
-  @override
-  State<_MotionEditor> createState() => _MotionEditorState();
-}
-
-class _MotionEditorState extends State<_MotionEditor> {
-  double? _draftDuration;
-  double? _draftBounce;
-
-  double get _duration =>
-      _draftDuration ??
-      switch (widget.current) {
-        CupertinoMotion(:final duration) ||
-        CurvedMotion(:final duration) => duration.inMilliseconds.toDouble(),
-        _ => 500,
-      };
-
-  double get _bounce =>
-      _draftBounce ??
-      switch (widget.current) {
-        CupertinoMotion(:final bounce) => bounce,
-        _ => 0.15,
-      };
-
-  Motion? _motion(_MotionKind kind) {
-    final duration = Duration(milliseconds: _duration.round());
-    return switch (kind) {
-      _MotionKind.authored => null,
-      _MotionKind.spring => Motion.cupertino(
-        duration: duration,
-        bounce: _bounce,
-      ),
-      _MotionKind.ease => Motion.curved(duration, Curves.easeInOutCubic),
-      _MotionKind.linear => Motion.linear(duration),
-    };
-  }
-
-  void _apply(_MotionKind kind) {
-    widget.onChanged(_motion(kind));
-    setState(() => _draftDuration = _draftBounce = null);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = DevToolsTheme.of(context);
-    final kind = _MotionKind.of(widget.current);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Motion', style: palette.label),
-        const SizedBox(height: 4),
-        Text(
-          'Try another motion for a track. Changes replay the latest plan '
-          'and last for this session.',
-          style: palette.caption,
-        ),
-        if (widget.tracks.length > 1) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final (index, track) in widget.tracks.indexed)
-                _TrackChip(
-                  label: track.debugLabel ?? 'Track ${index + 1}',
-                  selected: identical(track, widget.track),
-                  tuned: widget.overridden.contains(track),
-                  onTap: () => widget.onTrackSelected(track),
-                ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        Segmented<_MotionKind>(
-          options: _MotionKind.values,
-          selected: kind,
-          labelOf: (kind) => kind.label,
-          keyOf: (kind) => ValueKey('motor-devtools-motion-${kind.name}'),
-          onSelected: _apply,
-        ),
-        if (kind != _MotionKind.authored) ...[
-          const SizedBox(height: 10),
-          ValueSlider(
-            key: const ValueKey('motor-devtools-duration'),
-            label: 'Duration',
-            valueLabel: '${_duration.round()} ms',
-            value: _duration,
-            min: 100,
-            max: 1500,
-            onChanged: (value) =>
-                setState(() => _draftDuration = (value / 10).round() * 10),
-            onChangeEnd: () => _apply(kind),
-          ),
-        ],
-        if (kind == _MotionKind.spring)
-          ValueSlider(
-            key: const ValueKey('motor-devtools-bounce'),
-            label: 'Bounce',
-            valueLabel: _bounce.toStringAsFixed(2),
-            value: _bounce,
-            min: 0,
-            max: 0.6,
-            onChanged: (value) =>
-                setState(() => _draftBounce = (value * 100).round() / 100),
-            onChangeEnd: () => _apply(kind),
-          ),
-      ],
-    );
-  }
-}
-
-class _TrackChip extends StatelessWidget {
-  const _TrackChip({
-    required this.label,
-    required this.selected,
-    required this.tuned,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final bool tuned;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = DevToolsTheme.of(context);
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: label,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? palette.text : palette.fill,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (tuned) ...[
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: palette.accent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: palette.caption.copyWith(
-                color: selected ? palette.surface : palette.text,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

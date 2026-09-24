@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/style.dart';
 
 /// How a timeline segment is drawn.
@@ -317,19 +318,32 @@ Duration _min(Duration a, Duration b) => a < b ? a : b;
 
 Duration _max(Duration a, Duration b) => a > b ? a : b;
 
-/// A live, scrubbable timeline of every track on [controller].
+/// A live timeline of every track on [controller].
 ///
-/// Dragging or tapping pauses the controller and scrubs its playback clock.
-/// Playback resumes on release if it was running.
+/// When [interactive], dragging or tapping pauses the controller and scrubs
+/// its playback clock, resuming on release if it was running. When
+/// [collapsible], it shows one summary lane and unfolds the tracks on tap.
 class Timeline extends StatefulWidget {
   /// Creates a timeline for [controller].
-  const Timeline({required this.controller, this.selectedTrack, super.key});
+  const Timeline({
+    required this.controller,
+    this.selectedTrack,
+    this.interactive = true,
+    this.collapsible = true,
+    super.key,
+  });
 
   /// The controller to show.
   final TrackController controller;
 
   /// A track to highlight.
   final Track<Object>? selectedTrack;
+
+  /// Whether dragging and tapping scrubs the controller.
+  final bool interactive;
+
+  /// Whether the tracks start folded into a summary lane.
+  final bool collapsible;
 
   @override
   State<Timeline> createState() => _TimelineState();
@@ -338,6 +352,7 @@ class Timeline extends StatefulWidget {
 class _TimelineState extends State<Timeline> {
   TimelineWindow? _frozen;
   var _resumeAfterScrub = false;
+  var _showTracks = false;
 
   void _startScrub(double fraction, TimelineWindow window) {
     _frozen = window;
@@ -358,6 +373,34 @@ class _TimelineState extends State<Timeline> {
     if (_resumeAfterScrub) widget.controller.resume();
   }
 
+  Widget _scrubArea(
+    TimelineWindow window,
+    double width,
+    Widget child, {
+    Key? key,
+  }) {
+    if (!widget.interactive) return child;
+    double fractionAt(Offset position) => position.dx / width;
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (details) =>
+          _startScrub(fractionAt(details.localPosition), window),
+      onTapUp: (_) => _endScrub(),
+      onTapCancel: _endScrub,
+      onHorizontalDragStart: (details) {
+        if (_frozen == null) {
+          _startScrub(fractionAt(details.localPosition), window);
+        }
+      },
+      onHorizontalDragUpdate: (details) =>
+          _updateScrub(fractionAt(details.localPosition)),
+      onHorizontalDragEnd: (_) => _endScrub(),
+      onHorizontalDragCancel: _endScrub,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
@@ -369,63 +412,154 @@ class _TimelineState extends State<Timeline> {
           window: _frozen,
         );
         final window = layout.window;
+        final lanes = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (index, lane) in layout.lanes.indexed)
+              _LaneRow(
+                lane: lane,
+                index: index,
+                layout: layout,
+                value: widget.controller.value(lane.playback.track),
+                selected: identical(widget.selectedTrack, lane.playback.track),
+              ),
+          ],
+        );
         return LayoutBuilder(
           builder: (context, constraints) {
-            double fractionAt(Offset position) =>
-                position.dx / constraints.maxWidth;
-            return Semantics(
-              label: 'Timeline',
-              hint: 'Drag to scrub',
-              value: formatDuration(layout.position - window.start),
-              child: GestureDetector(
+            final width = constraints.maxWidth;
+            if (!widget.collapsible) {
+              return _scrubArea(
+                window,
+                width,
                 key: const ValueKey('motor-devtools-timeline'),
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) =>
-                    _startScrub(fractionAt(details.localPosition), window),
-                onTapUp: (_) => _endScrub(),
-                onTapCancel: _endScrub,
-                onHorizontalDragStart: (details) {
-                  if (_frozen == null) {
-                    _startScrub(fractionAt(details.localPosition), window);
-                  }
-                },
-                onHorizontalDragUpdate: (details) =>
-                    _updateScrub(fractionAt(details.localPosition)),
-                onHorizontalDragEnd: (_) => _endScrub(),
-                onHorizontalDragCancel: _endScrub,
-                child: Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Ruler(layout: layout, scrubbing: _frozen != null),
-                    if (layout.lanes.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        child: Text(
-                          'Nothing has played yet',
-                          textAlign: TextAlign.center,
-                          style: palette.caption,
-                        ),
-                      ),
-                    for (final (index, lane) in layout.lanes.indexed)
-                      _LaneRow(
-                        lane: lane,
-                        index: index,
-                        layout: layout,
-                        value: widget.controller.value(lane.playback.track),
-                        selected: identical(
-                          widget.selectedTrack,
-                          lane.playback.track,
-                        ),
-                      ),
+                    lanes,
                   ],
                 ),
-              ),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  label: 'Timeline',
+                  hint: widget.interactive ? 'Drag to scrub' : null,
+                  value: formatDuration(layout.position - window.start),
+                  child: _scrubArea(
+                    window,
+                    width,
+                    key: const ValueKey('motor-devtools-timeline'),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Ruler(layout: layout, scrubbing: _frozen != null),
+                        if (layout.lanes.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Text(
+                              'Nothing has played yet',
+                              textAlign: TextAlign.center,
+                              style: palette.caption,
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              height: 8,
+                              child: CustomPaint(
+                                painter: _LanePainter(
+                                  segments: summarySegments(layout.lanes),
+                                  window: window,
+                                  position: layout.position,
+                                  palette: palette,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (layout.lanes.isNotEmpty) ...[
+                  DisclosureRow(
+                    key: const ValueKey('motor-devtools-tracks'),
+                    open: _showTracks,
+                    onTap: () => setState(() => _showTracks = !_showTracks),
+                    title: layout.lanes.length == 1
+                        ? '1 track'
+                        : '${layout.lanes.length} tracks',
+                  ),
+                  Disclosure(
+                    open: _showTracks,
+                    child: _scrubArea(window, width, lanes),
+                  ),
+                ],
+              ],
             );
           },
         );
       },
     );
   }
+}
+
+/// All of a controller's tracks merged into one lane.
+class SummaryLane extends StatelessWidget {
+  /// Creates a summary lane for [snapshot].
+  const SummaryLane({required this.snapshot, super.key});
+
+  /// The controller's playback.
+  final PlaybackSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = layoutTimeline(snapshot);
+    return CustomPaint(
+      painter: _LanePainter(
+        segments: summarySegments(layout.lanes),
+        window: layout.window,
+        position: layout.position,
+        palette: DevToolsTheme.of(context),
+      ),
+    );
+  }
+}
+
+/// The motion and hold spans of all [lanes] merged into one summary lane.
+List<TimelineSegment> summarySegments(List<TimelineLane> lanes) {
+  List<TimelineSegment> merge(SegmentKind kind, bool Function(SegmentKind) of) {
+    final spans = [
+      for (final lane in lanes)
+        for (final segment in lane.segments)
+          if (of(segment.kind)) segment,
+    ]..sort((a, b) => a.start.compareTo(b.start));
+    final merged = <TimelineSegment>[];
+    for (final span in spans) {
+      final last = merged.lastOrNull;
+      final lastEnd = last?.end;
+      if (last != null && (lastEnd == null || span.start <= lastEnd)) {
+        final end = span.end;
+        merged[merged.length - 1] = TimelineSegment(
+          kind,
+          last.start,
+          lastEnd == null || end == null ? null : _max(lastEnd, end),
+        );
+      } else {
+        merged.add(TimelineSegment(kind, span.start, span.end));
+      }
+    }
+    return merged;
+  }
+
+  return [
+    ...merge(SegmentKind.hold, (kind) => kind != SegmentKind.motion),
+    ...merge(SegmentKind.motion, (kind) => kind == SegmentKind.motion),
+  ];
 }
 
 class _Ruler extends StatelessWidget {
@@ -499,7 +633,7 @@ class _LaneRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     final playback = lane.playback;
-    final label = playback.track.debugLabel ?? 'Track ${index + 1}';
+    final label = playback.track.debugLabel ?? guessTrackName(playback, index);
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Column(
@@ -534,7 +668,7 @@ class _LaneRow extends StatelessWidget {
             height: 8,
             child: CustomPaint(
               painter: _LanePainter(
-                lane: lane,
+                segments: lane.segments,
                 window: layout.window,
                 position: layout.position,
                 palette: palette,
@@ -549,13 +683,13 @@ class _LaneRow extends StatelessWidget {
 
 class _LanePainter extends CustomPainter {
   const _LanePainter({
-    required this.lane,
+    required this.segments,
     required this.window,
     required this.position,
     required this.palette,
   });
 
-  final TimelineLane lane;
+  final List<TimelineSegment> segments;
   final TimelineWindow window;
   final Duration position;
   final DevToolsPalette palette;
@@ -568,7 +702,7 @@ class _LanePainter extends CustomPainter {
       Paint()..color = palette.hairline,
     );
     final playheadX = size.width * window.fractionOf(position).clamp(0.0, 1.0);
-    for (final segment in lane.segments) {
+    for (final segment in segments) {
       final open = segment.end == null;
       final startX = size.width * window.fractionOf(segment.start);
       final endX = open
@@ -616,7 +750,7 @@ class _LanePainter extends CustomPainter {
           ..restore();
       }
     }
-    if (lane.segments.isNotEmpty) {
+    if (segments.isNotEmpty) {
       canvas.drawRRect(
         RRect.fromLTRBR(
           playheadX.clamp(1, size.width - 1) - 0.75,

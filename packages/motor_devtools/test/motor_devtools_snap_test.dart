@@ -54,8 +54,11 @@ Future<void> _exerciseStateMatrix(
     MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: brightness),
-      builder: (context, child) =>
-          MotorDevTools(controller: devTools, child: child!),
+      builder: (context, child) => MotorDevTools(
+        controller: devTools,
+        motions: const {'Emphasized': Motion.bouncySpring()},
+        child: child!,
+      ),
       home: _TimelineHarness(onReady: (value) => fixture = value),
     ),
   );
@@ -77,25 +80,30 @@ Future<void> _exerciseStateMatrix(
   await _settle(tester);
   await capture('${prefix}motor devtools 03 controller detail');
 
+  await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
+  await _settle(tester);
   final timeline = tester.getRect(
     find.byKey(const ValueKey('motor-devtools-timeline')),
   );
   final gesture = await tester.startGesture(timeline.centerLeft);
   await gesture.moveTo(timeline.center + Offset(timeline.width * 0.25, 0));
   await tester.pump();
-  await capture('${prefix}motor devtools 04 scrubbing');
+  await capture('${prefix}motor devtools 04 tracks while scrubbing');
   await gesture.up();
   await tester.pump();
 
+  await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
+  await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+  await _settle(tester);
   await tester.tap(
-    find.byKey(const ValueKey('motor-devtools-motion-spring')),
+    find.byKey(const ValueKey('motor-devtools-motion-Spring')),
   );
   await tester.pump();
   fixture.controller
     ..pause()
     ..scrubTo(const Duration(milliseconds: 500));
   await _settle(tester);
-  await capture('${prefix}motor devtools 05 motion override');
+  await capture('${prefix}motor devtools 05 motion editor');
 
   await tester.pumpWidget(const SizedBox());
   devTools.dispose();

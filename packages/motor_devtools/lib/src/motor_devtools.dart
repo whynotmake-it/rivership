@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/overlay.dart';
 import 'package:motor_devtools/src/panel.dart';
 import 'package:motor_devtools/src/session.dart';
@@ -89,8 +91,20 @@ class MotorDevTools extends StatefulWidget {
     this.enabled = true,
     this.controller,
     this.alignment = Alignment.bottomRight,
+    this.motions = const {},
     super.key,
   });
+
+  /// The app's own motions, by name, offered for every track next to the
+  /// built-in spring and curve.
+  ///
+  /// ```dart
+  /// MotorDevTools(
+  ///   motions: {'Sheet': AppMotion.sheet, 'Button': AppMotion.button},
+  ///   child: app,
+  /// )
+  /// ```
+  final Map<String, Motion> motions;
 
   /// The application subtree to inspect.
   final Widget child;
@@ -111,6 +125,8 @@ class MotorDevTools extends StatefulWidget {
 class _MotorDevToolsState extends State<MotorDevTools> {
   final _controllers = <TrackController>[];
   final _numbers = <TrackController, int>{};
+  final _creations = <TrackController, StackTrace>{};
+  final _guessedNames = <TrackController, String?>{};
   final _originalSpeeds = <TrackController, double>{};
   final _tuned = <TrackController>{};
   MotorInspectionSubscription? _subscription;
@@ -179,6 +195,7 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     if (controller.debugLabel == internalDebugLabel) return;
     if (_controllers.contains(controller)) return;
     _numbers[controller] = _nextNumber++;
+    if (kDebugMode) _creations[controller] = StackTrace.current;
     _controllers.add(controller);
     _scheduleRefresh();
   }
@@ -190,11 +207,29 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     }
     _originalSpeeds.remove(controller);
     _tuned.remove(controller);
+    _creations.remove(controller);
+    _guessedNames.remove(controller);
     _scheduleRefresh();
   }
 
-  String _nameOf(TrackController controller) =>
-      controller.debugLabel ?? 'Controller ${_numbers[controller] ?? 0}';
+  String _baseNameOf(TrackController controller) =>
+      controller.debugLabel ??
+      _guessedNames.putIfAbsent(
+        controller,
+        () => guessControllerName(controller, _creations[controller]),
+      ) ??
+      'Controller ${_numbers[controller] ?? 0}';
+
+  /// The display name, numbered when several controllers share a name.
+  String _nameOf(TrackController controller) {
+    final name = _baseNameOf(controller);
+    final same = [
+      for (final other in _controllers)
+        if (_baseNameOf(other) == name) other,
+    ];
+    if (same.length < 2) return name;
+    return '$name ${same.indexOf(controller) + 1}';
+  }
 
   void _setSpeed(TrackController controller, double speed) {
     _originalSpeeds.putIfAbsent(controller, () => controller.playbackSpeed);
@@ -269,6 +304,7 @@ class _MotorDevToolsState extends State<MotorDevTools> {
                 onClose: _overlay.close,
                 onSpeedChanged: _setSpeed,
                 onOverrideChanged: _setOverride,
+                appMotions: widget.motions,
               ),
             ),
           ),

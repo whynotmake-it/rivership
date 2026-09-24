@@ -120,6 +120,23 @@ class DevToolsPalette {
     height: 1.2,
   );
 
+  /// Axis labels on graphs.
+  TextStyle get axis => TextStyle(
+    color: tertiary,
+    fontSize: 10.5,
+    fontWeight: FontWeight.w500,
+    height: 1.2,
+  );
+
+  /// Dart code.
+  TextStyle get code => TextStyle(
+    color: text,
+    fontSize: 11,
+    height: 1.35,
+    fontFamily: 'Menlo',
+    fontFamilyFallback: const ['Consolas', 'Roboto Mono', 'monospace'],
+  );
+
   /// Numbers that update live.
   TextStyle get numeric => TextStyle(
     color: secondary,
@@ -633,6 +650,176 @@ class _SliderPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SliderPainter oldDelegate) =>
       oldDelegate.fraction != fraction || oldDelegate.palette != palette;
+}
+
+/// The spring used to fold and unfold sections.
+const foldMotion = Motion.smoothSpring(duration: Duration(milliseconds: 380));
+
+/// Unfolds [child] downward while [open], and removes it once folded.
+class Disclosure extends StatelessWidget {
+  /// Shows [child] while [open].
+  const Disclosure({required this.open, required this.child, super.key});
+
+  /// Whether [child] is shown.
+  final bool open;
+
+  /// The folding content.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SingleMotionBuilder(
+    value: open ? 1 : 0,
+    motion: foldMotion,
+    debugLabel: internalDebugLabel,
+    child: child,
+    builder: (context, t, child) {
+      if (!open && t < 0.001) return const SizedBox.shrink();
+      final visible = t.clamp(0.0, 1.0);
+      return ClipRect(
+        child: Align(
+          alignment: Alignment.topCenter,
+          heightFactor: visible,
+          child: Opacity(opacity: visible, child: child),
+        ),
+      );
+    },
+  );
+}
+
+/// A tappable row with a chevron that turns while [open].
+class DisclosureRow extends StatelessWidget {
+  /// Creates a row titled [title].
+  const DisclosureRow({
+    required this.title,
+    required this.open,
+    required this.onTap,
+    this.trailing,
+    super.key,
+  });
+
+  /// The row's title.
+  final String title;
+
+  /// Short text after the title, such as the current state.
+  final String? trailing;
+
+  /// Whether the section below is unfolded.
+  final bool open;
+
+  /// Toggles the section.
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: title,
+      pressedScale: 1,
+      child: SizedBox(
+        height: 36,
+        child: Row(
+          children: [
+            Text(title, style: palette.label),
+            const SizedBox(width: 8),
+            if (trailing case final trailing?)
+              Expanded(
+                child: Text(
+                  trailing,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.caption,
+                ),
+              )
+            else
+              const Spacer(),
+            SingleMotionBuilder(
+              value: open ? 0.25 : 0,
+              motion: foldMotion,
+              debugLabel: internalDebugLabel,
+              builder: (context, turns, child) =>
+                  Transform.rotate(angle: turns * 2 * math.pi, child: child),
+              child: GlyphIcon(Glyph.forward, color: palette.tertiary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small selectable label.
+class Tag extends StatelessWidget {
+  /// Creates a tag reading [label].
+  const Tag({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.marked = false,
+    this.outlined = false,
+    super.key,
+  });
+
+  /// The text.
+  final String label;
+
+  /// Whether the tag is selected.
+  final bool selected;
+
+  /// Whether to show a dot, such as for a tuned track.
+  final bool marked;
+
+  /// Whether an unselected tag is outlined rather than filled.
+  final bool outlined;
+
+  /// Called on tap.
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? palette.text
+              : outlined
+              ? null
+              : palette.fill,
+          border: outlined && !selected
+              ? Border.all(color: palette.hairline)
+              : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (marked) ...[
+              Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: palette.accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: palette.caption.copyWith(
+                color: selected ? palette.surface : palette.text,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A hairline separator.
