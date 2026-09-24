@@ -1,6 +1,5 @@
 import 'dart:ui' show lerpDouble;
 
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
@@ -20,7 +19,13 @@ class PhasesPage extends StatefulWidget {
 enum _Player { mini, card, full }
 
 const _rest = Duration(milliseconds: 700);
-const _fadeOut = CupertinoMotion.snappy(duration: Duration(milliseconds: 200));
+// The shape's tracks share one spring, so the frame and artwork move as one.
+const _move = CupertinoMotion(
+  duration: Duration(milliseconds: 450),
+  bounce: .1,
+);
+const _fadeIn = CurvedMotion(Duration(milliseconds: 220), easeOut);
+const _fadeOut = CurvedMotion(Duration(milliseconds: 120), easeOut);
 // Pixels of drag from one phase to the next.
 const _dragPerPhase = 170.0;
 
@@ -42,14 +47,14 @@ const Map<_Player, _Look> _looks = {
   ),
   _Player.card: (
     frame: Size(320, 136),
-    radius: 28.0,
+    radius: 10.0,
     art: Rect.fromLTWH(16, 16, 104, 104),
     inline: 1.0,
     stacked: 0.0,
   ),
   _Player.full: (
     frame: Size(320, 404),
-    radius: 36.0,
+    radius: 12.0,
     art: Rect.fromLTWH(24, 24, 272, 236),
     inline: 0.0,
     stacked: 1.0,
@@ -66,33 +71,23 @@ class _PhasesPageState extends State<PhasesPage>
   final _frame = Track<Size>(
     .size,
     initial: _looks[_Player.mini]!.frame,
-    motion: .bouncySpring(duration: Duration(milliseconds: 600)),
+    motion: _move,
     debugLabel: 'Frame',
   );
   final _radius = Track<double>(
     .single,
     initial: 30,
-    motion: .smoothSpring(),
+    motion: _move,
     debugLabel: 'Radius',
   );
   final _art = Track<Rect>(
     .rect,
     initial: _looks[_Player.mini]!.art,
-    motion: .smoothSpring(duration: Duration(milliseconds: 650)),
+    motion: _move,
     debugLabel: 'Artwork',
   );
-  final _inline = Track<double>(
-    .single,
-    initial: 1,
-    motion: .smoothSpring(),
-    debugLabel: 'Inline text',
-  );
-  final _stacked = Track<double>(
-    .single,
-    initial: 0,
-    motion: .smoothSpring(duration: Duration(milliseconds: 700)),
-    debugLabel: 'Full text',
-  );
+  final _inline = Track<double>(.single, initial: 1, debugLabel: 'Inline text');
+  final _stacked = Track<double>(.single, initial: 0, debugLabel: 'Full text');
 
   late final _phases = TrackPhaseTimeline<_Player>({
     for (final MapEntry(key: phase, value: look) in _looks.entries)
@@ -105,14 +100,22 @@ class _PhasesPageState extends State<PhasesPage>
       ],
   }, phaseLoop: .pingPong);
 
+  final _code = ValueNotifier(
+    '// Tap a phase, drag the player, or autoplay.\nplayer.goToPhase(Player.card);',
+  );
   var _phase = _Player.mini;
   var _autoplay = false;
   var _dragged = 0.0;
 
-  // Text that appears waits for the rest of the phase; text that goes leaves
-  // quickly.
-  static TrackAnimation<double> _fade(Track<double> track, double to) =>
-      to == 1 ? track([.to(1), .hold(_rest)]) : track.to(0, motion: _fadeOut);
+  // Text that goes leaves at once. Text that comes waits for the shape to
+  // make room, then fades in and rests before autoplay moves on.
+  static TrackAnimation<double> _fade(Track<double> track, double to) => to == 1
+      ? track([
+          .hold(const Duration(milliseconds: 150)),
+          .to(1, motion: _fadeIn),
+          .hold(_rest),
+        ])
+      : track.to(0, motion: _fadeOut);
 
   @override
   void initState() {
@@ -123,6 +126,7 @@ class _PhasesPageState extends State<PhasesPage>
   @override
   void dispose() {
     _player.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -135,14 +139,21 @@ class _PhasesPageState extends State<PhasesPage>
       _phase = phase;
       _autoplay = false;
     });
+    _code.value =
+        '// Every track animates from where it is to its value in ${phase.name}.\n'
+        'player.goToPhase(Player.${phase.name});';
     _player.goToPhase(phase);
   }
 
   void _toggleAutoplay() {
     setState(() => _autoplay = !_autoplay);
     if (_autoplay) {
+      _code.value =
+          '// Walks through the phases and back. Each waits for every track.\n'
+          'player.playPhases(phases, atPhase: Player.${_phase.name});';
       _player.playPhases(_phases, atPhase: _phase, onTransition: _onTransition);
     } else {
+      _code.value = 'player.goToPhase(Player.${_phase.name});';
       _player.goToPhase(_phase);
     }
   }
@@ -185,6 +196,11 @@ class _PhasesPageState extends State<PhasesPage>
       _inline.value(lerpDouble(from.inline, to.inline, t)!.clamp(0, 1)),
       _stacked.value(lerpDouble(from.stacked, to.stacked, t)!.clamp(0, 1)),
     ]);
+    final frame = Size.lerp(from.frame, to.frame, t)!;
+    _code.value =
+        '// Dragging: set() puts every track between two phases.\n'
+        'player.set([frame.value(Size(${frame.width.round()}, '
+        '${frame.height.round()})), radius…, art…, text…]);';
     final nearest = _Player.values[progress.round().clamp(0, 2)];
     if (nearest != _phase) setState(() => _phase = nearest);
   }
@@ -197,8 +213,14 @@ class _PhasesPageState extends State<PhasesPage>
     // The tracks keep the velocity the drag gave them. Autoplay picks up
     // from the phase the player lands in.
     if (_autoplay) {
+      _code.value =
+          '// Let go: autoplay carries on from ${phase.name}, at your speed.\n'
+          'player.playPhases(phases, atPhase: Player.${phase.name});';
       _player.playPhases(_phases, atPhase: phase, onTransition: _onTransition);
     } else {
+      _code.value =
+          '// Let go: the nearest phase takes over, at your speed.\n'
+          'player.goToPhase(Player.${phase.name});';
       _player.goToPhase(phase);
     }
   }
@@ -208,11 +230,11 @@ class _PhasesPageState extends State<PhasesPage>
     return ChapterPage(
       chapter: chapterNamed('Phases'),
       lead:
-          'Mini, card and full are phases: named values for every track. Drag '
-          'the player up or down, even during autoplay. Your finger sets every '
-          'track; let go and the nearest phase takes over at your speed, and '
-          'autoplay carries on from there.',
-      code: 'player..set(dragged)..goToPhase(nearest);',
+          'Mini, card and full are phases: each one lists the value every '
+          'track should have. Tap a phase, autoplay through them, or drag the '
+          'player up and down, even while it autoplays. When you let go, the '
+          'nearest phase takes over at the speed you were dragging.',
+      code: _code,
       below: LiveTimeline(
         controller: _player,
         lanes: {
@@ -304,7 +326,7 @@ class _NowPlaying extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     // The artist line only fits once the frame is tall enough.
     final roomy = ((frame.height - 60) / 60).clamp(0.0, 1.0);
     return Container(
@@ -312,10 +334,9 @@ class _NowPlaying extends StatelessWidget {
       height: frame.height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: t.surfaceSolid,
+        color: t.surface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: t.border),
-        boxShadow: t.softShadow,
       ),
       child: Stack(
         clipBehavior: Clip.none,
@@ -331,7 +352,7 @@ class _NowPlaying extends StatelessWidget {
             height: art.height,
             child: Reveal(
               progress: inline,
-              offset: const Offset(-12, 0),
+              offset: const Offset(-6, 0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,8 +390,7 @@ class _NowPlaying extends StatelessWidget {
             top: art.bottom + 20,
             child: Reveal(
               progress: stacked,
-              offset: const Offset(0, 24),
-              blur: 12,
+              offset: const Offset(0, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -388,7 +408,7 @@ class _NowPlaying extends StatelessWidget {
                         CupertinoIcons.pause_fill,
                         CupertinoIcons.forward_fill,
                       ])
-                        Icon(icon, size: 26, color: t.textPrimary),
+                        Icon(icon, size: 26, color: t.text),
                     ],
                   ),
                 ],
@@ -408,22 +428,15 @@ class _Artwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = Palette.of(context);
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * .16),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            ExampleTheme.marigold,
-            ExampleTheme.spectrumRed,
-            ExampleTheme.roseQuartz,
-          ],
-        ),
+        color: p.accent,
+        borderRadius: BorderRadius.circular(radius),
       ),
       child: Icon(
         CupertinoIcons.music_note_2,
-        color: CupertinoColors.white.withValues(alpha: .9),
+        color: p.onAccent,
         size: size * .4,
       ),
     );
@@ -437,19 +450,19 @@ class _Progress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     return Container(
       width: width,
       height: 4,
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
-        color: t.pebble,
+        color: t.control,
         borderRadius: BorderRadius.circular(2),
       ),
       child: Container(
         width: width * .38,
         decoration: BoxDecoration(
-          color: t.textPrimary,
+          color: t.text,
           borderRadius: BorderRadius.circular(2),
         ),
       ),

@@ -3,7 +3,6 @@
 
 import 'dart:math' as math;
 
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -64,13 +63,17 @@ class _ScrubPageState extends State<ScrubPage>
   var _origin = Duration.zero;
   var _scrubbing = false;
 
+  final _code = ValueNotifier('// Tap Send to play.\nsend.play(timeline);');
+
   @override
   void dispose() {
     _send.dispose();
+    _code.dispose();
     super.dispose();
   }
 
   void _play() {
+    _code.value = '// Plays the whole choreography.\nsend.play(timeline);';
     _send
       ..stop(canceled: true)
       ..set(_timeline.startValues)
@@ -84,24 +87,29 @@ class _ScrubPageState extends State<ScrubPage>
       setState(() => _scrubbing = true);
       _send.pause();
     }
-    _send.scrubTo(_origin + _length * fraction.clamp(0.0, 1.0));
+    final time = _length * fraction.clamp(0.0, 1.0);
+    _code.value =
+        '// Scrubbing: every track shows its value at this time.\n'
+        'send..pause()..scrubTo(${(time.inMilliseconds / 1000).toStringAsFixed(2)}.s);';
+    _send.scrubTo(_origin + time);
   }
 
   void _release() {
     setState(() => _scrubbing = false);
+    _code.value = '// Let go: playback carries on from here.\nsend.resume();';
     _send.resume();
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     return ChapterPage(
       chapter: chapterNamed('Scrub'),
       lead:
-          'Tap Send, then drag the scrubber. Every frame you scrub to is the '
-          'frame playback would show, springs and barrier included. Let go and '
-          'it plays on from there.',
-      code: 'send..pause()..scrubTo(t)..resume();',
+          'Tap Send, then drag the scrubber. Wherever you stop, the button '
+          'looks exactly as it would at that moment of playback, springs and '
+          'sync barrier included. Let go and it plays on from there.',
+      code: _code,
       below: LiveTimeline(
         controller: _send,
         lanes: {
@@ -143,7 +151,7 @@ class _ScrubPageState extends State<ScrubPage>
                 progress: value(_caption),
                 child: Column(
                   children: [
-                    Text('\$42 sent', style: t.title.copyWith(fontSize: 22)),
+                    Text('\$42 sent', style: t.title.copyWith(fontSize: 20)),
                     const SizedBox(height: 2),
                     Text('to Jules', style: t.caption),
                   ],
@@ -195,22 +203,21 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     final label = ((width - _puck) / (_button - _puck)).clamp(0.0, 1.0);
     final spinning = spinner > 0 && spinner < 2 && check == 0;
     return SizedBox(
       width: 260,
       height: 200,
       child: CustomPaint(
-        painter: _ConfettiPainter(burst),
+        painter: _ConfettiPainter(burst, t.accent),
         child: Center(
           child: Container(
             width: width,
             height: math.min(width, _puck),
             decoration: BoxDecoration(
-              color: Color.lerp(t.textPrimary, ExampleTheme.signalBlue, check),
+              color: Color.lerp(t.text, t.accent, check),
               borderRadius: BorderRadius.circular(width),
-              boxShadow: t.softShadow,
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -222,7 +229,7 @@ class _SendButton extends StatelessWidget {
                     maxWidth: _button,
                     child: Text(
                       'Send \$42',
-                      style: archivo(16, weight: 560, color: t.canvas),
+                      style: archivo(15, weight: 560, color: t.canvas),
                     ),
                   ),
                 ),
@@ -263,7 +270,7 @@ class _Scrubber extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -282,35 +289,14 @@ class _Scrubber extends StatelessWidget {
             child: Stack(
               alignment: Alignment.centerLeft,
               children: [
-                Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: t.pebble,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                Container(
-                  width: progress * width,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    gradient: ExampleTheme.spectrum,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
+                Container(height: 4, color: t.control),
+                Container(width: progress * width, height: 4, color: t.accent),
                 Positioned(
-                  left: progress * (width - 22),
+                  left: progress * (width - 4),
                   child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: t.surfaceSolid,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: scrubbing ? t.textPrimary : t.borderStrong,
-                        width: scrubbing ? 2 : 1,
-                      ),
-                      boxShadow: t.softShadow,
-                    ),
+                    width: 4,
+                    height: 26,
+                    color: scrubbing ? t.accent : t.text,
                   ),
                 ),
               ],
@@ -376,9 +362,10 @@ class _CheckPainter extends CustomPainter {
 }
 
 class _ConfettiPainter extends CustomPainter {
-  _ConfettiPainter(this.burst);
+  _ConfettiPainter(this.burst, this.accent);
 
   final double burst;
+  final Color accent;
 
   static const _count = 14;
 
@@ -389,7 +376,7 @@ class _ConfettiPainter extends CustomPainter {
     for (var i = 0; i < _count; i++) {
       final angle = i / _count * 2 * math.pi + .3;
       final reach = 60.0 + (i % 3) * 22;
-      final color = trackColors[i % trackColors.length];
+      final color = accent;
       final position =
           center + Offset(math.cos(angle), math.sin(angle)) * reach * burst;
       canvas.drawCircle(

@@ -4,7 +4,6 @@
 import 'dart:math' as math;
 
 import 'package:auto_route/auto_route.dart';
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -25,8 +24,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  // Hero lines, the start button, then one per chapter.
-  static final _count = 4 + chapters.length;
+  // Title, text, the start button, then one per chapter.
+  static final _count = 3 + chapters.length;
 
   late final _entrance = TrackController(
     vsync: this,
@@ -56,11 +55,8 @@ class _HomePageState extends State<HomePage>
         TrackTimeline([
           for (final (index, reveal) in _reveals.indexed)
             reveal([
-              .hold(Duration(milliseconds: 70 * index)),
-              .to(
-                1,
-                motion: .smoothSpring(duration: Duration(milliseconds: 700)),
-              ),
+              .hold(Duration(milliseconds: 50 * index)),
+              .to(1, motion: .curved(Duration(milliseconds: 300), easeOut)),
             ]),
         ]),
       );
@@ -70,132 +66,98 @@ class _HomePageState extends State<HomePage>
     final reveal = _entrance.animationOf(_reveals[index]);
     return AnimatedBuilder(
       animation: reveal,
-      builder: (context, child) => Reveal(
-        progress: reveal.value,
-        offset: const Offset(0, 18),
-        child: child!,
-      ),
+      builder: (context, child) =>
+          Reveal(progress: reveal.value, blur: 0, child: child!),
       child: child,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     final wide = MediaQuery.sizeOf(context).width > 760;
+    final headline = p.display.copyWith(fontSize: wide ? 68 : 46);
     return CupertinoPageScaffold(
-      backgroundColor: t.canvas,
+      backgroundColor: p.canvas,
       child: DefaultTextStyle(
-        style: t.body,
-        child: Stack(
-          children: [
-            const Positioned(
-              top: -80,
-              left: 0,
-              right: 0,
-              height: 420,
-              child: AmbientGlow(opacity: .22),
-            ),
-            SafeArea(
-              bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 56),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: wide ? 920 : 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        style: p.body,
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 56),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: wide ? 920 : 600),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _Header(),
+                    SizedBox(height: wide ? 96 : 56),
+                    Row(
                       children: [
-                        const _Header(),
-                        SizedBox(height: wide ? 88 : 56),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _enter,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _reveal(
-                                          0,
-                                          Text(
-                                            'Motion that',
-                                            style: t.display.copyWith(
-                                              fontSize: wide ? 76 : 52,
-                                            ),
-                                          ),
-                                        ),
-                                        _reveal(
-                                          1,
-                                          Text(
-                                            'keeps up.',
-                                            style: t.display.copyWith(
-                                              fontSize: wide ? 76 : 52,
-                                              color: t.textTertiary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _reveal(
-                                    2,
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 440,
-                                      ),
-                                      child: const Text(
-                                        'Springs that keep their velocity, tracks that '
-                                        'wait for each other, timelines you can scrub. '
-                                        'Seven short chapters, one idea each.',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 28),
-                                  _reveal(3, const _StartButton()),
-                                ],
-                              ),
-                            ),
-                            if (wide)
-                              _reveal(
-                                3,
-                                const SizedBox(
-                                  width: 340,
-                                  height: 340,
-                                  child: _Orb(),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              GestureDetector(
+                                onTap: _enter,
+                                child: _reveal(
+                                  0,
+                                  Text('Motor', style: headline),
                                 ),
                               ),
-                          ],
-                        ),
-                        SizedBox(height: wide ? 88 : 56),
-                        Text('CHAPTERS', style: t.eyebrow),
-                        const SizedBox(height: 16),
-                        _ChapterGrid(
-                          columns: wide ? 3 : 2,
-                          children: [
-                            for (final (index, chapter) in chapters.indexed)
-                              _reveal(4 + index, _ChapterCard(chapter)),
-                          ],
-                        ),
-                        const SizedBox(height: 40),
-                        Center(
-                          child: Text(
-                            'motor 2.0 · whynotmake.it',
-                            style: t.caption,
+                              const SizedBox(height: 20),
+                              _reveal(
+                                1,
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 440,
+                                  ),
+                                  child: const Text(
+                                    'Motor is a Flutter animation library '
+                                    'built around springs. These examples '
+                                    'show what happens when you interrupt an '
+                                    'animation, drag it, or scrub through it: '
+                                    'it carries on smoothly from wherever it '
+                                    'is.',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              _reveal(2, const _StartButton()),
+                            ],
                           ),
                         ),
+                        if (wide)
+                          _reveal(
+                            2,
+                            const SizedBox(
+                              width: 320,
+                              height: 320,
+                              child: _Orb(),
+                            ),
+                          ),
                       ],
                     ),
-                  ),
+                    SizedBox(height: wide ? 96 : 56),
+                    Container(height: 1, color: p.border),
+                    const SizedBox(height: 20),
+                    Text('Examples', style: p.title),
+                    const SizedBox(height: 16),
+                    _ChapterGrid(
+                      columns: wide ? 3 : 2,
+                      children: [
+                        for (final (index, chapter) in chapters.indexed)
+                          _reveal(3 + index, _ChapterCard(chapter)),
+                      ],
+                    ),
+                    const SizedBox(height: 48),
+                    Text('motor 2.0 by whynotmake.it', style: p.caption),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -207,31 +169,19 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return SizedBox(
-      height: 48,
+      height: 44,
       child: Row(
         children: [
-          const MotorLogo(size: 28),
+          const MotorLogo(size: 24),
           const SizedBox(width: 10),
           Text(
             'motor',
-            style: archivo(
-              20,
-              weight: 560,
-              width: 118,
-              spacing: -.4,
-            ).copyWith(color: t.textPrimary),
+            style: archivo(19, weight: 560, spacing: -.4, color: p.text),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: t.borderStrong),
-            ),
-            child: Text('2.0', style: t.eyebrow.copyWith(letterSpacing: .4)),
-          ),
+          Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
           const Spacer(),
           const _DevToolsToggle(),
         ],
@@ -246,7 +196,7 @@ class _DevToolsToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!kMotorDevTools) return const SizedBox.shrink();
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return ValueListenableBuilder(
       valueListenable: devtoolsEnabled,
       builder: (context, enabled, _) => Semantics(
@@ -255,45 +205,40 @@ class _DevToolsToggle extends StatelessWidget {
         child: PressScale(
           onTap: () => devtoolsEnabled.value = !enabled,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+            height: 32,
+            padding: const EdgeInsets.fromLTRB(10, 0, 5, 0),
             decoration: BoxDecoration(
-              color: t.surfaceSolid,
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: t.border),
-              boxShadow: t.hairlineShadow,
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(color: p.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'DevTools',
-                  style: archivo(13, weight: 520, color: t.textPrimary),
+                  style: archivo(13, weight: 500, color: p.text),
                 ),
                 const SizedBox(width: 10),
                 SingleMotionBuilder(
                   value: enabled ? 1 : 0,
-                  motion: const .bouncySpring(),
+                  motion: const .snappySpring(),
                   debugLabel: 'DevTools switch',
                   builder: (context, on, _) => Container(
-                    width: 40,
-                    height: 24,
-                    padding: const EdgeInsets.all(3),
+                    width: 34,
+                    height: 20,
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: Color.lerp(
-                        t.pebble,
-                        t.textPrimary,
-                        on.clamp(0, 1),
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Color.lerp(p.control, p.accent, on.clamp(0, 1)),
+                      borderRadius: BorderRadius.circular(radius),
                     ),
                     child: Align(
                       alignment: Alignment(on * 2 - 1, 0),
                       child: Container(
-                        width: 18 + 4 * (1 - (on * 2 - 1).abs()),
-                        height: 18,
+                        width: 16,
+                        height: 16,
                         decoration: BoxDecoration(
-                          color: t.surfaceSolid,
-                          borderRadius: BorderRadius.circular(9),
+                          color: p.surface,
+                          borderRadius: BorderRadius.circular(radius),
                         ),
                       ),
                     ),
@@ -313,25 +258,24 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return PressScale(
       onTap: () => context.navigateTo(NamedRoute(chapters.first.title)),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(22, 14, 18, 14),
+        padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
         decoration: BoxDecoration(
-          color: t.textPrimary,
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: t.softShadow,
+          color: p.accent,
+          borderRadius: BorderRadius.circular(radius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Start with ${chapters.first.title}',
-              style: archivo(15, weight: 540, color: t.canvas),
+              style: archivo(14, weight: 560, color: p.onAccent),
             ),
             const SizedBox(width: 10),
-            Icon(CupertinoIcons.arrow_right, size: 17, color: t.canvas),
+            Icon(CupertinoIcons.arrow_right, size: 15, color: p.onAccent),
           ],
         ),
       ),
@@ -388,7 +332,7 @@ class _ChapterCardState extends State<_ChapterCard> {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     final index = chapters.indexOf(widget.chapter);
     final calm = _hovered || _pressed;
     return MouseRegion(
@@ -403,10 +347,13 @@ class _ChapterCardState extends State<_ChapterCard> {
           group: 'Chapter cards',
           child: MotionBuilder<(double, double)>(
             value: (
-              _pressed ? .96 : (_hovered ? 1.03 : 1),
+              _pressed ? .97 : (_hovered ? 1.02 : 1),
               calm ? 0 : _tilts[index % _tilts.length] * math.pi / 180,
             ),
-            motion: const .bouncySpring(duration: Duration(milliseconds: 450)),
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 400),
+              bounce: .25,
+            ),
             converter: _scaleAndTurn,
             debugLabel: 'Chapter card ${widget.chapter.number}',
             builder: (context, value, child) => Transform.rotate(
@@ -414,12 +361,11 @@ class _ChapterCardState extends State<_ChapterCard> {
               child: Transform.scale(scale: value.$1, child: child),
             ),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: t.surfaceSolid,
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: t.border),
-                boxShadow: calm ? t.softShadow : t.hairlineShadow,
+                color: p.surface,
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: calm ? p.borderStrong : p.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,8 +374,8 @@ class _ChapterCardState extends State<_ChapterCard> {
                     aspectRatio: 1.35,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: t.fog,
-                        borderRadius: BorderRadius.circular(18),
+                        color: p.inset,
+                        borderRadius: BorderRadius.circular(radius),
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) => Transform.scale(
@@ -444,15 +390,13 @@ class _ChapterCardState extends State<_ChapterCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.chapter.number, style: t.eyebrow),
-                        const SizedBox(height: 4),
-                        Text(widget.chapter.title, style: t.title),
+                        Text(widget.chapter.title, style: p.title),
                         const SizedBox(height: 4),
                         Text(
                           widget.chapter.idea,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: t.body.copyWith(fontSize: 13, height: 1.35),
+                          style: p.body.copyWith(fontSize: 13, height: 1.4),
                         ),
                       ],
                     ),
@@ -475,16 +419,16 @@ class _Glyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    Widget box(double w, double h, {Color? color, double r = 6}) => Container(
+    final p = Palette.of(context);
+    Widget box(double w, double h, {Color? color, double r = 2}) => Container(
       width: w,
       height: h,
       decoration: BoxDecoration(
-        color: color ?? t.textPrimary,
+        color: color ?? p.text,
         borderRadius: BorderRadius.circular(r),
       ),
     );
-    final accent = trackColors[index % trackColors.length];
+    final accent = p.accent;
     return Center(
       child: switch (index) {
         // Toggle: a switch, on.
@@ -498,7 +442,7 @@ class _Glyph extends StatelessWidget {
           ),
           child: Align(
             alignment: Alignment.centerRight,
-            child: box(24, 24, color: CupertinoColors.white, r: 12),
+            child: box(24, 24, color: p.surface, r: 12),
           ),
         ),
         // Retarget: an indicator stretched between two tabs.
@@ -507,7 +451,7 @@ class _Glyph extends StatelessWidget {
           height: 22,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: t.pebble,
+            color: p.control,
             borderRadius: BorderRadius.circular(11),
           ),
           child: Align(
@@ -515,7 +459,7 @@ class _Glyph extends StatelessWidget {
             child: box(30, 16, color: accent, r: 8),
           ),
         ),
-        // Fling: a card flying off with a blur trail.
+        // Card stack: a card thrown off the stack.
         2 => Transform.rotate(
           angle: -.18,
           child: Row(
@@ -524,9 +468,9 @@ class _Glyph extends StatelessWidget {
               for (final alpha in [.15, .3])
                 Padding(
                   padding: const EdgeInsets.only(right: 3),
-                  child: box(6, 30, color: accent.withValues(alpha: alpha)),
+                  child: box(6, 30, color: p.text.withValues(alpha: alpha)),
                 ),
-              box(36, 30, color: accent, r: 8),
+              box(36, 30, color: accent),
             ],
           ),
         ),
@@ -555,15 +499,15 @@ class _Glyph extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 4),
-            box(2, 40, color: t.textTertiary, r: 1),
+            box(2, 40, color: p.textTertiary, r: 1),
           ],
         ),
         // Phases: three sizes of one thing.
         5 => Stack(
           alignment: Alignment.bottomLeft,
           children: [
-            box(52, 44, color: t.pebble, r: 10),
-            box(38, 28, color: t.borderStrong, r: 8),
+            box(52, 44, color: p.control, r: 10),
+            box(38, 28, color: p.borderStrong, r: 8),
             box(22, 14, color: accent, r: 7),
           ],
         ),
@@ -574,16 +518,16 @@ class _Glyph extends StatelessWidget {
           child: Stack(
             alignment: Alignment.centerLeft,
             children: [
-              Positioned(top: 8, child: box(40, 6, color: t.pebble, r: 3)),
+              Positioned(top: 8, child: box(40, 6, color: p.control, r: 3)),
               Positioned(
                 top: 18,
                 left: 12,
-                child: box(44, 6, color: t.pebble, r: 3),
+                child: box(44, 6, color: p.control, r: 3),
               ),
               Positioned(
                 top: 28,
                 left: 4,
-                child: box(30, 6, color: t.pebble, r: 3),
+                child: box(30, 6, color: p.control, r: 3),
               ),
               Positioned(left: 30, child: box(2, 40, color: accent, r: 1)),
             ],
@@ -620,7 +564,7 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -652,43 +596,15 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
               );
             },
             child: Container(
-              width: 168,
-              height: 168,
-              foregroundDecoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  center: const Alignment(-.35, -.45),
-                  radius: .9,
-                  colors: [
-                    CupertinoColors.white.withValues(alpha: .7),
-                    CupertinoColors.white.withValues(alpha: 0),
-                  ],
-                ),
-              ),
+              width: 140,
+              height: 140,
               decoration: BoxDecoration(
+                color: p.accent,
                 shape: BoxShape.circle,
-                gradient: const SweepGradient(
-                  colors: [
-                    ExampleTheme.signalBlue,
-                    ExampleTheme.roseQuartz,
-                    ExampleTheme.spectrumRed,
-                    ExampleTheme.marigold,
-                    ExampleTheme.signalBlue,
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: ExampleTheme.roseQuartz.withValues(alpha: .35),
-                    blurRadius: 60,
-                    offset: const Offset(0, 24),
-                  ),
-                ],
               ),
             ),
           ),
         ),
-        const SizedBox(height: 28),
-        Text('grab me, throw me', style: t.caption),
       ],
     );
   }

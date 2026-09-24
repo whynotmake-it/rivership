@@ -46,16 +46,16 @@ void main() {
 
   testWidgets('Retarget follows a change of mind', (tester) async {
     await _open(tester, 'Retarget');
-    await tester.tap(find.text('Year'));
+    await tester.tap(find.text('YEAR'));
     await _pumpFor(tester, const Duration(milliseconds: 120));
-    await tester.tap(find.text('Week'));
+    await tester.tap(find.text('WEEK'));
     await _pumpFor(tester, const Duration(milliseconds: 120));
-    await tester.tap(find.text('Curve'));
-    await tester.tap(find.text('Month'));
+    await tester.tap(find.text('CURVE'));
+    await tester.tap(find.text('MONTH'));
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
     final month = tester.getCenter(find.text('248k'));
-    expect(month.dx, closeTo(tester.getCenter(find.text('Month')).dx, 400));
+    expect(month.dx, closeTo(tester.getCenter(find.text('MONTH')).dx, 400));
     expect(find.text('steps this month'), findsOneWidget);
   });
 
@@ -63,23 +63,24 @@ void main() {
     tester,
   ) async {
     await _open(tester, 'Toggle');
-    final toggle = find.byIcon(CupertinoIcons.sun_max_fill);
+    final toggle = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_Switch',
+    );
+    double thumb() => (tester.widget(toggle) as dynamic).thumb as double;
     await tester.tap(toggle);
     await _pumpFor(tester, const Duration(seconds: 1));
-    expect(find.byIcon(CupertinoIcons.moon_fill), findsOneWidget);
+    expect(thumb(), closeTo(1, 1e-3));
 
     // A short, quick flick back switches off even though the thumb is
     // still past the middle when it's let go.
-    final flick = await tester.startGesture(
-      tester.getCenter(find.byIcon(CupertinoIcons.moon_fill)),
-    );
+    final flick = await tester.startGesture(tester.getCenter(toggle));
     for (var i = 0; i < 8; i++) {
       await flick.moveBy(const Offset(-5, 0));
       await tester.pump(const Duration(milliseconds: 8));
     }
     await flick.up();
     await _pumpFor(tester, const Duration(seconds: 1));
-    expect(find.byIcon(CupertinoIcons.sun_max_fill), findsOneWidget);
+    expect(thumb(), closeTo(0, 1e-3));
 
     await tester.tap(find.byIcon(CupertinoIcons.heart));
     await _pumpFor(tester, const Duration(seconds: 1));
@@ -87,11 +88,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  int topPostcard(WidgetTester tester) =>
+  int topCard(WidgetTester tester) =>
       (tester
                       .widgetList(
                         find.byWidgetPredicate(
-                          (w) => w.runtimeType.toString() == '_Postcard',
+                          (w) => w.runtimeType.toString() == '_Card',
                         ),
                       )
                       .last
@@ -99,34 +100,34 @@ void main() {
               .index
           as int;
 
-  testWidgets('Fling sends a thrown card under the stack', (tester) async {
-    await _open(tester, 'Fling');
+  testWidgets('Card stack sends a thrown card under the stack', (tester) async {
+    await _open(tester, 'Card stack');
     // A gentle drag springs back and keeps the card on top.
-    await tester.drag(find.text('Lisbon').first, const Offset(40, 0));
+    await tester.drag(find.text('Clear'), const Offset(30, 0));
     await _pumpFor(tester, const Duration(seconds: 1));
-    expect(topPostcard(tester), 0);
+    expect(topCard(tester), 0);
 
-    await tester.fling(find.text('Lisbon').first, const Offset(200, -40), 2500);
-    await _pumpFor(tester, const Duration(milliseconds: 100));
-    // Still flying out, so it's drawn above the others.
-    expect(topPostcard(tester), 0);
+    await tester.fling(find.text('Clear'), const Offset(200, -40), 2500);
+    await _pumpFor(tester, const Duration(milliseconds: 60));
+    // Still clearing the stack, so it's drawn above the others.
+    expect(topCard(tester), 0);
     await _pumpFor(tester, const Duration(seconds: 2));
-    expect(topPostcard(tester), 1);
-    final lisbon = tester.getCenter(find.text('Lisbon').first);
-    final kyoto = tester.getCenter(find.text('Kyoto').first);
-    expect((lisbon - kyoto).distance, lessThan(80));
+    expect(topCard(tester), 1);
+    final clear = tester.getCenter(find.text('Clear'));
+    final redirect = tester.getCenter(find.text('Redirect'));
+    expect((clear - redirect).distance, lessThan(80));
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Steps pings and collapses again', (tester) async {
     await _open(tester, 'Steps');
-    await tester.tap(find.text('Ping'));
+    await tester.tap(find.text('PING'));
     await _pumpFor(tester, const Duration(milliseconds: 800));
     expect(
       tester.getSize(find.text('motor 2.0 is here')).width,
       greaterThan(0),
     );
-    await tester.tap(find.text('Ping'));
+    await tester.tap(find.text('PING'));
     await _pumpFor(tester, const Duration(seconds: 4));
     expect(tester.takeException(), isNull);
   });
@@ -138,7 +139,7 @@ void main() {
     dynamic island() => tester.widget(
       find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Island'),
     );
-    await tester.tap(find.text('Ping'));
+    await tester.tap(find.text('PING'));
     for (var t = Duration.zero; t < const Duration(seconds: 3); t += frame) {
       await tester.pump(frame);
       final Size size = island().size;
@@ -163,7 +164,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(_faceUpCards(tester), 3);
 
-    await tester.tap(find.text('On landing'));
+    await tester.tap(find.text('ON LANDING'));
     await _pumpFor(tester, const Duration(milliseconds: 800));
     expect(_faceUpCards(tester), greaterThan(0));
     expect(_faceUpCards(tester), lessThan(3));
@@ -172,20 +173,20 @@ void main() {
 
   testWidgets('Phases jumps between phases and autoplays', (tester) async {
     await _open(tester, 'Phases');
-    await tester.tap(find.text('Full'));
+    await tester.tap(find.text('FULL'));
     await _pumpFor(tester, const Duration(milliseconds: 200));
-    await tester.tap(find.text('Card'));
+    await tester.tap(find.text('CARD'));
     await _pumpFor(tester, const Duration(seconds: 2));
-    await tester.tap(find.text('Autoplay'));
+    await tester.tap(find.text('AUTOPLAY'));
     await _pumpFor(tester, const Duration(seconds: 6));
-    await tester.tap(find.text('Stop'));
+    await tester.tap(find.text('STOP'));
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Phases hands a drag back to autoplay', (tester) async {
     await _open(tester, 'Phases');
-    await tester.tap(find.text('Autoplay'));
+    await tester.tap(find.text('AUTOPLAY'));
     await _pumpFor(tester, const Duration(milliseconds: 400));
     await tester.fling(
       find.text('Slow Motion').first,
@@ -193,19 +194,19 @@ void main() {
       600,
     );
     await tester.pump();
-    expect(find.text('Stop'), findsOneWidget);
+    expect(find.text('STOP'), findsOneWidget);
     await _pumpFor(tester, const Duration(milliseconds: 300));
     final full = find.byIcon(CupertinoIcons.backward_fill);
     expect(tester.getSize(full).width, greaterThan(0));
     await _pumpFor(tester, const Duration(seconds: 4));
-    await tester.tap(find.text('Stop'));
+    await tester.tap(find.text('STOP'));
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Scrub pauses, scrubs and resumes to the end', (tester) async {
     await _open(tester, 'Scrub');
-    await tester.tap(find.text('Send'));
+    await tester.tap(find.text('SEND'));
     await _pumpFor(tester, const Duration(milliseconds: 300));
     final scrubber = tester.getRect(
       find

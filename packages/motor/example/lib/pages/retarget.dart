@@ -1,4 +1,3 @@
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
@@ -32,6 +31,9 @@ class _RetargetPageState extends State<RetargetPage>
 
   final _clock = Stopwatch()..start();
   final _trace = <Offset>[];
+  final _code = ValueNotifier(
+    '// Tap the tabs quickly.\nindicator.animateTo(1);',
+  );
   var _tab = 0;
   var _useSpring = true;
 
@@ -44,6 +46,7 @@ class _RetargetPageState extends State<RetargetPage>
   @override
   void dispose() {
     _indicator.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -59,11 +62,22 @@ class _RetargetPageState extends State<RetargetPage>
   void _select(int tab) {
     setState(() => _tab = tab);
     _record();
+    final speed = _indicator.velocity.abs();
+    _code.value = speed < .05
+        ? '// At rest.\nindicator.animateTo($tab);'
+        : _useSpring
+        ? '// Moving at ${speed.toStringAsFixed(1)} tabs/s. The spring keeps '
+              'that speed.\nindicator.animateTo($tab);'
+        : '// Moving at ${speed.toStringAsFixed(1)} tabs/s. The curve starts '
+              'again from 0.\nindicator.animateTo($tab);';
     _indicator.animateTo(tab.toDouble());
   }
 
   void _setSpring(bool spring) {
     setState(() => _useSpring = spring);
+    _code.value = spring
+        ? 'indicator.motion = CupertinoMotion(bounce: .12);'
+        : 'indicator.motion = CurvedMotion(520.ms, Curves.easeInOut);';
     _indicator.motion = spring ? _spring : _curve;
   }
 
@@ -72,10 +86,11 @@ class _RetargetPageState extends State<RetargetPage>
     return ChapterPage(
       chapter: chapterNamed('Retarget'),
       lead:
-          'Tap the tabs quickly. The spring picks up the new target without '
-          'dropping its speed, so it never stops to turn. Switch to a curve '
-          'and watch the trace kink.',
-      code: 'indicator.animateTo(tab); // keeps its velocity',
+          'Tap the tabs quickly, before the indicator settles. A spring that '
+          'gets a new target keeps its current speed and bends toward it. '
+          'Switch to a curve and it stops and starts again at every tap, which '
+          'shows up as corners in the trace.',
+      code: _code,
       stage: AnimatedBuilder(
         animation: _indicator,
         builder: (context, _) => _Stage(
@@ -118,7 +133,7 @@ class _Stage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -132,11 +147,11 @@ class _Stage extends StatelessWidget {
             // The segmented control.
             Container(
               width: barWidth,
-              height: 44,
-              padding: const EdgeInsets.all(4),
+              height: 40,
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: t.pebble,
-                borderRadius: BorderRadius.circular(22),
+                color: p.control,
+                borderRadius: BorderRadius.circular(radius),
               ),
               child: Stack(
                 children: [
@@ -146,12 +161,11 @@ class _Stage extends StatelessWidget {
                     bottom: 0,
                     width: tabWidth + stretch,
                     child: Blur(
-                      sigma: motionBlur(Offset(speed, 0), strength: .004),
+                      sigma: motionBlur(Offset(speed, 0)),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: t.surfaceSolid,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: t.hairlineShadow,
+                          color: p.surface,
+                          borderRadius: BorderRadius.circular(radius),
                         ),
                       ),
                     ),
@@ -165,13 +179,12 @@ class _Stage extends StatelessWidget {
                             onTapDown: (_) => onSelect(index),
                             child: Center(
                               child: Text(
-                                label,
-                                style: archivo(
-                                  14,
-                                  weight: index == tab ? 600 : 460,
-                                  color: index == tab
-                                      ? t.textPrimary
-                                      : t.textSecondary,
+                                label.toUpperCase(),
+                                style: mono(
+                                  11.5,
+                                  weight: 500,
+                                  spacing: .5,
+                                  color: index == tab ? p.text : p.textTertiary,
                                 ),
                               ),
                             ),
@@ -185,41 +198,36 @@ class _Stage extends StatelessWidget {
             // The pages, driven by the same value.
             Expanded(
               child: ClipRect(
-                child: Blur(
-                  sigma: motionBlur(
-                    Offset(velocity * width, 0),
-                    strength: .0025,
-                  ),
-                  child: Stack(
-                    children: [
-                      for (final (index, stat) in _stats.indexed)
-                        Positioned(
-                          left: (index - position) * width,
-                          width: width,
-                          top: 0,
-                          bottom: 0,
-                          child: Opacity(
-                            opacity: (1 - (index - position).abs()).clamp(
-                              0.0,
-                              1.0,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  stat,
-                                  style: t.display.copyWith(fontSize: 64),
-                                ),
-                                Text(
-                                  'steps this ${_tabs[index].toLowerCase()}',
-                                  style: t.caption,
-                                ),
-                              ],
-                            ),
+                child: Stack(
+                  children: [
+                    for (final (index, stat) in _stats.indexed)
+                      Positioned(
+                        left: (index - position) * width,
+                        width: width,
+                        top: 0,
+                        bottom: 0,
+                        child: Opacity(
+                          opacity: (1 - (index - position).abs()).clamp(
+                            0.0,
+                            1.0,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                stat,
+                                style: p.display.copyWith(fontSize: 60),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'steps this ${_tabs[index].toLowerCase()}',
+                                style: p.caption,
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -228,7 +236,12 @@ class _Stage extends StatelessWidget {
               height: 110,
               width: double.infinity,
               child: CustomPaint(
-                painter: _TracePainter(trace: trace, now: now, guide: t.border),
+                painter: _TracePainter(
+                  trace: trace,
+                  now: now,
+                  guide: p.border,
+                  line: p.accent,
+                ),
               ),
             ),
             Padding(
@@ -237,10 +250,10 @@ class _Stage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'POSITION OVER TIME',
+                      'Position over time',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.eyebrow,
+                      style: p.caption,
                     ),
                   ),
                   Choice(
@@ -259,11 +272,17 @@ class _Stage extends StatelessWidget {
 }
 
 class _TracePainter extends CustomPainter {
-  _TracePainter({required this.trace, required this.now, required this.guide});
+  _TracePainter({
+    required this.trace,
+    required this.now,
+    required this.guide,
+    required this.line,
+  });
 
   final List<Offset> trace;
   final double now;
   final Color guide;
+  final Color line;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -295,10 +314,10 @@ class _TracePainter extends CustomPainter {
       path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
+        ..strokeWidth = 2
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round
-        ..shader = ExampleTheme.spectrum.createShader(Offset.zero & size),
+        ..color = line,
     );
   }
 

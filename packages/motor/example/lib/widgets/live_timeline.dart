@@ -1,4 +1,3 @@
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
@@ -14,30 +13,27 @@ class LiveTimeline extends StatelessWidget {
 
   final TrackController controller;
 
-  /// Lane names, in order. Lanes take their colors from [trackColors].
+  /// Lane names, in order.
   final Map<Track<Object>, String> lanes;
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: t.surfaceSolid,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: t.border),
+        color: p.surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: p.border),
       ),
       child: DefaultTextStyle(
-        style: archivo(11.5, weight: 500, color: t.textSecondary),
+        style: mono(11, color: p.textSecondary),
         child: MotorTimeline(
           controller: controller,
-          playheadColor: t.textPrimary,
+          playheadColor: p.text,
           lanes: [
-            for (final (index, MapEntry(key: track, value: label))
-                in lanes.entries.indexed)
-              MotorTimelineLane(label, [
-                track,
-              ], color: trackColors[index % trackColors.length]),
+            for (final MapEntry(key: track, value: label) in lanes.entries)
+              MotorTimelineLane(label, [track], color: p.accent),
           ],
         ),
       ),

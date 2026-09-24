@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
@@ -68,6 +67,7 @@ class _SyncPageState extends State<SyncPage>
   @override
   void dispose() {
     _dealer.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -91,7 +91,14 @@ class _SyncPageState extends State<SyncPage>
       ]),
   ]);
 
+  final _code = ValueNotifier('');
+
   void _deal() {
+    _code.value = _together
+        ? '// One token: the cards that land early wait for the last.\n'
+              'card([.to(spot), .sync(token: #dealt), .to(faceUp)])'
+        : '// A token per card: each flips as soon as it lands.\n'
+              'card([.to(spot), .sync(token: index), .to(faceUp)])';
     final timeline = _timeline;
     _dealer
       ..set(timeline.startValues)
@@ -100,14 +107,15 @@ class _SyncPageState extends State<SyncPage>
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     return ChapterPage(
       chapter: chapterNamed('Sync'),
       lead:
-          'Three cards fly out, each taking its own time. With one shared '
-          'token they wait at the barrier and flip together. With a token '
-          'each, every card flips the moment it lands.',
-      code: 'card([.to(spot), .sync(token: #dealt), .to(faceUp)])',
+          'Three cards fly out, land at different times, then flip. When they '
+          'share a sync token, the cards that land first wait at the barrier '
+          'until the last one arrives. Give each card its own token and it '
+          'flips as soon as it lands.',
+      code: _code,
       below: LiveTimeline(
         controller: _dealer,
         lanes: {for (final card in _cards) card: card.debugLabel!},
@@ -129,9 +137,10 @@ class _SyncPageState extends State<SyncPage>
                 child: child!,
               ),
               child: Text(
-                'A barrier waits until springs fully settle, often 2–3× their nominal '
-                'duration. To sync on visual arrival, use motion.scaleTo(d), '
-                'a curve, or an .at keyframe.',
+                'A barrier waits until a spring has fully settled, often two '
+                'to three times its nominal duration. To sync on the moment a '
+                'card visibly lands, give that step a fixed length: '
+                'motion.scaleTo(d), a curve, or an .at keyframe.',
                 textAlign: TextAlign.center,
                 style: t.caption,
               ),
@@ -237,43 +246,24 @@ class _CardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     return Container(
       width: _cardSize.width,
       height: _cardSize.height,
-      padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: const Color(0xFF16161A),
-        borderRadius: BorderRadius.circular(14),
+        color: t.accent,
+        borderRadius: BorderRadius.circular(6),
         boxShadow: [
           if (stacked)
             for (var i = 1; i <= 3; i++)
               BoxShadow(
-                color: const Color(0xFF16161A).withValues(alpha: .5),
-                offset: Offset(0, i * 2.5),
+                color: i.isOdd ? t.canvas : t.accent,
+                offset: Offset(0, i * 2.0),
               ),
-          ...t.softShadow,
         ],
       ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(9),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ExampleTheme.signalBlue, ExampleTheme.roseQuartz],
-          ),
-        ),
-        child: Center(
-          child: Text(
-            'm',
-            style: archivo(
-              30,
-              weight: 700,
-              width: 125,
-            ).copyWith(color: CupertinoColors.white.withValues(alpha: .85)),
-          ),
-        ),
+      child: Center(
+        child: Text('m', style: archivo(32, weight: 700, color: t.onAccent)),
       ),
     );
   }
@@ -286,24 +276,21 @@ class _CardFront extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final t = Palette.of(context);
     final (rank, _, suit) = face;
-    final color = suit == CupertinoIcons.suit_spade_fill
-        ? const Color(0xFF111113)
-        : ExampleTheme.spectrumRed;
+    final color = suit == CupertinoIcons.suit_spade_fill ? t.text : t.accent;
     return Container(
       width: _cardSize.width,
       height: _cardSize.height,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: t.border),
-        boxShadow: t.softShadow,
+        color: t.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: t.borderStrong),
       ),
       child: Stack(
         children: [
-          Text(rank, style: archivo(18, weight: 640, color: color)),
+          Text(rank, style: mono(16, weight: 600, color: color)),
           Center(child: Icon(suit, size: 38, color: color)),
         ],
       ),

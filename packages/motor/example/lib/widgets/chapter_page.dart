@@ -1,24 +1,9 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:motor/motor.dart';
+import 'package:flutter/foundation.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/controls.dart';
 import 'package:motor_example/widgets/style.dart';
-
-final _parts = [
-  for (var i = 0; i < 4; i++)
-    Track<double>(.single, initial: 0, debugLabel: 'Part ${i + 1}'),
-];
-
-/// Title, lead, stage and the rest blur in one after another.
-final _entrance = TrackTimeline([
-  for (final (index, part) in _parts.indexed)
-    part([
-      .hold(Duration(milliseconds: 70 * index)),
-      .to(1, motion: .smoothSpring(duration: Duration(milliseconds: 650))),
-    ]),
-]);
 
 /// The layout every chapter shares: a title, one line of explanation, the
 /// stage, the one line of code that matters, and an optional timeline.
@@ -40,8 +25,9 @@ class ChapterPage extends StatelessWidget {
 
   final Widget stage;
 
-  /// The line of code this chapter is about.
-  final String? code;
+  /// The code this chapter is about. Pages update it as you interact, so it
+  /// shows the call that's running.
+  final ValueListenable<String>? code;
 
   /// Shown under the code, usually a [LiveTimeline].
   final Widget? below;
@@ -50,12 +36,12 @@ class ChapterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     final next = chapter.next;
     return CupertinoPageScaffold(
-      backgroundColor: t.canvas,
+      backgroundColor: p.canvas,
       child: DefaultTextStyle(
-        style: t.body,
+        style: p.body,
         child: SafeArea(
           bottom: false,
           child: SingleChildScrollView(
@@ -63,51 +49,45 @@ class ChapterPage extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                child: TrackBuilder.timeline(
-                  _entrance,
-                  debugLabel: 'Page entrance',
-                  builder: (context, value, _) {
-                    Widget part(int index, Widget child) =>
-                        Reveal(progress: value(_parts[index]), child: child);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _TopBar(chapter: chapter),
-                        const SizedBox(height: 28),
-                        part(0, Text(chapter.title, style: t.display)),
-                        const SizedBox(height: 12),
-                        part(1, Text(lead)),
-                        const SizedBox(height: 24),
-                        part(
-                          2,
-                          SizedBox(
-                            height: stageHeight,
-                            child: _Stage(child: stage),
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TopBar(chapter: chapter),
+                    const SizedBox(height: 36),
+                    Text(chapter.title, style: p.display),
+                    const SizedBox(height: 12),
+                    Text(lead),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      height: stageHeight,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: p.inset,
+                          borderRadius: BorderRadius.circular(radius),
+                          border: Border.all(color: p.border),
                         ),
-                        part(
-                          3,
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (code case final code?) ...[
-                                const SizedBox(height: 14),
-                                CodeLine(code),
-                              ],
-                              if (below case final below?) ...[
-                                const SizedBox(height: 14),
-                                below,
-                              ],
-                              if (next != null) ...[
-                                const SizedBox(height: 36),
-                                _NextButton(next: next),
-                              ],
-                            ],
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(radius),
+                          child: stage,
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                    if (code case final code?) ...[
+                      const SizedBox(height: 12),
+                      ValueListenableBuilder(
+                        valueListenable: code,
+                        builder: (context, code, _) => CodeLine(code),
+                      ),
+                    ],
+                    if (below case final below?) ...[
+                      const SizedBox(height: 12),
+                      below,
+                    ],
+                    if (next != null) ...[
+                      const SizedBox(height: 40),
+                      _NextButton(next: next),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -125,65 +105,47 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    return Row(
-      children: [
-        PressScale(
-          onTap: () => Navigator.of(context).maybePop(),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: t.surfaceSolid,
-              shape: BoxShape.circle,
-              border: Border.all(color: t.border),
-              boxShadow: t.hairlineShadow,
-            ),
-            child: Icon(
-              CupertinoIcons.chevron_back,
-              size: 18,
-              color: t.textPrimary,
-            ),
-          ),
-        ),
-        const Spacer(),
-        Text('${chapter.number} / ${chapters.length}', style: t.eyebrow),
-        const SizedBox(width: 12),
-        for (final other in chapters)
-          Container(
-            width: identical(other, chapter) ? 16 : 5,
-            height: 5,
-            margin: const EdgeInsets.only(left: 4),
-            decoration: BoxDecoration(
-              color: identical(other, chapter) ? t.textPrimary : t.pebble,
-              borderRadius: BorderRadius.circular(3),
+    final p = Palette.of(context);
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          PressScale(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: Container(
+              height: 32,
+              padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: p.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.chevron_back, size: 15, color: p.text),
+                  const SizedBox(width: 4),
+                  Text(
+                    'All examples',
+                    style: archivo(13, weight: 500, color: p.text),
+                  ),
+                ],
+              ),
             ),
           ),
-      ],
-    );
-  }
-}
-
-class _Stage extends StatelessWidget {
-  const _Stage({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: t.fog,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: t.border),
+          const Spacer(),
+          for (final other in chapters)
+            Container(
+              width: 14,
+              height: 3,
+              margin: const EdgeInsets.only(left: 3),
+              color: identical(other, chapter) ? p.accent : p.control,
+            ),
+        ],
       ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(32), child: child),
     );
   }
 }
 
-/// A line of code, lightly highlighted.
+/// A few lines of code, lightly highlighted.
 class CodeLine extends StatelessWidget {
   const CodeLine(this.code, {super.key});
 
@@ -195,45 +157,35 @@ class CodeLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     final spans = <TextSpan>[];
     var start = 0;
     for (final match in _tokens.allMatches(code)) {
       if (match.start > start) {
         spans.add(TextSpan(text: code.substring(start, match.start)));
       }
-      final color = match.group(1) != null
-          ? t.textTertiary
-          : match.group(2) != null
-          ? ExampleTheme.roseQuartz
+      final color = match.group(2) != null
+          ? p.accent
           : match.group(3) != null
-          ? t.textPrimary
-          : t.textTertiary;
+          ? p.text
+          : p.textTertiary;
       spans.add(
         TextSpan(
           text: match.group(0),
-          style: TextStyle(
-            color: color,
-            fontVariations: match.group(3) != null
-                ? const [FontVariation.weight(600)]
-                : null,
-          ),
+          style: TextStyle(color: color),
         ),
       );
       start = match.end;
     }
     spans.add(TextSpan(text: code.substring(start)));
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: t.surfaceSolid,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: t.border),
+        color: p.surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: p.border),
       ),
-      child: Text.rich(
-        TextSpan(children: spans),
-        style: t.code.copyWith(color: t.textSecondary),
-      ),
+      child: Text.rich(TextSpan(children: spans), style: p.code),
     );
   }
 }
@@ -245,34 +197,25 @@ class _NextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return PressScale(
       // Replace, so walking the chapters doesn't stack pages and back always
       // returns home.
       onTap: () => context.replaceRoute(NamedRoute(next.title)),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
         decoration: BoxDecoration(
-          color: t.textPrimary,
-          borderRadius: BorderRadius.circular(24),
+          color: p.surface,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: p.borderStrong),
         ),
         child: Row(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'NEXT · ${next.number}',
-                  style: t.eyebrow.copyWith(
-                    color: t.canvas.withValues(alpha: .6),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(next.title, style: t.title.copyWith(color: t.canvas)),
-              ],
-            ),
+            Text('Next', style: p.body),
+            const SizedBox(width: 10),
+            Text(next.title, style: p.title),
             const Spacer(),
-            Icon(CupertinoIcons.arrow_right, color: t.canvas, size: 20),
+            Icon(CupertinoIcons.arrow_right, color: p.accent, size: 18),
           ],
         ),
       ),

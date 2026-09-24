@@ -36,7 +36,7 @@ void main() {
 
     await tester.tap(find.text('Retarget'));
     await tester.pumpAndSettle();
-    expect(find.text('POSITION OVER TIME'), findsOneWidget);
+    expect(find.text('Position over time'), findsOneWidget);
     expect(router.topMostRouter().stackData.map((data) => data.name).toList(), [
       'Motor 2.0',
       'Retarget',
@@ -58,6 +58,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Phases'));
     await tester.pumpAndSettle();
-    expect(find.text('Autoplay'), findsOneWidget);
+    expect(find.text('AUTOPLAY'), findsOneWidget);
   });
 }

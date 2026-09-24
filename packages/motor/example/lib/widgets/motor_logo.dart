@@ -1,5 +1,5 @@
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:motor_example/widgets/style.dart';
 
 /// A custom-painted logo for the Motor example app header.
 ///
@@ -11,10 +11,10 @@ class MotorLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return CustomPaint(
       size: Size.square(size),
-      painter: _MotorLogoPainter(color: t.textPrimary),
+      painter: _MotorLogoPainter(color: p.text),
     );
   }
 }

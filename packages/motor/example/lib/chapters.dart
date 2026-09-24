@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:motor_example/pages/fling.dart';
+import 'package:motor_example/pages/card_stack.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/retarget.dart';
 import 'package:motor_example/pages/scrub.dart';
@@ -42,43 +42,43 @@ final chapters = [
   Chapter(
     title: 'Toggle',
     path: 'toggle',
-    idea: 'One controller animates every part of a control.',
+    idea: 'Drive a switch and a like button, each with one controller.',
     page: TogglePage.new,
   ),
   Chapter(
     title: 'Retarget',
     path: 'retarget',
-    idea: 'Change your mind mid-flight.',
+    idea: 'Give an animation a new target halfway without losing speed.',
     page: RetargetPage.new,
   ),
   Chapter(
-    title: 'Fling',
-    path: 'fling',
-    idea: 'Let go, and the gesture becomes a sequence.',
-    page: FlingPage.new,
+    title: 'Card stack',
+    path: 'card-stack',
+    idea: 'Throw a card off the stack and watch it curve back underneath.',
+    page: CardStackPage.new,
   ),
   Chapter(
     title: 'Steps',
     path: 'steps',
-    idea: 'Choreograph a track as a list of steps.',
+    idea: 'Run each track through its own list of steps.',
     page: StepsPage.new,
   ),
   Chapter(
     title: 'Sync',
     path: 'sync',
-    idea: 'Tracks wait for each other at a barrier.',
+    idea: 'Make tracks wait for each other before they move on.',
     page: SyncPage.new,
   ),
   Chapter(
     title: 'Phases',
     path: 'phases',
-    idea: 'Drag between named states, even mid-playback.',
+    idea: 'Move between named layouts by tapping or dragging.',
     page: PhasesPage.new,
   ),
   Chapter(
     title: 'Scrub',
     path: 'scrub',
-    idea: 'Pause, scrub and resume any choreography.',
+    idea: 'Pause an animation, drag to any moment, and resume.',
     page: ScrubPage.new,
   ),
 ];

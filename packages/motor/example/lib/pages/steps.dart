@@ -1,4 +1,3 @@
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
@@ -17,28 +16,15 @@ class StepsPage extends StatefulWidget {
 
 const _compact = Size(120, 34);
 const _expanded = Size(340, 84);
-const _collapseAt = Duration(milliseconds: 2400);
-const _fadeAt = Duration(milliseconds: 1700);
-const _fade = CurvedMotion(Duration(milliseconds: 220));
-const _collapse = CurvedMotion(
-  Duration(milliseconds: 450),
-  Curves.easeInOutCubic,
-);
+const _fadeIn = CurvedMotion(Duration(milliseconds: 220), easeOut);
+const _fadeOut = CurvedMotion(Duration(milliseconds: 150), easeOut);
 
 class _StepsPageState extends State<StepsPage>
     with SingleTickerProviderStateMixin {
   late final _island = TrackController(vsync: this, debugLabel: 'Notification');
 
-  final _width = Track<double>(
-    .single,
-    initial: _compact.width,
-    debugLabel: 'Width',
-  );
-  final _height = Track<double>(
-    .single,
-    initial: _compact.height,
-    debugLabel: 'Height',
-  );
+  // One Size track, so width and height move as one.
+  final _shape = Track<Size>(.size, initial: _compact, debugLabel: 'Shape');
   final _content = Track<double>(.single, initial: 0, debugLabel: 'Content');
   final _bell = Track<double>(
     .single,
@@ -47,29 +33,32 @@ class _StepsPageState extends State<StepsPage>
     debugLabel: 'Bell',
   );
 
-  // A step after a spring starts once the spring has fully settled, well
-  // after it looks done, and .at stretches its motion over the gap before it.
-  // So the moments that must line up are pairs of .at keyframes on curves:
-  // stay until one time, then move until the next.
-  late final _ping = TrackTimeline([
-    for (final (track, size) in [
-      (_width, _expanded.width),
-      (_height, _expanded.height),
-    ])
-      track([
-        .to(size, motion: .bouncySpring(extraBounce: .1)),
-        .at(_collapseAt - _collapse.duration, size, motion: _collapse),
-        .at(
-          _collapseAt,
-          track == _width ? _compact.width : _compact.height,
-          motion: _collapse,
+  // Content uses fixed-length curves, so its steps land exactly on time. The
+  // shape waits at the barrier until the content has faded, then closes.
+  late final _pingTimeline = TrackTimeline([
+    _shape([
+      .to(
+        _expanded,
+        motion: CupertinoMotion(
+          duration: Duration(milliseconds: 500),
+          bounce: .2,
         ),
-      ]),
+      ),
+      .sync(token: #faded),
+      .to(
+        _compact,
+        motion: CupertinoMotion(
+          duration: Duration(milliseconds: 400),
+          bounce: .1,
+        ),
+      ),
+    ]),
     _content([
-      .hold(const Duration(milliseconds: 160)),
-      .to(1, motion: .smoothSpring()),
-      .at(_fadeAt, 1, motion: _fade),
-      .at(_fadeAt + _fade.duration, 0, motion: _fade),
+      .hold(const Duration(milliseconds: 120)),
+      .to(1, motion: _fadeIn),
+      .hold(const Duration(milliseconds: 1600)),
+      .to(0, motion: _fadeOut),
+      .sync(token: #faded),
     ]),
     _bell([
       .hold(const Duration(milliseconds: 260)),
@@ -78,30 +67,43 @@ class _StepsPageState extends State<StepsPage>
     ]),
   ]);
 
+  final _code = ValueNotifier(
+    '// Ping to play the timeline.\n'
+    'shape([.to(open), .sync(token: #faded), .to(closed)])',
+  );
+
   @override
   void dispose() {
     _island.dispose();
+    _code.dispose();
     super.dispose();
+  }
+
+  void _ping() {
+    final size = _island.value(_shape);
+    _code.value = size == _compact
+        ? '// Plays every track\'s steps from the start.\n'
+              'island.play(ping);'
+        : '// Played again from where it is, '
+              'Size(${size.width.round()}, ${size.height.round()}).\n'
+              'island.play(ping);';
+    _island.play(_pingTimeline);
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return ChapterPage(
       chapter: chapterNamed('Steps'),
       lead:
-          'Each track runs a list of steps: grow, hold, wiggle, fade. The '
-          'wiggle, fade and collapse are .at keyframes, so they land exactly '
-          'on time. Ping again mid-way and it picks up from where it is.',
-      code: 'content([.to(1), .at(fadeAt, 1), .at(fadeAt + fade, 0)])',
+          'The shape is one Size track, so width and height move as one. The '
+          'content fades in once it opens; the shape waits at a barrier until '
+          'the content has faded, then closes. Ping again mid-way and it picks '
+          'up from where it is.',
+      code: _code,
       below: LiveTimeline(
         controller: _island,
-        lanes: {
-          _width: 'width',
-          _height: 'height',
-          _content: 'content',
-          _bell: 'bell',
-        },
+        lanes: {_shape: 'shape', _content: 'content', _bell: 'bell'},
       ),
       stageHeight: 300,
       stage: Stack(
@@ -110,18 +112,11 @@ class _StepsPageState extends State<StepsPage>
             padding: const EdgeInsets.fromLTRB(28, 22, 28, 0),
             child: Row(
               children: [
-                Text(
-                  '9:41',
-                  style: archivo(15, weight: 600, color: t.textPrimary),
-                ),
+                Text('9:41', style: mono(13, weight: 600, color: p.text)),
                 const Spacer(),
-                Icon(CupertinoIcons.wifi, size: 16, color: t.textPrimary),
+                Icon(CupertinoIcons.wifi, size: 16, color: p.text),
                 const SizedBox(width: 6),
-                Icon(
-                  CupertinoIcons.battery_full,
-                  size: 20,
-                  color: t.textPrimary,
-                ),
+                Icon(CupertinoIcons.battery_full, size: 20, color: p.text),
               ],
             ),
           ),
@@ -133,7 +128,7 @@ class _StepsPageState extends State<StepsPage>
               child: AnimatedBuilder(
                 animation: _island,
                 builder: (context, _) => _Island(
-                  size: Size(_island.value(_width), _island.value(_height)),
+                  size: _island.value(_shape),
                   content: _island.value(_content),
                   bell: _island.value(_bell),
                 ),
@@ -149,7 +144,7 @@ class _StepsPageState extends State<StepsPage>
                 label: 'Ping',
                 icon: CupertinoIcons.bell,
                 filled: true,
-                onTap: () => _island.play(_ping),
+                onTap: _ping,
               ),
             ),
           ),
@@ -178,7 +173,7 @@ class _Island extends StatelessWidget {
       height: size.height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFF050506),
+        color: const Color(0xFF000000),
         borderRadius: BorderRadius.circular(size.height / 2),
       ),
       child: Stack(
@@ -191,8 +186,7 @@ class _Island extends StatelessWidget {
             height: _expanded.height,
             child: Reveal(
               progress: content,
-              offset: const Offset(0, 8),
-              blur: 12,
+              offset: const Offset(0, 4),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -203,18 +197,13 @@ class _Island extends StatelessWidget {
                       child: Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              ExampleTheme.spectrumRed,
-                              ExampleTheme.marigold,
-                            ],
-                          ),
+                          color: Palette.dark.accent,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.bell_fill,
-                          color: white,
+                          color: Palette.dark.onAccent,
                           size: 22,
                         ),
                       ),
@@ -245,8 +234,8 @@ class _Island extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'now',
-                      style: archivo(12, color: white.withValues(alpha: .5)),
+                      'NOW',
+                      style: mono(11, color: white.withValues(alpha: .5)),
                     ),
                   ],
                 ),

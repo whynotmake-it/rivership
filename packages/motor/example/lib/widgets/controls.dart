@@ -1,7 +1,6 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
-import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -37,7 +36,7 @@ class _PressScaleState extends State<PressScale> {
       child: MotorInspectionScope(
         group: 'Button press',
         child: SingleMotionBuilder(
-          value: _pressed ? .96 : 1,
+          value: _pressed ? .97 : 1,
           motion: const .snappySpring(),
           debugLabel: 'Press feedback',
           builder: (context, scale, child) =>
@@ -64,12 +63,12 @@ class Choice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
+    final p = Palette.of(context);
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: t.pebble,
-        borderRadius: BorderRadius.circular(99),
+        color: p.control,
+        borderRadius: BorderRadius.circular(radius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -79,20 +78,20 @@ class Choice extends StatelessWidget {
               onTap: () => onSelect(index),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: 10,
+                  vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: index == selected ? t.surfaceSolid : null,
-                  borderRadius: BorderRadius.circular(99),
-                  boxShadow: index == selected ? t.hairlineShadow : null,
+                  color: index == selected ? p.surface : null,
+                  borderRadius: BorderRadius.circular(radius),
                 ),
                 child: Text(
-                  option,
-                  style: archivo(
-                    12.5,
-                    weight: 560,
-                    color: index == selected ? t.textPrimary : t.textSecondary,
+                  option.toUpperCase(),
+                  style: mono(
+                    11,
+                    weight: 500,
+                    spacing: .5,
+                    color: index == selected ? p.text : p.textTertiary,
                   ),
                 ),
               ),
@@ -103,7 +102,7 @@ class Choice extends StatelessWidget {
   }
 }
 
-/// A compact pill button.
+/// A compact button. [filled] ones use the accent.
 class PillButton extends StatelessWidget {
   const PillButton({
     required this.label,
@@ -120,26 +119,28 @@ class PillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    final foreground = filled ? t.canvas : t.textPrimary;
+    final p = Palette.of(context);
+    final foreground = filled ? p.onAccent : p.text;
     return PressScale(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.fromLTRB(icon == null ? 16 : 12, 9, 16, 9),
+        padding: EdgeInsets.fromLTRB(icon == null ? 12 : 10, 8, 12, 8),
         decoration: BoxDecoration(
-          color: filled ? t.textPrimary : t.surfaceSolid,
-          borderRadius: BorderRadius.circular(99),
-          border: filled ? null : Border.all(color: t.border),
-          boxShadow: t.hairlineShadow,
+          color: filled ? p.accent : p.surface,
+          borderRadius: BorderRadius.circular(radius),
+          border: filled ? null : Border.all(color: p.borderStrong),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon case final icon?) ...[
-              Icon(icon, size: 15, color: foreground),
+              Icon(icon, size: 14, color: foreground),
               const SizedBox(width: 6),
             ],
-            Text(label, style: archivo(13, weight: 560, color: foreground)),
+            Text(
+              label.toUpperCase(),
+              style: mono(11.5, weight: 560, spacing: .5, color: foreground),
+            ),
           ],
         ),
       ),
