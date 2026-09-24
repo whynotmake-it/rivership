@@ -18,10 +18,10 @@ import 'package:motor/src/track_timeline.dart';
 /// Set `untilSettled` on a step to wait until it has settled.
 ///
 /// ```dart
-/// final timeline = TrackPhaseTimeline({
-///   Phase.idle: [size.to(Size(100, 40)), color.to(Colors.grey)],
-///   Phase.active: [size.to(Size(120, 48)), color.to(Colors.blue)],
-///   Phase.disabled: [size.to(Size(100, 40)), color.to(Colors.grey)],
+/// final timeline = TrackPhaseTimeline<Phase>({
+///   .idle: [size.to(Size(100, 40)), color.to(Colors.grey)],
+///   .active: [size.to(Size(120, 48)), color.to(Colors.blue)],
+///   .disabled: [size.to(Size(100, 40)), color.to(Colors.grey)],
 /// });
 /// ```
 ///

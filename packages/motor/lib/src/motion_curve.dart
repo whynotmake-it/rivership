@@ -18,7 +18,7 @@ import 'package:motor/motor.dart';
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
-///   curve: MotionCurve(spring: CupertinoMotion.bouncy, velocity: .3),
+///   curve: MotionCurve(motion: .bouncySpring(), velocity: .3),
 ///   height: size,
 ///   width: size,
 ///   color: Colors.blue,

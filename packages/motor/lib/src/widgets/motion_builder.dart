@@ -8,10 +8,10 @@ import 'package:motor/src/widgets/base_motion_builder.dart';
 ///
 /// ```dart
 /// Widget build(BuildContext context) {
-///   return MotionBuilder(
-///     value: Alignment.center,
-///     motion: SpringMotion(Spring()),
-///     converter: const AlignmentMotionConverter(),
+///   return MotionBuilder<Alignment>(
+///     value: .center,
+///     motion: .smoothSpring(),
+///     converter: .alignment,
 ///     builder: (context, value, child) => Align(
 ///       alignment: value,
 ///       child: child,

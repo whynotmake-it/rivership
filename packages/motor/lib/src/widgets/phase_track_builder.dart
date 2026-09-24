@@ -50,7 +50,7 @@ typedef PhaseTrackWidgetBuilder<P> = Widget Function(
 ///   timeline: TrackPhaseTimeline({
 ///     .compact: [panelSize.to(Size(172, 128))],
 ///     .expanded: [panelSize.to(Size(292, 180))],
-///   }, phaseLoop: LoopMode.loop),
+///   }, phaseLoop: .loop),
 ///   onTransition: (transition) => print('Transition: $transition'),
 ///   builder: (context, value, phase, child) { ... },
 /// )

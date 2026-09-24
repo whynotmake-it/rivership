@@ -20,11 +20,11 @@ typedef VelocityMotionWidgetBuilder<T> = Widget Function(
 ///
 /// ```dart
 /// Widget build(BuildContext context) {
-///   return MotionBuilder(
-///     value: Alignment.center,
-///     motion: SpringMotion(Spring()),
-///     converter: const AlignmentMotionConverter(),
-///     builder: (context, value, child) => Align(
+///   return VelocityMotionBuilder<Alignment>(
+///     value: .center,
+///     motion: .smoothSpring(),
+///     converter: .alignment,
+///     builder: (context, value, velocity, child) => Align(
 ///       alignment: value,
 ///       child: child,
 ///     ),
