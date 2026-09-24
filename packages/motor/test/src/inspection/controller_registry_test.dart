@@ -231,8 +231,35 @@ void main() {
       [for (final controller in observer.registered) controller.debugLabel],
       containsAll(['Tracks', 'Phases', 'Single value', 'Draggable']),
     );
+    expect(
+      {
+        for (final controller in observer.registered)
+          controller.debugLabel: (controller.debugCreator as Element?)
+              ?.widget
+              .runtimeType
+              .toString(),
+      },
+      {
+        'Tracks': 'TrackBuilder',
+        'Phases': 'PhaseTrackBuilder<int>',
+        'Single value': 'SingleMotionBuilder',
+        'Draggable': 'MotionDraggable<int>',
+      },
+    );
 
     await tester.pumpWidget(const SizedBox());
+    subscription.dispose();
+  });
+
+  testWidgets('controllers created directly have no recorded creator', (
+    tester,
+  ) async {
+    final subscription = MotorInspectionRegistry.attach(_RecordingObserver());
+    final controller = TrackController(vsync: tester);
+
+    expect(controller.debugCreator, isNull);
+
+    controller.dispose();
     subscription.dispose();
   });
 }

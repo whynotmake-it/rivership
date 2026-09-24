@@ -1,6 +1,7 @@
 import 'package:flutter/animation.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/track.dart';
@@ -243,4 +244,10 @@ extension TrackControllerInspection on TrackController {
   @experimental
   set motionOverride(Motion? Function(Track<Object> track)? value) =>
       internalMotionOverride = value;
+
+  /// What created this controller, when motor's builder widgets created it:
+  /// the builder's `Element`. Recorded only in debug builds while an
+  /// inspection observer is attached.
+  @experimental
+  Object? get debugCreator => MotorInspectionRegistry.creatorOf(this);
 }

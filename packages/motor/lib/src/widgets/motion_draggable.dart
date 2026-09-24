@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 
 /// A widget that works like [Draggable] but with a [Motion]-based animation
 /// upon return.
@@ -285,12 +286,15 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
 
   @override
   void initState() {
-    controller = MotionController(
-      motion: widget.motion,
-      vsync: this,
-      converter: const OffsetMotionConverter(),
-      initialValue: Offset.zero,
-      debugLabel: widget.debugLabel,
+    controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => MotionController(
+        motion: widget.motion,
+        vsync: this,
+        converter: const OffsetMotionConverter(),
+        initialValue: Offset.zero,
+        debugLabel: widget.debugLabel,
+      ),
     );
     controller.addListener(_redirectReturn);
     super.initState();
