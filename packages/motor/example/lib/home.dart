@@ -1,6 +1,12 @@
+// MotorInspectionScope is part of motor's experimental inspection API.
+// ignore_for_file: experimental_member_use
+
+import 'dart:math' as math;
+
 import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/chapters.dart';
@@ -360,6 +366,11 @@ class _ChapterGrid extends StatelessWidget {
 // Every card rests at its own slight angle, in degrees.
 const _tilts = [-1.8, 1.4, -1.1, 2.0, -1.5, 1.2, -1.9];
 
+final _scaleAndTurn = MotionConverter<(double, double)>.custom(
+  normalize: (value) => [value.$1, value.$2],
+  denormalize: (values) => (values[0], values[1]),
+);
+
 /// A chapter card that rests a little crooked, straightens and lifts under
 /// the pointer, and squeezes when pressed.
 class _ChapterCard extends StatefulWidget {
@@ -388,14 +399,20 @@ class _ChapterCardState extends State<_ChapterCard> {
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
         onTap: () => context.navigateTo(NamedRoute(widget.chapter.title)),
-        child: AnimatedRotation(
-          turns: calm ? 0 : _tilts[index % _tilts.length] / 360,
-          duration: const Duration(milliseconds: 420),
-          curve: Curves.easeOutBack,
-          child: AnimatedScale(
-            scale: _pressed ? .96 : (_hovered ? 1.03 : 1),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutBack,
+        child: MotorInspectionScope(
+          group: 'Chapter cards',
+          child: MotionBuilder<(double, double)>(
+            value: (
+              _pressed ? .96 : (_hovered ? 1.03 : 1),
+              calm ? 0 : _tilts[index % _tilts.length] * math.pi / 180,
+            ),
+            motion: const .bouncySpring(duration: Duration(milliseconds: 450)),
+            converter: _scaleAndTurn,
+            debugLabel: 'Chapter card ${widget.chapter.number}',
+            builder: (context, value, child) => Transform.rotate(
+              angle: value.$2,
+              child: Transform.scale(scale: value.$1, child: child),
+            ),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -414,7 +431,12 @@ class _ChapterCardState extends State<_ChapterCard> {
                         color: t.fog,
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Transform.scale(scale: 1.25, child: _Glyph(index)),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => Transform.scale(
+                          scale: (constraints.maxWidth / 130).clamp(1.2, 2),
+                          child: _Glyph(index),
+                        ),
+                      ),
                     ),
                   ),
                   Padding(
