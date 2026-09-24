@@ -1,0 +1,24 @@
+name: motor_devtools
+description: Lightweight in-app inspection and motion tuning tools for Motor.
+version: 0.1.0
+resolution: workspace
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/motor_devtools
+homepage: https://whynotmake.it
+
+topics: [animation, motion, devtools, inspector, flutter]
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # TODO(release): update to ^2.0.0 when Motor's dev release is versioned.
+  motor: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  snaptest: ^1.0.0-dev.3
