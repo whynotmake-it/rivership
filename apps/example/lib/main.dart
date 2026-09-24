@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
 import 'package:motor_example/main.dart';
 import 'package:rivership/rivership.dart';
-import 'package:springster_example/main.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
 
 void main() async {
@@ -25,11 +24,6 @@ void main() async {
         name: 'Motor',
         path: '/motor',
         children: motorRoutes,
-      ),
-      NamedRouteDef.shell(
-        name: 'Springster',
-        path: '/springster',
-        children: springsterRoutes,
       ),
       NamedRouteDef.shell(
         name: 'Stupid Simple Sheet',
@@ -71,10 +65,6 @@ class Home extends StatelessWidget {
           CupertinoButton.filled(
             onPressed: () => context.navigateTo(NamedRoute('Motor')),
             child: const Text('Motor'),
-          ),
-          CupertinoButton.filled(
-            onPressed: () => context.navigateTo(NamedRoute('Springster')),
-            child: const Text('Springster'),
           ),
           CupertinoButton.filled(
             onPressed: () =>
