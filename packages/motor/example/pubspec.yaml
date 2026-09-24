@@ -14,6 +14,8 @@ environment:
 dependencies:
   auto_route: ^10.0.1
   cupertino_icons: ^1.0.8
+  example_design:
+    path: ../../example_design
   flutter:
     sdk: flutter
   motor:
@@ -24,7 +26,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  snaptest: ^1.0.0-dev.3
 
 flutter:
   uses-material-design: true

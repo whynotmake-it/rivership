@@ -1,81 +1,15 @@
+import 'package:example_design/example_design.dart' show LogoGlyph;
 import 'package:flutter/cupertino.dart';
 import 'package:motor_example/widgets/style.dart';
 
-/// A custom-painted logo for the Motor example app header.
-///
-/// Draws a stylized waveform representing motion, in a single ink color.
+/// The motor logo: the ball and motion arc of the rivership package logos, in
+/// the accent color. [size] is its height.
 class MotorLogo extends StatelessWidget {
   const MotorLogo({super.key, this.size = 40});
 
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return CustomPaint(
-      size: .square(size),
-      painter: _MotorLogoPainter(color: p.text),
-    );
-  }
-}
-
-class _MotorLogoPainter extends CustomPainter {
-  _MotorLogoPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-    final cy = h / 2;
-
-    final ringPaint = Paint()
-      ..style = .stroke
-      ..strokeWidth = w * 0.05
-      ..color = color.withValues(alpha: .18);
-
-    canvas.drawCircle(Offset(cx, cy), w * 0.44, ringPaint);
-
-    final wavePaint = Paint()
-      ..style = .stroke
-      ..strokeWidth = w * 0.08
-      ..strokeCap = .round
-      ..strokeJoin = .round
-      ..color = color;
-
-    final startX = w * 0.22;
-    final endX = w * 0.78;
-    final midY = cy;
-    final amp = h * 0.2;
-
-    final path = Path()
-      ..moveTo(startX, midY + amp)
-      ..cubicTo(
-        startX + (endX - startX) * 0.15,
-        midY - amp * 1.6,
-        cx - (endX - startX) * 0.05,
-        midY + amp * 1.2,
-        cx,
-        midY,
-      )
-      ..cubicTo(
-        cx + (endX - startX) * 0.05,
-        midY - amp * 1.2,
-        endX - (endX - startX) * 0.15,
-        midY + amp * 1.6,
-        endX,
-        midY - amp,
-      );
-
-    canvas.drawPath(path, wavePaint);
-
-    final dotPaint = Paint()..color = color;
-    canvas.drawCircle(Offset(endX, midY - amp), w * 0.05, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(_MotorLogoPainter oldDelegate) =>
-      color != oldDelegate.color;
+  Widget build(BuildContext context) =>
+      LogoGlyph(color: Palette.of(context).accent, size: size);
 }
