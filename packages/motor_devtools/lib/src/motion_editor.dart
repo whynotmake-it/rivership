@@ -664,6 +664,7 @@ class _MotionPreviewState extends State<MotionPreview>
   late var _samples = _sample(widget.motion);
   Timer? _pause;
   Timer? _restart;
+  var _run = 0;
 
   @override
   void initState() {
@@ -685,11 +686,14 @@ class _MotionPreviewState extends State<MotionPreview>
 
   void _play() {
     _pause?.cancel();
+    // Restarting mid-run returns the controller's in-flight future again, so
+    // only the latest run may schedule the next one; otherwise an earlier
+    // callback leaves a timer that outlives dispose.
+    final run = ++_run;
     _controller.animateTo(1, from: 0, withVelocity: 0).orCancel.then(
       (_) {
-        if (mounted) {
-          _pause = Timer(const Duration(milliseconds: 700), _play);
-        }
+        if (!mounted || run != _run) return;
+        _pause = Timer(const Duration(milliseconds: 700), _play);
       },
       onError: (_) {},
     );
