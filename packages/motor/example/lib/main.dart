@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/home.dart';
@@ -14,8 +15,15 @@ void main() {
   runApp(
     ValueListenableBuilder(
       valueListenable: devtoolsEnabled,
-      builder: (context, enabled, child) =>
-          MotorDevTools(enabled: enabled, child: child!),
+      builder: (context, enabled, child) => MotorDevTools(
+        enabled: enabled,
+        motions: const {
+          'Smooth': Motion.smoothSpring(),
+          'Snappy': Motion.snappySpring(),
+          'Bouncy': Motion.bouncySpring(),
+        },
+        child: child!,
+      ),
       child: CupertinoApp.router(
         debugShowCheckedModeBanner: false,
         routerConfig: router.config(),
