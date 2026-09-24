@@ -260,6 +260,18 @@ class TrackAnimation<T extends Object> with EquatableMixin {
     );
   }
 
+  /// Where this animation ends: its last `TrackStep.to`/`TrackStep.at`
+  /// value, or null when no step carries a value.
+  @internal
+  TrackValue<T>? get endValue {
+    for (final step in steps.reversed) {
+      if (step case StepTo<T>(:final value) || StepAt<T>(:final value)) {
+        return track.value(value);
+      }
+    }
+    return null;
+  }
+
   /// The dimension count of this animation's first concrete target, or null
   /// when no step carries a value.
   int? get _firstTargetDimensions {
