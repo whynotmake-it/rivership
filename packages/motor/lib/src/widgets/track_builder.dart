@@ -1,3 +1,4 @@
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/track_controller.dart';
@@ -6,6 +7,7 @@ import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_timeline.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// Builds a widget from a multi-track animation.
 typedef TrackWidgetBuilder = Widget Function(
@@ -34,6 +36,7 @@ class TrackBuilder extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.child,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   }) : timeline = null;
 
@@ -48,6 +51,7 @@ class TrackBuilder extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.child,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   })  : animations = null,
         loop = LoopMode.none;
@@ -96,13 +100,22 @@ class TrackBuilder extends StatefulWidget {
   /// {@endtemplate}
   final String? debugLabel;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<TrackBuilder> createState() => _TrackBuilderState();
 }
 
 class _TrackBuilderState extends State<TrackBuilder>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, TickerRateStateMixin {
   late final TrackController _controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => _controller.resync(this);
 
   @override
   void initState() {
@@ -124,6 +137,7 @@ class _TrackBuilderState extends State<TrackBuilder>
   @override
   void didUpdateWidget(TrackBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
     _controller.velocityTracking = widget.velocityTracking;
 
     if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
