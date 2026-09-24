@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker/leak_tracker.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 
@@ -120,4 +121,90 @@ void main() {
     await tester.pump();
     expect(await _collected(tester, reference), isTrue);
   });
+
+  for (final visible in [false, true]) {
+    testWidgets(
+      'idle controllers cost nothing per frame (visible: $visible)',
+      (tester) async {
+        final idle = <_Counting>[];
+        await tester.pumpWidget(
+          MotorDevTools(
+            visible: visible,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Column(
+                children: [
+                  for (var i = 0; i < 20; i++)
+                    _CountingOwner(onCreated: idle.add),
+                  _Owner(onCreated: (_) {}),
+                ],
+              ),
+            ),
+          ),
+        );
+        // The first frames refresh the tools once; after that, frames should
+        // not touch idle controllers.
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        for (final controller in idle) {
+          controller.reads = 0;
+        }
+        for (var i = 0; i < 30; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(idle.map((c) => c.reads).reduce((a, b) => a + b), 0);
+      },
+    );
+  }
+}
+
+/// Counts how often the tools read it.
+class _Counting extends TrackController {
+  _Counting({required super.vsync});
+
+  int reads = 0;
+
+  @override
+  bool get isAnimating {
+    reads++;
+    return super.isAnimating;
+  }
+
+  @override
+  // ignore: invalid_use_of_internal_member, counting the tools' reads.
+  PlaybackSnapshot internalInspectPlayback() {
+    reads++;
+    // ignore: invalid_use_of_internal_member, counting the tools' reads.
+    return super.internalInspectPlayback();
+  }
+}
+
+class _CountingOwner extends StatefulWidget {
+  const _CountingOwner({required this.onCreated});
+
+  final ValueChanged<_Counting> onCreated;
+
+  @override
+  State<_CountingOwner> createState() => _CountingOwnerState();
+}
+
+class _CountingOwnerState extends State<_CountingOwner>
+    with TickerProviderStateMixin {
+  late final controller = _Counting(vsync: this);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onCreated(controller);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox();
 }

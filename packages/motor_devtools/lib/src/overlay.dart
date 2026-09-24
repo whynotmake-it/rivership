@@ -14,7 +14,6 @@ class FloatingBubble extends StatefulWidget {
     required this.isOpen,
     required this.onOpen,
     required this.initialAlignment,
-    required this.activity,
     required this.isActive,
     required this.modifiedCount,
     required this.panel,
@@ -31,14 +30,11 @@ class FloatingBubble extends StatefulWidget {
   /// vertical component the height.
   final Alignment initialAlignment;
 
-  /// Notifies when [isActive] may have changed.
-  final Listenable activity;
-
   /// Whether any controller is playing, shown as a dot on the bubble.
-  final bool Function() isActive;
+  final bool isActive;
 
   /// How many controllers the tools changed, shown as a badge on the bubble.
-  final int Function() modifiedCount;
+  final int modifiedCount;
 
   /// The expanded content.
   final Widget panel;
@@ -261,10 +257,8 @@ class _FloatingBubbleState extends State<FloatingBubble>
                             child: _BubbleFace(
                               key: const ValueKey('motor-devtools-launcher'),
                               palette: palette,
-                              activity: widget.activity,
-                              isActive: () =>
-                                  widget.isActive() &&
-                                  widget.modifiedCount() == 0,
+                              isActive:
+                                  widget.isActive && widget.modifiedCount == 0,
                               onTap: widget.onOpen,
                               onPanStart: _dragStart,
                               onPanUpdate: _dragUpdate,
@@ -308,12 +302,9 @@ class _FloatingBubbleState extends State<FloatingBubble>
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: (1 - t * 3).clamp(0.0, 1.0),
-                      child: ListenableBuilder(
-                        listenable: widget.activity,
-                        builder: (context, _) => _Badge(
-                          count: widget.modifiedCount(),
-                          palette: palette,
-                        ),
+                      child: _Badge(
+                        count: widget.modifiedCount,
+                        palette: palette,
                       ),
                     ),
                   ),
@@ -682,7 +673,6 @@ class _Surface extends StatelessWidget {
 class _BubbleFace extends StatelessWidget {
   const _BubbleFace({
     required this.palette,
-    required this.activity,
     required this.isActive,
     required this.onTap,
     required this.onPanStart,
@@ -692,8 +682,7 @@ class _BubbleFace extends StatelessWidget {
   });
 
   final DevToolsPalette palette;
-  final Listenable activity;
-  final bool Function() isActive;
+  final bool isActive;
   final VoidCallback onTap;
   final GestureDragStartCallback onPanStart;
   final GestureDragUpdateCallback onPanUpdate;
@@ -723,24 +712,21 @@ class _BubbleFace extends StatelessWidget {
               Positioned(
                 top: 10,
                 right: 10,
-                child: ListenableBuilder(
-                  listenable: activity,
-                  builder: (context, _) => SingleMotionBuilder(
-                    value: isActive() ? 1 : 0,
-                    motion: quickMotion,
-                    debugLabel: internalDebugLabel,
-                    builder: (context, value, _) => Transform.scale(
-                      scale: value.clamp(0.0, 1.2),
-                      child: Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: palette.accent,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: palette.surface,
-                            width: 1.5,
-                          ),
+                child: SingleMotionBuilder(
+                  value: isActive ? 1 : 0,
+                  motion: quickMotion,
+                  debugLabel: internalDebugLabel,
+                  builder: (context, value, _) => Transform.scale(
+                    scale: value.clamp(0.0, 1.2),
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: palette.accent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: palette.surface,
+                          width: 1.5,
                         ),
                       ),
                     ),

@@ -137,6 +137,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   final _groups = <String, GroupSettings>{};
   final _appliedGroups = <TrackController, String?>{};
   final _listeners = <TrackController, VoidCallback>{};
+  final _statusListeners = <TrackController, AnimationStatusListener>{};
   final _played = <TrackController>{};
   final _activity = <TrackController, int>{};
 
@@ -199,6 +200,11 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _restoreSession();
     _listeners
       ..forEach((controller, listener) => controller.removeListener(listener))
+      ..clear();
+    _statusListeners
+      ..forEach((controller, listener) {
+        controller.removeStatusListener(listener);
+      })
       ..clear();
     _subscription?.dispose();
     _subscription = null;
@@ -275,8 +281,13 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
       if (_played.add(controller)) _scheduleRefresh();
     }
 
+    void statusListener(AnimationStatus _) => _scheduleRefresh();
+
     _listeners[controller] = listener;
-    controller.addListener(listener);
+    _statusListeners[controller] = statusListener;
+    controller
+      ..addListener(listener)
+      ..addStatusListener(statusListener);
     _syncGroup(controller);
     _scheduleRefresh();
   }
@@ -324,6 +335,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _held.remove(controller);
     if (_listeners.remove(controller) case final listener?) {
       controller.removeListener(listener);
+    }
+    if (_statusListeners.remove(controller) case final listener?) {
+      controller.removeStatusListener(listener);
     }
     _scheduleRefresh();
   }
@@ -559,6 +573,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
       _listeners.forEach((controller, listener) {
         controller.removeListener(listener);
       });
+      _statusListeners.forEach((controller, listener) {
+        controller.removeStatusListener(listener);
+      });
       _subscription?.dispose();
       (widget.controller ?? _ownedController)?.removeListener(
         _scheduleRefresh,
@@ -595,11 +612,14 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
             isOpen: _overlay.isOpen,
             onOpen: () => _overlay.open(selected),
             initialAlignment: widget.alignment,
-            activity: Listenable.merge(_controllers),
-            isActive: () => _controllers.any((c) => c.isAnimating),
-            modifiedCount: () => _controllers
-                .where((c) => c.inspectable && changesOf(c).isNotEmpty)
-                .length,
+            // Computed when the tools rebuild, such as when a controller
+            // starts or stops, never per frame, and not at all while hidden.
+            isActive: widget.visible && _controllers.any((c) => c.isAnimating),
+            modifiedCount: widget.visible
+                ? _controllers
+                      .where((c) => c.inspectable && changesOf(c).isNotEmpty)
+                      .length
+                : 0,
             panel: DevToolsPanel(
               host: this,
               group:
