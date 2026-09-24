@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:heroine/heroine.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 final controller = TextEditingController();
 
@@ -100,26 +99,23 @@ class Field extends StatelessWidget {
         return Card(
           clipBehavior: Clip.antiAlias,
           color: CupertinoColors.systemBackground.resolveFrom(context),
-          shape: LiquidRoundedSuperellipse(borderRadius: 32),
-          child: GlassGlowLayer(
-            child: GlassGlow(
-              child: GestureDetector(
-                onTap: onPressed,
-                child: Container(
-                  color: Colors.transparent,
-                  child: CupertinoTextField(
-                    placeholder: 'Type something...',
-                    textAlignVertical: TextAlignVertical.top,
-                    cursorColor:
-                        CupertinoTheme.of(context).primaryContrastingColor,
-                    maxLines: isFlipped ? null : 1,
-                    controller: controller,
-                    autofocus: true,
-                    enabled: isFlipped,
-                    decoration: BoxDecoration(),
-                    padding: const EdgeInsets.all(16.0),
-                  ),
-                ),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(32),
+          ),
+          child: GestureDetector(
+            onTap: onPressed,
+            child: Container(
+              color: Colors.transparent,
+              child: CupertinoTextField(
+                placeholder: 'Type something...',
+                textAlignVertical: TextAlignVertical.top,
+                cursorColor: CupertinoTheme.of(context).primaryContrastingColor,
+                maxLines: isFlipped ? null : 1,
+                controller: controller,
+                autofocus: true,
+                enabled: isFlipped,
+                decoration: BoxDecoration(),
+                padding: const EdgeInsets.all(16.0),
               ),
             ),
           ),

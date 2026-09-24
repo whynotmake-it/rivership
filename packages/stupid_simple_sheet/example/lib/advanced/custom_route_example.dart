@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
 import 'package:stupid_simple_sheet_example/widgets/sheet_previews.dart';
@@ -153,21 +152,14 @@ class CustomSheetRoute<T> extends PopupRoute<T>
         heightFactor: 1,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: LiquidStretch(
-            interactionScale: 1,
-            child: LiquidGlass.withOwnLayer(
-              fake: !ImageFilter.isShaderFilterSupported,
-              settings: LiquidGlassSettings(
-                thickness: 40,
-                blur: 10,
-                lightIntensity: .3,
-                glassColor: CupertinoColors.secondarySystemBackground
+          child: ClipRSuperellipse(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: ColoredBox(
+                color: CupertinoColors.secondarySystemBackground
                     .resolveFrom(context)
                     .withValues(alpha: .7),
-              ),
-              shape: const LiquidRoundedSuperellipse(borderRadius: 32),
-              child: GlassGlow(
-                glowColor: CupertinoColors.white.withValues(alpha: .1),
                 child: child,
               ),
             ),
