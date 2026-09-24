@@ -99,12 +99,9 @@ class _HomePageState extends State<HomePage>
                           child: Column(
                             crossAxisAlignment: .start,
                             children: [
-                              GestureDetector(
-                                onTap: _enter,
-                                child: _reveal(
-                                  0,
-                                  Text('Motor', style: headline),
-                                ),
+                              _Headline(
+                                size: headline.fontSize!,
+                                reveal: (child) => _reveal(0, child),
                               ),
                               const SizedBox(height: 20),
                               _reveal(
@@ -169,46 +166,163 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return SizedBox(
+    return const SizedBox(
       height: 44,
+      child: Row(children: [Spacer(), _DevToolsToggle()]),
+    );
+  }
+}
+
+/// The logo, the animated title and the version.
+class _Headline extends StatelessWidget {
+  const _Headline({required this.size, required this.reveal});
+
+  final double size;
+  final Widget Function(Widget child) reveal;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    // Scales down on windows too narrow for it.
+    return FittedBox(
+      fit: .scaleDown,
+      alignment: .centerLeft,
       child: Row(
+        mainAxisSize: .min,
         children: [
-          // The glyph's weight is in its ball, so box-centring it sits it
-          // too high. This lines its centre of mass up with the x-height.
-          Transform.translate(
-            offset: const Offset(0, 4.5),
-            child: const MotorLogo(size: 24),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: .baseline,
-              textBaseline: .alphabetic,
-              children: [
-                Flexible(
-                  child: Text(
-                    'motor',
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    style: archivo(
-                      19,
-                      weight: 560,
-                      spacing: -.4,
-                      color: p.text,
-                    ),
-                  ),
+          reveal(MotorLogo(size: size * .72)),
+          SizedBox(width: size * .24),
+          Row(
+            mainAxisSize: .min,
+            crossAxisAlignment: .baseline,
+            textBaseline: .alphabetic,
+            children: [
+              _Title(size: size),
+              SizedBox(width: size * .18),
+              reveal(
+                Text(
+                  '2.0',
+                  style: mono(size * .26, weight: 600, color: p.accent),
                 ),
-                const SizedBox(width: 8),
-                Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
-              ],
-            ),
+              ),
+            ],
           ),
-          const _DevToolsToggle(),
         ],
       ),
     );
   }
+}
+
+/// One letter of the title: how heavy and wide it is, and how far it has
+/// still to slide in.
+typedef _Letter = ({double weight, double width, double shift});
+
+final MotionConverter<_Letter> _letterConverter = .custom(
+  normalize: (letter) => [letter.weight, letter.width, letter.shift],
+  denormalize: (values) =>
+      (weight: values[0], width: values[1], shift: values[2]),
+);
+
+const _Letter _hidden = (weight: 100, width: 62, shift: -40);
+const _Letter _resting = (weight: 560, width: 106, shift: 0);
+const _Letter _hovered = (weight: 900, width: 118, shift: 0);
+
+/// The title, set in Archivo's weight and width axes. Its letters slide in
+/// one after another, thin and narrow to bold and wide. Hover a letter to
+/// make it heavier, tap the title to play it again.
+class _Title extends StatefulWidget {
+  const _Title({required this.size});
+
+  final double size;
+
+  @override
+  State<_Title> createState() => _TitleState();
+}
+
+class _TitleState extends State<_Title> with SingleTickerProviderStateMixin {
+  static const _word = 'Motor';
+  static const Motion _spring = .bouncySpring(
+    extraBounce: .3,
+    duration: Duration(milliseconds: 900),
+  );
+
+  late final _title = TrackController(vsync: this, debugLabel: 'Title');
+  final _letters = [
+    for (final letter in _word.split(''))
+      Track<_Letter>(_letterConverter, initial: _hidden, debugLabel: letter),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _enter();
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  void _enter() {
+    _title
+      ..set([for (final letter in _letters) letter.value(_hidden)])
+      ..play(
+        TrackTimeline([
+          for (final (index, letter) in _letters.indexed)
+            letter([
+              .hold(Duration(milliseconds: 90 * index)),
+              .to(_resting, motion: _spring),
+            ]),
+        ]),
+      );
+  }
+
+  void _hover(int index, {required bool on}) => _title.animate([
+    _letters[index].to(on ? _hovered : _resting, motion: _spring),
+  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = Palette.of(context);
+    return GestureDetector(
+      onTap: _enter,
+      child: AnimatedBuilder(
+        animation: _title,
+        builder: (context, _) => Row(
+          mainAxisSize: .min,
+          crossAxisAlignment: .baseline,
+          textBaseline: .alphabetic,
+          children: [
+            for (final (index, track) in _letters.indexed)
+              MouseRegion(
+                onEnter: (_) => _hover(index, on: true),
+                onExit: (_) => _hover(index, on: false),
+                child: _letter(_word[index], _title.value(track), p),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _letter(String character, _Letter letter, Palette p) => Opacity(
+    opacity: (1 + letter.shift / -_hidden.shift).clamp(0.0, 1.0),
+    child: Transform.translate(
+      offset: Offset(letter.shift, 0),
+      child: Text(
+        character,
+        style: archivo(
+          widget.size,
+          weight: letter.weight.clamp(100, 900),
+          width: letter.width.clamp(62, 125),
+          height: 1.05,
+          spacing: -widget.size * .02,
+          color: p.text,
+        ),
+      ),
+    ),
+  );
 }
 
 class _DevToolsToggle extends StatelessWidget {
