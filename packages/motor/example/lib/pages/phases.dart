@@ -1,420 +1,373 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
-import 'package:motor_example/pages/card_stack.dart';
-import 'package:motor_example/widgets/example_scaffold.dart';
+import 'package:motor_example/chapters.dart';
+import 'package:motor_example/widgets/chapter_page.dart';
+import 'package:motor_example/widgets/controls.dart';
+import 'package:motor_example/widgets/live_timeline.dart';
+import 'package:motor_example/widgets/style.dart';
 
-/// The complete, named UI states of the order card. Tapping a name on the
-/// phase rail (or auto-playing) transitions the whole card to that state.
-enum _OrderPhase { ordered, packed, delivered }
-
-/// Names complete UI states and lets each track settle at phase boundaries.
+/// Named states, and motor animating every track between them.
 class PhasesPage extends StatefulWidget {
   const PhasesPage({super.key});
-
-  static const routeName = 'Phases';
 
   @override
   State<PhasesPage> createState() => _PhasesPageState();
 }
 
-class _PhasesPageState extends State<PhasesPage> {
-  final _progress = Track<double>(.single, initial: 0, motion: .smoothSpring());
-  final _badge = Track<double>(.single, initial: 0, motion: .smoothSpring());
-  final _railX = Track<double>(
+enum _Player { mini, card, full }
+
+const _rest = Duration(milliseconds: 700);
+
+class _PhasesPageState extends State<PhasesPage>
+    with SingleTickerProviderStateMixin {
+  late final _player = PhaseTrackController<_Player>(
+    vsync: this,
+    debugLabel: 'Now playing',
+  );
+
+  final _frame = Track<Size>(
+    .size,
+    initial: const Size(220, 60),
+    motion: .bouncySpring(duration: Duration(milliseconds: 600)),
+    debugLabel: 'Frame',
+  );
+  final _radius = Track<double>(
+    .single,
+    initial: 30,
+    motion: .smoothSpring(),
+    debugLabel: 'Radius',
+  );
+  final _art = Track<Rect>(
+    .rect,
+    initial: const Rect.fromLTWH(10, 10, 40, 40),
+    motion: .smoothSpring(duration: Duration(milliseconds: 650)),
+    debugLabel: 'Artwork',
+  );
+  final _inline = Track<double>(
+    .single,
+    initial: 1,
+    motion: .smoothSpring(),
+    debugLabel: 'Inline text',
+  );
+  final _stacked = Track<double>(
     .single,
     initial: 0,
-    motion: .snappySpring(duration: Duration(milliseconds: 420)),
+    motion: .smoothSpring(duration: Duration(milliseconds: 700)),
+    debugLabel: 'Full text',
   );
-  final _stamp = Track<double>(.single, initial: 1);
 
-  /// The badge stamps on every phase entry: snap smaller, spring back.
-  static const _stampPop = [
-    TrackStep<double>.to(.72, motion: Motion.linear(Duration.zero)),
-    TrackStep<double>.to(1, motion: Motion.bouncySpring()),
-  ];
-
-  // One timeline, three named states. Entering a phase plays that phase's
-  // plan from the current values, and every track settles before the phase
-  // reports PhaseSettled — phase boundaries are automatic sync barriers.
-  late final _timeline = TrackPhaseTimeline<_OrderPhase>({
-    _OrderPhase.ordered: [
-      _progress.to(0),
-      _badge.to(0),
-      _railX.to(0),
-      _stamp(_stampPop),
-    ],
-    _OrderPhase.packed: [
-      // The controller picks this plan for whichever transition lands here —
-      // packed gets a snappier progress push than the smooth default.
-      _progress.to(.5, motion: .snappySpring()),
-      _badge.to(.55),
-      _railX.to(1),
-      _stamp(_stampPop),
-    ],
-    _OrderPhase.delivered: [
-      // Delivery is the payoff, so its plan lands with a bounce.
-      _progress.to(1, motion: .bouncySpring()),
-      _badge.to(1),
-      _railX.to(2),
-      _stamp(_stampPop),
-    ],
-  }, phaseLoop: LoopMode.loop);
-
-  /// The manually requested phase (drives PhaseTrackBuilder.currentPhase).
-  _OrderPhase _phase = _OrderPhase.ordered;
-
-  /// The phase the controller last reported, mirrored without a rebuild so
-  /// turning auto-play off can hand control back where playback left it.
-  _OrderPhase _livePhase = _OrderPhase.ordered;
-
-  bool _playing = false;
-  String _lastEvent = 'waiting for a transition';
-
-  void _onTransition(PhaseTransition<_OrderPhase> transition) {
-    final (phase, label) = switch (transition) {
-      PhaseTransitioning(:final from, :final to) => (
-        to,
-        'PhaseTransitioning(${from.name} → ${to.name})',
+  late final _phases = TrackPhaseTimeline<_Player>({
+    .mini: [
+      _frame.to(const Size(220, 60)),
+      _radius.to(30),
+      _art.to(const Rect.fromLTWH(10, 10, 40, 40)),
+      _inline([.to(1), .hold(_rest)]),
+      _stacked.to(
+        0,
+        motion: .snappySpring(duration: Duration(milliseconds: 200)),
       ),
-      PhaseSettled(:final phase) => (phase, 'PhaseSettled(${phase.name})'),
-    };
-    _livePhase = phase;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _lastEvent = label);
-    });
+    ],
+    .card: [
+      _frame.to(const Size(320, 136)),
+      _radius.to(28),
+      _art.to(const Rect.fromLTWH(16, 16, 104, 104)),
+      _inline([.to(1), .hold(_rest)]),
+      _stacked.to(
+        0,
+        motion: .snappySpring(duration: Duration(milliseconds: 200)),
+      ),
+    ],
+    .full: [
+      _frame.to(const Size(320, 404)),
+      _radius.to(36),
+      _art.to(const Rect.fromLTWH(24, 24, 272, 236)),
+      _inline.to(
+        0,
+        motion: .snappySpring(duration: Duration(milliseconds: 200)),
+      ),
+      _stacked([.to(1), .hold(_rest)]),
+    ],
+  }, phaseLoop: .pingPong);
+
+  var _phase = _Player.mini;
+  var _autoplay = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.setTimeline(_phases, onTransition: _onTransition);
   }
 
-  void _selectPhase(_OrderPhase phase) {
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  void _onTransition(PhaseTransition<_Player> transition) {
+    if (mounted) setState(() => _phase = transition.phase);
+  }
+
+  void _goTo(_Player phase) {
     setState(() {
-      _playing = false;
       _phase = phase;
+      _autoplay = false;
     });
+    _player.goToPhase(phase);
   }
 
-  void _setPlaying(bool value) {
-    setState(() {
-      _playing = value;
-      // Sync the manual phase to wherever playback is, so toggling play off
-      // settles in place instead of jumping back to a stale phase.
-      _phase = _livePhase;
-    });
+  void _toggleAutoplay() {
+    setState(() => _autoplay = !_autoplay);
+    if (_autoplay) {
+      _player.playPhases(_phases, atPhase: _phase, onTransition: _onTransition);
+    } else {
+      _player.goToPhase(_phase);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = ExampleTheme.of(context);
-    return ExamplePage(
-      title: PhasesPage.routeName,
-      next: (label: 'Toggle', routeName: 'Toggle'),
-      description:
-          'Barriers coordinate steps inside one plan; phases name whole UI '
-          'states and choose the plan for each transition. Tap a phase on '
-          'the rail — the whole card settles into that named state.',
-      action: Row(
-        children: [
-          CupertinoSwitch(
-            key: const ValueKey('auto-play'),
-            value: _playing,
-            activeTrackColor: theme.textPrimary,
-            onChanged: _setPlaying,
-          ),
-          const SizedBox(width: 10),
-          const Text('play automatically'),
-        ],
+    return ChapterPage(
+      chapter: chapterNamed('Phases'),
+      lead:
+          'Mini, card and full are phases: each names the values its tracks '
+          'settle on. Jump to any phase mid-morph, or autoplay. Between phases, '
+          'motor waits until every track has arrived.',
+      code: 'player.goToPhase(Player.full);',
+      below: LiveTimeline(
+        controller: _player,
+        lanes: {
+          _frame: 'frame',
+          _radius: 'radius',
+          _art: 'artwork',
+          _inline: 'inline',
+          _stacked: 'full text',
+        },
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      stageHeight: 520,
+      stage: Stack(
         children: [
-          PhaseTrackBuilder<_OrderPhase>(
-            currentPhase: _phase,
-            playing: _playing,
-            timeline: _timeline,
-            onTransition: _onTransition,
-            builder: (context, value, phase, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          Positioned(
+            top: 24,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _player,
+                builder: (context, _) {
+                  final value = _player.value;
+                  return _NowPlaying(
+                    frame: value(_frame),
+                    radius: value(_radius),
+                    art: value(_art),
+                    inline: value(_inline),
+                    stacked: value(_stacked),
+                  );
+                },
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Row(
               children: [
-                Stage(
-                  label: 'tap a phase in the rail',
-                  padding: const EdgeInsets.symmetric(vertical: 44),
-                  child: Center(
-                    child: _OrderCard(
-                      phase: phase,
-                      progress: value(_progress),
-                      badge: value(_badge),
-                      stamp: value(_stamp),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Choice(
+                      options: const ['Mini', 'Card', 'Full'],
+                      selected: _phase.index,
+                      onSelect: (index) => _goTo(_Player.values[index]),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                _PhaseRail(
-                  activePhase: phase,
-                  position: value(_railX),
-                  onSelect: _selectPhase,
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    _lastEvent,
-                    key: const ValueKey('phase-status'),
-                    style: TextStyle(
-                      color: theme.textTertiary,
-                      fontSize: 11,
-                      fontFamily: 'JetBrains Mono',
-                      fontFamilyFallback: const ['monospace', 'Menlo'],
-                    ),
-                  ),
+                const Spacer(),
+                PillButton(
+                  label: _autoplay ? 'Stop' : 'Autoplay',
+                  icon: _autoplay
+                      ? CupertinoIcons.pause_fill
+                      : CupertinoIcons.play_fill,
+                  filled: _autoplay,
+                  onTap: _toggleAutoplay,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Text(
-                'see it composed →',
-                style: TextStyle(color: theme.textSecondary),
-              ),
-              const SizedBox(width: 12),
-              NeutralButton(
-                onPressed: () =>
-                    context.navigateTo(NamedRoute(CardStackPage.routeName)),
-                child: const Text('Card Stack'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const TakeawayText(
-            'Barriers synchronize within a plan; phases name whole states and '
-            'choose between plans.',
-          ),
         ],
       ),
     );
   }
 }
 
-/// The one artifact on this page: an order-status card whose look is fully
-/// described by the phase timeline's tracks.
-class _OrderCard extends StatelessWidget {
-  const _OrderCard({
-    required this.phase,
-    required this.progress,
-    required this.badge,
-    required this.stamp,
+class _NowPlaying extends StatelessWidget {
+  const _NowPlaying({
+    required this.frame,
+    required this.radius,
+    required this.art,
+    required this.inline,
+    required this.stacked,
   });
 
-  final _OrderPhase phase;
-  final double progress;
-  final double badge;
-  final double stamp;
+  final Size frame;
+  final double radius;
+  final Rect art;
+  final double inline;
+  final double stacked;
 
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    final (icon, subtitle) = switch (phase) {
-      _OrderPhase.ordered => (CupertinoIcons.bag, 'Order placed'),
-      _OrderPhase.packed => (CupertinoIcons.cube_box, 'Packed & on the way'),
-      _OrderPhase.delivered => (CupertinoIcons.checkmark_alt, 'Delivered'),
-    };
-    final fill = badge.clamp(0.0, 1.0);
-    final badgeColor = Color.lerp(t.fog, t.textPrimary, fill)!;
-    final iconColor = Color.lerp(t.textPrimary, t.surfaceSolid, fill)!;
-
+    // The artist line only fits once the frame is tall enough.
+    final roomy = ((frame.height - 60) / 60).clamp(0.0, 1.0);
     return Container(
-      width: 300,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
-      decoration: ShapeDecoration(
-        color: t.surfaceSolid,
-        shape: RoundedSuperellipseBorder(
-          side: BorderSide(color: t.border),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        shadows: t.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Transform.scale(
-                scale: stamp,
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 21, color: iconColor),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Order #1834',
-                      style: TextStyle(
-                        color: t.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(color: t.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _RouteLine(progress: progress),
-        ],
-      ),
-    );
-  }
-}
-
-/// A shipment route: a progress line passing through one node per phase.
-class _RouteLine extends StatelessWidget {
-  const _RouteLine({required this.progress});
-
-  static const _nodeSize = 10.0;
-
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    final fraction = progress.clamp(0.0, 1.0);
-    return SizedBox(
-      height: _nodeSize,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          return Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  color: t.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Container(
-                height: 3,
-                width: fraction * width,
-                decoration: BoxDecoration(
-                  color: t.textPrimary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              for (final stop in const [0.0, 0.5, 1.0])
-                Positioned(
-                  left: stop * (width - _nodeSize),
-                  child: Container(
-                    width: _nodeSize,
-                    height: _nodeSize,
-                    decoration: BoxDecoration(
-                      color: fraction >= stop - .001
-                          ? t.textPrimary
-                          : t.surfaceSolid,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: t.borderStrong),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// The phase rail: every named state as a tappable chip, with an indicator
-/// that travels between them. The traveling indicator IS the transition —
-/// it is driven by the same phase timeline as the card.
-class _PhaseRail extends StatelessWidget {
-  const _PhaseRail({
-    required this.activePhase,
-    required this.position,
-    required this.onSelect,
-  });
-
-  final _OrderPhase activePhase;
-
-  /// The indicator's position in cell units (0, 1, 2 at rest).
-  final double position;
-
-  final ValueChanged<_OrderPhase> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = ExampleTheme.of(context);
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.all(4),
+      width: frame.width,
+      height: frame.height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: t.fog,
-        borderRadius: BorderRadius.circular(999),
+        color: t.surfaceSolid,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: t.border),
+        boxShadow: t.softShadow,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cell = constraints.maxWidth / _OrderPhase.values.length;
-          return Stack(
-            children: [
-              Positioned(
-                left: position * cell,
-                top: 0,
-                bottom: 0,
-                width: cell,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: t.surfaceSolid,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: t.border),
-                    boxShadow: t.hairlineShadow,
-                  ),
-                ),
-              ),
-              Row(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fromRect(
+            rect: art,
+            child: _Artwork(size: art.width),
+          ),
+          Positioned(
+            left: art.right + 14,
+            top: art.top,
+            width: 170,
+            height: art.height,
+            child: Reveal(
+              progress: inline,
+              offset: const Offset(-12, 0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final phase in _OrderPhase.values)
-                    Expanded(
-                      child: GestureDetector(
-                        key: ValueKey('phase-chip-${phase.name}'),
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => onSelect(phase),
-                        child: Center(
-                          child: Text(
-                            phase.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: phase == activePhase
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: phase == activePhase
-                                  ? t.textPrimary
-                                  : t.textSecondary,
-                            ),
-                          ),
+                  Text(
+                    'Slow Motion',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.title.copyWith(fontSize: 16),
+                  ),
+                  ClipRect(
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      heightFactor: roomy,
+                      child: Opacity(
+                        opacity: roomy,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('The Springs', style: t.caption),
+                            const SizedBox(height: 12),
+                            const _Progress(width: 150),
+                          ],
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
-            ],
-          );
-        },
+            ),
+          ),
+          Positioned(
+            left: 24,
+            right: 24,
+            top: art.bottom + 20,
+            child: Reveal(
+              progress: stacked,
+              offset: const Offset(0, 24),
+              blur: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Slow Motion', style: t.title.copyWith(fontSize: 22)),
+                  const SizedBox(height: 2),
+                  Text('The Springs', style: t.body),
+                  const SizedBox(height: 16),
+                  const _Progress(width: 272),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      for (final icon in [
+                        CupertinoIcons.backward_fill,
+                        CupertinoIcons.pause_fill,
+                        CupertinoIcons.forward_fill,
+                      ])
+                        Icon(icon, size: 26, color: t.textPrimary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Artwork extends StatelessWidget {
+  const _Artwork({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * .16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ExampleTheme.marigold,
+            ExampleTheme.spectrumRed,
+            ExampleTheme.roseQuartz,
+          ],
+        ),
+      ),
+      child: Icon(
+        CupertinoIcons.music_note_2,
+        color: CupertinoColors.white.withValues(alpha: .9),
+        size: size * .4,
+      ),
+    );
+  }
+}
+
+class _Progress extends StatelessWidget {
+  const _Progress({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
+    return Container(
+      width: width,
+      height: 4,
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: t.pebble,
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Container(
+        width: width * .38,
+        decoration: BoxDecoration(
+          color: t.textPrimary,
+          borderRadius: BorderRadius.circular(2),
+        ),
       ),
     );
   }
