@@ -43,13 +43,13 @@ void main() {
     ]);
   });
 
-  testWidgets('home toggles the devtools', (tester) async {
-    addTearDown(() => example.devtoolsEnabled.value = true);
+  testWidgets('home shows and hides the devtools', (tester) async {
+    addTearDown(() => example.devtoolsVisible.value = true);
     await _pumpApp(tester);
-    expect(example.devtoolsEnabled.value, isTrue);
+    expect(example.devtoolsVisible.value, isTrue);
     await tester.tap(find.text('DevTools'));
     await tester.pumpAndSettle();
-    expect(example.devtoolsEnabled.value, isFalse);
+    expect(example.devtoolsVisible.value, isFalse);
   });
 
   testWidgets('a chapter card opens its chapter', (tester) async {

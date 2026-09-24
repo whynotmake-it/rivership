@@ -357,12 +357,12 @@ class _DevToolsToggle extends StatelessWidget {
     if (!kMotorDevTools) return const SizedBox.shrink();
     final p = Palette.of(context);
     return ValueListenableBuilder(
-      valueListenable: devtoolsEnabled,
-      builder: (context, enabled, _) => Semantics(
-        toggled: enabled,
+      valueListenable: devtoolsVisible,
+      builder: (context, visible, _) => Semantics(
+        toggled: visible,
         label: 'DevTools',
         child: PressScale(
-          onTap: () => devtoolsEnabled.value = !enabled,
+          onTap: () => devtoolsVisible.value = !visible,
           child: Container(
             height: 32,
             padding: const .fromLTRB(10, 0, 5, 0),
@@ -379,7 +379,7 @@ class _DevToolsToggle extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 SingleMotionBuilder(
-                  value: enabled ? 1 : 0,
+                  value: visible ? 1 : 0,
                   motion: const .snappySpring(),
                   debugLabel: 'DevTools switch',
                   builder: (context, on, _) => Container(

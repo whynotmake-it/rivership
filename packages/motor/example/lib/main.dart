@@ -9,14 +9,14 @@ import 'package:motor_example/home.dart';
 /// the tools keep tracking while hidden, so nothing is lost.
 ///
 /// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools.
-final devtoolsEnabled = ValueNotifier(true);
+final devtoolsVisible = ValueNotifier(true);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
   runApp(
     ValueListenableBuilder(
-      valueListenable: devtoolsEnabled,
+      valueListenable: devtoolsVisible,
       builder: (context, visible, child) => MotorDevTools(
         visible: visible,
         motions: const {
