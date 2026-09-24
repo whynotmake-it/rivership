@@ -230,6 +230,13 @@ class _PagePosition extends ParentDataWidget<_PageData> {
 
 class _PageData extends ContainerBoxParentData<RenderBox> {
   double position = 0;
+  final opacity = LayerHandle<OpacityLayer>();
+
+  @override
+  void detach() {
+    opacity.layer = null;
+    super.detach();
+  }
 }
 
 /// Pages that slide horizontally. Its height blends the heights of the pages
@@ -284,16 +291,18 @@ class _RenderPageStack extends RenderBox
       final opacity = data.position < 0
           ? (1 + data.position * 2).clamp(0.0, 1.0)
           : 1.0;
+      if (opacity <= 0 || opacity >= 1) data.opacity.layer = null;
       if (opacity <= 0) continue;
       final at = offset + data.offset;
       if (opacity >= 1) {
         context.paintChild(child, at);
       } else {
         final page = child;
-        context.pushOpacity(
+        data.opacity.layer = context.pushOpacity(
           at,
           (opacity * 255).round(),
           (context, offset) => context.paintChild(page, offset),
+          oldLayer: data.opacity.layer,
         );
       }
     }
