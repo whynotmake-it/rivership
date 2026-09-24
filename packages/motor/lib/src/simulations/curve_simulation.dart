@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 
 @internal
-class CurveSimulation extends Simulation {
+class CurveSimulation extends Simulation implements FiniteSimulation {
   CurveSimulation({
     required this.duration,
     required this.curve,
@@ -24,31 +27,48 @@ class CurveSimulation extends Simulation {
   final double end;
 
   @override
-  double x(double time) {
+  double x(double time) => valueAt(progressAt(time));
+
+  /// How far along the curve [time] is, or infinity once past the end.
+  ///
+  /// Simulations that [sharesTiming] can share one progress per time.
+  double progressAt(double time) {
     final relativeTime = time / duration.toSeconds();
-
-    if (relativeTime > 1) {
-      return end;
-    }
-
-    final t = curve.transform(relativeTime.clamp(0, 1));
-
-    return start + (end - start) * t;
+    if (relativeTime > 1) return double.infinity;
+    return curve.transform(relativeTime.clamp(0, 1));
   }
+
+  /// The value at [progress] from [progressAt].
+  double valueAt(double progress) =>
+      progress == double.infinity ? end : start + (end - start) * progress;
+
+  /// Whether [other] follows the same curve over the same duration.
+  bool sharesTiming(CurveSimulation other) =>
+      identical(curve, other.curve) && duration == other.duration;
 
   @override
   double dx(double time) {
-    // Calculate the approximate derivative using a small delta
-    final delta = tolerance.distance;
-    final x1 = x(time - delta);
-    final x2 = x(time + delta);
-
-    // Return the rate of change (velocity)
-    return (x2 - x1) / delta * 2;
+    // A central difference over tolerance.time, like Flutter's
+    // AnimationController does for its curves, but kept within the curve:
+    // at and after its end this is the slope it ended with, which is what a
+    // following step inherits.
+    final seconds = duration.toSeconds();
+    final at = time.clamp(0.0, seconds);
+    final low = math.max(0.0, at - tolerance.time);
+    final high = math.min(seconds, at + tolerance.time);
+    if (high <= low) return 0;
+    return (_valueWithin(high) - _valueWithin(low)) / (high - low);
   }
+
+  /// The value at [time] within the curve, including exactly at its end.
+  double _valueWithin(double time) =>
+      start + (end - start) * curve.transform(time / duration.toSeconds());
 
   @override
   bool isDone(double time) => time > duration.toSeconds();
+
+  @override
+  double get finishSeconds => justAfter(duration.toSeconds());
 }
 
 extension on Duration {
