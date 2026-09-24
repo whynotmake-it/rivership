@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -50,6 +51,8 @@ class StepPlayback<T extends Object> {
         _loop = loop,
         _fallbackMotion = fallbackMotion,
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
+        _start = start,
+        _velocity = velocity,
         _initialValues = converter.normalize(start) {
     final initialVelocities = switch (velocity) {
       null => List<double>.filled(_initialValues.length, 0),
@@ -149,10 +152,17 @@ class StepPlayback<T extends Object> {
   /// with sync steps.
   static const _foldAttempts = 8;
 
+  /// How many segments a loop that does not fold keeps for seeking back
+  /// while inspection tooling is attached. Whole cycles are dropped, oldest
+  /// first, but never the last two; without tooling only those two are kept.
+  static const _maxKeptSegments = 1024;
+
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
   final List<TrackStep<T>> _steps;
+  final T _start;
+  final T? _velocity;
   final MotionConverter<T> _converter;
   final LoopMode _loop;
   final Motion? _fallbackMotion;
@@ -167,6 +177,9 @@ class StepPlayback<T extends Object> {
 
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
+
+  /// Stable predicted durations for the forward playback plan.
+  List<double?>? _estimatedSegmentSeconds;
 
   // Resolution state: the segment currently being resolved, at the end of
   // the table.
@@ -234,6 +247,18 @@ class StepPlayback<T extends Object> {
         },
     ];
   }
+
+  /// A fresh copy of this plan that plays its steps once, from the same
+  /// start, for resolving ahead without affecting this playback.
+  @internal
+  StepPlayback<T> fork() => StepPlayback<T>(
+        steps: _steps,
+        converter: _converter,
+        start: _start,
+        velocity: _velocity,
+        fallbackMotion: _fallbackMotion,
+        fallbackMotionPerDimension: _fallbackMotionPerDimension,
+      );
 
   Duration? _knownMotionDuration(
     Motion? motion,
@@ -333,6 +358,18 @@ class StepPlayback<T extends Object> {
   @internal
   List<double?> get forwardSegmentSeconds =>
       List.unmodifiable(_forwardSegmentSeconds);
+
+  /// Predicted forward segment durations, set by inspection tooling.
+  @internal
+  List<double?> get estimatedSegmentSeconds => List.unmodifiable(
+        _estimatedSegmentSeconds ?? List<double?>.filled(_steps.length, null),
+      );
+
+  @internal
+  set estimatedSegmentSeconds(List<double?> value) {
+    assert(value.length == _steps.length, 'one estimate per step');
+    _estimatedSegmentSeconds = value;
+  }
 
   /// Start times of the forward steps reached so far in the shown cycle, in
   /// slot-local seconds.
@@ -693,12 +730,15 @@ class StepPlayback<T extends Object> {
     );
   }
 
-  /// Bounds memory for loops that cannot fold by forgetting all but their
-  /// last two cycles. Seeking before the cycles kept shows the earliest one
-  /// kept.
+  /// Bounds memory for loops that cannot fold by forgetting their oldest
+  /// cycles beyond [_maxKeptSegments], or all but the last two without
+  /// inspection tooling. Seeking before the cycles kept shows the earliest
+  /// one kept.
   void _dropOldCycles() {
-    if (_segments.isEmpty) return;
-    final oldest = math.min(_segments.last.cycle, _cycle - 2);
+    final budget = MotorInspectionRegistry.isInspecting ? _maxKeptSegments : 0;
+    final excess = _segments.length - budget;
+    if (excess <= 0) return;
+    final oldest = math.min(_segments[excess - 1].cycle, _cycle - 2);
     final drop = _segments.indexWhere((segment) => segment.cycle > oldest);
     if (drop > 0) {
       _segments.removeRange(0, drop);
