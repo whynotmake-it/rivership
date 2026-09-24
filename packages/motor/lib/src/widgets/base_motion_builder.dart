@@ -61,7 +61,8 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   final String? debugLabel;
 
   /// {@template motor.tickerRate}
-  /// How often this widget's animation ticks, for example `TickerRate.fps(30)`.
+  /// How often this widget's animation ticks, for example
+  /// `tickerRate: .fps(30)`.
   ///
   /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
   /// frame.

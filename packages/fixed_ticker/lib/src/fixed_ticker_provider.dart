@@ -16,7 +16,7 @@ import 'package:flutter/widgets.dart';
 /// class _MyState extends State<MyWidget>
 ///     with SingleFixedTickerProviderStateMixin {
 ///   @override
-///   TickerRate get tickerRate => TickerRate.fps(10);
+///   TickerRate get tickerRate => .fps(10);
 /// }
 /// ```
 ///
@@ -217,7 +217,7 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
 /// class _MyState extends State<MyWidget>
 ///     with FixedTickerProviderStateMixin {
 ///   @override
-///   TickerRate get tickerRate => TickerRate.fps(10);
+///   TickerRate get tickerRate => .fps(10);
 /// }
 /// ```
 ///

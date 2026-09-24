@@ -70,9 +70,9 @@ class _VelocityTrackingOff extends VelocityTracking {
 /// Example:
 /// ```dart
 /// final controller = MotionController(
-///   motion: CupertinoMotion.bouncy(),
+///   motion: .bouncySpring(),
 ///   vsync: this,
-///   converter: MotionConverter.offset,
+///   converter: .offset,
 ///   initialValue: Offset.zero,
 ///   // Enabled by default, or use VelocityTracking.off() to disable
 /// );

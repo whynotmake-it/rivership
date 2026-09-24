@@ -67,13 +67,13 @@ The core of Motor's unified motion system is the `Motion` class. It represents t
 
 ```dart
 // Duration-based motion (traditional Flutter approach)
-final linear = Motion.linear(Duration(seconds: 1));
+final Motion linear = .linear(Duration(seconds: 1));
 
-final withCurve = Motion.curved(Duration(seconds: 1), Curves.easeInOut);
+final Motion withCurve = .curved(Duration(seconds: 1), Curves.easeInOut);
 
 // Physics-based motion (natural, responsive)
-final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
-final material = MaterialSpringMotion.standardSpatialDefault();
+final CupertinoMotion spring = .bouncy(); // Or `Motion.bouncySpring()`
+final MaterialSpringMotion material = .standardSpatialDefault();
 ```
 
 Motor provides several motion types out of the box, with the ability to create
@@ -162,7 +162,7 @@ Use `SingleMotionBuilder` for basic, one-dimensional animations:
 
 ```dart
 SingleMotionBuilder(
-  motion: CupertinoMotion.bouncy(),
+  motion: .bouncySpring(),
   value: targetValue, // Changes trigger smooth spring animation
   builder: (context, value, child) {
     return Container(
@@ -180,10 +180,10 @@ If you want to animate more complex types, such as `Offset`, `Size`, or `Rect`, 
 
 ```dart
 MotionBuilder(
-  motion: CupertinoMotion.bouncy(),
+  motion: .bouncySpring(),
   value: const Offset(100, 100),
   from: Offset.zero,
-  converter: OffsetMotionConverter(),
+  converter: .offset,
   builder: (context, value, child) {
     return Transform.translate(
       offset: value,
@@ -205,7 +205,7 @@ MotionBuilder(
   motion: MaterialSpringMotion.expressiveSpatialDefault(),
   value: const Offset(100, 100),
   from: Offset.zero,
-  converter: OffsetMotionConverter(),
+  converter: .offset,
   builder: (context, value, child) {
     return Transform.translate(
       offset: value,
@@ -252,7 +252,7 @@ scale.to(1, motion: .bouncySpring()); // single step
 
 offset([                               // multiple steps, run in order
   .at(const Duration(milliseconds: 300), const Offset(0, 100)),
-  .to(Offset.zero, motion: .bouncySpring()),
+  .to(.zero, motion: .bouncySpring()),
 ]);
 ```
 
@@ -277,6 +277,8 @@ final double s = value(scale);  // returns double
 
 Think of it as a typed lookup keyed by track identity: "given this track, what's its value right now?" This is exactly why tracks need to be stable instances.
 
+When you pass the value to a nullable parameter, such as `Transform.scale(scale:)`, name the type: `value<double>(scale)`. Otherwise the compiler infers a nullable type and rejects the call, even though the analyzer accepts it.
+
 #### Play them together: `TrackBuilder`
 
 Now it all comes together. Pass an `animations:` list of track animations; they share one ticker, and the builder rebuilds with the reader:
@@ -287,7 +289,7 @@ TrackBuilder(
     scale.to(1, motion: .bouncySpring()),
     offset([
       .at(const Duration(milliseconds: 300), const Offset(0, 100)),
-      .to(Offset.zero, motion: .bouncySpring()),
+      .to(.zero, motion: .bouncySpring()),
     ]),
     tint([
       .hold(const Duration(milliseconds: 120)),
@@ -298,7 +300,7 @@ TrackBuilder(
     return Transform.translate(
       offset: value(offset),
       child: Transform.scale(
-        scale: value(scale),
+        scale: value<double>(scale),
         child: ColoredBox(color: value(tint), child: child),
       ),
     );
@@ -349,10 +351,10 @@ PhaseTrackBuilder<PanelPhase>(
   }),
   builder: (context, value, phase, child) {
     return SizedBox.fromSize(
-      size: value(panelSize),
+      size: value<Size>(panelSize),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(value(radius)),
+          borderRadius: .circular(value(radius)),
         ),
       ),
     );
@@ -495,7 +497,7 @@ final MotionSequence<ButtonState, Offset> buttonSequence = .states({
 }, motion: .bouncySpring());
 
 // 2. Step sequences — ordered progression by index:
-final MotionSequence<int, Color> colorSequence = MotionSequence.steps([
+final MotionSequence<int, Color> colorSequence = .steps([
   Colors.red,
   Colors.yellow,
   Colors.green,
@@ -576,7 +578,7 @@ class My3DMotionConverter extends MotionConverter<Vector3> {
 
 Widget build(BuildContext context) {
   return MotionBuilder(
-    motion: CupertinoMotion.bouncy(),
+    motion: .bouncySpring(),
     value: Vector3(100, 100, 100),
     converter: const My3DMotionConverter(),
     // ...
@@ -587,7 +589,7 @@ Widget build(BuildContext context) {
 Or, just use `MotionConverter.custom` directly and pass the converter functions to its constructor:
 
 ```dart
-final converter = MotionConverter.custom(
+final MotionConverter<Vector3> converter = .custom(
   normalize: (value) => [value.x, value.y, value.z],
   denormalize: (values) => Vector3(values[0], values[1], values[2]),
 );
@@ -618,7 +620,7 @@ For custom types or ad-hoc usage, you can define how "direction" is calculated.
 1. **Using `MotionConverter.customDirectional`:**
 
 ```dart
-final converter = MotionConverter.customDirectional(
+final MotionConverter<Size> converter = .customDirectional(
   normalize: (Size s) => [s.width, s.height],
   denormalize: (List<double> v) => Size(v[0], v[1]),
   // Compare area to determine direction
@@ -647,7 +649,7 @@ It works just like Flutter's `Draggable` widget and supports native `DragTarget`
 
 ```dart
 MotionDraggable(
-  motion: CupertinoMotion.bouncy(),
+  motion: .bouncySpring(),
   child: Container(
     width: 100,
     height: 100,
@@ -663,14 +665,14 @@ For maximum control, Motor provides `MotionController` for complex types and `Si
 
 ```dart
 final controller = MotionController<Offset>(
-  motion: CupertinoMotion.bouncy(), // or Motion.curved(...), etc.
+  motion: .bouncySpring(), // or .curved(...), etc.
   vsync: this,
-  converter: MotionConverter.offset,
-  initialValue: Offset.zero,
+  converter: .offset,
+  initialValue: .zero,
 );
 
 final single = SingleMotionController(
-  motion: CupertinoMotion.smooth(),
+  motion: .smoothSpring(),
   vsync: this,
 ); // starts at 0
 
@@ -678,7 +680,7 @@ controller.animateTo(const Offset(100, 0));
 controller.play([ // multi-step playback on one value
   .to(const Offset(0, 100)), // uses the controller's motion
   .hold(const Duration(milliseconds: 200)),
-  .to(Offset.zero, motion: .smoothSpring()),
+  .to(.zero, motion: .smoothSpring()),
 ], loop: .pingPong);
 ```
 
@@ -704,9 +706,9 @@ Velocity tracking is **enabled by default** for smooth motion continuity when ma
 
 ```dart
 final controller = MotionController(
-  motion: CupertinoMotion.bouncy(),
+  motion: .bouncySpring(),
   vsync: this,
-  converter: MotionConverter.offset,
+  converter: .offset,
   initialValue: Offset.zero,
   // Velocity tracking enabled by default
 );
@@ -733,11 +735,11 @@ To disable velocity tracking:
 
 ```dart
 final controller = MotionController(
-  motion: CupertinoMotion.bouncy(),
+  motion: .bouncySpring(),
   vsync: this,
-  converter: MotionConverter.offset,
+  converter: .offset,
   initialValue: Offset.zero,
-  velocityTracking: VelocityTracking.off(),
+  velocityTracking: .off(),
 );
 ```
 
@@ -767,11 +769,11 @@ Motor's widgets can tick at a lower, fixed rate using [`fixed_ticker`](https://p
 
 ```dart
 TickerRateScope(
-  rate: TickerRate.fps(30),
+  rate: .fps(30),
   child: TrackBuilder(
-    animations: [shimmer.to(1, motion: Motion.linear(Duration(seconds: 2)))],
-    loop: LoopMode.loop,
-    tickerRate: TickerRate.fps(10), // overrides the scope
+    animations: [shimmer.to(1, motion: .linear(Duration(seconds: 2)))],
+    loop: .loop,
+    tickerRate: .fps(10), // overrides the scope
     builder: (context, value, child) => ...,
   ),
 )
@@ -785,7 +787,7 @@ Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a sta
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  TickerRate get tickerRate => TickerRate.fps(30); // or leave it to TickerRateScope
+  TickerRate get tickerRate => .fps(30); // or leave it to TickerRateScope
 
   late final controller = TrackController(vsync: this);
 }
