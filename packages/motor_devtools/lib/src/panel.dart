@@ -431,38 +431,13 @@ class _ControllerList extends StatefulWidget {
 class _ControllerListState extends State<_ControllerList> {
   final _openRows = <String>{};
   var _idleOpen = false;
+  var _mutedOpen = false;
+  var _mutedIdleOpen = false;
   var _hiddenOpen = false;
-
-  /// Rows for [controllers], with rows whose controllers are all muted last.
-  List<Widget> _rows(List<TrackController> controllers, {bool groups = true}) {
-    final host = widget.host;
-    final rows = <String, List<TrackController>>{};
-    for (final controller in controllers) {
-      final group = groups ? controller.inspectionGroup : null;
-      final key = group != null
-          ? 'group $group'
-          : 'name ${host.baseNameOf(controller)}';
-      (rows[key] ??= []).add(controller);
-    }
-    bool muted(List<TrackController> row) => row.every((c) => c.isMuted);
-    return [
-      ..._rowsOf([
-        for (final row in rows.values)
-          if (!muted(row)) ...row,
-      ], groups: groups),
-      ..._rowsOf([
-        for (final row in rows.values)
-          if (muted(row)) ...row,
-      ], groups: groups),
-    ];
-  }
 
   /// Rows for [controllers]: explicit groups first, then one row per name,
   /// merging controllers that share it.
-  List<Widget> _rowsOf(
-    List<TrackController> controllers, {
-    required bool groups,
-  }) {
+  List<Widget> _rows(List<TrackController> controllers, {bool groups = true}) {
     final host = widget.host;
     final byGroup = <String, List<TrackController>>{};
     final byName = <String, List<TrackController>>{};
@@ -526,6 +501,44 @@ class _ControllerListState extends State<_ControllerList> {
     ];
   }
 
+  /// [controllers]' rows, with the ones that never played folded into an
+  /// idle row.
+  List<Widget> _section(
+    List<TrackController> controllers, {
+    required bool idleOpen,
+    required ValueChanged<bool> onIdle,
+    required String idleKey,
+  }) {
+    final host = widget.host;
+    final idle = [
+      for (final controller in controllers)
+        if (controller.inspectionGroup == null && host.isIdle(controller))
+          controller,
+    ];
+    return [
+      ..._rows([
+        for (final controller in controllers)
+          if (!idle.contains(controller)) controller,
+      ]),
+      if (idle.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DisclosureRow(
+            key: ValueKey(idleKey),
+            title: '${idle.length} idle',
+            trailing: 'never played',
+            open: idleOpen,
+            onTap: () => onIdle(!idleOpen),
+          ),
+        ),
+        Disclosure(
+          open: idleOpen,
+          child: Column(children: _rows(idle)),
+        ),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
@@ -538,20 +551,20 @@ class _ControllerListState extends State<_ControllerList> {
       for (final controller in host.controllers)
         if (!controller.inspectable) controller,
     ];
-    final idle = [
+    final modified = [
       for (final controller in visible)
-        if (controller.inspectionGroup == null && host.isIdle(controller))
+        if (host.changesOf(controller).isNotEmpty) controller,
+    ];
+    final muted = [
+      for (final controller in visible)
+        if (controller.isMuted && !modified.contains(controller)) controller,
+    ];
+    final normal = [
+      for (final controller in visible)
+        if (!modified.contains(controller) && !muted.contains(controller))
           controller,
     ];
-    final shown = [
-      for (final controller in visible)
-        if (!idle.contains(controller)) controller,
-    ];
     final count = visible.length;
-    final modified = [
-      for (final controller in host.controllers)
-        if (host.changesOf(controller).isNotEmpty) controller,
-    ].length;
     return ColoredBox(
       color: palette.surface,
       child: Column(
@@ -585,21 +598,63 @@ class _ControllerListState extends State<_ControllerList> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     children: [
-                      ..._rows(shown),
-                      if (idle.isNotEmpty) ...[
+                      Disclosure(
+                        open: modified.isNotEmpty,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _SectionHeader(
+                              key: const ValueKey(
+                                'motor-devtools-modified-section',
+                              ),
+                              title: 'Modified',
+                              count: modified.length,
+                              action: TextAction(
+                                'Reset all',
+                                key: const ValueKey('motor-devtools-reset-all'),
+                                onTap: host.resetAll,
+                              ),
+                            ),
+                            ..._rows(modified),
+                            const SizedBox(height: 4),
+                            const Hairline(),
+                            const SizedBox(height: 4),
+                          ],
+                        ),
+                      ),
+                      ..._section(
+                        normal,
+                        idleOpen: _idleOpen,
+                        onIdle: (open) => setState(() => _idleOpen = open),
+                        idleKey: 'motor-devtools-idle',
+                      ),
+                      if (muted.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: DisclosureRow(
-                            key: const ValueKey('motor-devtools-idle'),
-                            title: '${idle.length} idle',
-                            trailing: 'never played',
-                            open: _idleOpen,
-                            onTap: () => setState(() => _idleOpen = !_idleOpen),
+                            key: const ValueKey('motor-devtools-muted'),
+                            title: '${muted.length} muted',
+                            trailing: 'ticker muted',
+                            open: _mutedOpen,
+                            onTap: () =>
+                                setState(() => _mutedOpen = !_mutedOpen),
                           ),
                         ),
                         Disclosure(
-                          open: _idleOpen,
-                          child: Column(children: _rows(idle)),
+                          open: _mutedOpen,
+                          child: Opacity(
+                            opacity: 0.5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _section(
+                                muted,
+                                idleOpen: _mutedIdleOpen,
+                                onIdle: (open) =>
+                                    setState(() => _mutedIdleOpen = open),
+                                idleKey: 'motor-devtools-muted-idle',
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                       if (hidden.isNotEmpty) ...[
@@ -627,37 +682,44 @@ class _ControllerListState extends State<_ControllerList> {
                     ],
                   ),
           ),
-          Disclosure(
-            open: modified > 0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Hairline(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$modified modified',
-                          style: palette.caption.copyWith(
-                            color: palette.text,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      TextAction(
-                        'Reset all',
-                        key: const ValueKey('motor-devtools-reset-all'),
-                        onTap: host.resetAll,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+/// A small, quiet section title with a count and an optional action.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    this.action,
+    super.key,
+  });
+
+  final String title;
+  final int count;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: SizedBox(
+        height: 28,
+        child: Row(
+          children: [
+            Text(title, style: palette.label),
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: palette.label.copyWith(color: palette.tertiary),
+            ),
+            const Spacer(),
+            ?action,
+          ],
+        ),
       ),
     );
   }
@@ -690,7 +752,6 @@ class _RowLayout extends StatelessWidget {
     required this.lane,
     required this.trailing,
     this.changes = const [],
-    this.muted = false,
   });
 
   final String title;
@@ -701,73 +762,67 @@ class _RowLayout extends StatelessWidget {
   /// What the tools changed, shown before [subtitle] in the accent color.
   final List<String> changes;
 
-  /// Whether the row is dimmed because its controllers are muted.
-  final bool muted;
-
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     final modified = changes.isNotEmpty;
-    return Opacity(
-      opacity: muted ? 0.5 : 1,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: palette.body,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.body,
+                ),
+                const SizedBox(height: 1),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (modified)
+                        TextSpan(
+                          text: changes.join('  ·  '),
+                          style: TextStyle(color: palette.accent),
+                        ),
+                      if (modified && subtitle.isNotEmpty)
+                        const TextSpan(text: '  ·  '),
+                      TextSpan(text: subtitle),
+                    ],
                   ),
-                  const SizedBox(height: 1),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        if (modified)
-                          TextSpan(
-                            text: changes.join('  ·  '),
-                            style: TextStyle(color: palette.accent),
-                          ),
-                        if (modified && subtitle.isNotEmpty)
-                          const TextSpan(text: '  ·  '),
-                        TextSpan(text: subtitle),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: palette.caption,
-                  ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.caption,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          if (modified) ...[
+            Container(
+              key: const ValueKey('motor-devtools-modified'),
+              width: 6,
+              height: 6,
+              decoration: ShapeDecoration(
+                color: palette.accent,
+                shape: const CircleBorder(),
               ),
             ),
-            const SizedBox(width: 12),
-            if (modified) ...[
-              Container(
-                key: const ValueKey('motor-devtools-modified'),
-                width: 6,
-                height: 6,
-                decoration: ShapeDecoration(
-                  color: palette.accent,
-                  shape: const CircleBorder(),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            if (lane case final lane?)
-              SizedBox(
-                width: 56,
-                height: 6,
-                child: SummaryLane(snapshot: lane),
-              ),
-            const SizedBox(width: 8),
-            trailing,
+            const SizedBox(width: 10),
           ],
-        ),
+          if (lane case final lane?)
+            SizedBox(
+              width: 56,
+              height: 6,
+              child: SummaryLane(snapshot: lane),
+            ),
+          const SizedBox(width: 8),
+          trailing,
+        ],
       ),
     );
   }
@@ -804,7 +859,6 @@ class _ControllerRow extends StatelessWidget {
             return _RowLayout(
               title: name,
               changes: changes,
-              muted: muted,
               subtitle: [
                 if (muted)
                   'Muted'
@@ -862,7 +916,6 @@ class _GroupRow extends StatelessWidget {
             return _RowLayout(
               title: title,
               changes: [if (modified > 0) '$modified modified'],
-              muted: muted,
               subtitle: [
                 if (muted)
                   'Muted'

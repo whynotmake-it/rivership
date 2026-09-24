@@ -58,7 +58,9 @@ void main() {
   });
   tearDown(() => subscription.dispose());
 
-  testWidgets('puts muted rows last, groups included', (tester) async {
+  testWidgets('folds muted controllers, groups included, into a section', (
+    tester,
+  ) async {
     await _pump(tester, [
       TickerMode(
         enabled: false,
@@ -69,13 +71,21 @@ void main() {
     await _open(tester);
 
     final group = find.text('Button press ×2');
+    expect(find.text('Live'), findsOneWidget);
+    expect(find.text('2 muted'), findsOneWidget);
+    expect(group, findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-muted')));
+    await _settle(tester);
     expect(
       tester.getTopLeft(find.text('Live')).dy,
-      lessThan(
-        tester.getTopLeft(group).dy,
-      ),
+      lessThan(tester.getTopLeft(group).dy),
     );
-    expect(find.textContaining('Muted'), findsOneWidget);
+    final dimmed = find.ancestor(of: group, matching: find.byType(Opacity));
+    expect(
+      tester.widgetList<Opacity>(dimmed).map((o) => o.opacity),
+      contains(0.5),
+    );
   });
 
   testWidgets('hides excluded controllers behind a footer', (tester) async {

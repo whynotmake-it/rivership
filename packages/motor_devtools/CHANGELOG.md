@@ -26,8 +26,9 @@
 - Add `MotorTimeline`, a read-only timeline widget.
 - Mark controllers the tools changed, count them on the bubble, and undo
   changes with Reset on a controller or group page or "Reset all". Pausing and
-  scrubbing resume when their page is left. Controllers with a muted ticker
-  say "Muted", are dimmed and go last.
+  scrubbing resume when their page is left. The list pins changed
+  controllers in a Modified section and folds controllers with a muted
+  ticker into a Muted section.
 - Drag the open panel from its header or background, and minimize it back
   into the bubble.
 - Support opt-in production use; when disabled, the inspection registry is

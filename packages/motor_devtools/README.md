@@ -98,8 +98,9 @@ and controllers that never played fold into an "N idle" row.
   nearest side of the screen.
 - **See every controller.** The list shows whether each one is playing,
   paused or idle, and which tracks it animates. A controller first shows one
-  summary lane; tap "N tracks" for a lane per track. Controllers whose ticker
-  is muted, such as by a `TickerMode` above them, say "Muted" and go last.
+  summary lane; tap "N tracks" for a lane per track. Changed controllers are
+  pinned in a Modified section, and controllers whose ticker is muted, such
+  as by a `TickerMode` above them, fold into a Muted section.
 - **Pause, resume and replay.** Play resumes where you paused or scrubbed to,
   and replays the latest plan once it has finished. Pausing and scrubbing
   last while the controller's page is open; leaving it resumes playback.

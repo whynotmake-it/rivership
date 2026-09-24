@@ -122,7 +122,14 @@ void main() {
     await _settle(tester);
     expect(find.text('0.25×  ·  1 motion'), findsOneWidget);
     expect(find.byKey(const ValueKey('motor-devtools-modified')), findsOne);
-    expect(find.text('1 modified'), findsOneWidget);
+    final section = find.byKey(
+      const ValueKey('motor-devtools-modified-section'),
+    );
+    expect(find.descendant(of: section, matching: find.text('1')), findsOne);
+    expect(
+      tester.getTopLeft(section).dy,
+      lessThan(tester.getTopLeft(find.text('Checkout confirmation')).dy),
+    );
 
     await tester.tap(find.byKey(const ValueKey('motor-devtools-minimize')));
     await _settle(tester);
@@ -135,6 +142,7 @@ void main() {
     expect(controller.playbackSpeed, 1);
     expect(controller.motionOverrides, isEmpty);
     expect(find.byKey(const ValueKey('motor-devtools-modified')), findsNothing);
+    expect(section, findsNothing);
     expect(resetAll, findsNothing);
     expect(badge, findsNothing);
   });
@@ -177,18 +185,24 @@ void main() {
     expect(controller.isAnimating, isTrue);
   });
 
-  testWidgets('marks muted controllers', (tester) async {
+  testWidgets('folds muted controllers into a section', (tester) async {
     final muted = ValueNotifier(true);
     addTearDown(muted.dispose);
     await _pumpHarness(tester, muted: muted);
     await tester.tap(_launcher);
+    await _settle(tester);
+    expect(_checkout, findsNothing);
+    await tester.tap(find.text('1 muted'));
     await _settle(tester);
     expect(find.textContaining('Muted'), findsOneWidget);
     final row = find.ancestor(
       of: find.text('Checkout confirmation'),
       matching: find.byType(Opacity),
     );
-    expect(tester.widget<Opacity>(row.first).opacity, 0.5);
+    expect(
+      tester.widgetList<Opacity>(row).map((o) => o.opacity),
+      contains(0.5),
+    );
 
     await tester.tap(_checkout);
     await _settle(tester);
@@ -202,6 +216,43 @@ void main() {
       findsNothing,
     );
     expect(find.textContaining('Muted'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await _settle(tester);
+    expect(find.text('1 muted'), findsNothing);
+    expect(_checkout, findsOneWidget);
+  });
+
+  testWidgets('a modified muted controller is listed under Modified', (
+    tester,
+  ) async {
+    final muted = ValueNotifier(true);
+    addTearDown(muted.dispose);
+    await _pumpHarness(tester, muted: muted);
+    await tester.tap(_launcher);
+    await _settle(tester);
+    await tester.tap(find.text('1 muted'));
+    await _settle(tester);
+    await tester.tap(_checkout);
+    await _settle(tester);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.5')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await _settle(tester);
+
+    expect(find.text('1 muted'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-modified-section')),
+      findsOne,
+    );
+    expect(find.text('0.5×  ·  Muted'), findsOneWidget);
+    final row = find.ancestor(
+      of: find.text('Checkout confirmation'),
+      matching: find.byType(Opacity),
+    );
+    expect(
+      tester.widgetList<Opacity>(row).map((o) => o.opacity),
+      isNot(contains(0.5)),
+    );
   });
 
   testWidgets('minimizes to the bubble and reopens where it left off', (
