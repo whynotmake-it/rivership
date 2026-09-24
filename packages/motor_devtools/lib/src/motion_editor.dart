@@ -831,18 +831,23 @@ class _PreviewPainter extends CustomPainter {
 }
 
 /// Dart code that creates [motion], for the motions the editor makes.
+///
+/// The code uses dot shorthands, for a `Motion` parameter.
 String? codeFor(Motion motion) {
   String ms(Duration d) => 'Duration(milliseconds: ${d.inMilliseconds})';
   return switch (motion) {
     CupertinoMotion(:final duration, :final bounce) =>
-      'Motion.cupertino(duration: ${ms(duration)}, '
-          'bounce: ${bounce.toStringAsFixed(2)})',
-    LinearMotion(:final duration) => 'Motion.linear(${ms(duration)})',
+      '.cupertino(duration: ${ms(duration)}, bounce: ${_decimal(bounce)})',
+    LinearMotion(:final duration) => '.linear(${ms(duration)})',
     CurvedMotion(:final duration, :final curve) =>
-      'Motion.curved(${ms(duration)}, ${_curveNames[curve] ?? 'curve'})',
+      '.curved(${ms(duration)}, ${_curveNames[curve] ?? 'curve'})',
     _ => null,
   };
 }
+
+/// [value] with at most two decimals and no trailing zeros, like `0.2`.
+String _decimal(double value) =>
+    value.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
 
 const _curveNames = {
   Curves.easeOutCubic: 'Curves.easeOutCubic',
