@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/chapters.dart';
+import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/home.dart';
 
 /// Whether the motor devtools overlay is on. The home screen toggles it.
@@ -12,6 +13,7 @@ final devtoolsEnabled = ValueNotifier(true);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
   runApp(
     ValueListenableBuilder(
       valueListenable: devtoolsEnabled,
