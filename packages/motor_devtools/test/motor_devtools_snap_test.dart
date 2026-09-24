@@ -67,6 +67,7 @@ Future<void> _exerciseStateMatrix(
   fixture.controller.scrubTo(const Duration(milliseconds: 350));
   await tester.pump();
   final prefix = brightness == Brightness.dark ? 'dark ' : '';
+  await tester.pump(const Duration(milliseconds: 400));
 
   await capture('${prefix}motor devtools 01 bubble');
 

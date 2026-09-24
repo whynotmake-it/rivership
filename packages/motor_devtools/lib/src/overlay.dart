@@ -16,6 +16,7 @@ class FloatingBubble extends StatefulWidget {
     required this.initialAlignment,
     required this.activity,
     required this.isActive,
+    required this.modifiedCount,
     required this.panel,
     super.key,
   });
@@ -35,6 +36,9 @@ class FloatingBubble extends StatefulWidget {
 
   /// Whether any controller is playing, shown as a dot on the bubble.
   final bool Function() isActive;
+
+  /// How many controllers the tools changed, shown as a badge on the bubble.
+  final int Function() modifiedCount;
 
   /// The expanded content.
   final Widget panel;
@@ -225,7 +229,8 @@ class _FloatingBubbleState extends State<FloatingBubble>
           builder: (context, _) {
             final t = _expansion.value;
             final radius = _size / 2 + (18 - _size / 2) * t.clamp(0.0, 1.0);
-            return _Shell(
+            final bubble = _position!.value;
+            final shell = _Shell(
               key: _shellKey,
               bubble: _position!.value & const Size.square(_size),
               shift: _shift.value,
@@ -257,7 +262,9 @@ class _FloatingBubbleState extends State<FloatingBubble>
                               key: const ValueKey('motor-devtools-launcher'),
                               palette: palette,
                               activity: widget.activity,
-                              isActive: widget.isActive,
+                              isActive: () =>
+                                  widget.isActive() &&
+                                  widget.modifiedCount() == 0,
                               onTap: widget.onOpen,
                               onPanStart: _dragStart,
                               onPanUpdate: _dragUpdate,
@@ -288,9 +295,95 @@ class _FloatingBubbleState extends State<FloatingBubble>
                   ),
               ],
             );
+            // The badge sits on the bubble's edge, outside the surface's
+            // clip.
+            const edge = _size / 2 * math.sqrt1_2;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                shell,
+                Positioned(
+                  left: bubble.dx + _size / 2 + edge,
+                  top: bubble.dy + _size / 2 - edge,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: (1 - t * 3).clamp(0.0, 1.0),
+                      child: ListenableBuilder(
+                        listenable: widget.activity,
+                        builder: (context, _) => _Badge(
+                          count: widget.modifiedCount(),
+                          palette: palette,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
           },
         );
       },
+    );
+  }
+}
+
+/// A count centered on its position, that pops in and out.
+class _Badge extends StatefulWidget {
+  const _Badge({required this.count, required this.palette});
+
+  final int count;
+  final DevToolsPalette palette;
+
+  @override
+  State<_Badge> createState() => _BadgeState();
+}
+
+class _BadgeState extends State<_Badge> {
+  /// The last count shown, kept while the badge scales out.
+  late var _shown = widget.count;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    if (widget.count > 0) _shown = widget.count;
+    return FractionalTranslation(
+      translation: const Offset(-0.5, -0.5),
+      child: SingleMotionBuilder(
+        value: widget.count > 0 ? 1 : 0,
+        motion: quickMotion,
+        debugLabel: internalDebugLabel,
+        builder: (context, value, child) => value < 0.01
+            ? const SizedBox.shrink()
+            : Transform.scale(scale: value.clamp(0.0, 1.1), child: child),
+        child: Container(
+          key: const ValueKey('motor-devtools-badge'),
+          constraints: const BoxConstraints(minWidth: 17),
+          height: 17,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          alignment: Alignment.center,
+          decoration: ShapeDecoration(
+            color: palette.accent,
+            shape: StadiumBorder(
+              side: BorderSide(
+                color: palette.surface,
+                width: 1.5,
+                strokeAlign: BorderSide.strokeAlignOutside,
+              ),
+            ),
+          ),
+          child: Text(
+            _shown > 99 ? '99+' : '$_shown',
+            style: TextStyle(
+              color: palette.surface,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              height: 1,
+              letterSpacing: 0,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -624,7 +717,7 @@ class _BubbleFace extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              GlyphIcon(Glyph.mark, color: palette.text, size: 22),
+              GlyphIcon(Glyph.logo, color: palette.text, size: 22),
               Positioned(
                 top: 10,
                 right: 10,

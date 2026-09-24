@@ -30,6 +30,15 @@ extension MotorDevToolsSession on TrackController {
     _install();
   }
 
+  /// Whether a group motion applies to this controller.
+  bool get hasGroupMotionOverride => _groupOverrides[this] != null;
+
+  /// Removes this controller's own overrides, keeping its group's motion.
+  void clearOwnMotionOverrides() {
+    _overrides[this] = null;
+    _install();
+  }
+
   /// Restores the authored motions of every track.
   void clearMotionOverrides() {
     _overrides[this] = null;

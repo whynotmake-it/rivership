@@ -24,6 +24,12 @@
   to later members. Hide controllers with `inspectable: false`. Merge
   same-name controllers and fold never-played ones.
 - Add `MotorTimeline`, a read-only timeline widget.
+- Mark controllers the tools changed, count them on the bubble, and undo
+  changes with Reset on a controller or group page or "Reset all". Pausing and
+  scrubbing resume when their page is left. Controllers with a muted ticker
+  say "Muted", are dimmed and go last.
+- Drag the open panel from its header or background, and minimize it back
+  into the bubble.
 - Support opt-in production use; when disabled, the inspection registry is
   not attached. `--dart-define=MOTOR_DEVTOOLS=false` removes the tools and
   motor's inspection hooks from a build.

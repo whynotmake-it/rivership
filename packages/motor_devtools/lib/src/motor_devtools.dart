@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -131,6 +133,8 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   MotorDevToolsController? _ownedController;
   var _nextNumber = 1;
   var _refreshScheduled = false;
+  Timer? _mutedPoll;
+  var _muted = <TrackController>{};
 
   MotorDevToolsController get _overlay =>
       widget.controller ?? (_ownedController ??= MotorDevToolsController());
@@ -179,6 +183,31 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _subscription = null;
     _controllers.clear();
     _overlay.close();
+    _syncMutedPoll();
+  }
+
+  /// Muting doesn't notify, so while the panel is open, check every
+  /// controller's ticker now and then.
+  void _syncMutedPoll() {
+    if (_overlay.isOpen && _subscription != null) {
+      _mutedPoll ??= Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) => _checkMuted(),
+      );
+    } else {
+      _mutedPoll?.cancel();
+      _mutedPoll = null;
+    }
+  }
+
+  void _checkMuted() {
+    final muted = {
+      for (final controller in _controllers)
+        if (controller.isMuted) controller,
+    };
+    if (setEquals(muted, _muted)) return;
+    _muted = muted;
+    setState(() {});
   }
 
   void _scheduleRefresh() {
@@ -189,6 +218,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
         _refreshScheduled = false;
         if (!mounted) return;
         _controllers.forEach(_syncGroup);
+        _syncMutedPoll();
         setState(() {});
       })
       ..scheduleFrame();
@@ -276,6 +306,76 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
       _groups.putIfAbsent(group, GroupSettings.new);
 
   @override
+  List<String> changesOf(TrackController controller) {
+    final original = _originalSpeeds[controller];
+    final group = controller.inspectionGroup;
+    final motions =
+        controller.motionOverrides.length +
+        (controller.hasGroupMotionOverride && group != null
+            ? _groups[group]?.overrides.length ?? 0
+            : 0);
+    return [
+      if (PlaybackState.of(controller) == PlaybackState.paused) 'Paused',
+      if (original != null && controller.playbackSpeed != original)
+        speedLabel(controller.playbackSpeed),
+      if (motions == 1) '1 motion' else if (motions > 1) '$motions motions',
+    ];
+  }
+
+  void _restoreSpeed(TrackController controller) {
+    if (_originalSpeeds.remove(controller) case final speed?) {
+      controller.playbackSpeed = speed;
+    }
+  }
+
+  @override
+  void reset(TrackController controller) {
+    _restoreSpeed(controller);
+    controller
+      ..clearOwnMotionOverrides()
+      ..resume();
+    setState(() {});
+  }
+
+  @override
+  void resetGroup(String group) {
+    _groups.remove(group);
+    for (final member in _membersOf(group)) {
+      _restoreSpeed(member);
+      member
+        ..groupMotionOverride = null
+        ..resume();
+    }
+    setState(() {});
+  }
+
+  @override
+  void resetAll() {
+    for (final controller in _controllers) {
+      _restoreSpeed(controller);
+      controller
+        ..clearMotionOverrides()
+        ..resume();
+    }
+    _originalSpeeds.clear();
+    _tuned.clear();
+    _groups.clear();
+    setState(() {});
+  }
+
+  /// Resumes what the shown page paused: pausing and scrubbing last only
+  /// while their page is open.
+  void _resumeShown() {
+    if (_overlay.selectedController case final controller?) {
+      controller.resume();
+    } else if (_selectedGroup case final group?) {
+      for (final member in _membersOf(group)) {
+        member.resume();
+      }
+    }
+  }
+
+  @override
   void setGroupSpeed(String group, double speed) {
     settingsOf(group).speed = speed;
     for (final member in _membersOf(group)) {
@@ -315,6 +415,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
 
   @override
   void back() {
+    _resumeShown();
     if (_overlay.selectedController != null) {
       _overlay.showControllerList();
     } else {
@@ -323,7 +424,10 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   }
 
   @override
-  void close() => _overlay.close();
+  void close() {
+    _resumeShown();
+    _overlay.close();
+  }
 
   @override
   String baseNameOf(TrackController controller) => _baseNameOf(controller);
@@ -388,6 +492,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   void dispose() {
     if (kMotorDevTools) {
       _restoreSession();
+      _mutedPoll?.cancel();
       _listeners.forEach((controller, listener) {
         controller.removeListener(listener);
       });
@@ -423,6 +528,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
               initialAlignment: widget.alignment,
               activity: Listenable.merge(_controllers),
               isActive: () => _controllers.any((c) => c.isAnimating),
+              modifiedCount: () => _controllers
+                  .where((c) => c.inspectable && changesOf(c).isNotEmpty)
+                  .length,
               panel: DevToolsPanel(
                 host: this,
                 group:

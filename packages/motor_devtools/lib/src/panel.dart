@@ -85,6 +85,19 @@ abstract interface class PanelHost {
     bool replay = true,
   });
 
+  /// What the tools changed on [controller], such as `Paused` or `0.25×`;
+  /// empty when nothing is changed.
+  List<String> changesOf(TrackController controller);
+
+  /// Resumes [controller] and restores its speed and its own motions.
+  void reset(TrackController controller);
+
+  /// Clears [group]'s shared settings and resumes its members.
+  void resetGroup(String group);
+
+  /// Undoes every change made with the tools.
+  void resetAll();
+
   /// Changes a group's speed for current and future members.
   void setGroupSpeed(String group, double speed);
 
@@ -330,10 +343,14 @@ class _Header extends StatelessWidget {
     required this.onMinimize,
     this.subtitle,
     this.onBack,
+    this.onReset,
   });
 
   final String title;
   final String? subtitle;
+
+  /// Undoes the page's changes, or null when there are none.
+  final VoidCallback? onReset;
 
   /// Collapses the panel back into the bubble.
   final VoidCallback onMinimize;
@@ -381,6 +398,14 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (onReset case final onReset?) ...[
+            TextAction(
+              'Reset',
+              key: const ValueKey('motor-devtools-reset-page'),
+              onTap: onReset,
+            ),
+            const SizedBox(width: 10),
+          ],
           GlyphButton(
             Glyph.minimize,
             key: const ValueKey('motor-devtools-minimize'),
@@ -409,12 +434,15 @@ class _ControllerListState extends State<_ControllerList> {
   var _hiddenOpen = false;
 
   /// Rows for [controllers]: explicit groups first, then one row per name,
-  /// merging controllers that share it.
+  /// merging controllers that share it. Muted controllers go last.
   List<Widget> _rows(List<TrackController> controllers, {bool groups = true}) {
     final host = widget.host;
     final byGroup = <String, List<TrackController>>{};
     final byName = <String, List<TrackController>>{};
-    for (final controller in controllers) {
+    for (final controller in [
+      ...controllers.where((c) => !c.isMuted),
+      ...controllers.where((c) => c.isMuted),
+    ]) {
       if (controller.inspectionGroup case final group? when groups) {
         (byGroup[group] ??= []).add(controller);
       } else {
@@ -425,6 +453,7 @@ class _ControllerListState extends State<_ControllerList> {
       for (final MapEntry(key: group, value: members) in byGroup.entries)
         _GroupRow(
           key: ValueKey('motor-group-$group'),
+          host: host,
           name: group,
           members: members,
           onTap: () => host.showGroup(group),
@@ -433,6 +462,7 @@ class _ControllerListState extends State<_ControllerList> {
         if (members.length == 1)
           _ControllerRow(
             key: ObjectKey(members.single),
+            host: host,
             controller: members.single,
             name: host.nameOf(members.single),
             onTap: () => host.showController(members.single),
@@ -440,6 +470,7 @@ class _ControllerListState extends State<_ControllerList> {
         else ...[
           _GroupRow(
             key: ValueKey('motor-same-$name'),
+            host: host,
             name: name,
             members: members,
             open: _openRows.contains(name),
@@ -458,6 +489,7 @@ class _ControllerListState extends State<_ControllerList> {
                   for (final member in members)
                     _ControllerRow(
                       key: ObjectKey(member),
+                      host: host,
                       controller: member,
                       name: host.nameOf(member),
                       onTap: () => host.showController(member),
@@ -492,6 +524,10 @@ class _ControllerListState extends State<_ControllerList> {
         if (!idle.contains(controller)) controller,
     ];
     final count = visible.length;
+    final modified = [
+      for (final controller in host.controllers)
+        if (host.changesOf(controller).isNotEmpty) controller,
+    ].length;
     return ColoredBox(
       color: palette.surface,
       child: Column(
@@ -567,6 +603,36 @@ class _ControllerListState extends State<_ControllerList> {
                     ],
                   ),
           ),
+          Disclosure(
+            open: modified > 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Hairline(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$modified modified',
+                          style: palette.caption.copyWith(
+                            color: palette.text,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextAction(
+                        'Reset all',
+                        key: const ValueKey('motor-devtools-reset-all'),
+                        onTap: host.resetAll,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -599,6 +665,8 @@ class _RowLayout extends StatelessWidget {
     required this.subtitle,
     required this.lane,
     required this.trailing,
+    this.changes = const [],
+    this.muted = false,
   });
 
   final String title;
@@ -606,39 +674,76 @@ class _RowLayout extends StatelessWidget {
   final PlaybackSnapshot? lane;
   final Widget trailing;
 
+  /// What the tools changed, shown before [subtitle] in the accent color.
+  final List<String> changes;
+
+  /// Whether the row is dimmed because its controllers are muted.
+  final bool muted;
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: palette.body,
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: palette.caption,
-                ),
-              ],
+    final modified = changes.isNotEmpty;
+    return Opacity(
+      opacity: muted ? 0.5 : 1,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.body,
+                  ),
+                  const SizedBox(height: 1),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        if (modified)
+                          TextSpan(
+                            text: changes.join('  ·  '),
+                            style: TextStyle(color: palette.accent),
+                          ),
+                        if (modified && subtitle.isNotEmpty)
+                          const TextSpan(text: '  ·  '),
+                        TextSpan(text: subtitle),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.caption,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          if (lane case final lane?)
-            SizedBox(width: 56, height: 6, child: SummaryLane(snapshot: lane)),
-          const SizedBox(width: 8),
-          trailing,
-        ],
+            const SizedBox(width: 12),
+            if (modified) ...[
+              Container(
+                key: const ValueKey('motor-devtools-modified'),
+                width: 6,
+                height: 6,
+                decoration: ShapeDecoration(
+                  color: palette.accent,
+                  shape: const CircleBorder(),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            if (lane case final lane?)
+              SizedBox(
+                width: 56,
+                height: 6,
+                child: SummaryLane(snapshot: lane),
+              ),
+            const SizedBox(width: 8),
+            trailing,
+          ],
+        ),
       ),
     );
   }
@@ -646,12 +751,14 @@ class _RowLayout extends StatelessWidget {
 
 class _ControllerRow extends StatelessWidget {
   const _ControllerRow({
+    required this.host,
     required this.controller,
     required this.name,
     required this.onTap,
     super.key,
   });
 
+  final PanelHost host;
   final TrackController controller;
   final String name;
   final VoidCallback onTap;
@@ -668,10 +775,19 @@ class _ControllerRow extends StatelessWidget {
         child: ListenableBuilder(
           listenable: controller,
           builder: (context, _) {
-            final state = PlaybackState.of(controller);
+            final changes = host.changesOf(controller);
+            final muted = controller.isMuted;
             return _RowLayout(
               title: name,
-              subtitle: '${state.label}  ·  ${_trackSummary(controller)}',
+              changes: changes,
+              muted: muted,
+              subtitle: [
+                if (muted)
+                  'Muted'
+                else if (changes.isEmpty)
+                  PlaybackState.of(controller).label,
+                if (changes.isEmpty) _trackSummary(controller),
+              ].join('  ·  '),
               lane: controller.inspectPlayback(),
               trailing: GlyphIcon(Glyph.forward, color: palette.tertiary),
             );
@@ -686,6 +802,7 @@ class _ControllerRow extends StatelessWidget {
 /// or controllers sharing a name, which unfold in place ([open] non-null).
 class _GroupRow extends StatelessWidget {
   const _GroupRow({
+    required this.host,
     required this.name,
     required this.members,
     required this.onTap,
@@ -693,6 +810,7 @@ class _GroupRow extends StatelessWidget {
     super.key,
   });
 
+  final PanelHost host;
   final String name;
   final List<TrackController> members;
   final VoidCallback onTap;
@@ -713,12 +831,23 @@ class _GroupRow extends StatelessWidget {
           builder: (context, _) {
             final state = PlaybackState.ofAll(members);
             final playing = members.where((c) => c.isAnimating).length;
+            final muted = members.every((c) => c.isMuted);
+            final modified = members
+                .where((c) => host.changesOf(c).isNotEmpty)
+                .length;
             return _RowLayout(
               title: title,
-              subtitle: switch (playing) {
-                0 => '${state.label}  ·  ${_trackSummary(members.first)}',
-                _ => '$playing playing  ·  ${_trackSummary(members.first)}',
-              },
+              changes: [if (modified > 0) '$modified modified'],
+              muted: muted,
+              subtitle: [
+                if (muted)
+                  'Muted'
+                else if (playing > 0)
+                  '$playing playing'
+                else
+                  state.label,
+                _trackSummary(members.first),
+              ].join('  ·  '),
               lane: null,
               trailing: open == null
                   ? GlyphIcon(Glyph.forward, color: palette.tertiary)
@@ -757,9 +886,38 @@ String _trackSummary(TrackController controller) {
   return [...labels.take(2), if (more > 0) '+$more'].join(', ');
 }
 
+/// The state shown in a page header. Pausing lasts only while the page is
+/// open, so it says so.
+String _stateLabel(PlaybackState state, {required bool muted}) {
+  if (muted) return 'Muted';
+  if (state == PlaybackState.paused) return 'Paused, resumes when you leave';
+  return state.label;
+}
+
+/// Says a controller is muted, unfolding while [muted].
+class _MutedNote extends StatelessWidget {
+  const _MutedNote({required this.muted});
+
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) => Disclosure(
+    open: muted,
+    child: const Padding(
+      padding: EdgeInsets.only(top: 12),
+      child: Note(
+        key: ValueKey('motor-devtools-muted-note'),
+        'Muted: its ticker is muted, so it does not move until it is '
+        'unmuted.',
+      ),
+    ),
+  );
+}
+
 const _speeds = [0.1, 0.25, 0.5, 1.0];
 
-String _speedLabel(double speed) =>
+/// A playback speed, such as `0.25×`.
+String speedLabel(double speed) =>
     '${speed == speed.roundToDouble() ? speed.round() : speed}×';
 
 /// Play/pause, replay and speed.
@@ -802,7 +960,7 @@ class _Transport extends StatelessWidget {
           child: Segmented<double>(
             options: _speeds,
             selected: _speeds.contains(speed) ? speed : null,
-            labelOf: _speedLabel,
+            labelOf: speedLabel,
             keyOf: (speed) => ValueKey('motor-devtools-speed-$speed'),
             onSelected: onSpeed,
           ),
@@ -855,6 +1013,11 @@ class _GroupDetail extends StatelessWidget {
         listenable: Listenable.merge(members),
         builder: (context, _) {
           final state = PlaybackState.ofAll(members);
+          final muted = members.isNotEmpty && members.every((c) => c.isMuted);
+          final changed =
+              settings.speed != null ||
+              settings.overrides.isNotEmpty ||
+              members.any((c) => host.changesOf(c).isNotEmpty);
           final labels = {
             for (final member in members)
               for (final playback in member.inspectPlayback().tracks)
@@ -869,10 +1032,12 @@ class _GroupDetail extends StatelessWidget {
             group: group,
             header: _Header(
               title: '$group ×${members.length}',
-              subtitle: '${state.label}  ·  group',
+              subtitle: '${_stateLabel(state, muted: muted)}  ·  group',
               onBack: host.back,
               onMinimize: host.close,
+              onReset: changed ? () => host.resetGroup(group) : null,
             ),
+            muted: muted,
             transport: _Transport(
               state: state,
               speed: settings.speed ?? 1,
@@ -888,6 +1053,7 @@ class _GroupDetail extends StatelessWidget {
               for (final member in members)
                 _ControllerRow(
                   key: ObjectKey(member),
+                  host: host,
                   controller: member,
                   name: host.nameOf(member),
                   onTap: () => host.showController(member),
@@ -909,6 +1075,7 @@ class _GroupEditor extends StatefulWidget {
     required this.tracks,
     required this.settings,
     required this.members,
+    required this.muted,
   });
 
   final PanelHost host;
@@ -918,6 +1085,7 @@ class _GroupEditor extends StatefulWidget {
   final List<(String?, String)> tracks;
   final GroupSettings settings;
   final List<Widget> members;
+  final bool muted;
 
   @override
   State<_GroupEditor> createState() => _GroupEditorState();
@@ -954,6 +1122,7 @@ class _GroupEditorState extends State<_GroupEditor> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     widget.transport,
+                    _MutedNote(muted: widget.muted),
                     const SizedBox(height: 12),
                     Text('Motion', style: palette.label),
                     const SizedBox(height: 4),
@@ -1035,6 +1204,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
           final overrides = controller.motionOverrides;
           final speed = controller.playbackSpeed;
           final group = controller.inspectionGroup;
+          final muted = controller.isMuted;
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1042,12 +1212,15 @@ class _ControllerDetailState extends State<_ControllerDetail> {
               _Header(
                 title: host.nameOf(controller),
                 subtitle: [
-                  state.label,
-                  if (speed != 1) _speedLabel(speed),
+                  _stateLabel(state, muted: muted),
+                  if (speed != 1) speedLabel(speed),
                   if (group != null) 'in $group',
                 ].join('  ·  '),
                 onBack: host.back,
                 onMinimize: host.close,
+                onReset: host.changesOf(controller).isEmpty
+                    ? null
+                    : () => host.reset(controller),
               ),
               const Hairline(),
               Flexible(
@@ -1064,6 +1237,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                           : controller.replay,
                       onSpeed: (speed) => host.setSpeed(controller, speed),
                     ),
+                    _MutedNote(muted: muted),
                     const SizedBox(height: 14),
                     Timeline(
                       key: const ValueKey('motor-devtools-full-timeline'),

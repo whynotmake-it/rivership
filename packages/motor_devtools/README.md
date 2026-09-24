@@ -98,9 +98,11 @@ and controllers that never played fold into an "N idle" row.
   nearest side of the screen.
 - **See every controller.** The list shows whether each one is playing,
   paused or idle, and which tracks it animates. A controller first shows one
-  summary lane; tap "N tracks" for a lane per track.
+  summary lane; tap "N tracks" for a lane per track. Controllers whose ticker
+  is muted, such as by a `TickerMode` above them, say "Muted" and go last.
 - **Pause, resume and replay.** Play resumes where you paused or scrubbed to,
-  and replays the latest plan once it has finished.
+  and replays the latest plan once it has finished. Pausing and scrubbing
+  last while the controller's page is open; leaving it resumes playback.
 - **Scrub.** Drag across the timeline, or tap it, to move the controller to
   that point. Each lane is a track: bars are motions, thin lines are holds,
   dots are waits at a sync barrier. The part left of the playhead has
@@ -117,8 +119,10 @@ and controllers that never played fold into an "N idle" row.
   MotorDevTools(motions: {'Sheet': AppMotion.sheet}, child: app)
   ```
 
-Speed and motion changes last for the session. They are undone when
-`MotorDevTools` is disabled or removed.
+Speed and motion changes last for the session. Changed controllers are
+marked in the list, the bubble counts them, and "Reset all" (or Reset on a
+controller's page) undoes them. They are also undone when `MotorDevTools` is
+disabled or removed.
 
 To open or close the panel from code, pass a `MotorDevToolsController`.
 

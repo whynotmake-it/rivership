@@ -297,8 +297,8 @@ class _PressableState extends State<Pressable> {
 
 /// The painted icons used by the devtools, so they need no icon font.
 enum Glyph {
-  /// Three staggered lanes: the devtools mark.
-  mark,
+  /// A ball above a concentric motion arc: the logo.
+  logo,
 
   /// A play triangle.
   play,
@@ -361,12 +361,22 @@ class _GlyphPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     final fill = Paint()..color = color;
     switch (glyph) {
-      case Glyph.mark:
-        stroke.strokeWidth = 2.6;
+      case Glyph.logo:
+        // The geometry of example_design's LogoGlyph, which a published
+        // package can't depend on.
+        const height = 1 + 1.5 + 1 / 6 + 1 / 4;
+        const radius = 18 / height;
+        const center = Offset(12, 3 + radius);
+        const spread = math.pi * .3;
         canvas
-          ..drawLine(const Offset(4, 7), const Offset(14, 7), stroke)
-          ..drawLine(const Offset(8, 12), const Offset(20, 12), stroke)
-          ..drawLine(const Offset(6, 17), const Offset(12, 17), stroke);
+          ..drawCircle(center, radius, fill)
+          ..drawArc(
+            Rect.fromCircle(center: center, radius: radius * 1.5 + radius / 6),
+            (math.pi - spread) / 2,
+            spread,
+            false,
+            stroke..strokeWidth = radius / 2,
+          );
       case Glyph.play:
         canvas.drawPath(
           Path()
@@ -926,6 +936,53 @@ class Tag extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A small text button in the accent color.
+class TextAction extends StatelessWidget {
+  /// Creates a button reading [label].
+  const TextAction(this.label, {required this.onTap, super.key});
+
+  /// The text.
+  final String label;
+
+  /// Called on tap.
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Text(
+          label,
+          style: palette.label.copyWith(color: palette.accent, fontSize: 12),
+        ),
+      ),
+    );
+  }
+}
+
+/// A short note on a tinted background.
+class Note extends StatelessWidget {
+  /// Shows [text].
+  const Note(this.text, {super.key});
+
+  /// The note.
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: ShapeDecoration(color: palette.fill, shape: rounded(10)),
+      child: Text(text, style: palette.caption),
     );
   }
 }

@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
@@ -18,6 +19,7 @@ Future<TrackController> _pumpHarness(
   WidgetTester tester, {
   MotorDevToolsController? devTools,
   bool labeled = true,
+  ValueListenable<bool>? muted,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
@@ -26,9 +28,14 @@ Future<TrackController> _pumpHarness(
   await tester.pumpWidget(
     MotorDevTools(
       controller: devTools,
-      child: _MotionHarness(
-        labeled: labeled,
-        onReady: (value) => controller = value,
+      child: ValueListenableBuilder(
+        valueListenable: muted ?? ValueNotifier(false),
+        builder: (context, muted, child) =>
+            TickerMode(enabled: !muted, child: child!),
+        child: _MotionHarness(
+          labeled: labeled,
+          onReady: (value) => controller = value,
+        ),
       ),
     ),
   );
@@ -84,6 +91,117 @@ void main() {
     expect(settled.left, closeTo(12, 0.5));
     expect(settled.size, resting.size);
     expect(find.text('1 controller'), findsOneWidget);
+  });
+
+  testWidgets('marks what the tools changed and resets it all', (
+    tester,
+  ) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    final badge = find.byKey(const ValueKey('motor-devtools-badge'));
+    final resetAll = find.byKey(const ValueKey('motor-devtools-reset-all'));
+    expect(
+      find.byKey(const ValueKey('motor-devtools-reset-page')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.25')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
+    await _settle(tester);
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-track-Card opacity')),
+    );
+    await _settle(tester);
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-motion-Spring')),
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('motor-devtools-reset-page')), findsOne);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await _settle(tester);
+    expect(find.text('0.25×  ·  1 motion'), findsOneWidget);
+    expect(find.byKey(const ValueKey('motor-devtools-modified')), findsOne);
+    expect(find.text('1 modified'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-minimize')));
+    await _settle(tester);
+    expect(find.descendant(of: badge, matching: find.text('1')), findsOne);
+
+    await tester.tap(_launcher);
+    await _settle(tester);
+    await tester.tap(resetAll);
+    await _settle(tester);
+    expect(controller.playbackSpeed, 1);
+    expect(controller.motionOverrides, isEmpty);
+    expect(find.byKey(const ValueKey('motor-devtools-modified')), findsNothing);
+    expect(resetAll, findsNothing);
+    expect(badge, findsNothing);
+  });
+
+  testWidgets('resets one controller from its page', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.5')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-reset-page')));
+    await tester.pump();
+    expect(controller.playbackSpeed, 1);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-reset-page')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('pausing lasts only while the page is open', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    final playPause = find.byKey(const ValueKey('motor-devtools-play-pause'));
+
+    await tester.tap(playPause);
+    await tester.pump();
+    expect(controller.isAnimating, isFalse);
+    expect(find.text('Paused, resumes when you leave'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await tester.pump();
+    expect(controller.isAnimating, isTrue);
+
+    await _settle(tester);
+    await tester.tap(_checkout);
+    await _settle(tester);
+    await tester.tap(playPause);
+    await tester.pump();
+    expect(controller.isAnimating, isFalse);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-minimize')));
+    await tester.pump();
+    expect(controller.isAnimating, isTrue);
+  });
+
+  testWidgets('marks muted controllers', (tester) async {
+    final muted = ValueNotifier(true);
+    addTearDown(muted.dispose);
+    await _pumpHarness(tester, muted: muted);
+    await tester.tap(_launcher);
+    await _settle(tester);
+    expect(find.textContaining('Muted'), findsOneWidget);
+    final row = find.ancestor(
+      of: find.text('Checkout confirmation'),
+      matching: find.byType(Opacity),
+    );
+    expect(tester.widget<Opacity>(row.first).opacity, 0.5);
+
+    await tester.tap(_checkout);
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('motor-devtools-muted-note')), findsOne);
+
+    muted.value = false;
+    await tester.pump(const Duration(milliseconds: 600));
+    await _settle(tester);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-muted-note')),
+      findsNothing,
+    );
+    expect(find.textContaining('Muted'), findsNothing);
   });
 
   testWidgets('minimizes to the bubble and reopens where it left off', (
