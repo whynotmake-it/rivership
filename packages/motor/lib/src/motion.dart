@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -1146,8 +1144,8 @@ class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
 
   @override
   double x(double time) {
-    if (time <= 0) return start;
     if (_durationInSeconds == 0 || time >= _durationInSeconds) return end;
+    if (time <= 0) return start;
     return parent.x(_scaleTime(time));
   }
 
@@ -1159,11 +1157,12 @@ class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
     return parent.dx(_scaleTime(time)) * (_sourceDuration / _durationInSeconds);
   }
 
+  // Done exactly at the duration, where x is the end value.
   @override
-  bool isDone(double time) => time >= _durationInSeconds - tolerance.time;
+  bool isDone(double time) => time >= _durationInSeconds;
 
   @override
-  double get finishSeconds => math.max(0, _durationInSeconds - tolerance.time);
+  double get finishSeconds => _durationInSeconds;
 
   double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
