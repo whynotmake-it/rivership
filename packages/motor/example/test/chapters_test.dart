@@ -146,8 +146,8 @@ void main() {
       if (t > const Duration(milliseconds: 1500) && size.width < 330) {
         expect(island().content, closeTo(0, 1e-9), reason: 'shown at $t');
       }
-      if (t == const Duration(milliseconds: 384)) {
-        expect(island().bell, closeTo(.45, .03));
+      if (t == const Duration(milliseconds: 304)) {
+        expect(island().bell, closeTo(.35, .03));
       }
     }
     final Size size = island().size;

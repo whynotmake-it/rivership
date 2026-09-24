@@ -29,7 +29,7 @@ class _StepsPageState extends State<StepsPage>
   final _bell = Track<double>(
     .single,
     initial: 0,
-    motion: .curved(Duration(milliseconds: 120), Curves.easeInOut),
+    motion: .curved(Duration(milliseconds: 80), Curves.easeInOut),
     debugLabel: 'Bell',
   );
 
@@ -55,9 +55,9 @@ class _StepsPageState extends State<StepsPage>
       .sync(token: #faded),
     ]),
     _bell([
-      .hold(const Duration(milliseconds: 260)),
-      for (final (index, angle) in const [.45, -.4, .3, -.2, 0.0].indexed)
-        .at(Duration(milliseconds: 380 + 120 * index), angle),
+      .hold(const Duration(milliseconds: 220)),
+      for (final (index, angle) in const [.35, -.3, .2, -.1, 0.0].indexed)
+        .at(Duration(milliseconds: 300 + 80 * index), angle),
     ]),
   ]);
 
@@ -182,54 +182,66 @@ class _Island extends StatelessWidget {
               progress: content,
               offset: const Offset(0, 4),
               child: Padding(
-                padding: const .symmetric(horizontal: 16),
+                padding: const .fromLTRB(26, 0, 28, 0),
                 child: Row(
                   children: [
+                    // A bell swings from near its top.
                     Transform.rotate(
                       angle: bell,
-                      alignment: .topCenter,
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: .circle,
-                          color: Palette.dark.accent,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.bell_fill,
-                          color: Palette.dark.onAccent,
-                          size: 22,
-                        ),
+                      alignment: const Alignment(0, -.8),
+                      child: Icon(
+                        CupertinoIcons.bell_fill,
+                        color: Palette.dark.accent,
+                        size: 26,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
-                        mainAxisAlignment: .center,
+                        mainAxisSize: .min,
                         crossAxisAlignment: .start,
                         children: [
-                          Text(
-                            'motor 2.0 is here',
-                            maxLines: 1,
-                            overflow: .ellipsis,
-                            style: archivo(16, weight: 600, color: white),
+                          Row(
+                            crossAxisAlignment: .baseline,
+                            textBaseline: .alphabetic,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'motor 2.0 is here',
+                                  maxLines: 1,
+                                  overflow: .ellipsis,
+                                  style: archivo(
+                                    15,
+                                    weight: 600,
+                                    height: 1.2,
+                                    spacing: -.2,
+                                    color: white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'now',
+                                style: archivo(
+                                  12,
+                                  color: white.withValues(alpha: .45),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             'Tracks, steps and timelines.',
                             maxLines: 1,
                             overflow: .ellipsis,
                             style: archivo(
                               13,
+                              height: 1.25,
                               color: white.withValues(alpha: .6),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Text(
-                      'NOW',
-                      style: mono(11, color: white.withValues(alpha: .5)),
                     ),
                   ],
                 ),
