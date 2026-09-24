@@ -46,14 +46,14 @@ final controller = TrackController(
 );
 
 final cardScale = Track<double>(
-  MotionConverter.single,
+  .single,
   initial: 0,
   debugLabel: 'Card scale',
 );
 
 SingleMotionBuilder(
   value: expanded ? 1 : 0,
-  motion: const Motion.smoothSpring(),
+  motion: const .smoothSpring(),
   debugLabel: 'Sheet expansion',
   builder: (context, value, child) => ...,
 );

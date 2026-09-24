@@ -10,7 +10,7 @@ import 'package:flutter/widgets.dart';
 ///
 /// ```dart
 /// TickerRateScope(
-///   rate: TickerRate.fps(30),
+///   rate: .fps(30),
 ///   child: MyAnimatedWidget(),
 /// )
 /// ```
