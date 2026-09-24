@@ -18,12 +18,20 @@ class SyncPage extends StatefulWidget {
 }
 
 /// A card is one three-dimensional value: where it is and how far it flipped.
-typedef _Card = ({Offset position, double flip});
+@immutable
+class _Card {
+  const _Card(this.position, this.flip);
+
+  final Offset position;
+  final double flip;
+
+  @override
+  String toString() => 'flip ${flip.toStringAsFixed(2)}';
+}
 
 final _cardConverter = MotionConverter<_Card>.custom(
   normalize: (card) => [card.position.dx, card.position.dy, card.flip],
-  denormalize: (values) =>
-      (position: Offset(values[0], values[1]), flip: values[2]),
+  denormalize: (values) => _Card(Offset(values[0], values[1]), values[2]),
 );
 
 const _deck = Offset(0, 96);
@@ -43,11 +51,7 @@ class _SyncPageState extends State<SyncPage>
 
   final _cards = [
     for (final (_, name, _) in _faces)
-      Track<_Card>(
-        _cardConverter,
-        initial: (position: _deck, flip: 0),
-        debugLabel: name,
-      ),
+      Track<_Card>(_cardConverter, initial: _Card(_deck, 0), debugLabel: name),
   ];
 
   var _together = true;
@@ -55,7 +59,10 @@ class _SyncPageState extends State<SyncPage>
   @override
   void initState() {
     super.initState();
-    _deal();
+    // After the first frame, so the timeline is listening when the deal starts.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _deal();
+    });
   }
 
   @override
@@ -69,7 +76,7 @@ class _SyncPageState extends State<SyncPage>
       card([
         .hold(Duration(milliseconds: 90 * index)),
         .to(
-          (position: _spots[index], flip: 0),
+          _Card(_spots[index], 0),
           motion: .curved(
             Duration(milliseconds: _flights[index]),
             Curves.easeOutCubic,
@@ -77,10 +84,10 @@ class _SyncPageState extends State<SyncPage>
         ),
         // One token for everyone, or one per card.
         .sync(token: _together ? #dealt : index),
-        .to((
-          position: _spots[index],
-          flip: 1,
-        ), motion: .bouncySpring(duration: Duration(milliseconds: 650))),
+        .to(
+          _Card(_spots[index], 1),
+          motion: .bouncySpring(duration: Duration(milliseconds: 650)),
+        ),
       ]),
   ]);
 

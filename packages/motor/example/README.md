@@ -39,7 +39,8 @@ See the [Motor README](../README.md) for installation and API documentation.
   the "next" buttons all come from it.
 - `lib/pages/` has one file per chapter.
 - `lib/widgets/chapter_page.dart` is the layout every chapter shares.
-- `lib/widgets/live_timeline.dart` draws a controller's tracks as lanes.
+- `lib/widgets/live_timeline.dart` draws a controller's tracks as lanes with
+  `MotorTimeline` from `motor_devtools`.
 
 The fonts are Archivo and JetBrains Mono, both under the SIL Open Font License
 (see `lib/font_licenses.dart`).
