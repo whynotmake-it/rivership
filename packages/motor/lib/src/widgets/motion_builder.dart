@@ -36,6 +36,7 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.from,
     super.child,
     super.debugLabel,
+    super.tickerRate,
     super.key,
   });
 
@@ -51,6 +52,7 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     super.from,
     super.child,
     super.debugLabel,
+    super.tickerRate,
     super.key,
   }) : super.motionPerDimension();
 
@@ -91,6 +93,7 @@ class SingleMotionBuilder extends MotionBuilder<double> {
     super.from,
     super.child,
     super.debugLabel,
+    super.tickerRate,
     super.key,
   }) : super(converter: const SingleMotionConverter());
 }

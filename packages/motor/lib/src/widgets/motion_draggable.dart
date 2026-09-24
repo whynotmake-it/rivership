@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// A widget that works like [Draggable] but with a [Motion]-based animation
 /// upon return.
@@ -63,6 +64,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     this.allowedButtonsFilter,
     this.feedbackMatchesConstraints = false,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   });
 
@@ -268,15 +270,24 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Defaults to false.
   final bool feedbackMatchesConstraints;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<MotionDraggable> createState() => _MotionDraggableState();
 }
 
 class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, TickerRateStateMixin {
   bool isReturning = false;
 
   late final MotionController<Offset> controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => controller.resync(this);
 
   OverlayEntry? currentEntry;
 
@@ -305,6 +316,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     if (widget.motion != oldWidget.motion) {
       controller.motion = widget.motion;
     }
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
     super.didUpdateWidget(oldWidget);
   }
 
