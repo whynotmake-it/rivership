@@ -1,6 +1,6 @@
 // ignore_for_file: cascade_invocations
 
-import 'package:flutter/physics.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
@@ -10,6 +10,36 @@ import 'util.dart';
 void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
   const linear200 = Motion.linear(Duration(milliseconds: 200));
+
+  group('an .at step arrives exactly at its value and time', () {
+    final motions = {
+      'curve': const Motion.curved(Duration(milliseconds: 400), Curves.easeOut),
+      'smooth spring': const Motion.smoothSpring(),
+      'bouncy spring': const Motion.bouncySpring(),
+    };
+    for (final MapEntry(key: name, value: motion) in motions.entries) {
+      test('with a $name', () {
+        const arrival = Duration(milliseconds: 2400);
+        final playback = StepPlayback<double>(
+          steps: [
+            const TrackStep.to(340, motion: Motion.bouncySpring()),
+            TrackStep.at(arrival, 120, motion: motion),
+          ],
+          converter: MotionConverter.single,
+          start: 0,
+        );
+
+        // Just before, it is already there, rather than jumping at the end.
+        playback.advanceTo(2.399);
+        expect(playback.values.single, closeTo(120, 0.05));
+        playback.advanceTo(2.4);
+        expect(playback.values.single, 120);
+        playback.advanceTo(5);
+        expect(playback.values.single, 120);
+        expect(playback.isDone, isTrue);
+      });
+    }
+  });
 
   test('a step after a curve inherits the slope the curve ended with', () {
     final playback = StepPlayback<double>(

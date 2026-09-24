@@ -866,7 +866,12 @@ class StepPlayback<T extends Object> {
     // time already passed, so the motion runs as authored.
     if (gap <= 0) return _simulateTo(motions, targets);
     final duration = Duration(microseconds: (gap * 1000000).round());
-    return _simulateTo([for (final m in motions) m.scaleTo(duration)], targets);
+    final scaled =
+        _simulateTo([for (final m in motions) m.scaleTo(duration)], targets);
+    return [
+      for (var i = 0; i < scaled.length; i++)
+        _ArrivalSimulation(scaled[i], arrival: gap, target: targets[i]),
+    ];
   }
 
   /// Starts a step in reverse direction for pingPong mode.
@@ -1096,6 +1101,32 @@ class _CycleStart {
     }
     return true;
   }
+}
+
+/// Plays [inner] until [arrival], and holds [target] exactly from then on,
+/// so a [StepAt] lands on its value at its time whatever the motion.
+class _ArrivalSimulation extends Simulation implements FiniteSimulation {
+  _ArrivalSimulation(
+    this.inner, {
+    required this.arrival,
+    required this.target,
+  });
+
+  final Simulation inner;
+  final double arrival;
+  final double target;
+
+  @override
+  double x(double time) => time >= arrival ? target : inner.x(time);
+
+  @override
+  double dx(double time) => time >= arrival ? 0 : inner.dx(time);
+
+  @override
+  bool isDone(double time) => time >= arrival;
+
+  @override
+  double get finishSeconds => arrival;
 }
 
 class _HoldSimulation extends Simulation implements FiniteSimulation {

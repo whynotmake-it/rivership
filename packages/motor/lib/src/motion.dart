@@ -927,8 +927,16 @@ class FixedDurationMotion extends Motion {
       duration: duration,
       start: start,
       end: end,
-      sourceDuration: parent.duration?.toSeconds() ??
-          estimateSimulationDuration(parentSimulation, fallback: duration),
+      // A motion that settles (a spring) only reaches its end once settled,
+      // which its characteristic duration doesn't cover, so it is scaled by
+      // when it settles instead.
+      sourceDuration: parent.needsSettle
+          ? estimateSimulationDuration(
+              parentSimulation,
+              fallback: parent.duration ?? duration,
+            )
+          : parent.duration?.toSeconds() ??
+              estimateSimulationDuration(parentSimulation, fallback: duration),
     );
   }
 
