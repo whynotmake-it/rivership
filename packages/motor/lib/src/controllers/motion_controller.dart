@@ -185,7 +185,10 @@ class MotionController<T extends Object> extends Animation<T>
   /// for velocity estimation. The tracked velocity is used when [animateTo]
   /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
-    if (_inner.isAnimating) _inner.stop(canceled: true);
+    // As in 1.x, the future of an interrupted animation completes.
+    final wasAnimating = _inner.isAnimating;
+    _inner.stopTicker(canceled: false);
+    if (wasAnimating) _inner.stop(canceled: true);
     _inner.set([_track.value(newValue)]);
   }
 
@@ -281,12 +284,18 @@ class MotionController<T extends Object> extends Animation<T>
   ///
   /// If [withVelocity] is provided, the animation will start with that velocity
   /// instead of [velocity].
+  ///
+  /// Like [AnimationController], the returned future completes when this
+  /// animation finishes, or when [value] is set during it. Starting another
+  /// animation or stopping with `canceled: true` cancels it.
   TickerFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
   }) {
     _lastTarget = target;
+    // As in 1.x, each call gets its own future and cancels the previous one.
+    _inner.stopTicker(canceled: true);
     final future = _inner.animate(
       [
         _track.to(
@@ -316,6 +325,7 @@ class MotionController<T extends Object> extends Animation<T>
     if (steps.isEmpty) return TickerFuture.complete();
 
     _lastTarget = null;
+    _inner.stopTicker(canceled: true);
     final future = _inner.play(
       TrackTimeline(
         [_track(_withDefaultMotions(steps))],
@@ -511,6 +521,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     // Settle at the clamped current value.
     final target = _clamp(value);
     _lastTarget = target;
+    _inner.stopTicker(canceled: true);
     return _inner.animate([
       _track.to(target, motionPerDimension: motionPerDimension),
     ]);

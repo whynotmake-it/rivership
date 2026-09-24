@@ -279,8 +279,11 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Returns a [TickerFuture] that reflects the **whole controller** settling:
   /// it completes when every active track has finished and the ticker stops on
-  /// its own. This matches [AnimationController]; if other tracks are already
-  /// running when this is called, the future waits for all of them too.
+  /// its own. If other tracks are already running when this is called, the
+  /// future waits for all of them too, and calls made while playing share one
+  /// future. Unlike [AnimationController], starting new playback doesn't
+  /// cancel the previous future. `MotionController` gives each call its own
+  /// future, which the next call cancels, as in 1.x.
   ///
   /// Calling [stop] with `canceled: true` cancels the future. Looping playback
   /// ([LoopMode.loop]/[LoopMode.pingPong]/[LoopMode.seamless]) never stops the
@@ -564,6 +567,18 @@ class TrackController extends Animation<TrackValueReader>
     }
     if (inRun) _runTracks.add(replacement);
     notifyListeners();
+  }
+
+  /// Stops the ticker, completing its pending future or, if [canceled],
+  /// canceling it; the tracks keep their plans. The next [play] or [animate]
+  /// starts a new future.
+  ///
+  /// `MotionController` uses this to give each of its calls its own future,
+  /// as in 1.x.
+  @internal
+  void stopTicker({required bool canceled}) {
+    final ticker = _ticker;
+    if (ticker != null && ticker.isActive) ticker.stop(canceled: canceled);
   }
 
   /// Recreates the ticker using [vsync].

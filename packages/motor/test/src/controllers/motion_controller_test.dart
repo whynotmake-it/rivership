@@ -74,6 +74,64 @@ void main() {
       verify(() => mockTickerProvider.createTicker(any())).called(1);
     });
 
+    group('futures, like 1.x', () {
+      const linear = Motion.linear(Duration(milliseconds: 100));
+
+      testWidgets('setting value mid-flight completes the future',
+          (tester) async {
+        final controller =
+            SingleMotionController(motion: linear, vsync: tester);
+        addTearDown(controller.dispose);
+        final future = _FutureOutcome(controller.animateTo(1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+
+        controller.value = 0.5;
+        await tester.pump();
+
+        expect(future.completed, isTrue);
+        expect(future.canceled, isFalse);
+      });
+
+      testWidgets('each animateTo gets its own future and cancels the last',
+          (tester) async {
+        final controller =
+            SingleMotionController(motion: linear, vsync: tester);
+        addTearDown(controller.dispose);
+        final firstFuture = controller.animateTo(1);
+        final first = _FutureOutcome(firstFuture);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+
+        final secondFuture = controller.animateTo(0);
+        final second = _FutureOutcome(secondFuture);
+        await tester.pumpAndSettle();
+
+        expect(identical(firstFuture, secondFuture), isFalse);
+        expect(first.completed, isFalse);
+        expect(first.canceled, isTrue);
+        expect(second.completed, isTrue);
+      });
+
+      testWidgets('a graceful stop that settles cancels the last future',
+          (tester) async {
+        final controller = SingleMotionController(
+          motion: const CupertinoMotion(),
+          vsync: tester,
+        );
+        addTearDown(controller.dispose);
+        final first = _FutureOutcome(controller.animateTo(1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        unawaited(controller.stop());
+        await tester.pumpAndSettle();
+
+        expect(first.completed, isFalse);
+        expect(first.canceled, isTrue);
+      });
+    });
+
     group('.animateTo', () {
       late MotionController<Offset> controller;
       tearDown(() {
@@ -1359,4 +1417,17 @@ void main() {
       });
     });
   });
+}
+
+/// Records whether a [TickerFuture] completed or was canceled.
+class _FutureOutcome {
+  _FutureOutcome(TickerFuture future) {
+    future.then((_) => completed = true);
+    future.orCancel.catchError((Object error) {
+      canceled = error is TickerCanceled;
+    });
+  }
+
+  bool completed = false;
+  bool canceled = false;
 }

@@ -753,7 +753,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
       controller.animateTo(5);
       await canceled;
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
     });
   });
 
