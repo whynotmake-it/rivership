@@ -315,8 +315,8 @@ enum Glyph {
   /// A chevron pointing right.
   forward,
 
-  /// A cross.
-  close,
+  /// A horizontal bar: minimize.
+  minimize,
 
   /// A pencil.
   edit,
@@ -440,10 +440,8 @@ class _GlyphPainter extends CustomPainter {
             stroke,
           )
           ..drawLine(const Offset(13, 7.5), const Offset(16.5, 11), stroke);
-      case Glyph.close:
-        canvas
-          ..drawLine(const Offset(7, 7), const Offset(17, 17), stroke)
-          ..drawLine(const Offset(17, 7), const Offset(7, 17), stroke);
+      case Glyph.minimize:
+        canvas.drawLine(const Offset(7, 12), const Offset(17, 12), stroke);
     }
   }
 

@@ -86,6 +86,28 @@ void main() {
     expect(find.text('1 controller'), findsOneWidget);
   });
 
+  testWidgets('minimizes to the bubble and reopens where it left off', (
+    tester,
+  ) async {
+    await _pumpHarness(tester);
+    await _openDetail(tester);
+    expect(find.bySemanticsLabel('Minimize Motor devtools'), findsWidgets);
+
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-minimize')).first,
+    );
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('motor-devtools-timeline')), findsNothing);
+    expect(tester.getSize(_surface), const Size.square(44));
+
+    await tester.tap(_launcher);
+    await _settle(tester);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-timeline')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('drags that start on controls keep their own behavior', (
     tester,
   ) async {
@@ -111,7 +133,7 @@ void main() {
       const Offset(-4, -12),
     );
     await dragFrom(
-      find.byKey(const ValueKey('motor-devtools-close')).first,
+      find.byKey(const ValueKey('motor-devtools-minimize')).first,
       const Offset(-10, -12),
     );
     expect(find.text('Checkout confirmation'), findsWidgets);
@@ -211,7 +233,7 @@ void main() {
     expect(devTools.selectedController, isNull);
     expect(find.byKey(const ValueKey('motor-devtools-timeline')), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-close')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-minimize')));
     await _settle(tester);
     expect(devTools.isOpen, isFalse);
     expect(_launcher, findsOneWidget);

@@ -327,14 +327,16 @@ class _RenderPageStack extends RenderBox
 class _Header extends StatelessWidget {
   const _Header({
     required this.title,
-    required this.onClose,
+    required this.onMinimize,
     this.subtitle,
     this.onBack,
   });
 
   final String title;
   final String? subtitle;
-  final VoidCallback onClose;
+
+  /// Collapses the panel back into the bubble.
+  final VoidCallback onMinimize;
   final VoidCallback? onBack;
 
   @override
@@ -380,10 +382,10 @@ class _Header extends StatelessWidget {
             ),
           ),
           GlyphButton(
-            Glyph.close,
-            key: const ValueKey('motor-devtools-close'),
-            onTap: onClose,
-            semanticLabel: 'Close Motor devtools',
+            Glyph.minimize,
+            key: const ValueKey('motor-devtools-minimize'),
+            onTap: onMinimize,
+            semanticLabel: 'Minimize Motor devtools',
             size: 28,
           ),
         ],
@@ -498,7 +500,7 @@ class _ControllerListState extends State<_ControllerList> {
         children: [
           _Header(
             title: count == 1 ? '1 controller' : '$count controllers',
-            onClose: host.close,
+            onMinimize: host.close,
           ),
           const Hairline(),
           Flexible(
@@ -869,7 +871,7 @@ class _GroupDetail extends StatelessWidget {
               title: '$group ×${members.length}',
               subtitle: '${state.label}  ·  group',
               onBack: host.back,
-              onClose: host.close,
+              onMinimize: host.close,
             ),
             transport: _Transport(
               state: state,
@@ -1045,7 +1047,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                   if (group != null) 'in $group',
                 ].join('  ·  '),
                 onBack: host.back,
-                onClose: host.close,
+                onMinimize: host.close,
               ),
               const Hairline(),
               Flexible(
