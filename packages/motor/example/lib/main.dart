@@ -1,77 +1,53 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:motor_example/2d_redirection.dart';
-import 'package:motor_example/draggable_icons.dart';
-import 'package:motor_example/flip_card.dart';
-import 'package:motor_example/one_dimension.dart';
-import 'package:motor_example/phase_animation/phase_animation.dart';
-import 'package:motor_example/pip.dart';
-import 'package:motor_example/title_slide.dart';
-import 'package:motor_example/widgets.dart';
+import 'package:motor_devtools/motor_devtools.dart';
+import 'package:motor_example/chapters.dart';
+import 'package:motor_example/font_licenses.dart';
+import 'package:motor_example/home.dart';
 
-void main() async {
+/// Whether the motor devtools overlay is shown. The home screen toggles it;
+/// the tools keep tracking while hidden, so nothing is lost.
+///
+/// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools.
+final devtoolsVisible = ValueNotifier(true);
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
   runApp(
-    CupertinoApp.router(
-      routerConfig: router.config(),
+    ValueListenableBuilder(
+      valueListenable: devtoolsVisible,
+      builder: (context, visible, child) => MotorDevTools(
+        visible: visible,
+        motions: const {
+          'Smooth': .smoothSpring(),
+          'Snappy': .snappySpring(),
+          'Bouncy': .bouncySpring(),
+        },
+        child: child!,
+      ),
+      child: CupertinoApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router.config(),
+      ),
     ),
   );
 }
 
 final motorRoutes = [
   NamedRouteDef(
-    name: 'Motor Examples',
+    name: 'Motor 2.0',
     path: '',
-    type: RouteType.cupertino(),
-    builder: (context, state) => const MotorExample(),
+    type: const RouteType.cupertino(),
+    builder: (context, state) => const HomePage(),
   ),
-  NamedRouteDef(
-    name: OneDimensionExample.name,
-    path: OneDimensionExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => OneDimensionExample(),
-  ),
-  NamedRouteDef(
-    name: TwoDimensionRedirectionExample.name,
-    path: TwoDimensionRedirectionExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => TwoDimensionRedirectionExample(),
-  ),
-  NamedRouteDef(
-    name: DraggableIconsExample.name,
-    path: DraggableIconsExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => DraggableIconsExample(),
-  ),
-  NamedRouteDef(
-    name: PipExample.name,
-    path: PipExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => PipExample(),
-  ),
-  NamedRouteDef(
-    name: FlipCardExample.name,
-    path: FlipCardExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => FlipCardExample(),
-  ),
-  NamedRouteDef(
-    name: TitleSlideExample.name,
-    path: TitleSlideExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => TitleSlideExample(),
-  ),
-  NamedRouteDef(
-    name: SequenceAnimationExamples.name,
-    path: SequenceAnimationExamples.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => const SequenceAnimationExamples(),
-  ),
-  NamedRouteDef(
-    name: WidgetsExample.name,
-    path: WidgetsExample.path,
-    type: RouteType.cupertino(),
-    builder: (context, state) => const WidgetsExample(),
-  ),
+  for (final chapter in chapters)
+    NamedRouteDef(
+      name: chapter.title,
+      path: chapter.path,
+      type: const RouteType.cupertino(),
+      builder: (context, state) => chapter.page(),
+    ),
 ];
 
 final router = RootStackRouter.build(
@@ -79,45 +55,8 @@ final router = RootStackRouter.build(
     NamedRouteDef.shell(
       name: 'Home',
       path: '/',
-      type: RouteType.cupertino(),
+      type: const RouteType.cupertino(),
       children: motorRoutes,
     ),
   ],
 );
-
-class MotorExample extends StatelessWidget {
-  const MotorExample({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      child: CustomScrollView(
-        slivers: [
-          CupertinoSliverNavigationBar(),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 16,
-                children: [
-                  for (final route in motorRoutes) ...[
-                    if (route.path != '')
-                      buildDestinationButton(context, route.name),
-                  ],
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget buildDestinationButton(BuildContext context, String name) {
-    return CupertinoButton.filled(
-      onPressed: () => context.navigateTo(NamedRoute(name)),
-      child: Text(name),
-    );
-  }
-}
