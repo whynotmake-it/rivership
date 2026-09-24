@@ -12,8 +12,10 @@ Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
 const frame = Duration(milliseconds: 16);
 
 Future<void> _open(WidgetTester tester, String title) async {
-  await tester.binding.setSurfaceSize(const Size(430, 1600));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  tester.view
+    ..physicalSize = const Size(430, 1600)
+    ..devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(CupertinoApp(home: chapterNamed(title).page()));
   await tester.pump();
 }

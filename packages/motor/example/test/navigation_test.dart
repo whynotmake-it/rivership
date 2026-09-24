@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/main.dart' as example;
 
 Future<RootStackRouter> _pumpApp(WidgetTester tester) async {
-  await tester.binding.setSurfaceSize(const Size(430, 1800));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  tester.view
+    ..physicalSize = const Size(430, 1800)
+    ..devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   // A fresh router per test; the app's top-level `router` is shared.
   final router = RootStackRouter.build(
     routes: [
