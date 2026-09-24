@@ -262,21 +262,29 @@ void main() {
     await tester.tap(_launcher);
     await _settle(tester);
     final hide = find.byKey(const ValueKey('motor-devtools-hide-idle'));
-    expect(hide, findsNothing);
+    double shown() => tester
+        .widget<Opacity>(
+          find.ancestor(of: hide, matching: find.byType(Opacity)).first,
+        )
+        .opacity;
+    expect(shown(), 0);
+    final panel = tester.getRect(_surface);
+    final row = tester.getRect(_checkout);
 
     for (var i = 0; i < 11; i++) {
       await tester.pump(const Duration(seconds: 1));
     }
     await _settle(tester);
     expect(controller.isAnimating, isFalse);
-    expect(_checkout, findsOneWidget);
-    expect(find.text('Hide idle'), findsOneWidget);
+    expect(shown(), 1);
+    expect(tester.getRect(_surface), panel);
+    expect(tester.getRect(_checkout), row);
 
     await tester.tap(hide);
     await _settle(tester);
     expect(_checkout, findsNothing);
     expect(find.text('1 idle'), findsOneWidget);
-    expect(hide, findsNothing);
+    expect(shown(), 0);
 
     controller.replay();
     await _settle(tester);
@@ -294,10 +302,9 @@ void main() {
     }
     await _settle(tester);
     expect(controller.isAnimating, isFalse);
-    expect(
-      find.byKey(const ValueKey('motor-devtools-hide-idle')),
-      findsNothing,
-    );
+    final hide = find.byKey(const ValueKey('motor-devtools-hide-idle'));
+    final fade = find.ancestor(of: hide, matching: find.byType(Opacity)).first;
+    expect(tester.widget<Opacity>(fade).opacity, 0);
     expect(_checkout, findsOneWidget);
     expect(
       find.byKey(const ValueKey('motor-devtools-modified-section')),

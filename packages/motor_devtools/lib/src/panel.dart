@@ -349,6 +349,7 @@ class _Header extends StatelessWidget {
     this.subtitle,
     this.onBack,
     this.onReset,
+    this.action,
   });
 
   final String title;
@@ -356,6 +357,9 @@ class _Header extends StatelessWidget {
 
   /// Undoes the page's changes, or null when there are none.
   final VoidCallback? onReset;
+
+  /// Another action before the minimize button.
+  final Widget? action;
 
   /// Collapses the panel back into the bubble.
   final VoidCallback onMinimize;
@@ -403,6 +407,10 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (action case final action?) ...[
+            action,
+            const SizedBox(width: 10),
+          ],
           if (onReset case final onReset?) ...[
             TextAction(
               'Reset',
@@ -506,14 +514,12 @@ class _ControllerListState extends State<_ControllerList> {
     ];
   }
 
-  /// [controllers]' rows, with idle ones folded into an idle row, and, with
-  /// [hideable], a button that folds the ones that stopped.
+  /// [controllers]' rows, with idle ones folded into an idle row.
   List<Widget> _section(
     List<TrackController> controllers, {
     required bool idleOpen,
     required ValueChanged<bool> onIdle,
     required String idleKey,
-    bool hideable = false,
   }) {
     final host = widget.host;
     final idle = <TrackController>[];
@@ -524,42 +530,16 @@ class _ControllerListState extends State<_ControllerList> {
               : rest)
           .add(controller);
     }
-    final stopped = hideable
-        ? rest
-              .where(
-                (c) =>
-                    c.inspectionGroup == null &&
-                    !c.isAnimating &&
-                    host.changesOf(c).isEmpty,
-              )
-              .length
-        : 0;
     return [
       ..._rows(rest),
-      if (idle.isNotEmpty || stopped > 0)
+      if (idle.isNotEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: idle.isEmpty
-                    ? const SizedBox(height: 32)
-                    : DisclosureRow(
-                        key: ValueKey(idleKey),
-                        title: '${idle.length} idle',
-                        open: idleOpen,
-                        onTap: () => onIdle(!idleOpen),
-                      ),
-              ),
-              if (stopped > 0) ...[
-                const SizedBox(width: 12),
-                TextAction(
-                  'Hide idle',
-                  key: const ValueKey('motor-devtools-hide-idle'),
-                  onTap: host.hideIdle,
-                ),
-              ],
-            ],
+          child: DisclosureRow(
+            key: ValueKey(idleKey),
+            title: '${idle.length} idle',
+            open: idleOpen,
+            onTap: () => onIdle(!idleOpen),
           ),
         ),
       Disclosure(
@@ -595,6 +575,13 @@ class _ControllerListState extends State<_ControllerList> {
           controller,
     ];
     final count = visible.length;
+    final stopped = normal.any(
+      (c) =>
+          c.inspectionGroup == null &&
+          !c.isAnimating &&
+          host.changesOf(c).isEmpty &&
+          !host.isIdle(c),
+    );
     return ColoredBox(
       color: palette.surface,
       child: Column(
@@ -604,6 +591,21 @@ class _ControllerListState extends State<_ControllerList> {
           _Header(
             title: count == 1 ? '1 controller' : '$count controllers',
             onMinimize: host.close,
+            // Always laid out, so showing it moves nothing.
+            action: SingleMotionBuilder(
+              value: stopped ? 1 : 0,
+              motion: quickMotion,
+              debugLabel: internalDebugLabel,
+              builder: (context, t, child) => IgnorePointer(
+                ignoring: !stopped,
+                child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
+              ),
+              child: TextAction(
+                'Hide idle',
+                key: const ValueKey('motor-devtools-hide-idle'),
+                onTap: host.hideIdle,
+              ),
+            ),
           ),
           const Hairline(),
           Flexible(
@@ -657,7 +659,6 @@ class _ControllerListState extends State<_ControllerList> {
                         idleOpen: _idleOpen,
                         onIdle: (open) => setState(() => _idleOpen = open),
                         idleKey: 'motor-devtools-idle',
-                        hideable: true,
                       ),
                       if (muted.isNotEmpty) ...[
                         Padding(
