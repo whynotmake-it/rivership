@@ -14,10 +14,10 @@ import 'package:motor/src/track_timeline.dart';
 /// boundaries so all tracks advance together.
 ///
 /// ```dart
-/// final timeline = TrackPhaseTimeline({
-///   Phase.idle: [size.to(Size(100, 40)), color.to(Colors.grey)],
-///   Phase.active: [size.to(Size(120, 48)), color.to(Colors.blue)],
-///   Phase.disabled: [size.to(Size(100, 40)), color.to(Colors.grey)],
+/// final timeline = TrackPhaseTimeline<Phase>({
+///   .idle: [size.to(Size(100, 40)), color.to(Colors.grey)],
+///   .active: [size.to(Size(120, 48)), color.to(Colors.blue)],
+///   .disabled: [size.to(Size(100, 40)), color.to(Colors.grey)],
 /// });
 /// ```
 ///

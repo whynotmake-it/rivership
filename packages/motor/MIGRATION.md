@@ -20,11 +20,11 @@ jumps in sequences whose targets are not continuous.
 
 ```dart
 // Before (1.x): springs settled near, but not exactly on, the target.
-final motion = CupertinoMotion.smooth();
+final CupertinoMotion motion = .smooth();
 
 // After (2.0): same code snaps to the target on settle. To keep the old
 // behavior, opt out explicitly:
-final motion = CupertinoMotion.smooth().copyWith(snapToEnd: false);
+final CupertinoMotion motion = .smooth().copyWith(snapToEnd: false);
 ```
 
 ### Automatic velocity tracking is on by default
@@ -43,7 +43,8 @@ final controller = MotionController(
   motion: .smoothSpring(),
   vsync: this,
   converter: .single,
-  velocityTracking: const VelocityTracking.off(),
+  initialValue: 0.0,
+  velocityTracking: const .off(),
 );
 ```
 
@@ -65,7 +66,7 @@ controller.animateTo(0); // status: AnimationStatus.forward
 controller.animateTo(0); // status: AnimationStatus.reverse when moving down
 ```
 
-If you branched on `status == AnimationStatus.forward` to mean "animating",
+If you branched on `status == .forward` to mean "animating",
 use `controller.isAnimating` instead.
 
 ### Moves down finish `dismissed`
@@ -217,7 +218,7 @@ PhaseTrackBuilder<ButtonState>(
 
 ```dart
 // Before:
-final sequence = MotionSequence.steps(
+final MotionSequence<int, double> sequence = .steps(
   [0.0, 0.5, 1.0],
   motion: .smoothSpring(),
   loop: .loop,
@@ -242,7 +243,7 @@ final timeline = TrackTimeline(
 
 ```dart
 // Before: positions distribute one motion proportionally.
-final sequence = MotionSequence.spanning({
+final MotionSequence<double, double> sequence = .spanning({
   0.0: 0.0,
   1.0: 1.0,
   2.0: 0.0,
