@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/inspection_scope.dart';
 
 /// Observes the lifecycle of controllers created while it is attached.
 ///
@@ -47,6 +49,10 @@ abstract final class MotorInspectionRegistry {
 
   static Object? _pendingCreator;
   static final _creators = Expando<Object>();
+  static ({String? group, bool? inspectable})? _pendingScope;
+  static final _scopes = Expando<({String? group, bool? inspectable})>();
+  static final _inspectable = Expando<bool>();
+  static final _groups = Expando<String>();
 
   /// Attaches [observer] and immediately reports controllers already known to
   /// another active observer.
@@ -74,6 +80,7 @@ abstract final class MotorInspectionRegistry {
     final active = _activeControllers;
     if (active == null || !active.add(controller)) return;
     if (_pendingCreator case final creator?) _creators[controller] = creator;
+    if (_pendingScope case final scope?) _scopes[controller] = scope;
     for (final observer in _observers.toList(growable: false)) {
       observer.didRegisterController(controller);
     }
@@ -100,18 +107,47 @@ abstract final class MotorInspectionRegistry {
   // when nothing calls [attach].
   static bool get isInspecting => _activeControllers != null;
 
-  /// Runs [create], recording [creator] as the creator of the controllers it
-  /// creates. Only in debug builds while a tool is attached.
+  /// Runs [create] while a tool is attached, applying the nearest
+  /// [MotorInspectionScope] of [creator] (a `BuildContext`) to the
+  /// controllers it creates. Debug builds also record [creator] itself.
   @internal
   static T withCreator<T>(Object creator, T Function() create) {
-    if (!kDebugMode || !isInspecting) return create();
-    final previous = _pendingCreator;
-    _pendingCreator = creator;
+    if (!isInspecting) return create();
+    final previousCreator = _pendingCreator;
+    final previousScope = _pendingScope;
+    if (kDebugMode) _pendingCreator = creator;
+    _pendingScope =
+        creator is BuildContext ? MotorInspectionScope.of(creator) : null;
     try {
       return create();
     } finally {
-      _pendingCreator = previous;
+      _pendingCreator = previousCreator;
+      _pendingScope = previousScope;
     }
+  }
+
+  /// Whether tools show [controller]: its own setting, else its scope's,
+  /// else true.
+  @internal
+  static bool inspectableOf(TrackController controller) =>
+      _inspectable[controller] ?? _scopes[controller]?.inspectable ?? true;
+
+  /// Sets [controller]'s own inspectable setting, or clears it with null.
+  @internal
+  // ignore: avoid_positional_boolean_parameters, mirrors a setter.
+  static void setInspectable(TrackController controller, bool? value) {
+    if (isInspecting) _inspectable[controller] = value;
+  }
+
+  /// [controller]'s own group, else its scope's.
+  @internal
+  static String? groupOf(TrackController controller) =>
+      _groups[controller] ?? _scopes[controller]?.group;
+
+  /// Sets [controller]'s own group, or clears it with null.
+  @internal
+  static void setGroup(TrackController controller, String? value) {
+    if (isInspecting) _groups[controller] = value;
   }
 
   /// What created [controller], such as a builder widget's `Element`, if it

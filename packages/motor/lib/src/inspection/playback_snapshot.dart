@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
@@ -245,9 +246,52 @@ extension TrackControllerInspection on TrackController {
   set motionOverride(Motion? Function(Track<Object> track)? value) =>
       internalMotionOverride = value;
 
+  /// Whether inspection tools show this controller.
+  ///
+  /// Reads the controller's own setting, else the nearest
+  /// `MotorInspectionScope` of the builder that created it, else true.
+  /// Setting null goes back to the scope. Only kept while a tool is
+  /// attached.
+  @experimental
+  bool get inspectable => MotorInspectionRegistry.inspectableOf(this);
+
+  @experimental
+  set inspectable(bool? value) =>
+      MotorInspectionRegistry.setInspectable(this, value);
+
+  /// The group inspection tools show this controller in, if any.
+  ///
+  /// Resolved like [inspectable].
+  @experimental
+  String? get inspectionGroup => MotorInspectionRegistry.groupOf(this);
+
+  @experimental
+  set inspectionGroup(String? value) =>
+      MotorInspectionRegistry.setGroup(this, value);
+
   /// What created this controller, when motor's builder widgets created it:
   /// the builder's `Element`. Recorded only in debug builds while an
   /// inspection observer is attached.
   @experimental
   Object? get debugCreator => MotorInspectionRegistry.creatorOf(this);
+}
+
+/// Inspection settings for [MotionController], forwarded to the track
+/// controller inside it.
+@experimental
+extension MotionControllerInspection<T extends Object> on MotionController<T> {
+  /// See [TrackControllerInspection.inspectable].
+  @experimental
+  bool get inspectable => internalInnerController.inspectable;
+
+  @experimental
+  set inspectable(bool? value) => internalInnerController.inspectable = value;
+
+  /// See [TrackControllerInspection.inspectionGroup].
+  @experimental
+  String? get inspectionGroup => internalInnerController.inspectionGroup;
+
+  @experimental
+  set inspectionGroup(String? value) =>
+      internalInnerController.inspectionGroup = value;
 }

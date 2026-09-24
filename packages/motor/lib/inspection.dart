@@ -11,4 +11,5 @@
 library motor.inspection;
 
 export 'src/inspection/controller_registry.dart';
+export 'src/inspection/inspection_scope.dart';
 export 'src/inspection/playback_snapshot.dart';
