@@ -99,47 +99,70 @@ class _HomePageState extends State<HomePage>
                       children: [
                         const _Header(),
                         SizedBox(height: wide ? 88 : 56),
-                        GestureDetector(
-                          onTap: _enter,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _reveal(
-                                0,
-                                Text(
-                                  'Motion that',
-                                  style: t.display.copyWith(
-                                    fontSize: wide ? 76 : 52,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  GestureDetector(
+                                    onTap: _enter,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _reveal(
+                                          0,
+                                          Text(
+                                            'Motion that',
+                                            style: t.display.copyWith(
+                                              fontSize: wide ? 76 : 52,
+                                            ),
+                                          ),
+                                        ),
+                                        _reveal(
+                                          1,
+                                          Text(
+                                            'keeps up.',
+                                            style: t.display.copyWith(
+                                              fontSize: wide ? 76 : 52,
+                                              color: t.textTertiary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                              _reveal(
-                                1,
-                                Text(
-                                  'keeps up.',
-                                  style: t.display.copyWith(
-                                    fontSize: wide ? 76 : 52,
-                                    color: t.textTertiary,
+                                  const SizedBox(height: 20),
+                                  _reveal(
+                                    2,
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 440,
+                                      ),
+                                      child: const Text(
+                                        'Springs that keep their velocity, tracks that '
+                                        'wait for each other, timelines you can scrub. '
+                                        'Seven short chapters, one idea each.',
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 28),
+                                  _reveal(3, const _StartButton()),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _reveal(
-                          2,
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 440),
-                            child: const Text(
-                              'Springs that keep their velocity, tracks that '
-                              'wait for each other, timelines you can scrub. '
-                              'Seven short chapters, one idea each.',
                             ),
-                          ),
+                            if (wide)
+                              _reveal(
+                                3,
+                                const SizedBox(
+                                  width: 340,
+                                  height: 340,
+                                  child: _Orb(),
+                                ),
+                              ),
+                          ],
                         ),
-                        const SizedBox(height: 28),
-                        _reveal(3, const _StartButton()),
                         SizedBox(height: wide ? 88 : 56),
                         Text('CHAPTERS', style: t.eyebrow),
                         const SizedBox(height: 16),
@@ -505,6 +528,106 @@ class _Glyph extends StatelessWidget {
           ),
         ),
       },
+    );
+  }
+}
+
+/// A blob to grab and throw. It springs home with the throw's velocity and
+/// stretches along its direction of travel.
+class _Orb extends StatefulWidget {
+  const _Orb();
+
+  @override
+  State<_Orb> createState() => _OrbState();
+}
+
+class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
+  late final _offset = MotionController<Offset>(
+    motion: const .bouncySpring(duration: Duration(milliseconds: 700)),
+    vsync: this,
+    converter: .offset,
+    initialValue: Offset.zero,
+    debugLabel: 'Home orb',
+  );
+
+  @override
+  void dispose() {
+    _offset.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onPanUpdate: (details) =>
+              _offset.value = _offset.value + details.delta,
+          onPanEnd: (details) => _offset.animateTo(
+            Offset.zero,
+            withVelocity: details.velocity.pixelsPerSecond,
+          ),
+          child: AnimatedBuilder(
+            animation: _offset,
+            builder: (context, child) {
+              final velocity = _offset.velocity;
+              final stretch = 1 + (velocity.distance / 5000).clamp(0.0, .35);
+              return Transform.translate(
+                offset: _offset.value,
+                child: Transform.rotate(
+                  angle: velocity.direction,
+                  child: Transform.scale(
+                    scaleX: stretch,
+                    scaleY: 1 / stretch,
+                    child: Transform.rotate(
+                      angle: -velocity.direction,
+                      child: child,
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              width: 168,
+              height: 168,
+              foregroundDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  center: const Alignment(-.35, -.45),
+                  radius: .9,
+                  colors: [
+                    CupertinoColors.white.withValues(alpha: .7),
+                    CupertinoColors.white.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const SweepGradient(
+                  colors: [
+                    ExampleTheme.signalBlue,
+                    ExampleTheme.roseQuartz,
+                    ExampleTheme.spectrumRed,
+                    ExampleTheme.marigold,
+                    ExampleTheme.signalBlue,
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: ExampleTheme.roseQuartz.withValues(alpha: .35),
+                    blurRadius: 60,
+                    offset: const Offset(0, 24),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text('grab me, throw me', style: t.caption),
+      ],
     );
   }
 }
