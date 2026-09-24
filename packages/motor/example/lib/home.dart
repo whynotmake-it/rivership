@@ -174,14 +174,25 @@ class _Header extends StatelessWidget {
       height: 44,
       child: Row(
         children: [
-          const MotorLogo(size: 24),
-          const SizedBox(width: 10),
-          Text(
-            'motor',
-            style: archivo(19, weight: 560, spacing: -.4, color: p.text),
+          // The glyph's weight is in its ball, so box-centring it sits it
+          // too high. This lines its centre of mass up with the x-height.
+          Transform.translate(
+            offset: const Offset(0, 4.5),
+            child: const MotorLogo(size: 24),
           ),
-          const SizedBox(width: 8),
-          Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
+          const SizedBox(width: 10),
+          Row(
+            crossAxisAlignment: .baseline,
+            textBaseline: .alphabetic,
+            children: [
+              Text(
+                'motor',
+                style: archivo(19, weight: 560, spacing: -.4, color: p.text),
+              ),
+              const SizedBox(width: 8),
+              Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
+            ],
+          ),
           const Spacer(),
           const _DevToolsToggle(),
         ],
@@ -269,13 +280,23 @@ class _StartButton extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: .min,
+          crossAxisAlignment: .baseline,
+          textBaseline: .alphabetic,
           children: [
             Text(
               'Start with ${chapters.first.title}',
               style: archivo(14, weight: 560, color: p.onAccent),
             ),
             const SizedBox(width: 10),
-            Icon(CupertinoIcons.arrow_right, size: 15, color: p.onAccent),
+            // The arrow sits high in its font; this centres it on the text.
+            Transform.translate(
+              offset: const Offset(0, 1.5),
+              child: Icon(
+                CupertinoIcons.arrow_right,
+                size: 15,
+                color: p.onAccent,
+              ),
+            ),
           ],
         ),
       ),
