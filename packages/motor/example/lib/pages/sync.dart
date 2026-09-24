@@ -42,7 +42,7 @@ const _faces = [
 ];
 // Offsets from the stage center, and how long each deal takes. Curves arrive
 // exactly on time, so the wait at the barrier is easy to see.
-const _spots = [Offset(-112, -76), Offset(0, -76), Offset(112, -76)];
+const _spots = [Offset(-112, -64), Offset(0, -64), Offset(112, -64)];
 const _flights = [900, 350, 600];
 
 class _SyncPageState extends State<SyncPage>
@@ -100,6 +100,7 @@ class _SyncPageState extends State<SyncPage>
 
   @override
   Widget build(BuildContext context) {
+    final t = ExampleTheme.of(context);
     return ChapterPage(
       chapter: chapterNamed('Sync'),
       lead:
@@ -114,6 +115,28 @@ class _SyncPageState extends State<SyncPage>
       stageHeight: 440,
       stage: Stack(
         children: [
+          Positioned(
+            top: 16,
+            left: 20,
+            right: 20,
+            child: SingleMotionBuilder(
+              value: _together ? 0 : 1,
+              motion: const .smoothSpring(),
+              debugLabel: 'Sync note',
+              builder: (context, shown, child) => Reveal(
+                progress: shown,
+                offset: const Offset(0, -8),
+                child: child!,
+              ),
+              child: Text(
+                'A barrier waits until springs fully settle, often 2–3× their nominal '
+                'duration. To sync on visual arrival, use motion.scaleTo(d), '
+                'a curve, or an .at keyframe.',
+                textAlign: TextAlign.center,
+                style: t.caption,
+              ),
+            ),
+          ),
           Center(
             child: Transform.translate(
               offset: _deck,
