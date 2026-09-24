@@ -332,6 +332,36 @@ void main() {
     expect(controller.isAnimating, isFalse);
   });
 
+  for (final removed in [false, true]) {
+    testWidgets(
+      'resumes its pause when ${removed ? 'removed' : 'disabled'}',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final key = GlobalKey();
+        late TrackController controller;
+        final app = _MotionHarness(
+          key: key,
+          onReady: (value) => controller = value,
+        );
+        await tester.pumpWidget(MotorDevTools(child: app));
+        await tester.pump();
+        await _openDetail(tester);
+        await tester.tap(
+          find.byKey(const ValueKey('motor-devtools-play-pause')),
+        );
+        await tester.pump();
+        expect(controller.isAnimating, isFalse);
+
+        await tester.pumpWidget(
+          removed ? app : MotorDevTools(enabled: false, child: app),
+        );
+        expect(controller.isAnimating, isTrue);
+      },
+    );
+  }
+
   testWidgets('minimizes to the bubble and reopens where it left off', (
     tester,
   ) async {
@@ -738,7 +768,11 @@ void main() {
 }
 
 class _MotionHarness extends StatefulWidget {
-  const _MotionHarness({required this.onReady, this.labeled = true});
+  const _MotionHarness({
+    required this.onReady,
+    this.labeled = true,
+    super.key,
+  });
 
   final ValueChanged<TrackController> onReady;
   final bool labeled;

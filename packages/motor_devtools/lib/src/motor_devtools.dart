@@ -540,8 +540,13 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     for (final controller in _tuned) {
       if (_controllers.contains(controller)) controller.clearMotionOverrides();
     }
+    // Resuming notifies, which updates _held.
+    for (final controller in _held.toList()) {
+      if (_controllers.contains(controller)) controller.resume();
+    }
     _originalSpeeds.clear();
     _tuned.clear();
+    _held.clear();
     _groups.clear();
     _appliedGroups.clear();
   }
