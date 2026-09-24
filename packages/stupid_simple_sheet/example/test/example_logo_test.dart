@@ -1,9 +1,9 @@
 import 'dart:io';
 
+import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
-import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
 import 'package:stupid_simple_sheet_example/widgets/sheet_logo.dart';
 
 void main() {
@@ -16,29 +16,13 @@ void main() {
     await tester.pumpWidget(Center(
       child: RepaintBoundary(
         key: key,
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Transform.rotate(
-            angle: 0.05,
-            child: Container(
-              decoration: ShapeDecoration(
-                color: t.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(16 * dpr),
-                  side: BorderSide(color: t.pillBorder),
-                ),
-                shadows: [
-                  BoxShadow(
-                    color: t.pillShadow,
-                    blurRadius: 4 * dpr,
-                    offset: Offset(0, 2 * dpr),
-                  ),
-                ],
-              ),
-              child: SheetLogo(
-                size: 56 * dpr,
-              ),
-            ),
+        child: LogoTile(
+          color: t.surface,
+          border: t.pillBorder,
+          shadow: t.pillShadow,
+          scale: dpr,
+          child: SheetLogo(
+            size: 56 * dpr,
           ),
         ),
       ),
