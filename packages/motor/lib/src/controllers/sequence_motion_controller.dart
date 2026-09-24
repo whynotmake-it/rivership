@@ -9,16 +9,16 @@ part of 'motion_controller.dart';
 ///
 /// ```dart
 /// final controller = SequenceMotionController<ButtonState, Offset>(
-///   motion: Motion.smoothSpring(),
+///   motion: .smoothSpring(),
 ///   vsync: this,
-///   converter: MotionConverter.offset,
-///   initialValue: Offset.zero,
+///   converter: .offset,
+///   initialValue: .zero,
 /// );
 ///
-/// final sequence = MotionSequence.states({
-///   ButtonState.idle: Offset(0, 0),
-///   ButtonState.pressed: Offset(0, 5),
-/// }, motion: Motion.smoothSpring());
+/// final MotionSequence<ButtonState, Offset> sequence = .states({
+///   .idle: Offset(0, 0),
+///   .pressed: Offset(0, 5),
+/// }, motion: .smoothSpring());
 ///
 /// await controller.playSequence(sequence);
 /// ```
