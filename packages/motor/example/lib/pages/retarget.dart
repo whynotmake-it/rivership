@@ -49,9 +49,11 @@ class _RetargetPageState extends State<RetargetPage>
 
   void _record() {
     final now = _clock.elapsedMilliseconds.toDouble();
-    _trace
-      ..add(Offset(now, _indicator.value))
-      ..removeWhere((sample) => sample.dx < now - _traceWindow);
+    _trace.add(Offset(now, _indicator.value));
+    // Keep one sample before the window so the line reaches its left edge.
+    while (_trace.length > 1 && _trace[1].dx < now - _traceWindow) {
+      _trace.removeAt(0);
+    }
   }
 
   void _select(int tab) {
@@ -91,7 +93,7 @@ class _RetargetPageState extends State<RetargetPage>
   }
 }
 
-const _traceWindow = 2400.0;
+const _traceWindow = 1800.0;
 
 class _Stage extends StatelessWidget {
   const _Stage({
@@ -223,7 +225,7 @@ class _Stage extends StatelessWidget {
             ),
             // Position over time.
             SizedBox(
-              height: 76,
+              height: 110,
               width: double.infinity,
               child: CustomPaint(
                 painter: _TracePainter(trace: trace, now: now, guide: t.border),
@@ -276,6 +278,7 @@ class _TracePainter extends CustomPainter {
       );
     }
     if (trace.isEmpty) return;
+    canvas.clipRect(Rect.fromLTRB(inset, 0, size.width - inset, size.height));
     final path = Path();
     for (final (index, sample) in trace.indexed) {
       final x =

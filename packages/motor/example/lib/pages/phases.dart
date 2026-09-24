@@ -173,6 +173,7 @@ class _PhasesPageState extends State<PhasesPage>
             right: 16,
             bottom: 16,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
                   child: FittedBox(
@@ -185,7 +186,7 @@ class _PhasesPageState extends State<PhasesPage>
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 PillButton(
                   label: _autoplay ? 'Stop' : 'Autoplay',
                   icon: _autoplay

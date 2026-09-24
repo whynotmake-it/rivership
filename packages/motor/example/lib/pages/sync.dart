@@ -96,9 +96,9 @@ class _SyncPageState extends State<SyncPage>
     return ChapterPage(
       chapter: chapterNamed('Sync'),
       lead:
-          'Three cards fly out on springs of different lengths. With one shared '
-          'token they wait at the barrier and flip together; with a token each, '
-          'every card flips the moment it lands.',
+          'Three cards fly out, each taking its own time. With one shared '
+          'token they wait at the barrier and flip together. With a token '
+          'each, every card flips the moment it lands.',
       code: 'card([.to(spot), .sync(token: #dealt), .to(faceUp)])',
       below: LiveTimeline(
         controller: _dealer,
@@ -132,6 +132,7 @@ class _SyncPageState extends State<SyncPage>
             right: 16,
             bottom: 16,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
                   child: FittedBox(
@@ -147,7 +148,7 @@ class _SyncPageState extends State<SyncPage>
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 PillButton(
                   label: 'Deal',
                   icon: CupertinoIcons.arrow_counterclockwise,
