@@ -214,8 +214,13 @@ void main() {
       find.byKey(const ValueKey('motor-devtools-motion-Spring')),
       findsNothing,
     );
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
     await _settle(tester);
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-track-Card opacity')),
+    );
+    await _settle(tester);
+    expect(find.text('Authored'), findsWidgets);
     await tester.tap(
       find.byKey(const ValueKey('motor-devtools-motion-Spring')),
     );
@@ -238,11 +243,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('motor-devtools-motion-Authored')),
-    );
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-reset')));
     await tester.pump();
     expect(controller.motionOverrides, isEmpty);
+    expect(find.byKey(const ValueKey('motor-devtools-reset')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('motor-devtools-motion-Curve')));
     await tester.pump();
@@ -277,14 +281,21 @@ void main() {
     );
     await tester.pump();
     await _openDetail(tester);
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
+    await _settle(tester);
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-track-Card opacity')),
+    );
     await _settle(tester);
 
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion-Brand')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion-App')));
     await tester.pump();
-
     expect(controller.motionOverrides.values.single, brand);
-    expect(find.textContaining('Card opacity · Brand'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-app-Brand')),
+      findsOneWidget,
+    );
+    expect(find.text('Brand'), findsNWidgets(2));
     await tester.pumpWidget(const SizedBox());
   });
 

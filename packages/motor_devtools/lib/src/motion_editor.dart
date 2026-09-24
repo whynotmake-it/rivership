@@ -6,135 +6,269 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/src/style.dart';
 
-/// Picks and tunes the motion used for one of a controller's tracks, or for
-/// a track label of a group. [K] identifies a track.
-class MotionEditor<K> extends StatefulWidget {
-  /// Creates an editor for [track].
-  const MotionEditor({
-    required this.tracks,
-    required this.track,
-    required this.current,
+/// How a track's motion is chosen.
+enum MotionKind {
+  /// The motions the track was given.
+  authored('Authored', 'Plays the motions it was given.'),
+
+  /// One of the app's registered motions.
+  app('App', "Plays one of your app's motions."),
+
+  /// A spring tuned by duration and bounce.
+  spring('Spring', 'A spring: drag to set its duration and bounce.'),
+
+  /// An easing curve and a duration.
+  curve('Curve', 'An easing curve with a duration.');
+
+  const MotionKind(this.label, this.hint);
+
+  /// The name shown in the picker.
+  final String label;
+
+  /// One line explaining the choice.
+  final String hint;
+
+  /// The kind of [motion], a replacement for authored motions.
+  static MotionKind of(Motion? motion, Map<String, Motion> appMotions) =>
+      switch (motion) {
+        null => authored,
+        _ when appMotions.containsValue(motion) => app,
+        CupertinoMotion() => spring,
+        CurvedMotion() => curve,
+        _ => app,
+      };
+}
+
+/// A short description of a track's current motion, such as `Authored` or
+/// `Spring 420 ms · 0.18`.
+String describeMotion(Motion? motion, Map<String, Motion> appMotions) {
+  for (final MapEntry(:key, :value) in appMotions.entries) {
+    if (value == motion) return key;
+  }
+  return switch (motion) {
+    null => 'Authored',
+    CupertinoMotion(:final duration, :final bounce) =>
+      'Spring ${formatDuration(duration)} · ${bounce.toStringAsFixed(2)}',
+    CurvedMotion(:final duration) => 'Curve ${formatDuration(duration)}',
+    _ => 'Custom',
+  };
+}
+
+/// A track's row in a motion list: its name, its current motion, and a
+/// chevron that turns while its editor is [open].
+class TrackMotionHeader extends StatelessWidget {
+  /// Creates a header for the track [name].
+  const TrackMotionHeader({
+    required this.name,
+    required this.motion,
     required this.tuned,
+    required this.open,
+    required this.onTap,
+    this.value,
+    super.key,
+  });
+
+  /// The track's name.
+  final String name;
+
+  /// The current motion, described.
+  final String motion;
+
+  /// Whether the motion replaces the authored one.
+  final bool tuned;
+
+  /// Whether the editor is open.
+  final bool open;
+
+  /// Toggles the editor.
+  final VoidCallback onTap;
+
+  /// The track's current value, if shown.
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DevToolsTheme.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: '$name, $motion',
+      pressedScale: 1,
+      child: SizedBox(
+        height: 26,
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: palette.caption.copyWith(
+                        color: open ? palette.text : palette.secondary,
+                        fontWeight: open ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tuned
+                          ? palette.accent.withValues(alpha: 0.14)
+                          : palette.fill,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      motion,
+                      maxLines: 1,
+                      style: palette.caption.copyWith(
+                        fontSize: 10.5,
+                        color: tuned ? palette.accent : palette.tertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (value case final value? when value.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.numeric,
+                ),
+              ),
+            const SizedBox(width: 4),
+            SingleMotionBuilder(
+              value: open ? 0.25 : 0,
+              motion: foldMotion,
+              debugLabel: internalDebugLabel,
+              builder: (context, turns, child) =>
+                  Transform.rotate(angle: turns * 2 * math.pi, child: child),
+              child: GlyphIcon(Glyph.forward, color: palette.tertiary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Picks and tunes the motion that replaces one track's authored motions.
+class MotionEditor extends StatefulWidget {
+  /// Creates an editor showing [current].
+  const MotionEditor({
+    required this.current,
     required this.appMotions,
-    required this.onTrackSelected,
     required this.onChanged,
     super.key,
   });
 
-  /// The tracks and their names.
-  final List<(K, String)> tracks;
-
-  /// The track being edited.
-  final K track;
-
   /// The motion that replaces the track's authored motions, if any.
   final Motion? current;
 
-  /// Tracks that have a replacement motion.
-  final Set<K> tuned;
-
   /// Motions registered by the app, by name.
   final Map<String, Motion> appMotions;
-
-  /// Selects another track.
-  final ValueChanged<K> onTrackSelected;
 
   /// Replaces the track's motion, or restores it with null.
   final ValueChanged<Motion?> onChanged;
 
   @override
-  State<MotionEditor<K>> createState() => _MotionEditorState<K>();
+  State<MotionEditor> createState() => _MotionEditorState();
 }
 
-class _MotionEditorState<K> extends State<MotionEditor<K>> {
-  static const _authored = 'Authored';
-  static const _spring = 'Spring';
-  static const _curve = 'Curve';
-
-  /// The preset each track's motion was last picked from.
-  final _presets = <K, String>{};
-
+class _MotionEditorState extends State<MotionEditor> {
   /// The spring being dragged, before it is applied on release.
   CupertinoMotion? _draft;
 
-  String _presetOf(Motion? motion) {
-    if (_presets[widget.track] case final preset?) return preset;
-    if (motion == null) return _authored;
-    for (final MapEntry(:key, :value) in widget.appMotions.entries) {
-      if (value == motion) return key;
-    }
-    return motion is CurvedMotion ? _curve : _spring;
-  }
-
-  void _pick(String preset) {
-    _presets[widget.track] = preset;
-    final current = widget.current;
-    final duration = switch (current) {
+  void _pick(MotionKind kind) {
+    final duration = switch (widget.current) {
       CupertinoMotion(:final duration) ||
       CurvedMotion(:final duration) => duration,
       _ => const Duration(milliseconds: 500),
     };
-    widget.onChanged(switch (preset) {
-      _authored => null,
-      _spring => CupertinoMotion(duration: duration, bounce: 0.2),
-      _curve => CurvedMotion(duration, Curves.easeInOutCubic),
-      _ => widget.appMotions[preset],
+    widget.onChanged(switch (kind) {
+      MotionKind.authored => null,
+      MotionKind.app => widget.appMotions.values.first,
+      MotionKind.spring => CupertinoMotion(duration: duration, bounce: 0.2),
+      MotionKind.curve => CurvedMotion(duration, Curves.easeInOutCubic),
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
+    final apps = widget.appMotions;
     final current = widget.current;
     final motion = _draft ?? current;
-    final preset = _presetOf(current);
+    final kind = MotionKind.of(current, apps);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.tracks.length > 1) ...[
+        Segmented<MotionKind>(
+          options: [
+            for (final option in MotionKind.values)
+              if (option != MotionKind.app || apps.isNotEmpty) option,
+          ],
+          selected: kind,
+          labelOf: (kind) => kind.label,
+          keyOf: (kind) => ValueKey('motor-devtools-motion-${kind.label}'),
+          onSelected: (option) {
+            if (option != kind) _pick(option);
+          },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: Text(kind.hint, style: palette.caption)),
+            if (current != null)
+              Pressable(
+                key: const ValueKey('motor-devtools-reset'),
+                onTap: () => widget.onChanged(null),
+                semanticLabel: 'Reset to authored',
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    'Reset',
+                    style: palette.caption.copyWith(
+                      color: palette.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (kind == MotionKind.app) ...[
+          const SizedBox(height: 10),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (final (track, name) in widget.tracks)
+              for (final MapEntry(key: name, value: app) in apps.entries)
                 Tag(
+                  key: ValueKey('motor-devtools-app-$name'),
                   label: name,
-                  selected: track == widget.track,
-                  marked: widget.tuned.contains(track),
-                  onTap: () => widget.onTrackSelected(track),
+                  selected: app == current,
+                  outlined: true,
+                  onTap: () => widget.onChanged(app),
                 ),
             ],
           ),
-          const SizedBox(height: 12),
         ],
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final name in [
-              _authored,
-              ...widget.appMotions.keys,
-              _spring,
-              _curve,
-            ])
-              Tag(
-                key: ValueKey('motor-devtools-motion-$name'),
-                label: name,
-                selected: name == preset,
-                outlined: true,
-                onTap: () => _pick(name),
-              ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        switch (motion) {
-          null => Text(
-            'The track plays the motions it was given. Pick another motion '
-            'to try it; changes replay the latest plan and last for this '
-            'session.',
-            style: palette.caption,
-          ),
-          final CupertinoMotion spring => SpringGraph(
+        if (motion case final CupertinoMotion spring
+            when kind == MotionKind.spring) ...[
+          const SizedBox(height: 10),
+          SpringGraph(
             key: const ValueKey('motor-devtools-spring-graph'),
             duration: spring.duration,
             bounce: spring.bounce,
@@ -151,20 +285,17 @@ class _MotionEditorState<K> extends State<MotionEditor<K>> {
               if (draft != null) widget.onChanged(draft);
             },
           ),
-          final CurvedMotion curved => _CurveEditor(
-            motion: curved,
-            onChanged: widget.onChanged,
-          ),
-          _ => Text(
-            'This motion plays as registered and cannot be tuned here.',
-            style: palette.caption,
-          ),
-        },
+        ],
+        if (motion case final CurvedMotion curved
+            when kind == MotionKind.curve) ...[
+          const SizedBox(height: 10),
+          _CurveEditor(motion: curved, onChanged: widget.onChanged),
+        ],
         if (motion != null) ...[
-          const SizedBox(height: 12),
-          if (motion is! CupertinoMotion) ...[
-            SizedBox(height: 64, child: MotionPreview(motion: motion)),
-            const SizedBox(height: 10),
+          const SizedBox(height: 10),
+          if (motion is! CupertinoMotion || kind == MotionKind.app) ...[
+            SizedBox(height: 56, child: MotionPreview(motion: motion)),
+            const SizedBox(height: 8),
           ],
           if (codeFor(motion) case final code?) _CodeLine(code: code),
         ],

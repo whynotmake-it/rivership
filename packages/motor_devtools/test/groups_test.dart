@@ -129,7 +129,9 @@ void main() {
     await _settle(tester);
 
     await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.25')));
-    await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+    await tester.tap(
+      find.byKey(const ValueKey('motor-devtools-track-All tracks')),
+    );
     await _settle(tester);
     await tester.tap(
       find.byKey(const ValueKey('motor-devtools-motion-Spring')),

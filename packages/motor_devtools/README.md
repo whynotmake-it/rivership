@@ -107,10 +107,11 @@ and controllers that never played fold into an "N idle" row.
   played. Looping plans show one cycle at a time.
 - **Slow down.** Run one controller at 0.1×, 0.25×, 0.5× or full speed
   without touching Flutter's global time dilation.
-- **Try another motion.** Pick a spring, a curve, or one of your app's
-  motions for a track. Tune springs on a duration × bounce graph with a live
-  preview, and copy the resulting code. The latest plan replays right away.
-  Pass your own motions by name:
+- **Try another motion.** Each track row shows its current motion; tap it to
+  choose Authored, one of your app's motions, a spring or a curve right under
+  that track, or to reset it. Tune springs on a duration × bounce graph with
+  a live preview, and copy the resulting code. The latest plan replays right
+  away. Pass your own motions by name:
 
   ```dart
   MotorDevTools(motions: {'Sheet': AppMotion.sheet}, child: app)

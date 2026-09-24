@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/src/motion_editor.dart';
-import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/session.dart';
 import 'package:motor_devtools/src/style.dart';
 import 'package:motor_devtools/src/timeline.dart';
@@ -675,26 +674,8 @@ class _StatusDot extends StatelessWidget {
 
 const _speeds = [0.1, 0.25, 0.5, 1.0];
 
-String _nameIn(List<(Track<Object>, String)> tracks, Track<Object> track) =>
-    tracks.firstWhere((entry) => identical(entry.$1, track)).$2;
-
 String _speedLabel(double speed) =>
     '${speed == speed.roundToDouble() ? speed.round() : speed}×';
-
-String _motionSummary(Map<String, Motion> appMotions, Motion? motion) {
-  final name = appMotions.entries
-      .where((entry) => entry.value == motion)
-      .firstOrNull
-      ?.key;
-  return switch (motion) {
-    null => 'authored',
-    _ when name != null => name,
-    CupertinoMotion(:final duration, :final bounce) =>
-      'spring ${formatDuration(duration)}, ${bounce.toStringAsFixed(2)}',
-    CurvedMotion(:final duration) => 'curve ${formatDuration(duration)}',
-    _ => 'custom',
-  };
-}
 
 /// Play/pause, replay and speed.
 class _Transport extends StatelessWidget {
@@ -746,47 +727,6 @@ class _Transport extends StatelessWidget {
       ],
     );
   }
-}
-
-/// A folded "Motion" section around a [MotionEditor].
-class _MotionSection<K> extends StatefulWidget {
-  const _MotionSection({
-    required this.summary,
-    required this.editor,
-  });
-
-  final String summary;
-  final MotionEditor<K> editor;
-
-  @override
-  State<_MotionSection<K>> createState() => _MotionSectionState<K>();
-}
-
-class _MotionSectionState<K> extends State<_MotionSection<K>> {
-  var _open = false;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const SizedBox(height: 8),
-      const Hairline(),
-      DisclosureRow(
-        key: const ValueKey('motor-devtools-motion'),
-        title: 'Motion',
-        trailing: widget.summary,
-        open: _open,
-        onTap: () => setState(() => _open = !_open),
-      ),
-      Disclosure(
-        open: _open,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: widget.editor,
-        ),
-      ),
-    ],
-  );
 }
 
 class _GroupDetail extends StatelessWidget {
@@ -841,9 +781,6 @@ class _GroupDetail extends StatelessWidget {
             (null, 'All tracks'),
             for (final label in labels) (label, label),
           ];
-          final editing = settings.overrides.keys
-              .where((key) => key == null || labels.contains(key))
-              .firstOrNull;
           return _GroupEditor(
             host: host,
             group: group,
@@ -863,7 +800,6 @@ class _GroupDetail extends StatelessWidget {
               onSpeed: (speed) => host.setGroupSpeed(group, speed),
             ),
             tracks: tracks,
-            initialTrack: editing,
             settings: settings,
             members: [
               for (final member in members)
@@ -888,7 +824,6 @@ class _GroupEditor extends StatefulWidget {
     required this.header,
     required this.transport,
     required this.tracks,
-    required this.initialTrack,
     required this.settings,
     required this.members,
   });
@@ -898,7 +833,6 @@ class _GroupEditor extends StatefulWidget {
   final Widget header;
   final Widget transport;
   final List<(String?, String)> tracks;
-  final String? initialTrack;
   final GroupSettings settings;
   final List<Widget> members;
 
@@ -907,14 +841,13 @@ class _GroupEditor extends StatefulWidget {
 }
 
 class _GroupEditorState extends State<_GroupEditor> {
-  late String? _track = widget.initialTrack;
+  String? _open;
+  var _anyOpen = false;
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    final track = widget.tracks.any((t) => t.$1 == _track) ? _track : null;
     final overrides = widget.settings.overrides;
-    final name = widget.tracks.firstWhere((t) => t.$1 == track).$2;
     final appMotions = widget.host.appMotions;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -933,28 +866,41 @@ class _GroupEditorState extends State<_GroupEditor> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     widget.transport,
-                    _MotionSection<String?>(
-                      summary:
-                          '$name · '
-                          '${_motionSummary(appMotions, overrides[track])}',
-                      editor: MotionEditor<String?>(
-                        tracks: widget.tracks,
-                        track: track,
-                        current: overrides[track],
-                        tuned: overrides.keys.toSet(),
-                        appMotions: widget.host.appMotions,
-                        onTrackSelected: (track) =>
-                            setState(() => _track = track),
-                        onChanged: (motion) {
-                          widget.host.setGroupOverride(
-                            widget.group,
-                            track,
-                            motion,
-                          );
-                          setState(() {});
-                        },
+                    const SizedBox(height: 16),
+                    Text('Motion', style: palette.label),
+                    const SizedBox(height: 4),
+                    for (final (key, name) in widget.tracks) ...[
+                      TrackMotionHeader(
+                        key: ValueKey('motor-devtools-track-$name'),
+                        name: name,
+                        motion: describeMotion(overrides[key], appMotions),
+                        tuned: overrides.containsKey(key),
+                        open: _anyOpen && _open == key,
+                        onTap: () => setState(() {
+                          final open = _anyOpen && _open == key;
+                          _anyOpen = !open;
+                          _open = key;
+                        }),
                       ),
-                    ),
+                      Disclosure(
+                        open: _anyOpen && _open == key,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 10),
+                          child: MotionEditor(
+                            current: overrides[key],
+                            appMotions: appMotions,
+                            onChanged: (motion) {
+                              widget.host.setGroupOverride(
+                                widget.group,
+                                key,
+                                motion,
+                              );
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     const Hairline(),
                     Padding(
@@ -988,8 +934,6 @@ class _ControllerDetail extends StatefulWidget {
 }
 
 class _ControllerDetailState extends State<_ControllerDetail> {
-  Track<Object>? _selectedTrack;
-
   void _togglePlayback() {
     final controller = widget.controller;
     if (controller.isAnimating) {
@@ -1011,17 +955,6 @@ class _ControllerDetailState extends State<_ControllerDetail> {
         listenable: controller,
         builder: (context, _) {
           final state = PlaybackState.of(controller);
-          final tracks = [
-            for (final (index, playback)
-                in controller.inspectPlayback().tracks.indexed)
-              (
-                playback.track,
-                playback.track.debugLabel ?? guessTrackName(playback, index),
-              ),
-          ];
-          if (!tracks.any((entry) => identical(entry.$1, _selectedTrack))) {
-            _selectedTrack = tracks.firstOrNull?.$1;
-          }
           final overrides = controller.motionOverrides;
           final speed = controller.playbackSpeed;
           final group = controller.inspectionGroup;
@@ -1058,27 +991,17 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                     Timeline(
                       key: const ValueKey('motor-devtools-full-timeline'),
                       controller: controller,
-                      selectedTrack: _selectedTrack,
-                    ),
-                    if (_selectedTrack case final track?)
-                      _MotionSection<Track<Object>>(
-                        summary:
-                            '${_nameIn(tracks, track)} · ${_motionSummary(
-                              host.appMotions,
-                              overrides[track],
-                            )}',
-                        editor: MotionEditor<Track<Object>>(
-                          tracks: tracks,
-                          track: track,
-                          current: overrides[track],
-                          tuned: overrides.keys.toSet(),
-                          appMotions: host.appMotions,
-                          onTrackSelected: (track) =>
-                              setState(() => _selectedTrack = track),
-                          onChanged: (motion) =>
-                              host.setOverride(controller, track, motion),
-                        ),
+                      trackMotion: (track) => (
+                        describeMotion(overrides[track], host.appMotions),
+                        overrides.containsKey(track),
                       ),
+                      trackEditor: (track) => MotionEditor(
+                        current: overrides[track],
+                        appMotions: host.appMotions,
+                        onChanged: (motion) =>
+                            host.setOverride(controller, track, motion),
+                      ),
+                    ),
                     if (controller.debugLabel == null) ...[
                       const SizedBox(height: 12),
                       Container(

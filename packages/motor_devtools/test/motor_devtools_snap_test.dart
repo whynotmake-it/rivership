@@ -92,8 +92,9 @@ Future<void> _exerciseStateMatrix(
   await gesture.up();
   await tester.pump();
 
-  await tester.tap(find.byKey(const ValueKey('motor-devtools-tracks')));
-  await tester.tap(find.byKey(const ValueKey('motor-devtools-motion')));
+  await tester.tap(
+    find.byKey(const ValueKey('motor-devtools-track-Card scale')),
+  );
   await _settle(tester);
   await tester.tap(
     find.byKey(const ValueKey('motor-devtools-motion-Spring')),
