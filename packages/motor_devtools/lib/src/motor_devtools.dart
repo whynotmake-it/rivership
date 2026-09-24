@@ -3,21 +3,12 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/src/flag.dart';
 import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/overlay.dart';
 import 'package:motor_devtools/src/panel.dart';
 import 'package:motor_devtools/src/session.dart';
 import 'package:motor_devtools/src/style.dart';
-
-/// Whether Motor DevTools are compiled into the app.
-///
-/// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools and
-/// motor's inspection hooks from the app entirely. [MotorDevTools] then
-/// returns its child.
-const bool kMotorDevTools = bool.fromEnvironment(
-  'MOTOR_DEVTOOLS',
-  defaultValue: true,
-);
 
 /// Imperatively opens and closes a [MotorDevTools] overlay.
 class MotorDevToolsController extends ChangeNotifier {

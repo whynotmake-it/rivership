@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/src/flag.dart';
 import 'package:motor_devtools/src/naming.dart';
 import 'package:motor_devtools/src/style.dart';
 
@@ -563,8 +564,8 @@ class MotorTimelineLane {
 ///
 /// It takes its font and color from the ambient [DefaultTextStyle]. While
 /// shown, it attaches motor's inspection registry so that plans started
-/// from then on carry duration estimates. Apps that show it therefore keep
-/// motor's inspection hooks, also when `kMotorDevTools` is false.
+/// from then on carry duration estimates. With [kMotorDevTools] false it
+/// does not attach, so it shows only the steps resolved so far.
 ///
 /// ```dart
 /// MotorTimeline(
@@ -598,17 +599,19 @@ class MotorTimeline extends StatefulWidget {
 }
 
 class _MotorTimelineState extends State<MotorTimeline> {
-  late final MotorInspectionSubscription _subscription;
+  MotorInspectionSubscription? _subscription;
 
   @override
   void initState() {
     super.initState();
-    _subscription = MotorInspectionRegistry.attach(_QuietObserver());
+    if (kMotorDevTools) {
+      _subscription = MotorInspectionRegistry.attach(_QuietObserver());
+    }
   }
 
   @override
   void dispose() {
-    _subscription.dispose();
+    _subscription?.dispose();
     super.dispose();
   }
 
