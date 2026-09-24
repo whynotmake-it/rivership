@@ -775,6 +775,8 @@ class _Ruler extends StatelessWidget {
                 ),
               ],
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const Spacer(),
           SizedBox(
@@ -844,13 +846,15 @@ class _LaneRow extends StatelessWidget {
                 ),
               ),
               if (value case final value? when value.isNotEmpty)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 160),
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: palette.numeric,
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: palette.numeric,
+                    ),
                   ),
                 ),
             ],
@@ -938,9 +942,9 @@ class _LanePainter extends CustomPainter {
     if (segments.isNotEmpty) {
       canvas.drawRRect(
         RRect.fromLTRBR(
-          playheadX.clamp(1, size.width - 1) - 0.75,
+          playheadX.clamp(1, math.max(1, size.width - 1)) - 0.75,
           -3,
-          playheadX.clamp(1, size.width - 1) + 0.75,
+          playheadX.clamp(1, math.max(1, size.width - 1)) + 0.75,
           size.height + 3,
           const Radius.circular(1),
         ),
@@ -976,7 +980,9 @@ class _RulerPainter extends CustomPainter {
       ..color = palette.tertiary.withValues(alpha: 0.6)
       ..strokeWidth = 1;
     for (var t = 0.0, i = 0; t <= ms + 0.001; t += step, i++) {
-      final x = (size.width * t / ms).clamp(0.5, size.width - 0.5);
+      final x = (size.width * t / ms)
+          .clamp(0.5, math.max(0.5, size.width - 0.5))
+          .toDouble();
       canvas.drawLine(
         Offset(x, size.height),
         Offset(x, i.isEven ? size.height - 6 : size.height - 3),
@@ -985,7 +991,9 @@ class _RulerPainter extends CustomPainter {
     }
     final fraction = playhead;
     if (fraction == null) return;
-    final x = (size.width * fraction).clamp(1.0, size.width - 1);
+    final x = (size.width * fraction)
+        .clamp(1.0, math.max(1.0, size.width - 1))
+        .toDouble();
     final accent = Paint()..color = palette.accent;
     canvas
       ..drawRRect(

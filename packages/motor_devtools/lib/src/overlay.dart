@@ -535,13 +535,15 @@ class _RenderShell extends RenderBox
   @override
   void performLayout() {
     size = constraints.biggest;
-    final width = math.min<double>(
-      380,
-      size.width - _padding.horizontal - _margin * 2,
+    // In a window too small for it, the panel keeps a usable size and
+    // runs past the window's edges rather than squeezing its content.
+    final width = math.max<double>(
+      280,
+      math.min(380, size.width - _padding.horizontal - _margin * 2),
     );
-    final maxHeight = math.min<double>(
-      640,
-      size.height - _padding.vertical - _margin * 2,
+    final maxHeight = math.max<double>(
+      240,
+      math.min(640, size.height - _padding.vertical - _margin * 2),
     );
     final content = _content;
     var height = 0.0;
