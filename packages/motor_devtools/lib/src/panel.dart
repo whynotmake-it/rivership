@@ -201,9 +201,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
     return IgnorePointer(
       ignoring: !current,
       child: Opacity(
-        opacity: offset < 0
-            ? (1 + offset).clamp(0.0, 1.0)
-            : ((1 - offset) * 1.5).clamp(0.0, 1.0),
+        opacity: offset < 0 ? (1 + offset).clamp(0.0, 1.0) : 1,
         child: Transform.translate(
           offset: Offset(width * (offset < 0 ? offset * 0.2 : offset), 0),
           child: child,
