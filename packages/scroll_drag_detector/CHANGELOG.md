@@ -1,3 +1,16 @@
+## 1.0.0-dev.0
+
+> Note: This release has breaking changes.
+
+ - **BREAKING** **FEAT**: replace `scrollableCanMoveBack` and
+   `onlyDragWhenScrollWasAtTop` with required `up`, `down`, `left`, and `right`
+   physical-direction modes.
+ - **FEAT**: add `ScrollDragDetector.legacy` to map the previous configuration
+   for conventional, non-reversed scrollables. Reversed scrollables use the
+   corrected physical-direction behavior.
+ - **FEAT**: support scroll-first boundary takeover and same-gesture reversal
+   on both axes, including reversed scrollables.
+
 ## 0.1.0+2
 
  - **FIX**: immediately start clearing overscroll when letting go.

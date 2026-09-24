@@ -145,6 +145,34 @@ void main() {
         });
       });
 
+      testWidgets(
+        'does not rebuild when the device variant is already active',
+        variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+        (tester) async {
+          var buildCount = 0;
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: LayoutBuilder(
+                builder: (context, constraints) {
+                  buildCount++;
+                  return const Text(
+                    'Visible text',
+                    style: TextStyle(fontFamily: '.SF UI Text'),
+                  );
+                },
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final buildCountBeforeSnap = buildCount;
+
+          await snap(name: 'already_active_device');
+
+          expect(buildCount, buildCountBeforeSnap);
+        },
+      );
+
       snapTest(
         'appends counter when snap is called multiple times',
         (tester) async {

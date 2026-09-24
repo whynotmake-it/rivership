@@ -1,3 +1,10 @@
+## 1.0.0-dev.4
+
+ - **CHORE**: license this release under Apache-2.0 and document the adapted
+   and modified Spot v0.18.0 font-loading portions. Earlier published archives
+   remain unchanged and retain the license notices shipped in those archives;
+   their MIT notice does not license this release.
+
 ## 1.0.0-dev.3
 
 > Note: This release has breaking changes.

@@ -21,7 +21,7 @@ void main() {
 
     Widget build({
       Motion motion = motion,
-      bool onlyDragWhenScrollWasAtTop = true,
+      SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
       bool draggable = true,
       bool originateAboveBottomViewInset = false,
     }) {
@@ -38,7 +38,7 @@ void main() {
                   ).push(
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
-                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      dragHandoff: dragHandoff,
                       draggable: draggable,
                       originateAboveBottomViewInset:
                           originateAboveBottomViewInset,
@@ -132,8 +132,8 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    testWidgets('only drags when started at top', (tester) async {
-      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: true));
+    testWidgets('gestureStart only drags when started at top', (tester) async {
+      await tester.pumpWidget(build());
       await tester.tap(find.byKey(const ValueKey('button')));
       await tester.pumpAndSettle();
       final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
@@ -164,9 +164,11 @@ void main() {
       expect(find.byType(GlowingOverscrollIndicator), findsOneWidget);
     });
 
-    testWidgets('drags from anywhere if onlyDragWhenScrollWasAtTop is false',
+    testWidgets('continuous handoff drags after scrolling to the top',
         (tester) async {
-      await tester.pumpWidget(build(onlyDragWhenScrollWasAtTop: false));
+      await tester.pumpWidget(
+        build(dragHandoff: SheetDragHandoff.continuous),
+      );
       await tester.tap(find.byKey(const ValueKey('button')));
       await tester.pumpAndSettle();
       final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
@@ -407,6 +409,8 @@ void main() {
 
     Widget build({
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+      bool canPop = false,
+      ValueChanged<bool>? onPopInvoked,
     }) {
       return MaterialApp(
         theme: ThemeData(useMaterial3: false),
@@ -422,9 +426,12 @@ void main() {
                     StupidSimpleSheetRoute<void>(
                       motion: motion,
                       snappingConfig: snappingConfig,
-                      child: const PopScope(
-                        canPop: false,
-                        child: Scaffold(
+                      child: PopScope<void>(
+                        canPop: canPop,
+                        onPopInvokedWithResult: (didPop, result) {
+                          onPopInvoked?.call(didPop);
+                        },
+                        child: const Scaffold(
                           key: ValueKey('scaffold'),
                           body: Center(child: Text('Sheet Content')),
                         ),
@@ -496,6 +503,95 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(tester.getTopLeft(scaffoldFinder), topLeft);
+      },
+    );
+
+    testWidgets(
+      'notifies PopScope once when snap physics target blocked closure',
+      (tester) async {
+        final popResults = <bool>[];
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1],
+              initialSnap: 1,
+              physics: _FixedSnapPhysics(0),
+            ),
+            onPopInvoked: popResults.add,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleSheetRoute;
+        await tester.drag(scaffoldFinder, const Offset(0, 200));
+        // The drag has not crossed the lowest nonzero snap. Closure intent
+        // comes from the configured physics, not from crossing minExtent.
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, greaterThan(0.5));
+        await tester.pumpAndSettle();
+
+        expect(popResults, [false]);
+        expect(scaffoldFinder, findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'does not notify PopScope when snap physics target nonzero snap',
+      (tester) async {
+        final popResults = <bool>[];
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1],
+              initialSnap: 1,
+              physics: _FixedSnapPhysics(0.5),
+            ),
+            onPopInvoked: popResults.add,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffoldFinder))!
+            as StupidSimpleSheetRoute;
+        await tester.drag(scaffoldFinder, const Offset(0, 500));
+        // ignore: invalid_use_of_protected_member
+        expect(route.controller!.value, lessThan(0.5));
+        await tester.pumpAndSettle();
+
+        expect(popResults, isEmpty);
+        expect(scaffoldFinder, findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'allowed closure target still dismisses sheet',
+      (tester) async {
+        final popResults = <bool>[];
+        await tester.pumpWidget(
+          build(
+            snappingConfig: const SheetSnappingConfig(
+              [0.5, 1],
+              initialSnap: 1,
+              physics: _FixedSnapPhysics(0),
+            ),
+            canPop: true,
+            onPopInvoked: popResults.add,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffoldFinder = find.byKey(const ValueKey('scaffold'));
+        await tester.drag(scaffoldFinder, const Offset(0, 200));
+        await tester.pumpAndSettle();
+
+        expect(popResults, [true]);
+        expect(scaffoldFinder, findsNothing);
       },
     );
 
@@ -598,7 +694,7 @@ void main() {
       DismissalMode dismissalMode = DismissalMode.slide,
       Widget? sheetChild,
       bool draggable = true,
-      bool onlyDragWhenScrollWasAtTop = true,
+      SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return MaterialApp(
@@ -615,7 +711,7 @@ void main() {
                       dismissalMode: dismissalMode,
                       draggable: draggable,
                       snappingConfig: snappingConfig,
-                      onlyDragWhenScrollWasAtTop: onlyDragWhenScrollWasAtTop,
+                      dragHandoff: dragHandoff,
                       child: sheetChild ??
                           const ColoredBox(
                             key: ValueKey('sheet'),
@@ -2363,6 +2459,21 @@ void main() {
       },
     );
   });
+}
+
+class _FixedSnapPhysics extends RelativeSnapPhysics {
+  const _FixedSnapPhysics(this.target);
+
+  final double target;
+
+  @override
+  double findTargetSnapPoint({
+    required double position,
+    required double velocity,
+    required List<double> snapPoints,
+  }) {
+    return snapPoints.contains(target) ? target : snapPoints.first;
+  }
 }
 
 /// A golden file comparator that allows a specified number of pixels

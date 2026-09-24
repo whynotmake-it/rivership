@@ -20,6 +20,29 @@ Or install via `dart pub`:
 dart pub add scroll_drag_detector
 ```
 
+## Usage
+
+Choose how movement in each physical direction is routed:
+
+```dart
+ScrollDragDetector(
+  up: ScrollDragMode.dragFirst,
+  down: ScrollDragMode.boundaryStart,
+  left: ScrollDragMode.none,
+  right: ScrollDragMode.none,
+  onVerticalDragUpdate: (details, wouldScroll) {
+    // Move the surrounding draggable.
+  },
+  child: scrollable,
+)
+```
+
+Use `ScrollDragMode.scrollFirst` to let the child reach its boundary before
+the surrounding draggable takes over. Use `ScrollDragDetector.legacy` to
+migrate the previous `scrollableCanMoveBack` and
+`onlyDragWhenScrollWasAtTop` configuration without changing conventional
+sheet behavior.
+
 --- 
 
 [dart_install_link]: https://dart.dev/get-dart

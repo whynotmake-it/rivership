@@ -40,6 +40,8 @@ jobs:
       
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
+        with:
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
 
       - name: 🧪 Run Analyze
         run: melos run analyze
@@ -85,6 +87,8 @@ jobs:
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
+        with:
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
 
       - name: 🔨 Generate
         run: melos run generate

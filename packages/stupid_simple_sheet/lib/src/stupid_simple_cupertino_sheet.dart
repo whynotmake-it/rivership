@@ -21,6 +21,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,
+    this.dragHandoff = SheetDragHandoff.gestureStart,
     this.snappingConfig = SheetSnappingConfig.full,
     this.draggable = true,
     this.originateAboveBottomViewInset = false,
@@ -75,6 +76,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   final bool callNavigatorUserGestureMethods;
+
+  @override
+  final SheetDragHandoff dragHandoff;
 
   @override
   final SheetSnappingConfig snappingConfig;

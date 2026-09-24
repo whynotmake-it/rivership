@@ -295,6 +295,207 @@ void main() {
     });
   });
 
+  group('shared fixed-rate scheduling', () {
+    testWidgets('equal intervals join the same phase', (tester) async {
+      const interval = Duration(milliseconds: 50);
+      final firstElapsed = <Duration>[];
+      final secondElapsed = <Duration>[];
+      final first = FixedTicker(firstElapsed.add, interval: interval);
+      final second = FixedTicker(secondElapsed.add, interval: interval);
+
+      unawaited(first.start());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 25));
+
+      unawaited(second.start());
+      await tester.pump();
+      firstElapsed.clear();
+      secondElapsed.clear();
+
+      await tester.pump(const Duration(milliseconds: 25));
+      expect(firstElapsed, hasLength(1));
+      expect(secondElapsed, hasLength(1));
+
+      first
+        ..stop()
+        ..dispose();
+      second
+        ..stop()
+        ..dispose();
+    });
+
+    testWidgets('multiple intervals meet on shared boundaries', (tester) async {
+      const fastInterval = Duration(milliseconds: 50);
+      const slowInterval = Duration(milliseconds: 100);
+      final fastElapsed = <Duration>[];
+      final slowElapsed = <Duration>[];
+      final fast = FixedTicker(fastElapsed.add, interval: fastInterval);
+      final slow = FixedTicker(slowElapsed.add, interval: slowInterval);
+
+      unawaited(fast.start());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 25));
+
+      unawaited(slow.start());
+      await tester.pump();
+      fastElapsed.clear();
+      slowElapsed.clear();
+
+      await tester.pump(const Duration(milliseconds: 25));
+      expect(fastElapsed, hasLength(1));
+      expect(slowElapsed, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(fastElapsed, hasLength(2));
+      expect(slowElapsed, hasLength(1));
+
+      fast
+        ..stop()
+        ..dispose();
+      slow
+        ..stop()
+        ..dispose();
+    });
+
+    testWidgets('a faster ticker rephases an existing slower group', (
+      tester,
+    ) async {
+      const fastInterval = Duration(milliseconds: 50);
+      const slowInterval = Duration(milliseconds: 100);
+      final fastElapsed = <Duration>[];
+      final slowElapsed = <Duration>[];
+      final slow = FixedTicker(slowElapsed.add, interval: slowInterval);
+      final fast = FixedTicker(fastElapsed.add, interval: fastInterval);
+
+      unawaited(slow.start());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 25));
+
+      unawaited(fast.start());
+      await tester.pump();
+      fastElapsed.clear();
+      slowElapsed.clear();
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(fastElapsed, hasLength(1));
+      expect(slowElapsed, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(fastElapsed, hasLength(2));
+      expect(slowElapsed, hasLength(1));
+
+      fast
+        ..stop()
+        ..dispose();
+      slow
+        ..stop()
+        ..dispose();
+    });
+
+    testWidgets('fps multiples align despite microsecond rounding', (
+      tester,
+    ) async {
+      final fastInterval = TickerRate.fps(30).interval!;
+      final slowInterval = TickerRate.fps(15).interval!;
+      expect(slowInterval.inMicroseconds, fastInterval.inMicroseconds * 2 + 1);
+
+      final fastElapsed = <Duration>[];
+      final slowElapsed = <Duration>[];
+      final fast = FixedTicker(fastElapsed.add, interval: fastInterval);
+      final slow = FixedTicker(slowElapsed.add, interval: slowInterval);
+
+      unawaited(fast.start());
+      unawaited(slow.start());
+      await tester.pump();
+      fastElapsed.clear();
+      slowElapsed.clear();
+
+      await tester.pump(fastInterval);
+      expect(fastElapsed, hasLength(1));
+      expect(slowElapsed, isEmpty);
+
+      await tester.pump(fastInterval);
+      expect(fastElapsed, hasLength(2));
+      expect(slowElapsed, hasLength(1));
+
+      fast
+        ..stop()
+        ..dispose();
+      slow
+        ..stop()
+        ..dispose();
+    });
+
+    testWidgets('shared false retains an independent phase', (tester) async {
+      const interval = Duration(milliseconds: 50);
+      final sharedElapsed = <Duration>[];
+      final independentElapsed = <Duration>[];
+      final shared = FixedTicker(sharedElapsed.add, interval: interval);
+      final independent = FixedTicker(
+        independentElapsed.add,
+        interval: interval,
+        shared: false,
+      );
+
+      unawaited(shared.start());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 25));
+
+      unawaited(independent.start());
+      await tester.pump();
+      sharedElapsed.clear();
+      independentElapsed.clear();
+
+      await tester.pump(const Duration(milliseconds: 25));
+      expect(sharedElapsed, hasLength(1));
+      expect(independentElapsed, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 25));
+      expect(sharedElapsed, hasLength(1));
+      expect(independentElapsed, hasLength(1));
+
+      shared
+        ..stop()
+        ..dispose();
+      independent
+        ..stop()
+        ..dispose();
+    });
+
+    testWidgets('changing shared mode rephases an active ticker', (
+      tester,
+    ) async {
+      const interval = Duration(milliseconds: 50);
+      final anchor = FixedTicker((_) {}, interval: interval);
+      final elapsed = <Duration>[];
+      final ticker = FixedTicker(
+        elapsed.add,
+        interval: interval,
+        shared: false,
+      );
+
+      unawaited(anchor.start());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 25));
+      unawaited(ticker.start());
+      await tester.pump();
+      elapsed.clear();
+
+      ticker.shared = true;
+      await tester.pump();
+      elapsed.clear();
+      await tester.pump(const Duration(milliseconds: 25));
+      expect(elapsed, hasLength(1));
+
+      anchor
+        ..stop()
+        ..dispose();
+      ticker
+        ..stop()
+        ..dispose();
+    });
+  });
+
   group('FixedTicker (null interval / normal mode)', () {
     testWidgets('behaves like a normal Ticker when interval is null', (
       tester,

@@ -1,5 +1,5 @@
-/// Tracks how many `Timer`s are currently running across all fixed-rate
-/// tickers.
+/// Tracks how many fixed-rate tickers are currently waiting on a `Timer`,
+/// either their own or a shared one.
 ///
 /// Kept in its own library (not exported by `package:fixed_ticker`) so the
 /// ticker and the testing utilities can share the count without either one

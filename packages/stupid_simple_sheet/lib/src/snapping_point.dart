@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:stupid_simple_sheet/src/sheet_constants.dart';
 
 /// Configuration for sheet snapping behavior.
 ///
@@ -79,8 +80,9 @@ class SheetSnappingConfig {
     final allPoints = getAllPoints();
 
     // If the closed point (0.0) should be excluded, filter it out.
-    final effectivePoints =
-        includeClosed ? allPoints : allPoints.where((p) => p > 0.001).toList();
+    final effectivePoints = includeClosed
+        ? allPoints
+        : allPoints.where((p) => p > sheetPositionTolerance).toList();
 
     switch (physics) {
       case final RelativeSnapPhysics p:
@@ -109,7 +111,9 @@ class SheetSnappingConfig {
     }
 
     final relativePoints = getAllPoints()
-        .where((value) => value > 0.001) // Exclude values effectively zero
+        .where(
+          (value) => value > sheetPositionTolerance,
+        ) // Exclude values effectively zero
         .toList();
 
     return relativePoints.isNotEmpty ? relativePoints.first : 1.0;
@@ -318,6 +322,43 @@ class FrictionSnapPhysics extends RelativeSnapPhysics {
 
     final projectedPosition = sim.finalX.clamp(0.0, 1.0);
 
+    return findClosestPoint(snapPoints, projectedPosition);
+  }
+}
+
+/// Restores the snap-point behavior used before `1.0.0-dev.1`.
+///
+/// This physics treats velocities below `0.5` normalized units as a regular
+/// drag. Faster gestures project the current position by `velocity * 0.3` and
+/// settle on the closest snap point. The velocity is normalized so positive
+/// values move the sheet towards its open state.
+///
+/// This behavior is retained for migrations where changing the snap response
+/// would be undesirable. New sheets should use [FlingSnapPhysics] or
+/// [FrictionSnapPhysics] instead.
+@Deprecated(
+  'Use FlingSnapPhysics or FrictionSnapPhysics instead. '
+  'This behavior is retained for migration compatibility.',
+)
+class LegacySnapPhysics extends RelativeSnapPhysics {
+  /// Creates legacy snap physics.
+  @Deprecated(
+    'Use FlingSnapPhysics or FrictionSnapPhysics instead. '
+    'This behavior is retained for migration compatibility.',
+  )
+  const LegacySnapPhysics();
+
+  @override
+  double findTargetSnapPoint({
+    required double position,
+    required double velocity,
+    required List<double> snapPoints,
+  }) {
+    if (velocity.abs() <= 0.5) {
+      return findClosestPoint(snapPoints, position);
+    }
+
+    final projectedPosition = position + velocity * 0.3;
     return findClosestPoint(snapPoints, projectedPosition);
   }
 }

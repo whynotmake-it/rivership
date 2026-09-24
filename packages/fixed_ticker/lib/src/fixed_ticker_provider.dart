@@ -43,14 +43,28 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
   TickerRate get tickerRate =>
       TickerRateScope.maybeOf(context) ?? const TickerRate.vsync();
 
+  /// Whether fixed-rate tickers use the shared, phase-aligned scheduler.
+  ///
+  /// Override this and return `false` to give this provider's ticker an
+  /// independent timer. Call [updateTickerRate] after changing the value.
+  bool get shareTicks => true;
+
   FixedTicker? _ticker;
   TickerRate? _lastSyncedRate;
+  bool? _lastSyncedShareTicks;
 
   void _syncTickerRate() {
     final desired = tickerRate;
-    if (desired == _lastSyncedRate) return;
+    final desiredShareTicks = shareTicks;
+    if (desired == _lastSyncedRate &&
+        desiredShareTicks == _lastSyncedShareTicks) {
+      return;
+    }
     _lastSyncedRate = desired;
-    _ticker?.interval = desired.interval;
+    _lastSyncedShareTicks = desiredShareTicks;
+    _ticker
+      ?..shared = desiredShareTicks
+      ..interval = desired.interval;
   }
 
   @override
@@ -85,6 +99,7 @@ mixin SingleFixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     _ticker = FixedTicker(
       onTick,
       interval: _lastSyncedRate?.interval,
+      shared: _lastSyncedShareTicks ?? shareTicks,
       debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
     );
     _updateTickerModeNotifier();
@@ -226,16 +241,30 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
   TickerRate get tickerRate =>
       TickerRateScope.maybeOf(context) ?? const TickerRate.vsync();
 
+  /// Whether fixed-rate tickers use the shared, phase-aligned scheduler.
+  ///
+  /// Override this and return `false` to give this provider's tickers
+  /// independent timers. Call [updateTickerRate] after changing the value.
+  bool get shareTicks => true;
+
   Set<Ticker>? _tickers;
   TickerRate? _lastSyncedRate;
+  bool? _lastSyncedShareTicks;
 
   void _syncTickerRate() {
     final desired = tickerRate;
-    if (desired == _lastSyncedRate) return;
+    final desiredShareTicks = shareTicks;
+    if (desired == _lastSyncedRate &&
+        desiredShareTicks == _lastSyncedShareTicks) {
+      return;
+    }
     _lastSyncedRate = desired;
+    _lastSyncedShareTicks = desiredShareTicks;
     if (_tickers == null) return;
     for (final ticker in _tickers!) {
-      (ticker as _WidgetFixedTicker).interval = desired.interval;
+      (ticker as _WidgetFixedTicker)
+        ..shared = desiredShareTicks
+        ..interval = desired.interval;
     }
   }
 
@@ -249,6 +278,7 @@ mixin FixedTickerProviderStateMixin<T extends StatefulWidget> on State<T>
     final result = _WidgetFixedTicker(
       onTick,
       interval: _lastSyncedRate?.interval,
+      shared: _lastSyncedShareTicks ?? shareTicks,
       creator: this,
       debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
     );
@@ -370,6 +400,7 @@ class _WidgetFixedTicker extends FixedTicker {
   _WidgetFixedTicker(
     super.onTick, {
     required super.interval,
+    required super.shared,
     required FixedTickerProviderStateMixin creator,
     super.debugLabel,
   }) : _creator = creator;
