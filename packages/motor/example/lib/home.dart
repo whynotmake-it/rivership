@@ -170,7 +170,7 @@ class _HomePageState extends State<HomePage>
                         Text('CHAPTERS', style: t.eyebrow),
                         const SizedBox(height: 16),
                         _ChapterGrid(
-                          columns: wide ? 2 : 1,
+                          columns: wide ? 3 : 2,
                           children: [
                             for (final (index, chapter) in chapters.indexed)
                               _reveal(4 + index, _ChapterCard(chapter)),
@@ -343,11 +343,11 @@ class _ChapterGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const gap = 14.0;
+        const gap = 16.0;
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
-          runSpacing: gap,
+          runSpacing: gap + 4,
           children: [
             for (final child in children) SizedBox(width: width, child: child),
           ],
@@ -357,55 +357,88 @@ class _ChapterGrid extends StatelessWidget {
   }
 }
 
-class _ChapterCard extends StatelessWidget {
+// Every card rests at its own slight angle, in degrees.
+const _tilts = [-1.8, 1.4, -1.1, 2.0, -1.5, 1.2, -1.9];
+
+/// A chapter card that rests a little crooked, straightens and lifts under
+/// the pointer, and squeezes when pressed.
+class _ChapterCard extends StatefulWidget {
   const _ChapterCard(this.chapter);
 
   final Chapter chapter;
 
   @override
+  State<_ChapterCard> createState() => _ChapterCardState();
+}
+
+class _ChapterCardState extends State<_ChapterCard> {
+  var _hovered = false;
+  var _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
-    return PressScale(
-      onTap: () => context.navigateTo(NamedRoute(chapter.title)),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: t.surfaceSolid,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: t.border),
-          boxShadow: t.hairlineShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 92,
-              height: 92,
+    final index = chapters.indexOf(widget.chapter);
+    final calm = _hovered || _pressed;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: () => context.navigateTo(NamedRoute(widget.chapter.title)),
+        child: AnimatedRotation(
+          turns: calm ? 0 : _tilts[index % _tilts.length] / 360,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutBack,
+          child: AnimatedScale(
+            scale: _pressed ? .96 : (_hovered ? 1.03 : 1),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutBack,
+            child: Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: t.fog,
-                borderRadius: BorderRadius.circular(18),
+                color: t.surfaceSolid,
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: t.border),
+                boxShadow: calm ? t.softShadow : t.hairlineShadow,
               ),
-              child: _Glyph(chapters.indexOf(chapter)),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(chapter.number, style: t.eyebrow),
-                  const SizedBox(height: 6),
-                  Text(chapter.title, style: t.title),
-                  const SizedBox(height: 4),
-                  Text(
-                    chapter.idea,
-                    style: t.body.copyWith(fontSize: 14, height: 1.35),
+                  AspectRatio(
+                    aspectRatio: 1.35,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: t.fog,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Transform.scale(scale: 1.25, child: _Glyph(index)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.chapter.number, style: t.eyebrow),
+                        const SizedBox(height: 4),
+                        Text(widget.chapter.title, style: t.title),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.chapter.idea,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.body.copyWith(fontSize: 13, height: 1.35),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(CupertinoIcons.chevron_right, size: 16, color: t.textTertiary),
-            const SizedBox(width: 8),
-          ],
+          ),
         ),
       ),
     );
@@ -432,8 +465,22 @@ class _Glyph extends StatelessWidget {
     final accent = trackColors[index % trackColors.length];
     return Center(
       child: switch (index) {
-        // Retarget: an indicator stretched between two tabs.
+        // Toggle: a switch, on.
         0 => Container(
+          width: 52,
+          height: 30,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: box(24, 24, color: CupertinoColors.white, r: 12),
+          ),
+        ),
+        // Retarget: an indicator stretched between two tabs.
+        1 => Container(
           width: 64,
           height: 22,
           padding: const EdgeInsets.all(3),
@@ -446,8 +493,8 @@ class _Glyph extends StatelessWidget {
             child: box(30, 16, color: accent, r: 8),
           ),
         ),
-        // Throw: a card flying off with a blur trail.
-        1 => Transform.rotate(
+        // Fling: a card flying off with a blur trail.
+        2 => Transform.rotate(
           angle: -.18,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -460,16 +507,6 @@ class _Glyph extends StatelessWidget {
               box(36, 30, color: accent, r: 8),
             ],
           ),
-        ),
-        // Tracks: a button becoming a panel.
-        2 => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            box(16, 16, r: 8),
-            const SizedBox(width: 6),
-            box(34, 44, color: accent, r: 10),
-          ],
         ),
         // Steps: a staircase.
         3 => Row(
