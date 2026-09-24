@@ -55,9 +55,9 @@ class _TrackSlot<T extends Object> {
 
   T get velocity => _denormalize(_velocities);
 
-  /// When the controller last recorded a velocity sample for this track
-  /// whose estimate it has not applied yet.
-  DateTime? pendingVelocityAt;
+  /// Whether this track's velocity comes from its velocity tracker, which
+  /// the controller then estimates whenever it is needed.
+  bool velocityFromTracker = false;
 
   // While playing, velocities are only pulled from the playback when read.
   var _velocitiesStale = false;

@@ -113,7 +113,7 @@ void main() {
       expect(controller.velocity(position), 0.0);
     });
 
-    testWidgets('keeps its tracked velocity when play starts later',
+    testWidgets('keeps its tracked velocity when play starts in a later frame',
         (tester) async {
       controller = TrackController(vsync: tester);
       const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
@@ -123,7 +123,8 @@ void main() {
       controller.set([position.value(1.0)]);
       await tester.pump(const Duration(milliseconds: 16));
       controller.set([position.value(2.0)]);
-      await tester.pump(const Duration(milliseconds: 100));
+      // Within the 40 ms after which a still pointer counts as stopped.
+      await tester.pump(const Duration(milliseconds: 16));
 
       controller.play(TrackTimeline([position.to(2.0, motion: spring)]));
       await tester.pump();
@@ -413,6 +414,42 @@ void main() {
     controller.set([three]);
     expect(controller.value(values), [1, 2, 3]);
     expect(() => controller.set([one]), throwsAssertionError);
+  });
+
+  group('tracked velocity decays when the value holds still', () {
+    testWidgets('before it is read', (tester) async {
+      final controller = SingleMotionController(
+        motion: const CupertinoMotion(),
+        vsync: tester,
+      );
+      addTearDown(controller.dispose);
+      for (var i = 0; i < 10; i++) {
+        controller.value = i * 10.0;
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(controller.velocity, 0);
+    });
+
+    testWidgets('after it was read while moving', (tester) async {
+      final controller = SingleMotionController(
+        motion: const CupertinoMotion(),
+        vsync: tester,
+      );
+      addTearDown(controller.dispose);
+      for (var i = 0; i < 10; i++) {
+        controller.value = i * 10.0;
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(controller.velocity, greaterThan(0));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Releasing now starts from rest, without a fling.
+      controller.animateTo(90);
+      expect(controller.velocity, 0);
+      await tester.pumpAndSettle();
+    });
   });
 
   testWidgets('a custom velocity tracker receives every sample',
