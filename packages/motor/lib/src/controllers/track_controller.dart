@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'
+    show ErrorDescription, FlutterError, FlutterErrorDetails;
 import 'package:flutter/scheduler.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
