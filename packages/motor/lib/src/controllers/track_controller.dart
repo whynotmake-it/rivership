@@ -129,8 +129,8 @@ class TrackController extends Animation<TrackValueReader>
   /// moving tracks head down, otherwise [AnimationStatus.forward]. Once none
   /// moves, it is [AnimationStatus.dismissed] if all of them are dismissed,
   /// otherwise [AnimationStatus.completed]. See [animationOf] for the status
-  /// of a single track; a track stopped with `canceled: true` counts as
-  /// moving in its last direction.
+  /// of a single track; a stopped track counts as moving in its last
+  /// direction.
   ///
   /// Pausing and scrubbing do not change it.
   @override
@@ -153,11 +153,12 @@ class TrackController extends Animation<TrackValueReader>
   ///   when heading for a smaller value, as judged by a
   ///   [DirectionalMotionConverter], otherwise [AnimationStatus.forward].
   ///   Steps without a direction (holds, barriers) keep the previous one.
-  /// - Once its plan finished, it was stopped, or it jumped with [set]:
+  /// - Once its plan finished or it jumped with [set]:
   ///   [AnimationStatus.dismissed] if its last move went down, otherwise
   ///   [AnimationStatus.completed]. For converters without a direction,
   ///   dismissed means exactly back at the track's initial value.
-  /// - After [stop] with `canceled: true`, the direction it was moving in.
+  /// - After [stop], the direction it was moving in, also while a graceful
+  ///   stop settles: a stop interrupts the move rather than finishing it.
   ///
   /// Reading the value follows the same rules as [value].
   Animation<T> animationOf<T extends Object>(Track<T> track) =>
@@ -278,8 +279,11 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Returns a [TickerFuture] that reflects the **whole controller** settling:
   /// it completes when every active track has finished and the ticker stops on
-  /// its own. This matches [AnimationController]; if other tracks are already
-  /// running when this is called, the future waits for all of them too.
+  /// its own. If other tracks are already running when this is called, the
+  /// future waits for all of them too, and calls made while playing share one
+  /// future. Unlike [AnimationController], starting new playback doesn't
+  /// cancel the previous future. `MotionController` gives each call its own
+  /// future, which the next call cancels, as in 1.x.
   ///
   /// Calling [stop] with `canceled: true` cancels the future. Looping playback
   /// ([LoopMode.loop]/[LoopMode.pingPong]/[LoopMode.seamless]) never stops the
@@ -354,7 +358,6 @@ class TrackController extends Animation<TrackValueReader>
     // Naming no tracks is a no-op: tracks not named in this call are left
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
-
 
     _onStep = onStep;
 
@@ -440,7 +443,8 @@ class TrackController extends Animation<TrackValueReader>
   /// for example a spring keeps its momentum and eases to rest. Tracks whose
   /// default motion does not need settling (or that have no default motion)
   /// stop immediately. When [canceled] is true every targeted track stops
-  /// immediately.
+  /// immediately. Either way, stopped tracks keep the direction they were
+  /// moving in as their status.
   ///
   /// Returns a [TickerFuture] that completes when the settling tracks come to
   /// rest, or an already-complete future when nothing keeps animating (see
@@ -455,7 +459,7 @@ class TrackController extends Animation<TrackValueReader>
   TickerFuture _hardStop(List<Track>? tracks) {
     if (tracks == null) {
       for (final slot in _slots.values) {
-        slot.stop(canceled: true);
+        slot.stop();
       }
       _activeTracks.clear();
       _tokenParticipants.clear();
@@ -467,7 +471,7 @@ class TrackController extends Animation<TrackValueReader>
     } else {
       for (final track in tracks) {
         final slot = _slots[track];
-        slot?.stop(canceled: true);
+        slot?.stop();
         _activeTracks.remove(track);
         slot?.velocityFromTracker = false;
       }
@@ -521,7 +525,7 @@ class TrackController extends Animation<TrackValueReader>
   /// creates a new track). Stops the track's slot first if it is animating.
   @internal
   void forgetTrack(Track track) {
-    _slots[track]?.stop(canceled: true);
+    _slots[track]?.stop();
     _slots.remove(track);
     _activeTracks.remove(track);
     _runTracks.remove(track);
@@ -531,6 +535,9 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Replaces [old] with [replacement] at [value] and [velocity], keeping
   /// its status, e.g. for a converter swap with the same dimensions.
+  ///
+  /// A plan [old] is playing keeps playing on [replacement], which reads its
+  /// normalized values the same way.
   @internal
   void replaceTrack<T extends Object>(
     Track old,
@@ -540,12 +547,52 @@ class TrackController extends Animation<TrackValueReader>
   }) {
     final oldSlot = _slots[old];
     final inRun = _runTracks.contains(old);
-    forgetTrack(old);
-    final slot = _slot(replacement, initialOverride: value);
-    if (oldSlot != null) slot.adoptStatus(oldSlot);
-    slot.setValueWithVelocity(value, velocity);
+    if (oldSlot != null && oldSlot.isAnimating) {
+      _slots
+        ..remove(old)
+        ..[replacement] = (oldSlot..replaceConverter(replacement.converter));
+      _runTracks.remove(old);
+      _velocityTrackers.remove(old);
+      if (_activeTracks.remove(old)) _activeTracks.add(replacement);
+      for (final participants in _tokenParticipants.values) {
+        if (participants.remove(old)) participants.add(replacement);
+      }
+      for (final counts in _syncPasses.values) {
+        if (counts.remove(old) case final passes?) counts[replacement] = passes;
+      }
+    } else {
+      forgetTrack(old);
+      final slot = _slot(replacement, initialOverride: value);
+      if (oldSlot != null) slot.adoptStatus(oldSlot);
+      slot.setValueWithVelocity(value, velocity);
+    }
     if (inRun) _runTracks.add(replacement);
     notifyListeners();
+  }
+
+  /// Whether [track] is moving down, or was when it was stopped.
+  @internal
+  bool internalMovingDown(Track track) => _slots[track]?.movingDown ?? false;
+
+  /// Treats [track]'s running animation as the settle of a graceful stop, for
+  /// controllers that settle with their own animation: the track keeps
+  /// [movingDown] as its direction for status.
+  @internal
+  void internalKeepStopDirection(Track track, {required bool movingDown}) {
+    _slots[track]?.keepStopDirection(down: movingDown);
+    _updateStatus();
+  }
+
+  /// Stops the ticker, completing its pending future or, if [canceled],
+  /// canceling it; the tracks keep their plans. The next [play] or [animate]
+  /// starts a new future.
+  ///
+  /// `MotionController` uses this to give each of its calls its own future,
+  /// as in 1.x.
+  @internal
+  void stopTicker({required bool canceled}) {
+    final ticker = _ticker;
+    if (ticker != null && ticker.isActive) ticker.stop(canceled: canceled);
   }
 
   /// Recreates the ticker using [vsync].
