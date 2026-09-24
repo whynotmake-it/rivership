@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
+import 'package:motor_example/pages/fling.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/retarget.dart';
 import 'package:motor_example/pages/scrub.dart';
 import 'package:motor_example/pages/steps.dart';
 import 'package:motor_example/pages/sync.dart';
-import 'package:motor_example/pages/throw.dart';
-import 'package:motor_example/pages/tracks.dart';
+import 'package:motor_example/pages/toggle.dart';
 
 /// One lesson in the gallery.
 @immutable
@@ -40,22 +40,22 @@ class Chapter {
 /// The gallery, in reading order.
 final chapters = [
   Chapter(
+    title: 'Toggle',
+    path: 'toggle',
+    idea: 'One controller animates every part of a control.',
+    page: TogglePage.new,
+  ),
+  Chapter(
     title: 'Retarget',
     path: 'retarget',
     idea: 'Change your mind mid-flight.',
     page: RetargetPage.new,
   ),
   Chapter(
-    title: 'Throw',
-    path: 'throw',
-    idea: 'A gesture hands its velocity to a spring.',
-    page: ThrowPage.new,
-  ),
-  Chapter(
-    title: 'Tracks',
-    path: 'tracks',
-    idea: 'Many values on one controller, each with its own feel.',
-    page: TracksPage.new,
+    title: 'Fling',
+    path: 'fling',
+    idea: 'Let go, and the gesture becomes a sequence.',
+    page: FlingPage.new,
   ),
   Chapter(
     title: 'Steps',
@@ -72,7 +72,7 @@ final chapters = [
   Chapter(
     title: 'Phases',
     path: 'phases',
-    idea: 'Name the states; motor walks between them.',
+    idea: 'Drag between named states, even mid-playback.',
     page: PhasesPage.new,
   ),
   Chapter(

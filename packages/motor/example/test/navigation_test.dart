@@ -31,15 +31,15 @@ void main() {
     tester,
   ) async {
     final router = await _pumpApp(tester);
-    unawaited(router.navigate(const NamedRoute('Retarget')));
+    unawaited(router.navigate(const NamedRoute('Toggle')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Throw'));
+    await tester.tap(find.text('Retarget'));
     await tester.pumpAndSettle();
-    expect(find.text('Throw it anywhere'), findsOneWidget);
+    expect(find.text('POSITION OVER TIME'), findsOneWidget);
     expect(router.topMostRouter().stackData.map((data) => data.name).toList(), [
       'Motor 2.0',
-      'Throw',
+      'Retarget',
     ]);
   });
 

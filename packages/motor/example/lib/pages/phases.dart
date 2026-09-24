@@ -1,3 +1,5 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
@@ -18,6 +20,41 @@ class PhasesPage extends StatefulWidget {
 enum _Player { mini, card, full }
 
 const _rest = Duration(milliseconds: 700);
+const _fadeOut = CupertinoMotion.snappy(duration: Duration(milliseconds: 200));
+// Pixels of drag from one phase to the next.
+const _dragPerPhase = 170.0;
+
+typedef _Look = ({
+  Size frame,
+  double radius,
+  Rect art,
+  double inline,
+  double stacked,
+});
+
+const Map<_Player, _Look> _looks = {
+  _Player.mini: (
+    frame: Size(220, 60),
+    radius: 30.0,
+    art: Rect.fromLTWH(10, 10, 40, 40),
+    inline: 1.0,
+    stacked: 0.0,
+  ),
+  _Player.card: (
+    frame: Size(320, 136),
+    radius: 28.0,
+    art: Rect.fromLTWH(16, 16, 104, 104),
+    inline: 1.0,
+    stacked: 0.0,
+  ),
+  _Player.full: (
+    frame: Size(320, 404),
+    radius: 36.0,
+    art: Rect.fromLTWH(24, 24, 272, 236),
+    inline: 0.0,
+    stacked: 1.0,
+  ),
+};
 
 class _PhasesPageState extends State<PhasesPage>
     with SingleTickerProviderStateMixin {
@@ -28,7 +65,7 @@ class _PhasesPageState extends State<PhasesPage>
 
   final _frame = Track<Size>(
     .size,
-    initial: const Size(220, 60),
+    initial: _looks[_Player.mini]!.frame,
     motion: .bouncySpring(duration: Duration(milliseconds: 600)),
     debugLabel: 'Frame',
   );
@@ -40,7 +77,7 @@ class _PhasesPageState extends State<PhasesPage>
   );
   final _art = Track<Rect>(
     .rect,
-    initial: const Rect.fromLTWH(10, 10, 40, 40),
+    initial: _looks[_Player.mini]!.art,
     motion: .smoothSpring(duration: Duration(milliseconds: 650)),
     debugLabel: 'Artwork',
   );
@@ -58,40 +95,24 @@ class _PhasesPageState extends State<PhasesPage>
   );
 
   late final _phases = TrackPhaseTimeline<_Player>({
-    .mini: [
-      _frame.to(const Size(220, 60)),
-      _radius.to(30),
-      _art.to(const Rect.fromLTWH(10, 10, 40, 40)),
-      _inline([.to(1), .hold(_rest)]),
-      _stacked.to(
-        0,
-        motion: .snappySpring(duration: Duration(milliseconds: 200)),
-      ),
-    ],
-    .card: [
-      _frame.to(const Size(320, 136)),
-      _radius.to(28),
-      _art.to(const Rect.fromLTWH(16, 16, 104, 104)),
-      _inline([.to(1), .hold(_rest)]),
-      _stacked.to(
-        0,
-        motion: .snappySpring(duration: Duration(milliseconds: 200)),
-      ),
-    ],
-    .full: [
-      _frame.to(const Size(320, 404)),
-      _radius.to(36),
-      _art.to(const Rect.fromLTWH(24, 24, 272, 236)),
-      _inline.to(
-        0,
-        motion: .snappySpring(duration: Duration(milliseconds: 200)),
-      ),
-      _stacked([.to(1), .hold(_rest)]),
-    ],
+    for (final MapEntry(key: phase, value: look) in _looks.entries)
+      phase: [
+        _frame.to(look.frame),
+        _radius.to(look.radius),
+        _art.to(look.art),
+        _fade(_inline, look.inline),
+        _fade(_stacked, look.stacked),
+      ],
   }, phaseLoop: .pingPong);
 
   var _phase = _Player.mini;
   var _autoplay = false;
+  var _dragged = 0.0;
+
+  // Text that appears waits for the rest of the phase; text that goes leaves
+  // quickly.
+  static TrackAnimation<double> _fade(Track<double> track, double to) =>
+      to == 1 ? track([.to(1), .hold(_rest)]) : track.to(0, motion: _fadeOut);
 
   @override
   void initState() {
@@ -126,15 +147,72 @@ class _PhasesPageState extends State<PhasesPage>
     }
   }
 
+  // Where the player is between phases: 0 is mini, 1 card, 2 full.
+  double get _progress {
+    final height = _player.value(_frame).height;
+    final (mini, card, full) = (
+      _looks[_Player.mini]!.frame.height,
+      _looks[_Player.card]!.frame.height,
+      _looks[_Player.full]!.frame.height,
+    );
+    return height <= card
+        ? (height - mini) / (card - mini)
+        : 1 + (height - card) / (full - card);
+  }
+
+  void _grab(DragStartDetails _) {
+    // Take over from whatever the player was doing, autoplay included.
+    _player.stop(canceled: true);
+    _dragged = _progress.clamp(0, 2);
+  }
+
+  void _drag(DragUpdateDetails details) {
+    _dragged += details.delta.dy / _dragPerPhase;
+    // Past either end, the player follows the finger reluctantly.
+    final progress = _dragged < 0
+        ? _dragged * .3
+        : _dragged > 2
+        ? 2 + (_dragged - 2) * .3
+        : _dragged;
+    final index = progress.floor().clamp(0, 1);
+    final from = _looks[_Player.values[index]]!;
+    final to = _looks[_Player.values[index + 1]]!;
+    final t = progress - index;
+    _player.set([
+      _frame.value(Size.lerp(from.frame, to.frame, t)!),
+      _radius.value(lerpDouble(from.radius, to.radius, t)!),
+      _art.value(Rect.lerp(from.art, to.art, t)!),
+      _inline.value(lerpDouble(from.inline, to.inline, t)!.clamp(0, 1)),
+      _stacked.value(lerpDouble(from.stacked, to.stacked, t)!.clamp(0, 1)),
+    ]);
+    final nearest = _Player.values[progress.round().clamp(0, 2)];
+    if (nearest != _phase) setState(() => _phase = nearest);
+  }
+
+  void _release(DragEndDetails details) {
+    final speed = details.velocity.pixelsPerSecond.dy / _dragPerPhase;
+    final landing = (_dragged + speed * .25).round().clamp(0, 2);
+    final phase = _Player.values[landing];
+    setState(() => _phase = phase);
+    // The tracks keep the velocity the drag gave them. Autoplay picks up
+    // from the phase the player lands in.
+    if (_autoplay) {
+      _player.playPhases(_phases, atPhase: phase, onTransition: _onTransition);
+    } else {
+      _player.goToPhase(phase);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChapterPage(
       chapter: chapterNamed('Phases'),
       lead:
-          'Mini, card and full are phases: each names the values its tracks '
-          'settle on. Jump to any phase mid-morph, or autoplay. Between phases, '
-          'motor waits until every track has arrived.',
-      code: 'player.goToPhase(Player.full);',
+          'Mini, card and full are phases: named values for every track. Drag '
+          'the player up or down, even during autoplay. Your finger sets every '
+          'track; let go and the nearest phase takes over at your speed, and '
+          'autoplay carries on from there.',
+      code: 'player..set(dragged)..goToPhase(nearest);',
       below: LiveTimeline(
         controller: _player,
         lanes: {
@@ -153,18 +231,23 @@ class _PhasesPageState extends State<PhasesPage>
             left: 0,
             right: 0,
             child: Center(
-              child: AnimatedBuilder(
-                animation: _player,
-                builder: (context, _) {
-                  final value = _player.value;
-                  return _NowPlaying(
-                    frame: value(_frame),
-                    radius: value(_radius),
-                    art: value(_art),
-                    inline: value(_inline),
-                    stacked: value(_stacked),
-                  );
-                },
+              child: GestureDetector(
+                onVerticalDragStart: _grab,
+                onVerticalDragUpdate: _drag,
+                onVerticalDragEnd: _release,
+                child: AnimatedBuilder(
+                  animation: _player,
+                  builder: (context, _) {
+                    final value = _player.value;
+                    return _NowPlaying(
+                      frame: value(_frame),
+                      radius: value(_radius),
+                      art: value(_art),
+                      inline: value(_inline),
+                      stacked: value(_stacked),
+                    );
+                  },
+                ),
               ),
             ),
           ),
