@@ -5,12 +5,12 @@ interaction each. They are meant to be read in order.
 
 | Chapter | Try this | What it shows |
 |---|---|---|
-| **01 Retarget** | Tap the tabs quickly, then switch to Curve. | Interrupting a spring keeps its velocity; a curve stalls at every change. |
-| **02 Throw** | Fling the video window. | A drag's release velocity carries into a 2D spring, one axis at a time. `FrictionMotion.project` picks the corner. |
-| **03 Tracks** | Open the menu, then tap again mid-morph. | Five tracks on one `TrackController`, each with its own motion. |
-| **04 Steps** | Ping the notification. | Step lists: `.to`, `.hold`, a wiggle, and `.at` keyframes that land on time. |
+| **01 Toggle** | Tap the switch, or drag it and let go. Tap the heart. | One `TrackController` animates the thumb, its squish and the tint; the drag's tracked velocity carries into the spring. |
+| **02 Retarget** | Tap the tabs quickly, then switch to Curve. | Interrupting a spring keeps its velocity; a curve stalls at every change. |
+| **03 Fling** | Throw the top postcard. | Letting go turns the gesture into a sequence: a `.free` coast with the throw's velocity, then a spring back under the stack. |
+| **04 Steps** | Ping the notification. | Step lists and `.at` keyframes that land exactly on time. |
 | **05 Sync** | Deal the cards, then switch to "On landing". | `.sync(token:)` barriers, and how the token decides who waits for whom. |
-| **06 Phases** | Jump between Mini, Card and Full, or autoplay. | `PhaseTrackController` walking named states with barriers between them. |
+| **06 Phases** | Drag the player, even during autoplay. | A drag sets every track; the release hands back to the phase timeline at the finger's speed. |
 | **07 Scrub** | Send, then drag the scrubber. | `pause`, `scrubTo` and `resume` on a choreography with springs and a barrier. |
 
 Most chapters show their controller's tracks as live timeline lanes under the
