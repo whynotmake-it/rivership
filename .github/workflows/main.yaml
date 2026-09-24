@@ -8,9 +8,11 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
 
 jobs:
   semantic_pull_request:
@@ -33,8 +35,7 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.1' # keep in sync with .fvmrc
-          channel: 'stable'
+          flutter-version-file: .fvmrc
           cache: true
       
       - name: Ⓜ️ Set up Melos
@@ -78,8 +79,7 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.1' # keep in sync with .fvmrc
-          channel: 'stable'
+          flutter-version-file: .fvmrc
           cache: true
 
       - name: Ⓜ️ Set up Melos
