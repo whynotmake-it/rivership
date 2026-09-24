@@ -241,9 +241,9 @@ class _Title extends StatefulWidget {
 
 class _TitleState extends State<_Title> with SingleTickerProviderStateMixin {
   static const _word = 'Motor';
-  static const Motion _spring = .bouncySpring(
-    extraBounce: .3,
-    duration: Duration(milliseconds: 900),
+  static const Motion _spring = .smoothSpring(
+    extraBounce: .1,
+    duration: Duration(milliseconds: 650),
   );
 
   late final _title = TrackController(vsync: this, debugLabel: 'Title');
