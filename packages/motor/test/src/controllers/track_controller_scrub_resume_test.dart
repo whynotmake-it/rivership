@@ -1,7 +1,7 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
-import 'package:flutter/animation.dart';
 import 'package:flutter/scheduler.dart' show timeDilation;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -463,7 +463,7 @@ void main() {
       subscription.dispose();
     });
 
-    testWidgets('resuming before a redirect continues the earlier plan',
+    testWidgets('resuming before a redirect returns to the current plan',
         (tester) async {
       final subscription = MotorInspectionRegistry.attach(_Observer());
       final controller = await redirected(tester);
@@ -473,18 +473,76 @@ void main() {
         ..scrubTo(const Duration(milliseconds: 300))
         ..resume();
       await tester.pump();
+      // The current plan, from 0.5 to 0, holds its start until the timeline
+      // reaches it at 500ms.
+      expect(controller.value(track), closeTo(0.5, error));
       await tester.pump(const Duration(milliseconds: 400));
-      expect(controller.value(track), closeTo(0.7, error));
+      expect(controller.value(track), closeTo(0.4, error));
 
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(controller.value(track), closeTo(1, error));
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.value(track), closeTo(0, error));
+      expect(controller.isAnimating, isFalse);
 
-      controller.stop(canceled: true);
       controller.dispose();
       subscription.dispose();
     });
 
-    testWidgets('a restored plan leaves the sync barriers it replaced',
+    testWidgets('a builder resumed before a redirect ends at its value',
+        (tester) async {
+      final observed = <TrackController>[];
+      final observer = _Collect(observed);
+      final collecting = MotorInspectionRegistry.attach(observer);
+      late double shown;
+      Widget app(double to) => Directionality(
+            textDirection: TextDirection.ltr,
+            child: SingleMotionBuilder(
+              value: to,
+              motion: linear1s,
+              builder: (context, value, _) {
+                shown = value;
+                return const SizedBox();
+              },
+            ),
+          );
+      await tester.pumpWidget(app(0));
+      await tester.pumpWidget(app(1));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpWidget(app(0));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      observed.single
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 250))
+        ..resume();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(shown, closeTo(0, error));
+
+      await tester.pumpWidget(const SizedBox());
+      collecting.dispose();
+    });
+
+    testWidgets('resuming into a finished redirect ends at its target',
+        (tester) async {
+      final subscription = MotorInspectionRegistry.attach(_Observer());
+      final controller = await redirected(tester);
+      await tester.pump(const Duration(seconds: 2));
+      expect(controller.isAnimating, isFalse);
+
+      controller
+        ..pause()
+        ..scrubTo(const Duration(milliseconds: 300));
+      expect(controller.value(track), closeTo(0.3, error));
+      controller.resume();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(controller.value(track), closeTo(0, error));
+
+      controller.dispose();
+      subscription.dispose();
+    });
+
+    testWidgets('resuming before a redirect keeps the current barriers',
         (tester) async {
       final subscription = MotorInspectionRegistry.attach(_Observer());
       const linear100 = Motion.linear(Duration(milliseconds: 100));
@@ -510,7 +568,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Redirect track into a plan that also meets at #meet, then scrub back
-      // into its barrier-free loop and resume there.
+      // into its barrier-free loop and resume.
       controller.animate([
         track([
           const TrackStep.to(1, motion: linear100),
@@ -571,4 +629,18 @@ class _Observer implements MotorInspectionObserver {
 
   @override
   void didUnregisterController(TrackController controller) {}
+}
+
+class _Collect implements MotorInspectionObserver {
+  _Collect(this.controllers);
+
+  final List<TrackController> controllers;
+
+  @override
+  void didRegisterController(TrackController controller) =>
+      controllers.add(controller);
+
+  @override
+  void didUnregisterController(TrackController controller) =>
+      controllers.remove(controller);
 }

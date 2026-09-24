@@ -50,7 +50,6 @@ class _TrackSlot<T extends Object> {
   List<_ArchivedPlan<T>>? _archive;
   Duration _planStart = Duration.zero;
   _ArchivedPlan<T>? _shownArchive;
-  var _restoredArchive = false;
 
   // Per-track status: the value the track started out at (only kept for
   // converters without a direction, whose status compares to it), its status
@@ -202,26 +201,15 @@ class _TrackSlot<T extends Object> {
 
   Duration get shownStartOffset => _shownArchive?.startOffset ?? _startOffset;
 
-  /// Whether the last [tick] continued an archived plan, which then replaced
-  /// the current one.
-  bool takeRestoredArchive() {
-    final restored = _restoredArchive;
-    _restoredArchive = false;
-    return restored;
-  }
-
-  /// Advances to [elapsed]. Times before the current plan show the archived
-  /// plan that was active then; unless [scrubbing], that plan also becomes
-  /// the current one again, discarding the plans after it.
+  /// Advances to [elapsed]. While [scrubbing], times before the current plan
+  /// show the archived plan that was active then, for viewing only; playback
+  /// always continues the current plan.
   bool tick(Duration elapsed, {bool scrubbing = false}) {
     _shownArchive = null;
     final archive = _archive;
-    if (archive != null && elapsed < _planStart) {
+    if (scrubbing && archive != null && elapsed < _planStart) {
       final index = archive.lastIndexWhere((plan) => plan.start <= elapsed);
-      if (index >= 0) {
-        if (scrubbing) return _showArchive(archive[index], elapsed);
-        _restoreArchive(index);
-      }
+      if (index >= 0) return _showArchive(archive[index], elapsed);
     }
     if (_playback == _TrackSlotPlayback.idle) return true;
 
@@ -270,22 +258,6 @@ class _TrackSlot<T extends Object> {
       playback.copyStateInto(_currentValues, _velocityValues);
     }
     return done;
-  }
-
-  void _restoreArchive(int index) {
-    final archive = _archive!;
-    final plan = archive[index];
-    archive.removeRange(index, archive.length);
-    _planStart = plan.start;
-    _startOffset = plan.startOffset;
-    _stepPlayback = plan.playback;
-    _currentValues = List.of(plan.values);
-    _velocityValues = List.of(plan.velocities);
-    _velocitiesStale = false;
-    _playback = plan.playback == null
-        ? _TrackSlotPlayback.idle
-        : _TrackSlotPlayback.chained;
-    _restoredArchive = true;
   }
 
   /// This track's status.

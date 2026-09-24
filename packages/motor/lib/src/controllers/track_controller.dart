@@ -455,13 +455,15 @@ class TrackController extends Animation<TrackValueReader>
   /// Scrubbing resolves plans exactly like playback does, including sync
   /// barriers, so it shows what playback would show at [t]. Times already
   /// played are shown as they played. While inspection tooling is attached,
-  /// that includes plans a track has since been redirected away from, and
-  /// resuming from such a time continues the earlier plan, as long as the
-  /// track's current plan is still animating (otherwise [resume] has nothing
-  /// to resume). Looping plans that cannot repeat exactly, such as loops
-  /// with sync steps (every looping phase timeline), keep only their two most
-  /// recent cycles, or about a thousand steps while inspection tooling is
-  /// attached; earlier times show the start of the earliest cycle kept.
+  /// that includes plans a track has since been redirected away from, but
+  /// only for viewing: playback, including [resume] from such a time, always
+  /// continues each track's current plan, holding its start until the
+  /// timeline reaches it.
+  ///
+  /// Looping plans that cannot repeat exactly, such as loops with sync steps
+  /// (every looping phase timeline), keep only their two most recent cycles,
+  /// or about a thousand steps while inspection tooling is attached; earlier
+  /// times show the start of the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
@@ -1062,10 +1064,6 @@ class TrackController extends Animation<TrackValueReader>
           if (wasAnimating) _statusDirty = true;
         } else {
           allDone = false;
-        }
-        if (slot.takeRestoredArchive()) {
-          _pruneTokenParticipants([track]);
-          _joinSyncTokens(track, slot.shownPlayback?.stepsView ?? const []);
         }
         _notifyStep(track, slot, notify: !scrubbing);
       }
