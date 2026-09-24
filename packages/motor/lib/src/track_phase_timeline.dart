@@ -151,28 +151,45 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
     return _flatten(reversedMap);
   }
 
+  /// The flattened animations for playing phases in reverse order, starting
+  /// at [startPhase], without a leading sync barrier.
+  @internal
+  List<TrackAnimation> reversedAnimationsFrom(P startPhase) {
+    final reversed = phases.reversed.toList();
+    final index = reversed.indexOf(startPhase);
+    return _flatten({
+      for (final phase in reversed.skip(index < 0 ? 0 : index))
+        phase: phaseAnimations[phase]!,
+    });
+  }
+
   /// The resting values each track settles to at the end of the first phase.
   ///
   /// Used by [PhaseTrackController] to jump back to the start when [phaseLoop]
   /// is [LoopMode.seamless]. Tracks whose first-phase animation has no concrete
   /// target (e.g. only holds) are omitted.
   @internal
-  List<TrackValue> get firstPhaseValues {
-    TrackValue? restingValueOf(TrackAnimation anim) {
-      for (final step in anim.steps.reversed) {
-        if (step is StepTo) return anim.track.value(step.value);
-        if (step is StepAt) return anim.track.value(step.value);
-      }
-      return null;
-    }
+  List<TrackValue> get firstPhaseValues => [
+        for (final animation
+            in phaseAnimations[initialPhase] ?? const <TrackAnimation>[])
+          if (animation.endValue case final value?) value,
+      ];
 
-    final anims = phaseAnimations[initialPhase] ?? const <TrackAnimation>[];
-    final result = <TrackValue>[];
-    for (final anim in anims) {
-      final value = restingValueOf(anim);
-      if (value != null) result.add(value);
+  /// Where each track rests once [phase] has played after the phases before
+  /// it: its last target up to and including [phase]. Tracks without one
+  /// are omitted.
+  @internal
+  List<TrackValue> restingValuesAt(P phase) {
+    final values = <Track, TrackValue>{};
+    for (final current in phases) {
+      for (final animation in phaseAnimations[current]!) {
+        if (animation.endValue case final value?) {
+          values[animation.track] = value;
+        }
+      }
+      if (current == phase) break;
     }
-    return result;
+    return values.values.toList();
   }
 
   static List<TrackAnimation> _flatten<P extends Object>(

@@ -141,6 +141,75 @@ class PhaseTrackController<P extends Object> extends TrackController {
     return animate(anims);
   }
 
+  /// Swaps the active timeline for [timeline], an updated version of it, and
+  /// unless [restartChanged] is false restarts only the tracks whose remaining
+  /// animations changed. Other tracks keep playing, and the timeline's
+  /// one-time `initialValues` are not applied again.
+  ///
+  /// While auto-advancing, a changed track restarts at the current phase and
+  /// rejoins the others at the next phase; otherwise it plays the current
+  /// phase's new animation. Returns false, changing nothing, when there is no
+  /// active timeline or [timeline] lacks the current phase.
+  @internal
+  bool updateTimeline(
+    TrackPhaseTimeline<P> timeline, {
+    void Function(PhaseTransition<P> transition)? onTransition,
+    bool restartChanged = true,
+  }) {
+    final old = _activeTimeline;
+    final phase = _currentPhase;
+    if (old == null || phase == null || !timeline.phases.contains(phase)) {
+      return false;
+    }
+    _activeTimeline = timeline;
+    _onTransition = onTransition;
+    if (_seededTimeline == old) _seededTimeline = timeline;
+    if (old == timeline || !restartChanged) return true;
+
+    List<TrackAnimation> remaining(TrackPhaseTimeline<P> of) =>
+        !_isPlayingPhases
+            ? of.phaseAnimations[phase]!
+            : _phaseDirectionForward
+                ? of.animationsFrom(phase)
+                : of.reversedAnimationsFrom(phase);
+    final before = {
+      for (final animation in remaining(old)) animation.track: animation,
+    };
+    final changed = [
+      for (final animation in remaining(timeline))
+        if (before[animation.track] != animation) animation,
+    ];
+    if (changed.isNotEmpty) animate(changed);
+    return true;
+  }
+
+  /// Stops all tracks and moves them straight to where they rest at [phase]
+  /// in [timeline], without animating, reporting the change and that [phase]
+  /// settled.
+  @internal
+  void jumpToPhase(
+    TrackPhaseTimeline<P> timeline,
+    P phase, {
+    void Function(PhaseTransition<P> transition)? onTransition,
+  }) {
+    final wasAnimating = isAnimating;
+    stop(canceled: true);
+    _activeTimeline = timeline;
+    _onTransition = onTransition;
+    _seedFromIfNeeded(timeline);
+    final values = timeline.restingValuesAt(phase);
+    if (values.isNotEmpty) set(values);
+
+    final previous = _currentPhase;
+    _currentPhase = phase;
+    if (previous != null && previous != phase) {
+      _onTransition?.call(PhaseTransitioning(from: previous, to: phase));
+    }
+    if (wasAnimating || previous != phase) {
+      _onTransition?.call(PhaseSettled(phase));
+    }
+  }
+
   /// Makes the next [playPhases] or [goToPhase] apply the timeline's
   /// one-time `initialValues`/`initialVelocities` again, as when restarting.
   @internal
