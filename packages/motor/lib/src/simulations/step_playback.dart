@@ -153,7 +153,15 @@ class StepPlayback<T extends Object> {
   static const _instant = 1e-6;
 
   final List<TrackStep<T>> _steps;
-  final MotionConverter<T> _converter;
+  MotionConverter<T> _converter;
+
+  /// The converter, which a converter swap that keeps playing replaces with
+  /// one that reads the normalized values the same way.
+  @internal
+  MotionConverter<T> get converter => _converter;
+
+  @internal
+  set converter(MotionConverter<T> value) => _converter = value;
   final LoopMode _loop;
   final Motion? _fallbackMotion;
   final List<Motion>? _fallbackMotionPerDimension;

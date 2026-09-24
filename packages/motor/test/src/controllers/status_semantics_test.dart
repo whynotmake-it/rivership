@@ -49,7 +49,8 @@ void main() {
     );
 
     expect(statuses, [AnimationStatus.forward]);
-    expect(controller.isAnimating, isFalse);
+    expect(controller.isAnimating, isTrue);
+    await tester.pumpAndSettle();
   });
 
   group('PhaseTrackController status', () {

@@ -31,7 +31,7 @@ class _TrackSlot<T extends Object> {
     EdgeInsetsDirectionalMotionConverter,
   };
 
-  final MotionConverter<T> converter;
+  MotionConverter<T> converter;
   final Motion? fallbackMotion;
   final List<Motion>? fallbackMotionPerDimension;
 
@@ -39,7 +39,7 @@ class _TrackSlot<T extends Object> {
   // built-in converters directly: others may keep the list they are given.
   List<double> _currentValues;
   List<double> _velocityValues;
-  final bool _copyBeforeDenormalize;
+  bool _copyBeforeDenormalize;
   StepPlayback<T>? _stepPlayback;
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
@@ -211,6 +211,14 @@ class _TrackSlot<T extends Object> {
   AnimationStatus _finishedStatus(List<double> values) {
     final down = _isDirectional ? _lastMovesDown : _sameValues(values);
     return down ? AnimationStatus.dismissed : AnimationStatus.completed;
+  }
+
+  /// Swaps in [value], which reads the normalized values the same way, and
+  /// keeps playing.
+  void replaceConverter(MotionConverter<T> value) {
+    converter = value;
+    _copyBeforeDenormalize = !_builtInConverters.contains(value.runtimeType);
+    _stepPlayback?.converter = value;
   }
 
   /// Takes over [other]'s status, reading its values with this converter.

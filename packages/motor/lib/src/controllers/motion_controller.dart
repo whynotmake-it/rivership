@@ -154,7 +154,9 @@ class MotionController<T extends Object> extends Animation<T>
     );
     final reinterpretedVelocity = value.denormalize(velocityNormalized);
 
-    if (_inner.isAnimating) _inner.stop(tracks: [_track], canceled: true);
+    if (_lastTarget case final target?) {
+      _lastTarget = value.denormalize(_converter.normalize(target));
+    }
     final oldTrack = _track;
     _converter = value;
     _track = Track<T>(

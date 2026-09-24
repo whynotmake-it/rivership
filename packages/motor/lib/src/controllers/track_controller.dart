@@ -356,7 +356,6 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
-
     _onStep = onStep;
 
     // Previously-running tracks stay active; the named tracks (re)start.
@@ -532,6 +531,9 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Replaces [old] with [replacement] at [value] and [velocity], keeping
   /// its status, e.g. for a converter swap with the same dimensions.
+  ///
+  /// A plan [old] is playing keeps playing on [replacement], which reads its
+  /// normalized values the same way.
   @internal
   void replaceTrack<T extends Object>(
     Track old,
@@ -541,10 +543,25 @@ class TrackController extends Animation<TrackValueReader>
   }) {
     final oldSlot = _slots[old];
     final inRun = _runTracks.contains(old);
-    forgetTrack(old);
-    final slot = _slot(replacement, initialOverride: value);
-    if (oldSlot != null) slot.adoptStatus(oldSlot);
-    slot.setValueWithVelocity(value, velocity);
+    if (oldSlot != null && oldSlot.isAnimating) {
+      _slots
+        ..remove(old)
+        ..[replacement] = (oldSlot..replaceConverter(replacement.converter));
+      _runTracks.remove(old);
+      _velocityTrackers.remove(old);
+      if (_activeTracks.remove(old)) _activeTracks.add(replacement);
+      for (final participants in _tokenParticipants.values) {
+        if (participants.remove(old)) participants.add(replacement);
+      }
+      for (final counts in _syncPasses.values) {
+        if (counts.remove(old) case final passes?) counts[replacement] = passes;
+      }
+    } else {
+      forgetTrack(old);
+      final slot = _slot(replacement, initialOverride: value);
+      if (oldSlot != null) slot.adoptStatus(oldSlot);
+      slot.setValueWithVelocity(value, velocity);
+    }
     if (inRun) _runTracks.add(replacement);
     notifyListeners();
   }

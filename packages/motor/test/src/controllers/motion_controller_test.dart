@@ -519,6 +519,66 @@ void main() {
     });
 
     group('converter swap', () {
+      testWidgets('keeps an in-flight animation going', (tester) async {
+        final controller = MotionController<double>(
+          motion: const Motion.linear(Duration(milliseconds: 100)),
+          vsync: tester,
+          converter: MotionConverter.single,
+          initialValue: 0,
+        );
+        addTearDown(controller.dispose);
+
+        unawaited(controller.animateTo(1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value],
+          denormalize: (values) => values[0],
+        );
+        expect(controller.value, closeTo(0.3, error));
+        expect(controller.isAnimating, isTrue);
+
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(controller.value, closeTo(0.5, error));
+        await tester.pumpAndSettle();
+        expect(controller.value, closeTo(1, error));
+      });
+
+      testWidgets(
+          'in a MotionBuilder with an inline converter, survives a parent '
+          'rebuild mid-flight', (tester) async {
+        var target = 0.0;
+        late StateSetter setState;
+        var built = -1.0;
+        await tester.pumpWidget(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return MotionBuilder<double>(
+                value: target,
+                motion: const Motion.linear(Duration(milliseconds: 100)),
+                converter: MotionConverter.custom(
+                  normalize: (value) => [value],
+                  denormalize: (values) => values[0],
+                ),
+                builder: (context, value, child) {
+                  built = value;
+                  return const SizedBox();
+                },
+              );
+            },
+          ),
+        );
+
+        setState(() => target = 1);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+        setState(() {});
+        await tester.pump();
+        await tester.pumpAndSettle();
+        expect(built, closeTo(1, error));
+      });
+
       testWidgets('forgets replaced track state', (tester) async {
         final controller = MotionController<Offset>(
           motion: motion,
@@ -562,7 +622,7 @@ void main() {
         expect(controller.value, const Offset(3, 2));
       });
 
-      testWidgets('stops and reinterprets a mid-animation swap',
+      testWidgets('reinterprets a mid-animation swap and keeps animating',
           (tester) async {
         final controller = MotionController<Offset>(
           motion: motion,
@@ -583,11 +643,12 @@ void main() {
         );
 
         expect(tester.takeException(), isNull);
-        expect(controller.isAnimating, isFalse);
+        expect(controller.isAnimating, isTrue);
         expect(
           controller.value,
           Offset(valueBeforeSwap.dy, valueBeforeSwap.dx),
         );
+        await tester.pumpAndSettle();
       });
     });
 
