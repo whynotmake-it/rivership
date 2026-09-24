@@ -5,6 +5,8 @@ import 'package:motor_example/chapters.dart';
 import 'package:motor_example/home.dart';
 
 /// Whether the motor devtools overlay is on. The home screen toggles it.
+///
+/// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools.
 final devtoolsEnabled = ValueNotifier(true);
 
 void main() {

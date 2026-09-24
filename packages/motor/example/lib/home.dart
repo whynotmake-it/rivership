@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/main.dart';
 import 'package:motor_example/widgets/controls.dart';
@@ -212,6 +213,7 @@ class _DevToolsToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!kMotorDevTools) return const SizedBox.shrink();
     final t = ExampleTheme.of(context);
     return ValueListenableBuilder(
       valueListenable: devtoolsEnabled,
