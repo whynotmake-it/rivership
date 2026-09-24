@@ -200,7 +200,17 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _subscription?.dispose();
     _subscription = null;
     _controllers.clear();
-    _overlay.close();
+    _numbers.clear();
+    _creations.clear();
+    _guessedNames.clear();
+    _played.clear();
+    _activity.clear();
+    _muted.clear();
+    _animating.clear();
+    _selectedGroup = null;
+    _overlay
+      ..showControllerList()
+      ..close();
     _syncMutedPoll();
   }
 
@@ -299,11 +309,14 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     }
     _originalSpeeds.remove(controller);
     _tuned.remove(controller);
+    _numbers.remove(controller);
     _creations.remove(controller);
     _guessedNames.remove(controller);
     _appliedGroups.remove(controller);
     _played.remove(controller);
     _activity.remove(controller);
+    _muted.remove(controller);
+    _animating.remove(controller);
     if (_listeners.remove(controller) case final listener?) {
       controller.removeListener(listener);
     }
