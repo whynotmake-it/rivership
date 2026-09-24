@@ -1,6 +1,6 @@
 name: fixed_ticker
 description: A drop-in Ticker replacement that uses Timer.periodic to gate frame callbacks at a fixed interval.
-version: 0.2.0
+version: 0.2.1
 resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/fixed_ticker
 homepage: https://whynotmake.it
@@ -9,7 +9,7 @@ topics: [animation, ticker, performance, timer]
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
-  flutter: ">=3.10.0"
+  flutter: ">=3.24.0"
 
 dependencies:
   flutter:
