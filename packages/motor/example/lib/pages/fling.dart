@@ -193,7 +193,7 @@ class _Postcard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          'GREETINGS FROM',
+                          'HELLO FROM',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: t.eyebrow.copyWith(
