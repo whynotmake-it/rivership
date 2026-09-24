@@ -131,14 +131,27 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
-          for (final other in chapters)
-            Container(
-              width: 14,
-              height: 3,
-              margin: const .only(left: 3),
-              color: identical(other, chapter) ? p.accent : p.control,
+          const SizedBox(width: 12),
+          // The dots shrink rather than overflow on narrow screens.
+          Expanded(
+            child: Align(
+              alignment: .centerRight,
+              child: FittedBox(
+                fit: .scaleDown,
+                child: Row(
+                  children: [
+                    for (final other in chapters)
+                      Container(
+                        width: 14,
+                        height: 3,
+                        margin: const .only(left: 3),
+                        color: identical(other, chapter) ? p.accent : p.control,
+                      ),
+                  ],
+                ),
+              ),
             ),
+          ),
         ],
       ),
     );
@@ -213,8 +226,14 @@ class _NextButton extends StatelessWidget {
           children: [
             Text('Next', style: p.body),
             const SizedBox(width: 10),
-            Text(next.title, style: p.title),
-            const Spacer(),
+            Expanded(
+              child: Text(
+                next.title,
+                maxLines: 1,
+                overflow: .ellipsis,
+                style: p.title,
+              ),
+            ),
             Icon(CupertinoIcons.arrow_right, color: p.accent, size: 18),
           ],
         ),

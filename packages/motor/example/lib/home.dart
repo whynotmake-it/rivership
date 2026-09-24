@@ -181,19 +181,29 @@ class _Header extends StatelessWidget {
             child: const MotorLogo(size: 24),
           ),
           const SizedBox(width: 10),
-          Row(
-            crossAxisAlignment: .baseline,
-            textBaseline: .alphabetic,
-            children: [
-              Text(
-                'motor',
-                style: archivo(19, weight: 560, spacing: -.4, color: p.text),
-              ),
-              const SizedBox(width: 8),
-              Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
-            ],
+          Expanded(
+            child: Row(
+              crossAxisAlignment: .baseline,
+              textBaseline: .alphabetic,
+              children: [
+                Flexible(
+                  child: Text(
+                    'motor',
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    style: archivo(
+                      19,
+                      weight: 560,
+                      spacing: -.4,
+                      color: p.text,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('2.0', style: p.eyebrow.copyWith(color: p.accent)),
+              ],
+            ),
           ),
-          const Spacer(),
           const _DevToolsToggle(),
         ],
       ),
@@ -283,9 +293,13 @@ class _StartButton extends StatelessWidget {
           crossAxisAlignment: .baseline,
           textBaseline: .alphabetic,
           children: [
-            Text(
-              'Start with ${chapters.first.title}',
-              style: archivo(14, weight: 560, color: p.onAccent),
+            Flexible(
+              child: Text(
+                'Start with ${chapters.first.title}',
+                maxLines: 1,
+                overflow: .ellipsis,
+                style: archivo(14, weight: 560, color: p.onAccent),
+              ),
             ),
             const SizedBox(width: 10),
             // The arrow sits high in its font; this centres it on the text.
@@ -315,7 +329,8 @@ class _ChapterGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 16.0;
-        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        final width = ((constraints.maxWidth - gap * (columns - 1)) / columns)
+            .clamp(0.0, double.infinity);
         return Wrap(
           spacing: gap,
           runSpacing: gap + 4,

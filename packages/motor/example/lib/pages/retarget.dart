@@ -138,7 +138,10 @@ class _Stage extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final barWidth = (width - 48).clamp(0.0, 340.0);
-        final tabWidth = (barWidth - 8) / _tabs.length;
+        final tabWidth = ((barWidth - 8) / _tabs.length).clamp(
+          0.0,
+          double.infinity,
+        );
         final speed = velocity * tabWidth;
         final stretch = (speed.abs() * .045).clamp(0.0, tabWidth * .6);
         return Column(
