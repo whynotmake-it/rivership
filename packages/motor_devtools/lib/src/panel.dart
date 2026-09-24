@@ -842,13 +842,18 @@ class _GroupEditor extends StatefulWidget {
 
 class _GroupEditorState extends State<_GroupEditor> {
   String? _open;
-  var _anyOpen = false;
+  var _editing = false;
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     final overrides = widget.settings.overrides;
     final appMotions = widget.host.appMotions;
+    void apply(String? key, Motion? motion) {
+      widget.host.setGroupOverride(widget.group, key, motion);
+      setState(() {});
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -869,38 +874,29 @@ class _GroupEditorState extends State<_GroupEditor> {
                     const SizedBox(height: 16),
                     Text('Motion', style: palette.label),
                     const SizedBox(height: 4),
-                    for (final (key, name) in widget.tracks) ...[
-                      TrackMotionHeader(
-                        key: ValueKey('motor-devtools-track-$name'),
-                        name: name,
-                        motion: describeMotion(overrides[key], appMotions),
-                        tuned: overrides.containsKey(key),
-                        open: _anyOpen && _open == key,
-                        onTap: () => setState(() {
-                          final open = _anyOpen && _open == key;
-                          _anyOpen = !open;
-                          _open = key;
-                        }),
-                      ),
-                      Disclosure(
-                        open: _anyOpen && _open == key,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8, bottom: 10),
-                          child: MotionEditor(
+                    for (final (key, name) in widget.tracks)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: EditableTrack(
+                          name: name,
+                          tuned: overrides.containsKey(key)
+                              ? describeMotion(overrides[key], appMotions)
+                              : null,
+                          editing: _editing && _open == key,
+                          dimmed: _editing && _open != key,
+                          onEdit: () => setState(() {
+                            _editing = true;
+                            _open = key;
+                          }),
+                          onDone: () => setState(() => _editing = false),
+                          onReset: () => apply(key, null),
+                          editor: MotionEditor(
                             current: overrides[key],
                             appMotions: appMotions,
-                            onChanged: (motion) {
-                              widget.host.setGroupOverride(
-                                widget.group,
-                                key,
-                                motion,
-                              );
-                              setState(() {});
-                            },
+                            onChanged: (motion) => apply(key, motion),
                           ),
                         ),
                       ),
-                    ],
                     const SizedBox(height: 8),
                     const Hairline(),
                     Padding(
@@ -991,10 +987,11 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                     Timeline(
                       key: const ValueKey('motor-devtools-full-timeline'),
                       controller: controller,
-                      trackMotion: (track) => (
-                        describeMotion(overrides[track], host.appMotions),
-                        overrides.containsKey(track),
-                      ),
+                      trackMotion: (track) => overrides.containsKey(track)
+                          ? describeMotion(overrides[track], host.appMotions)
+                          : null,
+                      onResetTrack: (track) =>
+                          host.setOverride(controller, track, null),
                       trackEditor: (track) => MotionEditor(
                         current: overrides[track],
                         appMotions: host.appMotions,

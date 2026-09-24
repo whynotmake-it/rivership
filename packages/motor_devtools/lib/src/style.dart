@@ -270,6 +270,9 @@ enum Glyph {
 
   /// A cross.
   close,
+
+  /// A pencil.
+  edit,
 }
 
 /// Paints a [Glyph].
@@ -367,6 +370,11 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(9.5, 18),
           stroke,
         );
+      case Glyph.edit:
+        canvas
+          ..drawLine(const Offset(6.5, 17.5), const Offset(16, 8), stroke)
+          ..drawLine(const Offset(14, 6), const Offset(18, 10), stroke)
+          ..drawLine(const Offset(5, 19), const Offset(6.5, 17.5), stroke);
       case Glyph.close:
         canvas
           ..drawLine(const Offset(7, 7), const Offset(17, 17), stroke)
@@ -689,6 +697,7 @@ class Disclosure extends StatelessWidget {
     child: child,
     builder: (context, t, child) {
       if (!open && t < 0.001) return const SizedBox.shrink();
+      if (open && t > 0.999) return child!;
       final visible = t.clamp(0.0, 1.0);
       return ClipRect(
         child: Align(

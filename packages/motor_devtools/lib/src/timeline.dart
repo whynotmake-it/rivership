@@ -331,6 +331,7 @@ class Timeline extends StatefulWidget {
     required this.controller,
     this.trackMotion,
     this.trackEditor,
+    this.onResetTrack,
     this.interactive = true,
     this.collapsible = true,
     this.lanes,
@@ -343,12 +344,16 @@ class Timeline extends StatefulWidget {
   /// The controller to show.
   final TrackController controller;
 
-  /// Describes a track's current motion, and whether it is tuned, for its
-  /// row. Rows without it show only the track's name and value.
-  final (String, bool) Function(Track<Object> track)? trackMotion;
+  /// Describes the motion that replaces a track's authored one, or null
+  /// when there is none.
+  final String? Function(Track<Object> track)? trackMotion;
 
-  /// The editor that opens under a track's row when it is tapped.
+  /// The editor that opens under a track's row when it is tapped. Rows
+  /// without it can't be edited.
   final Widget Function(Track<Object> track)? trackEditor;
+
+  /// Restores a track's authored motion.
+  final void Function(Track<Object> track)? onResetTrack;
 
   /// Whether dragging and tapping scrubs the controller.
   final bool interactive;
@@ -420,31 +425,33 @@ class _TimelineState extends State<Timeline> {
     Widget Function(Widget bar) bar,
   ) {
     final track = lane.playback.track;
-    final open = identical(_openTrack, track);
-    final motion = widget.trackMotion?.call(track);
+    final label = track.debugLabel ?? guessTrackName(lane.playback, index);
+    final value = lane.playback.isWaitingForSync
+        ? 'waiting'
+        : formatValue(widget.controller.value<Object>(track));
+    final laneBar = _LaneBar(segments: lane.segments, layout: layout);
     final editor = widget.trackEditor;
-    return _LaneRow(
+    if (editor == null) {
+      return _LaneRow(label: label, value: value, bar: bar(laneBar));
+    }
+    final editing = identical(_openTrack, track);
+    return Padding(
       key: ObjectKey(track),
-      label: track.debugLabel ?? guessTrackName(lane.playback, index),
-      segments: lane.segments,
-      layout: layout,
-      value: formatValue(widget.controller.value<Object>(track)),
-      waiting: lane.playback.isWaitingForSync,
-      motion: motion,
-      open: open,
-      onTap: editor == null
-          ? null
-          : () => setState(() => _openTrack = open ? null : track),
-      wrapBar: bar,
-      editor: editor == null
-          ? null
-          : Disclosure(
-              open: open,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 6),
-                child: editor(track),
-              ),
-            ),
+      padding: const EdgeInsets.only(top: 10),
+      child: EditableTrack(
+        name: label,
+        tuned: widget.trackMotion?.call(track),
+        value: value,
+        editing: editing,
+        dimmed: _openTrack != null && !editing,
+        onEdit: () => setState(() => _openTrack = track),
+        onDone: () => setState(() => _openTrack = null),
+        onReset: widget.onResetTrack == null
+            ? null
+            : () => widget.onResetTrack!(track),
+        body: bar(laneBar),
+        editor: editor(track),
+      ),
     );
   }
 
@@ -453,17 +460,21 @@ class _TimelineState extends State<Timeline> {
       for (final playback in layout.lanes)
         if (lane.tracks.contains(playback.playback.track)) playback,
     ];
+    final waiting = members.any((member) => member.playback.isWaitingForSync);
     return _LaneRow(
       label: lane.label,
-      segments: members.length == 1
-          ? members.single.segments
-          : summarySegments(members),
-      layout: layout,
-      value: lane.tracks.length == 1
+      value: waiting
+          ? 'waiting'
+          : lane.tracks.length == 1
           ? formatValue(widget.controller.value<Object>(lane.tracks.single))
           : null,
-      waiting: members.any((member) => member.playback.isWaitingForSync),
-      color: lane.color,
+      bar: _LaneBar(
+        segments: members.length == 1
+            ? members.single.segments
+            : summarySegments(members),
+        layout: layout,
+        color: lane.color,
+      ),
     );
   }
 
@@ -745,21 +756,23 @@ class _Ruler extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Text(
-                formatDuration(
-                  elapsed < Duration.zero
-                      ? Duration.zero
-                      : elapsed > window.length
-                      ? window.length
-                      : elapsed,
-                ),
-                style: palette.numeric.copyWith(color: palette.text),
+          Text.rich(
+            TextSpan(
+              text: formatDuration(
+                elapsed < Duration.zero
+                    ? Duration.zero
+                    : elapsed > window.length
+                    ? window.length
+                    : elapsed,
               ),
-              const Spacer(),
-              Text(formatDuration(window.length), style: palette.numeric),
-            ],
+              style: palette.numeric.copyWith(color: palette.text),
+              children: [
+                TextSpan(
+                  text: '  /  ${formatDuration(window.length)}',
+                  style: palette.numeric.copyWith(color: palette.tertiary),
+                ),
+              ],
+            ),
           ),
           const Spacer(),
           SizedBox(
@@ -781,92 +794,67 @@ class _Ruler extends StatelessWidget {
   }
 }
 
-class _LaneRow extends StatelessWidget {
-  const _LaneRow({
-    required this.label,
-    required this.segments,
-    required this.layout,
-    this.value,
-    this.waiting = false,
-    this.color,
-    this.motion,
-    this.open = false,
-    this.onTap,
-    this.wrapBar,
-    this.editor,
-    super.key,
-  });
+class _LaneBar extends StatelessWidget {
+  const _LaneBar({required this.segments, required this.layout, this.color});
 
-  final String label;
   final List<TimelineSegment> segments;
   final TimelineLayout layout;
-  final String? value;
-  final bool waiting;
   final Color? color;
-  final (String, bool)? motion;
-  final bool open;
-  final VoidCallback? onTap;
-  final Widget Function(Widget bar)? wrapBar;
-  final Widget? editor;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 8,
+    child: CustomPaint(
+      painter: _LanePainter(
+        segments: segments,
+        window: layout.window,
+        position: layout.position,
+        palette: DevToolsTheme.of(context),
+        color: color,
+      ),
+    ),
+  );
+}
+
+class _LaneRow extends StatelessWidget {
+  const _LaneRow({required this.label, required this.bar, this.value});
+
+  final String label;
+  final String? value;
+  final Widget bar;
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    final value = waiting ? 'waiting' : this.value;
-    final header = switch ((motion, onTap)) {
-      ((final description, final tuned), final onTap?) => TrackMotionHeader(
-        key: ValueKey('motor-devtools-track-$label'),
-        name: label,
-        motion: description,
-        tuned: tuned,
-        open: open,
-        value: value,
-        onTap: onTap,
-      ),
-      _ => Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: palette.caption.copyWith(fontWeight: FontWeight.w500),
-            ),
-          ),
-          if (value case final value? when value.isNotEmpty)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 160),
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: palette.numeric,
-              ),
-            ),
-        ],
-      ),
-    };
-    final bar = SizedBox(
-      height: 8,
-      child: CustomPaint(
-        painter: _LanePainter(
-          segments: segments,
-          window: layout.window,
-          position: layout.position,
-          palette: palette,
-          color: color,
-        ),
-      ),
-    );
     return Padding(
-      padding: EdgeInsets.only(top: onTap == null ? 10 : 6),
+      padding: const EdgeInsets.only(top: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          header,
-          SizedBox(height: onTap == null ? 5 : 3),
-          wrapBar?.call(bar) ?? bar,
-          ?editor,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: palette.caption.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ),
+              if (value case final value? when value.isNotEmpty)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 160),
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.numeric,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          bar,
         ],
       ),
     );

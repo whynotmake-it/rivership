@@ -54,47 +54,69 @@ String describeMotion(Motion? motion, Map<String, Motion> appMotions) {
   };
 }
 
-/// A track's row in a motion list: its name, its current motion, and a
-/// chevron that turns while its editor is [open].
-class TrackMotionHeader extends StatelessWidget {
-  /// Creates a header for the track [name].
-  const TrackMotionHeader({
+/// A track that can be edited in place: a header with its name, its tuned
+/// motion and value, an optional [body] such as its timeline lane, and an
+/// [editor] shown while [editing]. While editing, all of it sits on one card.
+class EditableTrack extends StatelessWidget {
+  /// Creates an editable track named [name].
+  const EditableTrack({
     required this.name,
-    required this.motion,
-    required this.tuned,
-    required this.open,
-    required this.onTap,
+    required this.editing,
+    required this.onEdit,
+    required this.onDone,
+    required this.editor,
+    this.tuned,
+    this.onReset,
     this.value,
+    this.body,
+    this.dimmed = false,
     super.key,
   });
 
   /// The track's name.
   final String name;
 
-  /// The current motion, described.
-  final String motion;
-
-  /// Whether the motion replaces the authored one.
-  final bool tuned;
-
-  /// Whether the editor is open.
-  final bool open;
-
-  /// Toggles the editor.
-  final VoidCallback onTap;
+  /// The motion that replaces the authored one, described, if any.
+  final String? tuned;
 
   /// The track's current value, if shown.
   final String? value;
 
+  /// Content under the header, such as the track's timeline lane.
+  final Widget? body;
+
+  /// The editor shown while [editing].
+  final Widget editor;
+
+  /// Whether the editor is open.
+  final bool editing;
+
+  /// Whether another track is being edited.
+  final bool dimmed;
+
+  /// Opens the editor.
+  final VoidCallback onEdit;
+
+  /// Closes the editor.
+  final VoidCallback onDone;
+
+  /// Restores the authored motion.
+  final VoidCallback? onReset;
+
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: '$name, $motion',
+    final action = palette.caption.copyWith(
+      color: palette.accent,
+      fontWeight: FontWeight.w600,
+    );
+    final header = Pressable(
+      key: ValueKey('motor-devtools-track-$name'),
+      onTap: editing ? onDone : onEdit,
+      semanticLabel: editing ? 'Done editing $name' : 'Edit $name',
       pressedScale: 1,
       child: SizedBox(
-        height: 26,
+        height: 24,
         child: Row(
           children: [
             Expanded(
@@ -106,58 +128,122 @@ class TrackMotionHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: palette.caption.copyWith(
-                        color: open ? palette.text : palette.secondary,
-                        fontWeight: open ? FontWeight.w600 : FontWeight.w500,
+                        color: editing ? palette.text : palette.secondary,
+                        fontWeight: editing ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: tuned
-                          ? palette.accent.withValues(alpha: 0.14)
-                          : palette.fill,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      motion,
-                      maxLines: 1,
-                      style: palette.caption.copyWith(
-                        fontSize: 10.5,
-                        color: tuned ? palette.accent : palette.tertiary,
-                        fontWeight: FontWeight.w500,
+                  if (tuned case final tuned?) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: palette.accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          tuned,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: palette.caption.copyWith(
+                            fontSize: 10.5,
+                            color: palette.accent,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            if (value case final value? when value.isNotEmpty)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 120),
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: palette.numeric,
+            if (editing) ...[
+              if (tuned != null && onReset != null)
+                Pressable(
+                  key: const ValueKey('motor-devtools-reset'),
+                  onTap: onReset,
+                  semanticLabel: 'Reset to authored',
+                  child: Text(
+                    'Reset',
+                    style: action.copyWith(color: palette.secondary),
+                  ),
                 ),
+              const SizedBox(width: 14),
+              Pressable(
+                key: const ValueKey('motor-devtools-done'),
+                onTap: onDone,
+                semanticLabel: 'Done',
+                child: Text('Done', style: action),
               ),
-            const SizedBox(width: 4),
-            SingleMotionBuilder(
-              value: open ? 0.25 : 0,
-              motion: foldMotion,
-              debugLabel: internalDebugLabel,
-              builder: (context, turns, child) =>
-                  Transform.rotate(angle: turns * 2 * math.pi, child: child),
-              child: GlyphIcon(Glyph.forward, color: palette.tertiary),
-            ),
+            ] else ...[
+              if (value case final value? when value.isNotEmpty)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.numeric.copyWith(color: palette.tertiary),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              GlyphIcon(Glyph.edit, color: palette.tertiary, size: 14),
+            ],
           ],
         ),
+      ),
+    );
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        if (body case final body?) ...[const SizedBox(height: 4), body],
+        Disclosure(
+          open: editing,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 4),
+            child: editor,
+          ),
+        ),
+      ],
+    );
+    return SingleMotionBuilder(
+      value: dimmed ? 0.45 : 1,
+      motion: foldMotion,
+      debugLabel: internalDebugLabel,
+      builder: (context, opacity, child) =>
+          Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
+      child: SingleMotionBuilder(
+        value: editing ? 1 : 0,
+        motion: foldMotion,
+        debugLabel: internalDebugLabel,
+        builder: (context, t, child) => Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: -10,
+              right: -10,
+              top: -8,
+              bottom: -8,
+              child: Opacity(
+                opacity: t.clamp(0.0, 1.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.fill,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            child!,
+          ],
+        ),
+        child: content,
       ),
     );
   }
@@ -227,27 +313,7 @@ class _MotionEditorState extends State<MotionEditor> {
           },
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: Text(kind.hint, style: palette.caption)),
-            if (current != null)
-              Pressable(
-                key: const ValueKey('motor-devtools-reset'),
-                onTap: () => widget.onChanged(null),
-                semanticLabel: 'Reset to authored',
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    'Reset',
-                    style: palette.caption.copyWith(
-                      color: palette.accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        Text(kind.hint, style: palette.caption),
         if (kind == MotionKind.app) ...[
           const SizedBox(height: 10),
           Wrap(
@@ -434,7 +500,7 @@ class _GraphBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = palette.fill);
+    canvas.drawRect(Offset.zero & size, Paint()..color = palette.surface);
     final grid = Paint()
       ..color = palette.hairline
       ..strokeWidth = 1;
@@ -772,7 +838,7 @@ class _CodeLineState extends State<_CodeLine> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
-          color: palette.fill,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
