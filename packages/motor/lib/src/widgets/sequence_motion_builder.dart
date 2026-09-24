@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use_from_same_package
 
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
@@ -7,6 +8,7 @@ import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// A function that builds a widget based on the current phase and interpolated
 /// value.
@@ -83,6 +85,7 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.child,
     this.restartTrigger,
+    this.tickerRate,
     super.key,
   });
 
@@ -124,14 +127,24 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// Useful for triggering replays without rebuilding the widget.
   final Object? restartTrigger;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<SequenceMotionBuilder<P, T>> createState() =>
       _SequenceMotionBuilderState<P, T>();
 }
 
 class _SequenceMotionBuilderState<P, T extends Object>
-    extends State<SequenceMotionBuilder<P, T>> with TickerProviderStateMixin {
+    extends State<SequenceMotionBuilder<P, T>>
+    with TickerProviderStateMixin, TickerRateStateMixin {
   late SequenceMotionController<P, T> _controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => _controller.resync(this);
   P? _previousPhase;
 
   @override
@@ -168,6 +181,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
   @override
   void didUpdateWidget(SequenceMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
     _controller.debugInnerController.velocityTracking =
         widget.velocityTracking;
 
