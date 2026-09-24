@@ -2,6 +2,12 @@
 /// duration-based curves under one API.
 library motor;
 
+export 'package:fixed_ticker/fixed_ticker.dart'
+    show
+        FixedTickerProviderStateMixin,
+        SingleFixedTickerProviderStateMixin,
+        TickerRate,
+        TickerRateScope;
 export 'src/controllers/motion_controller.dart'
     show
         BoundedMotionController,
