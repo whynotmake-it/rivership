@@ -162,18 +162,19 @@ class _MotionEditorState<K> extends State<MotionEditor<K>> {
         },
         if (motion != null) ...[
           const SizedBox(height: 12),
-          MotionPreview(motion: motion),
-          if (codeFor(motion) case final code?) ...[
+          if (motion is! CupertinoMotion) ...[
+            SizedBox(height: 64, child: MotionPreview(motion: motion)),
             const SizedBox(height: 10),
-            _CodeLine(code: code),
           ],
+          if (codeFor(motion) case final code?) _CodeLine(code: code),
         ],
       ],
     );
   }
 }
 
-/// A duration × bounce plane with a draggable handle for a spring.
+/// A duration × bounce plane with a draggable handle for a spring, and a
+/// live preview of the spring behind it.
 class SpringGraph extends StatelessWidget {
   /// Creates a graph showing [duration] and [bounce].
   const SpringGraph({
@@ -250,8 +251,19 @@ class SpringGraph extends StatelessWidget {
                 builder: (context, handle, _) => Stack(
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: _SpringGraphPainter(handle, palette),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: CustomPaint(
+                          painter: _GraphBackgroundPainter(palette),
+                          foregroundPainter: _HandlePainter(handle, palette),
+                          child: MotionPreview(
+                            motion: CupertinoMotion(
+                              duration: duration,
+                              bounce: bounce,
+                            ),
+                            inGraph: true,
+                          ),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -284,22 +296,14 @@ class SpringGraph extends StatelessWidget {
   }
 }
 
-class _SpringGraphPainter extends CustomPainter {
-  const _SpringGraphPainter(this.handle, this.palette);
+class _GraphBackgroundPainter extends CustomPainter {
+  const _GraphBackgroundPainter(this.palette);
 
-  final Offset handle;
   final DevToolsPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final area = Offset.zero & size;
-    canvas
-      ..drawRRect(
-        RRect.fromRectAndRadius(area, const Radius.circular(12)),
-        Paint()..color = palette.fill,
-      )
-      ..save()
-      ..clipRRect(RRect.fromRectAndRadius(area, const Radius.circular(12)));
+    canvas.drawRect(Offset.zero & size, Paint()..color = palette.fill);
     final grid = Paint()
       ..color = palette.hairline
       ..strokeWidth = 1;
@@ -311,6 +315,21 @@ class _SpringGraphPainter extends CustomPainter {
       final y = size.height * i / 4;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
+  }
+
+  @override
+  bool shouldRepaint(_GraphBackgroundPainter oldDelegate) =>
+      oldDelegate.palette != palette;
+}
+
+class _HandlePainter extends CustomPainter {
+  const _HandlePainter(this.handle, this.palette);
+
+  final Offset handle;
+  final DevToolsPalette palette;
+
+  @override
+  void paint(Canvas canvas, Size size) {
     final point = Offset(handle.dx * size.width, handle.dy * size.height);
     final guide = Paint()
       ..color = palette.accent.withValues(alpha: 0.35)
@@ -326,12 +345,11 @@ class _SpringGraphPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
       )
       ..drawCircle(point, 10, Paint()..color = palette.surface)
-      ..drawCircle(point, 4.5, Paint()..color = palette.accent)
-      ..restore();
+      ..drawCircle(point, 4.5, Paint()..color = palette.accent);
   }
 
   @override
-  bool shouldRepaint(_SpringGraphPainter oldDelegate) =>
+  bool shouldRepaint(_HandlePainter oldDelegate) =>
       oldDelegate.handle != handle || oldDelegate.palette != palette;
 }
 
@@ -387,13 +405,17 @@ class _CurveEditor extends StatelessWidget {
 }
 
 /// Plays [motion] from 0 to 1 over and over, drawing its curve and a dot
-/// that rides it.
+/// that rides it. Fills its parent.
 class MotionPreview extends StatefulWidget {
   /// Previews [motion].
-  const MotionPreview({required this.motion, super.key});
+  const MotionPreview({required this.motion, this.inGraph = false, super.key});
 
   /// The motion to preview.
   final Motion motion;
+
+  /// Whether the preview is drawn behind a [SpringGraph]: inset from its
+  /// labels, without the value rail.
+  final bool inGraph;
 
   @override
   State<MotionPreview> createState() => _MotionPreviewState();
@@ -408,6 +430,7 @@ class _MotionPreviewState extends State<MotionPreview>
   );
   late var _samples = _sample(widget.motion);
   Timer? _pause;
+  Timer? _restart;
 
   @override
   void initState() {
@@ -420,8 +443,11 @@ class _MotionPreviewState extends State<MotionPreview>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.motion == widget.motion) return;
     _samples = _sample(widget.motion);
-    _controller.motion = widget.motion;
-    _play();
+    _restart?.cancel();
+    _restart = Timer(const Duration(milliseconds: 120), () {
+      _controller.motion = widget.motion;
+      _play();
+    });
   }
 
   void _play() {
@@ -439,6 +465,7 @@ class _MotionPreviewState extends State<MotionPreview>
   @override
   void dispose() {
     _pause?.cancel();
+    _restart?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -460,8 +487,7 @@ class _MotionPreviewState extends State<MotionPreview>
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
-    return SizedBox(
-      height: 64,
+    return SizedBox.expand(
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
@@ -478,6 +504,7 @@ class _MotionPreviewState extends State<MotionPreview>
               ),
               value: _controller.value,
               palette: palette,
+              inGraph: widget.inGraph,
             ),
           );
         },
@@ -492,17 +519,20 @@ class _PreviewPainter extends CustomPainter {
     required this.progress,
     required this.value,
     required this.palette,
+    required this.inGraph,
   });
 
   final List<double> samples;
   final double progress;
   final double value;
   final DevToolsPalette palette;
+  final bool inGraph;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const inset = 8.0;
-    final plot = Rect.fromLTRB(inset, inset, size.width - 40, size.height - 8);
+    final plot = inGraph
+        ? Rect.fromLTRB(12, 34, size.width - 12, size.height - 30)
+        : Rect.fromLTRB(8, 8, size.width - 40, size.height - 8);
     final lo = math.min<double>(0, samples.fold(0, math.min));
     final hi = math.max<double>(1, samples.fold(1, math.max));
     double yOf(double v) => plot.bottom - (v - lo) / (hi - lo) * plot.height;
@@ -538,6 +568,7 @@ class _PreviewPainter extends CustomPainter {
         4,
         Paint()..color = palette.accent,
       );
+    if (inGraph) return;
     final rail = Rect.fromLTRB(
       size.width - 20,
       plot.top,
