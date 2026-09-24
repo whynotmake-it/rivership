@@ -21,7 +21,7 @@ dependencies:
   # the exact version pin will come from the SDK
   material_color_utilities: ">=0.8.0"
   
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.1
 
 dev_dependencies:
   flutter_test:

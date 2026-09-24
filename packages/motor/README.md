@@ -34,11 +34,9 @@ Code samples in this README use Dart 3.10 dot-shorthands; motor itself supports 
 
 Add to your `pubspec.yaml`:
 
-<!-- TODO(release): verify pubspec version is 2.0.0 before publishing -->
-
 ```yaml
 dependencies:
-  motor: ^2.0.0
+  motor: ^2.0.0-dev.1
 ```
 
 Or install from the command line:

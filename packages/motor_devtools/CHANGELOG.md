@@ -1,4 +1,4 @@
-## 0.1.0
+## 0.1.0-dev.1
 
 - Add a floating bubble that follows drags, flings with its release
   velocity, and settles on the nearest side of the screen.

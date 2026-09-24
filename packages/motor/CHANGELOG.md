@@ -1,4 +1,4 @@
-## Unreleased
+## 2.0.0-dev.1
 
 > Note: This is the Motor 2.0 development release. Existing `Motion.*`
 > factories, `MotionController`, `MotionBuilder`, `MotionSequence`,

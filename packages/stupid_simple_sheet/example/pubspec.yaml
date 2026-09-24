@@ -23,7 +23,7 @@ dependencies:
       url: https://github.com/whynotmake-it/flutter_liquid_glass
       path: packages/liquid_glass_renderer
       ref: ac04043a87051029a06ef1f1970c3ec46fbb357a
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.1
   stupid_simple_sheet:
     path: ../
 

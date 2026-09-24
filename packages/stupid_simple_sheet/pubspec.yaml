@@ -16,7 +16,7 @@ dependencies:
   flutter:
     sdk: flutter
   meta: ">=1.15.0 <2.0.0" 
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.1
   scroll_drag_detector: ^1.0.0-dev.0
 
 dev_dependencies:
