@@ -230,52 +230,56 @@ class _Switch extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     final at = thumb.clamp(0.0, 1.0);
-    // Past either end the thumb presses against the wall instead of leaving
-    // the track.
-    final press = (thumb - at).abs() * _knob;
-    final width = _knob + 18 * squish - press;
-    final height = _knob + press * .5;
-    return Container(
-      width: _width,
-      height: _height,
-      padding: const .all(6),
-      decoration: BoxDecoration(
-        color: Color.lerp(p.control, p.accent, tint.clamp(0, 1)),
-        borderRadius: .circular(_height / 2),
-      ),
-      child: Stack(
-        clipBehavior: .none,
-        children: [
-          Positioned(
-            left: at * (_travel + _knob - width),
-            top: (_knob - height) / 2,
-            width: width,
-            height: height,
-            child: Container(
-              decoration: BoxDecoration(
-                color: p.surface,
-                borderRadius: .circular(_knob / 2),
-              ),
-              child: Stack(
-                alignment: .center,
-                children: [
-                  _Icon(
-                    CupertinoIcons.sun_max_fill,
-                    shown: 1 - at,
-                    turn: -at,
-                    color: p.textSecondary,
-                  ),
-                  _Icon(
-                    CupertinoIcons.moon_fill,
-                    shown: at,
-                    turn: 1 - at,
-                    color: p.accent,
-                  ),
-                ],
+    final width = _knob + 18 * squish;
+    // Past either end the whole switch stretches toward that edge and
+    // narrows to keep its area, by 7% at most.
+    final over = (thumb - at).clamp(-.2, .2);
+    final stretch = 1 + over.abs() * .35;
+    return Transform(
+      alignment: over > 0 ? .centerLeft : .centerRight,
+      transform: Matrix4.diagonal3Values(stretch, 1 / stretch, 1),
+      child: Container(
+        width: _width,
+        height: _height,
+        padding: const .all(6),
+        decoration: BoxDecoration(
+          color: Color.lerp(p.control, p.accent, tint.clamp(0, 1)),
+          borderRadius: .circular(_height / 2),
+        ),
+        child: Stack(
+          clipBehavior: .none,
+          children: [
+            Positioned(
+              left: at * (_travel + _knob - width),
+              top: 0,
+              width: width,
+              height: _knob,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  borderRadius: .circular(_knob / 2),
+                ),
+                child: Stack(
+                  alignment: .center,
+                  children: [
+                    _Icon(
+                      CupertinoIcons.sun_max_fill,
+                      shown: 1 - at,
+                      turn: -at,
+                      color: p.textSecondary,
+                    ),
+                    _Icon(
+                      CupertinoIcons.moon_fill,
+                      shown: at,
+                      turn: 1 - at,
+                      color: p.accent,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
