@@ -1,9 +1,11 @@
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:motor/motor.dart';
 import 'package:motor_example/widgets/style.dart';
 
-/// Shrinks [child] a little while pressed, on a spring.
+/// Shrinks [child] a little while pressed.
+///
+/// A plain [AnimatedScale], so every button doesn't add a controller to the
+/// devtools list.
 class PressScale extends StatefulWidget {
   const PressScale({required this.child, this.onTap, super.key});
 
@@ -27,12 +29,10 @@ class _PressScaleState extends State<PressScale> {
       onTapUp: (_) => _press(false),
       onTapCancel: () => _press(false),
       onTap: widget.onTap,
-      child: SingleMotionBuilder(
-        value: _pressed ? .96 : 1,
-        motion: const .snappySpring(),
-        debugLabel: 'Press feedback',
-        builder: (context, scale, child) =>
-            Transform.scale(scale: scale, child: child),
+      child: AnimatedScale(
+        scale: _pressed ? .96 : 1,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
         child: widget.child,
       ),
     );
