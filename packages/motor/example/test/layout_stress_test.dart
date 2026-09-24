@@ -104,6 +104,16 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the home cards lay out at every narrow width', (tester) async {
+    await _pumpApp(tester, const Size(430, 900));
+    // Two columns of cards get narrow well before the window is tiny.
+    for (var width = 430.0; width >= 150; width -= 7) {
+      tester.view.physicalSize = Size(width, 900);
+      await _frames(tester, 2);
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('no page throws in a tiny window', (tester) async {
     final router = await _pumpApp(tester, const Size(1280, 800));
     final errors = <String>[];

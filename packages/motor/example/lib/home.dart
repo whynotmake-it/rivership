@@ -168,7 +168,18 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       height: 44,
-      child: Row(children: [Spacer(), _DevToolsToggle()]),
+      child: Row(
+        children: [
+          Spacer(),
+          Flexible(
+            child: FittedBox(
+              fit: .scaleDown,
+              alignment: .centerRight,
+              child: _DevToolsToggle(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -542,10 +553,17 @@ class _ChapterCardState extends State<_ChapterCard> {
                         color: p.inset,
                         borderRadius: .circular(radius),
                       ),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => Transform.scale(
-                          scale: (constraints.maxWidth / 130).clamp(1.2, 2),
-                          child: _Glyph(index),
+                      // Drawn at one size and scaled to fit, so its fixed
+                      // shapes never meet a narrow card.
+                      child: FractionallySizedBox(
+                        widthFactor: .7,
+                        heightFactor: .7,
+                        child: FittedBox(
+                          child: SizedBox(
+                            width: 96,
+                            height: 64,
+                            child: _Glyph(index),
+                          ),
                         ),
                       ),
                     ),
