@@ -139,6 +139,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   final _listeners = <TrackController, VoidCallback>{};
   final _played = <TrackController>{};
   final _activity = <TrackController, int>{};
+
+  /// Controllers the tools paused or scrubbed, as opposed to the app.
+  final _held = <TrackController>{};
   var _frame = 0;
   String? _selectedGroup;
   MotorInspectionSubscription? _subscription;
@@ -267,6 +270,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _controllers.add(controller);
     void listener() {
       if (!controller.isAnimating) return;
+      _held.remove(controller);
       _activity[controller] = ++_frame;
       if (_played.add(controller)) _scheduleRefresh();
     }
@@ -317,6 +321,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _activity.remove(controller);
     _muted.remove(controller);
     _animating.remove(controller);
+    _held.remove(controller);
     if (_listeners.remove(controller) case final listener?) {
       controller.removeListener(listener);
     }
@@ -360,7 +365,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
             ? _groups[group]?.overrides.length ?? 0
             : 0);
     return [
-      if (PlaybackState.of(controller) == PlaybackState.paused) 'Paused',
+      if (_held.contains(controller) &&
+          PlaybackState.of(controller) == PlaybackState.paused)
+        'Paused',
       if (original != null && controller.playbackSpeed != original)
         speedLabel(controller.playbackSpeed),
       if (motions == 1) '1 motion' else if (motions > 1) '$motions motions',
@@ -374,11 +381,21 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   }
 
   @override
+  void notePause(TrackController controller) {
+    _held.add(controller);
+    setState(() {});
+  }
+
+  /// Resumes [controller] if the tools paused it.
+  void _release(TrackController controller) {
+    if (_held.remove(controller)) controller.resume();
+  }
+
+  @override
   void reset(TrackController controller) {
     _restoreSpeed(controller);
-    controller
-      ..clearOwnMotionOverrides()
-      ..resume();
+    controller.clearOwnMotionOverrides();
+    _release(controller);
     setState(() {});
   }
 
@@ -387,9 +404,8 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _groups.remove(group);
     for (final member in _membersOf(group)) {
       _restoreSpeed(member);
-      member
-        ..groupMotionOverride = null
-        ..resume();
+      member.groupMotionOverride = null;
+      _release(member);
     }
     setState(() {});
   }
@@ -398,9 +414,8 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   void resetAll() {
     for (final controller in _controllers) {
       _restoreSpeed(controller);
-      controller
-        ..clearMotionOverrides()
-        ..resume();
+      controller.clearMotionOverrides();
+      _release(controller);
     }
     _originalSpeeds.clear();
     _tuned.clear();
@@ -412,11 +427,9 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   /// while their page is open.
   void _resumeShown() {
     if (_overlay.selectedController case final controller?) {
-      controller.resume();
+      _release(controller);
     } else if (_selectedGroup case final group?) {
-      for (final member in _membersOf(group)) {
-        member.resume();
-      }
+      _membersOf(group).forEach(_release);
     }
   }
 

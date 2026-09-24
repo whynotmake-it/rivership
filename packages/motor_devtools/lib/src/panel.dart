@@ -94,7 +94,13 @@ abstract interface class PanelHost {
   /// empty when nothing is changed.
   List<String> changesOf(TrackController controller);
 
-  /// Resumes [controller] and restores its speed and its own motions.
+  /// Records that the tools paused or scrubbed [controller]. Only such
+  /// pauses count as changes, and leaving the page or resetting resumes
+  /// them.
+  void notePause(TrackController controller);
+
+  /// Resumes [controller] if the tools paused it, and restores its speed and
+  /// its own motions.
   void reset(TrackController controller);
 
   /// Clears [group]'s shared settings and resumes its members.
@@ -1095,6 +1101,7 @@ class _GroupDetail extends StatelessWidget {
     if (playing.isNotEmpty) {
       for (final member in playing) {
         member.pause();
+        host.notePause(member);
       }
       return;
     }
@@ -1292,6 +1299,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
     final controller = widget.controller;
     if (controller.isAnimating) {
       controller.pause();
+      widget.host.notePause(controller);
       return;
     }
     controller.resume();
@@ -1355,6 +1363,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                           : null,
                       onResetTrack: (track) =>
                           host.setOverride(controller, track, null),
+                      onScrub: () => host.notePause(controller),
                       trackEditor: (track) => MotionEditor(
                         current: overrides[track],
                         appMotions: host.appMotions,

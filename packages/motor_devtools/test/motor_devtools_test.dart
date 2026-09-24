@@ -312,6 +312,26 @@ void main() {
     );
   });
 
+  testWidgets('leaves pauses made by the app alone', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await tester.pump(const Duration(milliseconds: 500));
+    controller.pause();
+    await _openDetail(tester);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-reset-page')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    await _settle(tester);
+    expect(controller.isAnimating, isFalse);
+    expect(find.byKey(const ValueKey('motor-devtools-modified')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-minimize')));
+    await _settle(tester);
+    expect(controller.isAnimating, isFalse);
+  });
+
   testWidgets('minimizes to the bubble and reopens where it left off', (
     tester,
   ) async {

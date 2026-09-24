@@ -332,6 +332,7 @@ class Timeline extends StatefulWidget {
     this.trackMotion,
     this.trackEditor,
     this.onResetTrack,
+    this.onScrub,
     this.interactive = true,
     this.collapsible = true,
     this.lanes,
@@ -355,6 +356,9 @@ class Timeline extends StatefulWidget {
   /// Restores a track's authored motion.
   final void Function(Track<Object> track)? onResetTrack;
 
+  /// Called when a scrub pauses [controller].
+  final VoidCallback? onScrub;
+
   /// Whether dragging and tapping scrubs the controller.
   final bool interactive;
 
@@ -377,6 +381,7 @@ class _TimelineState extends State<Timeline> {
     widget.controller
       ..pause()
       ..scrubTo(window.timeAt(fraction));
+    widget.onScrub?.call();
   }
 
   void _updateScrub(double fraction) {
