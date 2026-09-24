@@ -118,7 +118,7 @@ class MotionController<T extends Object> extends Animation<T>
     );
     _inner
       ..addListener(notifyListeners)
-      ..addStatusListener(notifyStatusListeners);
+      ..addStatusListener(_syncStatus);
   }
 
   late final TrackController _inner;
@@ -185,11 +185,13 @@ class MotionController<T extends Object> extends Animation<T>
   /// for velocity estimation. The tracked velocity is used when [animateTo]
   /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
+    _reversing = false;
     // As in 1.x, the future of an interrupted animation completes.
     final wasAnimating = _inner.isAnimating;
     _inner.stopTicker(canceled: false);
     if (wasAnimating) _inner.stop(canceled: true);
     _inner.set([_track.value(newValue)]);
+    _syncStatus();
   }
 
   /// The current status of this [Animation].
@@ -204,8 +206,33 @@ class MotionController<T extends Object> extends Animation<T>
   ///   direction (common for multi-dimensional types), dismissed means
   ///   exactly back at the initial value.
   /// - After `stop(canceled: true)`, it keeps the direction it was moving in.
+  ///
+  /// A [BoundedMotionController] whose converter has no direction reports
+  /// [AnimationStatus.reverse] while `reverse()` runs, as in 1.x.
   @override
-  AnimationStatus get status => _inner.status;
+  AnimationStatus get status {
+    final status = _inner.status;
+    if (_reversing &&
+        status == AnimationStatus.forward &&
+        converter is! DirectionalMotionConverter<T>) {
+      return AnimationStatus.reverse;
+    }
+    return status;
+  }
+
+  // Whether the running animation was started by BoundedMotionController's
+  // reverse(), and whether the next animateTo is.
+  var _reversing = false;
+  var _reverseNext = false;
+
+  var _reportedStatus = AnimationStatus.dismissed;
+
+  void _syncStatus([AnimationStatus? _]) {
+    final current = status;
+    if (current == _reportedStatus) return;
+    _reportedStatus = current;
+    notifyStatusListeners(current);
+  }
 
   /// Whether this animation is currently animating in either the forward or
   /// reverse direction.
@@ -294,6 +321,8 @@ class MotionController<T extends Object> extends Animation<T>
     T? withVelocity,
   }) {
     _lastTarget = target;
+    _reversing = _reverseNext;
+    _reverseNext = false;
     // As in 1.x, each call gets its own future and cancels the previous one.
     _inner.stopTicker(canceled: true);
     final future = _inner.animate(
@@ -307,6 +336,7 @@ class MotionController<T extends Object> extends Animation<T>
       ],
     );
     _inner.resetVelocityTracking();
+    _syncStatus();
     return future;
   }
 
@@ -325,6 +355,7 @@ class MotionController<T extends Object> extends Animation<T>
     if (steps.isEmpty) return TickerFuture.complete();
 
     _lastTarget = null;
+    _reversing = false;
     _inner.stopTicker(canceled: true);
     final future = _inner.play(
       TrackTimeline(
@@ -334,6 +365,7 @@ class MotionController<T extends Object> extends Animation<T>
       onStep: onStep == null ? null : (track, index) => onStep(index),
     );
     _inner.resetVelocityTracking();
+    _syncStatus();
     return future;
   }
 
@@ -388,7 +420,7 @@ class MotionController<T extends Object> extends Animation<T>
   void dispose() {
     _inner
       ..removeListener(notifyListeners)
-      ..removeStatusListener(notifyStatusListeners)
+      ..removeStatusListener(_syncStatus)
       ..dispose();
     super.dispose();
   }
@@ -423,7 +455,9 @@ class _MotionTrackController extends TrackController {
 /// [status] works as for [MotionController]: with a directional converter,
 /// [reverse] reports [AnimationStatus.reverse] and then
 /// [AnimationStatus.dismissed], and [forward] reports
-/// [AnimationStatus.forward] and then [AnimationStatus.completed].
+/// [AnimationStatus.forward] and then [AnimationStatus.completed]. Without
+/// a direction, [reverse] still reports [AnimationStatus.reverse] while it
+/// runs, as in 1.x.
 /// {@endtemplate}
 class BoundedMotionController<T extends Object> extends MotionController<T> {
   /// Creates a [BoundedMotionController].
@@ -503,15 +537,15 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }) =>
       animateTo(upperBound, from: from, withVelocity: withVelocity);
 
-  /// Animates towards [lowerBound].
-  ///
-  /// **Note**: [status] reports [AnimationStatus.forward] when [converter]
-  /// has no direction. See [status] for more information.
+  /// Animates towards [lowerBound], reporting [AnimationStatus.reverse]
+  /// while running, even when [converter] has no direction.
   TickerFuture reverse({
     T? from,
     T? withVelocity,
-  }) =>
-      animateTo(lowerBound, from: from, withVelocity: withVelocity);
+  }) {
+    _reverseNext = true;
+    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
+  }
 
   @override
   TickerFuture stop({bool canceled = false}) {

@@ -1025,10 +1025,10 @@ void main() {
       });
 
       testWidgets(
-          'reports forward for a non-directional converter, and dismissed '
-          'only back at the initial value', (tester) async {
-        // OffsetMotionConverter is not directional, so the controller cannot
-        // know that animating toward the lower bound is "backwards".
+          'reports the direction of reverse() and forward() for a '
+          'non-directional converter, as in 1.x', (tester) async {
+        // OffsetMotionConverter has no direction, so the direction comes
+        // from which bound the controller animates towards.
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
@@ -1037,16 +1037,35 @@ void main() {
           lowerBound: Offset.zero,
           upperBound: const Offset(1, 1),
         );
+        final statuses = <AnimationStatus>[];
+        controller.addStatusListener(statuses.add);
 
         unawaited(controller.reverse());
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.forward));
+        expect(controller.status, AnimationStatus.reverse);
+        // Without a direction, dismissed means back at the initial value.
         await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.completed));
+        expect(controller.status, AnimationStatus.completed);
 
         unawaited(controller.forward());
+        await tester.pump();
+        expect(controller.status, AnimationStatus.forward);
         await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.dismissed));
+        expect(controller.status, AnimationStatus.dismissed);
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        unawaited(controller.stop(canceled: true));
+        expect(controller.status, AnimationStatus.reverse);
+
+        expect(statuses, [
+          AnimationStatus.reverse,
+          AnimationStatus.completed,
+          AnimationStatus.forward,
+          AnimationStatus.dismissed,
+          AnimationStatus.reverse,
+        ]);
       });
 
       testWidgets(
