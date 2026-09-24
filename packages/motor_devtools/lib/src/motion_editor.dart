@@ -141,10 +141,7 @@ class EditableTrack extends StatelessWidget {
                           horizontal: 6,
                           vertical: 2,
                         ),
-                        decoration: BoxDecoration(
-                          color: palette.accent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
+                        color: palette.accent.withValues(alpha: 0.12),
                         child: Text(
                           tuned,
                           maxLines: 1,
@@ -232,12 +229,7 @@ class EditableTrack extends StatelessWidget {
               bottom: -8,
               child: Opacity(
                 opacity: t.clamp(0.0, 1.0),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: palette.fill,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                child: ColoredBox(color: palette.fill),
               ),
             ),
             child!,
@@ -479,8 +471,7 @@ class SpringGraph extends StatelessWidget {
                 builder: (context, handle, _) => Stack(
                   children: [
                     Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                      child: ClipRect(
                         child: CustomPaint(
                           painter: _GraphBackgroundPainter(palette),
                           foregroundPainter: _HandlePainter(handle, palette),
@@ -565,15 +556,20 @@ class _HandlePainter extends CustomPainter {
     canvas
       ..drawLine(Offset(point.dx, size.height), point, guide)
       ..drawLine(Offset(0, point.dy), point, guide)
-      ..drawCircle(
-        point + const Offset(0, 1),
-        10,
-        Paint()
-          ..color = palette.shadow
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      ..drawRect(
+        Rect.fromCenter(center: point, width: 18, height: 18),
+        Paint()..color = palette.surface,
       )
-      ..drawCircle(point, 10, Paint()..color = palette.surface)
-      ..drawCircle(point, 4.5, Paint()..color = palette.accent);
+      ..drawRect(
+        Rect.fromCenter(center: point, width: 18, height: 18),
+        Paint()
+          ..color = palette.outline
+          ..style = PaintingStyle.stroke,
+      )
+      ..drawRect(
+        Rect.fromCenter(center: point, width: 8, height: 8),
+        Paint()..color = palette.accent,
+      );
   }
 
   @override
@@ -791,9 +787,12 @@ class _PreviewPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5,
       )
-      ..drawCircle(
-        Offset(plot.left + plot.width * progress, yOf(value)),
-        4,
+      ..drawRect(
+        Rect.fromCenter(
+          center: Offset(plot.left + plot.width * progress, yOf(value)),
+          width: 7,
+          height: 7,
+        ),
         Paint()..color = palette.accent,
       );
     if (inGraph) return;
@@ -804,13 +803,13 @@ class _PreviewPainter extends CustomPainter {
       plot.bottom,
     );
     canvas
-      ..drawRRect(
-        RRect.fromRectAndRadius(rail, const Radius.circular(2)),
-        Paint()..color = palette.fill,
-      )
-      ..drawCircle(
-        Offset(rail.center.dx, yOf(value)),
-        7,
+      ..drawRect(rail, Paint()..color = palette.fill)
+      ..drawRect(
+        Rect.fromCenter(
+          center: Offset(rail.center.dx, yOf(value)),
+          width: 14,
+          height: 6,
+        ),
         Paint()..color = palette.text,
       );
   }
@@ -868,10 +867,7 @@ class _CodeLineState extends State<_CodeLine> {
       },
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(8),
-        ),
+        color: palette.surface,
         child: Row(
           children: [
             Expanded(

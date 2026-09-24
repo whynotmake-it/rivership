@@ -761,7 +761,6 @@ class _StatusDot extends StatelessWidget {
       width: 7,
       height: 7,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
         color: switch (state) {
           PlaybackState.playing => palette.accent,
           PlaybackState.paused => null,
@@ -1102,10 +1101,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: palette.fill,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        color: palette.fill,
                         child: Text(
                           'Pass debugLabel to the controller or its builder '
                           'to name it.',

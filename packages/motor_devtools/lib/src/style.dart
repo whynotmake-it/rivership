@@ -20,7 +20,7 @@ class DevToolsPalette {
     required this.secondary,
     required this.tertiary,
     required this.accent,
-    required this.shadow,
+    required this.outline,
   });
 
   /// Picks the palette for [brightness].
@@ -38,7 +38,7 @@ class DevToolsPalette {
     secondary: Color(0xFF71717A),
     tertiary: Color(0xFFA1A1AA),
     accent: Color(0xFF3D63DD),
-    shadow: Color(0x24000000),
+    outline: Color(0xFFD4D4D8),
   );
 
   /// The dark palette.
@@ -52,7 +52,7 @@ class DevToolsPalette {
     secondary: Color(0xFFA1A1AA),
     tertiary: Color(0xFF71717A),
     accent: Color(0xFF8AA4FF),
-    shadow: Color(0x66000000),
+    outline: Color(0xFF3F3F46),
   );
 
   /// This palette with [text] as its text color, and its secondary colors
@@ -67,7 +67,7 @@ class DevToolsPalette {
     secondary: text.withValues(alpha: 0.62),
     tertiary: text.withValues(alpha: 0.4),
     accent: accent ?? this.accent,
-    shadow: shadow,
+    outline: outline,
   );
 
   /// The brightness this palette is for.
@@ -97,8 +97,8 @@ class DevToolsPalette {
   /// The single accent: the playhead and live state.
   final Color accent;
 
-  /// The floating surface's shadow.
-  final Color shadow;
+  /// The edge of the floating surface and of handles.
+  final Color outline;
 
   /// A title, such as a controller name.
   TextStyle get title => TextStyle(
@@ -425,10 +425,7 @@ class GlyphButton extends StatelessWidget {
         width: size,
         height: size,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: filled ? palette.text : palette.fill,
-          shape: BoxShape.circle,
-        ),
+        color: filled ? palette.text : palette.fill,
         child: GlyphIcon(
           glyph,
           color: filled ? palette.surface : palette.text,
@@ -473,10 +470,7 @@ class Segmented<T> extends StatelessWidget {
     return Container(
       height: 30,
       padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: palette.fill,
-        borderRadius: BorderRadius.circular(9),
-      ),
+      color: palette.fill,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth / options.length;
@@ -489,20 +483,7 @@ class Segmented<T> extends StatelessWidget {
                   debugLabel: internalDebugLabel,
                   builder: (context, left, child) =>
                       Positioned(left: left, top: 0, bottom: 0, child: child!),
-                  child: Container(
-                    width: width,
-                    decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: BorderRadius.circular(7),
-                      boxShadow: [
-                        BoxShadow(
-                          color: palette.shadow.withValues(alpha: 0.12),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: Container(width: width, color: palette.surface),
                 ),
               Row(
                 children: [
@@ -639,33 +620,30 @@ class _SliderPainter extends CustomPainter {
     final y = size.height / 2;
     final x = knob + (size.width - knob * 2) * fraction;
     canvas
-      ..drawRRect(
-        RRect.fromLTRBR(
-          0,
-          y - 1.5,
-          size.width,
-          y + 1.5,
-          const Radius.circular(2),
-        ),
+      ..drawRect(
+        Rect.fromLTRB(0, y - 1.5, size.width, y + 1.5),
         Paint()..color = palette.fill,
       )
-      ..drawRRect(
-        RRect.fromLTRBR(0, y - 1.5, x, y + 1.5, const Radius.circular(2)),
+      ..drawRect(
+        Rect.fromLTRB(0, y - 1.5, x, y + 1.5),
         Paint()..color = palette.text,
       )
-      ..drawCircle(
-        Offset(x, y + 0.5),
-        knob,
-        Paint()
-          ..color = palette.shadow
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      ..drawRect(
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: knob * 1.5,
+          height: knob * 2,
+        ),
+        Paint()..color = palette.surface,
       )
-      ..drawCircle(Offset(x, y), knob, Paint()..color = palette.surface)
-      ..drawCircle(
-        Offset(x, y),
-        knob,
+      ..drawRect(
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: knob * 1.5,
+          height: knob * 2,
+        ),
         Paint()
-          ..color = palette.hairline
+          ..color = palette.outline
           ..style = PaintingStyle.stroke,
       );
   }
@@ -857,20 +835,12 @@ class Tag extends StatelessWidget {
           border: outlined && !selected
               ? Border.all(color: palette.hairline)
               : null,
-          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (marked) ...[
-              Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: palette.accent,
-                  shape: BoxShape.circle,
-                ),
-              ),
+              Container(width: 5, height: 5, color: palette.accent),
               const SizedBox(width: 6),
             ],
             Text(

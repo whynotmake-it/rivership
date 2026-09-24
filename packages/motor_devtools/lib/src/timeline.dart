@@ -909,7 +909,7 @@ class _LanePainter extends CustomPainter {
         mid - height / 2,
         math.max(left + gap + 2, right - gap),
         mid + height / 2,
-        Radius.circular(height / 2),
+        Radius.zero,
       );
       final base = color ?? palette.text;
       final future = base.withValues(
@@ -940,7 +940,7 @@ class _LanePainter extends CustomPainter {
           -3,
           playheadX.clamp(1, size.width - 1) + 0.75,
           size.height + 3,
-          const Radius.circular(1),
+          Radius.zero,
         ),
         Paint()..color = palette.accent,
       );
@@ -992,7 +992,7 @@ class _RulerPainter extends CustomPainter {
           4,
           x + 0.75,
           size.height + 6,
-          const Radius.circular(1),
+          Radius.zero,
         ),
         accent,
       )
