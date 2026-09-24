@@ -1,3 +1,4 @@
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
@@ -5,6 +6,7 @@ import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track_phase_timeline.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// Builds a widget from phase-driven track values.
 ///
@@ -67,6 +69,7 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
     this.onAnimationStatusChanged,
     this.child,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   });
 
@@ -117,13 +120,23 @@ class PhaseTrackBuilder<P extends Object> extends StatefulWidget {
   /// {@macro motor.debugLabel}
   final String? debugLabel;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<PhaseTrackBuilder<P>> createState() => _PhaseTrackBuilderState<P>();
 }
 
 class _PhaseTrackBuilderState<P extends Object>
-    extends State<PhaseTrackBuilder<P>> with TickerProviderStateMixin {
+    extends State<PhaseTrackBuilder<P>>
+    with TickerProviderStateMixin, TickerRateStateMixin {
   late final PhaseTrackController<P> _controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => _controller.resync(this);
 
   @override
   void initState() {
@@ -145,6 +158,7 @@ class _PhaseTrackBuilderState<P extends Object>
   @override
   void didUpdateWidget(PhaseTrackBuilder<P> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
 
     if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
       if (oldWidget.onAnimationStatusChanged != null) {
