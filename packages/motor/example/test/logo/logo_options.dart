@@ -15,14 +15,10 @@ class LogoOption {
 const logoOptions = [
   LogoOption('m', 'Two balls drop out of the two arches of an "m".', _m),
   LogoOption('yin-yang', 'Two balls circle in opposite directions.', _yinYang),
-  LogoOption('echo', 'One ball, three after-images.', _echo),
-  LogoOption(
-    'settle',
-    'One ball, after-images above and below: a spring.',
-    _settle,
-  ),
+  LogoOption('echo', 'One ball, three arcs.', _echo),
+  LogoOption('settle', 'One ball, arcs above and below: a spring.', _settle),
   LogoOption('follow', 'A small ball follows a big one.', _follow),
-  LogoOption('lift', 'One ball, one after-image, like the sheet logo.', _lift),
+  LogoOption('lift', 'The sheet logo\'s ball and arc.', _lift),
 ];
 
 /// The logo on a tilted tile, like the stupid_simple_sheet logo.
@@ -93,36 +89,33 @@ Paint _stroke(Color color, double width) => Paint()
 Rect _circle(Offset center, double radius) =>
     Rect.fromCircle(center: center, radius: radius);
 
-/// A ball moving toward [heading], trailed by [images] after-images: the back
-/// edge of a ghost of the ball, drawn like the stupid_simple_sheet motion arc
-/// (round caps, half the ball's radius thick). Each ghost sits [step] farther
-/// behind and fades.
+/// A ball moving toward [heading] with the stupid_simple_sheet motion arc
+/// behind it: concentric, round-capped, half the ball's radius thick, at 1.5
+/// radii plus a third of its thickness, sweeping [spread]. Further arcs repeat
+/// outward at the same spacing, keep the same length, and fade.
 void _ball(
   Canvas canvas,
   Offset center,
   double radius,
   Color color, {
   required double heading,
-  int images = 1,
-  double spread = math.pi * .5,
-  double? step,
-  double? ghost,
-  Color? lineColor,
+  int arcs = 1,
+  double spread = math.pi * .3,
+  Color? arcColor,
 }) {
+  final weight = radius / 2;
+  final first = radius * 1.5 + weight / 3;
+  final spacing = first - weight / 2 - radius + weight;
   canvas.drawCircle(center, radius, _fill(color));
-  for (var i = 1; i <= images; i++) {
+  for (var i = 0; i < arcs; i++) {
+    final arcRadius = first + spacing * i;
+    final sweep = spread * first / arcRadius;
     canvas.drawArc(
-      _circle(
-        center - Offset.fromDirection(heading, (step ?? radius * .8) * i),
-        ghost ?? radius,
-      ),
-      heading + math.pi - spread / 2,
-      spread,
+      _circle(center, arcRadius),
+      heading + math.pi - sweep / 2,
+      sweep,
       false,
-      _stroke(
-        (lineColor ?? color).withValues(alpha: 1 - (i - 1) * .32),
-        radius * .5,
-      ),
+      _stroke((arcColor ?? color).withValues(alpha: 1 - i * .32), weight),
     );
   }
 }
@@ -136,40 +129,26 @@ void _m(Canvas canvas, double s, Palette p) {
   for (final x in [.5 - arch, .5 + arch]) {
     _ball(
       canvas,
-      Offset(x * s, .6 * s),
+      Offset(x * s, .56 * s),
       radius * s,
       p.accent,
       heading: _down,
-      spread: math.pi * 1.2,
-      step: .08 * s,
-      ghost: arch * s,
-      lineColor: p.text,
+      spread: math.pi,
+      arcColor: p.text,
     );
   }
 }
 
 void _yinYang(Canvas canvas, double s, Palette p) {
   final center = Offset(s / 2, s / 2);
-  final orbit = .2 * s;
-  final radius = .1 * s;
-  const step = .42;
-  for (final (start, color) in [(-.3, p.accent), (math.pi - .3, p.text)]) {
-    for (var i = 2; i >= 1; i--) {
-      final angle = start - step * i;
-      final ghost = center + Offset.fromDirection(angle, orbit);
-      const spread = math.pi * .5;
-      canvas.drawArc(
-        _circle(ghost, radius),
-        angle - math.pi / 2 - spread / 2,
-        spread,
-        false,
-        _stroke(color.withValues(alpha: 1 - (i - 1) * .32), radius * .5),
-      );
-    }
-    canvas.drawCircle(
-      center + Offset.fromDirection(start, orbit),
-      radius,
-      _fill(color),
+  for (final (angle, color) in [(-.3, p.accent), (math.pi - .3, p.text)]) {
+    _ball(
+      canvas,
+      center + Offset.fromDirection(angle, .19 * s),
+      .1 * s,
+      color,
+      heading: angle + math.pi / 2,
+      arcs: 2,
     );
   }
 }
@@ -178,10 +157,10 @@ void _echo(Canvas canvas, double s, Palette p) {
   _ball(
     canvas,
     Offset(.58 * s, .42 * s),
-    .13 * s,
+    .12 * s,
     p.accent,
     heading: -math.pi / 4,
-    images: 3,
+    arcs: 3,
   );
 }
 
@@ -193,7 +172,7 @@ void _settle(Canvas canvas, double s, Palette p) {
       .12 * s,
       p.accent,
       heading: heading,
-      images: 2,
+      arcs: 2,
     );
   }
 }
@@ -203,11 +182,11 @@ void _follow(Canvas canvas, double s, Palette p) {
   _ball(canvas, Offset(.3 * s, .7 * s), .075 * s, p.text, heading: heading);
   _ball(
     canvas,
-    Offset(.64 * s, .36 * s),
-    .115 * s,
+    Offset(.63 * s, .37 * s),
+    .11 * s,
     p.accent,
     heading: heading,
-    images: 2,
+    arcs: 2,
   );
 }
 
