@@ -433,16 +433,40 @@ class _ControllerListState extends State<_ControllerList> {
   var _idleOpen = false;
   var _hiddenOpen = false;
 
-  /// Rows for [controllers]: explicit groups first, then one row per name,
-  /// merging controllers that share it. Muted controllers go last.
+  /// Rows for [controllers], with rows whose controllers are all muted last.
   List<Widget> _rows(List<TrackController> controllers, {bool groups = true}) {
+    final host = widget.host;
+    final rows = <String, List<TrackController>>{};
+    for (final controller in controllers) {
+      final group = groups ? controller.inspectionGroup : null;
+      final key = group != null
+          ? 'group $group'
+          : 'name ${host.baseNameOf(controller)}';
+      (rows[key] ??= []).add(controller);
+    }
+    bool muted(List<TrackController> row) => row.every((c) => c.isMuted);
+    return [
+      ..._rowsOf([
+        for (final row in rows.values)
+          if (!muted(row)) ...row,
+      ], groups: groups),
+      ..._rowsOf([
+        for (final row in rows.values)
+          if (muted(row)) ...row,
+      ], groups: groups),
+    ];
+  }
+
+  /// Rows for [controllers]: explicit groups first, then one row per name,
+  /// merging controllers that share it.
+  List<Widget> _rowsOf(
+    List<TrackController> controllers, {
+    required bool groups,
+  }) {
     final host = widget.host;
     final byGroup = <String, List<TrackController>>{};
     final byName = <String, List<TrackController>>{};
-    for (final controller in [
-      ...controllers.where((c) => !c.isMuted),
-      ...controllers.where((c) => c.isMuted),
-    ]) {
+    for (final controller in controllers) {
       if (controller.inspectionGroup case final group? when groups) {
         (byGroup[group] ??= []).add(controller);
       } else {

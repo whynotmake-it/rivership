@@ -58,6 +58,26 @@ void main() {
   });
   tearDown(() => subscription.dispose());
 
+  testWidgets('puts muted rows last, groups included', (tester) async {
+    await _pump(tester, [
+      TickerMode(
+        enabled: false,
+        child: Column(children: [_button(), _button()]),
+      ),
+      _builder(label: 'Live'),
+    ]);
+    await _open(tester);
+
+    final group = find.text('Button press ×2');
+    expect(
+      tester.getTopLeft(find.text('Live')).dy,
+      lessThan(
+        tester.getTopLeft(group).dy,
+      ),
+    );
+    expect(find.textContaining('Muted'), findsOneWidget);
+  });
+
   testWidgets('hides excluded controllers behind a footer', (tester) async {
     await _pump(tester, [
       _builder(label: 'Shown'),
