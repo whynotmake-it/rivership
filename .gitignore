@@ -39,3 +39,4 @@ pubspec_overrides.yaml
 
 # Screenshots
 **/.snaptest/     
+**/test/failures/

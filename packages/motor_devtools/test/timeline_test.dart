@@ -4,7 +4,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
-import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_devtools/src/timeline.dart';
 
 class _Observer implements MotorInspectionObserver {

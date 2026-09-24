@@ -195,7 +195,9 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     if (controller.debugLabel == internalDebugLabel) return;
     if (_controllers.contains(controller)) return;
     _numbers[controller] = _nextNumber++;
-    if (kDebugMode) _creations[controller] = StackTrace.current;
+    if (kDebugMode && controller.debugLabel == null) {
+      _creations[controller] = StackTrace.current;
+    }
     _controllers.add(controller);
     _scheduleRefresh();
   }
