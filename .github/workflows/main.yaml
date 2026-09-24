@@ -10,9 +10,6 @@ on:
       - main
       - dev
   pull_request:
-    branches:
-      - main
-      - dev
 
 jobs:
   semantic_pull_request:
