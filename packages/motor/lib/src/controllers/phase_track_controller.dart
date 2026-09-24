@@ -1,0 +1,261 @@
+import 'package:flutter/animation.dart';
+import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/loop_mode.dart';
+import 'package:motor/src/phase_transition.dart';
+import 'package:motor/src/track.dart';
+import 'package:motor/src/track_phase_timeline.dart';
+
+/// A [TrackController] extension that understands phases.
+///
+/// Wraps the standard sync-barrier playback with phase-level navigation:
+///
+/// - [playPhases] plays all phases in order (auto-advancing via sync
+///   barriers).
+/// - [goToPhase] jumps to a specific phase by replaying only that phase's
+///   animations.
+/// - [currentPhase] reports the phase currently being played or settled.
+///
+/// Phase changes are reported through a [PhaseTransition] callback:
+/// [PhaseTransitioning] when a new phase begins animating, and [PhaseSettled]
+/// when playback for the active phase comes to rest.
+///
+/// With [LoopMode.pingPong], phases are visited in reverse order after the
+/// forward pass. Each phase's own steps still play forward.
+class PhaseTrackController<P extends Object> extends TrackController {
+  /// Creates a phase track controller.
+  PhaseTrackController({
+    required super.vsync,
+    super.initialValues,
+    super.velocityTracking,
+    super.debugLabel,
+  });
+
+  TrackPhaseTimeline<P>? _activeTimeline;
+  void Function(PhaseTransition<P> transition)? _onTransition;
+  P? _currentPhase;
+  bool _isPlayingPhases = false;
+  bool _phaseDirectionForward = true;
+  TrackPhaseTimeline<P>? _seededTimeline;
+
+  /// The active phase timeline, if any.
+  TrackPhaseTimeline<P>? get activeTimeline => _activeTimeline;
+
+  /// The current phase during playback.
+  P? get currentPhase => _currentPhase;
+
+  /// Sets the timeline without starting playback.
+  ///
+  /// Use [goToPhase] after this to jump to a specific phase, or
+  /// [playPhases] to begin auto-advancing through all phases.
+  void setTimeline(
+    TrackPhaseTimeline<P> timeline, {
+    void Function(PhaseTransition<P> transition)? onTransition,
+  }) {
+    _activeTimeline = timeline;
+    _onTransition = onTransition;
+    _isPlayingPhases = false;
+    _phaseDirectionForward = true;
+  }
+
+  /// Plays through all phases of [timeline], auto-advancing when each
+  /// phase's animations settle.
+  ///
+  /// If [atPhase] is provided, playback starts from that phase (skipping
+  /// earlier phases). Otherwise, playback starts from the first phase.
+  ///
+  /// Returns a [TickerFuture] with whole-controller semantics (see
+  /// [TrackController.play]): for a non-looping timeline it completes when the
+  /// whole phase sequence settles. Looping phase timelines restart the ticker
+  /// each cycle, so the future resolves at the end of the first cycle — do not
+  /// `await` a looping timeline.
+  TickerFuture playPhases(
+    TrackPhaseTimeline<P> timeline, {
+    P? atPhase,
+    void Function(PhaseTransition<P> transition)? onTransition,
+  }) {
+    _activeTimeline = timeline;
+    _onTransition = onTransition;
+    _isPlayingPhases = true;
+    _phaseDirectionForward = true;
+    _seedFromIfNeeded(timeline);
+
+    final startIndex = atPhase != null ? timeline.phases.indexOf(atPhase) : 0;
+    final effectiveIndex = startIndex < 0 ? 0 : startIndex;
+
+    final startPhase = timeline.phases[effectiveIndex];
+    _currentPhase = startPhase;
+
+    if (effectiveIndex == 0) {
+      return play(timeline.flattened);
+    } else {
+      // Start partway through the timeline by playing only the animations
+      // from [startPhase] onward. Looping (handled in [onPlaybackCompleted])
+      // still restarts from the full timeline.
+      return animate(timeline.animationsFrom(startPhase));
+    }
+  }
+
+  /// Jumps to [phase] in the active timeline.
+  ///
+  /// Plays only that phase's animations from the current track values,
+  /// without playing preceding phases.
+  ///
+  /// Returns a [TickerFuture] with whole-controller semantics (see
+  /// [TrackController.animate]). Returns an already-complete future when there
+  /// is no active timeline or the phase is unknown.
+  TickerFuture goToPhase(P phase) {
+    final timeline = _activeTimeline;
+    assert(timeline != null, 'Call setTimeline or playPhases first.');
+    if (timeline == null) return TickerFuture.complete();
+
+    final index = timeline.phases.indexOf(phase);
+    assert(index >= 0, 'Phase $phase not found in timeline.');
+    if (index < 0) return TickerFuture.complete();
+
+    final wasPlayingPhases = _isPlayingPhases;
+    _isPlayingPhases = false;
+    _seedFromIfNeeded(timeline);
+
+    final previous = _currentPhase;
+    _currentPhase = phase;
+    if (previous != null && previous != phase) {
+      _onTransition?.call(PhaseTransitioning(from: previous, to: phase));
+    }
+
+    final anims = timeline.phaseAnimations[phase]!;
+    if (wasPlayingPhases) {
+      // Tracks this phase doesn't name would otherwise keep playing the
+      // whole timeline into later phases.
+      final named = {for (final animation in anims) animation.track};
+      stop(
+        tracks: [
+          for (final animation in timeline.flattened.animations)
+            if (!named.contains(animation.track)) animation.track,
+        ],
+      );
+    }
+    // Note: `initialValues`/`initialVelocities` are only applied once via [_seedFromIfNeeded];
+    // re-applying them on every phase change would snap tracks back to their
+    // initial values/velocities.
+    return animate(anims);
+  }
+
+  /// Applies the timeline's one-time `initialValues`/`initialVelocities` seeds exactly once,
+  /// the first time a timeline begins playing.
+  ///
+  /// A track listed in `initialVelocities` but not `initialValues` keeps its
+  /// current value and only takes the velocity.
+  /// Makes the next [playPhases] or [goToPhase] apply the timeline's
+  /// one-time `initialValues`/`initialVelocities` seeds again, as when restarting.
+  @internal
+  void forgetSeeds() => _seededTimeline = null;
+
+  void _seedFromIfNeeded(TrackPhaseTimeline<P> timeline) {
+    if (_seededTimeline == timeline) return;
+    _seededTimeline = timeline;
+    if (timeline.initialValues.isEmpty && timeline.initialVelocities.isEmpty) {
+      return;
+    }
+
+    final values = <TrackValue>[...timeline.initialValues];
+    for (final velocity in timeline.initialVelocities) {
+      final hasFrom = timeline.initialValues.any(
+        (override) => identical(override.track, velocity.track),
+      );
+      if (!hasFrom) values.add(_currentValueSnapshot(velocity.track));
+    }
+    set(values, withVelocity: timeline.initialVelocities);
+  }
+
+  TrackValue<T> _currentValueSnapshot<T extends Object>(Track<T> track) =>
+      track.value(value(track));
+
+  @override
+  TickerFuture stop({List<Track>? tracks, bool canceled = false}) {
+    if (tracks == null) _isPlayingPhases = false;
+    return super.stop(tracks: tracks, canceled: canceled);
+  }
+
+  @override
+  void onSyncReleased(Object token) {
+    final timeline = _activeTimeline;
+    if (timeline == null) return;
+
+    if (token is P && timeline.phases.contains(token)) {
+      final previous = _currentPhase;
+      _currentPhase = token;
+      if (previous != null && previous != token) {
+        _onTransition?.call(PhaseTransitioning(from: previous, to: token));
+      }
+    }
+  }
+
+  @override
+  void onPlaybackCompleted() {
+    final timeline = _activeTimeline;
+
+    if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {
+      final previous = _currentPhase;
+      final phases = timeline.phases;
+      final first = phases.first;
+
+      if (timeline.phaseLoop == LoopMode.pingPong && phases.length >= 2) {
+        if (_phaseDirectionForward) {
+          _phaseDirectionForward = false;
+          final next = phases[phases.length - 2];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.last, to: next),
+          );
+          animate(timeline.reversedAnimations());
+        } else {
+          _phaseDirectionForward = true;
+          final next = phases[1];
+          _currentPhase = next;
+          _onTransition?.call(
+            PhaseTransitioning(from: phases.first, to: next),
+          );
+          animate(timeline.animationsFrom(next));
+        }
+        return;
+      }
+
+      if (timeline.phaseLoop == LoopMode.seamless && phases.length >= 2) {
+        // seamless: jump straight back to the first phase (invisible when the
+        // last phase matches the first), then animate on to the second phase
+        // immediately. Replaying from the second phase avoids re-animating
+        // into the first phase, which would otherwise stall for the first
+        // step's full duration.
+
+        final second = phases[1];
+        final values = timeline.firstPhaseValues;
+        if (values.isNotEmpty) set(values);
+
+        if (previous != null && previous != first) {
+          _onTransition?.call(PhaseTransitioning(from: previous, to: first));
+        }
+        _currentPhase = second;
+        _onTransition?.call(PhaseTransitioning(from: first, to: second));
+        animate(timeline.animationsFrom(second));
+        return;
+      }
+
+      // loop (and single-phase seamless): animate from the current values back
+      // to the first phase and replay the whole timeline. Unlike `play`, this
+      // does not re-apply `timeline.initialValues`, so the loop animates back
+      // to the first phase rather than snapping to them each cycle.
+      _currentPhase = first;
+      if (previous != null && previous != first) {
+        _onTransition?.call(PhaseTransitioning(from: previous, to: first));
+      }
+      animate(timeline.flattened.animations);
+      return;
+    }
+
+    final phase = _currentPhase;
+    if (phase != null) {
+      _onTransition?.call(PhaseSettled(phase));
+    }
+  }
+}
