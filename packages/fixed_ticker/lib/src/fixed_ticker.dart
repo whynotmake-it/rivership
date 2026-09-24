@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fixed_ticker/src/active_timer_registry.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
@@ -118,7 +119,6 @@ class FixedTicker extends Ticker {
 
   Timer? _timer;
 
-  static int _activeCount = 0;
   static final _sharedScheduler = _SharedTickScheduler();
 
   /// Whether any [FixedTicker] instance currently has an active timer.
@@ -126,8 +126,7 @@ class FixedTicker extends Ticker {
   /// Used by the `pumpAndSettleFixedTickers` test utility to determine when
   /// all fixed-rate animations have completed.
   @visibleForTesting
-  static bool get hasActiveTimers =>
-      _activeCount > 0 || _sharedScheduler.hasSubscribers;
+  static bool get hasActiveTimers => ActiveTimerRegistry.hasActiveTimers;
 
   @override
   void scheduleTick({bool rescheduling = false}) {
@@ -157,7 +156,7 @@ class FixedTicker extends Ticker {
     }
     if (_timer?.isActive ?? false) return;
     _timer = Timer.periodic(interval, _handleTimerTick);
-    _activeCount++;
+    ActiveTimerRegistry.increment();
   }
 
   void _restartTimer(Duration interval) {
@@ -177,7 +176,7 @@ class FixedTicker extends Ticker {
     _sharedScheduler.unsubscribe(this);
     if (_timer?.isActive ?? false) {
       _timer!.cancel();
-      _activeCount--;
+      ActiveTimerRegistry.decrement();
     }
     _timer = null;
   }
@@ -199,8 +198,6 @@ class _SharedTickScheduler {
   final Map<FixedTicker, _SharedTickGroup> _tickerGroups =
       <FixedTicker, _SharedTickGroup>{};
   final Set<_SharedTickGroup> _groups = <_SharedTickGroup>{};
-
-  bool get hasSubscribers => _tickerGroups.isNotEmpty;
 
   void subscribe(FixedTicker ticker, Duration interval) {
     final existingGroup = _tickerGroups[ticker];
@@ -226,11 +223,14 @@ class _SharedTickScheduler {
     }
     selectedGroup.add(ticker, interval);
     _tickerGroups[ticker] = selectedGroup;
+    ActiveTimerRegistry.increment();
   }
 
   void unsubscribe(FixedTicker ticker) {
     final group = _tickerGroups.remove(ticker);
-    group?.remove(ticker);
+    if (group == null) return;
+    group.remove(ticker);
+    ActiveTimerRegistry.decrement();
   }
 
   void removeGroup(_SharedTickGroup group) {

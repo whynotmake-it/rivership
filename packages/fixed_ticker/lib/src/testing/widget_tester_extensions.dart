@@ -1,3 +1,4 @@
+import 'package:fixed_ticker/src/active_timer_registry.dart';
 import 'package:fixed_ticker/src/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +28,7 @@ extension FixedTickerTesting on WidgetTester {
       }
       await pump(duration);
       count++;
-    } while (binding.hasScheduledFrame || FixedTicker.hasActiveTimers);
+    } while (binding.hasScheduledFrame || ActiveTimerRegistry.hasActiveTimers);
     return count;
   }
 }
