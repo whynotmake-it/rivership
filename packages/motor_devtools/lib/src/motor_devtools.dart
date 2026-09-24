@@ -540,48 +540,47 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   @override
   Widget build(BuildContext context) {
     if (kMotorDevTools) {
-      if (widget.enabled) return _buildTools();
+      // Always the same Stack with the app first, so switching the tools on
+      // or off keeps the app's state.
+      return Stack(
+        fit: StackFit.passthrough,
+        textDirection: TextDirection.ltr,
+        children: [widget.child, if (widget.enabled) _buildOverlay()],
+      );
     }
     return widget.child;
   }
 
-  Widget _buildTools() {
+  Widget _buildOverlay() {
     final selected = _overlay.selectedController;
-    return Stack(
-      fit: StackFit.passthrough,
-      textDirection: TextDirection.ltr,
-      children: [
-        widget.child,
-        Positioned.fill(
-          // Hidden, the overlay keeps its state, such as the bubble's place
-          // and the open page, but its tickers stop.
-          child: Visibility(
-            visible: widget.visible,
-            maintainState: true,
-            child: _Environment(
-              child: FloatingBubble(
-                isOpen: _overlay.isOpen,
-                onOpen: () => _overlay.open(selected),
-                initialAlignment: widget.alignment,
-                activity: Listenable.merge(_controllers),
-                isActive: () => _controllers.any((c) => c.isAnimating),
-                modifiedCount: () => _controllers
-                    .where((c) => c.inspectable && changesOf(c).isNotEmpty)
-                    .length,
-                panel: DevToolsPanel(
-                  host: this,
-                  group:
-                      _selectedGroup != null &&
-                          _membersOf(_selectedGroup!).isNotEmpty
-                      ? _selectedGroup
-                      : null,
-                  controller: _controllers.contains(selected) ? selected : null,
-                ),
-              ),
+    return Positioned.fill(
+      // Hidden, the overlay keeps its state, such as the bubble's place
+      // and the open page, but its tickers stop.
+      child: Visibility(
+        visible: widget.visible,
+        maintainState: true,
+        child: _Environment(
+          child: FloatingBubble(
+            isOpen: _overlay.isOpen,
+            onOpen: () => _overlay.open(selected),
+            initialAlignment: widget.alignment,
+            activity: Listenable.merge(_controllers),
+            isActive: () => _controllers.any((c) => c.isAnimating),
+            modifiedCount: () => _controllers
+                .where((c) => c.inspectable && changesOf(c).isNotEmpty)
+                .length,
+            panel: DevToolsPanel(
+              host: this,
+              group:
+                  _selectedGroup != null &&
+                      _membersOf(_selectedGroup!).isNotEmpty
+                  ? _selectedGroup
+                  : null,
+              controller: _controllers.contains(selected) ? selected : null,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
