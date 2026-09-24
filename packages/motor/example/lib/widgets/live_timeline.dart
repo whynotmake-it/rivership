@@ -20,10 +20,10 @@ class LiveTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const .fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: .circular(radius),
         border: Border.all(color: p.border),
       ),
       child: DefaultTextStyle(

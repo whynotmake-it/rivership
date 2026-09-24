@@ -16,8 +16,8 @@ class StepsPage extends StatefulWidget {
 
 const _compact = Size(120, 34);
 const _expanded = Size(340, 84);
-const _fadeIn = CurvedMotion(Duration(milliseconds: 220), easeOut);
-const _fadeOut = CurvedMotion(Duration(milliseconds: 150), easeOut);
+const Motion _fadeIn = .curved(Duration(milliseconds: 220), easeOut);
+const Motion _fadeOut = .curved(Duration(milliseconds: 150), easeOut);
 
 class _StepsPageState extends State<StepsPage>
     with SingleTickerProviderStateMixin {
@@ -39,18 +39,12 @@ class _StepsPageState extends State<StepsPage>
     _shape([
       .to(
         _expanded,
-        motion: CupertinoMotion(
-          duration: Duration(milliseconds: 500),
-          bounce: .2,
-        ),
+        motion: .cupertino(duration: Duration(milliseconds: 500), bounce: .2),
       ),
       .sync(token: #faded),
       .to(
         _compact,
-        motion: CupertinoMotion(
-          duration: Duration(milliseconds: 400),
-          bounce: .1,
-        ),
+        motion: .cupertino(duration: Duration(milliseconds: 400), bounce: .1),
       ),
     ]),
     _content([
@@ -109,7 +103,7 @@ class _StepsPageState extends State<StepsPage>
       stage: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 22, 28, 0),
+            padding: const .fromLTRB(28, 22, 28, 0),
             child: Row(
               children: [
                 Text('9:41', style: mono(13, weight: 600, color: p.text)),
@@ -171,13 +165,13 @@ class _Island extends StatelessWidget {
     return Container(
       width: size.width,
       height: size.height,
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: .antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFF000000),
-        borderRadius: BorderRadius.circular(size.height / 2),
+        borderRadius: .circular(size.height / 2),
       ),
       child: Stack(
-        clipBehavior: Clip.none,
+        clipBehavior: .none,
         children: [
           Positioned(
             left: (size.width - _expanded.width) / 2,
@@ -188,17 +182,17 @@ class _Island extends StatelessWidget {
               progress: content,
               offset: const Offset(0, 4),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const .symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Transform.rotate(
                       angle: bell,
-                      alignment: Alignment.topCenter,
+                      alignment: .topCenter,
                       child: Container(
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          shape: .circle,
                           color: Palette.dark.accent,
                         ),
                         child: Icon(
@@ -211,20 +205,20 @@ class _Island extends StatelessWidget {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: .center,
+                        crossAxisAlignment: .start,
                         children: [
                           Text(
                             'motor 2.0 is here',
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            overflow: .ellipsis,
                             style: archivo(16, weight: 600, color: white),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Tracks, steps and timelines.',
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            overflow: .ellipsis,
                             style: archivo(
                               13,
                               color: white.withValues(alpha: .6),

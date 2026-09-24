@@ -20,12 +20,12 @@ enum _Player { mini, card, full }
 
 const _rest = Duration(milliseconds: 700);
 // The shape's tracks share one spring, so the frame and artwork move as one.
-const _move = CupertinoMotion(
-  duration: Duration(milliseconds: 450),
+const Motion _move = .cupertino(
+  duration: Duration(milliseconds: 320),
   bounce: .1,
 );
-const _fadeIn = CurvedMotion(Duration(milliseconds: 220), easeOut);
-const _fadeOut = CurvedMotion(Duration(milliseconds: 120), easeOut);
+const Motion _fadeIn = .curved(Duration(milliseconds: 220), easeOut);
+const Motion _fadeOut = .curved(Duration(milliseconds: 120), easeOut);
 // Pixels of drag from one phase to the next.
 const _dragPerPhase = 170.0;
 
@@ -38,24 +38,24 @@ typedef _Look = ({
 });
 
 const Map<_Player, _Look> _looks = {
-  _Player.mini: (
+  .mini: (
     frame: Size(220, 60),
     radius: 30.0,
-    art: Rect.fromLTWH(10, 10, 40, 40),
+    art: .fromLTWH(10, 10, 40, 40),
     inline: 1.0,
     stacked: 0.0,
   ),
-  _Player.card: (
+  .card: (
     frame: Size(320, 136),
     radius: 10.0,
-    art: Rect.fromLTWH(16, 16, 104, 104),
+    art: .fromLTWH(16, 16, 104, 104),
     inline: 1.0,
     stacked: 0.0,
   ),
-  _Player.full: (
+  .full: (
     frame: Size(320, 404),
     radius: 12.0,
-    art: Rect.fromLTWH(24, 24, 272, 236),
+    art: .fromLTWH(24, 24, 272, 236),
     inline: 0.0,
     stacked: 1.0,
   ),
@@ -101,7 +101,7 @@ class _PhasesPageState extends State<PhasesPage>
   }, phaseLoop: .pingPong);
 
   final _code = ValueNotifier(
-    '// Tap a phase, drag the player, or autoplay.\nplayer.goToPhase(Player.card);',
+    '// Tap a phase, drag the player, or autoplay.\nplayer.goToPhase(.card);',
   );
   var _phase = _Player.mini;
   var _autoplay = false;
@@ -141,7 +141,7 @@ class _PhasesPageState extends State<PhasesPage>
     });
     _code.value =
         '// Every track animates from where it is to its value in ${phase.name}.\n'
-        'player.goToPhase(Player.${phase.name});';
+        'player.goToPhase(.${phase.name});';
     _player.goToPhase(phase);
   }
 
@@ -150,10 +150,10 @@ class _PhasesPageState extends State<PhasesPage>
     if (_autoplay) {
       _code.value =
           '// Walks through the phases and back. Each waits for every track.\n'
-          'player.playPhases(phases, atPhase: Player.${_phase.name});';
+          'player.playPhases(phases, atPhase: .${_phase.name});';
       _player.playPhases(_phases, atPhase: _phase, onTransition: _onTransition);
     } else {
-      _code.value = 'player.goToPhase(Player.${_phase.name});';
+      _code.value = 'player.goToPhase(.${_phase.name});';
       _player.goToPhase(_phase);
     }
   }
@@ -215,12 +215,12 @@ class _PhasesPageState extends State<PhasesPage>
     if (_autoplay) {
       _code.value =
           '// Let go: autoplay carries on from ${phase.name}, at your speed.\n'
-          'player.playPhases(phases, atPhase: Player.${phase.name});';
+          'player.playPhases(phases, atPhase: .${phase.name});';
       _player.playPhases(_phases, atPhase: phase, onTransition: _onTransition);
     } else {
       _code.value =
           '// Let go: the nearest phase takes over, at your speed.\n'
-          'player.goToPhase(Player.${phase.name});';
+          'player.goToPhase(.${phase.name});';
       _player.goToPhase(phase);
     }
   }
@@ -278,12 +278,12 @@ class _PhasesPageState extends State<PhasesPage>
             right: 16,
             bottom: 16,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: .spaceBetween,
               children: [
                 Flexible(
                   child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    fit: .scaleDown,
+                    alignment: .centerLeft,
                     child: Choice(
                       options: const ['Mini', 'Card', 'Full'],
                       selected: _phase.index,
@@ -332,18 +332,22 @@ class _NowPlaying extends StatelessWidget {
     return Container(
       width: frame.width,
       height: frame.height,
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: .antiAlias,
       decoration: BoxDecoration(
         color: t.surface,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: .circular(radius),
         border: Border.all(color: t.border),
       ),
       child: Stack(
-        clipBehavior: Clip.none,
+        clipBehavior: .none,
         children: [
           Positioned.fromRect(
             rect: art,
-            child: _Artwork(size: art.width),
+            // Concentric with the frame: its radius less the inset.
+            child: _Artwork(
+              size: art.width,
+              radius: (radius - art.left).clamp(0, art.width / 2),
+            ),
           ),
           Positioned(
             left: art.right + 14,
@@ -354,23 +358,23 @@ class _NowPlaying extends StatelessWidget {
               progress: inline,
               offset: const Offset(-6, 0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: .center,
+                crossAxisAlignment: .start,
                 children: [
                   Text(
                     'Slow Motion',
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    overflow: .ellipsis,
                     style: t.title.copyWith(fontSize: 16),
                   ),
                   ClipRect(
                     child: Align(
-                      alignment: Alignment.topLeft,
+                      alignment: .topLeft,
                       heightFactor: roomy,
                       child: Opacity(
                         opacity: roomy,
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: .start,
                           children: [
                             Text('The Springs', style: t.caption),
                             const SizedBox(height: 12),
@@ -392,7 +396,7 @@ class _NowPlaying extends StatelessWidget {
               progress: stacked,
               offset: const Offset(0, 8),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: .start,
                 children: [
                   Text('Slow Motion', style: t.title.copyWith(fontSize: 22)),
                   const SizedBox(height: 2),
@@ -401,7 +405,7 @@ class _NowPlaying extends StatelessWidget {
                   const _Progress(width: 272),
                   const SizedBox(height: 14),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    mainAxisAlignment: .spaceEvenly,
                     children: [
                       for (final icon in [
                         CupertinoIcons.backward_fill,
@@ -422,9 +426,10 @@ class _NowPlaying extends StatelessWidget {
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.size});
+  const _Artwork({required this.size, required this.radius});
 
   final double size;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +437,7 @@ class _Artwork extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: p.accent,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: .circular(radius),
       ),
       child: Icon(
         CupertinoIcons.music_note_2,
@@ -454,17 +459,11 @@ class _Progress extends StatelessWidget {
     return Container(
       width: width,
       height: 4,
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: t.control,
-        borderRadius: BorderRadius.circular(2),
-      ),
+      alignment: .centerLeft,
+      decoration: BoxDecoration(color: t.control, borderRadius: .circular(2)),
       child: Container(
         width: width * .38,
-        decoration: BoxDecoration(
-          color: t.text,
-          borderRadius: BorderRadius.circular(2),
-        ),
+        decoration: BoxDecoration(color: t.text, borderRadius: .circular(2)),
       ),
     );
   }

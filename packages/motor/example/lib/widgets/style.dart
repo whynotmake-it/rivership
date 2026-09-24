@@ -80,9 +80,7 @@ class Palette {
 
   /// The palette for the platform brightness.
   static Palette of(BuildContext context) =>
-      MediaQuery.platformBrightnessOf(context) == Brightness.dark
-      ? dark
-      : light;
+      MediaQuery.platformBrightnessOf(context) == .dark ? dark : light;
 }
 
 /// Corner radius of surfaces and controls. Square: the rounded shapes are the
@@ -107,7 +105,7 @@ TextStyle archivo(
 }) => TextStyle(
   fontFamily: 'Archivo',
   fontSize: size,
-  fontWeight: FontWeight.lerp(
+  fontWeight: .lerp(
     FontWeight.w100,
     FontWeight.w900,
     ((weight - 100) / 800).clamp(0, 1),
@@ -176,7 +174,7 @@ class Blur extends StatelessWidget {
       imageFilter: ImageFilter.blur(
         sigmaX: sigma.dx,
         sigmaY: sigma.dy,
-        tileMode: TileMode.decal,
+        tileMode: .decal,
       ),
       child: child,
     );

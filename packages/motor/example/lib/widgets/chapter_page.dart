@@ -45,12 +45,12 @@ class ChapterPage extends StatelessWidget {
         child: SafeArea(
           bottom: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
+            padding: const .fromLTRB(20, 8, 20, 48),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: .stretch,
                   children: [
                     _TopBar(chapter: chapter),
                     const SizedBox(height: 36),
@@ -63,11 +63,11 @@ class ChapterPage extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: p.inset,
-                          borderRadius: BorderRadius.circular(radius),
+                          borderRadius: .circular(radius),
                           border: Border.all(color: p.border),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(radius),
+                          borderRadius: .circular(radius),
                           child: stage,
                         ),
                       ),
@@ -114,9 +114,9 @@ class _TopBar extends StatelessWidget {
             onTap: () => Navigator.of(context).maybePop(),
             child: Container(
               height: 32,
-              padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
+              padding: const .fromLTRB(6, 0, 12, 0),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(radius),
+                borderRadius: .circular(radius),
                 border: Border.all(color: p.border),
               ),
               child: Row(
@@ -136,7 +136,7 @@ class _TopBar extends StatelessWidget {
             Container(
               width: 14,
               height: 3,
-              margin: const EdgeInsets.only(left: 3),
+              margin: const .only(left: 3),
               color: identical(other, chapter) ? p.accent : p.control,
             ),
         ],
@@ -179,10 +179,10 @@ class CodeLine extends StatelessWidget {
     }
     spans.add(TextSpan(text: code.substring(start)));
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const .symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: .circular(radius),
         border: Border.all(color: p.border),
       ),
       child: Text.rich(TextSpan(children: spans), style: p.code),
@@ -203,10 +203,10 @@ class _NextButton extends StatelessWidget {
       // returns home.
       onTap: () => context.replaceRoute(NamedRoute(next.title)),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        padding: const .fromLTRB(16, 14, 14, 14),
         decoration: BoxDecoration(
           color: p.surface,
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: .circular(radius),
           border: Border.all(color: p.borderStrong),
         ),
         child: Row(

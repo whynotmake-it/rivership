@@ -83,14 +83,14 @@ class _ScrubPageState extends State<ScrubPage>
 
   void _scrub(double fraction) {
     if (!_scrubbing) {
-      if (_send.status == AnimationStatus.dismissed) _play();
+      if (_send.status == .dismissed) _play();
       setState(() => _scrubbing = true);
       _send.pause();
     }
     final time = _length * fraction.clamp(0.0, 1.0);
     _code.value =
         '// Scrubbing: every track shows its value at this time.\n'
-        'send..pause()..scrubTo(${(time.inMilliseconds / 1000).toStringAsFixed(2)}.s);';
+        'send..pause()..scrubTo(Duration(milliseconds: ${time.inMilliseconds}));';
     _send.scrubTo(_origin + time);
   }
 
@@ -126,7 +126,7 @@ class _ScrubPageState extends State<ScrubPage>
         builder: (context, _) {
           final value = _send.value;
           final elapsed = _send.inspectPlayback().position - _origin;
-          final progress = _send.status == AnimationStatus.dismissed
+          final progress = _send.status == .dismissed
               ? 0.0
               : (elapsed.inMicroseconds / _length.inMicroseconds).clamp(
                   0.0,
@@ -159,7 +159,7 @@ class _ScrubPageState extends State<ScrubPage>
               ),
               const SizedBox(height: 28),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                padding: const .fromLTRB(20, 0, 20, 18),
                 child: Row(
                   children: [
                     PillButton(
@@ -217,14 +217,14 @@ class _SendButton extends StatelessWidget {
             height: math.min(width, _puck),
             decoration: BoxDecoration(
               color: Color.lerp(t.text, t.accent, check),
-              borderRadius: BorderRadius.circular(width),
+              borderRadius: .circular(width),
             ),
             child: Stack(
-              alignment: Alignment.center,
+              alignment: .center,
               children: [
                 Reveal(
                   progress: label,
-                  offset: Offset.zero,
+                  offset: .zero,
                   child: OverflowBox(
                     maxWidth: _button,
                     child: Text(
@@ -237,13 +237,13 @@ class _SendButton extends StatelessWidget {
                   Transform.rotate(
                     angle: spinner * 2 * math.pi,
                     child: CustomPaint(
-                      size: const Size.square(26),
+                      size: const .square(26),
                       painter: _ArcPainter(t.canvas),
                     ),
                   ),
                 if (check > 0)
                   CustomPaint(
-                    size: const Size.square(30),
+                    size: const .square(30),
                     painter: _CheckPainter(check, CupertinoColors.white),
                   ),
               ],
@@ -276,7 +276,7 @@ class _Scrubber extends StatelessWidget {
         final width = constraints.maxWidth;
         double fraction(Offset position) => position.dx / width;
         return GestureDetector(
-          behavior: HitTestBehavior.opaque,
+          behavior: .opaque,
           onHorizontalDragStart: (details) =>
               onScrub(fraction(details.localPosition)),
           onHorizontalDragUpdate: (details) =>
@@ -287,7 +287,7 @@ class _Scrubber extends StatelessWidget {
           child: SizedBox(
             height: 40,
             child: Stack(
-              alignment: Alignment.centerLeft,
+              alignment: .centerLeft,
               children: [
                 Container(height: 4, color: t.control),
                 Container(width: progress * width, height: 4, color: t.accent),
@@ -322,9 +322,9 @@ class _ArcPainter extends CustomPainter {
       false,
       Paint()
         ..color = color
-        ..style = PaintingStyle.stroke
+        ..style = .stroke
         ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
+        ..strokeCap = .round,
     );
   }
 
@@ -349,10 +349,10 @@ class _CheckPainter extends CustomPainter {
       metric.extractPath(0, metric.length * progress.clamp(0, 1)),
       Paint()
         ..color = color
-        ..style = PaintingStyle.stroke
+        ..style = .stroke
         ..strokeWidth = 3.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeCap = .round
+        ..strokeJoin = .round,
     );
   }
 
@@ -372,7 +372,7 @@ class _ConfettiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (burst <= 0 || burst >= 1) return;
-    final center = size.center(Offset.zero);
+    final center = size.center(.zero);
     for (var i = 0; i < _count; i++) {
       final angle = i / _count * 2 * math.pi + .3;
       final reach = 60.0 + (i % 3) * 22;

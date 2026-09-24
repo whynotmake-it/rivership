@@ -18,7 +18,7 @@ enum _Phase { clearing, returning }
 // One track, shared: every card has its own controller.
 final _offset = Track<Offset>(
   .offset,
-  initial: Offset.zero,
+  initial: .zero,
   motion: .bouncySpring(),
   debugLabel: 'Offset',
 );
@@ -45,8 +45,8 @@ class _CardStackPageState extends State<CardStackPage>
   final _code = ValueNotifier(
     '// Throw the top card.\n'
     'card.playPhases(TrackPhaseTimeline({\n'
-    '  clearing: [offset.to(out, motion: spring.trimmed(fromEnd: .9))],\n'
-    '  returning: [offset.to(Offset.zero)],\n'
+    '  .clearing: [offset.to(out, motion: .smoothSpring().trimmed(fromEnd: .9))],\n'
+    '  .returning: [offset.to(.zero)],\n'
     '}));',
   );
 
@@ -80,9 +80,9 @@ class _CardStackPageState extends State<CardStackPage>
     if (landing.distance < 70) {
       _code.value =
           '// A gentle throw: spring straight back, at the throw\'s speed.\n'
-          'card.animate([offset.to(Offset.zero, withVelocity: '
+          'card.animate([offset.to(.zero, withVelocity: '
           '${_format(velocity)})]);';
-      controller.animate([_offset.to(Offset.zero, withVelocity: velocity)]);
+      controller.animate([_offset.to(.zero, withVelocity: velocity)]);
       return;
     }
     // Go at least far enough to clear the stack.
@@ -92,23 +92,23 @@ class _CardStackPageState extends State<CardStackPage>
     _code.value =
         '// Thrown: clear the stack, then come back underneath.\n'
         'card.playPhases(TrackPhaseTimeline({\n'
-        '  clearing: [offset.to(${_format(out)}, motion: spring.trimmed(fromEnd: .9))],\n'
-        '  returning: [offset.to(Offset.zero)],\n'
+        '  .clearing: [offset.to(${_format(out)}, motion: .smoothSpring().trimmed(fromEnd: .9))],\n'
+        '  .returning: [offset.to(.zero)],\n'
         '}, initialVelocities: [offset.value(${_format(velocity)})]));';
     controller.playPhases(
       TrackPhaseTimeline(
         {
           // Only the start of the spring: it's cut while still moving, so the
           // next phase takes over its velocity and curves back.
-          _Phase.clearing: [
+          .clearing: [
             _offset.to(out, motion: .smoothSpring().trimmed(fromEnd: .9)),
           ],
-          _Phase.returning: [_offset.to(Offset.zero)],
+          .returning: [_offset.to(.zero)],
         },
         initialVelocities: [_offset.value(velocity)],
       ),
       onTransition: (transition) {
-        if (transition case PhaseTransitioning(to: _Phase.returning)) {
+        if (transition case PhaseTransitioning(to: .returning)) {
           setState(
             () => _order
               ..remove(card)
@@ -202,14 +202,14 @@ class _Card extends StatelessWidget {
         child: Container(
           width: 220,
           height: 280,
-          padding: const EdgeInsets.all(18),
+          padding: const .all(18),
           decoration: BoxDecoration(
             color: index == 0 ? p.accent : p.surface,
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: .circular(radius),
             border: Border.all(color: index == 0 ? p.accent : p.borderStrong),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: .start,
             children: [
               const Spacer(),
               Text(

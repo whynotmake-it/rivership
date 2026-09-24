@@ -28,7 +28,7 @@ class _PressScaleState extends State<PressScale> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+      behavior: .opaque,
       onTapDown: (_) => _press(true),
       onTapUp: (_) => _press(false),
       onTapCancel: () => _press(false),
@@ -65,25 +65,22 @@ class Choice extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     return Container(
-      padding: const EdgeInsets.all(2),
+      padding: const .all(2),
       decoration: BoxDecoration(
         color: p.control,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: .circular(radius),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: .min,
         children: [
           for (final (index, option) in options.indexed)
             GestureDetector(
               onTap: () => onSelect(index),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
+                padding: const .symmetric(horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
                   color: index == selected ? p.surface : null,
-                  borderRadius: BorderRadius.circular(radius),
+                  borderRadius: .circular(radius),
                 ),
                 child: Text(
                   option.toUpperCase(),
@@ -124,14 +121,14 @@ class PillButton extends StatelessWidget {
     return PressScale(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.fromLTRB(icon == null ? 12 : 10, 8, 12, 8),
+        padding: .fromLTRB(icon == null ? 12 : 10, 8, 12, 8),
         decoration: BoxDecoration(
           color: filled ? p.accent : p.surface,
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: .circular(radius),
           border: filled ? null : Border.all(color: p.borderStrong),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: .min,
           children: [
             if (icon case final icon?) ...[
               Icon(icon, size: 14, color: foreground),

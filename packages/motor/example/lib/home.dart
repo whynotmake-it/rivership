@@ -84,12 +84,12 @@ class _HomePageState extends State<HomePage>
         child: SafeArea(
           bottom: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 56),
+            padding: const .fromLTRB(20, 8, 20, 56),
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: wide ? 920 : 600),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: .start,
                   children: [
                     const _Header(),
                     SizedBox(height: wide ? 96 : 56),
@@ -97,7 +97,7 @@ class _HomePageState extends State<HomePage>
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: .start,
                             children: [
                               GestureDetector(
                                 onTap: _enter,
@@ -206,13 +206,13 @@ class _DevToolsToggle extends StatelessWidget {
           onTap: () => devtoolsEnabled.value = !enabled,
           child: Container(
             height: 32,
-            padding: const EdgeInsets.fromLTRB(10, 0, 5, 0),
+            padding: const .fromLTRB(10, 0, 5, 0),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
+              borderRadius: .circular(radius),
               border: Border.all(color: p.border),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: .min,
               children: [
                 Text(
                   'DevTools',
@@ -226,10 +226,10 @@ class _DevToolsToggle extends StatelessWidget {
                   builder: (context, on, _) => Container(
                     width: 34,
                     height: 20,
-                    padding: const EdgeInsets.all(2),
+                    padding: const .all(2),
                     decoration: BoxDecoration(
                       color: Color.lerp(p.control, p.accent, on.clamp(0, 1)),
-                      borderRadius: BorderRadius.circular(radius),
+                      borderRadius: .circular(radius),
                     ),
                     child: Align(
                       alignment: Alignment(on * 2 - 1, 0),
@@ -238,7 +238,7 @@ class _DevToolsToggle extends StatelessWidget {
                         height: 16,
                         decoration: BoxDecoration(
                           color: p.surface,
-                          borderRadius: BorderRadius.circular(radius),
+                          borderRadius: .circular(radius),
                         ),
                       ),
                     ),
@@ -262,13 +262,13 @@ class _StartButton extends StatelessWidget {
     return PressScale(
       onTap: () => context.navigateTo(NamedRoute(chapters.first.title)),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
+        padding: const .fromLTRB(16, 13, 14, 13),
         decoration: BoxDecoration(
           color: p.accent,
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: .circular(radius),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: .min,
           children: [
             Text(
               'Start with ${chapters.first.title}',
@@ -310,7 +310,7 @@ class _ChapterGrid extends StatelessWidget {
 // Every card rests at its own slight angle, in degrees.
 const _tilts = [-1.8, 1.4, -1.1, 2.0, -1.5, 1.2, -1.9];
 
-final _scaleAndTurn = MotionConverter<(double, double)>.custom(
+final MotionConverter<(double, double)> _scaleAndTurn = .custom(
   normalize: (value) => [value.$1, value.$2],
   denormalize: (values) => (values[0], values[1]),
 );
@@ -350,7 +350,7 @@ class _ChapterCardState extends State<_ChapterCard> {
               _pressed ? .97 : (_hovered ? 1.02 : 1),
               calm ? 0 : _tilts[index % _tilts.length] * math.pi / 180,
             ),
-            motion: const CupertinoMotion(
+            motion: const .cupertino(
               duration: Duration(milliseconds: 400),
               bounce: .25,
             ),
@@ -361,21 +361,21 @@ class _ChapterCardState extends State<_ChapterCard> {
               child: Transform.scale(scale: value.$1, child: child),
             ),
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const .all(8),
               decoration: BoxDecoration(
                 color: p.surface,
-                borderRadius: BorderRadius.circular(radius),
+                borderRadius: .circular(radius),
                 border: Border.all(color: calm ? p.borderStrong : p.border),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: .start,
                 children: [
                   AspectRatio(
                     aspectRatio: 1.35,
                     child: Container(
                       decoration: BoxDecoration(
                         color: p.inset,
-                        borderRadius: BorderRadius.circular(radius),
+                        borderRadius: .circular(radius),
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) => Transform.scale(
@@ -386,16 +386,16 @@ class _ChapterCardState extends State<_ChapterCard> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+                    padding: const .fromLTRB(6, 14, 6, 8),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: .start,
                       children: [
                         Text(widget.chapter.title, style: p.title),
                         const SizedBox(height: 4),
                         Text(
                           widget.chapter.idea,
                           maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          overflow: .ellipsis,
                           style: p.body.copyWith(fontSize: 13, height: 1.4),
                         ),
                       ],
@@ -425,7 +425,7 @@ class _Glyph extends StatelessWidget {
       height: h,
       decoration: BoxDecoration(
         color: color ?? p.text,
-        borderRadius: BorderRadius.circular(r),
+        borderRadius: .circular(r),
       ),
     );
     final accent = p.accent;
@@ -435,13 +435,10 @@ class _Glyph extends StatelessWidget {
         0 => Container(
           width: 52,
           height: 30,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: accent,
-            borderRadius: BorderRadius.circular(15),
-          ),
+          padding: const .all(3),
+          decoration: BoxDecoration(color: accent, borderRadius: .circular(15)),
           child: Align(
-            alignment: Alignment.centerRight,
+            alignment: .centerRight,
             child: box(24, 24, color: p.surface, r: 12),
           ),
         ),
@@ -449,10 +446,10 @@ class _Glyph extends StatelessWidget {
         1 => Container(
           width: 64,
           height: 22,
-          padding: const EdgeInsets.all(3),
+          padding: const .all(3),
           decoration: BoxDecoration(
             color: p.control,
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: .circular(11),
           ),
           child: Align(
             alignment: const Alignment(.3, 0),
@@ -463,11 +460,11 @@ class _Glyph extends StatelessWidget {
         2 => Transform.rotate(
           angle: -.18,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: .min,
             children: [
               for (final alpha in [.15, .3])
                 Padding(
-                  padding: const EdgeInsets.only(right: 3),
+                  padding: const .only(right: 3),
                   child: box(6, 30, color: p.text.withValues(alpha: alpha)),
                 ),
               box(36, 30, color: accent),
@@ -476,8 +473,8 @@ class _Glyph extends StatelessWidget {
         ),
         // Steps: a staircase.
         3 => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: .min,
+          crossAxisAlignment: .end,
           children: [
             for (final (i, h) in [14.0, 26.0, 38.0].indexed) ...[
               box(12, h, color: i == 2 ? accent : null, r: 3),
@@ -487,11 +484,11 @@ class _Glyph extends StatelessWidget {
         ),
         // Sync: two lanes meeting at a barrier.
         4 => Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: .min,
           children: [
             Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: .min,
+              crossAxisAlignment: .end,
               children: [
                 box(20, 8, r: 4),
                 const SizedBox(height: 8),
@@ -504,7 +501,7 @@ class _Glyph extends StatelessWidget {
         ),
         // Phases: three sizes of one thing.
         5 => Stack(
-          alignment: Alignment.bottomLeft,
+          alignment: .bottomLeft,
           children: [
             box(52, 44, color: p.control, r: 10),
             box(38, 28, color: p.borderStrong, r: 8),
@@ -516,7 +513,7 @@ class _Glyph extends StatelessWidget {
           width: 56,
           height: 40,
           child: Stack(
-            alignment: Alignment.centerLeft,
+            alignment: .centerLeft,
             children: [
               Positioned(top: 8, child: box(40, 6, color: p.control, r: 3)),
               Positioned(
@@ -552,7 +549,7 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
     motion: const .bouncySpring(duration: Duration(milliseconds: 700)),
     vsync: this,
     converter: .offset,
-    initialValue: Offset.zero,
+    initialValue: .zero,
     debugLabel: 'Home orb',
   );
 
@@ -566,13 +563,13 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: .center,
       children: [
         GestureDetector(
           onPanUpdate: (details) =>
               _offset.value = _offset.value + details.delta,
           onPanEnd: (details) => _offset.animateTo(
-            Offset.zero,
+            .zero,
             withVelocity: details.velocity.pixelsPerSecond,
           ),
           child: AnimatedBuilder(
@@ -598,10 +595,7 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
             child: Container(
               width: 140,
               height: 140,
-              decoration: BoxDecoration(
-                color: p.accent,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: p.accent, shape: .circle),
             ),
           ),
         ),

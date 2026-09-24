@@ -28,7 +28,7 @@ class _Card {
   String toString() => 'flip ${flip.toStringAsFixed(2)}';
 }
 
-final _cardConverter = MotionConverter<_Card>.custom(
+final MotionConverter<_Card> _cardConverter = .custom(
   normalize: (card) => [card.position.dx, card.position.dy, card.flip],
   denormalize: (values) => _Card(Offset(values[0], values[1]), values[2]),
 );
@@ -141,7 +141,7 @@ class _SyncPageState extends State<SyncPage>
                 'to three times its nominal duration. To sync on the moment a '
                 'card visibly lands, give that step a fixed length: '
                 'motion.scaleTo(d), a curve, or an .at keyframe.',
-                textAlign: TextAlign.center,
+                textAlign: .center,
                 style: t.caption,
               ),
             ),
@@ -171,12 +171,12 @@ class _SyncPageState extends State<SyncPage>
             right: 16,
             bottom: 16,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: .spaceBetween,
               children: [
                 Flexible(
                   child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    fit: .scaleDown,
+                    alignment: .centerLeft,
                     child: Choice(
                       options: const ['Together', 'On landing'],
                       selected: _together ? 0 : 1,
@@ -217,7 +217,7 @@ class _FlyingCard extends StatelessWidget {
     return Transform.translate(
       offset: card.position,
       child: Transform(
-        alignment: Alignment.center,
+        alignment: .center,
         transform: Matrix4.identity()
           ..setEntry(3, 2, .0015)
           ..rotateY(angle)
@@ -229,7 +229,7 @@ class _FlyingCard extends StatelessWidget {
           ),
         child: showFront
             ? Transform(
-                alignment: Alignment.center,
+                alignment: .center,
                 transform: Matrix4.rotationY(math.pi),
                 child: _CardFront(face: face),
               )
@@ -252,7 +252,7 @@ class _CardBack extends StatelessWidget {
       height: _cardSize.height,
       decoration: BoxDecoration(
         color: t.accent,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: .circular(6),
         boxShadow: [
           if (stacked)
             for (var i = 1; i <= 3; i++)
@@ -282,10 +282,10 @@ class _CardFront extends StatelessWidget {
     return Container(
       width: _cardSize.width,
       height: _cardSize.height,
-      padding: const EdgeInsets.all(10),
+      padding: const .all(10),
       decoration: BoxDecoration(
         color: t.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: .circular(6),
         border: Border.all(color: t.borderStrong),
       ),
       child: Stack(

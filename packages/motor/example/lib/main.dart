@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:motor/motor.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/font_licenses.dart';
@@ -20,9 +19,9 @@ void main() {
       builder: (context, enabled, child) => MotorDevTools(
         enabled: enabled,
         motions: const {
-          'Smooth': Motion.smoothSpring(),
-          'Snappy': Motion.snappySpring(),
-          'Bouncy': Motion.bouncySpring(),
+          'Smooth': .smoothSpring(),
+          'Snappy': .snappySpring(),
+          'Bouncy': .bouncySpring(),
         },
         child: child!,
       ),

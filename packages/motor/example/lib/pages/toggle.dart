@@ -27,25 +27,25 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
   final _thumb = Track<double>(
     .single,
     initial: 0,
-    motion: CupertinoMotion(duration: Duration(milliseconds: 450), bounce: .25),
+    motion: .cupertino(duration: Duration(milliseconds: 300), bounce: .2),
     debugLabel: 'Thumb',
   );
   final _squish = Track<double>(
     .single,
     initial: 0,
-    motion: .snappySpring(duration: Duration(milliseconds: 250)),
+    motion: .snappySpring(duration: Duration(milliseconds: 150)),
     debugLabel: 'Squish',
   );
   final _tint = Track<double>(
     .single,
     initial: 0,
-    motion: .smoothSpring(duration: Duration(milliseconds: 300)),
+    motion: .smoothSpring(duration: Duration(milliseconds: 200)),
     debugLabel: 'Tint',
   );
   final _scale = Track<double>(
     .single,
     initial: 1,
-    motion: CupertinoMotion(duration: Duration(milliseconds: 400), bounce: .3),
+    motion: .cupertino(duration: Duration(milliseconds: 300), bounce: .3),
     debugLabel: 'Scale',
   );
   final _burst = Track<double>(.single, initial: 0, debugLabel: 'Burst');
@@ -134,7 +134,7 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
     _code.value =
         '// Liked: the scale pops on a keyframe, the burst plays once.\n'
         'like.animate([\n'
-        '  scale([.at(120.ms, 1.3), .to(1)]),\n'
+        '  scale([.at(Duration(milliseconds: 120), 1.3), .to(1)]),\n'
         '  burst.to(1, from: 0),\n'
         ']);';
     _like.animate([
@@ -177,7 +177,7 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
             ),
       stageHeight: 360,
       stage: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: .center,
         children: [
           GestureDetector(
             onTapDown: (_) => _press(true),
@@ -238,13 +238,13 @@ class _Switch extends StatelessWidget {
     return Container(
       width: _width,
       height: _height,
-      padding: const EdgeInsets.all(6),
+      padding: const .all(6),
       decoration: BoxDecoration(
         color: Color.lerp(p.control, p.accent, tint.clamp(0, 1)),
-        borderRadius: BorderRadius.circular(_height / 2),
+        borderRadius: .circular(_height / 2),
       ),
       child: Stack(
-        clipBehavior: Clip.none,
+        clipBehavior: .none,
         children: [
           Positioned(
             left: at * (_travel + _knob - width),
@@ -254,10 +254,10 @@ class _Switch extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: p.surface,
-                borderRadius: BorderRadius.circular(_knob / 2),
+                borderRadius: .circular(_knob / 2),
               ),
               child: Stack(
-                alignment: Alignment.center,
+                alignment: .center,
                 children: [
                   _Icon(
                     CupertinoIcons.sun_max_fill,
@@ -329,15 +329,12 @@ class _Heart extends StatelessWidget {
     return SizedBox.square(
       dimension: 96,
       child: Stack(
-        alignment: Alignment.center,
+        alignment: .center,
         children: [
           if (burst > 0 && burst < 1)
             for (var i = 0; i < 8; i++)
               Transform.translate(
-                offset: Offset.fromDirection(
-                  i / 8 * 2 * math.pi,
-                  22 + burst * 22,
-                ),
+                offset: .fromDirection(i / 8 * 2 * math.pi, 22 + burst * 22),
                 child: Container(
                   width: 5,
                   height: 5,

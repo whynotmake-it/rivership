@@ -13,7 +13,7 @@ class MotorLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = Palette.of(context);
     return CustomPaint(
-      size: Size.square(size),
+      size: .square(size),
       painter: _MotorLogoPainter(color: p.text),
     );
   }
@@ -32,17 +32,17 @@ class _MotorLogoPainter extends CustomPainter {
     final cy = h / 2;
 
     final ringPaint = Paint()
-      ..style = PaintingStyle.stroke
+      ..style = .stroke
       ..strokeWidth = w * 0.05
       ..color = color.withValues(alpha: .18);
 
     canvas.drawCircle(Offset(cx, cy), w * 0.44, ringPaint);
 
     final wavePaint = Paint()
-      ..style = PaintingStyle.stroke
+      ..style = .stroke
       ..strokeWidth = w * 0.08
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = .round
+      ..strokeJoin = .round
       ..color = color;
 
     final startX = w * 0.22;

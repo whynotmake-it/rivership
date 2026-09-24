@@ -15,11 +15,11 @@ class RetargetPage extends StatefulWidget {
 
 const _tabs = ['Day', 'Week', 'Month', 'Year'];
 const _stats = ['8,204', '61,930', '248k', '3.1M'];
-const _spring = CupertinoMotion(
+const Motion _spring = .cupertino(
   duration: Duration(milliseconds: 520),
   bounce: .12,
 );
-const _curve = CurvedMotion(Duration(milliseconds: 520), Curves.easeInOut);
+const Motion _curve = .curved(Duration(milliseconds: 520), Curves.easeInOut);
 
 class _RetargetPageState extends State<RetargetPage>
     with SingleTickerProviderStateMixin {
@@ -76,8 +76,8 @@ class _RetargetPageState extends State<RetargetPage>
   void _setSpring(bool spring) {
     setState(() => _useSpring = spring);
     _code.value = spring
-        ? 'indicator.motion = CupertinoMotion(bounce: .12);'
-        : 'indicator.motion = CurvedMotion(520.ms, Curves.easeInOut);';
+        ? 'indicator.motion = .cupertino(bounce: .12);'
+        : 'indicator.motion = .curved(Duration(milliseconds: 520), Curves.easeInOut);';
     _indicator.motion = spring ? _spring : _curve;
   }
 
@@ -148,10 +148,10 @@ class _Stage extends StatelessWidget {
             Container(
               width: barWidth,
               height: 40,
-              padding: const EdgeInsets.all(3),
+              padding: const .all(3),
               decoration: BoxDecoration(
                 color: p.control,
-                borderRadius: BorderRadius.circular(radius),
+                borderRadius: .circular(radius),
               ),
               child: Stack(
                 children: [
@@ -165,7 +165,7 @@ class _Stage extends StatelessWidget {
                       child: Container(
                         decoration: BoxDecoration(
                           color: p.surface,
-                          borderRadius: BorderRadius.circular(radius),
+                          borderRadius: .circular(radius),
                         ),
                       ),
                     ),
@@ -175,7 +175,7 @@ class _Stage extends StatelessWidget {
                       for (final (index, label) in _tabs.indexed)
                         Expanded(
                           child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
+                            behavior: .opaque,
                             onTapDown: (_) => onSelect(index),
                             child: Center(
                               child: Text(
@@ -212,7 +212,7 @@ class _Stage extends StatelessWidget {
                             1.0,
                           ),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: .center,
                             children: [
                               Text(
                                 stat,
@@ -245,14 +245,14 @@ class _Stage extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              padding: const .fromLTRB(16, 10, 16, 16),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       'Position over time',
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      overflow: .ellipsis,
                       style: p.caption,
                     ),
                   ),
@@ -313,10 +313,10 @@ class _TracePainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..style = PaintingStyle.stroke
+        ..style = .stroke
         ..strokeWidth = 2
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round
+        ..strokeJoin = .round
+        ..strokeCap = .round
         ..color = line,
     );
   }
