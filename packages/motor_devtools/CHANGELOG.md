@@ -28,7 +28,8 @@
   changes with Reset on a controller or group page or "Reset all". Pausing and
   scrubbing resume when their page is left. The list pins changed
   controllers in a Modified section and folds controllers with a muted
-  ticker into a Muted section.
+  ticker into a Muted section. "Hide idle" folds controllers that stopped,
+  until they play again.
 - Drag the open panel from its header or background, and minimize it back
   into the bubble.
 - Support opt-in production use; when disabled, the inspection registry is

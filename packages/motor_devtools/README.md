@@ -90,7 +90,9 @@ match, they apply to all its tracks. Hidden controllers sit behind an
 "N hidden" row.
 
 Without a group, controllers with the same name share one row that unfolds,
-and controllers that never played fold into an "N idle" row.
+and controllers that never played fold into an "N idle" row. "Hide idle" folds
+the ones that stopped too, until they play again; modified controllers stay
+out.
 
 ## What you can do
 

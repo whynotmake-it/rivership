@@ -135,6 +135,10 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   var _refreshScheduled = false;
   Timer? _mutedPoll;
   var _muted = <TrackController>{};
+  var _animating = <TrackController>{};
+
+  /// The activity frame when idle controllers were last hidden.
+  var _hiddenAt = 0;
 
   MotorDevToolsController get _overlay =>
       widget.controller ?? (_ownedController ??= MotorDevToolsController());
@@ -186,13 +190,13 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     _syncMutedPoll();
   }
 
-  /// Muting doesn't notify, so while the panel is open, check every
-  /// controller's ticker now and then.
+  /// Muting and finishing don't notify, so while the panel is open, check
+  /// every controller's ticker now and then.
   void _syncMutedPoll() {
     if (_overlay.isOpen && _subscription != null) {
       _mutedPoll ??= Timer.periodic(
         const Duration(milliseconds: 500),
-        (_) => _checkMuted(),
+        (_) => _poll(),
       );
     } else {
       _mutedPoll?.cancel();
@@ -200,13 +204,18 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     }
   }
 
-  void _checkMuted() {
+  void _poll() {
     final muted = {
       for (final controller in _controllers)
         if (controller.isMuted) controller,
     };
-    if (setEquals(muted, _muted)) return;
+    final animating = {
+      for (final controller in _controllers)
+        if (controller.isAnimating) controller,
+    };
+    if (setEquals(muted, _muted) && setEquals(animating, _animating)) return;
     _muted = muted;
+    _animating = animating;
     setState(() {});
   }
 
@@ -294,9 +303,18 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   Map<String, Motion> get appMotions => widget.motions;
 
   @override
-  bool isIdle(TrackController controller) =>
-      !_played.contains(controller) &&
-      controller.inspectPlayback().tracks.isEmpty;
+  bool isIdle(TrackController controller) {
+    if (controller.isAnimating || changesOf(controller).isNotEmpty) {
+      return false;
+    }
+    final neverPlayed =
+        !_played.contains(controller) &&
+        controller.inspectPlayback().tracks.isEmpty;
+    return neverPlayed || (_activity[controller] ?? 0) <= _hiddenAt;
+  }
+
+  @override
+  void hideIdle() => setState(() => _hiddenAt = _frame);
 
   @override
   int lastActive(TrackController controller) => _activity[controller] ?? 0;

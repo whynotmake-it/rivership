@@ -255,6 +255,56 @@ void main() {
     );
   });
 
+  testWidgets('hides stopped controllers until they play again', (
+    tester,
+  ) async {
+    final controller = await _pumpHarness(tester);
+    await tester.tap(_launcher);
+    await _settle(tester);
+    final hide = find.byKey(const ValueKey('motor-devtools-hide-idle'));
+    expect(hide, findsNothing);
+
+    for (var i = 0; i < 11; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    await _settle(tester);
+    expect(controller.isAnimating, isFalse);
+    expect(_checkout, findsOneWidget);
+    expect(find.text('Hide idle'), findsOneWidget);
+
+    await tester.tap(hide);
+    await _settle(tester);
+    expect(_checkout, findsNothing);
+    expect(find.text('1 idle'), findsOneWidget);
+    expect(hide, findsNothing);
+
+    controller.replay();
+    await _settle(tester);
+    expect(_checkout, findsOneWidget);
+    expect(find.text('1 idle'), findsNothing);
+  });
+
+  testWidgets('hiding idle controllers leaves modified ones', (tester) async {
+    final controller = await _pumpHarness(tester);
+    await _openDetail(tester);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-speed-0.5')));
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-back')));
+    for (var i = 0; i < 21; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    await _settle(tester);
+    expect(controller.isAnimating, isFalse);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-hide-idle')),
+      findsNothing,
+    );
+    expect(_checkout, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('motor-devtools-modified-section')),
+      findsOne,
+    );
+  });
+
   testWidgets('minimizes to the bubble and reopens where it left off', (
     tester,
   ) async {

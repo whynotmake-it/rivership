@@ -64,8 +64,13 @@ abstract interface class PanelHost {
   /// A controller's name without the number.
   String baseNameOf(TrackController controller);
 
-  /// Whether [controller] has never played.
+  /// Whether [controller] belongs in the folded idle row: it isn't animating
+  /// or modified, and it never played or was hidden since it last played.
   bool isIdle(TrackController controller);
+
+  /// Folds every controller that isn't animating or modified into the idle
+  /// row, until it plays again.
+  void hideIdle();
 
   /// Increases each time [controller] plays a frame.
   int lastActive(TrackController controller);
@@ -501,41 +506,66 @@ class _ControllerListState extends State<_ControllerList> {
     ];
   }
 
-  /// [controllers]' rows, with the ones that never played folded into an
-  /// idle row.
+  /// [controllers]' rows, with idle ones folded into an idle row, and, with
+  /// [hideable], a button that folds the ones that stopped.
   List<Widget> _section(
     List<TrackController> controllers, {
     required bool idleOpen,
     required ValueChanged<bool> onIdle,
     required String idleKey,
+    bool hideable = false,
   }) {
     final host = widget.host;
-    final idle = [
-      for (final controller in controllers)
-        if (controller.inspectionGroup == null && host.isIdle(controller))
-          controller,
-    ];
+    final idle = <TrackController>[];
+    final rest = <TrackController>[];
+    for (final controller in controllers) {
+      (controller.inspectionGroup == null && host.isIdle(controller)
+              ? idle
+              : rest)
+          .add(controller);
+    }
+    final stopped = hideable
+        ? rest
+              .where(
+                (c) =>
+                    c.inspectionGroup == null &&
+                    !c.isAnimating &&
+                    host.changesOf(c).isEmpty,
+              )
+              .length
+        : 0;
     return [
-      ..._rows([
-        for (final controller in controllers)
-          if (!idle.contains(controller)) controller,
-      ]),
-      if (idle.isNotEmpty) ...[
+      ..._rows(rest),
+      if (idle.isNotEmpty || stopped > 0)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: DisclosureRow(
-            key: ValueKey(idleKey),
-            title: '${idle.length} idle',
-            trailing: 'never played',
-            open: idleOpen,
-            onTap: () => onIdle(!idleOpen),
+          child: Row(
+            children: [
+              Expanded(
+                child: idle.isEmpty
+                    ? const SizedBox(height: 32)
+                    : DisclosureRow(
+                        key: ValueKey(idleKey),
+                        title: '${idle.length} idle',
+                        open: idleOpen,
+                        onTap: () => onIdle(!idleOpen),
+                      ),
+              ),
+              if (stopped > 0) ...[
+                const SizedBox(width: 12),
+                TextAction(
+                  'Hide idle',
+                  key: const ValueKey('motor-devtools-hide-idle'),
+                  onTap: host.hideIdle,
+                ),
+              ],
+            ],
           ),
         ),
-        Disclosure(
-          open: idleOpen,
-          child: Column(children: _rows(idle)),
-        ),
-      ],
+      Disclosure(
+        open: idleOpen && idle.isNotEmpty,
+        child: Column(children: _rows(idle)),
+      ),
     ];
   }
 
@@ -627,6 +657,7 @@ class _ControllerListState extends State<_ControllerList> {
                         idleOpen: _idleOpen,
                         onIdle: (open) => setState(() => _idleOpen = open),
                         idleKey: 'motor-devtools-idle',
+                        hideable: true,
                       ),
                       if (muted.isNotEmpty) ...[
                         Padding(
