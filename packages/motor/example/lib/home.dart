@@ -60,15 +60,18 @@ class _HomePageState extends State<HomePage>
       );
   }
 
-  Widget _reveal(int index, Widget child) => AnimatedBuilder(
-    animation: _entrance.animationOf(_reveals[index]),
-    builder: (context, child) => Reveal(
-      progress: _entrance.value(_reveals[index]),
-      offset: const Offset(0, 18),
-      child: child!,
-    ),
-    child: child,
-  );
+  Widget _reveal(int index, Widget child) {
+    final reveal = _entrance.animationOf(_reveals[index]);
+    return AnimatedBuilder(
+      animation: reveal,
+      builder: (context, child) => Reveal(
+        progress: reveal.value,
+        offset: const Offset(0, 18),
+        child: child!,
+      ),
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
