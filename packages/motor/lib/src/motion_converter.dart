@@ -1,7 +1,25 @@
 import 'package:flutter/animation.dart' show AnimationStatus;
 import 'package:flutter/rendering.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/motion_controller.dart'
     show MotionController;
+
+/// The types of motor's own converters.
+///
+/// None of them keeps the list passed to [MotionConverter.denormalize], so
+/// motor hands them its reused buffers without copying. Add every new
+/// built-in converter here, as long as that stays true.
+@internal
+const builtInMotionConverterTypes = <Type>{
+  SingleMotionConverter,
+  OffsetMotionConverter,
+  SizeMotionConverter,
+  RectMotionConverter,
+  AlignmentMotionConverter,
+  ColorRgbMotionConverter,
+  EdgeInsetsMotionConverter,
+  EdgeInsetsDirectionalMotionConverter,
+};
 
 /// A function that converts a value of type [T] to a list of double values.
 typedef Normalize<T> = List<double> Function(T value);
