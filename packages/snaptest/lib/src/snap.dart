@@ -564,13 +564,12 @@ Future<ui.Image?> _takeDeviceScreenshot({
         orientation: orientation,
         includeDeviceFrame: settings.includeDeviceFrame,
       );
-
       if (crop == null) {
         return captured.image;
       }
 
       try {
-        return _cropImage(captured.image, crop, captured);
+        return await _cropImage(captured.image, crop, captured);
       } finally {
         captured.image.dispose();
       }
@@ -632,15 +631,27 @@ Future<T?> _runInFakeDevice<T>(
   final binding = TestWidgetsFlutterBinding.instance;
   await binding.pump(Duration.zero);
 
-  final deviceIsAlreadyConfigured =
-      activeDeviceVariant == (device, orientation);
-  final restoreView = deviceIsAlreadyConfigured
-      ? null
-      : setTestViewForDevice(device, orientation);
+  final activeVariant = activeDeviceVariant;
+  if (activeVariant != null &&
+      activeVariant.$1 == device &&
+      activeVariant.$2 == orientation) {
+    return maybeRunAsync(fn);
+  }
+
+  final previousSurfaceSize = binding.renderViews.single.size;
+  final restoreView = setTestViewForDevice(device, orientation);
+  if (device != null) {
+    var surfaceSize = device.screenSize;
+    if (device.isLandscape(orientation)) {
+      surfaceSize = surfaceSize.flipped;
+    }
+    await binding.setSurfaceSize(surfaceSize);
+  }
 
   final result = await maybeRunAsync(fn);
 
-  restoreView?.call();
+  restoreView();
+  await binding.setSurfaceSize(previousSurfaceSize);
 
   await binding.pump(Duration.zero);
 
