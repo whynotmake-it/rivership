@@ -45,6 +45,9 @@ jobs:
 
       - name: 📝 Run Test
         run: melos run coverage
+
+      - name: ⏱️ Benchmark Smoke
+        run: melos run benchmark:smoke
       
       - name: Upload golden test failures
         if: failure()
