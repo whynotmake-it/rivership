@@ -21,8 +21,6 @@ class _MockTicker extends Mock implements Ticker {
 
 void main() {
   group('PhaseSequenceController', () {
-    setUp(TestWidgetsFlutterBinding.ensureInitialized);
-
     late SequenceMotionController<String, Offset> controller;
     const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
@@ -32,6 +30,19 @@ void main() {
     });
 
     group('MotionController API compatibility', () {
+      testWidgets('is assignable to the exported MotionController',
+          (tester) async {
+        controller = SequenceMotionController<String, Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+
+        final MotionController<Offset> motionController = controller;
+        expect(motionController, same(controller));
+      });
+
       testWidgets('creates with initial value', (tester) async {
         controller = SequenceMotionController<String, Offset>(
           motion: motion,
@@ -628,5 +639,94 @@ void main() {
         });
       });
     });
+  });
+
+  group('sequence playback', () {
+    const linear100 = Motion.linear(Duration(milliseconds: 100));
+
+    testWidgets('reports progress while playing', (tester) async {
+      final controller = SequenceMotionController<int, double>(
+        motion: linear100,
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      addTearDown(controller.dispose);
+      final sequence = MotionSequence.steps(
+        const [0.0, 1.0, 2.0],
+        motion: linear100,
+      );
+
+      expect(controller.sequenceProgress, 0);
+      controller.playSequence(sequence);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(controller.sequenceProgress, 0.5);
+
+      await tester.pump(const Duration(milliseconds: 101));
+      await tester.pump(const Duration(milliseconds: 101));
+      expect(controller.isPlayingSequence, isFalse);
+      expect(controller.sequenceProgress, 0);
+    });
+
+    testWidgets('starts at a requested phase', (tester) async {
+      final controller = SequenceMotionController<int, double>(
+        motion: linear100,
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      addTearDown(controller.dispose);
+      final sequence = MotionSequence.steps(
+        const [0.0, 1.0, 2.0],
+        motion: linear100,
+      );
+      final visited = <int>[];
+
+      controller.playSequence(
+        sequence,
+        atPhase: 1,
+        onTransition: (transition) {
+          if (transition case PhaseTransitioning(:final to)) visited.add(to);
+        },
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 101));
+
+      expect(visited, [2]);
+      expect(controller.value, 2);
+      expect(controller.isPlayingSequence, isFalse);
+    });
+  });
+
+  testWidgets('scrubbing a sequence matches playback', (tester) async {
+    const linear = Motion.linear(Duration(milliseconds: 100));
+    final sequence = MotionSequence.steps([0.0, 1.0, 2.0, 3.0], motion: linear);
+    SequenceMotionController<int, double> controller() =>
+        SequenceMotionController<int, double>(
+          motion: linear,
+          vsync: tester,
+          converter: const SingleMotionConverter(),
+          initialValue: 0,
+        );
+
+    // 1ms frames keep the frame-anchored phase starts within 1ms of exact.
+    final live = controller()..playSequence(sequence);
+    await tester.pump();
+    for (var i = 0; i < 250; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+
+    final scrubbed = controller()..playSequence(sequence);
+    scrubbed.debugInnerController
+      ..pause()
+      ..scrubTo(const Duration(milliseconds: 250));
+    expect(scrubbed.value, closeTo(live.value, 0.05));
+
+    live.stop(canceled: true);
+    scrubbed.stop(canceled: true);
+    live.dispose();
+    scrubbed.dispose();
   });
 }
