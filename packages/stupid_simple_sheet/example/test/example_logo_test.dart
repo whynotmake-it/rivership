@@ -31,9 +31,11 @@ void main() {
       from: find.byKey(key),
     ));
 
-    // Move file to docs
-    final dir = Directory('../doc/');
-    logoFile.copySync(dir.path + 'logo.png');
+    // Rewrite doc/logo.png with:
+    // UPDATE_LOGO=1 flutter test test/example_logo_test.dart
+    if (Platform.environment['UPDATE_LOGO'] == '1') {
+      logoFile.copySync('../doc/logo.png');
+    }
     logoFile.deleteSync();
   });
 }

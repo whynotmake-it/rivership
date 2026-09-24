@@ -39,6 +39,9 @@ void main() {
       final data = await image.toByteData(format: .png);
       return data!.buffer.asUint8List();
     });
-    File('../doc/logo.png').writeAsBytesSync(png!);
+    // Rewrite doc/logo.png with: UPDATE_LOGO=1 flutter test test/logo_test.dart
+    if (Platform.environment['UPDATE_LOGO'] == '1') {
+      File('../doc/logo.png').writeAsBytesSync(png!);
+    }
   });
 }
