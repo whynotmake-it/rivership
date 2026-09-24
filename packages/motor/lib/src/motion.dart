@@ -104,6 +104,11 @@ sealed class MotionBase {
 ///
 /// [Motion] describes target-based motion. It always creates a simulation from
 /// a start value to an end value.
+///
+/// To create a custom motion, extend [Motion] rather than implementing it.
+/// Extending inherits the defaults of [duration], [scaleTo] and
+/// [estimateSimulationDuration], which an implementing class has to provide
+/// itself.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
