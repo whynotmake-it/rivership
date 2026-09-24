@@ -1,9 +1,11 @@
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// Base class for motion builders that provides shared functionality.
 abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
@@ -18,6 +20,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     this.from,
     this.child,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   }) : motionPerDimension = null;
 
@@ -32,6 +35,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     this.from,
     this.child,
     this.debugLabel,
+    this.tickerRate,
     super.key,
   }) : motion = null;
 
@@ -55,6 +59,14 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
 
   /// {@macro motor.debugLabel}
   final String? debugLabel;
+
+  /// {@template motor.tickerRate}
+  /// How often this widget's animation ticks, for example `TickerRate.fps(30)`.
+  ///
+  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
+  /// frame.
+  /// {@endtemplate}
+  final TickerRate? tickerRate;
 
   /// {@template motor.MotionBuilder.motion}
   /// The motion to use for the animation.
@@ -112,9 +124,16 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
 
 /// Base state class that provides shared motion builder functionality.
 abstract class BaseMotionBuilderState<T extends Object>
-    extends State<BaseMotionBuilder<T>> with TickerProviderStateMixin {
+    extends State<BaseMotionBuilder<T>>
+    with TickerProviderStateMixin, TickerRateStateMixin {
   /// The motion controller that manages the animation.
   late MotionController<T> controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => controller.resync(this);
 
   @override
   void initState() {
@@ -189,6 +208,8 @@ abstract class BaseMotionBuilderState<T extends Object>
         controller.addStatusListener(widget.onAnimationStatusChanged!);
       }
     }
+
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
 
     super.didUpdateWidget(oldWidget);
   }
