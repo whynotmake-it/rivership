@@ -30,10 +30,12 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     required super.motion,
     required super.converter,
     required this.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   });
 
@@ -43,10 +45,12 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     required super.motionPerDimension,
     required super.converter,
     required this.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super.motionPerDimension();
 
@@ -81,10 +85,12 @@ class SingleMotionBuilder extends MotionBuilder<double> {
     required super.value,
     required super.motion,
     required super.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
     super.key,
   }) : super(converter: const SingleMotionConverter());
 }

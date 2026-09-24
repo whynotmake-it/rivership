@@ -1,0 +1,266 @@
+import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/widgets.dart';
+import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/loop_mode.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/track.dart';
+import 'package:motor/src/track_timeline.dart';
+
+/// Builds a widget from a multi-track animation.
+typedef TrackWidgetBuilder = Widget Function(
+  BuildContext context,
+  TrackValueReader value,
+  Widget? child,
+);
+
+/// Declaratively plays multiple [TrackAnimation]s on one ticker.
+///
+/// Use the default constructor with an inline list of [animations] (mirroring
+/// [TrackController.animate]), or [TrackBuilder.timeline] with a reusable
+/// [TrackTimeline] (mirroring [TrackController.play]). Each [TrackAnimation]
+/// carries its own `from`/`withVelocity`; [loop] (or the timeline's loop)
+/// controls repetition.
+class TrackBuilder extends StatefulWidget {
+  /// Plays an inline list of [animations].
+  const TrackBuilder({
+    required this.animations,
+    required this.builder,
+    this.loop = LoopMode.none,
+    this.restartTrigger,
+    this.active = true,
+    this.velocityTracking = const VelocityTracking.on(),
+    this.onStep,
+    this.onAnimationStatusChanged,
+    this.child,
+    this.debugLabel,
+    super.key,
+  }) : timeline = null;
+
+  /// Plays a reusable [timeline].
+  const TrackBuilder.timeline(
+    this.timeline, {
+    required this.builder,
+    this.restartTrigger,
+    this.active = true,
+    this.velocityTracking = const VelocityTracking.on(),
+    this.onStep,
+    this.onAnimationStatusChanged,
+    this.child,
+    this.debugLabel,
+    super.key,
+  })  : animations = null,
+        loop = LoopMode.none;
+
+  /// The inline track animations to play (default constructor).
+  ///
+  /// Animations compare by value. When a rebuild changes the list, only the
+  /// tracks whose animation changed restart, from their current value and
+  /// velocity; the others keep playing. So one track can follow user input
+  /// while another plays keyframes.
+  final List<TrackAnimation>? animations;
+
+  /// The reusable timeline to play ([TrackBuilder.timeline]).
+  ///
+  /// Like [animations], a changed timeline restarts only the tracks whose
+  /// animation changed, unless its loop mode changed too.
+  final TrackTimeline? timeline;
+
+  /// How the inline [animations] should loop.
+  ///
+  /// Ignored when a [timeline] is used (the timeline owns its loop).
+  final LoopMode loop;
+
+  /// Restarts playback from the start when this value changes.
+  ///
+  /// Jumps every track back to its start value (its `from` override or the
+  /// track's initial) and replays from the beginning, rather than animating
+  /// from the current values back to the first value.
+  final Object? restartTrigger;
+
+  /// {@template motor.trackActive}
+  /// Whether the animations play.
+  ///
+  /// While false, nothing animates. Turning it off moves every track straight
+  /// to where its animation ends, and later changes jump there too, like
+  /// `active: false` on the motion builders. A track whose animation has no
+  /// target (only holds or free motions) keeps its value. Built inactive, the
+  /// tracks start at their start values, and turning it back on plays the
+  /// animations from where the tracks are.
+  /// {@endtemplate}
+  final bool active;
+
+  /// {@macro motor.velocityTracking}
+  final VelocityTracking velocityTracking;
+
+  /// Called when a track enters a step.
+  ///
+  /// {@macro TrackController.onStep}
+  final void Function(Track track, int stepIndex)? onStep;
+
+  /// Called when coarse playback status changes.
+  final ValueChanged<AnimationStatus>? onAnimationStatusChanged;
+
+  /// Builds the widget.
+  final TrackWidgetBuilder builder;
+
+  /// Optional child.
+  final Widget? child;
+
+  /// {@template motor.debugLabel}
+  /// A name for the controller this widget creates, shown by inspection tools
+  /// such as `motor_devtools`. Read once, when the controller is created.
+  /// {@endtemplate}
+  final String? debugLabel;
+
+  @override
+  State<TrackBuilder> createState() => _TrackBuilderState();
+}
+
+class _TrackBuilderState extends State<TrackBuilder>
+    with TickerProviderStateMixin {
+  late final TrackController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TrackController(
+      vsync: this,
+      velocityTracking: widget.velocityTracking,
+      debugLabel: widget.debugLabel,
+    );
+    if (widget.onAnimationStatusChanged != null) {
+      _controller.addStatusListener(widget.onAnimationStatusChanged!);
+    }
+    _updatePlayback();
+  }
+
+  @override
+  void didUpdateWidget(TrackBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _controller.velocityTracking = widget.velocityTracking;
+
+    if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {
+      if (oldWidget.onAnimationStatusChanged != null) {
+        _controller.removeStatusListener(oldWidget.onAnimationStatusChanged!);
+      }
+      if (widget.onAnimationStatusChanged != null) {
+        _controller.addStatusListener(widget.onAnimationStatusChanged!);
+      }
+    }
+
+    if (!widget.active) {
+      if (oldWidget.active ||
+          widget.timeline != oldWidget.timeline ||
+          !listEquals(widget.animations, oldWidget.animations)) {
+        _jumpToEnd();
+      }
+      return;
+    }
+
+    // A restartTrigger change replays from the start (jumping back to the
+    // start snapshot first). Other changes keep animating from current values.
+    final restartTriggerChanged =
+        widget.restartTrigger != oldWidget.restartTrigger;
+
+    if (restartTriggerChanged) {
+      _updatePlayback(restart: true);
+    } else if (widget.active != oldWidget.active ||
+        widget.loop != oldWidget.loop ||
+        (widget.timeline == null) != (oldWidget.timeline == null) ||
+        widget.timeline?.loop != oldWidget.timeline?.loop) {
+      _updatePlayback();
+    } else if (widget.timeline case final timeline?) {
+      _animateChanged(
+        timeline.animations,
+        oldWidget.timeline!.animations,
+        loop: timeline.loop,
+      );
+    } else if (widget.animations case final animations?) {
+      _animateChanged(animations, oldWidget.animations!, loop: widget.loop);
+    }
+  }
+
+  /// Stops every track and moves it straight to where its animation ends.
+  void _jumpToEnd() {
+    _controller.stop(canceled: true);
+    final animations = widget.timeline?.animations ?? widget.animations!;
+    final values = [
+      for (final animation in animations)
+        if (animation.endValue case final value?) value,
+    ];
+    if (values.isNotEmpty) _controller.set(values);
+  }
+
+  /// Restarts only the tracks whose animation differs from [oldAnimations],
+  /// so tracks that didn't change keep playing, for example keyframes next
+  /// to a track that follows user input.
+  void _animateChanged(
+    List<TrackAnimation> animations,
+    List<TrackAnimation> oldAnimations, {
+    required LoopMode loop,
+  }) {
+    if (!widget.active) return;
+    final old = {
+      for (final animation in oldAnimations) animation.track: animation,
+    };
+    final changed = [
+      for (final animation in animations)
+        if (old[animation.track] != animation) animation,
+    ];
+    if (changed.isEmpty) return;
+    _controller.animate(changed, loop: loop, onStep: _onStep);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        return widget.builder(context, _controller.value, child);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // Forwards to the latest widget's callback, which may be a new closure on
+  // every build.
+  void _onStep(Track track, int stepIndex) =>
+      widget.onStep?.call(track, stepIndex);
+
+  void _updatePlayback({bool restart = false}) {
+    if (!widget.active) return;
+
+    if (restart) {
+      // Jump every track back to its start value before replaying, so a
+      // restartTrigger change starts the animation from the start rather than
+      // animating from the current value back to the first value.
+      _controller.set(_startValues());
+    }
+
+    final timeline = widget.timeline;
+    if (timeline != null) {
+      _controller.play(timeline, onStep: _onStep);
+    } else {
+      _controller.animate(
+        widget.animations!,
+        loop: widget.loop,
+        onStep: _onStep,
+      );
+    }
+  }
+
+  List<TrackValue> _startValues() {
+    final timeline = widget.timeline;
+    if (timeline != null) return timeline.startValues;
+    return [
+      for (final animation in widget.animations!)
+        animation.track.value(animation.resolveStartValue()),
+    ];
+  }
+}

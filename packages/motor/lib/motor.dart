@@ -3,7 +3,11 @@
 library motor;
 
 export 'src/controllers/motion_controller.dart'
-    show BoundedMotionController, MotionController, SequenceMotionController;
+    show
+        BoundedMotionController,
+        MotionController,
+        // ignore: deprecated_member_use_from_same_package
+        SequenceMotionController;
 export 'src/controllers/phase_track_controller.dart';
 export 'src/controllers/single_motion_controller.dart';
 export 'src/controllers/track_controller.dart';
@@ -21,5 +25,7 @@ export 'src/track_timeline.dart';
 export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
+export 'src/widgets/phase_track_builder.dart';
 export 'src/widgets/sequence_motion_builder.dart';
+export 'src/widgets/track_builder.dart';
 export 'src/widgets/velocity_motion_builder.dart';

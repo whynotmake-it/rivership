@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
+import '../util.dart';
+
 void main() {
   group('SingleMotionBuilder', () {
     testWidgets('builds with initial value', (tester) async {
@@ -67,7 +69,7 @@ void main() {
       expect(capturedValue, equals(0.0));
 
       await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(100.0, 0.001));
+      expect(capturedValue, closeTo(100.0, error));
     });
 
     testWidgets('stays at from value if active is false', (tester) async {
@@ -117,6 +119,30 @@ void main() {
 
       // Value should immediately be at target
       expect(capturedValue, equals(100.0));
+    });
+
+    testWidgets('turning inactive mid-animation jumps to the target',
+        (tester) async {
+      double? capturedValue;
+      Widget build({required bool active}) => SingleMotionBuilder(
+            value: 100,
+            from: 0,
+            motion: const Motion.linear(Duration(milliseconds: 100)),
+            active: active,
+            builder: (context, value, child) {
+              capturedValue = value;
+              return const SizedBox();
+            },
+          );
+
+      await tester.pumpWidget(build(active: true));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(capturedValue, closeTo(50, error));
+
+      await tester.pumpWidget(build(active: false));
+      await tester.pump();
+      expect(capturedValue, 100);
+      expect(tester.hasRunningAnimations, isFalse);
     });
   });
 
@@ -198,12 +224,12 @@ void main() {
           },
         ),
       );
-      expect(capturedValue?.$1, closeTo(0.0, 0.001));
-      expect(capturedValue?.$2, closeTo(0.0, 0.001));
+      expect(capturedValue?.$1, closeTo(0.0, error));
+      expect(capturedValue?.$2, closeTo(0.0, error));
 
       await tester.pumpAndSettle();
-      expect(capturedValue?.$1, closeTo(100.0, 0.001));
-      expect(capturedValue?.$2, closeTo(200.0, 0.001));
+      expect(capturedValue?.$1, closeTo(100.0, error));
+      expect(capturedValue?.$2, closeTo(200.0, error));
     });
 
     testWidgets('animates 1d from in y direction', (tester) async {
@@ -229,7 +255,7 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(capturedValue?.$1, equals(0.0));
-      expect(capturedValue?.$2, closeTo(0.0, 0.001));
+      expect(capturedValue?.$2, closeTo(0.0, error));
     });
 
     testWidgets('stays at from value if active is false', (tester) async {
