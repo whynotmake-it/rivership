@@ -603,7 +603,7 @@ void main() {
     expect(tuned.bounce, closeTo(0.8, 0.02));
     expect(
       find.textContaining(
-        'Motion.cupertino(duration: Duration(milliseconds: 1500), bounce: 0.7',
+        '.cupertino(duration: Duration(milliseconds: 1500), bounce: 0.7',
       ),
       findsOneWidget,
     );
