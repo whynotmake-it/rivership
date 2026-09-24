@@ -246,6 +246,14 @@ extension TrackControllerInspection on TrackController {
   set motionOverride(Motion? Function(Track<Object> track)? value) =>
       internalMotionOverride = value;
 
+  /// Whether the controller's ticker is muted, such as by a
+  /// `TickerMode(enabled: false)` above the widget that provides its vsync.
+  ///
+  /// A muted controller keeps its playback state but does not advance until
+  /// its ticker is unmuted.
+  @experimental
+  bool get isMuted => internalIsMuted;
+
   /// Whether inspection tools show this controller.
   ///
   /// Reads the controller's own setting, else the nearest

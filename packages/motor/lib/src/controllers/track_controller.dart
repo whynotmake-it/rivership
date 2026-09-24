@@ -763,6 +763,10 @@ class TrackController extends Animation<TrackValueReader>
   @internal
   double get internalPlaybackSpeed => _clock.rate;
 
+  /// Exposes whether the ticker is muted to tooling.
+  @internal
+  bool get internalIsMuted => _ticker?.muted ?? false;
+
   /// Changes the logical playback rate without affecting other controllers.
   @internal
   set internalPlaybackSpeed(double value) {
