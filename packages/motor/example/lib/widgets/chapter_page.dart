@@ -1,9 +1,24 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/controls.dart';
 import 'package:motor_example/widgets/style.dart';
+
+final _parts = [
+  for (var i = 0; i < 4; i++)
+    Track<double>(.single, initial: 0, debugLabel: 'Part ${i + 1}'),
+];
+
+/// Title, lead, stage and the rest blur in one after another.
+final _entrance = TrackTimeline([
+  for (final (index, part) in _parts.indexed)
+    part([
+      .hold(Duration(milliseconds: 70 * index)),
+      .to(1, motion: .smoothSpring(duration: Duration(milliseconds: 650))),
+    ]),
+]);
 
 /// The layout every chapter shares: a title, one line of explanation, the
 /// stage, the one line of code that matters, and an optional timeline.
@@ -48,32 +63,51 @@ class ChapterPage extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _TopBar(chapter: chapter),
-                    const SizedBox(height: 28),
-                    Text(chapter.title, style: t.display),
-                    const SizedBox(height: 12),
-                    Text(lead),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      height: stageHeight,
-                      child: _Stage(child: stage),
-                    ),
-                    if (code case final code?) ...[
-                      const SizedBox(height: 14),
-                      CodeLine(code),
-                    ],
-                    if (below case final below?) ...[
-                      const SizedBox(height: 14),
-                      below,
-                    ],
-                    if (next != null) ...[
-                      const SizedBox(height: 36),
-                      _NextButton(next: next),
-                    ],
-                  ],
+                child: TrackBuilder.timeline(
+                  _entrance,
+                  debugLabel: 'Page entrance',
+                  builder: (context, value, _) {
+                    Widget part(int index, Widget child) =>
+                        Reveal(progress: value(_parts[index]), child: child);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _TopBar(chapter: chapter),
+                        const SizedBox(height: 28),
+                        part(0, Text(chapter.title, style: t.display)),
+                        const SizedBox(height: 12),
+                        part(1, Text(lead)),
+                        const SizedBox(height: 24),
+                        part(
+                          2,
+                          SizedBox(
+                            height: stageHeight,
+                            child: _Stage(child: stage),
+                          ),
+                        ),
+                        part(
+                          3,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (code case final code?) ...[
+                                const SizedBox(height: 14),
+                                CodeLine(code),
+                              ],
+                              if (below case final below?) ...[
+                                const SizedBox(height: 14),
+                                below,
+                              ],
+                              if (next != null) ...[
+                                const SizedBox(height: 36),
+                                _NextButton(next: next),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -149,15 +183,46 @@ class _Stage extends StatelessWidget {
   }
 }
 
-/// A single line of monospace code.
+/// A line of code, lightly highlighted.
 class CodeLine extends StatelessWidget {
   const CodeLine(this.code, {super.key});
 
   final String code;
 
+  static final _tokens = RegExp(
+    r'(//.*)|(#\w+|\b\d[\d.]*\b)|(\w+)(?=\()|([()\[\]{},;:]|\.(?=\w))',
+  );
+
   @override
   Widget build(BuildContext context) {
     final t = ExampleTheme.of(context);
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in _tokens.allMatches(code)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: code.substring(start, match.start)));
+      }
+      final color = match.group(1) != null
+          ? t.textTertiary
+          : match.group(2) != null
+          ? ExampleTheme.roseQuartz
+          : match.group(3) != null
+          ? t.textPrimary
+          : t.textTertiary;
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: TextStyle(
+            color: color,
+            fontVariations: match.group(3) != null
+                ? const [FontVariation.weight(600)]
+                : null,
+          ),
+        ),
+      );
+      start = match.end;
+    }
+    spans.add(TextSpan(text: code.substring(start)));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -165,7 +230,10 @@ class CodeLine extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: t.border),
       ),
-      child: Text(code, style: t.code.copyWith(color: t.textPrimary)),
+      child: Text.rich(
+        TextSpan(children: spans),
+        style: t.code.copyWith(color: t.textSecondary),
+      ),
     );
   }
 }
