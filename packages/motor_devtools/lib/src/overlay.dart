@@ -180,6 +180,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
               onRight: _onRight,
               padding: padding,
               radius: radius,
+              frame: palette.frame,
               contentOpacity: ((t - 0.3) / 0.7).clamp(0.0, 1.0),
               children: [
                 SingleMotionBuilder(
@@ -240,6 +241,7 @@ class _Shell extends MultiChildRenderObjectWidget {
     required this.onRight,
     required this.padding,
     required this.radius,
+    required this.frame,
     required this.contentOpacity,
     required super.children,
   });
@@ -249,6 +251,7 @@ class _Shell extends MultiChildRenderObjectWidget {
   final bool onRight;
   final EdgeInsets padding;
   final double radius;
+  final Color frame;
   final double contentOpacity;
 
   @override
@@ -258,6 +261,7 @@ class _Shell extends MultiChildRenderObjectWidget {
     ..onRight = onRight
     ..padding = padding
     ..radius = radius
+    ..frame = frame
     ..contentOpacity = contentOpacity;
 
   @override
@@ -268,6 +272,7 @@ class _Shell extends MultiChildRenderObjectWidget {
       ..onRight = onRight
       ..padding = padding
       ..radius = radius
+      ..frame = frame
       ..contentOpacity = contentOpacity;
   }
 }
@@ -303,6 +308,14 @@ class _RenderShell extends RenderBox
   set radius(double value) {
     if (_radius == value) return;
     _radius = value;
+    markNeedsPaint();
+  }
+
+  Color _frame = const Color(0x00000000);
+  Color get frame => _frame;
+  set frame(Color value) {
+    if (_frame == value) return;
+    _frame = value;
     markNeedsPaint();
   }
 
@@ -416,6 +429,18 @@ class _RenderShell extends RenderBox
       },
       oldLayer: _clip.layer,
     );
+    // The panel's own backgrounds cover the surface's edge, so the frame is
+    // drawn again on top.
+    context.canvas.drawRSuperellipse(
+      RSuperellipse.fromRectAndRadius(
+        _rect.shift(offset).deflate(0.5),
+        Radius.circular(math.max(0, _radius - 0.5)),
+      ),
+      Paint()
+        ..color = _frame
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
   }
 
   @override
@@ -460,7 +485,7 @@ class _Surface extends StatelessWidget {
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: palette.surface,
-        shape: rounded(radius, side: palette.outline),
+        shape: rounded(radius, side: palette.frame),
       ),
       child: ClipRSuperellipse(
         borderRadius: BorderRadius.circular(radius),

@@ -21,6 +21,7 @@ class DevToolsPalette {
     required this.tertiary,
     required this.accent,
     required this.outline,
+    required this.frame,
   });
 
   /// Picks the palette for [brightness].
@@ -39,6 +40,7 @@ class DevToolsPalette {
     tertiary: Color(0xFFA1A1AA),
     accent: Color(0xFF3D63DD),
     outline: Color(0xFFD4D4D8),
+    frame: Color(0xFF8E8E96),
   );
 
   /// The dark palette.
@@ -53,6 +55,7 @@ class DevToolsPalette {
     tertiary: Color(0xFF71717A),
     accent: Color(0xFF8AA4FF),
     outline: Color(0xFF3F3F46),
+    frame: Color(0xFF6B6B74),
   );
 
   /// This palette with [text] as its text color, and its secondary colors
@@ -68,6 +71,7 @@ class DevToolsPalette {
     tertiary: text.withValues(alpha: 0.4),
     accent: accent ?? this.accent,
     outline: outline,
+    frame: frame,
   );
 
   /// The brightness this palette is for.
@@ -97,8 +101,12 @@ class DevToolsPalette {
   /// The single accent: the playhead and live state.
   final Color accent;
 
-  /// The edge of the floating surface and of handles.
+  /// The edge of handles.
   final Color outline;
+
+  /// The edge of the bubble and panel. It is opaque and contrasts with both
+  /// the surface and similar app backgrounds, so the tools stand out.
+  final Color frame;
 
   /// A title, such as a controller name.
   TextStyle get title => TextStyle(
@@ -355,18 +363,24 @@ class _GlyphPainter extends CustomPainter {
           );
         }
       case Glyph.replay:
-        // A counterclockwise arrow, ↺: the arc runs clockwise from the top
-        // round to the upper left, and the arrowhead at the top points left.
-        final rect = Rect.fromCircle(center: const Offset(12, 13), radius: 7);
-        canvas
-          ..drawArc(rect, -math.pi / 2, math.pi * 1.6, false, stroke)
-          ..drawPath(
-            Path()
-              ..moveTo(14.5, 3.5)
-              ..lineTo(12, 6)
-              ..lineTo(14.5, 8.5),
-            stroke,
-          );
+        // Material's `replay` icon, so it needs no icon font.
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 5)
+            ..lineTo(12, 1)
+            ..lineTo(7, 6)
+            ..lineTo(12, 11)
+            ..lineTo(12, 7)
+            ..cubicTo(15.31, 7, 18, 9.69, 18, 13)
+            ..cubicTo(18, 16.31, 15.31, 19, 12, 19)
+            ..cubicTo(8.69, 19, 6, 16.31, 6, 13)
+            ..lineTo(4, 13)
+            ..cubicTo(4, 17.42, 7.58, 21, 12, 21)
+            ..cubicTo(16.42, 21, 20, 17.42, 20, 13)
+            ..cubicTo(20, 8.58, 16.42, 5, 12, 5)
+            ..close(),
+          fill,
+        );
       case Glyph.back:
         canvas.drawPath(
           Path()
