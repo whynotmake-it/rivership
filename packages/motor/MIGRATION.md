@@ -167,6 +167,59 @@ Simulations created by custom motions must depend only on the time passed
 in, because motor samples them again when scrubbing. In 1.x they were only
 sampled forward, so a simulation that kept state between calls worked.
 
+### Custom motions: extend `Motion` instead of implementing it
+
+2.0 added `duration`, `scaleTo(Duration)` and
+`estimateSimulationDuration(...)` to `Motion` and `MotionBase`, with default
+implementations. A class that `implements Motion` doesn't inherit them, so
+it no longer compiles until it provides all three. Extend `Motion` instead:
+you keep only the members 1.x required.
+
+```dart
+// Before (1.x):
+class MyMotion implements Motion {
+  const MyMotion();
+
+  @override
+  Tolerance get tolerance => .defaultTolerance;
+
+  @override
+  bool get needsSettle => true;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      SpringSimulation(_spring, start, end, velocity);
+}
+
+// After (2.0):
+class MyMotion extends Motion {
+  const MyMotion();
+
+  @override
+  bool get needsSettle => true;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      SpringSimulation(_spring, start, end, velocity);
+}
+
+const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
+```
+
 ## Sequences → Tracks
 
 The legacy sequence stack — `MotionSequence` (with `StateSequence`,
