@@ -113,6 +113,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     assert(index >= 0, 'Phase $phase not found in timeline.');
     if (index < 0) return TickerFuture.complete();
 
+    final wasPlayingPhases = _isPlayingPhases;
     _isPlayingPhases = false;
     _seedFromIfNeeded(timeline);
 
@@ -123,6 +124,17 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
 
     final anims = timeline.phaseAnimations[phase]!;
+    if (wasPlayingPhases) {
+      // Tracks this phase doesn't name would otherwise keep playing the
+      // whole timeline into later phases.
+      final named = {for (final animation in anims) animation.track};
+      stop(
+        tracks: [
+          for (final animation in timeline.flattened.animations)
+            if (!named.contains(animation.track)) animation.track,
+        ],
+      );
+    }
     // Note: `initialValues`/`initialVelocities` are only applied once via [_seedFromIfNeeded];
     // re-applying them on every phase change would snap tracks back to their
     // initial values/velocities.

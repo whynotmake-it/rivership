@@ -115,6 +115,36 @@ void main() {
       });
     });
 
+    testWidgets(
+        'goToPhase during playPhases stops tracks the phase does not name',
+        (tester) async {
+      const linear100 = Motion.linear(Duration(milliseconds: 100));
+      final x = Track<double>(MotionConverter.single, initial: 0);
+      final y = Track<double>(MotionConverter.single, initial: 0);
+      controller = PhaseTrackController(vsync: tester);
+      controller.playPhases(
+        TrackPhaseTimeline({
+          'a': [x.to(1, motion: linear100)],
+          'b': [x.to(2, motion: linear100), y.to(5, motion: linear100)],
+          'c': [x.to(3, motion: linear100), y.to(9, motion: linear100)],
+        }),
+        onTransition: transitions.add,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      controller.goToPhase('a');
+      await tester.pumpAndSettle();
+
+      expect(controller.value(x), closeTo(1, error));
+      expect(controller.value(y), 0);
+      expect(controller.currentPhase, 'a');
+      expect(
+        transitions.whereType<PhaseTransitioning<String>>(),
+        isEmpty,
+      );
+    });
+
     testWidgets('goToPhase during pingPong stops auto-advancing',
         (tester) async {
       controller = PhaseTrackController(vsync: tester);
