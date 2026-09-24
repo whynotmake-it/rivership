@@ -11,7 +11,13 @@ replay it, or try a different motion on one of its tracks.
 
 ## Use it
 
-Add `motor_devtools` next to `motor`, then wrap your app:
+Add `motor_devtools` next to `motor`:
+
+```sh
+flutter pub add 'motor_devtools:^0.1.0-dev.1'
+```
+
+Then wrap your app:
 
 ```dart
 import 'package:flutter/foundation.dart';
@@ -46,14 +52,14 @@ final controller = TrackController(
 );
 
 final cardScale = Track<double>(
-  MotionConverter.single,
+  .single,
   initial: 0,
   debugLabel: 'Card scale',
 );
 
 SingleMotionBuilder(
   value: expanded ? 1 : 0,
-  motion: const Motion.smoothSpring(),
+  motion: const .smoothSpring(),
   debugLabel: 'Sheet expansion',
   builder: (context, value, child) => ...,
 );
