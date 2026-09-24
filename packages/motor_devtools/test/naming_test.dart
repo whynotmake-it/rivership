@@ -19,6 +19,8 @@ void main() {
     await _settle(tester);
 
     expect(find.text('Harness · controller'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('motor-devtools-idle')));
+    await _settle(tester);
     expect(find.text('Card · SingleMotionBuilder'), findsOneWidget);
 
     await tester.tap(find.text('Harness · controller'));

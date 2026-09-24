@@ -32,9 +32,12 @@ or dark mode, and does not depend on Material or Cupertino.
 
 ## Name your controllers
 
-The list shows each controller's `debugLabel`. Unnamed controllers show up as
-"Controller 1", "Controller 2", and so on, so name the ones you care about.
-Every controller and builder takes a `debugLabel`, and so does every track:
+The list shows each controller's `debugLabel`. In debug builds, unnamed
+controllers get a guess: builders are named after the widget that built them
+(`CardStack · SingleMotionBuilder`), other controllers after the code that
+created them (`CheckoutPage · controller`). Release builds number them
+instead. Every controller and builder takes a `debugLabel`, and so does
+every track:
 
 ```dart
 final controller = TrackController(
@@ -60,12 +63,42 @@ SingleMotionBuilder(
 `TrackBuilder`, `PhaseTrackBuilder`, `MotionBuilder`, `VelocityMotionBuilder`
 and `MotionDraggable` all accept `debugLabel` too.
 
+## Group or hide controllers
+
+Wrap widgets in a `MotorInspectionScope` to group or hide the controllers that
+motor's builders create below it, or set it on a controller directly:
+
+```dart
+import 'package:motor/inspection.dart';
+
+// Every button's press feedback shares one row, "Button press ×9".
+MotorInspectionScope(
+  group: 'Button press',
+  child: SingleMotionBuilder(value: pressed ? 0.96 : 1, …),
+)
+
+// Leave a controller out of the list entirely.
+_spinner = SingleMotionController(motion: spin, vsync: this)
+  ..inspectable = false;
+```
+
+A controller's own `inspectable` and `inspectionGroup` beat the nearest scope.
+A group opens a view with its members and shared controls: pause, replay,
+speed and motion. Group speed and motion also apply to members that join
+later. Motions match tracks by `debugLabel`; when none of a member's labels
+match, they apply to all its tracks. Hidden controllers sit behind an
+"N hidden" row.
+
+Without a group, controllers with the same name share one row that unfolds,
+and controllers that never played fold into an "N idle" row.
+
 ## What you can do
 
 - **Move the bubble.** Drag it anywhere, or fling it. It settles on the
   nearest side of the screen.
 - **See every controller.** The list shows whether each one is playing,
-  paused or idle, and which tracks it animates.
+  paused or idle, and which tracks it animates. A controller first shows one
+  summary lane; tap "N tracks" for a lane per track.
 - **Pause, resume and replay.** Play resumes where you paused or scrubbed to,
   and replays the latest plan once it has finished.
 - **Scrub.** Drag across the timeline, or tap it, to move the controller to
@@ -74,14 +107,35 @@ and `MotionDraggable` all accept `debugLabel` too.
   played. Looping plans show one cycle at a time.
 - **Slow down.** Run one controller at 0.1×, 0.25×, 0.5× or full speed
   without touching Flutter's global time dilation.
-- **Try another motion.** Swap a track's motion for a spring, an ease or a
-  linear motion, and tune its duration and bounce. The latest plan replays
-  right away.
+- **Try another motion.** Pick a spring, a curve, or one of your app's
+  motions for a track. Tune springs on a duration × bounce graph with a live
+  preview, and copy the resulting code. The latest plan replays right away.
+  Pass your own motions by name:
+
+  ```dart
+  MotorDevTools(motions: {'Sheet': AppMotion.sheet}, child: app)
+  ```
 
 Speed and motion changes last for the session. They are undone when
 `MotorDevTools` is disabled or removed.
 
 To open or close the panel from code, pass a `MotorDevToolsController`.
+
+## Show a timeline in your app
+
+`MotorTimeline` is a read-only timeline of one controller, for docs and demos.
+Lanes can name, color and merge tracks; the font comes from the surrounding
+`DefaultTextStyle`:
+
+```dart
+MotorTimeline(
+  controller: controller,
+  lanes: [
+    MotorTimelineLane('Card', [cardOffset], color: Colors.orange),
+    MotorTimelineLane('Dots', [dotA, dotB]),
+  ],
+)
+```
 
 ## Production builds
 
@@ -96,9 +150,11 @@ MotorDevTools(
 ```
 
 When disabled, `MotorDevTools` returns its child and does not attach to
-Motor's inspection registry. Motor keeps no global list of controllers until
-a tool attaches, and apps that never import `motor_devtools` can tree-shake
-it entirely. Debug labels are plain strings in your app, so don't put secrets
+Motor's inspection registry. To remove the tools from a build, build with
+`--dart-define=MOTOR_DEVTOOLS=false` (`kMotorDevTools`): the tools, motor's
+inspection hooks, groups and scopes all compile away. In the motor example's
+release web build that leaves about 400 bytes compared with not importing
+the package. Debug labels are plain strings in your app, so don't put secrets
 in them.
 
 The tools use motor's inspection API (`package:motor/inspection.dart`), which

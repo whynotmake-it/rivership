@@ -113,13 +113,20 @@ class MotorDevTools extends StatefulWidget {
   State<MotorDevTools> createState() => _MotorDevToolsState();
 }
 
-class _MotorDevToolsState extends State<MotorDevTools> {
+class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   final _controllers = <TrackController>[];
   final _numbers = <TrackController, int>{};
   final _creations = <TrackController, StackTrace>{};
   final _guessedNames = <TrackController, String?>{};
   final _originalSpeeds = <TrackController, double>{};
   final _tuned = <TrackController>{};
+  final _groups = <String, GroupSettings>{};
+  final _appliedGroups = <TrackController, String?>{};
+  final _listeners = <TrackController, VoidCallback>{};
+  final _played = <TrackController>{};
+  final _activity = <TrackController, int>{};
+  var _frame = 0;
+  String? _selectedGroup;
   MotorInspectionSubscription? _subscription;
   MotorDevToolsController? _ownedController;
   var _nextNumber = 1;
@@ -165,6 +172,9 @@ class _MotorDevToolsState extends State<MotorDevTools> {
 
   void _detach() {
     _restoreSession();
+    _listeners
+      ..forEach((controller, listener) => controller.removeListener(listener))
+      ..clear();
     _subscription?.dispose();
     _subscription = null;
     _controllers.clear();
@@ -177,7 +187,9 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     SchedulerBinding.instance
       ..addPostFrameCallback((_) {
         _refreshScheduled = false;
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        _controllers.forEach(_syncGroup);
+        setState(() {});
       })
       ..scheduleFrame();
   }
@@ -190,8 +202,42 @@ class _MotorDevToolsState extends State<MotorDevTools> {
       _creations[controller] = StackTrace.current;
     }
     _controllers.add(controller);
+    void listener() {
+      if (!controller.isAnimating) return;
+      _activity[controller] = ++_frame;
+      if (_played.add(controller)) _scheduleRefresh();
+    }
+
+    _listeners[controller] = listener;
+    controller.addListener(listener);
+    _syncGroup(controller);
     _scheduleRefresh();
   }
+
+  /// Applies the settings of [controller]'s group once it joins one.
+  void _syncGroup(TrackController controller) {
+    final group = controller.inspectionGroup;
+    if (_appliedGroups.containsKey(controller) &&
+        _appliedGroups[controller] == group) {
+      return;
+    }
+    _appliedGroups[controller] = group;
+    _applyGroup(controller, group == null ? null : _groups[group]);
+  }
+
+  void _applyGroup(TrackController controller, GroupSettings? settings) {
+    if (settings?.speed case final speed?) setSpeed(controller, speed);
+    final overrides = settings?.overrides ?? const <String?, Motion>{};
+    if (overrides.isNotEmpty) _tuned.add(controller);
+    controller.groupMotionOverride = overrides.isEmpty
+        ? null
+        : groupMotionResolver(controller, Map.of(overrides));
+  }
+
+  List<TrackController> _membersOf(String group) => [
+    for (final controller in _controllers)
+      if (controller.inspectionGroup == group) controller,
+  ];
 
   void _unregister(TrackController controller) {
     if (!_controllers.remove(controller)) return;
@@ -202,8 +248,80 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     _tuned.remove(controller);
     _creations.remove(controller);
     _guessedNames.remove(controller);
+    _appliedGroups.remove(controller);
+    _played.remove(controller);
+    _activity.remove(controller);
+    if (_listeners.remove(controller) case final listener?) {
+      controller.removeListener(listener);
+    }
     _scheduleRefresh();
   }
+
+  @override
+  List<TrackController> get controllers => List.unmodifiable(_controllers);
+
+  @override
+  Map<String, Motion> get appMotions => widget.motions;
+
+  @override
+  bool isIdle(TrackController controller) =>
+      !_played.contains(controller) &&
+      controller.inspectPlayback().tracks.isEmpty;
+
+  @override
+  int lastActive(TrackController controller) => _activity[controller] ?? 0;
+
+  @override
+  GroupSettings settingsOf(String group) =>
+      _groups.putIfAbsent(group, GroupSettings.new);
+
+  @override
+  void setGroupSpeed(String group, double speed) {
+    settingsOf(group).speed = speed;
+    for (final member in _membersOf(group)) {
+      setSpeed(member, speed);
+    }
+    setState(() {});
+  }
+
+  @override
+  void setGroupOverride(String group, String? label, Motion? motion) {
+    final settings = settingsOf(group);
+    if (motion == null) {
+      settings.overrides.remove(label);
+    } else {
+      settings.overrides[label] = motion;
+    }
+    for (final member in _membersOf(group)) {
+      _applyGroup(member, settings);
+      member.replay();
+    }
+    setState(() {});
+  }
+
+  @override
+  void showController(TrackController controller) {
+    if (controller.inspectionGroup != _selectedGroup) _selectedGroup = null;
+    _overlay.showController(controller);
+  }
+
+  @override
+  void showGroup(String group) => setState(() => _selectedGroup = group);
+
+  @override
+  void back() {
+    if (_overlay.selectedController != null) {
+      _overlay.showControllerList();
+    } else {
+      setState(() => _selectedGroup = null);
+    }
+  }
+
+  @override
+  void close() => _overlay.close();
+
+  @override
+  String baseNameOf(TrackController controller) => _baseNameOf(controller);
 
   String _baseNameOf(TrackController controller) =>
       controller.debugLabel ??
@@ -214,7 +332,8 @@ class _MotorDevToolsState extends State<MotorDevTools> {
       'Controller ${_numbers[controller] ?? 0}';
 
   /// The display name, numbered when several controllers share a name.
-  String _nameOf(TrackController controller) {
+  @override
+  String nameOf(TrackController controller) {
     final name = _baseNameOf(controller);
     final same = [
       for (final other in _controllers)
@@ -224,12 +343,14 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     return '$name ${same.indexOf(controller) + 1}';
   }
 
-  void _setSpeed(TrackController controller, double speed) {
+  @override
+  void setSpeed(TrackController controller, double speed) {
     _originalSpeeds.putIfAbsent(controller, () => controller.playbackSpeed);
     controller.playbackSpeed = speed;
   }
 
-  void _setOverride(
+  @override
+  void setOverride(
     TrackController controller,
     Track<Object> track,
     Motion? motion,
@@ -250,12 +371,17 @@ class _MotorDevToolsState extends State<MotorDevTools> {
     }
     _originalSpeeds.clear();
     _tuned.clear();
+    _groups.clear();
+    _appliedGroups.clear();
   }
 
   @override
   void dispose() {
     if (kMotorDevTools) {
       _restoreSession();
+      _listeners.forEach((controller, listener) {
+        controller.removeListener(listener);
+      });
       _subscription?.dispose();
       (widget.controller ?? _ownedController)?.removeListener(
         _scheduleRefresh,
@@ -289,15 +415,13 @@ class _MotorDevToolsState extends State<MotorDevTools> {
               activity: Listenable.merge(_controllers),
               isActive: () => _controllers.any((c) => c.isAnimating),
               panel: DevToolsPanel(
-                controllers: List.unmodifiable(_controllers),
-                selected: _controllers.contains(selected) ? selected : null,
-                nameOf: _nameOf,
-                onSelect: _overlay.showController,
-                onBack: _overlay.showControllerList,
-                onClose: _overlay.close,
-                onSpeedChanged: _setSpeed,
-                onOverrideChanged: _setOverride,
-                appMotions: widget.motions,
+                host: this,
+                group:
+                    _selectedGroup != null &&
+                        _membersOf(_selectedGroup!).isNotEmpty
+                    ? _selectedGroup
+                    : null,
+                controller: _controllers.contains(selected) ? selected : null,
               ),
             ),
           ),

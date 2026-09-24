@@ -5,6 +5,7 @@ import 'package:motor/motor.dart';
 /// motor's inspection hooks.
 extension MotorDevToolsSession on TrackController {
   static final _overrides = Expando<Map<Track<Object>, Motion>>();
+  static final _groupOverrides = Expando<Motion? Function(Track<Object>)>();
 
   /// The motion overrides set from the tools, keyed by track.
   Map<Track<Object>, Motion> get motionOverrides =>
@@ -19,13 +20,29 @@ extension MotorDevToolsSession on TrackController {
     } else {
       overrides[track] = motion;
     }
-    motionOverride = overrides.isEmpty ? null : (track) => overrides[track];
+    _install();
+  }
+
+  /// Motions shared by this controller's group, used for tracks without
+  /// an override of their own. See [groupMotionResolver].
+  set groupMotionOverride(Motion? Function(Track<Object>)? resolve) {
+    _groupOverrides[this] = resolve;
+    _install();
   }
 
   /// Restores the authored motions of every track.
   void clearMotionOverrides() {
     _overrides[this] = null;
+    _groupOverrides[this] = null;
     motionOverride = null;
+  }
+
+  void _install() {
+    final own = _overrides[this];
+    final group = _groupOverrides[this];
+    motionOverride = (own == null || own.isEmpty) && group == null
+        ? null
+        : (track) => own?[track] ?? group?.call(track);
   }
 
   /// Replays the most recently submitted plan from its recorded start values.
@@ -37,4 +54,30 @@ extension MotorDevToolsSession on TrackController {
     set(plan.startValues);
     animate(plan.animations, loop: plan.loop);
   }
+}
+
+/// Picks a group's motion for each of [member]'s tracks.
+///
+/// [overrides] are keyed by track `debugLabel`; the null key applies to all
+/// tracks. A track gets the override for its label. When none of the
+/// member's track labels match any override, every track gets the first
+/// override, so groups with differently labeled tracks still apply.
+Motion? Function(Track<Object>) groupMotionResolver(
+  TrackController member,
+  Map<String?, Motion> overrides,
+) {
+  final seen = <String?>{};
+  return (track) {
+    final label = track.debugLabel;
+    seen.add(label);
+    if (overrides[label] case final motion? when label != null) return motion;
+    if (overrides[null] case final motion?) return motion;
+    final known = {
+      ...seen,
+      for (final playback in member.inspectPlayback().tracks)
+        playback.track.debugLabel,
+    };
+    if (overrides.keys.any(known.contains)) return null;
+    return overrides.values.firstOrNull;
+  };
 }

@@ -6,8 +6,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_devtools/src/style.dart';
 
-/// Picks and tunes the motion used for one of a controller's tracks.
-class MotionEditor extends StatefulWidget {
+/// Picks and tunes the motion used for one of a controller's tracks, or for
+/// a track label of a group. [K] identifies a track.
+class MotionEditor<K> extends StatefulWidget {
   /// Creates an editor for [track].
   const MotionEditor({
     required this.tracks,
@@ -20,38 +21,38 @@ class MotionEditor extends StatefulWidget {
     super.key,
   });
 
-  /// The controller's tracks and their names.
-  final List<(Track<Object>, String)> tracks;
+  /// The tracks and their names.
+  final List<(K, String)> tracks;
 
   /// The track being edited.
-  final Track<Object> track;
+  final K track;
 
   /// The motion that replaces the track's authored motions, if any.
   final Motion? current;
 
   /// Tracks that have a replacement motion.
-  final Set<Track<Object>> tuned;
+  final Set<K> tuned;
 
   /// Motions registered by the app, by name.
   final Map<String, Motion> appMotions;
 
   /// Selects another track.
-  final ValueChanged<Track<Object>> onTrackSelected;
+  final ValueChanged<K> onTrackSelected;
 
   /// Replaces the track's motion, or restores it with null.
   final ValueChanged<Motion?> onChanged;
 
   @override
-  State<MotionEditor> createState() => _MotionEditorState();
+  State<MotionEditor<K>> createState() => _MotionEditorState<K>();
 }
 
-class _MotionEditorState extends State<MotionEditor> {
+class _MotionEditorState<K> extends State<MotionEditor<K>> {
   static const _authored = 'Authored';
   static const _spring = 'Spring';
   static const _curve = 'Curve';
 
   /// The preset each track's motion was last picked from.
-  final _presets = <Track<Object>, String>{};
+  final _presets = <K, String>{};
 
   /// The spring being dragged, before it is applied on release.
   CupertinoMotion? _draft;
@@ -98,7 +99,7 @@ class _MotionEditorState extends State<MotionEditor> {
               for (final (track, name) in widget.tracks)
                 Tag(
                   label: name,
-                  selected: identical(track, widget.track),
+                  selected: track == widget.track,
                   marked: widget.tuned.contains(track),
                   onTap: () => widget.onTrackSelected(track),
                 ),
