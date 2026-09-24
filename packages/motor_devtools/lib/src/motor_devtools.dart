@@ -285,7 +285,12 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   }
 
   @override
-  void setGroupOverride(String group, String? label, Motion? motion) {
+  void setGroupOverride(
+    String group,
+    String? label,
+    Motion? motion, {
+    bool replay = true,
+  }) {
     final settings = settingsOf(group);
     if (motion == null) {
       settings.overrides.remove(label);
@@ -294,7 +299,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     }
     for (final member in _membersOf(group)) {
       _applyGroup(member, settings);
-      member.replay();
+      if (replay) member.replay();
     }
     setState(() {});
   }
@@ -353,12 +358,12 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   void setOverride(
     TrackController controller,
     Track<Object> track,
-    Motion? motion,
-  ) {
+    Motion? motion, {
+    bool replay = true,
+  }) {
     _tuned.add(controller);
-    controller
-      ..setMotionOverride(track, motion)
-      ..replay();
+    controller.setMotionOverride(track, motion);
+    if (replay) controller.replay();
   }
 
   void _restoreSession() {

@@ -17,6 +17,7 @@
 - Show a summary lane first and unfold tracks and the motion editor on tap.
   Tune springs on a duration × bounce graph with a live preview and copyable
   code, and offer the app's own motions with `MotorDevTools(motions:)`.
+  Graph changes apply on release without replaying the controller.
 - Guess names for unlabeled controllers and tracks in debug builds.
 - Group controllers with `MotorInspectionScope(group:)` or `inspectionGroup`
   into one row with shared pause, replay, speed and motion that also apply

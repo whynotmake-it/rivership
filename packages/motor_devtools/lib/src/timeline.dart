@@ -437,7 +437,7 @@ class _TimelineState extends State<Timeline> {
     final editing = identical(_openTrack, track);
     return Padding(
       key: ObjectKey(track),
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: 6),
       child: EditableTrack(
         name: label,
         tuned: widget.trackMotion?.call(track),
@@ -827,7 +827,7 @@ class _LaneRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -909,7 +909,7 @@ class _LanePainter extends CustomPainter {
         mid - height / 2,
         math.max(left + gap + 2, right - gap),
         mid + height / 2,
-        Radius.zero,
+        Radius.circular(height / 2),
       );
       final base = color ?? palette.text;
       final future = base.withValues(
@@ -940,7 +940,7 @@ class _LanePainter extends CustomPainter {
           -3,
           playheadX.clamp(1, size.width - 1) + 0.75,
           size.height + 3,
-          Radius.zero,
+          const Radius.circular(1),
         ),
         Paint()..color = palette.accent,
       );
@@ -992,7 +992,7 @@ class _RulerPainter extends CustomPainter {
           4,
           x + 0.75,
           size.height + 6,
-          Radius.zero,
+          const Radius.circular(1),
         ),
         accent,
       )

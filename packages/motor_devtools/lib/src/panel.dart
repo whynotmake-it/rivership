@@ -76,14 +76,25 @@ abstract interface class PanelHost {
   /// Changes one controller's speed.
   void setSpeed(TrackController controller, double speed);
 
-  /// Changes one controller's track motion, or restores it with null.
-  void setOverride(TrackController controller, Track<Object> track, Motion? m);
+  /// Changes one controller's track motion, or restores it with null, and
+  /// replays its latest plan unless [replay] is false.
+  void setOverride(
+    TrackController controller,
+    Track<Object> track,
+    Motion? motion, {
+    bool replay = true,
+  });
 
   /// Changes a group's speed for current and future members.
   void setGroupSpeed(String group, double speed);
 
   /// Changes a group's motion for tracks labeled [label] (null: all).
-  void setGroupOverride(String group, String? label, Motion? motion);
+  void setGroupOverride(
+    String group,
+    String? label,
+    Motion? motion, {
+    bool replay = true,
+  });
 
   /// Shows [controller].
   void showController(TrackController controller);
@@ -174,7 +185,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
     }
     return SingleMotionBuilder(
       value: _depth.toDouble(),
-      motion: const Motion.smoothSpring(duration: Duration(milliseconds: 420)),
+      motion: const Motion.smoothSpring(duration: Duration(milliseconds: 300)),
       debugLabel: internalDebugLabel,
       builder: (context, t, _) => _PageStack(
         children: [
@@ -316,13 +327,13 @@ class _RenderPageStack extends RenderBox
 class _Header extends StatelessWidget {
   const _Header({
     required this.title,
-    required this.subtitle,
     required this.onClose,
+    this.subtitle,
     this.onBack,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onClose;
   final VoidCallback? onBack;
 
@@ -330,9 +341,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     return Container(
-      height: 60,
+      height: 52,
       color: palette.surface,
-      padding: EdgeInsets.only(left: onBack == null ? 18 : 10, right: 12),
+      padding: EdgeInsets.only(left: onBack == null ? 16 : 10, right: 10),
       child: Row(
         children: [
           if (onBack != null) ...[
@@ -341,9 +352,9 @@ class _Header extends StatelessWidget {
               key: const ValueKey('motor-devtools-back'),
               onTap: onBack,
               semanticLabel: 'Back',
-              size: 30,
+              size: 28,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
           ],
           Expanded(
             child: Column(
@@ -356,13 +367,15 @@ class _Header extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: palette.title,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: palette.caption,
-                ),
+                if (subtitle case final subtitle?) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: palette.caption,
+                  ),
+                ],
               ],
             ),
           ),
@@ -371,7 +384,7 @@ class _Header extends StatelessWidget {
             key: const ValueKey('motor-devtools-close'),
             onTap: onClose,
             semanticLabel: 'Close Motor devtools',
-            size: 30,
+            size: 28,
           ),
         ],
       ),
@@ -484,8 +497,7 @@ class _ControllerListState extends State<_ControllerList> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(
-            title: 'Motor',
-            subtitle: count == 1 ? '1 controller' : '$count controllers',
+            title: count == 1 ? '1 controller' : '$count controllers',
             onClose: host.close,
           ),
           const Hairline(),
@@ -509,12 +521,12 @@ class _ControllerListState extends State<_ControllerList> {
                   )
                 : ListView(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     children: [
                       ..._rows(shown),
                       if (idle.isNotEmpty) ...[
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: DisclosureRow(
                             key: const ValueKey('motor-devtools-idle'),
                             title: '${idle.length} idle',
@@ -530,7 +542,7 @@ class _ControllerListState extends State<_ControllerList> {
                       ],
                       if (hidden.isNotEmpty) ...[
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: DisclosureRow(
                             key: const ValueKey('motor-devtools-hidden'),
                             title: '${hidden.length} hidden',
@@ -569,7 +581,7 @@ class _RowEntrance extends StatelessWidget {
   Widget build(BuildContext context) => SingleMotionBuilder(
     from: 0,
     value: 1,
-    motion: const Motion.smoothSpring(duration: Duration(milliseconds: 420)),
+    motion: const Motion.smoothSpring(duration: Duration(milliseconds: 320)),
     debugLabel: internalDebugLabel,
     builder: (context, t, child) => Opacity(
       opacity: t.clamp(0.0, 1.0),
@@ -581,14 +593,12 @@ class _RowEntrance extends StatelessWidget {
 
 class _RowLayout extends StatelessWidget {
   const _RowLayout({
-    required this.state,
     required this.title,
     required this.subtitle,
     required this.lane,
     required this.trailing,
   });
 
-  final PlaybackState state;
   final String title;
   final String subtitle;
   final PlaybackSnapshot? lane;
@@ -598,11 +608,9 @@ class _RowLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
-          _StatusDot(state),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,7 +621,7 @@ class _RowLayout extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: palette.body,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -660,7 +668,6 @@ class _ControllerRow extends StatelessWidget {
           builder: (context, _) {
             final state = PlaybackState.of(controller);
             return _RowLayout(
-              state: state,
               title: name,
               subtitle: '${state.label}  ·  ${_trackSummary(controller)}',
               lane: controller.inspectPlayback(),
@@ -705,7 +712,6 @@ class _GroupRow extends StatelessWidget {
             final state = PlaybackState.ofAll(members);
             final playing = members.where((c) => c.isAnimating).length;
             return _RowLayout(
-              state: state,
               title: title,
               subtitle: switch (playing) {
                 0 => '${state.label}  ·  ${_trackSummary(members.first)}',
@@ -749,31 +755,6 @@ String _trackSummary(TrackController controller) {
   return [...labels.take(2), if (more > 0) '+$more'].join(', ');
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot(this.state);
-
-  final PlaybackState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = DevToolsTheme.of(context);
-    return Container(
-      width: 7,
-      height: 7,
-      decoration: BoxDecoration(
-        color: switch (state) {
-          PlaybackState.playing => palette.accent,
-          PlaybackState.paused => null,
-          PlaybackState.idle => palette.tertiary.withValues(alpha: 0.5),
-        },
-        border: state == PlaybackState.paused
-            ? Border.all(color: palette.accent, width: 1.5)
-            : null,
-      ),
-    );
-  }
-}
-
 const _speeds = [0.1, 0.25, 0.5, 1.0];
 
 String _speedLabel(double speed) =>
@@ -806,7 +787,6 @@ class _Transport extends StatelessWidget {
           onTap: onPlayPause,
           semanticLabel: playing ? 'Pause' : 'Play',
           filled: true,
-          size: 34,
         ),
         const SizedBox(width: 8),
         GlyphButton(
@@ -814,7 +794,6 @@ class _Transport extends StatelessWidget {
           key: const ValueKey('motor-devtools-replay'),
           onTap: onReplay,
           semanticLabel: 'Replay',
-          size: 34,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -951,8 +930,8 @@ class _GroupEditorState extends State<_GroupEditor> {
     final palette = DevToolsTheme.of(context);
     final overrides = widget.settings.overrides;
     final appMotions = widget.host.appMotions;
-    void apply(String? key, Motion? motion) {
-      widget.host.setGroupOverride(widget.group, key, motion);
+    void apply(String? key, Motion? motion, {bool replay = true}) {
+      widget.host.setGroupOverride(widget.group, key, motion, replay: replay);
       setState(() {});
     }
 
@@ -965,15 +944,15 @@ class _GroupEditorState extends State<_GroupEditor> {
         Flexible(
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.only(top: 16, bottom: 8),
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     widget.transport,
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text('Motion', style: palette.label),
                     const SizedBox(height: 4),
                     for (final (key, name) in widget.tracks)
@@ -996,6 +975,8 @@ class _GroupEditorState extends State<_GroupEditor> {
                             current: overrides[key],
                             appMotions: appMotions,
                             onChanged: (motion) => apply(key, motion),
+                            onTuned: (motion) =>
+                                apply(key, motion, replay: false),
                           ),
                         ),
                       ),
@@ -1070,7 +1051,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   children: [
                     _Transport(
                       state: state,
@@ -1081,7 +1062,7 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                           : controller.replay,
                       onSpeed: (speed) => host.setSpeed(controller, speed),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Timeline(
                       key: const ValueKey('motor-devtools-full-timeline'),
                       controller: controller,
@@ -1095,13 +1076,22 @@ class _ControllerDetailState extends State<_ControllerDetail> {
                         appMotions: host.appMotions,
                         onChanged: (motion) =>
                             host.setOverride(controller, track, motion),
+                        onTuned: (motion) => host.setOverride(
+                          controller,
+                          track,
+                          motion,
+                          replay: false,
+                        ),
                       ),
                     ),
                     if (controller.debugLabel == null) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
-                        color: palette.fill,
+                        decoration: ShapeDecoration(
+                          color: palette.fill,
+                          shape: rounded(10),
+                        ),
                         child: Text(
                           'Pass debugLabel to the controller or its builder '
                           'to name it.',

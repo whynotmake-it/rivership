@@ -48,11 +48,11 @@ class _FloatingBubbleState extends State<FloatingBubble>
   static const _size = 44.0;
   static const _margin = 12.0;
   static const _openMotion = Motion.cupertino(
-    duration: Duration(milliseconds: 460),
-    bounce: 0.12,
+    duration: Duration(milliseconds: 340),
+    bounce: 0.06,
   );
   static const _closeMotion = Motion.smoothSpring(
-    duration: Duration(milliseconds: 360),
+    duration: Duration(milliseconds: 260),
   );
 
   late final _expansion = SingleMotionController(
@@ -124,8 +124,8 @@ class _FloatingBubbleState extends State<FloatingBubble>
     _padding = padding;
     final position = _position ??= MotionController<Offset>(
       motion: const Motion.cupertino(
-        duration: Duration(milliseconds: 520),
-        bounce: 0.2,
+        duration: Duration(milliseconds: 420),
+        bounce: 0.12,
       ),
       vsync: this,
       converter: MotionConverter.offset,
@@ -173,11 +173,13 @@ class _FloatingBubbleState extends State<FloatingBubble>
           animation: Listenable.merge([_position, _expansion]),
           builder: (context, _) {
             final t = _expansion.value;
+            final radius = _size / 2 + (18 - _size / 2) * t.clamp(0.0, 1.0);
             return _Shell(
               bubble: _position!.value & const Size.square(_size),
               expansion: t,
               onRight: _onRight,
               padding: padding,
+              radius: radius,
               contentOpacity: ((t - 0.3) / 0.7).clamp(0.0, 1.0),
               children: [
                 SingleMotionBuilder(
@@ -188,6 +190,7 @@ class _FloatingBubbleState extends State<FloatingBubble>
                     scale: 1 + lift * 0.08,
                     child: _Surface(
                       key: const ValueKey('motor-devtools-surface'),
+                      radius: radius,
                       child: child!,
                     ),
                   ),
@@ -236,6 +239,7 @@ class _Shell extends MultiChildRenderObjectWidget {
     required this.expansion,
     required this.onRight,
     required this.padding,
+    required this.radius,
     required this.contentOpacity,
     required super.children,
   });
@@ -244,6 +248,7 @@ class _Shell extends MultiChildRenderObjectWidget {
   final double expansion;
   final bool onRight;
   final EdgeInsets padding;
+  final double radius;
   final double contentOpacity;
 
   @override
@@ -252,6 +257,7 @@ class _Shell extends MultiChildRenderObjectWidget {
     ..expansion = expansion
     ..onRight = onRight
     ..padding = padding
+    ..radius = radius
     ..contentOpacity = contentOpacity;
 
   @override
@@ -261,6 +267,7 @@ class _Shell extends MultiChildRenderObjectWidget {
       ..expansion = expansion
       ..onRight = onRight
       ..padding = padding
+      ..radius = radius
       ..contentOpacity = contentOpacity;
   }
 }
@@ -291,6 +298,14 @@ class _RenderShell extends RenderBox
   set padding(EdgeInsets value) =>
       _update(_padding != value, () => _padding = value);
 
+  double _radius = 0;
+  double get radius => _radius;
+  set radius(double value) {
+    if (_radius == value) return;
+    _radius = value;
+    markNeedsPaint();
+  }
+
   double _contentOpacity = 0;
   double get contentOpacity => _contentOpacity;
   set contentOpacity(double value) {
@@ -306,7 +321,7 @@ class _RenderShell extends RenderBox
   }
 
   Rect _rect = Rect.zero;
-  final _clip = LayerHandle<ClipRectLayer>();
+  final _clip = LayerHandle<ClipRSuperellipseLayer>();
   final _opacity = LayerHandle<OpacityLayer>();
 
   RenderBox? get _content => childAfter(firstChild!);
@@ -381,10 +396,11 @@ class _RenderShell extends RenderBox
       return;
     }
     final at = (content.parentData! as _ShellData).offset;
-    _clip.layer = context.pushClipRect(
+    _clip.layer = context.pushClipRSuperellipse(
       needsCompositing,
       offset,
       _rect,
+      RSuperellipse.fromRectAndRadius(_rect, Radius.circular(_radius)),
       (context, offset) {
         if (_contentOpacity >= 1) {
           _opacity.layer = null;
@@ -433,19 +449,23 @@ class _RenderShell extends RenderBox
 }
 
 class _Surface extends StatelessWidget {
-  const _Surface({required this.child, super.key});
+  const _Surface({required this.radius, required this.child, super.key});
 
+  final double radius;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
     return DecoratedBox(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: palette.surface,
-        border: Border.all(color: palette.outline),
+        shape: rounded(radius, side: palette.outline),
       ),
-      child: ClipRect(child: child),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(radius),
+        child: child,
+      ),
     );
   }
 }
@@ -507,6 +527,7 @@ class _BubbleFace extends StatelessWidget {
                         height: 7,
                         decoration: BoxDecoration(
                           color: palette.accent,
+                          shape: BoxShape.circle,
                           border: Border.all(
                             color: palette.surface,
                             width: 1.5,

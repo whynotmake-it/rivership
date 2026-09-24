@@ -141,7 +141,10 @@ class EditableTrack extends StatelessWidget {
                           horizontal: 6,
                           vertical: 2,
                         ),
-                        color: palette.accent.withValues(alpha: 0.12),
+                        decoration: ShapeDecoration(
+                          color: palette.accent.withValues(alpha: 0.12),
+                          shape: rounded(6),
+                        ),
                         child: Text(
                           tuned,
                           maxLines: 1,
@@ -229,7 +232,12 @@ class EditableTrack extends StatelessWidget {
               bottom: -8,
               child: Opacity(
                 opacity: t.clamp(0.0, 1.0),
-                child: ColoredBox(color: palette.fill),
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    color: palette.fill,
+                    shape: rounded(14),
+                  ),
+                ),
               ),
             ),
             child!,
@@ -248,6 +256,7 @@ class MotionEditor extends StatefulWidget {
     required this.current,
     required this.appMotions,
     required this.onChanged,
+    required this.onTuned,
     super.key,
   });
 
@@ -257,8 +266,12 @@ class MotionEditor extends StatefulWidget {
   /// Motions registered by the app, by name.
   final Map<String, Motion> appMotions;
 
-  /// Replaces the track's motion, or restores it with null.
+  /// Replaces the track's motion, or restores it with null, and replays.
   final ValueChanged<Motion?> onChanged;
+
+  /// Replaces the track's motion after tuning it on the graph, without
+  /// replaying: the graph previews it.
+  final ValueChanged<Motion> onTuned;
 
   @override
   State<MotionEditor> createState() => _MotionEditorState();
@@ -362,7 +375,7 @@ class _MotionEditorState extends State<MotionEditor> {
               onChangeEnd: () {
                 final draft = _draft;
                 setState(() => _draft = null);
-                if (draft != null) widget.onChanged(draft);
+                if (draft != null) widget.onTuned(draft);
               },
             ),
           ),
@@ -471,7 +484,8 @@ class SpringGraph extends StatelessWidget {
                 builder: (context, handle, _) => Stack(
                   children: [
                     Positioned.fill(
-                      child: ClipRect(
+                      child: ClipRSuperellipse(
+                        borderRadius: BorderRadius.circular(10),
                         child: CustomPaint(
                           painter: _GraphBackgroundPainter(palette),
                           foregroundPainter: _HandlePainter(handle, palette),
@@ -556,20 +570,15 @@ class _HandlePainter extends CustomPainter {
     canvas
       ..drawLine(Offset(point.dx, size.height), point, guide)
       ..drawLine(Offset(0, point.dy), point, guide)
-      ..drawRect(
-        Rect.fromCenter(center: point, width: 18, height: 18),
-        Paint()..color = palette.surface,
-      )
-      ..drawRect(
-        Rect.fromCenter(center: point, width: 18, height: 18),
+      ..drawCircle(point, 9, Paint()..color = palette.surface)
+      ..drawCircle(
+        point,
+        9,
         Paint()
           ..color = palette.outline
           ..style = PaintingStyle.stroke,
       )
-      ..drawRect(
-        Rect.fromCenter(center: point, width: 8, height: 8),
-        Paint()..color = palette.accent,
-      );
+      ..drawCircle(point, 4, Paint()..color = palette.accent);
   }
 
   @override
@@ -787,12 +796,9 @@ class _PreviewPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5,
       )
-      ..drawRect(
-        Rect.fromCenter(
-          center: Offset(plot.left + plot.width * progress, yOf(value)),
-          width: 7,
-          height: 7,
-        ),
+      ..drawCircle(
+        Offset(plot.left + plot.width * progress, yOf(value)),
+        3.5,
         Paint()..color = palette.accent,
       );
     if (inGraph) return;
@@ -803,13 +809,13 @@ class _PreviewPainter extends CustomPainter {
       plot.bottom,
     );
     canvas
-      ..drawRect(rail, Paint()..color = palette.fill)
-      ..drawRect(
-        Rect.fromCenter(
-          center: Offset(rail.center.dx, yOf(value)),
-          width: 14,
-          height: 6,
-        ),
+      ..drawRRect(
+        RRect.fromRectAndRadius(rail, const Radius.circular(2)),
+        Paint()..color = palette.fill,
+      )
+      ..drawCircle(
+        Offset(rail.center.dx, yOf(value)),
+        6,
         Paint()..color = palette.text,
       );
   }
@@ -867,7 +873,7 @@ class _CodeLineState extends State<_CodeLine> {
       },
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        color: palette.surface,
+        decoration: ShapeDecoration(color: palette.surface, shape: rounded(8)),
         child: Row(
           children: [
             Expanded(

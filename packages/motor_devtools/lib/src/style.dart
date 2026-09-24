@@ -103,9 +103,9 @@ class DevToolsPalette {
   /// A title, such as a controller name.
   TextStyle get title => TextStyle(
     color: text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
-    letterSpacing: -0.2,
+    letterSpacing: 0,
     height: 1.2,
   );
 
@@ -114,8 +114,8 @@ class DevToolsPalette {
     color: text,
     fontSize: 13,
     fontWeight: FontWeight.w500,
-    letterSpacing: -0.1,
-    height: 1.25,
+    letterSpacing: 0,
+    height: 1.2,
   );
 
   /// Small secondary text.
@@ -123,7 +123,8 @@ class DevToolsPalette {
     color: secondary,
     fontSize: 11.5,
     fontWeight: FontWeight.w400,
-    height: 1.25,
+    letterSpacing: 0,
+    height: 1.2,
   );
 
   /// A small section heading.
@@ -131,7 +132,7 @@ class DevToolsPalette {
     color: secondary,
     fontSize: 11,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
     height: 1.2,
   );
 
@@ -140,6 +141,7 @@ class DevToolsPalette {
     color: tertiary,
     fontSize: 10.5,
     fontWeight: FontWeight.w500,
+    letterSpacing: 0,
     height: 1.2,
   );
 
@@ -157,7 +159,8 @@ class DevToolsPalette {
     color: secondary,
     fontSize: 11.5,
     fontWeight: FontWeight.w500,
-    height: 1.25,
+    letterSpacing: 0,
+    height: 1.2,
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 }
@@ -181,7 +184,14 @@ class DevToolsTheme extends InheritedWidget {
 }
 
 /// A quick, lightly damped spring for small interface feedback.
-const quickMotion = Motion.smoothSpring(duration: Duration(milliseconds: 260));
+const quickMotion = Motion.smoothSpring(duration: Duration(milliseconds: 220));
+
+/// The devtools' rounded shape: a superellipse with corner [radius].
+RoundedSuperellipseBorder rounded(double radius, {Color? side}) =>
+    RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.circular(radius),
+      side: side == null ? BorderSide.none : BorderSide(color: side),
+    );
 
 /// A tap target that dims and shrinks slightly while pressed.
 class Pressable extends StatefulWidget {
@@ -345,15 +355,18 @@ class _GlyphPainter extends CustomPainter {
           );
         }
       case Glyph.replay:
-        final rect = Rect.fromCircle(center: const Offset(12, 12.5), radius: 7);
-        canvas.drawArc(rect, -math.pi * 0.35, math.pi * 1.6, false, stroke);
-        canvas.drawPath(
-          Path()
-            ..moveTo(10.5, 2.5)
-            ..lineTo(14.5, 5.3)
-            ..lineTo(10.8, 8.5),
-          stroke,
-        );
+        // A counterclockwise arrow, ↺: the arc runs clockwise from the top
+        // round to the upper left, and the arrowhead at the top points left.
+        final rect = Rect.fromCircle(center: const Offset(12, 13), radius: 7);
+        canvas
+          ..drawArc(rect, -math.pi / 2, math.pi * 1.6, false, stroke)
+          ..drawPath(
+            Path()
+              ..moveTo(14.5, 3.5)
+              ..lineTo(12, 6)
+              ..lineTo(14.5, 8.5),
+            stroke,
+          );
       case Glyph.back:
         canvas.drawPath(
           Path()
@@ -371,10 +384,19 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
       case Glyph.edit:
+        stroke.strokeWidth = 1.7;
         canvas
-          ..drawLine(const Offset(6.5, 17.5), const Offset(16, 8), stroke)
-          ..drawLine(const Offset(14, 6), const Offset(18, 10), stroke)
-          ..drawLine(const Offset(5, 19), const Offset(6.5, 17.5), stroke);
+          ..drawPath(
+            Path()
+              ..moveTo(4.5, 19.5)
+              ..lineTo(5.5, 15)
+              ..lineTo(15.5, 5)
+              ..lineTo(19, 8.5)
+              ..lineTo(9, 18.5)
+              ..close(),
+            stroke,
+          )
+          ..drawLine(const Offset(13, 7.5), const Offset(16.5, 11), stroke);
       case Glyph.close:
         canvas
           ..drawLine(const Offset(7, 7), const Offset(17, 17), stroke)
@@ -425,7 +447,10 @@ class GlyphButton extends StatelessWidget {
         width: size,
         height: size,
         alignment: Alignment.center,
-        color: filled ? palette.text : palette.fill,
+        decoration: ShapeDecoration(
+          color: filled ? palette.text : palette.fill,
+          shape: const CircleBorder(),
+        ),
         child: GlyphIcon(
           glyph,
           color: filled ? palette.surface : palette.text,
@@ -468,9 +493,9 @@ class Segmented<T> extends StatelessWidget {
     final palette = DevToolsTheme.of(context);
     final index = selected == null ? -1 : options.indexOf(selected as T);
     return Container(
-      height: 30,
+      height: 28,
       padding: const EdgeInsets.all(2),
-      color: palette.fill,
+      decoration: ShapeDecoration(color: palette.fill, shape: rounded(9)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth / options.length;
@@ -483,7 +508,13 @@ class Segmented<T> extends StatelessWidget {
                   debugLabel: internalDebugLabel,
                   builder: (context, left, child) =>
                       Positioned(left: left, top: 0, bottom: 0, child: child!),
-                  child: Container(width: width, color: palette.surface),
+                  child: Container(
+                    width: width,
+                    decoration: ShapeDecoration(
+                      color: palette.surface,
+                      shape: rounded(7, side: palette.hairline),
+                    ),
+                  ),
                 ),
               Row(
                 children: [
@@ -619,29 +650,20 @@ class _SliderPainter extends CustomPainter {
     const knob = 8.0;
     final y = size.height / 2;
     final x = knob + (size.width - knob * 2) * fraction;
+    const track = Radius.circular(1.5);
     canvas
-      ..drawRect(
-        Rect.fromLTRB(0, y - 1.5, size.width, y + 1.5),
+      ..drawRRect(
+        RRect.fromLTRBR(0, y - 1.5, size.width, y + 1.5, track),
         Paint()..color = palette.fill,
       )
-      ..drawRect(
-        Rect.fromLTRB(0, y - 1.5, x, y + 1.5),
+      ..drawRRect(
+        RRect.fromLTRBR(0, y - 1.5, x, y + 1.5, track),
         Paint()..color = palette.text,
       )
-      ..drawRect(
-        Rect.fromCenter(
-          center: Offset(x, y),
-          width: knob * 1.5,
-          height: knob * 2,
-        ),
-        Paint()..color = palette.surface,
-      )
-      ..drawRect(
-        Rect.fromCenter(
-          center: Offset(x, y),
-          width: knob * 1.5,
-          height: knob * 2,
-        ),
+      ..drawCircle(Offset(x, y), knob, Paint()..color = palette.surface)
+      ..drawCircle(
+        Offset(x, y),
+        knob,
         Paint()
           ..color = palette.outline
           ..style = PaintingStyle.stroke,
@@ -654,7 +676,7 @@ class _SliderPainter extends CustomPainter {
 }
 
 /// The spring used to fold and unfold sections.
-const foldMotion = Motion.smoothSpring(duration: Duration(milliseconds: 380));
+const foldMotion = Motion.smoothSpring(duration: Duration(milliseconds: 300));
 
 /// Unfolds [child] downward while [open], and removes it once folded.
 class Disclosure extends StatefulWidget {
@@ -668,7 +690,7 @@ class Disclosure extends StatefulWidget {
   final Widget child;
 
   static const _closeMotion = Motion.smoothSpring(
-    duration: Duration(milliseconds: 520),
+    duration: Duration(milliseconds: 380),
   );
 
   @override
@@ -760,7 +782,7 @@ class DisclosureRow extends StatelessWidget {
       semanticLabel: title,
       pressedScale: 1,
       child: SizedBox(
-        height: 36,
+        height: 32,
         child: Row(
           children: [
             Text(title, style: palette.label),
@@ -825,22 +847,30 @@ class Tag extends StatelessWidget {
       onTap: onTap,
       semanticLabel: label,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: ShapeDecoration(
           color: selected
               ? palette.text
               : outlined
               ? null
               : palette.fill,
-          border: outlined && !selected
-              ? Border.all(color: palette.hairline)
-              : null,
+          shape: rounded(
+            8,
+            side: outlined && !selected ? palette.hairline : null,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (marked) ...[
-              Container(width: 5, height: 5, color: palette.accent),
+              Container(
+                width: 5,
+                height: 5,
+                decoration: ShapeDecoration(
+                  color: palette.accent,
+                  shape: const CircleBorder(),
+                ),
+              ),
               const SizedBox(width: 6),
             ],
             Text(

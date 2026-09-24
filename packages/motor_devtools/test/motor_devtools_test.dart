@@ -59,7 +59,7 @@ void main() {
     await tester.tap(_launcher);
     await _settle(tester);
 
-    expect(find.text('Motor'), findsOneWidget);
+    expect(find.text('Motor'), findsNothing);
     expect(find.text('1 controller'), findsOneWidget);
     expect(find.text('Checkout confirmation'), findsOneWidget);
     expect(find.textContaining('Card opacity'), findsOneWidget);
@@ -273,8 +273,14 @@ void main() {
     final graph = find.byKey(const ValueKey('motor-devtools-spring-graph'));
     await tester.ensureVisible(graph);
     await _settle(tester);
+    final playing = controller.value(_MotionHarnessState.opacity);
     await tester.tapAt(tester.getRect(graph).topRight + const Offset(-1, 1));
     await tester.pump();
+    expect(
+      controller.value(_MotionHarnessState.opacity),
+      greaterThanOrEqualTo(playing),
+      reason: 'tuning on the graph does not replay the controller',
+    );
     final tuned = controller.motionOverrides.values.single as CupertinoMotion;
     expect(tuned.duration, const Duration(milliseconds: 1500));
     expect(tuned.bounce, closeTo(0.8, 0.02));
@@ -348,7 +354,7 @@ void main() {
     await tester.tap(_launcher);
     await _settle(tester);
 
-    final title = tester.widget<Text>(find.text('Motor'));
+    final title = tester.widget<Text>(find.text('1 controller'));
     expect(title.style?.color, const Color(0xFFFAFAFA));
     await tester.pumpWidget(const SizedBox());
   });
