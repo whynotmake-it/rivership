@@ -32,6 +32,8 @@
   until they play again.
 - Drag the open panel from its header or background, and minimize it back
   into the bubble.
+- Add `MotorDevTools(visible:)` to hide the overlay while tracking and every
+  change go on; `enabled` turns tracking on and off.
 - Support opt-in production use; when disabled, the inspection registry is
   not attached. `--dart-define=MOTOR_DEVTOOLS=false` removes the tools and
   motor's inspection hooks from a build.

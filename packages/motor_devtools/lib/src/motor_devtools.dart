@@ -73,15 +73,21 @@ class MotorDevToolsController extends ChangeNotifier {
 /// Controllers are listed by their `debugLabel`, which `TrackController`,
 /// `MotionController`, and motor's builder widgets accept.
 ///
-/// [enabled] switches the tools on and off at runtime, also in production
-/// builds. When false, the child is returned directly and Motor's inspection
-/// registry is not attached. To remove the tools from a build, see
-/// [kMotorDevTools].
+/// Three switches, from coarsest to finest:
+///
+/// - [kMotorDevTools] compiles the tools in or out of a build.
+/// - [enabled] turns tracking on or off at runtime, also in production
+///   builds. When false, the child is returned directly, Motor's inspection
+///   registry is not attached, and the session's changes are undone.
+/// - [visible] shows or hides the overlay while tracking goes on, keeping
+///   the controllers found so far and every change, such as for a debug
+///   menu that opens the tools when needed.
 class MotorDevTools extends StatefulWidget {
   /// Creates an optional Motor developer overlay.
   const MotorDevTools({
     required this.child,
     this.enabled = true,
+    this.visible = true,
     this.controller,
     this.alignment = Alignment.bottomRight,
     this.motions = const {},
@@ -102,8 +108,14 @@ class MotorDevTools extends StatefulWidget {
   /// The application subtree to inspect.
   final Widget child;
 
-  /// Whether controller discovery and the overlay are enabled.
+  /// Whether the tools track controllers. See [MotorDevTools] for how this
+  /// differs from [visible].
   final bool enabled;
+
+  /// Whether the overlay is shown while [enabled]. Hiding it keeps tracking
+  /// and all changes; pausing and scrubbing resume, as when the panel is
+  /// minimized.
+  final bool visible;
 
   /// An optional imperative overlay controller.
   final MotorDevToolsController? controller;
@@ -172,6 +184,8 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
     if (oldWidget.enabled != widget.enabled) {
       widget.enabled ? _attach() : _detach();
     }
+    if (oldWidget.visible && !widget.visible) _resumeShown();
+    _syncMutedPoll();
   }
 
   void _attach() {
@@ -193,7 +207,7 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
   /// Muting and finishing don't notify, so while the panel is open, check
   /// every controller's ticker now and then.
   void _syncMutedPoll() {
-    if (_overlay.isOpen && _subscription != null) {
+    if (_overlay.isOpen && widget.visible && _subscription != null) {
       _mutedPoll ??= Timer.periodic(
         const Duration(milliseconds: 500),
         (_) => _poll(),
@@ -539,24 +553,30 @@ class _MotorDevToolsState extends State<MotorDevTools> implements PanelHost {
       children: [
         widget.child,
         Positioned.fill(
-          child: _Environment(
-            child: FloatingBubble(
-              isOpen: _overlay.isOpen,
-              onOpen: () => _overlay.open(selected),
-              initialAlignment: widget.alignment,
-              activity: Listenable.merge(_controllers),
-              isActive: () => _controllers.any((c) => c.isAnimating),
-              modifiedCount: () => _controllers
-                  .where((c) => c.inspectable && changesOf(c).isNotEmpty)
-                  .length,
-              panel: DevToolsPanel(
-                host: this,
-                group:
-                    _selectedGroup != null &&
-                        _membersOf(_selectedGroup!).isNotEmpty
-                    ? _selectedGroup
-                    : null,
-                controller: _controllers.contains(selected) ? selected : null,
+          // Hidden, the overlay keeps its state, such as the bubble's place
+          // and the open page, but its tickers stop.
+          child: Visibility(
+            visible: widget.visible,
+            maintainState: true,
+            child: _Environment(
+              child: FloatingBubble(
+                isOpen: _overlay.isOpen,
+                onOpen: () => _overlay.open(selected),
+                initialAlignment: widget.alignment,
+                activity: Listenable.merge(_controllers),
+                isActive: () => _controllers.any((c) => c.isAnimating),
+                modifiedCount: () => _controllers
+                    .where((c) => c.inspectable && changesOf(c).isNotEmpty)
+                    .length,
+                panel: DevToolsPanel(
+                  host: this,
+                  group:
+                      _selectedGroup != null &&
+                          _membersOf(_selectedGroup!).isNotEmpty
+                      ? _selectedGroup
+                      : null,
+                  controller: _controllers.contains(selected) ? selected : null,
+                ),
               ),
             ),
           ),

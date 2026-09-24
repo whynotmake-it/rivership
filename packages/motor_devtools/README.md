@@ -145,17 +145,34 @@ MotorTimeline(
 )
 ```
 
-## Production builds
+## Compiled in, tracking, visible
 
-`enabled` is a normal runtime flag, so you can deliberately ship the tools to
-testers:
+Three switches, from coarsest to finest:
+
+| Switch | Off means |
+| --- | --- |
+| `--dart-define=MOTOR_DEVTOOLS=false` (`kMotorDevTools`) | The tools aren't in the build. |
+| `enabled:` | Nothing is tracked; the session's changes are undone. |
+| `visible:` | The overlay is hidden; tracking and every change go on. |
+
+Keep `enabled` on and toggle `visible` from a debug menu, so the tools
+already know every controller, its history, overrides and groups when they
+open:
 
 ```dart
 MotorDevTools(
   enabled: kDebugMode || featureFlags.motionLab,
+  visible: debugMenu.showMotorTools,
   child: app,
 )
 ```
+
+Hiding resumes playback the open page paused, as minimizing does.
+
+## Production builds
+
+`enabled` and `visible` are normal runtime flags, so you can deliberately
+ship the tools to testers.
 
 When disabled, `MotorDevTools` returns its child and does not attach to
 Motor's inspection registry. To remove the tools from a build, build with
