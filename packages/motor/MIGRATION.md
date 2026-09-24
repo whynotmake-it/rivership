@@ -184,6 +184,63 @@ void _advanceTo(double time) {
 }
 ```
 
+### Custom motions: extend `Motion` instead of implementing it
+
+2.0 added `settlingDuration(...)`, `scaleTo(Duration)` and
+`estimateSimulationDuration(...)` to `Motion` and `MotionBase`, with default
+implementations. A class that `implements Motion` doesn't inherit them, so
+it no longer compiles until it provides all three. Extend `Motion` instead:
+you keep only the members 1.x required.
+
+```dart
+// Before (1.x):
+class MyMotion implements Motion {
+  const MyMotion();
+
+  @override
+  Tolerance get tolerance => .defaultTolerance;
+
+  @override
+  bool get needsSettle => true;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      SpringSimulation(_spring, start, end, velocity);
+}
+
+// After (2.0):
+class MyMotion extends Motion {
+  const MyMotion();
+
+  @override
+  bool get needsSettle => true;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      SpringSimulation(_spring, start, end, velocity);
+}
+
+const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
+```
+
+If you can tell when your simulation is done, override `settlingDuration`
+with the same arguments as `createSimulation`. Motor then ends its steps at
+that time instead of sampling `isDone` to find it.
+
 ## Sequences → Tracks
 
 The legacy sequence stack — `MotionSequence` (with `StateSequence`,
