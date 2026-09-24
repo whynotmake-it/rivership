@@ -184,6 +184,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Phases survives being dragged and flung far past its ends', (
+    tester,
+  ) async {
+    await _open(tester, 'Phases');
+    final player = find.text('Slow Motion').first;
+    await tester.drag(player, const Offset(0, -1500));
+    await _pumpFor(tester, const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('FULL'));
+    await _pumpFor(tester, const Duration(seconds: 1));
+    await tester.fling(player, const Offset(0, -500), 8000);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    expect(tester.takeException(), isNull);
+
+    await tester.drag(player, const Offset(0, 2500));
+    await _pumpFor(tester, const Duration(seconds: 2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Phases hands a drag back to autoplay', (tester) async {
     await _open(tester, 'Phases');
     await tester.tap(find.text('AUTOPLAY'));

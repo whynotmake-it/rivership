@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
@@ -177,13 +178,16 @@ class _PhasesPageState extends State<PhasesPage>
     _dragged = _progress.clamp(0, 2);
   }
 
+  // Past either end the player follows the finger with growing resistance,
+  // and never more than a quarter of a phase.
+  static double _resist(double past) => .25 * .3 * past / (.25 + .3 * past);
+
   void _drag(DragUpdateDetails details) {
     _dragged += details.delta.dy / _dragPerPhase;
-    // Past either end, the player follows the finger reluctantly.
     final progress = _dragged < 0
-        ? _dragged * .3
+        ? -_resist(-_dragged)
         : _dragged > 2
-        ? 2 + (_dragged - 2) * .3
+        ? 2 + _resist(_dragged - 2)
         : _dragged;
     final index = progress.floor().clamp(0, 1);
     final from = _looks[_Player.values[index]]!;
@@ -327,6 +331,17 @@ class _NowPlaying extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Palette.of(context);
+    // A hard fling can make the springs overshoot past zero.
+    final frame = Size(
+      math.max(0, this.frame.width),
+      math.max(0, this.frame.height),
+    );
+    final art = Rect.fromLTWH(
+      this.art.left,
+      this.art.top,
+      math.max(0, this.art.width),
+      math.max(0, this.art.height),
+    );
     // The artist line only fits once the frame is tall enough.
     final roomy = ((frame.height - 60) / 60).clamp(0.0, 1.0);
     return Container(
