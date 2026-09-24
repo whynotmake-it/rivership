@@ -99,6 +99,30 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Steps fades out before collapsing and lands back compact', (
+    tester,
+  ) async {
+    await _open(tester, 'Steps');
+    dynamic island() => tester.widget(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Island'),
+    );
+    await tester.tap(find.text('Ping'));
+    for (var t = Duration.zero; t < const Duration(seconds: 3); t += frame) {
+      await tester.pump(frame);
+      final Size size = island().size;
+      if (t > const Duration(milliseconds: 1500) && size.width < 330) {
+        expect(island().content, closeTo(0, 1e-9), reason: 'shown at $t');
+      }
+      if (t == const Duration(milliseconds: 384)) {
+        expect(island().bell, closeTo(.45, .03));
+      }
+    }
+    final Size size = island().size;
+    expect(size.width, closeTo(120, .01));
+    expect(size.height, closeTo(34, .01));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Sync holds every card until the last one lands', (tester) async {
     await _open(tester, 'Sync');
     // The middle card lands first, well before the left one.

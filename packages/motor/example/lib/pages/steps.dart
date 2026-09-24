@@ -18,6 +18,12 @@ class StepsPage extends StatefulWidget {
 const _compact = Size(120, 34);
 const _expanded = Size(340, 84);
 const _collapseAt = Duration(milliseconds: 2400);
+const _fadeAt = Duration(milliseconds: 1700);
+const _fade = CurvedMotion(Duration(milliseconds: 220));
+const _collapse = CurvedMotion(
+  Duration(milliseconds: 450),
+  Curves.easeInOutCubic,
+);
 
 class _StepsPageState extends State<StepsPage>
     with SingleTickerProviderStateMixin {
@@ -33,42 +39,42 @@ class _StepsPageState extends State<StepsPage>
     initial: _compact.height,
     debugLabel: 'Height',
   );
-  final _content = Track<double>(
-    .single,
-    initial: 0,
-    motion: .smoothSpring(),
-    debugLabel: 'Content',
-  );
+  final _content = Track<double>(.single, initial: 0, debugLabel: 'Content');
   final _bell = Track<double>(
     .single,
     initial: 0,
-    motion: .snappySpring(duration: Duration(milliseconds: 140)),
+    motion: .curved(Duration(milliseconds: 120), Curves.easeInOut),
     debugLabel: 'Bell',
   );
 
+  // A step after a spring starts once the spring has fully settled, well
+  // after it looks done, and .at stretches its motion over the gap before it.
+  // So the moments that must line up are pairs of .at keyframes on curves:
+  // stay until one time, then move until the next.
   late final _ping = TrackTimeline([
-    // Grow with a bounce, then land back exactly at _collapseAt.
-    _width([
-      .to(_expanded.width, motion: .bouncySpring()),
-      .at(_collapseAt, _compact.width, motion: .smoothSpring()),
-    ]),
-    _height([
-      .to(_expanded.height, motion: .bouncySpring(extraBounce: .1)),
-      .at(_collapseAt, _compact.height, motion: .smoothSpring()),
-    ]),
+    for (final (track, size) in [
+      (_width, _expanded.width),
+      (_height, _expanded.height),
+    ])
+      track([
+        .to(size, motion: .bouncySpring(extraBounce: .1)),
+        .at(_collapseAt - _collapse.duration, size, motion: _collapse),
+        .at(
+          _collapseAt,
+          track == _width ? _compact.width : _compact.height,
+          motion: _collapse,
+        ),
+      ]),
     _content([
       .hold(const Duration(milliseconds: 160)),
-      .to(1),
-      .hold(const Duration(milliseconds: 1100)),
-      .to(0, motion: .snappySpring(duration: Duration(milliseconds: 240))),
+      .to(1, motion: .smoothSpring()),
+      .at(_fadeAt, 1, motion: _fade),
+      .at(_fadeAt + _fade.duration, 0, motion: _fade),
     ]),
     _bell([
       .hold(const Duration(milliseconds: 260)),
-      .to(.45),
-      .to(-.4),
-      .to(.3),
-      .to(-.2),
-      .to(0, motion: .bouncySpring()),
+      for (final (index, angle) in const [.45, -.4, .3, -.2, 0.0].indexed)
+        .at(Duration(milliseconds: 380 + 120 * index), angle),
     ]),
   ]);
 
@@ -84,10 +90,10 @@ class _StepsPageState extends State<StepsPage>
     return ChapterPage(
       chapter: chapterNamed('Steps'),
       lead:
-          'Each track runs a list of steps: grow, hold, wiggle, fade. Width and '
-          'height use .at to land back at exactly 2.4 s, whatever their springs '
-          'do first. Ping again mid-way and it picks up from where it is.',
-      code: 'content([.hold(delay), .to(1), .hold(read), .to(0)])',
+          'Each track runs a list of steps: grow, hold, wiggle, fade. The '
+          'wiggle, fade and collapse are .at keyframes, so they land exactly '
+          'on time. Ping again mid-way and it picks up from where it is.',
+      code: 'content([.to(1), .at(fadeAt, 1), .at(fadeAt + fade, 0)])',
       below: LiveTimeline(
         controller: _island,
         lanes: {
