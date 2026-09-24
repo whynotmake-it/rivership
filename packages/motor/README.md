@@ -442,10 +442,11 @@ A few semantics worth knowing:
   running. As with `AnimationController`, restarting one of those tracks or
   stopping it with `canceled: true` cancels it (`orCancel` throws
   `TickerCanceled`). Looping playback never completes, so don't `await` it.
-- `stop()` lets tracks whose default motion is a spring settle gracefully,
-  then finishes like a completed move; `stop(canceled: true)` halts
-  immediately and keeps the direction it was moving in (`forward` or
-  `reverse`), never `completed`.
+- `stop()` lets tracks whose default motion is a spring settle gracefully;
+  `stop(canceled: true)` halts immediately. Either way, stopped tracks keep
+  the direction they were moving in (`forward` or `reverse`) as their
+  status: a stop interrupts a move rather than finishing it. To end on
+  `completed`, animate to the target instead.
 - `pause()` stops the ticker without changing `status` (so `isAnimating` is
   `false` while `status` stays `forward`). It is meant for inspection and
   authoring; for UI logic prefer `stop`. Starting another animation resumes
@@ -635,9 +636,13 @@ Simple types like `double` (via `SingleMotionConverter`) are **already direction
 - Animating `1 -> 0` reports `AnimationStatus.reverse`, then
   `AnimationStatus.dismissed`.
 
-Without a direction, status reports `forward` while animating, and once done
-`dismissed` only when exactly back at the initial value (springs snap to
-their target by default), otherwise `completed`.
+Most multi-dimensional values (`Offset`, `Size`, `Rect`, `Color`, and
+custom converters) have no direction, so their status works as in 1.x:
+`forward` while animating and `completed` at rest, and `dismissed` only when
+a move ends exactly on the initial value (springs snap to their target by
+default). `reverse`, and `dismissed` after a move down, only apply to
+directional converters: `SingleMotionConverter` or your own
+`DirectionalMotionConverter`.
 
 **Custom Directionality:**
 For custom types or ad-hoc usage, you can define how "direction" is calculated.

@@ -51,12 +51,18 @@ final controller = MotionController(
 When you do have gesture velocity (e.g. from `DragEndDetails`), still prefer
 passing it explicitly via `withVelocity:` for accuracy.
 
-### `status` is now directional for comparable converters
+### `status` is directional for directional converters
 
-`SingleMotionConverter` (and other comparable converters) are now
-directional, so `MotionController.status` reports
-`AnimationStatus.reverse` when animating toward a "smaller" value.
-Previously it always reported `forward`.
+`SingleMotionConverter` is now directional, so a controller or builder
+using it reports `AnimationStatus.reverse` when animating toward a smaller
+value. Previously it always reported `forward`. The same applies to custom
+converters that mix in `DirectionalMotionConverter` or
+`ComparableMotionConverter`.
+
+Most multi-dimensional values (`Offset`, `Size`, `Rect`, `Color`, and
+custom converters) have no direction. For them, status works as in 1.x:
+`forward` while animating and `completed` at rest (`dismissed` only when a
+move ends exactly on the initial value).
 
 ```dart
 // Before (1.x):
@@ -71,8 +77,8 @@ use `controller.isAnimating` instead.
 
 ### Moves down finish `dismissed`
 
-The resting status follows the direction too. A move down finishes
-`dismissed`, and anything else finishes `completed`. This applies to every
+With a directional converter, the resting status follows the direction too.
+A move down finishes `dismissed`, and anything else finishes `completed`. This applies to every
 controller, builder, and status listener. For converters without a direction
 (for example `Offset`), `dismissed` means exactly back at the initial value.
 
@@ -98,21 +104,14 @@ If you waited for `completed` to detect the end of any move, check
 In 1.x it reported `dismissed` at the lower bound and `completed` at the
 upper bound. With a directional converter, `reverse()` still ends
 `dismissed` and `forward()` ends `completed`. Without one (for example a
-bounded `Offset` controller), `reverse()` now ends `completed` unless the
-lower bound is the initial value.
+bounded `Offset` controller), status is still `reverse` while `reverse()`
+runs, as in 1.x, but `reverse()` now ends `completed` unless the lower bound
+is the initial value.
 
 ```dart
 // To know which bound you're at, compare the value:
 final atLowerBound = controller.value == controller.lowerBound;
 ```
-
-### A graceful `stop()` finishes the move
-
-After `stop()` settles, status is `completed` or `dismissed`, as for a
-finished move. In 1.x, a stopped `BoundedMotionController` kept reporting
-its last direction. `stop(canceled: true)` stops right away and keeps the
-direction it was moving in (`forward` or `reverse`), so use that if you
-relied on the direction being kept.
 
 ### Sequences report `reverse` on the way down
 
