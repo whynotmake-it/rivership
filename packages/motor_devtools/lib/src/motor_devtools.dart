@@ -7,6 +7,16 @@ import 'package:motor_devtools/src/panel.dart';
 import 'package:motor_devtools/src/session.dart';
 import 'package:motor_devtools/src/style.dart';
 
+/// Whether Motor DevTools are compiled into the app.
+///
+/// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools and
+/// motor's inspection hooks from the app entirely. [MotorDevTools] then
+/// returns its child.
+const bool kMotorDevTools = bool.fromEnvironment(
+  'MOTOR_DEVTOOLS',
+  defaultValue: true,
+);
+
 /// Imperatively opens and closes a [MotorDevTools] overlay.
 class MotorDevToolsController extends ChangeNotifier {
   bool _isOpen = false;
@@ -68,8 +78,10 @@ class MotorDevToolsController extends ChangeNotifier {
 /// Controllers are listed by their `debugLabel`, which `TrackController`,
 /// `MotionController`, and motor's builder widgets accept.
 ///
-/// [enabled] can deliberately be true in a production build. When false, the
-/// child is returned directly and Motor's inspection registry is not attached.
+/// [enabled] switches the tools on and off at runtime, also in production
+/// builds. When false, the child is returned directly and Motor's inspection
+/// registry is not attached. To remove the tools from a build, see
+/// [kMotorDevTools].
 class MotorDevTools extends StatefulWidget {
   /// Creates an optional Motor developer overlay.
   const MotorDevTools({
@@ -96,8 +108,7 @@ class MotorDevTools extends StatefulWidget {
   State<MotorDevTools> createState() => _MotorDevToolsState();
 }
 
-class _MotorDevToolsState extends State<MotorDevTools>
-    implements MotorInspectionObserver {
+class _MotorDevToolsState extends State<MotorDevTools> {
   final _controllers = <TrackController>[];
   final _numbers = <TrackController, int>{};
   final _originalSpeeds = <TrackController, double>{};
@@ -113,13 +124,19 @@ class _MotorDevToolsState extends State<MotorDevTools>
   @override
   void initState() {
     super.initState();
-    _overlay.addListener(_scheduleRefresh);
-    if (widget.enabled) _attach();
+    if (kMotorDevTools) {
+      _overlay.addListener(_scheduleRefresh);
+      if (widget.enabled) _attach();
+    }
   }
 
   @override
   void didUpdateWidget(MotorDevTools oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (kMotorDevTools) _updateWidget(oldWidget);
+  }
+
+  void _updateWidget(MotorDevTools oldWidget) {
     if (!identical(oldWidget.controller, widget.controller)) {
       (oldWidget.controller ?? _ownedController)?.removeListener(
         _scheduleRefresh,
@@ -136,7 +153,7 @@ class _MotorDevToolsState extends State<MotorDevTools>
   }
 
   void _attach() {
-    _subscription ??= MotorInspectionRegistry.attach(this);
+    _subscription ??= MotorInspectionRegistry.attach(_Observer(this));
   }
 
   void _detach() {
@@ -158,8 +175,7 @@ class _MotorDevToolsState extends State<MotorDevTools>
       ..scheduleFrame();
   }
 
-  @override
-  void didRegisterController(TrackController controller) {
+  void _register(TrackController controller) {
     if (controller.debugLabel == internalDebugLabel) return;
     if (_controllers.contains(controller)) return;
     _numbers[controller] = _nextNumber++;
@@ -167,8 +183,7 @@ class _MotorDevToolsState extends State<MotorDevTools>
     _scheduleRefresh();
   }
 
-  @override
-  void didUnregisterController(TrackController controller) {
+  void _unregister(TrackController controller) {
     if (!_controllers.remove(controller)) return;
     if (identical(_overlay.selectedController, controller)) {
       _overlay.showControllerList();
@@ -211,16 +226,26 @@ class _MotorDevToolsState extends State<MotorDevTools>
 
   @override
   void dispose() {
-    _restoreSession();
-    _subscription?.dispose();
-    (widget.controller ?? _ownedController)?.removeListener(_scheduleRefresh);
-    _ownedController?.dispose();
+    if (kMotorDevTools) {
+      _restoreSession();
+      _subscription?.dispose();
+      (widget.controller ?? _ownedController)?.removeListener(
+        _scheduleRefresh,
+      );
+      _ownedController?.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
+    if (kMotorDevTools) {
+      if (widget.enabled) return _buildTools();
+    }
+    return widget.child;
+  }
+
+  Widget _buildTools() {
     final selected = _overlay.selectedController;
     return Stack(
       fit: StackFit.passthrough,
@@ -251,6 +276,20 @@ class _MotorDevToolsState extends State<MotorDevTools>
       ],
     );
   }
+}
+
+class _Observer implements MotorInspectionObserver {
+  _Observer(this._state);
+
+  final _MotorDevToolsState _state;
+
+  @override
+  void didRegisterController(TrackController controller) =>
+      _state._register(controller);
+
+  @override
+  void didUnregisterController(TrackController controller) =>
+      _state._unregister(controller);
 }
 
 /// Gives the overlay what it needs even above a `WidgetsApp`: media, text
