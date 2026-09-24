@@ -397,7 +397,9 @@ class _StartButton extends StatelessWidget {
     return PressScale(
       onTap: () => context.navigateTo(NamedRoute(chapters.first.title)),
       child: Container(
-        padding: const .fromLTRB(16, 13, 14, 13),
+        // Centres the ink rather than the boxes: the caps sit low in the
+        // line, and the arrow has a little space on its right.
+        padding: const .fromLTRB(16, 11, 15, 15),
         decoration: BoxDecoration(
           color: p.accent,
           borderRadius: .circular(radius),
