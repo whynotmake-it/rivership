@@ -58,6 +58,60 @@ void main() {
     expect(playback.velocities.single, closeTo(10, 1e-3));
   });
 
+  group('a scaled spring', () {
+    const spring = CupertinoMotion();
+
+    test('ends exactly on its target', () {
+      final playback = StepPlayback<double>(
+        steps: [
+          TrackStep.to(
+            100,
+            motion: spring.scaleTo(const Duration(milliseconds: 300)),
+          ),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+      playback.advanceTo(0.3);
+      expect(playback.values.single, 100);
+      expect(playback.isDone, isTrue);
+    });
+
+    test('with a zero duration jumps to its target', () {
+      final playback = StepPlayback<double>(
+        steps: [TrackStep.to(50, motion: spring.scaleTo(Duration.zero))],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+      playback.advanceTo(0);
+      expect(playback.values.single, 50);
+      expect(playback.isDone, isTrue);
+    });
+  });
+
+  test('pingPong returns over an instant .at step', () {
+    const linear100 = Motion.linear(Duration(milliseconds: 100));
+    final playback = StepPlayback<double>(
+      steps: [
+        const TrackStep.to(5, motion: linear100),
+        // Arrives the moment the step before ends.
+        TrackStep.at(
+          const Duration(milliseconds: 100),
+          10,
+          motion: const CupertinoMotion().scaleTo(Duration.zero),
+        ),
+        const TrackStep.hold(Duration(milliseconds: 100)),
+      ],
+      converter: MotionConverter.single,
+      start: 0,
+      loop: LoopMode.pingPong,
+    );
+
+    // Back over the .at at 300 ms, then halfway from 5 to 0.
+    playback.advanceTo(0.35);
+    expect(playback.values.single, closeTo(2.5, error));
+  });
+
   group('StepPlayback timeline construction', () {
     test('hold then to plays sequentially', () {
       final playback = StepPlayback<double>(
