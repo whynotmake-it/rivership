@@ -1,8 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 
 @internal
-class NoMotionSimulation extends Simulation {
+class NoMotionSimulation extends Simulation implements FiniteSimulation {
   NoMotionSimulation({
     required this.duration,
     required this.value,
@@ -27,6 +28,9 @@ class NoMotionSimulation extends Simulation {
 
   @override
   bool isDone(double time) => time > duration.toSeconds();
+
+  @override
+  double get finishSeconds => justAfter(duration.toSeconds());
 }
 
 extension on Duration {
