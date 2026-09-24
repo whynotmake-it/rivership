@@ -222,17 +222,17 @@ void main() {
     testWidgets('calls onAnimationStatusChanged callback', (tester) async {
       final capturedStatuses = <AnimationStatus>[];
 
-      await tester.pumpWidget(
-        SequenceMotionBuilder<TestPhase, double>(
-          sequence: sequence,
-          converter: const SingleMotionConverter(),
-          playing: false,
-          currentPhase: TestPhase.active,
-          onAnimationStatusChanged: capturedStatuses.add,
-          builder: (context, value, phase, child) => const SizedBox(),
-        ),
-      );
+      Widget build(TestPhase phase) => SequenceMotionBuilder<TestPhase, double>(
+            sequence: sequence,
+            converter: const SingleMotionConverter(),
+            playing: false,
+            currentPhase: phase,
+            onAnimationStatusChanged: capturedStatuses.add,
+            builder: (context, value, phase, child) => const SizedBox(),
+          );
 
+      await tester.pumpWidget(build(TestPhase.idle));
+      await tester.pumpWidget(build(TestPhase.active));
       await tester.pump();
       await tester.pumpAndSettle();
 
