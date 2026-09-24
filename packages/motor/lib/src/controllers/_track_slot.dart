@@ -28,7 +28,7 @@ class _TrackSlot<T extends Object> {
   List<double> _velocityValues;
   bool _copyBeforeDenormalize;
   StepPlayback<T>? _stepPlayback;
-  _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
+  var _playing = false;
   Duration _startOffset = Duration.zero;
 
   // Plans replaced while inspection tooling was attached, oldest first, so
@@ -75,7 +75,7 @@ class _TrackSlot<T extends Object> {
   static List<double> _ownedCopy(List<double> values) =>
       List<double>.of(values, growable: false);
 
-  bool get isAnimating => _playback != _TrackSlotPlayback.idle;
+  bool get isAnimating => _playing;
 
   bool get hasPlayback => _stepPlayback != null;
 
@@ -126,7 +126,7 @@ class _TrackSlot<T extends Object> {
     _currentValues.setAll(0, values);
     _velocitiesStale = false;
     _stepPlayback = null;
-    _playback = _TrackSlotPlayback.idle;
+    _playing = false;
   }
 
   /// Replaces the velocity without touching the value or playback.
@@ -155,7 +155,7 @@ class _TrackSlot<T extends Object> {
       fallbackMotionPerDimension: fallbackMotionPerDimension,
     );
     _pullPlaybackState();
-    _playback = _TrackSlotPlayback.chained;
+    _playing = true;
   }
 
   double _localSeconds(Duration elapsed) {
@@ -205,14 +205,9 @@ class _TrackSlot<T extends Object> {
       final index = archive.lastIndexWhere((plan) => plan.start <= elapsed);
       if (index >= 0) return _showArchive(archive[index], elapsed);
     }
-    if (_playback == _TrackSlotPlayback.idle) return true;
+    if (!_playing) return true;
 
-    final seconds = _localSeconds(elapsed);
-    final done = switch (_playback) {
-      _TrackSlotPlayback.idle => true,
-      _TrackSlotPlayback.chained => _tickStepPlayback(seconds),
-    };
-
+    final done = _tickStepPlayback(_localSeconds(elapsed));
     if (done) _finish();
     return done;
   }
@@ -229,7 +224,7 @@ class _TrackSlot<T extends Object> {
     }
     _velocityValues = List<double>.filled(_currentValues.length, 0);
     _velocitiesStale = false;
-    _playback = _TrackSlotPlayback.idle;
+    _playing = false;
   }
 
   bool _showArchive(_ArchivedPlan<T> plan, Duration elapsed) {
@@ -275,7 +270,7 @@ class _TrackSlot<T extends Object> {
     if (_stoppedDown case final down?) {
       return down ? AnimationStatus.reverse : AnimationStatus.forward;
     }
-    if (_playback == _TrackSlotPlayback.idle) return _restingStatus;
+    if (!_playing) return _restingStatus;
     return _movesDown ? AnimationStatus.reverse : AnimationStatus.forward;
   }
 
@@ -289,7 +284,7 @@ class _TrackSlot<T extends Object> {
 
   /// Treats the running animation as the settle of a stop moving [down].
   void keepStopDirection({required bool down}) {
-    if (_playback == _TrackSlotPlayback.idle) {
+    if (!_playing) {
       _restAfterStop(down);
     } else {
       _stoppedDown = down;
@@ -353,7 +348,7 @@ class _TrackSlot<T extends Object> {
 
   /// Makes a retained plan playable again, e.g. after it completed.
   void reactivate() {
-    if (_stepPlayback != null) _playback = _TrackSlotPlayback.chained;
+    if (_stepPlayback != null) _playing = true;
   }
 
   bool _tickStepPlayback(double seconds) {
@@ -374,7 +369,7 @@ class _TrackSlot<T extends Object> {
     )
       .._stepPlayback = playback.fork()
       .._startOffset = _startOffset
-      .._playback = _TrackSlotPlayback.chained;
+      .._playing = true;
   }
 
   void _pullPlaybackState() {
@@ -389,7 +384,7 @@ class _TrackSlot<T extends Object> {
   /// slot is idle or has no settle-capable fallback motion, in which case the
   /// caller should hard-[stop] instead.
   bool settle({required Duration startOffset}) {
-    if (_playback == _TrackSlotPlayback.idle) return false;
+    if (!_playing) return false;
     final motions = _settleMotions;
     if (motions == null || !motions.any((motion) => motion.needsSettle)) {
       return false;
@@ -409,22 +404,17 @@ class _TrackSlot<T extends Object> {
   /// Stops right away. A stop interrupts the move, so the track keeps the
   /// direction it was moving in as its status.
   void stop() {
-    if (_playback != _TrackSlotPlayback.idle) {
+    if (_playing) {
       _restAfterStop(_stoppedDown ?? _movesDown);
     }
     _stoppedDown = null;
     _stepPlayback = null;
     _velocityValues = List<double>.filled(_currentValues.length, 0);
     _velocitiesStale = false;
-    _playback = _TrackSlotPlayback.idle;
+    _playing = false;
   }
 
   List<int> takeEnteredSteps() => _stepPlayback?.takeEnteredSteps() ?? const [];
-}
-
-enum _TrackSlotPlayback {
-  idle,
-  chained,
 }
 
 /// A plan that a slot replaced, kept for scrubbing back.
