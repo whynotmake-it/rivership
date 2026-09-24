@@ -5,7 +5,8 @@ import 'package:motor_example/chapters.dart';
 import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/home.dart';
 
-/// Whether the motor devtools overlay is on. The home screen toggles it.
+/// Whether the motor devtools overlay is shown. The home screen toggles it;
+/// the tools keep tracking while hidden, so nothing is lost.
 ///
 /// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools.
 final devtoolsEnabled = ValueNotifier(true);
@@ -16,8 +17,8 @@ void main() {
   runApp(
     ValueListenableBuilder(
       valueListenable: devtoolsEnabled,
-      builder: (context, enabled, child) => MotorDevTools(
-        enabled: enabled,
+      builder: (context, visible, child) => MotorDevTools(
+        visible: visible,
         motions: const {
           'Smooth': .smoothSpring(),
           'Snappy': .snappySpring(),
