@@ -52,7 +52,7 @@ class _MyState extends State<MyWidget>
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  TickerRate get tickerRate => TickerRate.fps(30);
+  TickerRate get tickerRate => .fps(30);
   // ...
 }
 ```
@@ -66,12 +66,12 @@ The rate is mutable. Update whatever state drives `tickerRate` and call `updateT
 ```dart
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
-  int _fps = 30;
+  double _fps = 30;
 
   @override
-  TickerRate get tickerRate => TickerRate.fps(_fps);
+  TickerRate get tickerRate => .fps(_fps);
 
-  void _onFpsChanged(int fps) {
+  void _onFpsChanged(double fps) {
     setState(() => _fps = fps);
     updateTickerRate(); // applies the new rate immediately
   }
@@ -89,7 +89,7 @@ Instead of configuring each widget individually, wrap a subtree in `TickerRateSc
 
 ```dart
 TickerRateScope(
-  rate: TickerRate.fps(30),
+  rate: .fps(30),
   child: MyAnimatedWidget(),
 )
 ```
@@ -101,8 +101,8 @@ The rate syncs automatically when the scope changes:
 ```dart
 TickerRateScope(
   rate: _useFixedRate
-      ? TickerRate.fps(_fps)
-      : const TickerRate.vsync(),
+      ? .fps(_fps)
+      : const .vsync(),
   child: const MyAnimatedWidget(),
 )
 ```
@@ -113,7 +113,7 @@ You can also override `tickerRate` in a specific widget to ignore the scope:
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  TickerRate get tickerRate => TickerRate.fps(10); // ignores scope
+  TickerRate get tickerRate => .fps(10); // ignores scope
 }
 ```
 
@@ -145,7 +145,7 @@ class _MyState extends State<MyWidget>
   late final AnimationController _slideController;
 
   @override
-  TickerRate get tickerRate => TickerRate.fps(30);
+  TickerRate get tickerRate => .fps(30);
   // Both controllers tick at the mixin's tickerRate.
 }
 ```
@@ -164,7 +164,7 @@ Override `shareTicks` when a provider needs independent timing:
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  TickerRate get tickerRate => TickerRate.fps(30);
+  TickerRate get tickerRate => .fps(30);
 
   @override
   bool get shareTicks => false;
