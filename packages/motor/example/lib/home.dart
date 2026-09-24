@@ -580,19 +580,40 @@ class _Orb extends StatefulWidget {
   State<_Orb> createState() => _OrbState();
 }
 
-class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
+class _OrbState extends State<_Orb> with TickerProviderStateMixin {
   late final _offset = MotionController<Offset>(
     motion: const .bouncySpring(duration: Duration(milliseconds: 700)),
     vsync: this,
     converter: .offset,
     initialValue: .zero,
     debugLabel: 'Home orb',
+  )..addListener(_followStretch);
+
+  // How far the ball stretches, and in which direction. A spring follows the
+  // raw stretch from the ball's velocity, which is jittery while dragging.
+  late final _stretch = MotionController<Offset>(
+    motion: const .smoothSpring(duration: Duration(milliseconds: 220)),
+    vsync: this,
+    converter: .offset,
+    initialValue: .zero,
+    debugLabel: 'Home orb stretch',
   );
 
   @override
   void dispose() {
     _offset.dispose();
+    _stretch.dispose();
     super.dispose();
+  }
+
+  void _followStretch() {
+    final velocity = _offset.velocity;
+    final amount = (velocity.distance / 5000).clamp(0.0, .3);
+    _stretch.animateTo(
+      velocity == .zero
+          ? .zero
+          : Offset.fromDirection(velocity.direction, amount),
+    );
   }
 
   @override
@@ -609,19 +630,19 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
             withVelocity: details.velocity.pixelsPerSecond,
           ),
           child: AnimatedBuilder(
-            animation: _offset,
+            animation: Listenable.merge([_offset, _stretch]),
             builder: (context, child) {
-              final velocity = _offset.velocity;
-              final stretch = 1 + (velocity.distance / 5000).clamp(0.0, .35);
+              final stretch = _stretch.value;
+              final scale = 1 + stretch.distance;
               return Transform.translate(
                 offset: _offset.value,
                 child: Transform.rotate(
-                  angle: velocity.direction,
+                  angle: stretch.direction,
                   child: Transform.scale(
-                    scaleX: stretch,
-                    scaleY: 1 / stretch,
+                    scaleX: scale,
+                    scaleY: 1 / scale,
                     child: Transform.rotate(
-                      angle: -velocity.direction,
+                      angle: -stretch.direction,
                       child: child,
                     ),
                   ),
@@ -635,6 +656,8 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
             ),
           ),
         ),
+        const SizedBox(height: 28),
+        Text('Grab me, throw me', style: p.caption),
       ],
     );
   }
