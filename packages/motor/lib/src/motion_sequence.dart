@@ -3,26 +3,10 @@ import 'dart:math';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 
-/// The mode in which the phase animation should loop.
-enum LoopMode {
-  /// Don't loop the animation.
-  none,
-
-  /// The animation will loop from the last phase back to the first phase.
-  loop,
-
-  /// The animation will play forward and then reverse back to the start.
-  pingPong,
-
-  /// The animation will loop seamlessly by treating the first and last phases
-  /// as identical, creating smooth circular transitions without jarring jumps.
-  seamless;
-
-  /// Whether the animation should loop.
-  bool get isLooping => this == loop || this == pingPong || this == seamless;
-}
+export 'package:motor/src/loop_mode.dart';
 
 /// A value and its associated motion.
 typedef ValueWithMotion<T> = (T value, Motion motion);
