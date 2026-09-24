@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -140,6 +141,10 @@ class _Page {
 class _DevToolsPanelState extends State<DevToolsPanel> {
   var _pages = const [_Page(null, null)];
 
+  /// The depth the slide animates to. It follows the wanted depth one frame
+  /// late, so a new page is built and measured before the slide starts.
+  var _depth = 0;
+
   @override
   Widget build(BuildContext context) {
     final host = widget.host;
@@ -161,53 +166,142 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
             host.controllers.contains(page.controller))
           page,
     ];
-    final depth = (wanted.length - 1).toDouble();
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleMotionBuilder(
-        value: depth,
-        motion: const Motion.smoothSpring(
-          duration: Duration(milliseconds: 380),
-        ),
-        debugLabel: internalDebugLabel,
-        builder: (context, t, _) {
-          final width = constraints.maxWidth;
-          return Stack(
-            children: [
-              for (final (index, page) in _pages.indexed)
-                if ((index - t).abs() < 0.999)
-                  _placed(index - t, width, index == depth, page),
-            ],
-          );
-        },
+    final depth = wanted.length - 1;
+    if (depth != _depth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _depth != depth) setState(() => _depth = depth);
+      });
+    }
+    return SingleMotionBuilder(
+      value: _depth.toDouble(),
+      motion: const Motion.smoothSpring(duration: Duration(milliseconds: 420)),
+      debugLabel: internalDebugLabel,
+      builder: (context, t, _) => _PageStack(
+        children: [
+          for (final (index, page) in _pages.indexed)
+            if ((index - t).abs() < 0.99 || index == depth || index == _depth)
+              _PagePosition(
+                key: ValueKey(page),
+                offset: index - t,
+                child: IgnorePointer(
+                  ignoring: index != depth,
+                  child: _pageFor(page),
+                ),
+              ),
+        ],
       ),
     );
   }
 
-  Widget _placed(double offset, double width, bool current, _Page page) {
+  Widget _pageFor(_Page page) {
     final host = widget.host;
-    final Widget child;
     if (page.controller case final controller?) {
-      child = _ControllerDetail(
-        key: ObjectKey(controller),
-        host: host,
-        controller: controller,
-      );
-    } else if (page.group case final group?) {
-      child = _GroupDetail(key: ValueKey(group), host: host, group: group);
-    } else {
-      child = _ControllerList(host: host);
+      return _ControllerDetail(host: host, controller: controller);
     }
-    return IgnorePointer(
-      ignoring: !current,
-      child: Opacity(
-        opacity: offset < 0 ? (1 + offset).clamp(0.0, 1.0) : 1,
-        child: Transform.translate(
-          offset: Offset(width * (offset < 0 ? offset * 0.2 : offset), 0),
-          child: child,
-        ),
-      ),
+    if (page.group case final group?) {
+      return _GroupDetail(host: host, group: group);
+    }
+    return _ControllerList(host: host);
+  }
+}
+
+/// Where a page of a [_PageStack] is: 0 when shown, 1 one page to the right,
+/// -1 one page to the left.
+class _PagePosition extends ParentDataWidget<_PageData> {
+  const _PagePosition({
+    required this.offset,
+    required super.child,
+    super.key,
+  });
+
+  final double offset;
+
+  @override
+  void applyParentData(RenderObject renderObject) {
+    final data = renderObject.parentData! as _PageData;
+    if (data.position == offset) return;
+    data.position = offset;
+    renderObject.parent?.markNeedsLayout();
+  }
+
+  @override
+  Type get debugTypicalAncestorWidgetClass => _PageStack;
+}
+
+class _PageData extends ContainerBoxParentData<RenderBox> {
+  double position = 0;
+}
+
+/// Pages that slide horizontally. Its height blends the heights of the pages
+/// on screen by how far each is shown, so a container around it resizes in
+/// step with the slide.
+class _PageStack extends MultiChildRenderObjectWidget {
+  const _PageStack({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderPageStack();
+}
+
+class _RenderPageStack extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _PageData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _PageData> {
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _PageData) child.parentData = _PageData();
+  }
+
+  @override
+  void performLayout() {
+    final width = constraints.maxWidth;
+    final pageConstraints = BoxConstraints(
+      minWidth: width,
+      maxWidth: width,
+      maxHeight: constraints.maxHeight,
+    );
+    var height = 0.0;
+    var weights = 0.0;
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      final data = child.parentData! as _PageData;
+      child.layout(pageConstraints, parentUsesSize: true);
+      final d = data.position;
+      final weight = (1 - d.abs()).clamp(0.0, 1.0);
+      height += weight * child.size.height;
+      weights += weight;
+      data.offset = Offset(width * (d < 0 ? d * 0.2 : d), 0);
+    }
+    size = constraints.constrain(
+      Size(width, weights == 0 ? 0 : height / weights),
     );
   }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      final data = child.parentData! as _PageData;
+      // Pages leaving fade out by halfway, before the container, sized for
+      // the page coming in, clips much of them.
+      final opacity = data.position < 0
+          ? (1 + data.position * 2).clamp(0.0, 1.0)
+          : 1.0;
+      if (opacity <= 0) continue;
+      final at = offset + data.offset;
+      if (opacity >= 1) {
+        context.paintChild(child, at);
+      } else {
+        final page = child;
+        context.pushOpacity(
+          at,
+          (opacity * 255).round(),
+          (context, offset) => context.paintChild(page, offset),
+        );
+      }
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }
 
 class _Header extends StatelessWidget {
@@ -730,7 +824,7 @@ class _Transport extends StatelessWidget {
 }
 
 class _GroupDetail extends StatelessWidget {
-  const _GroupDetail({required this.host, required this.group, super.key});
+  const _GroupDetail({required this.host, required this.group});
 
   final PanelHost host;
   final String group;
@@ -916,11 +1010,7 @@ class _GroupEditorState extends State<_GroupEditor> {
 }
 
 class _ControllerDetail extends StatefulWidget {
-  const _ControllerDetail({
-    required this.host,
-    required this.controller,
-    super.key,
-  });
+  const _ControllerDetail({required this.host, required this.controller});
 
   final PanelHost host;
   final TrackController controller;

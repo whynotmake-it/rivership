@@ -679,7 +679,7 @@ class _SliderPainter extends CustomPainter {
 const foldMotion = Motion.smoothSpring(duration: Duration(milliseconds: 380));
 
 /// Unfolds [child] downward while [open], and removes it once folded.
-class Disclosure extends StatelessWidget {
+class Disclosure extends StatefulWidget {
   /// Shows [child] while [open].
   const Disclosure({required this.open, required this.child, super.key});
 
@@ -689,25 +689,66 @@ class Disclosure extends StatelessWidget {
   /// The folding content.
   final Widget child;
 
-  @override
-  Widget build(BuildContext context) => SingleMotionBuilder(
-    value: open ? 1 : 0,
-    motion: foldMotion,
-    debugLabel: internalDebugLabel,
-    child: child,
-    builder: (context, t, child) {
-      if (!open && t < 0.001) return const SizedBox.shrink();
-      if (open && t > 0.999) return child!;
-      final visible = t.clamp(0.0, 1.0);
-      return ClipRect(
-        child: Align(
-          alignment: Alignment.topCenter,
-          heightFactor: visible,
-          child: Opacity(opacity: visible, child: child),
-        ),
-      );
-    },
+  static const _closeMotion = Motion.smoothSpring(
+    duration: Duration(milliseconds: 520),
   );
+
+  @override
+  State<Disclosure> createState() => _DisclosureState();
+}
+
+class _DisclosureState extends State<Disclosure> {
+  /// Whether to unfold. It follows [Disclosure.open] one frame late when
+  /// opening, so the content is built before the unfold starts.
+  late var _open = widget.open;
+
+  @override
+  void didUpdateWidget(Disclosure oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.open) {
+      _open = false;
+    } else if (!_open) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.open) setState(() => _open = true);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final open = _open;
+    final building = widget.open;
+    return SingleMotionBuilder(
+      value: open ? 1 : 0,
+      motion: open ? foldMotion : Disclosure._closeMotion,
+      debugLabel: internalDebugLabel,
+      child: widget.child,
+      builder: (context, t, child) {
+        if (!building && !open && t < 0.001) return const SizedBox.shrink();
+        final height = t.clamp(0.0, 1.0);
+        // Opening, the height leads and the content fades in behind it.
+        // Closing, the content fades and lifts before the height folds, so
+        // the clip edge never cuts through visible content.
+        final opacity = open
+            ? ((t - 0.25) / 0.75).clamp(0.0, 1.0)
+            : ((t - 0.45) / 0.55).clamp(0.0, 1.0);
+        return ClipRect(
+          clipBehavior: height >= 1 ? Clip.none : Clip.hardEdge,
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: height,
+            child: Opacity(
+              opacity: opacity,
+              child: Transform.translate(
+                offset: Offset(0, -8 * (1 - opacity)),
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// A tappable row with a chevron that turns while [open].

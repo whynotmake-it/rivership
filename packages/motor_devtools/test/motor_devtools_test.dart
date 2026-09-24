@@ -154,6 +154,48 @@ void main() {
     devTools.dispose();
   });
 
+  testWidgets('the panel surface follows its content on every frame', (
+    tester,
+  ) async {
+    final devTools = MotorDevToolsController();
+    await _pumpHarness(tester, devTools: devTools);
+    final surface = find.byKey(const ValueKey('motor-devtools-surface'));
+    final panel = find.byKey(const ValueKey('motor-devtools-panel'));
+
+    Future<void> expectInStep(Future<void> Function() change) async {
+      await change();
+      for (var frame = 0; frame < 50; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(
+          tester.getRect(surface),
+          tester.getRect(panel),
+          reason: 'frame $frame',
+        );
+      }
+    }
+
+    await tester.tap(_launcher);
+    await _settle(tester);
+    await expectInStep(() => tester.tap(_checkout));
+    await expectInStep(
+      () => tester.tap(find.byKey(const ValueKey('motor-devtools-tracks'))),
+    );
+    await expectInStep(
+      () => tester.tap(
+        find.byKey(const ValueKey('motor-devtools-track-Card opacity')),
+      ),
+    );
+    await expectInStep(
+      () => tester.tap(find.byKey(const ValueKey('motor-devtools-done'))),
+    );
+    await expectInStep(
+      () => tester.tap(find.byKey(const ValueKey('motor-devtools-back'))),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    devTools.dispose();
+  });
+
   testWidgets('pauses, resumes, and replays', (tester) async {
     final controller = await _pumpHarness(tester);
     await _openDetail(tester);

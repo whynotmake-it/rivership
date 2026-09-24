@@ -62,13 +62,6 @@ class _FloatingBubbleState extends State<FloatingBubble>
     debugLabel: internalDebugLabel,
   );
 
-  late final _contentHeight = SingleMotionController(
-    motion: const Motion.smoothSpring(duration: Duration(milliseconds: 380)),
-    vsync: this,
-    debugLabel: internalDebugLabel,
-  );
-  var _measured = false;
-
   MotionController<Offset>? _position;
   var _dragging = false;
   Size? _stage;
@@ -83,15 +76,25 @@ class _FloatingBubbleState extends State<FloatingBubble>
   void didUpdateWidget(FloatingBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isOpen == widget.isOpen) return;
-    _expansion
-      ..motion = widget.isOpen ? _openMotion : _closeMotion
-      ..animateTo(widget.isOpen ? 1 : 0);
+    if (!widget.isOpen) {
+      _expansion
+        ..motion = _closeMotion
+        ..animateTo(0);
+      return;
+    }
+    // Build and lay out the panel this frame; start growing next frame, so
+    // the spring's first frames don't absorb the cost of the first build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.isOpen) return;
+      _expansion
+        ..motion = _openMotion
+        ..animateTo(1);
+    });
   }
 
   @override
   void dispose() {
     _expansion.dispose();
-    _contentHeight.dispose();
     _position?.dispose();
     super.dispose();
   }
@@ -159,46 +162,6 @@ class _FloatingBubbleState extends State<FloatingBubble>
     setState(() => _dragging = false);
   }
 
-  void _measuredContent(Size size) {
-    if (!mounted) return;
-    if (_measured && _expansion.value > 0.01) {
-      _contentHeight.animateTo(size.height);
-    } else {
-      _contentHeight.value = size.height;
-    }
-    _measured = true;
-  }
-
-  double get _maxPanelHeight => math.min<double>(
-    640,
-    _stage!.height - _padding.vertical - _margin * 2,
-  );
-
-  Rect _panelRect(Offset bubble) {
-    final stage = _stage!;
-    final width = math.min<double>(
-      380,
-      stage.width - _padding.horizontal - _margin * 2,
-    );
-    final height = _measured
-        ? math.min(_contentHeight.value, _maxPanelHeight)
-        : _maxPanelHeight;
-    final left = _onRight
-        ? stage.width - _padding.right - _margin - width
-        : _padding.left + _margin;
-    final minTop = _padding.top + _margin;
-    final maxTop = stage.height - _padding.bottom - _margin - height;
-    final top = bubble.dy + _size / 2 < stage.height / 2
-        ? bubble.dy
-        : bubble.dy + _size - height;
-    return Rect.fromLTWH(
-      left,
-      top.clamp(minTop, math.max(minTop, maxTop)),
-      width,
-      height,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final palette = DevToolsTheme.of(context);
@@ -207,78 +170,58 @@ class _FloatingBubbleState extends State<FloatingBubble>
       builder: (context, constraints) {
         _layout(constraints.biggest, padding);
         return AnimatedBuilder(
-          animation: Listenable.merge([_position, _expansion, _contentHeight]),
+          animation: Listenable.merge([_position, _expansion]),
           builder: (context, _) {
             final t = _expansion.value;
-            final bubble = _position!.value;
-            final bubbleRect = bubble & const Size.square(_size);
-            final panelRect = _panelRect(bubble);
-            final rect = Rect.lerp(bubbleRect, panelRect, t)!;
-            final showPanel = t > 0.001 || widget.isOpen;
-            final anchor = Alignment(
-              _onRight ? 1 : -1,
-              bubble.dy + _size / 2 < _stage!.height / 2 ? -1 : 1,
-            );
-            return Stack(
+            final radius = _size / 2 + (16 - _size / 2) * t.clamp(0.0, 1.0);
+            return _Shell(
+              bubble: _position!.value & const Size.square(_size),
+              expansion: t,
+              onRight: _onRight,
+              padding: padding,
+              radius: radius,
+              contentOpacity: ((t - 0.3) / 0.7).clamp(0.0, 1.0),
               children: [
-                Positioned.fromRect(
-                  rect: rect,
-                  child: SingleMotionBuilder(
-                    value: _dragging ? 1 : 0,
-                    motion: quickMotion,
-                    debugLabel: internalDebugLabel,
-                    builder: (context, lift, child) => Transform.scale(
-                      scale: 1 + lift * 0.08,
-                      child: _Surface(
-                        radius:
-                            _size / 2 + (16 - _size / 2) * t.clamp(0.0, 1.0),
-                        elevation: 1 + lift,
-                        child: child!,
-                      ),
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (showPanel)
-                          IgnorePointer(
-                            ignoring: !widget.isOpen,
-                            child: Opacity(
-                              opacity: ((t - 0.3) / 0.7).clamp(0.0, 1.0),
-                              child: OverflowBox(
-                                alignment: anchor,
-                                minWidth: panelRect.width,
-                                maxWidth: panelRect.width,
-                                minHeight: 0,
-                                maxHeight: _maxPanelHeight,
-                                child: _SizeReporter(
-                                  key: const ValueKey('motor-devtools-panel'),
-                                  onSize: _measuredContent,
-                                  child: widget.panel,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (t < 0.5)
-                          IgnorePointer(
-                            ignoring: widget.isOpen,
-                            child: Opacity(
-                              opacity: (1 - t * 3).clamp(0.0, 1.0),
-                              child: _BubbleFace(
-                                key: const ValueKey('motor-devtools-launcher'),
-                                palette: palette,
-                                activity: widget.activity,
-                                isActive: widget.isActive,
-                                onTap: widget.onOpen,
-                                onPanStart: _dragStart,
-                                onPanUpdate: _dragUpdate,
-                                onPanEnd: _dragEnd,
-                              ),
-                            ),
-                          ),
-                      ],
+                SingleMotionBuilder(
+                  value: _dragging ? 1 : 0,
+                  motion: quickMotion,
+                  debugLabel: internalDebugLabel,
+                  builder: (context, lift, child) => Transform.scale(
+                    scale: 1 + lift * 0.08,
+                    child: _Surface(
+                      key: const ValueKey('motor-devtools-surface'),
+                      radius: radius,
+                      elevation: 1 + lift,
+                      child: child!,
                     ),
                   ),
+                  child: t < 0.5
+                      ? IgnorePointer(
+                          ignoring: widget.isOpen,
+                          child: Opacity(
+                            opacity: (1 - t * 3).clamp(0.0, 1.0),
+                            child: _BubbleFace(
+                              key: const ValueKey('motor-devtools-launcher'),
+                              palette: palette,
+                              activity: widget.activity,
+                              isActive: widget.isActive,
+                              onTap: widget.onOpen,
+                              onPanStart: _dragStart,
+                              onPanUpdate: _dragUpdate,
+                              onPanEnd: _dragEnd,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.expand(),
                 ),
+                if (t > 0.001 || widget.isOpen)
+                  IgnorePointer(
+                    ignoring: !widget.isOpen,
+                    child: KeyedSubtree(
+                      key: const ValueKey('motor-devtools-panel'),
+                      child: widget.panel,
+                    ),
+                  ),
               ],
             );
           },
@@ -288,11 +231,230 @@ class _FloatingBubbleState extends State<FloatingBubble>
   }
 }
 
+/// Lays out the panel first, then sizes the surface from the panel's height
+/// in the same frame, morphing from the bubble by [expansion]. Its children
+/// are the surface and, while shown, the panel.
+class _Shell extends MultiChildRenderObjectWidget {
+  const _Shell({
+    required this.bubble,
+    required this.expansion,
+    required this.onRight,
+    required this.padding,
+    required this.radius,
+    required this.contentOpacity,
+    required super.children,
+  });
+
+  final Rect bubble;
+  final double expansion;
+  final bool onRight;
+  final EdgeInsets padding;
+  final double radius;
+  final double contentOpacity;
+
+  @override
+  _RenderShell createRenderObject(BuildContext context) => _RenderShell()
+    ..bubble = bubble
+    ..expansion = expansion
+    ..onRight = onRight
+    ..padding = padding
+    ..radius = radius
+    ..contentOpacity = contentOpacity;
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderShell renderObject) {
+    renderObject
+      ..bubble = bubble
+      ..expansion = expansion
+      ..onRight = onRight
+      ..padding = padding
+      ..radius = radius
+      ..contentOpacity = contentOpacity;
+  }
+}
+
+class _ShellData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderShell extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ShellData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ShellData> {
+  static const _margin = 12.0;
+
+  Rect _bubble = Rect.zero;
+  Rect get bubble => _bubble;
+  set bubble(Rect value) => _update(_bubble != value, () => _bubble = value);
+
+  double _expansion = 0;
+  double get expansion => _expansion;
+  set expansion(double value) =>
+      _update(_expansion != value, () => _expansion = value);
+
+  bool _onRight = true;
+  bool get onRight => _onRight;
+  set onRight(bool value) => _update(_onRight != value, () => _onRight = value);
+
+  EdgeInsets _padding = EdgeInsets.zero;
+  EdgeInsets get padding => _padding;
+  set padding(EdgeInsets value) =>
+      _update(_padding != value, () => _padding = value);
+
+  double _radius = 0;
+  double get radius => _radius;
+  set radius(double value) {
+    if (_radius == value) return;
+    _radius = value;
+    markNeedsPaint();
+  }
+
+  double _contentOpacity = 0;
+  double get contentOpacity => _contentOpacity;
+  set contentOpacity(double value) {
+    if (_contentOpacity == value) return;
+    _contentOpacity = value;
+    markNeedsPaint();
+  }
+
+  void _update(bool changed, VoidCallback apply) {
+    if (!changed) return;
+    apply();
+    markNeedsLayout();
+  }
+
+  Rect _rect = Rect.zero;
+  final _clip = LayerHandle<ClipRRectLayer>();
+  final _opacity = LayerHandle<OpacityLayer>();
+
+  RenderBox? get _content => childAfter(firstChild!);
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ShellData) child.parentData = _ShellData();
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.biggest;
+    final width = math.min<double>(
+      380,
+      size.width - _padding.horizontal - _margin * 2,
+    );
+    final maxHeight = math.min<double>(
+      640,
+      size.height - _padding.vertical - _margin * 2,
+    );
+    final content = _content;
+    var height = 0.0;
+    if (content != null) {
+      content.layout(
+        BoxConstraints(
+          minWidth: width,
+          maxWidth: width,
+          maxHeight: math.max(0, maxHeight),
+        ),
+        parentUsesSize: true,
+      );
+      height = content.size.height;
+    }
+    final left = _onRight
+        ? size.width - _padding.right - _margin - width
+        : _padding.left + _margin;
+    final anchorTop = _bubble.center.dy < size.height / 2;
+    final minTop = _padding.top + _margin;
+    final maxTop = size.height - _padding.bottom - _margin - height;
+    final top = (anchorTop ? _bubble.top : _bubble.bottom - height)
+        .clamp(minTop, math.max(minTop, maxTop))
+        .toDouble();
+    final panel = Rect.fromLTWH(left, top, width, height);
+    final rect = Rect.lerp(_bubble, panel, _expansion)!;
+    _rect = Rect.fromLTWH(
+      rect.left,
+      rect.top,
+      math.max(0, rect.width),
+      math.max(0, rect.height),
+    );
+    final surface = firstChild!..layout(BoxConstraints.tight(_rect.size));
+    (surface.parentData! as _ShellData).offset = _rect.topLeft;
+    if (content != null) {
+      (content.parentData! as _ShellData).offset = Offset(
+        _onRight ? _rect.right - width : _rect.left,
+        anchorTop ? _rect.top : _rect.bottom - height,
+      );
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final surface = firstChild!;
+    context.paintChild(
+      surface,
+      offset + (surface.parentData! as _ShellData).offset,
+    );
+    final content = _content;
+    if (content == null || _contentOpacity <= 0) {
+      _clip.layer = null;
+      _opacity.layer = null;
+      return;
+    }
+    final at = (content.parentData! as _ShellData).offset;
+    _clip.layer = context.pushClipRRect(
+      needsCompositing,
+      offset,
+      _rect,
+      RRect.fromRectAndRadius(_rect, Radius.circular(_radius)),
+      (context, offset) {
+        if (_contentOpacity >= 1) {
+          _opacity.layer = null;
+          context.paintChild(content, offset + at);
+          return;
+        }
+        _opacity.layer = context.pushOpacity(
+          offset,
+          (_contentOpacity * 255).round(),
+          (context, offset) => context.paintChild(content, offset + at),
+          oldLayer: _opacity.layer,
+        );
+      },
+      oldLayer: _clip.layer,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final content = _content;
+    if (content != null && _rect.contains(position)) {
+      final at = (content.parentData! as _ShellData).offset;
+      final hit = result.addWithPaintOffset(
+        offset: at,
+        position: position,
+        hitTest: (result, position) =>
+            content.hitTest(result, position: position),
+      );
+      if (hit) return true;
+    }
+    final surface = firstChild!;
+    return result.addWithPaintOffset(
+      offset: (surface.parentData! as _ShellData).offset,
+      position: position,
+      hitTest: (result, position) =>
+          surface.hitTest(result, position: position),
+    );
+  }
+
+  @override
+  void dispose() {
+    _clip.layer = null;
+    _opacity.layer = null;
+    super.dispose();
+  }
+}
+
 class _Surface extends StatelessWidget {
   const _Surface({
     required this.radius,
     required this.elevation,
     required this.child,
+    super.key,
   });
 
   final double radius;
@@ -403,38 +565,5 @@ class _BubbleFace extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Reports its child's size after each layout that changes it.
-class _SizeReporter extends SingleChildRenderObjectWidget {
-  const _SizeReporter({required this.onSize, super.child, super.key});
-
-  final ValueChanged<Size> onSize;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderSizeReporter(onSize);
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderSizeReporter renderObject,
-  ) => renderObject.onSize = onSize;
-}
-
-class _RenderSizeReporter extends RenderProxyBox {
-  _RenderSizeReporter(this.onSize);
-
-  ValueChanged<Size> onSize;
-  Size? _reported;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    if (size == _reported) return;
-    _reported = size;
-    final reported = size;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(reported));
   }
 }

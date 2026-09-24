@@ -276,6 +276,15 @@ class _MotionEditorState extends State<MotionEditor> {
   /// The spring being dragged, before it is applied on release.
   CupertinoMotion? _draft;
 
+  /// The last spring, curve and motion shown, so their controls can fold
+  /// away after another kind is picked.
+  CupertinoMotion _spring = const CupertinoMotion(bounce: 0.2);
+  CurvedMotion _curve = const CurvedMotion(
+    Duration(milliseconds: 500),
+    Curves.easeInOutCubic,
+  );
+  Motion? _shown;
+
   void _pick(MotionKind kind) {
     final duration = switch (widget.current) {
       CupertinoMotion(:final duration) ||
@@ -297,6 +306,15 @@ class _MotionEditorState extends State<MotionEditor> {
     final current = widget.current;
     final motion = _draft ?? current;
     final kind = MotionKind.of(current, apps);
+    if (motion is CupertinoMotion && kind == MotionKind.spring) {
+      _spring = motion;
+    }
+    if (motion is CurvedMotion && kind == MotionKind.curve) _curve = motion;
+    if (motion != null) _shown = motion;
+    final shown = _shown ?? _spring;
+    final previewed =
+        motion != null &&
+        (motion is! CupertinoMotion || kind == MotionKind.app);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -314,57 +332,70 @@ class _MotionEditorState extends State<MotionEditor> {
         ),
         const SizedBox(height: 8),
         Text(kind.hint, style: palette.caption),
-        if (kind == MotionKind.app) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final MapEntry(key: name, value: app) in apps.entries)
-                Tag(
-                  key: ValueKey('motor-devtools-app-$name'),
-                  label: name,
-                  selected: app == current,
-                  outlined: true,
-                  onTap: () => widget.onChanged(app),
-                ),
-            ],
-          ),
-        ],
-        if (motion case final CupertinoMotion spring
-            when kind == MotionKind.spring) ...[
-          const SizedBox(height: 10),
-          SpringGraph(
-            key: const ValueKey('motor-devtools-spring-graph'),
-            duration: spring.duration,
-            bounce: spring.bounce,
-            onChanged: (duration, bounce) => setState(
-              () => _draft = CupertinoMotion(
-                duration: duration,
-                bounce: bounce,
-                snapToEnd: spring.snapToEnd,
-              ),
+        Disclosure(
+          open: kind == MotionKind.app,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final MapEntry(key: name, value: app) in apps.entries)
+                  Tag(
+                    key: ValueKey('motor-devtools-app-$name'),
+                    label: name,
+                    selected: app == current,
+                    outlined: true,
+                    onTap: () => widget.onChanged(app),
+                  ),
+              ],
             ),
-            onChangeEnd: () {
-              final draft = _draft;
-              setState(() => _draft = null);
-              if (draft != null) widget.onChanged(draft);
-            },
           ),
-        ],
-        if (motion case final CurvedMotion curved
-            when kind == MotionKind.curve) ...[
-          const SizedBox(height: 10),
-          _CurveEditor(motion: curved, onChanged: widget.onChanged),
-        ],
-        if (motion != null) ...[
-          const SizedBox(height: 10),
-          if (motion is! CupertinoMotion || kind == MotionKind.app) ...[
-            SizedBox(height: 56, child: MotionPreview(motion: motion)),
-            const SizedBox(height: 8),
-          ],
-          if (codeFor(motion) case final code?) _CodeLine(code: code),
-        ],
+        ),
+        Disclosure(
+          open: kind == MotionKind.spring,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: SpringGraph(
+              key: const ValueKey('motor-devtools-spring-graph'),
+              duration: _spring.duration,
+              bounce: _spring.bounce,
+              onChanged: (duration, bounce) => setState(
+                () => _draft = CupertinoMotion(
+                  duration: duration,
+                  bounce: bounce,
+                  snapToEnd: _spring.snapToEnd,
+                ),
+              ),
+              onChangeEnd: () {
+                final draft = _draft;
+                setState(() => _draft = null);
+                if (draft != null) widget.onChanged(draft);
+              },
+            ),
+          ),
+        ),
+        Disclosure(
+          open: kind == MotionKind.curve,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: _CurveEditor(motion: _curve, onChanged: widget.onChanged),
+          ),
+        ),
+        Disclosure(
+          open: previewed,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: SizedBox(height: 56, child: MotionPreview(motion: shown)),
+          ),
+        ),
+        Disclosure(
+          open: motion != null && codeFor(shown) != null,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: _CodeLine(code: codeFor(shown) ?? ''),
+          ),
+        ),
       ],
     );
   }
