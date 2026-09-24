@@ -46,14 +46,14 @@ final controller = TrackController(
 );
 
 final cardScale = Track<double>(
-  MotionConverter.single,
+  .single,
   initial: 0,
   debugLabel: 'Card scale',
 );
 
 SingleMotionBuilder(
   value: expanded ? 1 : 0,
-  motion: const Motion.smoothSpring(),
+  motion: const .smoothSpring(),
   debugLabel: 'Sheet expansion',
   builder: (context, value, child) => ...,
 );
@@ -177,10 +177,10 @@ ship the tools to testers.
 When disabled, `MotorDevTools` returns its child and does not attach to
 Motor's inspection registry. To remove the tools from a build, build with
 `--dart-define=MOTOR_DEVTOOLS=false` (`kMotorDevTools`): the tools, motor's
-inspection hooks, groups and scopes all compile away. In the motor example's
-release web build that leaves about 400 bytes compared with not importing
-the package. Debug labels are plain strings in your app, so don't put secrets
-in them.
+inspection hooks, groups and scopes all compile away. In a minimal release
+web build that leaves about 2 KB of JavaScript compared with not importing
+the package, and no measurable difference with wasm. Debug labels are plain
+strings in your app, so don't put secrets in them.
 
 The tools use motor's inspection API (`package:motor/inspection.dart`), which
 is experimental and may change in minor releases.
