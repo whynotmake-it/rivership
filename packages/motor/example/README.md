@@ -1,36 +1,21 @@
 # Motor example
 
-An interactive teaching app for building interruptible, physics-based Flutter
-motion with Motor.
+Seven short chapters that each teach one thing about Motor, with one
+interaction each. They are meant to be read in order.
 
-## Feel the difference
+| Chapter | Try this | What it shows |
+|---|---|---|
+| **01 Retarget** | Tap the tabs quickly, then switch to Curve. | Interrupting a spring keeps its velocity; a curve stalls at every change. |
+| **02 Throw** | Fling the video window. | A drag's release velocity carries into a 2D spring, one axis at a time. `FrictionMotion.project` picks the corner. |
+| **03 Tracks** | Open the menu, then tap again mid-morph. | Five tracks on one `TrackController`, each with its own motion. |
+| **04 Steps** | Ping the notification. | Step lists: `.to`, `.hold`, a wiggle, and `.at` keyframes that land on time. |
+| **05 Sync** | Deal the cards, then switch to "On landing". | `.sync(token:)` barriers, and how the token decides who waits for whom. |
+| **06 Phases** | Jump between Mini, Card and Full, or autoplay. | `PhaseTrackController` walking named states with barriers between them. |
+| **07 Scrub** | Send, then drag the scrubber. | `pause`, `scrubTo` and `resume` on a choreography with springs and a barrier. |
 
-- **Instant vs. Animated** — see why continuous motion preserves context.
-- **The Curve Trap** — compare a curve’s velocity reset with a spring redirect.
-- **Spring Character** — tune duration and bounce to shape motion’s personality.
-- **More Than One Dimension** — carry gesture velocity across independent axes.
-
-## Tracks
-
-- **Meet Tracks** — give animated values stable identity and remembered velocity.
-- **Timelines & Steps** — compose ordered motion, inspect it live, and scrub it.
-- **Sync Barriers** — watch independent clocks converge on a recorded barrier.
-- **Phases** — model interruptible UI stories as named, settled states.
-
-## Gestures × timelines
-
-- **Toggle** — pass drag velocity into a settling spring.
-- **Pull to Refresh** — project a release before deciding whether to commit.
-- **Card Stack** — turn gesture outcomes into composable motion phases.
-- **Payment Success** — coordinate many tracks around a shared checkpoint.
-- **Boarding Pass** — inspect a five-lane choreography while interrupting it.
-
-## Recipes
-
-- **Snap Carousel** — project momentum toward the nearest snap point.
-- **Toast** — preserve swipe velocity when dismissing transient content.
-- **Picture in Picture** — project two-dimensional motion toward a stable corner.
-- **Draggable Icons** — add spring-backed drag and drop with `MotionDraggable`.
+Most chapters show their controller's tracks as live timeline lanes under the
+stage. The home screen has a DevTools switch for the in-app inspector from
+`motor_devtools`.
 
 ## Run the app
 
@@ -40,25 +25,21 @@ From this directory:
 flutter run
 ```
 
-See the [Motor package README](../README.md) for installation and API
-documentation.
+To build without the devtools:
 
-## FAQ
+```sh
+flutter run --dart-define=MOTOR_DEVTOOLS=false
+```
 
-**What is a Motion?** A `Motion` describes how a value travels to its target:
-a spring, curve, or custom simulation. The same widget code works with any of
-them.
+See the [Motor README](../README.md) for installation and API documentation.
 
-**Do I need an AnimationController?** No. Motor manages the ticker. Its builders
-animate implicitly whenever their target changes.
+## Code layout
 
-**Can motion be interrupted?** Yes. Springs preserve velocity when the target
-changes mid-flight, so redirected motion stays smooth.
+- `lib/chapters.dart` lists the chapters in order. Routes, the home screen and
+  the "next" buttons all come from it.
+- `lib/pages/` has one file per chapter.
+- `lib/widgets/chapter_page.dart` is the layout every chapter shares.
+- `lib/widgets/live_timeline.dart` draws a controller's tracks as lanes.
 
-**How do I animate many properties?** Use tracks. Each property can have its own
-steps and motion while all tracks advance on a shared clock.
-
-**Can I inspect a running timeline?** Yes. The timeline examples attach a live
-inspector directly to `TrackController`. Solid segments are engine-recorded
-timings, dotted segments are estimates, and dragging pauses, scrubs, and resumes
-the real controller.
+The fonts are Archivo and JetBrains Mono, both under the SIL Open Font License
+(see `lib/font_licenses.dart`).
