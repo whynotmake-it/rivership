@@ -71,6 +71,58 @@ jobs:
           
       
   
+  sdk_borders:
+    name: SDK Borders (${{ matrix.package }}, ${{ matrix.flutter }})
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [fixed_ticker, motor]
+        flutter: [min, stable]
+        include:
+          - package: fixed_ticker
+            flutter: min
+            version: '3.24.0' # fixed_ticker's minimum (Dart 3.5)
+          - package: motor
+            flutter: min
+            version: '3.32.0' # motor's minimum
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.version }}
+          channel: stable
+          cache: true
+
+      # Resolve the package on its own, since workspaces need Dart 3.6.
+      - name: 📦 Leave the workspace
+        working-directory: packages
+        run: |
+          rm -f ../pubspec.yaml ../pubspec.lock
+          rm -rf fixed_ticker/example motor/example motor/benchmark
+          for pubspec in fixed_ticker/pubspec.yaml ${{ matrix.package }}/pubspec.yaml; do
+            sed -i '/^resolution: workspace/d' "$pubspec"
+          done
+          if [ "${{ matrix.package }}" = motor ]; then
+            printf '\ndependency_overrides:\n  fixed_ticker:\n    path: ../fixed_ticker\n' >> motor/pubspec.yaml
+          fi
+          # lintervention needs Dart 3.8; below that, use the default lints.
+          dart_version=$(dart --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if [ "$(printf '%s\n' 3.8.0 "$dart_version" | sort -V | head -1)" != 3.8.0 ]; then
+            sed -i '/lintervention/d' ${{ matrix.package }}/pubspec.yaml ${{ matrix.package }}/analysis_options.yaml
+          fi
+
+      - name: 🧪 Analyze and test
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib test
+          flutter test
+
   check_generation:
     name: Check Code Generation
     timeout-minutes: 10
