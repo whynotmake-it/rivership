@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/track.dart';
@@ -106,10 +107,13 @@ class _TrackBuilderState extends State<TrackBuilder>
   @override
   void initState() {
     super.initState();
-    _controller = TrackController(
-      vsync: this,
-      velocityTracking: widget.velocityTracking,
-      debugLabel: widget.debugLabel,
+    _controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => TrackController(
+        vsync: this,
+        velocityTracking: widget.velocityTracking,
+        debugLabel: widget.debugLabel,
+      ),
     );
     if (widget.onAnimationStatusChanged != null) {
       _controller.addStatusListener(widget.onAnimationStatusChanged!);

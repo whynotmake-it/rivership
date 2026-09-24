@@ -2,10 +2,14 @@ import 'dart:math' as math;
 
 import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart'
+    show ErrorDescription, FlutterError, FlutterErrorDetails;
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
+import 'package:motor/src/inspection/playback_snapshot.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -55,6 +59,7 @@ class TrackController extends Animation<TrackValueReader>
   })  : _initialValues = List<TrackValue>.of(initialValues ?? const []),
         _velocityTracking = velocityTracking {
     _ticker = vsync.createTicker(_tick);
+    MotorInspectionRegistry.registerController(this);
   }
 
   /// Controls whether [set] automatically tracks velocity from position
@@ -99,7 +104,14 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Upper bound on barrier releases handled within one frame.
   static const _maxBarrierPasses = 100;
+  Motion? Function(Track<Object> track)? _motionOverride;
+  final List<PlaybackPlan> _plans = [];
+  var _hasInspectionData = false;
+
+  /// How many submitted plans are kept for inspection tooling.
+  static const _maxRecordedPlans = 16;
   final _clock = PlaybackClock();
+  var _playbackRevision = 0;
 
   /// The number of tracks this controller currently holds state for.
   @visibleForTesting
@@ -217,6 +229,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> values, {
     List<TrackValue> withVelocity = const [],
   }) {
+    _playbackRevision++;
     _sampledAt = null;
     if (_activeTracks.isEmpty) _runTracks.clear();
     for (final trackValue in values) {
@@ -236,6 +249,7 @@ class TrackController extends Animation<TrackValueReader>
     List<TrackValue> withVelocity,
   ) {
     final slot = _slot(trackValue.track, initialOverride: trackValue.value);
+    _archive(slot);
     final explicitVelocity = withVelocity.isEmpty
         ? null
         : _velocityFor(trackValue.track, withVelocity);
@@ -359,6 +373,8 @@ class TrackController extends Animation<TrackValueReader>
     // running untouched.
     if (timelineTracks.isEmpty) return TickerFuture.complete();
 
+    _playbackRevision++;
+
     _onStep = onStep;
 
     // Previously-running tracks stay active; the named tracks (re)start.
@@ -369,12 +385,66 @@ class TrackController extends Animation<TrackValueReader>
 
     final startOffset = _clock.now;
     for (final animation in animations) {
-      _playAnimation(animation, loop: loop, startOffset: startOffset);
+      _playAnimation(
+        _applyMotionOverride(animation),
+        loop: loop,
+        startOffset: startOffset,
+      );
     }
 
+    final inspecting = MotorInspectionRegistry.isInspecting;
+    if (inspecting) _recordPlan(animations, loop: loop, start: startOffset);
     final future = _startTicker();
+    if (inspecting) _tryEstimateDurations(timelineTracks);
     _updateStatus();
     return future;
+  }
+
+  /// Estimates step durations for inspection tooling. Resolving ahead may
+  /// reach steps that playback never does, so a failure there is reported
+  /// without failing the call that started playback.
+  void _tryEstimateDurations(Set<Track> tracks) {
+    try {
+      _estimateDurations(tracks);
+    } catch (error, stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'motor',
+          context: ErrorDescription(
+            'while estimating step durations for inspection tooling',
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Records per-step duration estimates for inspection tooling by resolving
+  /// forks of the new plans ahead of time, with barriers released as they
+  /// would be during playback. Tracks outside [tracks] are not waited for.
+  void _estimateDurations(Set<Track> tracks) {
+    final forks = <Track, _TrackSlot>{
+      for (final track in tracks)
+        if (_slots[track]?.fork() case final fork?) track: fork,
+    };
+    final horizon = _clock.now + const Duration(days: 1);
+    final passes = {
+      for (final MapEntry(:key, :value) in _syncPasses.entries)
+        key: Map.of(value),
+    };
+    for (var pass = 0; pass < _maxBarrierPasses; pass++) {
+      for (final fork in forks.values) {
+        fork.tick(horizon);
+      }
+      if (!_releaseArrivedBarriers(horizon, slots: forks, passes: passes)) {
+        break;
+      }
+    }
+    for (final MapEntry(key: track, value: fork) in forks.entries) {
+      _slots[track]!._stepPlayback!.estimatedSegmentSeconds =
+          fork._stepPlayback!.forwardSegmentSeconds;
+    }
   }
 
   /// Evaluates retained track plans at [t] without starting the ticker.
@@ -387,17 +457,25 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// Scrubbing resolves plans exactly like playback does, including sync
   /// barriers, so it shows what playback would show at [t]. Times already
-  /// played are shown as they played. Looping plans that cannot repeat
-  /// exactly, such as loops with sync steps (every looping phase timeline),
-  /// keep only their two most recent cycles; earlier times show the start of
-  /// the earliest cycle kept.
+  /// played are shown as they played. While inspection tooling is attached,
+  /// that includes plans a track has since been redirected away from, but
+  /// only for viewing: playback, including [resume] from such a time, always
+  /// continues each track's current plan, holding its start until the
+  /// timeline reaches it.
+  ///
+  /// Looping plans that cannot repeat exactly, such as loops with sync steps
+  /// (every looping phase timeline), keep only their two most recent cycles,
+  /// or about a thousand steps while inspection tooling is attached; earlier
+  /// times show the start of the earliest cycle kept.
   ///
   /// Call [pause] before repeated interactive scrubs, then [resume] to
   /// continue from the selected position without rewinding.
   void scrubTo(Duration t) {
+    _dropInspectionDataIfDetached();
+    _playbackRevision++;
     _clock.seek(t);
     for (final entry in _slots.entries) {
-      if (!entry.value.hasPlayback) continue;
+      if (!entry.value.hasPlayback && !entry.value.hasArchive) continue;
       _activeTracks.add(entry.key);
       entry.value.reactivate();
     }
@@ -435,6 +513,54 @@ class TrackController extends Animation<TrackValueReader>
     notifyListeners();
   }
 
+  /// Keeps [slot]'s current plan for scrubbing back while inspection tooling
+  /// is attached.
+  void _archive(_TrackSlot slot) {
+    _dropInspectionDataIfDetached();
+    if (MotorInspectionRegistry.isInspecting) {
+      slot.archive(_clock.now);
+      _hasInspectionData = true;
+    }
+  }
+
+  /// Forgets archived plans and plan history once no tool is attached.
+  void _dropInspectionDataIfDetached() {
+    if (!_hasInspectionData || MotorInspectionRegistry.isInspecting) return;
+    _hasInspectionData = false;
+    _plans.clear();
+    for (final slot in _slots.values) {
+      slot.clearArchive();
+    }
+  }
+
+  void _recordPlan(
+    List<TrackAnimation> animations, {
+    required LoopMode loop,
+    required Duration start,
+  }) {
+    _hasInspectionData = true;
+    _plans.add(
+      PlaybackPlan(
+        start: start,
+        animations: animations,
+        loop: loop,
+        startValues: [
+          for (final animation in animations) _currentValueOf(animation.track),
+        ],
+      ),
+    );
+    if (_plans.length > _maxRecordedPlans) _plans.removeAt(0);
+  }
+
+  TrackValue<T> _currentValueOf<T extends Object>(Track<T> track) =>
+      track.value(_slots[track]!.value as T);
+
+  TrackAnimation _applyMotionOverride(TrackAnimation animation) {
+    final override = _motionOverride?.call(animation.track);
+    if (override == null) return animation;
+    return animation.withMotionOverride(override);
+  }
+
   /// Stops the given [tracks], or all tracks when [tracks] is null.
   ///
   /// Unless [canceled] is true, each targeted track that is animating with a
@@ -457,8 +583,10 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   TickerFuture _hardStop(List<Track>? tracks) {
+    _playbackRevision++;
     if (tracks == null) {
       for (final slot in _slots.values) {
+        _archive(slot);
         slot.stop();
       }
       _activeTracks.clear();
@@ -471,6 +599,7 @@ class TrackController extends Animation<TrackValueReader>
     } else {
       for (final track in tracks) {
         final slot = _slots[track];
+        if (slot != null) _archive(slot);
         slot?.stop();
         _activeTracks.remove(track);
         slot?.velocityFromTracker = false;
@@ -487,10 +616,12 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   TickerFuture _gracefulStop(List<Track>? tracks) {
+    _playbackRevision++;
     final targets = tracks ?? _slots.keys.toList();
     for (final track in targets) {
       final slot = _slots[track];
       if (slot == null) continue;
+      _archive(slot);
       if (slot.settle(startOffset: _clock.now)) {
         // Keep the track active so the ticker drives it to rest.
         _activeTracks.add(track);
@@ -525,6 +656,7 @@ class TrackController extends Animation<TrackValueReader>
   /// creates a new track). Stops the track's slot first if it is animating.
   @internal
   void forgetTrack(Track track) {
+    _playbackRevision++;
     _slots[track]?.stop();
     _slots.remove(track);
     _activeTracks.remove(track);
@@ -604,12 +736,113 @@ class TrackController extends Animation<TrackValueReader>
 
   @override
   void dispose() {
+    MotorInspectionRegistry.unregisterController(this);
     // Like AnimationController, pending futures are canceled, not completed.
     _ticker?.stop(canceled: true);
     _ticker?.dispose();
     _ticker = null;
     super.dispose();
   }
+
+  /// Builds a read-only snapshot for `package:motor/inspection.dart`.
+  @internal
+  PlaybackSnapshot internalInspectPlayback() {
+    _dropInspectionDataIfDetached();
+    final tracks = <TrackPlayback>[];
+    for (final entry in _slots.entries) {
+      final playback = entry.value.shownPlayback;
+      if (playback == null) continue;
+      tracks.add(
+        TrackPlayback(
+          track: entry.key,
+          steps: [
+            for (final step in playback.stepsView) step,
+          ],
+          hasSyntheticReturnStep: playback.hasSyntheticReturnStep,
+          loop: playback.loop,
+          currentStepIndex: playback.currentStepIndex,
+          direction: playback.direction,
+          cycle: playback.cycle,
+          isWaitingForSync: playback.isWaitingForSync,
+          syncToken: playback.syncToken,
+          startOffset: entry.value.shownStartOffset,
+          playhead: _durationFromSeconds(playback.lastElapsedSeconds)!,
+          cycleStart: _durationFromSeconds(playback.cycleStartSeconds)!,
+          stepStarts: [
+            for (final seconds in playback.stepStartSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          stepDurations: [
+            for (final seconds in playback.forwardSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          estimatedStepDurations: [
+            for (final seconds in playback.estimatedSegmentSeconds)
+              _durationFromSeconds(seconds),
+          ],
+          segments: [
+            for (final segment in playback.segmentsView)
+              PlaybackSegment(
+                stepIndex: segment.stepIndex,
+                direction: segment.direction,
+                cycle: segment.cycle,
+                start: _durationFromSeconds(segment.start)!,
+                end: _durationFromSeconds(segment.end),
+              ),
+          ],
+          loopPeriod: _durationFromSeconds(playback.loopPeriodSeconds),
+          loopRepeatStart: playback.loopPeriodSeconds == null
+              ? null
+              : _durationFromSeconds(playback.loopRepeatStartSeconds),
+        ),
+      );
+    }
+    return PlaybackSnapshot(
+      revision: _playbackRevision,
+      plans: _plans,
+      tickerElapsed: lastElapsedDuration,
+      status: status,
+      tracks: tracks,
+      position: _clock.now,
+    );
+  }
+
+  /// Exposes the plan-revision counter to the inspection extension.
+  @internal
+  int get internalPlaybackRevision => _playbackRevision;
+
+  /// Exposes the inspection playback speed to tooling.
+  @internal
+  double get internalPlaybackSpeed => _clock.rate;
+
+  /// Exposes whether the ticker is muted to tooling.
+  @internal
+  bool get internalIsMuted => _ticker?.muted ?? false;
+
+  /// Changes the logical playback rate without affecting other controllers.
+  @internal
+  set internalPlaybackSpeed(double value) {
+    assert(value > 0, 'playbackSpeed must be greater than zero.');
+    if (value <= 0 || value == _clock.rate) return;
+    _clock.rate = value;
+    notifyListeners();
+  }
+
+  /// Exposes the motion override callback to tooling.
+  @internal
+  Motion? Function(Track<Object> track)? get internalMotionOverride =>
+      _motionOverride;
+
+  @internal
+  set internalMotionOverride(Motion? Function(Track<Object> track)? value) {
+    _motionOverride = value;
+  }
+
+  static Duration? _durationFromSeconds(double? seconds) => seconds == null
+      ? null
+      : Duration(
+          microseconds: (seconds * Duration.microsecondsPerSecond).round(),
+        );
 
   void _playAnimation<T extends Object>(
     TrackAnimation<T> animation, {
@@ -618,6 +851,7 @@ class TrackController extends Animation<TrackValueReader>
   }) {
     _applyPendingVelocity(animation.track, consume: true);
     final slot = _slot(animation.track, forAnimation: animation);
+    _archive(slot);
     if (animation.from case final from?) {
       slot.setValue(from);
     }
@@ -759,14 +993,24 @@ class TrackController extends Animation<TrackValueReader>
   /// arrived at the same round or already passed it, so in a loop a fast
   /// track cannot lap a slow one. Barriers with a [FrameAnchoredSyncToken]
   /// release at [now] when [anchorFrames] is true.
-  bool _releaseArrivedBarriers(Duration now, {bool anchorFrames = true}) {
+  ///
+  /// [slots] and [passes] default to the controller's own; estimation passes
+  /// forks and a copy of the pass counts to resolve ahead of playback.
+  bool _releaseArrivedBarriers(
+    Duration now, {
+    Map<Track, _TrackSlot>? slots,
+    Map<Object, Map<Track, int>>? passes,
+    bool anchorFrames = true,
+  }) {
+    final lookup = slots ?? _slots;
+    final passCounts = passes ?? _syncPasses;
     var released = false;
     for (final MapEntry(key: token, value: participants)
         in _tokenParticipants.entries.toList()) {
-      final counts = _syncPasses[token] ??= {};
+      final counts = passCounts[token] ??= {};
       int? round;
       for (final track in participants) {
-        if (_slots[track]?.pendingSyncToken != token) continue;
+        if (lookup[track]?.pendingSyncToken != token) continue;
         final arrival = (counts[track] ?? 0) + 1;
         if (round == null || arrival < round) round = arrival;
       }
@@ -775,7 +1019,7 @@ class TrackController extends Animation<TrackValueReader>
       Duration? releaseAt;
       var allArrived = true;
       for (final track in participants) {
-        final slot = _slots[track];
+        final slot = lookup[track];
         if (slot == null || !slot.isAnimating) continue;
         final passed = counts[track] ?? 0;
         if (slot.pendingSyncToken == token && passed + 1 == round) {
@@ -791,19 +1035,19 @@ class TrackController extends Animation<TrackValueReader>
           when notBefore > releaseAt) {
         releaseAt = notBefore;
       }
-      if (anchorFrames && token is FrameAnchoredSyncToken) {
+      if (anchorFrames && slots == null && token is FrameAnchoredSyncToken) {
         releaseAt = now;
       }
 
       for (final track in participants) {
-        final slot = _slots[track];
+        final slot = lookup[track];
         if (slot == null || slot.pendingSyncToken != token) continue;
         if ((counts[track] ?? 0) + 1 != round) continue;
         slot.releaseSync(releaseAt);
         counts[track] = round;
       }
       released = true;
-      onSyncReleased(token);
+      if (slots == null) onSyncReleased(token);
     }
     return released;
   }
@@ -852,6 +1096,7 @@ class TrackController extends Animation<TrackValueReader>
   /// released tracks advance again, so one large frame gap resolves the same
   /// way as many small ones.
   bool _advanceTracks(Duration now, {bool scrubbing = false}) {
+    _dropInspectionDataIfDetached();
     var allDone = true;
     for (var pass = 0; pass < _maxBarrierPasses; pass++) {
       allDone = true;
@@ -863,7 +1108,7 @@ class TrackController extends Animation<TrackValueReader>
         final slot = _slots[track];
         if (slot == null) continue;
         final wasAnimating = slot.isAnimating;
-        if (slot.tick(now)) {
+        if (slot.tick(now, scrubbing: scrubbing)) {
           if (wasAnimating) _statusDirty = true;
         } else {
           allDone = false;

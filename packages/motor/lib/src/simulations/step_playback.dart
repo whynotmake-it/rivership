@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -50,6 +51,8 @@ class StepPlayback<T extends Object> {
         _loop = loop,
         _fallbackMotion = fallbackMotion,
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
+        _start = start,
+        _velocity = velocity,
         _initialValues = converter.normalize(start) {
     final initialVelocities = switch (velocity) {
       null => List<double>.filled(_initialValues.length, 0),
@@ -149,10 +152,17 @@ class StepPlayback<T extends Object> {
   /// with sync steps.
   static const _foldAttempts = 8;
 
+  /// How many segments a loop that does not fold keeps for seeking back
+  /// while inspection tooling is attached. Whole cycles are dropped, oldest
+  /// first, but never the last two; without tooling only those two are kept.
+  static const _maxKeptSegments = 1024;
+
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
   final List<TrackStep<T>> _steps;
+  final T _start;
+  final T? _velocity;
   MotionConverter<T> _converter;
 
   /// The converter, which a converter swap that keeps playing replaces with
@@ -175,6 +185,9 @@ class StepPlayback<T extends Object> {
 
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
+
+  /// Stable predicted durations for the forward playback plan.
+  List<double?>? _estimatedSegmentSeconds;
 
   // Resolution state: the segment currently being resolved, at the end of
   // the table.
@@ -243,6 +256,18 @@ class StepPlayback<T extends Object> {
     ];
   }
 
+  /// A fresh copy of this plan that plays its steps once, from the same
+  /// start, for resolving ahead without affecting this playback.
+  @internal
+  StepPlayback<T> fork() => StepPlayback<T>(
+        steps: _steps,
+        converter: _converter,
+        start: _start,
+        velocity: _velocity,
+        fallbackMotion: _fallbackMotion,
+        fallbackMotionPerDimension: _fallbackMotionPerDimension,
+      );
+
   Duration? _knownMotionDuration(
     Motion? motion,
     List<Motion>? motionPerDimension,
@@ -268,6 +293,13 @@ class StepPlayback<T extends Object> {
   List<double> get velocities {
     _showVelocities();
     return UnmodifiableListView(_viewVelocities);
+  }
+
+  /// Copies the current normalized values and velocities into [values] and
+  /// [velocities] without allocating.
+  void copyStateInto(List<double> values, List<double> velocities) {
+    copyValuesInto(values);
+    copyVelocitiesInto(velocities);
   }
 
   /// Copies the current normalized values into [values] without allocating.
@@ -318,9 +350,49 @@ class StepPlayback<T extends Object> {
     return (_steps[_view.stepIndex] as StepSync<T>).token;
   }
 
+  /// The actual playback plan, including a synthetic loop-return step.
+  @internal
+  List<TrackStep<T>> get stepsView => List.unmodifiable(_steps);
+
+  /// Whether [stepsView] ends with a synthetic loop-return step.
+  @internal
+  bool get hasSyntheticReturnStep => _hasReturnStep;
+
   /// The loop mode used by this playback.
   @internal
   LoopMode get loop => _loop;
+
+  /// Recorded forward segment durations, in seconds.
+  @internal
+  List<double?> get forwardSegmentSeconds =>
+      List.unmodifiable(_forwardSegmentSeconds);
+
+  /// Predicted forward segment durations, set by inspection tooling.
+  @internal
+  List<double?> get estimatedSegmentSeconds => List.unmodifiable(
+        _estimatedSegmentSeconds ?? List<double?>.filled(_steps.length, null),
+      );
+
+  @internal
+  set estimatedSegmentSeconds(List<double?> value) {
+    assert(value.length == _steps.length, 'one estimate per step');
+    _estimatedSegmentSeconds = value;
+  }
+
+  /// Start times of the forward steps reached so far in the shown cycle, in
+  /// slot-local seconds.
+  @internal
+  List<double?> get stepStartSeconds {
+    final starts = List<double?>.filled(_steps.length, null);
+    final view = _view;
+    for (var i = 0; i <= _viewIndex; i++) {
+      final segment = _segments[i];
+      if (segment.cycle == view.cycle && segment.direction > 0) {
+        starts[segment.stepIndex] = segment.start + _viewTimeShift;
+      }
+    }
+    return starts;
+  }
 
   /// The current playback direction: `1` forward or `-1` reverse.
   @internal
@@ -333,6 +405,10 @@ class StepPlayback<T extends Object> {
   /// The most recent slot-local elapsed time, in seconds.
   @internal
   double get lastElapsedSeconds => _lastElapsedSeconds;
+
+  /// The slot-local time at which the current loop leg began, in seconds.
+  @internal
+  double get cycleStartSeconds => _view.cycleStart + _viewTimeShift;
 
   /// Whether the shown segment heads for a smaller value than it started
   /// from, as judged by a [DirectionalMotionConverter].
@@ -373,6 +449,41 @@ class StepPlayback<T extends Object> {
     );
     return order == 0 ? null : order > 0;
   }
+
+  /// The resolved segments, oldest first: which step each one plays and when.
+  ///
+  /// The segment being resolved reports when it is going to end, unless that
+  /// is unknown (it waits at a sync barrier or never finishes).
+  @internal
+  List<({int stepIndex, int direction, int cycle, double start, double? end})>
+      get segmentsView => [
+            for (final segment in _segments)
+              (
+                stepIndex: segment.stepIndex,
+                direction: segment.direction,
+                cycle: segment.cycle,
+                start: segment.start,
+                end: segment.end ??
+                    (identical(segment, _segments.last) ? _upcomingEnd : null),
+              ),
+          ];
+
+  double? get _upcomingEnd {
+    if (_isDone || _isWaitingForSync || _period != null) return null;
+    if (_steps[_stepIndex] is StepSync<T>) return null;
+    if (_cutAt case final cut?) return cut;
+    final duration = _findSegmentEnd();
+    return duration == null ? null : _segmentStartSeconds + duration;
+  }
+
+  /// Once a loop repeats exactly, how long each repetition lasts, in seconds.
+  /// Segments from [loopRepeatStartSeconds] on then repeat with this period.
+  @internal
+  double? get loopPeriodSeconds => _period;
+
+  /// Where the repeating part of a folded loop starts, in seconds.
+  @internal
+  double get loopRepeatStartSeconds => _foldStartSeconds;
 
   /// The indices of the steps entered since the previous call, in order.
   ///
@@ -627,12 +738,15 @@ class StepPlayback<T extends Object> {
     );
   }
 
-  /// Bounds memory for loops that cannot fold by forgetting all but their
-  /// last two cycles. Seeking before the cycles kept shows the earliest one
-  /// kept.
+  /// Bounds memory for loops that cannot fold by forgetting their oldest
+  /// cycles beyond [_maxKeptSegments], or all but the last two without
+  /// inspection tooling. Seeking before the cycles kept shows the earliest
+  /// one kept.
   void _dropOldCycles() {
-    if (_segments.isEmpty) return;
-    final oldest = math.min(_segments.last.cycle, _cycle - 2);
+    final budget = MotorInspectionRegistry.isInspecting ? _maxKeptSegments : 0;
+    final excess = _segments.length - budget;
+    if (excess <= 0) return;
+    final oldest = math.min(_segments[excess - 1].cycle, _cycle - 2);
     final drop = _segments.indexWhere((segment) => segment.cycle > oldest);
     if (drop > 0) {
       _segments.removeRange(0, drop);
@@ -699,6 +813,7 @@ class StepPlayback<T extends Object> {
         stepIndex: _stepIndex,
         direction: _direction,
         cycle: _cycle,
+        cycleStart: _cycleStartSeconds,
         start: _segmentStartSeconds,
         simulations: _simulations,
       ),
@@ -947,6 +1062,7 @@ class _Segment {
     required this.stepIndex,
     required this.direction,
     required this.cycle,
+    required this.cycleStart,
     required this.start,
     required this.simulations,
   });
@@ -954,6 +1070,7 @@ class _Segment {
   final int stepIndex;
   final int direction;
   final int cycle;
+  final double cycleStart;
   final double start;
   final List<Simulation> simulations;
 
