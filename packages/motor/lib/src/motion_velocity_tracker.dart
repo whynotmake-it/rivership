@@ -27,6 +27,7 @@ sealed class VelocityTracking {
   const factory VelocityTracking.off() = _VelocityTrackingOff;
 
   /// Creates a [MotionVelocityTracker] for the given [converter], or `null`
+  /// when tracking is off.
   MotionVelocityTracker<T>? call<T>(MotionConverter<T> converter);
 }
 
@@ -225,7 +226,8 @@ class MotionVelocityEstimate<T> {
 
   /// Confidence in the estimate (0.0 to 1.0).
   ///
-  /// Returns 0.0 if insufficient data, 1.0 otherwise.
+  /// Motor's built-in tracker always reports 1.0; it returns no estimate at
+  /// all when it has no samples.
   final double confidence;
 
   /// The time that elapsed between the first and last position sample.
