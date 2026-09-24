@@ -117,9 +117,9 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Returns a reader for the current track values.
   ///
-  /// Reading a track this controller has never seen returns its constructor
-  /// `from` seed or [Track.initial], and registers the track with the
-  /// controller. Reading a track with neither throws.
+  /// Reading a track this controller has never seen returns its entry in the
+  /// constructor's `initialValues` or [Track.initial], and registers the
+  /// track with the controller. Reading a track with neither throws.
   @override
   TrackValueReader get value => _read;
 
