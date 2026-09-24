@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_const_constructors,
 // ignore_for_file: prefer_const_literals_to_create_immutables
+// ignore_for_file: deprecated_member_use_from_same_package
 
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
