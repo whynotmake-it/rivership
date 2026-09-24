@@ -634,7 +634,6 @@ class _ControllerListState extends State<_ControllerList> {
                           child: DisclosureRow(
                             key: const ValueKey('motor-devtools-muted'),
                             title: '${muted.length} muted',
-                            trailing: 'ticker muted',
                             open: _mutedOpen,
                             onTap: () =>
                                 setState(() => _mutedOpen = !_mutedOpen),
