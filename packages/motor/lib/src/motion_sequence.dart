@@ -28,15 +28,15 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 ///
 /// ```dart
 /// // State-based sequence
-/// final states = MotionSequence.states({
-///   ButtonState.idle: Offset(0, 0),
-///   ButtonState.pressed: Offset(0, 10),
-/// }, motion: Motion.bouncySpring());
+/// final MotionSequence<ButtonState, Offset> states = .states({
+///   .idle: Offset(0, 0),
+///   .pressed: Offset(0, 10),
+/// }, motion: .bouncySpring());
 ///
 /// // Step sequence
-/// final steps = MotionSequence.steps([
+/// final MotionSequence<int, Color> steps = .steps([
 ///   Colors.red, Colors.green, Colors.blue
-/// ], motion: Motion.smoothSpring());
+/// ], motion: .smoothSpring());
 /// ```
 /// {@endtemplate}
 @Deprecated(
@@ -67,11 +67,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// ```dart
   /// enum ButtonState { idle, pressed, loading }
   ///
-  /// final sequence = MotionSequence.states({
-  ///   ButtonState.idle: Offset(0, 0),
-  ///   ButtonState.pressed: Offset(0, 5),
-  ///   ButtonState.loading: Offset(10, 0),
-  /// }, motion: Motion.bouncySpring());
+  /// final MotionSequence<ButtonState, Offset> sequence = .states({
+  ///   .idle: Offset(0, 0),
+  ///   .pressed: Offset(0, 5),
+  ///   .loading: Offset(10, 0),
+  /// }, motion: .bouncySpring());
   /// ```
   @Deprecated(
     'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
@@ -87,9 +87,9 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence from named phases to values, each with its own motion.
   ///
   /// ```dart
-  /// final sequence = MotionSequence.statesWithMotions({
-  ///   ButtonState.idle: (Offset(0, 0), Motion.smoothSpring()),
-  ///   ButtonState.pressed: (Offset(0, 5), Motion.snappySpring()),
+  /// final MotionSequence<ButtonState, Offset> sequence = .statesWithMotions({
+  ///   .idle: (Offset(0, 0), .smoothSpring()),
+  ///   .pressed: (Offset(0, 5), .snappySpring()),
   /// });
   /// ```
   @Deprecated(
@@ -112,11 +112,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// for all other phase transitions.
   ///
   /// ```dart
-  /// final positions = MotionSequence.steps([
+  /// final MotionSequence<int, Offset> positions = .steps([
   ///   Offset(0, 0),
   ///   Offset(100, 100),
   ///   Offset(200, 0),
-  /// ], motion: Motion.smoothSpring(), loop: LoopMode.seamless);
+  /// ], motion: .smoothSpring(), loop: .seamless);
   /// ```
   static MotionSequence<int, T> steps<T extends Object>(
     List<T> values, {
@@ -128,10 +128,10 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence that steps through values, each with its own motion.
   ///
   /// ```dart
-  /// final sequence = MotionSequence.stepsWithMotions([
-  ///   (Offset(0, 0), Motion.smoothSpring()),
-  ///   (Offset(100, 100), Motion.bouncySpring()),
-  ///   (Offset(200, 0), Motion.smoothSpring()),
+  /// final MotionSequence<int, Offset> sequence = .stepsWithMotions([
+  ///   (Offset(0, 0), .smoothSpring()),
+  ///   (Offset(100, 100), .bouncySpring()),
+  ///   (Offset(200, 0), .smoothSpring()),
   /// ]);
   /// ```
   static MotionSequence<int, T> stepsWithMotions<T extends Object>(
@@ -147,11 +147,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///
   /// ```dart
   /// // 2-second animation with proportional timing
-  /// final timeline = MotionSequence.spanning({
+  /// final MotionSequence<double, LogoState> timeline = .spanning({
   ///   0.0: LogoState(opacity: 0),      // Start (0% of time)
   ///   1.0: LogoState(opacity: 1),      // 50% of time
   ///   2.0: LogoState(opacity: 0),      // 100% of time
-  /// }, motion: LinearMotion(Duration(seconds: 2)));
+  /// }, motion: .linear(Duration(seconds: 2)));
   /// ```
   static SpanningSequence<T> spanning<T extends Object>(
     Map<num, T> values, {
@@ -682,7 +682,7 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
   /// final sequence = {
   ///   ButtonState.idle: Offset(0, 0),
   ///   ButtonState.pressed: Offset(0, 5),
-  /// }.toStates(motion: Motion.bouncySpring());
+  /// }.toStates(motion: .bouncySpring());
   /// ```
   @Deprecated(
     'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
@@ -750,7 +750,7 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
   ///   Colors.red,
   ///   Colors.green,
   ///   Colors.blue,
-  /// ].toSteps(motion: Motion.smoothSpring());
+  /// ].toSteps(motion: .smoothSpring());
   /// ```
   @Deprecated(
     'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
