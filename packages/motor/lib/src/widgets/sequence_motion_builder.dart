@@ -1,7 +1,10 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 
 /// A function that builds a widget based on the current phase and interpolated
@@ -56,12 +59,23 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// )
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+  'See MIGRATION.md. '
+  'SequenceMotionBuilder will be removed in motor 3.0.',
+)
 class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// {@macro SequenceMotionBuilder}
+  @Deprecated(
+    'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+    'See MIGRATION.md. '
+    'SequenceMotionBuilder will be removed in motor 3.0.',
+  )
   const SequenceMotionBuilder({
     required this.sequence,
     required this.converter,
     required this.builder,
+    this.velocityTracking = const VelocityTracking.on(),
     this.playing = true,
     this.currentPhase,
     this.onTransition,
@@ -79,6 +93,9 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// The builder function that creates the widget tree.
   final SequenceWidgetBuilder<P, T> builder;
+
+  /// {@macro motor.velocityTracking}
+  final VelocityTracking velocityTracking;
 
   /// Whether to automatically progress through the sequence.
   ///
@@ -130,6 +147,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
       vsync: this,
       converter: widget.converter,
       initialValue: _getInitialValue(),
+      velocityTracking: widget.velocityTracking,
     )..addListener(_onControllerUpdate);
 
     // Add status listener if provided
