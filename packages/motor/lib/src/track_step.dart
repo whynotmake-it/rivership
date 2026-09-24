@@ -73,6 +73,14 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// step after the barrier starts from rest, without the velocity the step
   /// before it ended with.
   ///
+  /// {@template motor.TrackStep.sync.arrival}
+  /// A track arrives once the step before the barrier has finished. For a
+  /// spring, that means fully settled, with distance and velocity under its
+  /// tolerance, which often takes 2–3× its nominal duration. To sync on the
+  /// visual arrival, give that step a fixed duration (`motion.scaleTo(d)`),
+  /// use a curve, or place the arrival with [TrackStep.at].
+  /// {@endtemplate}
+  ///
   /// Use this to keep independent tracks aligned at key moments without
   /// hand-tuning each track's durations.
   const factory TrackStep.sync({required Object token}) = StepSync<T>;
@@ -183,6 +191,8 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// A track waits at rest, so the step after the barrier starts from rest,
 /// without the velocity the step before it ended with. This holds for phase
 /// boundaries in a [TrackPhaseTimeline] too.
+///
+/// {@macro motor.TrackStep.sync.arrival}
 ///
 /// Tracks stopped or redirected before reaching their barrier are removed from
 /// the barrier's participant set. The remaining tracks keep waiting for each

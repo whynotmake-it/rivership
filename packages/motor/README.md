@@ -327,6 +327,13 @@ coordinate tracks playing on the same controller (one `TrackBuilder` or
 barrier stops participating, so it never holds the others hostage. When
 scrubbing, barriers are resolved exactly as during playback.
 
+A track reaches the barrier when the step before it has *finished*. For a
+spring, that means fully settled, with distance and velocity under its
+tolerance. That often takes 2–3× its nominal duration, well after it looks
+done. To sync on the visual arrival, give that step a fixed duration
+(`motion.scaleTo(duration)`), use a curve, or place the arrival with an
+`.at` keyframe.
+
 #### Phases — named states
 
 Most motion is really a set of named states (compact / expanded / focused). `TrackPhaseTimeline` maps each phase to the values its tracks should settle on, and **inserts sync barriers between phases for you** — so every track reaches the next phase together.
