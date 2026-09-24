@@ -8,7 +8,8 @@ import 'package:meta/meta.dart';
 /// of a design system's buttons. [inspectable] set to false hides them.
 /// Values that are null come from the nearest enclosing scope that sets
 /// them. A controller's own `inspectable` and `inspectionGroup` win over
-/// any scope.
+/// any scope. A controller reads its scope once, when it is created, so
+/// later scope changes apply only to controllers created after them.
 ///
 /// ```dart
 /// MotorInspectionScope(

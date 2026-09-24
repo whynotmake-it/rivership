@@ -563,9 +563,12 @@ class MotorTimelineLane {
 /// with its steps, sync waits, and a playhead.
 ///
 /// It takes its font and color from the ambient [DefaultTextStyle]. While
-/// shown, it attaches motor's inspection registry so that plans started
-/// from then on carry duration estimates. With [kMotorDevTools] false it
-/// does not attach, so it shows only the steps resolved so far.
+/// shown, it attaches motor's inspection registry, which turns on inspection
+/// bookkeeping for every controller in the app: plan history, up to about a
+/// thousand retained steps for loops that can't repeat exactly, and
+/// look-ahead duration estimates. Treat it as a demo or tooling widget, not
+/// a regular production one. With [kMotorDevTools] false it does not attach,
+/// so it shows only the steps resolved so far.
 ///
 /// ```dart
 /// MotorTimeline(
