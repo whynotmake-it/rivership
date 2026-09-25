@@ -197,7 +197,6 @@ class TrackController extends Animation<TrackValueReader>
     if (estimate == null) return null;
     return MotionVelocityEstimate<T>(
       perSecond: estimate.perSecond as T,
-      confidence: estimate.confidence,
       duration: estimate.duration,
       offset: estimate.offset as T,
     );
