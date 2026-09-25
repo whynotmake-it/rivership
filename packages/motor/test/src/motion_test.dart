@@ -371,8 +371,8 @@ void main() {
           .trimmed(fromStart: 0.2, fromEnd: 0.1)
           .createSimulation();
 
-      // 1e-7 tolerance: the parent's length is now its exact settle time,
-      // about 3e-8 from the earlier probed estimate.
+      // 1e-7 tolerance: these positions were sampled with a probed parent
+      // length, about 3e-8 s from its exact settle time.
       const samples = [
         (0.0, 0.0),
         (0.1, 0.5743175672500058),
