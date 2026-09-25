@@ -377,27 +377,33 @@ class _TrackSlot<T extends Object> {
     _velocitiesStale = true;
   }
 
-  /// Redirects this slot to settle at its current value using the fallback
-  /// motion, preserving the current velocity.
+  /// Redirects this slot to settle at its current value, preserving the
+  /// current velocity, with the motion of the running step, or the fallback
+  /// motion while a free motion, hold or barrier runs.
   ///
   /// Returns true if a settling animation was started. Returns false when the
-  /// slot is idle or has no settle-capable fallback motion, in which case the
+  /// slot is idle or none of those motions needs to settle, in which case the
   /// caller should hard-[stop] instead.
   bool settle({required Duration startOffset}) {
     if (!_playing) return false;
-    final motions = _settleMotions;
+    final motions = _stepPlayback?.currentMotions ?? _fallbackMotions;
     if (motions == null || !motions.any((motion) => motion.needsSettle)) {
       return false;
     }
     final down = _movesDown;
-    play([TrackStep.to(value)], startOffset: startOffset);
+    play(
+      [TrackStep.to(value, motionPerDimension: motions)],
+      startOffset: startOffset,
+    );
     _stoppedDown = down;
     return true;
   }
 
-  List<Motion>? get _settleMotions {
+  List<Motion>? get _fallbackMotions {
     if (fallbackMotionPerDimension case final perDim?) return perDim;
-    if (fallbackMotion case final motion?) return [motion];
+    if (fallbackMotion case final motion?) {
+      return List.filled(_currentValues.length, motion);
+    }
     return null;
   }
 

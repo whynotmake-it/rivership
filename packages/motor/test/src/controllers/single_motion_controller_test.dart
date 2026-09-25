@@ -148,6 +148,16 @@ void main() {
       controller.dispose();
     });
 
+    testWidgets('the bounded factory passes on debugLabel', (tester) async {
+      controller = SingleMotionController.bounded(
+        motion: spring,
+        vsync: tester,
+        debugLabel: 'progress',
+      ) as BoundedSingleMotionController;
+
+      expect(controller.internalInnerController.debugLabel, 'progress');
+    });
+
     testWidgets('creates with default bounds', (tester) async {
       controller = BoundedSingleMotionController(
         motion: spring,

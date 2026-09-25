@@ -186,11 +186,10 @@ void _advanceTo(double time) {
 
 ### Custom motions: extend `Motion` instead of implementing it
 
-2.0 added `settlingDuration(...)`, `scaleTo(Duration)` and
-`estimateSimulationDuration(...)` to `Motion` and `MotionBase`, with default
-implementations. A class that `implements Motion` doesn't inherit them, so
-it no longer compiles until it provides all three. Extend `Motion` instead:
-you keep only the members 1.x required.
+2.0 added `settlingDuration(...)` and `scaleTo(Duration)` to `Motion` and
+`MotionBase`, with default implementations. A class that `implements Motion`
+doesn't inherit them, so it no longer compiles until it provides both.
+Extend `Motion` instead: you keep only the members 1.x required.
 
 ```dart
 // Before (1.x):

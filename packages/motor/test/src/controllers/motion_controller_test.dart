@@ -653,7 +653,7 @@ void main() {
           );
         }
 
-        expect(controller.debugInnerController.debugTrackCount, 1);
+        expect(controller.internalInnerController.debugTrackCount, 1);
 
         controller.animateTo(const Offset(1, 1)).ignore();
         await tester.pumpAndSettle();

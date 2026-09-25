@@ -776,7 +776,7 @@ void main() {
     }
 
     final scrubbed = controller()..playSequence(sequence);
-    scrubbed.debugInnerController
+    scrubbed.internalInnerController
       ..pause()
       ..scrubTo(const Duration(milliseconds: 250));
     expect(scrubbed.value, closeTo(live.value, 0.05));

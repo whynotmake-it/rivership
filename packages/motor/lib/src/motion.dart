@@ -28,14 +28,6 @@ sealed class MotionBase {
   /// Default is [Tolerance.defaultTolerance].
   final Tolerance tolerance;
 
-  /// Whether this motion needs to settle.
-  ///
-  /// If this is true, the motion will continue to animate until the velocity
-  /// is less than the [tolerance], whenever it is supposed to be stopped:
-  /// a graceful `stop()` lets a controller's motion, or a track's default
-  /// motion, come to rest at the current value instead of halting.
-  bool get needsSettle;
-
   /// Whether this motion will settle without bounds.
   ///
   /// Motor never reads it, so it is always true unless overridden.
@@ -57,49 +49,6 @@ sealed class MotionBase {
   /// `createSimulation` call only when it doesn't say. They are immutable and
   /// compare by value, so they can be created in `build`.
   MotionBase scaleTo(Duration duration);
-
-  /// Estimates when [simulation] finishes using exponential search followed by
-  /// binary search, avoiding fixed-step scans through the whole timeline.
-  ///
-  /// This is a building block for motions that need to time-scale or trim
-  /// another simulation whose natural duration is unknown. It is not part of
-  /// the public API; subclasses may call it from their `createSimulation`
-  /// implementations.
-  @protected
-  double estimateSimulationDuration(
-    Simulation simulation, {
-    Duration? fallback,
-    Duration max = const Duration(seconds: 60),
-  }) {
-    if (simulation.isDone(0)) return 0;
-
-    final fallbackSeconds = fallback?.toSeconds();
-    var lower = 0.0;
-    var upper = fallbackSeconds == null || fallbackSeconds <= 0
-        ? 1 / 60
-        : fallbackSeconds;
-    final maxSeconds = max.toSeconds();
-
-    while (upper < maxSeconds && !simulation.isDone(upper)) {
-      lower = upper;
-      upper *= 2;
-    }
-
-    if (!simulation.isDone(upper)) {
-      return fallbackSeconds ?? maxSeconds;
-    }
-
-    for (var i = 0; i < 24; i++) {
-      final mid = (lower + upper) / 2;
-      if (simulation.isDone(mid)) {
-        upper = mid;
-      } else {
-        lower = mid;
-      }
-    }
-
-    return upper;
-  }
 }
 
 /// {@macro Motion}
@@ -108,9 +57,8 @@ sealed class MotionBase {
 /// a start value to an end value.
 ///
 /// To create a custom motion, extend [Motion] rather than implementing it.
-/// Extending inherits the defaults of [settlingDuration], [scaleTo] and
-/// [estimateSimulationDuration], which an implementing class has to provide
-/// itself.
+/// Extending inherits the defaults of [settlingDuration] and [scaleTo], which
+/// an implementing class has to provide itself.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
@@ -176,16 +124,20 @@ abstract class Motion extends MotionBase {
   /// Curves, linear motions and [NoMotion] return their duration, springs
   /// compute when they settle within their [tolerance], and wrappers such as
   /// [FixedDurationMotion] and [TrimmedMotion] ask their parent.
-  ///
-  /// See also:
-  /// * [estimateSimulationDuration], as an expensive fallback for when the
-  ///   duration is unknown.
   Duration? settlingDuration({
     double start = 0,
     double end = 1,
     double velocity = 0,
   }) =>
       null;
+
+  /// Whether this motion needs to settle.
+  ///
+  /// If this is true, the motion will continue to animate until the velocity
+  /// is less than the [tolerance], whenever it is supposed to be stopped:
+  /// a graceful `stop()` lets the running motion come to rest at the current
+  /// value instead of halting.
+  bool get needsSettle;
 
   /// Creates a simulation for this motion.
   ///
@@ -1060,9 +1012,6 @@ class FixedDurationFreeMotion extends FreeMotion {
   final Duration duration;
 
   @override
-  bool get needsSettle => false;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,
@@ -1155,9 +1104,6 @@ class FrictionMotion extends FreeMotion {
   ///
   /// Defaults to 0 (pure exponential friction).
   final double constantDeceleration;
-
-  @override
-  bool get needsSettle => true;
 
   @override
   Simulation createSimulation({

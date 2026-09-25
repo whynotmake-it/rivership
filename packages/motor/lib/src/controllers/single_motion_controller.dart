@@ -29,6 +29,7 @@ class SingleMotionController extends MotionController<double> {
     double upperBound,
     AnimationBehavior behavior,
     VelocityTracking velocityTracking,
+    String? debugLabel,
   }) = BoundedSingleMotionController;
 }
 
