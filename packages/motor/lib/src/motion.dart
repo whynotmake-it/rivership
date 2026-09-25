@@ -952,7 +952,7 @@ class MaterialSpringMotion extends SpringMotion {
 ///
 /// ```dart
 /// // The whole bounce, settle included, takes 300 ms.
-/// final Motion motion = .bouncySpring().scaleTo(
+/// final motion = Motion.bouncySpring().scaleTo(
 ///   const Duration(milliseconds: 300),
 /// );
 /// ```
@@ -1041,7 +1041,7 @@ class FixedDurationMotion extends Motion {
 ///
 /// ```dart
 /// // Coast to the same resting point, but within 400 ms.
-/// final FreeMotion motion = .friction().scaleTo(
+/// final motion = FreeMotion.friction().scaleTo(
 ///   const Duration(milliseconds: 400),
 /// );
 /// ```

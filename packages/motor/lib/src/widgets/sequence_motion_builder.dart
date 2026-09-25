@@ -31,7 +31,7 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final MotionSequence<ButtonState, Offset> sequence = .states({
+/// final sequence = MotionSequence<ButtonState, Offset>.states({
 ///   .idle: Offset(100, 40),
 ///   .pressed: Offset(95, 38),
 ///   .loading: Offset(40, 40),
