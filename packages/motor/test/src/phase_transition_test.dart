@@ -3,8 +3,9 @@ import 'package:motor/motor.dart';
 
 void main() {
   group('PhaseTransition', () {
-    test('a transition reports its target as phase and origin as lastPhase',
-        () {
+    test(
+        'a transition reports its target as phase and the phase it leaves '
+        'as lastPhase', () {
       const PhaseTransition<String> transition =
           PhaseTransitioning(from: 'a', to: 'b');
       expect(transition.phase, 'b');
