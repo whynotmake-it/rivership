@@ -36,6 +36,12 @@ typedef Denormalize<T> = T Function(List<double> values);
 /// If your values have a defined order (e.g., [double], [int], etc.), consider
 /// using [DirectionalMotionConverter] instead to provide directionality
 /// information to motion controllers.
+///
+/// Controllers and builders only swap to a converter that isn't equal to the
+/// current one. Motor's converters compare by type, and
+/// [MotionConverter.custom] ones by their functions, so pass top-level
+/// functions or tear-offs rather than closures created in `build`. A
+/// subclass that adds fields should override `==` and `hashCode`.
 abstract class MotionConverter<T> {
   /// Creates a motion converter.
   const MotionConverter();
@@ -136,7 +142,7 @@ mixin ComparableMotionConverter<T extends Comparable<dynamic>>
 
 /// A [MotionConverter] for double values.
 class SingleMotionConverter extends MotionConverter<double>
-    with ComparableMotionConverter<double> {
+    with ComparableMotionConverter<double>, _EqualByType<double> {
   /// Creates a [SingleMotionConverter].
   const SingleMotionConverter();
 
@@ -148,7 +154,8 @@ class SingleMotionConverter extends MotionConverter<double>
 }
 
 /// A [MotionConverter] for [Offset] values.
-class OffsetMotionConverter extends MotionConverter<Offset> {
+class OffsetMotionConverter extends MotionConverter<Offset>
+    with _EqualByType<Offset> {
   /// Creates an [OffsetMotionConverter].
   const OffsetMotionConverter();
 
@@ -160,7 +167,8 @@ class OffsetMotionConverter extends MotionConverter<Offset> {
 }
 
 /// A [MotionConverter] for [Size] values.
-class SizeMotionConverter extends MotionConverter<Size> {
+class SizeMotionConverter extends MotionConverter<Size>
+    with _EqualByType<Size> {
   /// Creates a [SizeMotionConverter].
   const SizeMotionConverter();
 
@@ -172,7 +180,8 @@ class SizeMotionConverter extends MotionConverter<Size> {
 }
 
 /// A [MotionConverter] for [Rect] values.
-class RectMotionConverter extends MotionConverter<Rect> {
+class RectMotionConverter extends MotionConverter<Rect>
+    with _EqualByType<Rect> {
   /// Creates a [RectMotionConverter].
   const RectMotionConverter();
 
@@ -194,7 +203,8 @@ class RectMotionConverter extends MotionConverter<Rect> {
 }
 
 /// A [MotionConverter] for [Alignment] values.
-class AlignmentMotionConverter extends MotionConverter<Alignment> {
+class AlignmentMotionConverter extends MotionConverter<Alignment>
+    with _EqualByType<Alignment> {
   /// Creates an [AlignmentMotionConverter].
   const AlignmentMotionConverter();
 
@@ -206,7 +216,8 @@ class AlignmentMotionConverter extends MotionConverter<Alignment> {
 }
 
 /// A [MotionConverter] for [Color] values that interpolates in RGB space.
-class ColorRgbMotionConverter extends MotionConverter<Color> {
+class ColorRgbMotionConverter extends MotionConverter<Color>
+    with _EqualByType<Color> {
   /// Creates a [ColorRgbMotionConverter].
   const ColorRgbMotionConverter();
 
@@ -228,7 +239,8 @@ class ColorRgbMotionConverter extends MotionConverter<Color> {
 }
 
 /// A [MotionConverter] for [EdgeInsets] values.
-class EdgeInsetsMotionConverter extends MotionConverter<EdgeInsets> {
+class EdgeInsetsMotionConverter extends MotionConverter<EdgeInsets>
+    with _EqualByType<EdgeInsets> {
   /// Creates a [EdgeInsetsMotionConverter].
   const EdgeInsetsMotionConverter();
 
@@ -251,7 +263,8 @@ class EdgeInsetsMotionConverter extends MotionConverter<EdgeInsets> {
 
 /// A [MotionConverter] for [EdgeInsetsDirectional] values.
 class EdgeInsetsDirectionalMotionConverter
-    extends MotionConverter<EdgeInsetsDirectional> {
+    extends MotionConverter<EdgeInsetsDirectional>
+    with _EqualByType<EdgeInsetsDirectional> {
   /// Creates a [EdgeInsetsDirectionalMotionConverter].
   const EdgeInsetsDirectionalMotionConverter();
 
@@ -273,6 +286,16 @@ class EdgeInsetsDirectionalMotionConverter
       );
 }
 
+/// Equality for converters without fields: equal when of the same type.
+mixin _EqualByType<T> on MotionConverter<T> {
+  @override
+  bool operator ==(Object other) => other.runtimeType == runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+}
+
+@immutable
 class _CallbackMotionConverter<T> extends MotionConverter<T> {
   const _CallbackMotionConverter({
     required Normalize<T> normalize,
@@ -289,8 +312,19 @@ class _CallbackMotionConverter<T> extends MotionConverter<T> {
 
   @override
   T denormalize(List<double> values) => _denormalize(values);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _CallbackMotionConverter<T> &&
+      other.runtimeType == runtimeType &&
+      _normalize == other._normalize &&
+      _denormalize == other._denormalize;
+
+  @override
+  int get hashCode => Object.hash(_normalize, _denormalize);
 }
 
+@immutable
 class _CallbackDirectionalMotionConverter<T> extends MotionConverter<T>
     with DirectionalMotionConverter<T> {
   const _CallbackDirectionalMotionConverter({
@@ -315,4 +349,15 @@ class _CallbackDirectionalMotionConverter<T> extends MotionConverter<T>
 
   @override
   int compare(T a, T b) => _compare(a, b);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _CallbackDirectionalMotionConverter<T> &&
+      other.runtimeType == runtimeType &&
+      _normalize == other._normalize &&
+      _denormalize == other._denormalize &&
+      _compare == other._compare;
+
+  @override
+  int get hashCode => Object.hash(_normalize, _denormalize, _compare);
 }
