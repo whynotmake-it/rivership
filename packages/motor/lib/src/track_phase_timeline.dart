@@ -46,8 +46,8 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
   TrackPhaseTimeline(
     Map<P, List<TrackAnimation>> phaseAnimations, {
     this.phaseLoop = LoopMode.none,
-    this.initialValues = const [],
-    this.initialVelocities = const [],
+    List<TrackValue> initialValues = const [],
+    List<TrackValue> initialVelocities = const [],
   })  : assert(
           phaseAnimations.values.every(
             (animations) => animations.every(
@@ -75,6 +75,8 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
           for (final MapEntry(:key, :value) in phaseAnimations.entries)
             key: List<TrackAnimation>.unmodifiable(value),
         }),
+        initialValues = List.unmodifiable(initialValues),
+        initialVelocities = List.unmodifiable(initialVelocities),
         flattened = TrackTimeline(_flatten(phaseAnimations));
 
   /// The phase-to-animation mapping as provided by the caller.
@@ -217,10 +219,10 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
 
   @override
   List<Object?> get props => [
-        ...phases,
-        for (final phase in phases) ...phaseAnimations[phase]!,
+        phases,
+        [for (final phase in phases) phaseAnimations[phase]],
         phaseLoop,
-        ...initialValues,
-        ...initialVelocities,
+        initialValues,
+        initialVelocities,
       ];
 }
