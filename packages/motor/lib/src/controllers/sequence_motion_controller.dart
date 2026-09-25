@@ -15,7 +15,7 @@ part of 'motion_controller.dart';
 ///   initialValue: .zero,
 /// );
 ///
-/// final MotionSequence<ButtonState, Offset> sequence = .states({
+/// final sequence = MotionSequence<ButtonState, Offset>.states({
 ///   .idle: Offset(0, 0),
 ///   .pressed: Offset(0, 5),
 /// }, motion: .smoothSpring());
