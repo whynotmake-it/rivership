@@ -172,8 +172,8 @@ abstract class Motion extends MotionBase {
   ///
   /// If this is true, the motion will continue to animate until the velocity
   /// is less than the [tolerance], whenever it is supposed to be stopped:
-  /// a graceful `stop()` lets a controller's motion, or a track's default
-  /// motion, come to rest at the current value instead of halting.
+  /// a graceful `stop()` lets the running motion come to rest at the current
+  /// value instead of halting.
   ///
   /// It also tells time-scaling wrappers such as [FixedDurationMotion] and
   /// [TrimmedMotion] that [duration] is only a characteristic time, so

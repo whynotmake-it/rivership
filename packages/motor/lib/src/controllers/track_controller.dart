@@ -563,14 +563,13 @@ class TrackController extends Animation<TrackValueReader>
 
   /// Stops the given [tracks], or all tracks when [tracks] is null.
   ///
-  /// Unless [canceled] is true, each targeted track that is animating with a
-  /// settle-capable default motion (one whose [Motion.needsSettle] is true)
-  /// gracefully settles at its current value instead of freezing instantly —
-  /// for example a spring keeps its momentum and eases to rest. Tracks whose
-  /// default motion does not need settling (or that have no default motion)
-  /// stop immediately. When [canceled] is true every targeted track stops
-  /// immediately. Either way, stopped tracks keep the direction they were
-  /// moving in as their status.
+  /// Unless [canceled] is true, each targeted track whose running step moves
+  /// with a motion that needs to settle ([Motion.needsSettle]) settles at its
+  /// current value with that motion instead of freezing: a spring keeps its
+  /// momentum and eases to rest. While a free motion, hold or barrier runs,
+  /// the track's default motion decides. Other tracks stop immediately, as
+  /// does every targeted track when [canceled] is true. Either way, stopped
+  /// tracks keep the direction they were moving in as their status.
   ///
   /// Returns a [TickerFuture] that completes when the settling tracks come to
   /// rest, or an already-complete future when nothing keeps animating (see

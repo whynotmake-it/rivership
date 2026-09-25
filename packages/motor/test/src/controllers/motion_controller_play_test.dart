@@ -338,5 +338,28 @@ void main() {
       expect(controller.value, closeTo(5, error));
       expect(steps, equals([0]));
     });
+
+    testWidgets('stop() settles a step that moves with a spring',
+        (tester) async {
+      controller = MotionController<double>(
+        motion: const Motion.linear(Duration(milliseconds: 100)),
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      unawaited(
+        controller.play([const TrackStep.to(1, motion: CupertinoMotion())]),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      final valueAtStop = controller.value;
+
+      unawaited(controller.stop());
+      await tester.pump();
+      expect(controller.isAnimating, isTrue);
+
+      await tester.pumpAndSettle();
+      expect(controller.value, closeTo(valueAtStop, 1e-2));
+    });
   });
 }

@@ -397,7 +397,8 @@ class MotionController<T extends Object> extends Animation<T>
   /// Unlike [AnimationController.stop], [canceled] defaults to false.
   /// If you set it to true, the simulation will be stopped immediately.
   /// Otherwise, the simulation will redirect to settle at the current value, if
-  /// [Motion.needsSettle] is true for any [motionPerDimension].
+  /// [Motion.needsSettle] is true for any [motionPerDimension], or, during
+  /// [play], for the motion of the running step.
   ///
   /// Either way, [status] keeps the direction it was moving in.
   TickerFuture stop({bool canceled = false}) {
