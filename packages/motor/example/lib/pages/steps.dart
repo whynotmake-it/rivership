@@ -16,8 +16,8 @@ class StepsPage extends StatefulWidget {
 
 const _compact = Size(120, 34);
 const _expanded = Size(340, 84);
-const Motion _fadeIn = .curved(Duration(milliseconds: 220), easeOut);
-const Motion _fadeOut = .curved(Duration(milliseconds: 150), easeOut);
+const _fadeIn = Motion.curved(Duration(milliseconds: 220), easeOut);
+const _fadeOut = Motion.curved(Duration(milliseconds: 150), easeOut);
 
 class _StepsPageState extends State<StepsPage>
     with SingleTickerProviderStateMixin {

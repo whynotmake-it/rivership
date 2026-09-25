@@ -233,7 +233,7 @@ class _Headline extends StatelessWidget {
 /// still to slide in.
 typedef _Letter = ({double weight, double width, double shift});
 
-final MotionConverter<_Letter> _letterConverter = .custom(
+final _letterConverter = MotionConverter<_Letter>.custom(
   normalize: (letter) => [letter.weight, letter.width, letter.shift],
   denormalize: (values) =>
       (weight: values[0], width: values[1], shift: values[2]),
@@ -491,7 +491,7 @@ class _ChapterGrid extends StatelessWidget {
 // Every card rests at its own slight angle, in degrees.
 const _tilts = [-1.8, 1.4, -1.1, 2.0, -1.5, 1.2, -1.9];
 
-final MotionConverter<(double, double)> _scaleAndTurn = .custom(
+final _scaleAndTurn = MotionConverter<(double, double)>.custom(
   normalize: (value) => [value.$1, value.$2],
   denormalize: (values) => (values[0], values[1]),
 );

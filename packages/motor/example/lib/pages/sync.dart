@@ -28,7 +28,7 @@ class _Card {
   String toString() => 'flip ${flip.toStringAsFixed(2)}';
 }
 
-final MotionConverter<_Card> _cardConverter = .custom(
+final _cardConverter = MotionConverter<_Card>.custom(
   normalize: (card) => [card.position.dx, card.position.dy, card.flip],
   denormalize: (values) => _Card(Offset(values[0], values[1]), values[2]),
 );

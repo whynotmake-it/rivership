@@ -15,11 +15,11 @@ class RetargetPage extends StatefulWidget {
 
 const _tabs = ['Day', 'Week', 'Month', 'Year'];
 const _stats = ['8,204', '61,930', '248k', '3.1M'];
-const Motion _spring = .cupertino(
+const _spring = Motion.cupertino(
   duration: Duration(milliseconds: 520),
   bounce: .12,
 );
-const Motion _curve = .curved(Duration(milliseconds: 520), Curves.easeInOut);
+const _curve = Motion.curved(Duration(milliseconds: 520), Curves.easeInOut);
 
 class _RetargetPageState extends State<RetargetPage>
     with SingleTickerProviderStateMixin {

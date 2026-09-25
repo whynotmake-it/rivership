@@ -21,12 +21,12 @@ enum _Player { mini, card, full }
 
 const _rest = Duration(milliseconds: 700);
 // The shape's tracks share one spring, so the frame and artwork move as one.
-const Motion _move = .cupertino(
+const _move = Motion.cupertino(
   duration: Duration(milliseconds: 320),
   bounce: .1,
 );
-const Motion _fadeIn = .curved(Duration(milliseconds: 220), easeOut);
-const Motion _fadeOut = .curved(Duration(milliseconds: 120), easeOut);
+const _fadeIn = Motion.curved(Duration(milliseconds: 220), easeOut);
+const _fadeOut = Motion.curved(Duration(milliseconds: 120), easeOut);
 // Pixels of drag from one phase to the next.
 const _dragPerPhase = 170.0;
 
