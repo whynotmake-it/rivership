@@ -176,6 +176,55 @@ void main() {
       expectDifferent(estimate(), estimate(offset: 3));
     });
   });
+
+  group('timeline equality', () {
+    final a = Track<double>(MotionConverter.single, initial: 0);
+    final b = Track<double>(MotionConverter.single, initial: 0);
+
+    test('phase timelines tell apart which phase an animation is in', () {
+      expectDifferent(
+        TrackPhaseTimeline({
+          #first: [a.to(1, motion: const LinearMotion(ms100))],
+          #second: [b.to(1, motion: const LinearMotion(ms100))],
+        }),
+        TrackPhaseTimeline({
+          #first: [
+            a.to(1, motion: const LinearMotion(ms100)),
+            b.to(1, motion: const LinearMotion(ms100)),
+          ],
+          #second: <TrackAnimation>[],
+        }),
+      );
+    });
+
+    test('phase timelines tell initial values and velocities apart', () {
+      final phases = {
+        #only: [a.to(1, motion: const LinearMotion(ms100))],
+      };
+      expectDifferent(
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+        TrackPhaseTimeline(phases, initialVelocities: [a.velocity(1)]),
+      );
+      expectSame(
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+      );
+    });
+
+    test('phase timelines keep their own copy of the seed lists', () {
+      final values = [a.value(1)];
+      final timeline = TrackPhaseTimeline(
+        {
+          #only: [a.to(1, motion: const LinearMotion(ms100))],
+        },
+        initialValues: values,
+      );
+      final hash = timeline.hashCode;
+      values.add(b.value(2));
+      expect(timeline.initialValues, hasLength(1));
+      expect(timeline.hashCode, hash);
+    });
+  });
 }
 
 List<double> _normalize(double value) => [value];
