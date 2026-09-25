@@ -250,6 +250,72 @@ void main() {
       expect(timeline.hashCode, hash);
     });
   });
+
+  group('step and phase equality', () {
+    final a = Track<double>(MotionConverter.single, initial: 0);
+    const linear = LinearMotion(ms100);
+
+    test('steps compare every field', () {
+      expectSame(
+        TrackStep<double>.to(1, motion: linear),
+        TrackStep<double>.to(1, motion: linear),
+      );
+      expectDifferent(
+        const TrackStep<double>.to(1, motion: linear),
+        const TrackStep<double>.to(1, motionPerDimension: [linear]),
+      );
+      expectDifferent(
+        const TrackStep<double>.to(1, motion: linear),
+        const TrackStep<double>.at(ms100, 1, motion: linear),
+      );
+      expectDifferent(
+        const TrackStep<double>.at(ms100, 1),
+        const TrackStep<double>.at(ms200, 1),
+      );
+      expectDifferent(
+        const TrackStep<double>.hold(ms100),
+        const TrackStep<double>.hold(ms200),
+      );
+      expectDifferent(
+        const TrackStep<double>.free(motion: FrictionMotion()),
+        const TrackStep<double>.free(motion: FrictionMotion(drag: 0.2)),
+      );
+      expectSame(
+        TrackStep<double>.sync(token: #meet),
+        TrackStep<double>.sync(token: #meet),
+      );
+      expectDifferent(
+        const TrackStep<double>.sync(token: #meet),
+        const TrackStep<double>.sync(token: #part),
+      );
+    });
+
+    test('track values compare track and value', () {
+      expectSame(a.value(1), a.value(1));
+      expectDifferent(a.value(1), a.value(2));
+      expectDifferent(
+        a.value(1),
+        Track<double>(MotionConverter.single).value(1),
+      );
+    });
+
+    test('phase transitions compare their phases', () {
+      expectSame(PhaseSettled(1), PhaseSettled(1));
+      expectDifferent(const PhaseSettled(1), const PhaseSettled(2));
+      expectSame(
+        PhaseTransitioning(from: 1, to: 2),
+        PhaseTransitioning(from: 1, to: 2),
+      );
+      expectDifferent(
+        const PhaseTransitioning(from: 1, to: 2),
+        const PhaseTransitioning(from: 2, to: 1),
+      );
+      expectDifferent(
+        const PhaseSettled(2),
+        const PhaseTransitioning(from: 1, to: 2),
+      );
+    });
+  });
 }
 
 List<double> _normalize(double value) => [value];
