@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
-import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
+import 'package:motor/src/simulations/simulation_end.dart';
+import 'package:motor/src/simulations/spring_settle.dart';
 
 export 'motion_curve.dart';
 
@@ -41,10 +44,10 @@ sealed class MotionBase {
   /// [FixedDurationFreeMotion], which plays the whole motion faster or slower;
   /// see those for what happens to a spring's settle and to velocity.
   ///
-  /// Wrappers that have to find their source's length probe its simulation
-  /// on each `createSimulation` call. Create them once, for example as
-  /// `static final` fields, instead of in `build` or per frame; they are
-  /// immutable and compare by value.
+  /// Wrappers ask their source how long it runs with
+  /// [Motion.settlingDuration], and probe its simulation on each
+  /// `createSimulation` call only when it doesn't say. They are immutable and
+  /// compare by value, so they can be created in `build`.
   MotionBase scaleTo(Duration duration);
 }
 
@@ -54,8 +57,8 @@ sealed class MotionBase {
 /// a start value to an end value.
 ///
 /// To create a custom motion, extend [Motion] rather than implementing it.
-/// Extending inherits the defaults of [duration] and [scaleTo], which an
-/// implementing class has to provide itself.
+/// Extending inherits the defaults of [settlingDuration] and [scaleTo], which
+/// an implementing class has to provide itself.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
@@ -113,26 +116,34 @@ abstract class Motion extends MotionBase {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
-  /// Return the duration whenever it is cheap to compute.
+  /// How long a simulation from [start] to [end] with [velocity] runs until
+  /// it is done, or null if that isn't cheap to compute.
   ///
-  /// This is the duration of this motion, or `null` if it isn't known up
-  /// front. For curves and linear motions it is the exact duration. For
-  /// springs it is the characteristic settling time; the simulation runs a
-  /// little longer, until it is within [tolerance].
+  /// It takes the same arguments as [createSimulation] and describes the
+  /// simulation it creates: from this time on, its `isDone` stays true.
+  /// Curves, linear motions and [NoMotion] return their duration, springs
+  /// compute when they settle within their [tolerance], and wrappers such as
+  /// [FixedDurationMotion] and [TrimmedMotion] ask their parent.
   ///
-  /// `null` is the default for custom motions. Motor then finds out how long
-  /// the motion runs by sampling its simulation's `isDone`:
+  /// Motor ends every step at this time, and asks only when it needs to
+  /// know: ahead of time to plan a following `TrackStep.at` step, to seek,
+  /// in inspection tools and in [scaleTo] wrappers, and otherwise once, on
+  /// the first frame where the simulation reports done.
   ///
-  /// - [scaleTo] wrappers probe the simulation on every `createSimulation`:
-  ///   a doubling search up to 60 s, then 24 bisection steps.
-  /// - Playback searches for the step's end on a 1/60 s grid. That search is
-  ///   spread over frames during normal playback, but runs ahead of time when
-  ///   a following `.at` step, a seek, or an inspection tool needs the end:
-  ///   up to 3600 `isDone` calls per dimension for a minute-long motion.
-  /// - A following `.at` step can't start "just in time". It slows down to
-  ///   fill the whole gap before its time, or replaces the previous step
-  ///   entirely if that step would run past it.
-  Duration? get duration => null;
+  /// `null` is the default for custom motions. Motor then finds the end by
+  /// sampling the simulation's `isDone` on a 1/60 s grid, spread over frames
+  /// during normal playback but up front when a following `.at` step, a seek
+  /// or an inspection tool needs it: up to 3600 `isDone` calls per dimension
+  /// for a minute-long motion. [scaleTo] wrappers probe the simulation on
+  /// every `createSimulation` instead. The same search is the fallback when
+  /// the returned time isn't finite or the simulation isn't done by then.
+  /// Return the time whenever it is cheap to compute.
+  Duration? settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      null;
 
   /// Whether this motion needs to settle.
   ///
@@ -140,10 +151,6 @@ abstract class Motion extends MotionBase {
   /// is less than the [tolerance], whenever it is supposed to be stopped:
   /// a graceful `stop()` lets the running motion come to rest at the current
   /// value instead of halting.
-  ///
-  /// It also tells time-scaling wrappers such as [FixedDurationMotion] and
-  /// [TrimmedMotion] that [duration] is only a characteristic time, so
-  /// they measure when the simulation is actually done.
   bool get needsSettle;
 
   /// Creates a simulation for this motion.
@@ -290,8 +297,15 @@ class CurvedMotion extends Motion {
   ]) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
-  @override
   final Duration duration;
+
+  @override
+  Duration settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      duration;
 
   /// The curve that defines the rate of change of the motion over time.
   ///
@@ -375,8 +389,15 @@ class NoMotion extends Motion {
   const NoMotion([this.duration = Duration.zero]);
 
   /// The duration that this motion holds its value.
-  @override
   final Duration duration;
+
+  @override
+  Duration settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      duration;
 
   @override
   NoMotion scaleTo(Duration duration) => NoMotion(duration);
@@ -416,7 +437,8 @@ class NoMotion extends Motion {
 /// is useful for creating natural and responsive animations.
 ///
 /// Spring motions continue until they naturally settle based on physics,
-/// rather than completing in a predetermined duration.
+/// rather than completing in a predetermined duration. Call `.skipTail()` to
+/// end one at its perceptual duration instead.
 /// {@endtemplate}
 @immutable
 abstract class SpringMotion extends Motion {
@@ -440,8 +462,28 @@ abstract class SpringMotion extends Motion {
   /// how the spring behaves.
   SpringDescription get description;
 
+  /// When the spring is done for good: from then on its position and
+  /// velocity stay within [tolerance], so [SpringSimulation.isDone] stays
+  /// true. Near a peak an underdamped spring can briefly report done before
+  /// it swings out again; this is after the last such swing. It is computed
+  /// from the spring's closed form, without sampling, and is 0 when the
+  /// spring starts at rest on its target.
   @override
-  Duration get duration => description.duration;
+  Duration? settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    final seconds = springSettleSeconds(
+      description,
+      start: start,
+      end: end,
+      velocity: velocity,
+      tolerance: tolerance,
+    );
+    if (seconds == null) return null;
+    return Duration(microseconds: (seconds * 1e6).ceil());
+  }
 
   /// Whether to snap to the end of the spring.
   ///
@@ -547,6 +589,9 @@ class _DescriptionSpringMotion extends SpringMotion {
 
 /// {@template CupertinoMotion}
 /// A collection of spring motions that are commonly used in Cupertino apps.
+///
+/// The spring keeps settling after `duration`; call `.skipTail()` to end it
+/// there.
 /// {@endtemplate}
 class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
@@ -558,6 +603,9 @@ class CupertinoMotion extends SpringMotion {
   /// [standard iOS spring motion behavior](https://developer.apple.com/documentation/swiftui/animation/default).
   ///
   /// [snapToEnd] defaults to true.
+  ///
+  /// The spring keeps settling after [duration]; call `.skipTail()` to end it
+  /// there.
   const CupertinoMotion({
     this.duration = const Duration(milliseconds: 550),
     this.bounce = 0,
@@ -566,6 +614,9 @@ class CupertinoMotion extends SpringMotion {
 
   /// {@template CupertinoMotion.bouncy}
   /// A spring animation with a predefined duration and higher amount of bounce.
+  ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
@@ -584,6 +635,9 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a predefined duration and small amount of bounce
   /// that feels more snappy.
   ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
+  ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/snappy
   /// {@endtemplate}
@@ -599,6 +653,9 @@ class CupertinoMotion extends SpringMotion {
 
   /// {@template CupertinoMotion.smooth}
   /// A smooth spring animation with a predefined duration and no bounce.
+  ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/smooth
@@ -617,6 +674,9 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
   ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
+  ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
   /// {@endtemplate}
@@ -630,8 +690,13 @@ class CupertinoMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// The estimated duration of the spring motion.
-  @override
+  /// The perceptual duration of the spring motion: its pace, the undamped
+  /// period. The spring gets close to its target around this time and
+  /// finishes settling later; see [settlingDuration].
+  ///
+  /// The spring keeps settling after this time; call `.skipTail()` to end it
+  /// here: it plays at its own speed and lands exactly on its target at
+  /// [duration].
   final Duration duration;
 
   /// The bounce of the spring motion.
@@ -895,10 +960,9 @@ class MaterialSpringMotion extends SpringMotion {
 /// It keeps [parent]'s shape and changes its speed: time is stretched or
 /// compressed linearly, so [parent]'s whole run fits into [duration].
 ///
-/// - For a spring, the whole run lasts until the spring has settled within
-///   its tolerance, found by probing its simulation, not its shorter
-///   [SpringMotion.duration]. Overshoot and settle are kept, just faster or
-///   slower. For curves, the run is their exact [Motion.duration].
+/// - The whole run lasts [parent]'s [Motion.settlingDuration]: for a spring,
+///   until it has settled within its tolerance, overshoot included, just
+///   faster or slower. For curves, their exact duration.
 /// - Velocity scales with time, including the start velocity: a spring that
 ///   settles in 1 s, scaled to 250 ms, starts 4× as fast as the velocity it
 ///   was given.
@@ -927,8 +991,15 @@ class FixedDurationMotion extends Motion {
   final Motion parent;
 
   /// The duration this motion should take.
-  @override
   final Duration duration;
+
+  @override
+  Duration settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      duration;
 
   @override
   bool get needsSettle => false;
@@ -949,16 +1020,14 @@ class FixedDurationMotion extends Motion {
       duration: duration,
       start: start,
       end: end,
-      // A motion that settles (a spring) only reaches its end once settled,
-      // which its characteristic duration doesn't cover, so it is scaled by
-      // when it settles instead.
-      sourceDuration: parent.needsSettle
-          ? estimateSimulationDuration(
-              parentSimulation,
-              fallback: parent.duration ?? duration,
-            )
-          : parent.duration?.toSeconds() ??
-              estimateSimulationDuration(parentSimulation, fallback: duration),
+      sourceDuration: _knownEnd(
+            parent,
+            parentSimulation,
+            start: start,
+            end: end,
+            velocity: velocity,
+          ) ??
+          estimateSimulationDuration(parentSimulation, fallback: duration),
     );
   }
 
@@ -1170,7 +1239,7 @@ class FrictionMotion extends FreeMotion {
       'constantDeceleration: $constantDeceleration)';
 }
 
-class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
+class _FixedDurationSimulation extends Simulation {
   _FixedDurationSimulation({
     required this.parent,
     required this.duration,
@@ -1207,9 +1276,6 @@ class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
   // Done exactly at the duration, where x is the end value.
   @override
   bool isDone(double time) => time >= _durationInSeconds;
-
-  @override
-  double get finishSeconds => _durationInSeconds;
 
   double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
@@ -1277,13 +1343,23 @@ class TrimmedMotion extends Motion {
   final double fromEnd;
 
   @override
-  Duration? get duration => switch (parent.duration) {
-        final d? => Duration(
-            microseconds:
-                (d.inMicroseconds * (1 - fromStart - fromEnd)).round(),
-          ),
-        null => null,
-      };
+  Duration? settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    final extent = 1.0 - fromStart - fromEnd;
+    final parentDuration = parent.settlingDuration(
+      start: start - extent * fromStart,
+      end: end + extent * fromEnd,
+      velocity: velocity,
+    );
+    if (parentDuration == null) return null;
+    // Done a tolerance before the trimmed end; see _TrimmedSimulation.
+    final microseconds = parentDuration.inMicroseconds * extent -
+        parent.tolerance.time * Duration.microsecondsPerSecond;
+    return Duration(microseconds: math.max(0, microseconds.floor()));
+  }
 
   @override
   bool get needsSettle => parent.needsSettle;
@@ -1316,19 +1392,18 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      parentDuration: switch (parent.duration) {
-        final d? when !parent.needsSettle => d.toSeconds(),
-        final d? => estimateSimulationDuration(
+      parentDuration: _knownEnd(
+            parent,
             scaledSim,
-            fallback: d,
-            max: const Duration(seconds: 10),
-          ),
-        null => estimateSimulationDuration(
+            start: parentStart,
+            end: parentEnd,
+            velocity: velocity,
+          ) ??
+          estimateSimulationDuration(
             scaledSim,
             fallback: const Duration(seconds: 1),
             max: const Duration(seconds: 10),
           ),
-      },
     );
   }
 
@@ -1415,6 +1490,125 @@ class _TrimmedSimulation extends Simulation {
   bool isDone(double time) => time >= _duration - tolerance.time;
 }
 
+/// A target-based motion that plays [parent] at its own speed and ends at
+/// exactly [duration].
+///
+/// Where [parent] hasn't arrived yet at [duration], the played part is
+/// corrected so that the value lands exactly on the target there:
+///
+/// - The correction grows with [parent]'s own progress from rest, so the
+///   start value and velocity are unchanged. For a move from rest this
+///   scales the played part by `1 / progress(duration)`: about 1.45% for a
+///   [CupertinoMotion] cut at its perceptual duration.
+/// - The velocity at [duration] is handed to a following step. A last step
+///   stops there, with that velocity.
+/// - If [parent] finishes earlier, it holds its target until [duration].
+///
+/// [settlingDuration] is [duration], for every move. Create one with
+/// [MotionTrimming.cutAfter], or [MotionTrimming.skipTail] for a spring.
+///
+/// ```dart
+/// // The bouncy spring lands at 500 ms instead of settling until about 1.7 s.
+/// final motion = Motion.bouncySpring().skipTail();
+/// ```
+@immutable
+class CutMotion extends Motion {
+  /// Creates a motion that plays [parent] and ends at [duration].
+  CutMotion(this.parent, {required this.duration})
+      : assert(!duration.isNegative, 'duration must not be negative'),
+        super(tolerance: parent.tolerance);
+
+  /// The motion that plays until the cut.
+  final Motion parent;
+
+  /// When the motion ends.
+  final Duration duration;
+
+  @override
+  Duration settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      duration;
+
+  @override
+  bool get needsSettle => parent.needsSettle;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      _CutSimulation(
+        parent.createSimulation(start: start, end: end, velocity: velocity),
+        progress: parent.createSimulation(start: 1, end: 0),
+        cut: duration.toSeconds(),
+        end: end,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CutMotion &&
+      parent == other.parent &&
+      duration == other.duration;
+
+  @override
+  int get hashCode => Object.hash(CutMotion, parent, duration);
+
+  @override
+  String toString() => 'CutMotion($parent, duration: $duration)';
+}
+
+class _CutSimulation extends Simulation {
+  _CutSimulation(
+    this.parent, {
+    required Simulation progress,
+    required this.cut,
+    required this.end,
+  })  : _progress = progress,
+        super(tolerance: parent.tolerance) {
+    if (cut <= 0) return;
+    // Remaining progress from rest: 1 - a(cut) for the step response a.
+    final arrived = 1 - progress.x(cut);
+    _miss = parent.x(cut) - end;
+    _linear = arrived.abs() < 1e-9;
+    _scale = _linear ? 1 / cut : 1 / arrived;
+  }
+
+  final Simulation parent;
+  final Simulation _progress;
+  final double cut;
+  final double end;
+  var _miss = 0.0;
+  var _scale = 0.0;
+  var _linear = false;
+
+  // How much of the miss at the cut is corrected by [time], from 0 to 1.
+  double _share(double time) =>
+      _linear ? time * _scale : (1 - _progress.x(time)) * _scale;
+
+  @override
+  double x(double time) {
+    if (time >= cut) return end;
+    return parent.x(time) - _miss * _share(time);
+  }
+
+  /// At and after the cut, the velocity it ends with, which is what a
+  /// following step inherits.
+  @override
+  double dx(double time) {
+    if (cut <= 0) return 0;
+    final t = time < cut ? time : cut;
+    final share = _linear ? _scale : -_progress.dx(t) * _scale;
+    return parent.dx(t) - _miss * share;
+  }
+
+  @override
+  bool isDone(double time) => time >= cut;
+}
+
 /// Extension methods for [Motion] to provide convenient trimming functionality.
 ///
 /// Motion wrappers are immutable value objects; construct and reuse them
@@ -1429,6 +1623,38 @@ class _TrimmedSimulation extends Simulation {
 ///   behavior but may not be perfectly accurate to the original motion's
 ///   physics at every point.
 extension MotionTrimming on Motion {
+  /// Plays this motion at its own speed and ends after exactly [duration].
+  ///
+  /// It lands on its target there, and its velocity at that moment goes to
+  /// the next step; a last step stops. See [CutMotion].
+  ///
+  /// ```dart
+  /// // Ends after 300 ms, whatever the spring would still do.
+  /// final motion = Motion.bouncySpring().cutAfter(
+  ///   const Duration(milliseconds: 300),
+  /// );
+  /// ```
+  CutMotion cutAfter(Duration duration) => CutMotion(this, duration: duration);
+
+  /// Ends a spring at its perceptual duration instead of letting it settle.
+  ///
+  /// A spring gets close to its target around its duration, then keeps
+  /// settling within its [tolerance], often for 2–3× as long. This is
+  /// `cutAfter(duration)` for a [CupertinoMotion], and the undamped period
+  /// ([SpringDescription.duration]) for other springs. The spring lands on
+  /// its target there, and its velocity goes to the next step. Motions
+  /// without a tail, such as curves, are returned as they are.
+  ///
+  /// ```dart
+  /// // Done after 500 ms instead of about 1.7 s.
+  /// final motion = Motion.bouncySpring().skipTail();
+  /// ```
+  Motion skipTail() => switch (this) {
+        CupertinoMotion(:final duration) => cutAfter(duration),
+        SpringMotion(:final description) => cutAfter(description.duration),
+        _ => this,
+      };
+
   /// {@macro TrimmedMotion}
   ///
   /// Parameters:
@@ -1483,6 +1709,23 @@ extension MotionTrimming on Motion {
       fromEnd: 1.0 - (start + length),
     );
   }
+}
+
+/// [motion]'s [Motion.settlingDuration] for [simulation] in seconds, or null
+/// if it doesn't know it or [simulation] isn't done by then.
+double? _knownEnd(
+  Motion motion,
+  Simulation simulation, {
+  required double start,
+  required double end,
+  required double velocity,
+}) {
+  return settledAt(
+    simulation,
+    motion
+        .settlingDuration(start: start, end: end, velocity: velocity)
+        ?.toSeconds(),
+  );
 }
 
 extension on Duration {

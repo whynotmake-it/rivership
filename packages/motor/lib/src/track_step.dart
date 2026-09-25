@@ -14,6 +14,10 @@ sealed class TrackStep<T extends Object> {
 
   /// Animates to [value] using a target-based [motion].
   ///
+  /// The step lasts until the motion is done: a spring keeps settling after
+  /// its duration. Use `motion.skipTail()` to end it at its duration, or
+  /// `motion.cutAfter(d)` to end it after any time.
+  ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
   /// neither is given, the track's default motion is used at playback time. An
@@ -39,15 +43,17 @@ sealed class TrackStep<T extends Object> {
   /// at [at]. The preceding step always plays at its own speed; this step's
   /// motion adapts to the time left:
   ///
-  /// - If the preceding step ends at least the motion's natural duration
+  /// - If the preceding step ends at least the motion's natural length
   ///   before [at], the motion starts when that step ends and slows down to
-  ///   fill the gap.
-  /// - Otherwise the preceding step is cut short so that the motion runs for
-  ///   its natural duration and ends at [at]. The cut never happens before
-  ///   that step started; if there is not enough time, the motion is
-  ///   compressed, and with no time at all [value] is reached instantly. A
-  ///   motion without a known duration stretches whenever the preceding step
-  ///   ends before [at], and otherwise starts when that step starts.
+  ///   fill the gap. The natural length is [Motion.settlingDuration] from
+  ///   where the preceding step ends: for a spring, until it has settled,
+  ///   or its duration with `.skipTail()`.
+  /// - Otherwise the preceding step is cut short so that the motion runs its
+  ///   natural length and ends at [at]. The cut never happens before that
+  ///   step started; if there is not enough time, the motion is compressed,
+  ///   and with no time at all [value] is reached instantly. A motion whose
+  ///   `settlingDuration` is null stretches whenever the preceding step ends
+  ///   before [at], and otherwise starts when that step starts.
   ///
   /// Only the step immediately before is ever cut, and it can be another
   /// [TrackStep.at]: the later keyframe wins. [value] arrives late only when
@@ -93,8 +99,9 @@ sealed class TrackStep<T extends Object> {
   /// A track arrives once the step before the barrier has finished. For a
   /// spring, that means fully settled, with distance and velocity under its
   /// tolerance, which often takes 2–3× its nominal duration. To sync on the
-  /// visual arrival, give that step a fixed duration (`motion.scaleTo(d)`),
-  /// use a curve, or place the arrival with [TrackStep.at].
+  /// visual arrival, end that spring at its duration (`motion.skipTail()`),
+  /// give that step a fixed duration (`motion.scaleTo(d)`), use a curve, or
+  /// place the arrival with [TrackStep.at].
   /// {@endtemplate}
   ///
   /// Use this to keep independent tracks aligned at key moments without

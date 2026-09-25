@@ -2,20 +2,21 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
-import 'package:motor/src/simulations/finite_simulation.dart';
 
 @internal
-class CurveSimulation extends Simulation implements FiniteSimulation {
+class CurveSimulation extends Simulation {
   CurveSimulation({
     required this.duration,
     required this.curve,
     required this.start,
     required this.end,
     required super.tolerance,
-  });
+  }) : _seconds = duration.inMicroseconds / Duration.microsecondsPerSecond;
 
   /// The duration of the curve.
   final Duration duration;
+
+  final double _seconds;
 
   /// The curve to use for the simulation.
   final Curve curve;
@@ -33,7 +34,7 @@ class CurveSimulation extends Simulation implements FiniteSimulation {
   ///
   /// Simulations that [sharesTiming] can share one progress per time.
   double progressAt(double time) {
-    final relativeTime = time / duration.toSeconds();
+    final relativeTime = time / _seconds;
     if (relativeTime > 1) return double.infinity;
     return curve.transform(relativeTime.clamp(0, 1));
   }
@@ -52,25 +53,17 @@ class CurveSimulation extends Simulation implements FiniteSimulation {
     // AnimationController does for its curves, but kept within the curve:
     // at and after its end this is the slope it ended with, which is what a
     // following step inherits.
-    final seconds = duration.toSeconds();
-    final at = time.clamp(0.0, seconds);
+    final at = time.clamp(0.0, _seconds);
     final low = math.max(0.0, at - tolerance.time);
-    final high = math.min(seconds, at + tolerance.time);
+    final high = math.min(_seconds, at + tolerance.time);
     if (high <= low) return 0;
     return (_valueWithin(high) - _valueWithin(low)) / (high - low);
   }
 
   /// The value at [time] within the curve, including exactly at its end.
   double _valueWithin(double time) =>
-      start + (end - start) * curve.transform(time / duration.toSeconds());
+      start + (end - start) * curve.transform(time / _seconds);
 
   @override
-  bool isDone(double time) => time > duration.toSeconds();
-
-  @override
-  double get finishSeconds => justAfter(duration.toSeconds());
-}
-
-extension on Duration {
-  double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
+  bool isDone(double time) => time > _seconds;
 }

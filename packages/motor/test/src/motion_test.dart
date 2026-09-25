@@ -53,7 +53,12 @@ class _ImplementedMotion implements Motion {
   bool get unboundedWillSettle => true;
 
   @override
-  Duration? get duration => const Duration(seconds: 1);
+  Duration? settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      const Duration(seconds: 1);
 
   @override
   Motion scaleTo(Duration duration) => Motion.linear(duration);
@@ -113,11 +118,11 @@ void main() {
       expect(simulation.isDone(0.25), isTrue);
     });
 
-    test('implementing Motion needs duration and scaleTo only', () {
+    test('implementing Motion needs settlingDuration and scaleTo only', () {
       const motion = _ImplementedMotion();
 
       expect(
-        motion.scaleTo(const Duration(seconds: 2)).duration,
+        motion.scaleTo(const Duration(seconds: 2)).settlingDuration(),
         const Duration(seconds: 2),
       );
       expect(motion.createSimulation().x(0.5), closeTo(0.5, error));
@@ -366,10 +371,8 @@ void main() {
           .trimmed(fromStart: 0.2, fromEnd: 0.1)
           .createSimulation();
 
-      // 1e-8 tolerance: seeding the duration probe with the spring's
-      // characteristic duration changes the exponential-search path, shifting
-      // the estimate by ~3.5e-9 versus the unseeded baseline — far below any
-      // observable threshold.
+      // 1e-7 tolerance: these positions were sampled with a probed parent
+      // length, about 3e-8 s from its exact settle time.
       const samples = [
         (0.0, 0.0),
         (0.1, 0.5743175672500058),
@@ -377,7 +380,7 @@ void main() {
         (0.7, 0.9996420550842717),
       ];
       for (final (time, position) in samples) {
-        expect(simulation.x(time), closeTo(position, 1e-8));
+        expect(simulation.x(time), closeTo(position, 1e-7));
       }
     });
   });
