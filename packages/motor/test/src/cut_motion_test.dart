@@ -23,7 +23,7 @@ StepPlayback<double> _playback(
 void main() {
   group('CutMotion', () {
     const spring = CupertinoMotion.bouncy();
-    final cut = spring.cutShort();
+    final cut = spring.skipTail();
     final d = _seconds(spring.duration);
 
     test('ends at exactly its duration for every move', () {
@@ -101,6 +101,20 @@ void main() {
       expect(simulation.isDone(0.5), isTrue);
     });
 
+    test('skipTail cuts springs at their perceptual duration', () {
+      expect(
+        const Motion.bouncySpring().skipTail(),
+        spring.cutAfter(const Duration(milliseconds: 500)),
+      );
+      const material = MaterialSpringMotion.expressiveSpatialDefault();
+      expect(
+        material.skipTail(),
+        material.cutAfter(material.description.duration),
+      );
+      const curve = Motion.linear(Duration(milliseconds: 300));
+      expect(identical(curve.skipTail(), curve), isTrue);
+    });
+
     test('compares by parent movement and duration', () {
       expect(cut, spring.cutAfter(spring.duration));
       expect(cut.hashCode, spring.cutAfter(spring.duration).hashCode);
@@ -122,7 +136,7 @@ void main() {
 
   group('playback', () {
     const spring = CupertinoMotion.bouncy();
-    final cut = spring.cutShort();
+    final cut = spring.skipTail();
     final d = _seconds(spring.duration);
 
     test('plays the same and ends at the cut whatever comes next', () {
@@ -173,7 +187,7 @@ void main() {
     });
 
     test('.at plans with the cut as its natural length', () {
-      final atCut = const CupertinoMotion().cutShort();
+      final atCut = const CupertinoMotion().skipTail();
       final natural = _seconds(const CupertinoMotion().duration);
 
       // Enough time: the .at motion starts when the preceding step ends.
@@ -208,7 +222,7 @@ void main() {
         TrackStep.to(300, motion: cut),
         TrackStep.to(
           -50,
-          motion: const CupertinoMotion.snappy().cutShort(),
+          motion: const CupertinoMotion.snappy().skipTail(),
         ),
         TrackStep.at(
           const Duration(seconds: 2),

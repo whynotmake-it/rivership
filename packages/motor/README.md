@@ -125,6 +125,17 @@ final customMotion = CupertinoMotion(
 
 Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can use it directly wherever a `Motion` is expected.
 
+#### My spring runs longer than its duration
+
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long, so steps, phases and futures end later. To end it at its duration, skip the tail:
+
+```dart
+final motion = Motion.bouncySpring().skipTail(); // done after 500 ms
+final quick = Motion.smoothSpring().cutAfter(const Duration(milliseconds: 300));
+```
+
+The spring plays at its own speed, lands exactly on its target at the cut and hands its velocity to the next step.
+
 ### MaterialSpringMotion
 
 `MaterialSpringMotion` provides Material Design 3 spring motion tokens for creating expressive and natural animations that follow Google's design guidelines. The tokens are organized into two main categories with three speed variants each:
@@ -260,7 +271,7 @@ offset([                               // multiple steps, run in order
 
 The available steps are the verbs of the system:
 
-- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle.
+- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle, which for a spring is longer than its duration (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
 - **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
   - With time to spare, the `.at` motion starts as soon as the previous step ends and slows down to fill the gap.
   - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
@@ -374,7 +385,8 @@ scrubbing, barriers are resolved exactly as during playback.
 A track reaches the barrier when the step before it has *finished*. For a
 spring, that means fully settled, with distance and velocity under its
 tolerance. That often takes 2–3× its nominal duration, well after it looks
-done. To sync on the visual arrival, give that step a fixed duration
+done. To sync on the visual arrival, end the spring at its duration
+(`motion.skipTail()`), give that step a fixed duration
 (`motion.scaleTo(duration)`), use a curve, or place the arrival with an
 `.at` keyframe.
 

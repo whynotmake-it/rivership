@@ -13,6 +13,10 @@ import 'package:motor/src/track_timeline.dart';
 /// a single [TrackTimeline] with [StepSync] barriers inserted at phase
 /// boundaries so all tracks advance together.
 ///
+/// The next phase starts once every track has finished. A spring keeps
+/// settling after its duration; use `motion.skipTail()` to move on at its
+/// duration instead.
+///
 /// ```dart
 /// final timeline = TrackPhaseTimeline<Phase>({
 ///   .idle: [size.to(Size(100, 40)), color.to(Colors.grey)],

@@ -437,7 +437,8 @@ class NoMotion extends Motion {
 /// is useful for creating natural and responsive animations.
 ///
 /// Spring motions continue until they naturally settle based on physics,
-/// rather than completing in a predetermined duration.
+/// rather than completing in a predetermined duration. Call `.skipTail()` to
+/// end one at its perceptual duration instead.
 /// {@endtemplate}
 @immutable
 abstract class SpringMotion extends Motion {
@@ -588,6 +589,9 @@ class _DescriptionSpringMotion extends SpringMotion {
 
 /// {@template CupertinoMotion}
 /// A collection of spring motions that are commonly used in Cupertino apps.
+///
+/// The spring keeps settling after `duration`; call `.skipTail()` to end it
+/// there.
 /// {@endtemplate}
 class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
@@ -599,6 +603,9 @@ class CupertinoMotion extends SpringMotion {
   /// [standard iOS spring motion behavior](https://developer.apple.com/documentation/swiftui/animation/default).
   ///
   /// [snapToEnd] defaults to true.
+  ///
+  /// The spring keeps settling after [duration]; call `.skipTail()` to end it
+  /// there.
   const CupertinoMotion({
     this.duration = const Duration(milliseconds: 550),
     this.bounce = 0,
@@ -607,6 +614,9 @@ class CupertinoMotion extends SpringMotion {
 
   /// {@template CupertinoMotion.bouncy}
   /// A spring animation with a predefined duration and higher amount of bounce.
+  ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
@@ -625,6 +635,9 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a predefined duration and small amount of bounce
   /// that feels more snappy.
   ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
+  ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/snappy
   /// {@endtemplate}
@@ -640,6 +653,9 @@ class CupertinoMotion extends SpringMotion {
 
   /// {@template CupertinoMotion.smooth}
   /// A smooth spring animation with a predefined duration and no bounce.
+  ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/smooth
@@ -658,6 +674,9 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
   ///
+  /// The spring keeps settling after `duration`; call `.skipTail()` to end
+  /// it there.
+  ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
   /// {@endtemplate}
@@ -675,8 +694,9 @@ class CupertinoMotion extends SpringMotion {
   /// period. The spring gets close to its target around this time and
   /// finishes settling later; see [settlingDuration].
   ///
-  /// To end the motion at this time instead, use [cutShort]: the spring
-  /// plays at its own speed and lands exactly on its target at [duration].
+  /// The spring keeps settling after this time; call `.skipTail()` to end it
+  /// here: it plays at its own speed and lands exactly on its target at
+  /// [duration].
   final Duration duration;
 
   /// The bounce of the spring motion.
@@ -687,12 +707,6 @@ class CupertinoMotion extends SpringMotion {
         duration: duration,
         bounce: bounce,
       );
-
-  /// This spring cut at its perceptual [duration]: `cutAfter(duration)`.
-  ///
-  /// It lands exactly on its target at [duration] instead of settling there
-  /// over a longer time; see [CutMotion].
-  CutMotion cutShort() => cutAfter(duration);
 
   /// Creates a new [CupertinoMotion] with the same properties as this one, but
   /// with the specified [bounce] and [duration].
@@ -1491,11 +1505,11 @@ class _TrimmedSimulation extends Simulation {
 /// - If [parent] finishes earlier, it holds its target until [duration].
 ///
 /// [settlingDuration] is [duration], for every move. Create one with
-/// [MotionTrimming.cutAfter], or [CupertinoMotion.cutShort].
+/// [MotionTrimming.cutAfter], or [MotionTrimming.skipTail] for a spring.
 ///
 /// ```dart
-/// // Lands at 550 ms, the spring's perceptual duration.
-/// final motion = const CupertinoMotion().cutShort();
+/// // The bouncy spring lands at 500 ms instead of settling until about 1.7 s.
+/// final motion = Motion.bouncySpring().skipTail();
 /// ```
 @immutable
 class CutMotion extends Motion {
@@ -1609,9 +1623,37 @@ class _CutSimulation extends Simulation {
 ///   behavior but may not be perfectly accurate to the original motion's
 ///   physics at every point.
 extension MotionTrimming on Motion {
-  /// Plays this motion at its own speed and ends at exactly [duration],
-  /// landing on the target there; see [CutMotion].
+  /// Plays this motion at its own speed and ends after exactly [duration].
+  ///
+  /// It lands on its target there, and its velocity at that moment goes to
+  /// the next step; a last step stops. See [CutMotion].
+  ///
+  /// ```dart
+  /// // Ends after 300 ms, whatever the spring would still do.
+  /// final motion = Motion.bouncySpring().cutAfter(
+  ///   const Duration(milliseconds: 300),
+  /// );
+  /// ```
   CutMotion cutAfter(Duration duration) => CutMotion(this, duration: duration);
+
+  /// Ends a spring at its perceptual duration instead of letting it settle.
+  ///
+  /// A spring gets close to its target around its duration, then keeps
+  /// settling within its [tolerance], often for 2–3× as long. This is
+  /// `cutAfter(duration)` for a [CupertinoMotion], and the undamped period
+  /// ([SpringDescription.duration]) for other springs. The spring lands on
+  /// its target there, and its velocity goes to the next step. Motions
+  /// without a tail, such as curves, are returned as they are.
+  ///
+  /// ```dart
+  /// // Done after 500 ms instead of about 1.7 s.
+  /// final motion = Motion.bouncySpring().skipTail();
+  /// ```
+  Motion skipTail() => switch (this) {
+        CupertinoMotion(:final duration) => cutAfter(duration),
+        SpringMotion(:final description) => cutAfter(description.duration),
+        _ => this,
+      };
 
   /// {@macro TrimmedMotion}
   ///

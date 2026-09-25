@@ -26,6 +26,9 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 /// - [MotionSequence.steps] for indexed progressions (0, 1, 2...)
 /// - [MotionSequence.spanning] for time-based positioning
 ///
+/// A phase ends when its motion is done. A spring keeps settling after its
+/// duration; use `motion.skipTail()` to move on at its duration instead.
+///
 /// ```dart
 /// // State-based sequence
 /// final states = MotionSequence<ButtonState, Offset>.states({
