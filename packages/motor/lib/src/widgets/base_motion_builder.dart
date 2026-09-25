@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
@@ -118,24 +119,27 @@ abstract class BaseMotionBuilderState<T extends Object>
   @override
   void initState() {
     super.initState();
-    controller = switch (widget.motion) {
-      final motion? => MotionController(
-          motion: motion,
-          vsync: this,
-          initialValue: widget.from ?? widget.value,
-          converter: widget.converter,
-          velocityTracking: widget.velocityTracking,
-          debugLabel: widget.debugLabel,
-        ),
-      null => MotionController.motionPerDimension(
-          motionPerDimension: widget.motionPerDimension!,
-          vsync: this,
-          initialValue: widget.from ?? widget.value,
-          converter: widget.converter,
-          velocityTracking: widget.velocityTracking,
-          debugLabel: widget.debugLabel,
-        ),
-    };
+    controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => switch (widget.motion) {
+        final motion? => MotionController(
+            motion: motion,
+            vsync: this,
+            initialValue: widget.from ?? widget.value,
+            converter: widget.converter,
+            velocityTracking: widget.velocityTracking,
+            debugLabel: widget.debugLabel,
+          ),
+        null => MotionController.motionPerDimension(
+            motionPerDimension: widget.motionPerDimension!,
+            vsync: this,
+            initialValue: widget.from ?? widget.value,
+            converter: widget.converter,
+            velocityTracking: widget.velocityTracking,
+            debugLabel: widget.debugLabel,
+          ),
+      },
+    );
 
     if (widget.onAnimationStatusChanged != null) {
       controller.addStatusListener(widget.onAnimationStatusChanged!);

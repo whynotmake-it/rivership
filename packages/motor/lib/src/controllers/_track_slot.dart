@@ -31,6 +31,13 @@ class _TrackSlot<T extends Object> {
   _TrackSlotPlayback _playback = _TrackSlotPlayback.idle;
   Duration _startOffset = Duration.zero;
 
+  // Plans replaced while inspection tooling was attached, oldest first, so
+  // scrubbing can show them. The current plan started at [_planStart].
+  static const _maxArchivedPlans = 8;
+  List<_ArchivedPlan<T>>? _archive;
+  Duration _planStart = Duration.zero;
+  _ArchivedPlan<T>? _shownArchive;
+
   // Per-track status: the value the track started out at (only kept for
   // converters without a direction, whose status compares to it), its status
   // while not playing, and the direction of its latest move.
@@ -103,7 +110,7 @@ class _TrackSlot<T extends Object> {
     _velocityValues = _ownedCopy(converter.normalize(velocity));
   }
 
-  // The slot's buffers are its own (views copy them), so a
+  // The slot's buffers are its own (archives and views copy them), so a
   // jump writes into them instead of replacing them.
   void _setValues(List<double> values) {
     assert(
@@ -157,8 +164,47 @@ class _TrackSlot<T extends Object> {
     return seconds < 0 ? 0 : seconds;
   }
 
-  /// Advances to [elapsed].
-  bool tick(Duration elapsed) {
+  /// Records the current plan before it is replaced at [now].
+  void archive(Duration now) {
+    final archive = (_archive ??= [])
+      ..add(
+        _ArchivedPlan<T>(
+          start: _planStart,
+          startOffset: _startOffset,
+          playback: _stepPlayback,
+          values: List.of(_currentValues),
+          velocities: List.of(_velocities),
+        ),
+      );
+    if (archive.length > _maxArchivedPlans) archive.removeAt(0);
+    _planStart = now;
+  }
+
+  bool get hasArchive => _archive?.isNotEmpty ?? false;
+
+  /// Forgets all archived plans, for example after tooling detached.
+  void clearArchive() {
+    _archive = null;
+    _shownArchive = null;
+  }
+
+  /// The playback shown right now, which is an archived one while scrubbed
+  /// back before the current plan.
+  StepPlayback<T>? get shownPlayback =>
+      _shownArchive == null ? _stepPlayback : _shownArchive!.playback;
+
+  Duration get shownStartOffset => _shownArchive?.startOffset ?? _startOffset;
+
+  /// Advances to [elapsed]. While [scrubbing], times before the current plan
+  /// show the archived plan that was active then, for viewing only; playback
+  /// always continues the current plan.
+  bool tick(Duration elapsed, {bool scrubbing = false}) {
+    _shownArchive = null;
+    final archive = _archive;
+    if (scrubbing && archive != null && elapsed < _planStart) {
+      final index = archive.lastIndexWhere((plan) => plan.start <= elapsed);
+      if (index >= 0) return _showArchive(archive[index], elapsed);
+    }
     if (_playback == _TrackSlotPlayback.idle) return true;
 
     final seconds = _localSeconds(elapsed);
@@ -186,6 +232,33 @@ class _TrackSlot<T extends Object> {
     _playback = _TrackSlotPlayback.idle;
   }
 
+  bool _showArchive(_ArchivedPlan<T> plan, Duration elapsed) {
+    _shownArchive = plan;
+    final playback = plan.playback;
+    if (playback == null) {
+      _currentValues = List.of(plan.values);
+      _velocityValues = List.of(plan.velocities);
+      _velocitiesStale = false;
+      return true;
+    }
+    final local = elapsed - plan.startOffset;
+    final done = playback.advanceTo(
+      local.isNegative
+          ? 0
+          : local.inMicroseconds / Duration.microsecondsPerSecond,
+    );
+    _currentValues = List<double>.filled(_currentValues.length, 0);
+    _velocityValues = List<double>.filled(_velocityValues.length, 0);
+    _velocitiesStale = false;
+    if (done) {
+      // A finished plan rests, as it did when it finished.
+      playback.copyValuesInto(_currentValues);
+    } else {
+      playback.copyStateInto(_currentValues, _velocityValues);
+    }
+    return done;
+  }
+
   /// This track's status.
   ///
   /// - [AnimationStatus.dismissed] until it first moves.
@@ -209,7 +282,7 @@ class _TrackSlot<T extends Object> {
   bool get _isDirectional => converter is DirectionalMotionConverter<T>;
 
   /// The direction of the shown move, or of the latest one with a direction.
-  bool get _movesDown => _stepPlayback?.shownMovesDown ?? _lastMovesDown;
+  bool get _movesDown => shownPlayback?.shownMovesDown ?? _lastMovesDown;
 
   /// Whether the track is moving down, or was when it was stopped.
   bool get movingDown => _stoppedDown ?? _movesDown;
@@ -289,6 +362,21 @@ class _TrackSlot<T extends Object> {
     return done;
   }
 
+  /// A copy of this slot playing a fork of its plan, for resolving ahead.
+  _TrackSlot<T>? fork() {
+    final playback = _stepPlayback;
+    if (playback == null) return null;
+    return _TrackSlot<T>(
+      converter: converter,
+      initialValue: value,
+      fallbackMotion: fallbackMotion,
+      fallbackMotionPerDimension: fallbackMotionPerDimension,
+    )
+      .._stepPlayback = playback.fork()
+      .._startOffset = _startOffset
+      .._playback = _TrackSlotPlayback.chained;
+  }
+
   void _pullPlaybackState() {
     _stepPlayback!.copyValuesInto(_currentValues);
     _velocitiesStale = true;
@@ -337,4 +425,29 @@ class _TrackSlot<T extends Object> {
 enum _TrackSlotPlayback {
   idle,
   chained,
+}
+
+/// A plan that a slot replaced, kept for scrubbing back.
+class _ArchivedPlan<T extends Object> {
+  _ArchivedPlan({
+    required this.start,
+    required this.startOffset,
+    required this.playback,
+    required this.values,
+    required this.velocities,
+  });
+
+  /// When this plan became current, on the controller clock.
+  final Duration start;
+
+  /// The playback's start offset, when it has one.
+  final Duration startOffset;
+
+  /// The replaced playback, or null if the track was holding a set value.
+  final StepPlayback<T>? playback;
+
+  /// The track's state when the plan was replaced, used when there is no
+  /// playback.
+  final List<double> values;
+  final List<double> velocities;
 }

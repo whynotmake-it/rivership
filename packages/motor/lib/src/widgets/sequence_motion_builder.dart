@@ -2,6 +2,7 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
@@ -139,15 +140,18 @@ class _SequenceMotionBuilderState<P, T extends Object>
 
     // Create controller once, like BaseMotionBuilder
     final initialPhase = widget.currentPhase ?? widget.sequence.initialPhase;
-    _controller = SequenceMotionController<P, T>(
-      motion: widget.sequence.motionForPhase(
-        fromPhase: initialPhase,
-        toPhase: initialPhase,
+    _controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => SequenceMotionController<P, T>(
+        motion: widget.sequence.motionForPhase(
+          fromPhase: initialPhase,
+          toPhase: initialPhase,
+        ),
+        vsync: this,
+        converter: widget.converter,
+        initialValue: _getInitialValue(),
+        velocityTracking: widget.velocityTracking,
       ),
-      vsync: this,
-      converter: widget.converter,
-      initialValue: _getInitialValue(),
-      velocityTracking: widget.velocityTracking,
     )..addListener(_onControllerUpdate);
 
     // Add status listener if provided
