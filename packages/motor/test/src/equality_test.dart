@@ -153,6 +153,29 @@ void main() {
       expectSame(directional(), directional());
     });
   });
+
+  group('velocity equality', () {
+    test('VelocityTracking compares by mode and builder', () {
+      expectSame(VelocityTracking.on(), VelocityTracking.on());
+      expectSame(VelocityTracking.off(), VelocityTracking.off());
+      expectDifferent(VelocityTracking.on(), VelocityTracking.off());
+      expectSame(
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+      );
+      expectDifferent(
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+        VelocityTracking.on(),
+      );
+    });
+
+    test('MotionVelocityEstimate compares all fields', () {
+      MotionVelocityEstimate<double> estimate({double offset = 1}) =>
+          MotionVelocityEstimate(perSecond: 2, duration: ms100, offset: offset);
+      expectSame(estimate(), estimate());
+      expectDifferent(estimate(), estimate(offset: 3));
+    });
+  });
 }
 
 List<double> _normalize(double value) => [value];
@@ -160,6 +183,9 @@ List<double> _normalize(double value) => [value];
 double _denormalize(List<double> values) => values[0];
 
 int _compare(double a, double b) => a.compareTo(b);
+
+MotionVelocityTracker<T> _tracker<T>(MotionConverter<T> converter) =>
+    MotionVelocityTracker<T>(converter);
 
 class _AreaSizeConverter extends SizeMotionConverter
     with DirectionalMotionConverter<Size> {
