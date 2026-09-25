@@ -15,9 +15,6 @@ class _ConstantVelocityMotion extends FreeMotion {
   bool get needsSettle => false;
 
   @override
-  bool get unboundedWillSettle => true;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,

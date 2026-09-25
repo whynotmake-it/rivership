@@ -32,9 +32,6 @@ class _CountingMotion extends Motion {
   bool get needsSettle => parent.needsSettle;
 
   @override
-  bool get unboundedWillSettle => parent.unboundedWillSettle;
-
-  @override
   Duration? settlingDuration({
     double start = 0,
     double end = 1,

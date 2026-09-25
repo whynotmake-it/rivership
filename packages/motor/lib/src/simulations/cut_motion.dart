@@ -46,9 +46,6 @@ class CutMotion extends Motion {
   bool get needsSettle => parent.needsSettle;
 
   @override
-  bool get unboundedWillSettle => parent.unboundedWillSettle;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double end = 1,
