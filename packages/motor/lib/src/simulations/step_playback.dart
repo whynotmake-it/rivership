@@ -22,6 +22,7 @@ import 'package:motor/src/track_step.dart';
 ///
 /// Simulations must be pure functions of time: re-sampling a segment has to
 /// reproduce the values it produced during playback.
+@internal
 class StepPlayback<T extends Object> {
   /// Creates playback from [steps].
   ///
