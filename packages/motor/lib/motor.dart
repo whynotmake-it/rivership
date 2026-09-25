@@ -24,6 +24,7 @@ export 'src/motion_sequence.dart';
 export 'src/motion_velocity_tracker.dart'
     show MotionVelocityEstimate, MotionVelocityTracker, VelocityTracking;
 export 'src/phase_transition.dart';
+export 'src/simulations/curve_simulation.dart';
 export 'src/track.dart';
 export 'src/track_phase_timeline.dart';
 export 'src/track_step.dart';

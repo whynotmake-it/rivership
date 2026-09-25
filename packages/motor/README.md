@@ -93,6 +93,8 @@ custom motions by extending `Motion` (target-based) or `FreeMotion`
 
 - **`FrictionMotion`** - Decelerates due to drag, like a scroll view coasting to a stop. Use `finalValue` / `project` to compute where it will come to rest without running the full simulation.
 
+A custom motion whose movement is a curve can return a `CurveSimulation` from `createSimulation`, and plays as fast as `CurvedMotion`.
+
 This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
 
 **Tip:** Motions and their wrappers are immutable value objects, so declare

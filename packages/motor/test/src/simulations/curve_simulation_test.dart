@@ -1,7 +1,8 @@
+// ignore_for_file: unawaited_futures
+
 import 'package:flutter/animation.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/motor.dart';
 
 void main() {
   group('CurveSimulation.dx', () {
@@ -10,7 +11,6 @@ void main() {
           curve: curve,
           start: 2,
           end: 12,
-          tolerance: Tolerance.defaultTolerance,
         );
 
     test('matches the derivative of a linear curve', () {
@@ -29,6 +29,78 @@ void main() {
       }
     });
   });
+
+  group('a custom motion returning CurveSimulation', () {
+    Future<(Rect, int)> frame(WidgetTester tester, Motion motion) async {
+      final rect = Track<Rect>(MotionConverter.rect, initial: Rect.zero);
+      final controller = TrackController(vsync: tester)
+        ..animate([
+          rect.to(const Rect.fromLTRB(10, 20, 30, 40), motion: motion),
+        ]);
+      await tester.pump();
+      _transforms = 0;
+      await tester.pump(const Duration(milliseconds: 100));
+      final result = (controller.value(rect), _transforms);
+      controller.dispose();
+      return result;
+    }
+
+    testWidgets('evaluates the curve once per frame, like CurvedMotion',
+        (tester) async {
+      final (curvedValue, curvedTransforms) = await frame(
+        tester,
+        const CurvedMotion(_duration, _countingCurve),
+      );
+      final (customValue, customTransforms) = await frame(
+        tester,
+        const _CurveSimulationMotion(),
+      );
+
+      expect(curvedTransforms, 1);
+      expect(customTransforms, 1);
+      expect(customValue, curvedValue);
+    });
+  });
+}
+
+const _duration = Duration(milliseconds: 300);
+const _countingCurve = _CountingCurve();
+var _transforms = 0;
+
+class _CountingCurve extends Curve {
+  const _CountingCurve();
+
+  @override
+  double transformInternal(double t) {
+    _transforms++;
+    return t * t;
+  }
+}
+
+class _CurveSimulationMotion extends Motion {
+  const _CurveSimulationMotion();
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      CurveSimulation(
+        duration: _duration,
+        curve: _countingCurve,
+        start: start,
+        end: end,
+      );
+
+  @override
+  bool operator ==(Object other) => other is _CurveSimulationMotion;
+
+  @override
+  int get hashCode => (_CurveSimulationMotion).hashCode;
 }
 
 class _Squared extends Curve {
