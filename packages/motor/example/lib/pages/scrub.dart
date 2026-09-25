@@ -106,9 +106,11 @@ class _ScrubPageState extends State<ScrubPage>
     return ChapterPage(
       chapter: chapterNamed('Scrub'),
       lead:
-          'Tap Send, then drag the scrubber. Wherever you stop, the button '
-          'looks exactly as it would at that moment of playback, springs and '
-          'sync barrier included. Let go and it plays on from there.',
+          'Playback is a function of time, so you can pause any choreography, '
+          'scrub to any moment and resume. Tap Send, then drag the scrubber: '
+          'every frame matches live playback, from the linear spinner and the '
+          'curved check to the springs and the sync barrier. Let go and it '
+          'plays on from there.',
       code: _code,
       below: LiveTimeline(
         controller: _send,

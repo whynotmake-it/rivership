@@ -159,9 +159,10 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
     return ChapterPage(
       chapter: chapterNamed('Toggle'),
       lead:
-          'The switch and the heart each have their own controller. Drag the '
-          'switch and let go: set() follows your finger, then animate() takes '
-          'over at the speed you left it at. The code and timeline show '
+          'One controller animates the switch\'s thumb, its squish and its '
+          'tint as three tracks. Drag it and let go: set() follows your '
+          'finger, then animate() takes over at the speed you left it at. The '
+          'heart has its own controller, and the code and timeline follow '
           'whichever you touched last.',
       code: _code,
       below: _showsLike

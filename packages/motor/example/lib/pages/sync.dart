@@ -111,10 +111,11 @@ class _SyncPageState extends State<SyncPage>
     return ChapterPage(
       chapter: chapterNamed('Sync'),
       lead:
-          'Three cards fly out, land at different times, then flip. When they '
-          'share a sync token, the cards that land first wait at the barrier '
-          'until the last one arrives. Give each card its own token and it '
-          'flips as soon as it lands.',
+          'Three cards fly out on curves of different lengths, then flip on a '
+          'spring. When they share a sync token, the cards that land first '
+          'wait at the barrier until the last one arrives, so no durations '
+          'need lining up by hand. Give each card its own token and it flips '
+          'as soon as it lands.',
       code: _code,
       below: LiveTimeline(
         controller: _dealer,

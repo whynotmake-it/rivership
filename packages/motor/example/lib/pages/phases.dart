@@ -234,10 +234,11 @@ class _PhasesPageState extends State<PhasesPage>
     return ChapterPage(
       chapter: chapterNamed('Phases'),
       lead:
-          'Mini, card and full are phases: each one lists the value every '
-          'track should have. Tap a phase, autoplay through them, or drag the '
-          'player up and down, even while it autoplays. When you let go, the '
-          'nearest phase takes over at the speed you were dragging.',
+          'Mini, card and full are phases, each listing the value of every '
+          'track: the frame is one Size track and the artwork one Rect track. '
+          'Tap a phase, autoplay, or drag the player up and down, even while '
+          'it autoplays. When you let go, the nearest phase takes over at the '
+          'speed you were dragging.',
       code: _code,
       below: LiveTimeline(
         controller: _player,

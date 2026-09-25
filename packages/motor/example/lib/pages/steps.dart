@@ -90,10 +90,12 @@ class _StepsPageState extends State<StepsPage>
     return ChapterPage(
       chapter: chapterNamed('Steps'),
       lead:
-          'The shape is one Size track, so width and height move as one. The '
-          'content fades in once it opens; the shape waits at a barrier until '
-          'the content has faded, then closes. Ping again mid-way and it picks '
-          'up from where it is.',
+          'Each track runs its own list of steps, and each step can use a '
+          'different motion. The island opens on a spring, the content fades '
+          'on curves, and the bell swings on .at keyframes that land exactly '
+          'on time. The shape waits at a sync barrier until the content has '
+          'faded, then closes. Ping again mid-way and it picks up from where '
+          'it is.',
       code: _code,
       below: LiveTimeline(
         controller: _island,

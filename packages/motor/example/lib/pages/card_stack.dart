@@ -124,11 +124,12 @@ class _CardStackPageState extends State<CardStackPage>
     return ChapterPage(
       chapter: chapterNamed('Card stack'),
       lead:
-          'Throw the top card. It flies far enough to clear the stack, then '
-          'turns around and slides back underneath in one continuous path. '
-          'The first phase uses only the start of a spring, so it ends while '
-          'the card is still moving, and the second phase carries on at that '
-          'speed. A gentle throw springs straight back.',
+          'Throw the top card and the gesture hands off into a two-phase '
+          'sequence that starts at the speed of your throw. The first phase '
+          'flies the card clear of the stack on only the start of a spring, '
+          'so it ends while the card is still moving, and the second brings '
+          'it back underneath without a stop. A gentle throw springs straight '
+          'back.',
       code: _code,
       below: LiveTimeline(
         key: ValueKey(_lastThrown),

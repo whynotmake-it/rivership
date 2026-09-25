@@ -1,21 +1,23 @@
 # Motor example
 
-Seven short chapters that each teach one thing about Motor, with one
-interaction each. They are meant to be read in order.
+Motor is choreography you can interrupt: curves, springs, friction or your own
+motions, played across as many properties as you want, and interactive at
+every moment. This gallery shows that in seven short chapters, one idea each.
+Every chapter shows the code it is running as you interact, and most show
+their controller's tracks as live timeline lanes.
 
 | Chapter | Try this | What it shows |
 |---|---|---|
-| **01 Toggle** | Tap the switch, or drag it and let go. Tap the heart. | One `TrackController` animates the thumb, its squish and the tint; the drag's tracked velocity carries into the spring. |
-| **02 Retarget** | Tap the tabs quickly, then switch to Curve. | Interrupting a spring keeps its velocity; a curve stalls at every change. |
-| **03 Fling** | Throw the top postcard. | Letting go turns the gesture into a sequence: a `.free` coast with the throw's velocity, then a spring back under the stack. |
-| **04 Steps** | Ping the notification. | Step lists and `.at` keyframes that land exactly on time. |
-| **05 Sync** | Deal the cards, then switch to "On landing". | `.sync(token:)` barriers, and how the token decides who waits for whom. |
-| **06 Phases** | Drag the player, even during autoplay. | A drag sets every track; the release hands back to the phase timeline at the finger's speed. |
-| **07 Scrub** | Send, then drag the scrubber. | `pause`, `scrubTo` and `resume` on a choreography with springs and a barrier. |
+| **01 Toggle** | Drag the switch and let go. Tap the heart. | One `TrackController` animates the thumb, its squish and the tint, and the drag's speed carries into the spring. |
+| **02 Retarget** | Tap the tabs quickly, then switch to Curve. | A new target starts from the current value, so nothing jumps. Springs keep their speed; curves start their easing again. |
+| **03 Card stack** | Throw the top card. | A gesture hands off into a two-phase sequence that starts at the throw's speed. |
+| **04 Steps** | Ping the notification. | Each track runs its own steps with a different motion per step, `.at` keyframes that land on time, and a `.sync` barrier. |
+| **05 Sync** | Deal the cards, then switch to "On landing". | `.sync(token:)` barriers make tracks wait for each other, and the token decides who waits for whom. |
+| **06 Phases** | Drag the player, even during autoplay. | Named phases of `Size` and `Rect` tracks; a drag sets every track, and the release hands back to the phases at your speed. |
+| **07 Scrub** | Send, then drag the scrubber. | `pause`, `scrubTo` and `resume` on a choreography of curves, springs and a sync barrier. |
 
-Most chapters show their controller's tracks as live timeline lanes under the
-stage. The home screen has a DevTools switch for the in-app inspector from
-`motor_devtools`.
+The home screen has a DevTools switch that shows or hides the in-app inspector
+from `motor_devtools`.
 
 ## Run the app
 

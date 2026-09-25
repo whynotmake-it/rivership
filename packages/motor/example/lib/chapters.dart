@@ -42,43 +42,44 @@ final chapters = [
   Chapter(
     title: 'Toggle',
     path: 'toggle',
-    idea: 'Drive a switch and a like button, each with one controller.',
+    idea:
+        'One controller animates every part, and a drag hands over its speed.',
     page: TogglePage.new,
   ),
   Chapter(
     title: 'Retarget',
     path: 'retarget',
-    idea: 'Give an animation a new target halfway without losing speed.',
+    idea: 'Retarget mid-flight without a jump. Springs keep their speed.',
     page: RetargetPage.new,
   ),
   Chapter(
     title: 'Card stack',
     path: 'card-stack',
-    idea: 'Throw a card off the stack and watch it curve back underneath.',
+    idea: 'A throw hands off into a two-phase sequence at the fling\'s speed.',
     page: CardStackPage.new,
   ),
   Chapter(
     title: 'Steps',
     path: 'steps',
-    idea: 'Run each track through its own list of steps.',
+    idea: 'Each track runs its own steps, with a different motion per step.',
     page: StepsPage.new,
   ),
   Chapter(
     title: 'Sync',
     path: 'sync',
-    idea: 'Make tracks wait for each other before they move on.',
+    idea: 'Tracks wait for each other, so no durations need hand-tuning.',
     page: SyncPage.new,
   ),
   Chapter(
     title: 'Phases',
     path: 'phases',
-    idea: 'Move between named layouts by tapping or dragging.',
+    idea: 'Named layouts you can drag between, even while they autoplay.',
     page: PhasesPage.new,
   ),
   Chapter(
     title: 'Scrub',
     path: 'scrub',
-    idea: 'Pause an animation, drag to any moment, and resume.',
+    idea: 'Scrub to any moment, then play on from there.',
     page: ScrubPage.new,
   ),
 ];

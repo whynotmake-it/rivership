@@ -86,10 +86,11 @@ class _RetargetPageState extends State<RetargetPage>
     return ChapterPage(
       chapter: chapterNamed('Retarget'),
       lead:
-          'Tap the tabs quickly, before the indicator settles. A spring that '
-          'gets a new target keeps its current speed and bends toward it. '
-          'Switch to a curve and it stops and starts again at every tap, which '
-          'shows up as corners in the trace.',
+          'Tap the tabs quickly, before the indicator settles. Whatever the '
+          'motion, a new target starts from where the indicator is, so '
+          'nothing jumps. A spring also keeps its speed and bends toward the '
+          'new tab, while a curve starts its easing again, which shows up as '
+          'corners in the trace.',
       code: _code,
       stage: AnimatedBuilder(
         animation: _indicator,

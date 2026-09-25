@@ -103,20 +103,33 @@ class _HomePageState extends State<HomePage>
                                 size: headline.fontSize!,
                                 reveal: (child) => _reveal(0, child),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 24),
                               _reveal(
                                 1,
                                 ConstrainedBox(
                                   constraints: const BoxConstraints(
                                     maxWidth: 440,
                                   ),
-                                  child: const Text(
-                                    'Motor is a Flutter animation library '
-                                    'built around springs. These examples '
-                                    'show what happens when you interrupt an '
-                                    'animation, drag it, or scrub through it: '
-                                    'it carries on smoothly from wherever it '
-                                    'is.',
+                                  child: Column(
+                                    crossAxisAlignment: .start,
+                                    children: [
+                                      Text(
+                                        'Choreography you can interrupt.',
+                                        style: p.display.copyWith(
+                                          fontSize: wide ? 30 : 24,
+                                          height: 1.15,
+                                          letterSpacing: -.6,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Motor plays curves, springs, friction '
+                                        'or your own motions across as many '
+                                        'properties as you want, and carries '
+                                        'on from wherever it is when you tap, '
+                                        'drag or scrub.',
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -569,7 +582,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                         const SizedBox(height: 4),
                         Text(
                           widget.chapter.idea,
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: .ellipsis,
                           style: p.body.copyWith(fontSize: 13, height: 1.4),
                         ),
