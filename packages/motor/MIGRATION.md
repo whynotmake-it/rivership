@@ -223,9 +223,6 @@ class MyMotion extends Motion {
   bool get needsSettle => true;
 
   @override
-  bool get unboundedWillSettle => true;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -363,7 +360,9 @@ State queries map as follows:
 - **2.0**: `MotionSequence` (and `StateSequence`, `StepSequence`,
   `SpanningSequence`, `ValueWithMotion`), `SequenceMotionController`, and
   `SequenceMotionBuilder` are `@Deprecated` but fully functional.
-- **3.0**: the legacy stack is deleted.
+  `Motion.unboundedWillSettle` is `@Deprecated`: motor never reads it, so
+  delete your overrides.
+- **3.0**: the legacy stack and `unboundedWillSettle` are deleted.
 
 3.0 deletion checklist:
 
@@ -387,6 +386,7 @@ State queries map as follows:
       `test/src/widgets/sequence_motion_builder_golden_test.dart` and its
       goldens).
 - [ ] Remove the "Sequence Animations (deprecated)" README section.
+- [ ] Delete `MotionBase.unboundedWillSettle`.
 
 ### Behavioral notes from the 2.0 parity tests
 

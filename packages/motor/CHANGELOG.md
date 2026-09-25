@@ -49,6 +49,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
 ### Deprecations
 
  - **DEPRECATION**: the legacy sequence stack — `MotionSequence` (including `StateSequence`, `StepSequence`, `SpanningSequence`, and `ValueWithMotion`), `SequenceMotionController`, `SequenceMotionBuilder`, and the helpers that build sequences (`toSteps`, `toStates`, `spanning`, `withSingleMotion`, `SingleMotionPhaseSequence`) — is deprecated and will be removed in motor 3.0. It remains fully functional in 2.x. Migrate to `Track`/`TrackPhaseTimeline` with `PhaseTrackBuilder` or `PhaseTrackController`; see [MIGRATION.md](./MIGRATION.md) for a step-by-step guide.
+ - **DEPRECATION**: `Motion.unboundedWillSettle` is deprecated and will be removed in motor 3.0. Motor never read it. It now defaults to `true`, and motor's own motions no longer override it, so springs report `true` too (in 1.x they reported `false`). Remove your overrides.
 
 ### Motion type hierarchy
 

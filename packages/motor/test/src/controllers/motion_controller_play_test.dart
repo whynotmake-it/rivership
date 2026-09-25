@@ -16,9 +16,6 @@ class _LyingDurationMotion extends Motion {
   bool get needsSettle => false;
 
   @override
-  bool get unboundedWillSettle => true;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -43,9 +40,6 @@ class _FiniteFreeMotion extends FreeMotion {
 
   @override
   bool get needsSettle => false;
-
-  @override
-  bool get unboundedWillSettle => true;
 
   @override
   Simulation createSimulation({
