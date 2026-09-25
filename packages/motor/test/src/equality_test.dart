@@ -114,4 +114,58 @@ void main() {
       );
     });
   });
+
+  group('converter equality', () {
+    test('built-in converters compare by type', () {
+      expectSame(SingleMotionConverter(), MotionConverter.single);
+      expectSame(OffsetMotionConverter(), MotionConverter.offset);
+      expectDifferent(MotionConverter.size, MotionConverter.offset);
+      expectDifferent(const _AreaSizeConverter(), MotionConverter.size);
+    });
+
+    test('custom converters compare by their functions', () {
+      MotionConverter<double> custom() => MotionConverter<double>.custom(
+            normalize: _normalize,
+            denormalize: _denormalize,
+          );
+      expectSame(custom(), custom());
+      expectDifferent(
+        custom(),
+        MotionConverter<double>.custom(
+          normalize: _normalize,
+          denormalize: (values) => values.first,
+        ),
+      );
+      expectDifferent(
+        custom(),
+        MotionConverter<double>.customDirectional(
+          normalize: _normalize,
+          denormalize: _denormalize,
+          compare: _compare,
+        ),
+      );
+      MotionConverter<double> directional() =>
+          MotionConverter<double>.customDirectional(
+            normalize: _normalize,
+            denormalize: _denormalize,
+            compare: _compare,
+          );
+      expectSame(directional(), directional());
+    });
+  });
+}
+
+List<double> _normalize(double value) => [value];
+
+double _denormalize(List<double> values) => values[0];
+
+int _compare(double a, double b) => a.compareTo(b);
+
+class _AreaSizeConverter extends SizeMotionConverter
+    with DirectionalMotionConverter<Size> {
+  const _AreaSizeConverter();
+
+  @override
+  int compare(Size a, Size b) =>
+      (a.width * a.height).compareTo(b.width * b.height);
 }
