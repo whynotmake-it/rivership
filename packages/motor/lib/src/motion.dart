@@ -38,9 +38,12 @@ sealed class MotionBase {
 
   /// Whether this motion will settle without bounds.
   ///
-  /// If this is false, this motion will never terminate without bounds.
-  /// Motor itself doesn't read it.
-  bool get unboundedWillSettle;
+  /// Motor never reads it, so it is always true unless overridden.
+  @Deprecated(
+    'Motor never reads unboundedWillSettle, so overrides can be removed. '
+    'It will be removed in motor 3.0.',
+  )
+  bool get unboundedWillSettle => true;
 
   /// Returns a version of this motion that finishes in exactly [duration].
   ///
@@ -328,13 +331,6 @@ class CurvedMotion extends Motion {
   @override
   bool get needsSettle => false;
 
-  /// Whether this motion will settle without bounds.
-  ///
-  /// Always returns true for [CurvedMotion] because it always terminates
-  /// after the specified duration.
-  @override
-  bool get unboundedWillSettle => true;
-
   /// Creates a new [CurvedMotion] with the given parameters.
   CurvedMotion copyWith({
     Duration? duration,
@@ -434,9 +430,6 @@ class NoMotion extends Motion {
 
   @override
   bool get needsSettle => false;
-
-  @override
-  bool get unboundedWillSettle => true;
 }
 
 /// {@template SpringMotion}
@@ -509,13 +502,6 @@ abstract class SpringMotion extends Motion {
   /// the animation to continue until the spring naturally settles.
   @override
   bool get needsSettle => true;
-
-  /// Whether this motion will settle without bounds.
-  ///
-  /// Returns false for [SpringMotion] because spring physics may not
-  /// necessarily terminate without bounds in all configurations.
-  @override
-  bool get unboundedWillSettle => false;
 
   /// Creates a simulation for this motion.
   ///
@@ -996,9 +982,6 @@ class FixedDurationMotion extends Motion {
   bool get needsSettle => false;
 
   @override
-  bool get unboundedWillSettle => true;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -1078,9 +1061,6 @@ class FixedDurationFreeMotion extends FreeMotion {
 
   @override
   bool get needsSettle => false;
-
-  @override
-  bool get unboundedWillSettle => true;
 
   @override
   Simulation createSimulation({
@@ -1178,9 +1158,6 @@ class FrictionMotion extends FreeMotion {
 
   @override
   bool get needsSettle => true;
-
-  @override
-  bool get unboundedWillSettle => true;
 
   @override
   Simulation createSimulation({
@@ -1367,9 +1344,6 @@ class TrimmedMotion extends Motion {
 
   @override
   bool get needsSettle => parent.needsSettle;
-
-  @override
-  bool get unboundedWillSettle => parent.unboundedWillSettle;
 
   @override
   Tolerance get tolerance => parent.tolerance;
