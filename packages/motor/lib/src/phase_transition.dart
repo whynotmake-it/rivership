@@ -11,7 +11,8 @@ sealed class PhaseTransition<P> {
   /// The phase where the animation is currently at or transitioning to.
   P get phase;
 
-  /// Returns the last phase we were at.
+  /// The phase the animation is resting at ([PhaseSettled.phase]) or leaving
+  /// ([PhaseTransitioning.from]).
   P get lastPhase => switch (this) {
         PhaseSettled(:final phase) => phase,
         PhaseTransitioning(from: final fromPhase) => fromPhase,
