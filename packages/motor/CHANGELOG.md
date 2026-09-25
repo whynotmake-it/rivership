@@ -53,7 +53,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
 ### Motion type hierarchy
 
  - **FEAT**: introduce the sealed `MotionBase` root. `Motion` extends it and remains the target-based motion type; all existing `Motion.*` factories are unchanged. See [Breaking changes](#breaking-changes).
- - **FEAT**: add `FreeMotion`, a self-directed motion that evolves from a position and velocity without an end value (decay, friction, gravity, …). Includes `FreeMotion.friction` / `FrictionMotion` (with `drag` and `constantDeceleration`), plus `finalValue` and `project` to anticipate the resting value without running the full simulation.
+ - **FEAT**: add `FreeMotion`, a self-directed motion that evolves from a position and velocity without an end value (decay, friction, gravity, …). Includes `FreeMotion.friction` / `FrictionMotion` (with `drag` and `constantDeceleration`), plus `finalValue` and `project` to anticipate the resting value without running the full simulation. `needsSettle` stays on `Motion`, where graceful stops read it, so a `FreeMotion` doesn't implement it.
  - **FEAT**: add `MotionBase.scaleTo(Duration)` to force a motion to complete in an exact duration. It is exact for curves, linear, and none, and falls back to `FixedDurationMotion` / `FixedDurationFreeMotion` wrappers for springs and free motions.
  - **FEAT**: add `Motion.duration`, exposing the characteristic duration of a motion (exact for fixed-duration motions, the settling time for springs, `null` when unknown).
  - **FEAT**: `Motion.customSpring` / `SpringMotion` now accept a `snapToEnd` flag, which defaults to `true` (see [Breaking changes](#breaking-changes)). Snapping may cause small visual jumps in `MotionSequence`s; set `snapToEnd: false` on those springs if needed.

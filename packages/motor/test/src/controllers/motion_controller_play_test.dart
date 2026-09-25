@@ -39,9 +39,6 @@ class _FiniteFreeMotion extends FreeMotion {
   const _FiniteFreeMotion();
 
   @override
-  bool get needsSettle => false;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,

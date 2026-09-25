@@ -25,18 +25,6 @@ sealed class MotionBase {
   /// Default is [Tolerance.defaultTolerance].
   final Tolerance tolerance;
 
-  /// Whether this motion needs to settle.
-  ///
-  /// If this is true, the motion will continue to animate until the velocity
-  /// is less than the [tolerance], whenever it is supposed to be stopped:
-  /// a graceful `stop()` lets a controller's motion, or a track's default
-  /// motion, come to rest at the current value instead of halting.
-  ///
-  /// It also tells time-scaling wrappers such as [FixedDurationMotion] and
-  /// [TrimmedMotion] that [Motion.duration] is only a characteristic time, so
-  /// they measure when the simulation is actually done.
-  bool get needsSettle;
-
   /// Whether this motion will settle without bounds.
   ///
   /// Motor never reads it, so it is always true unless overridden.
@@ -179,6 +167,18 @@ abstract class Motion extends MotionBase {
   /// * [estimateSimulationDuration], as an expensive fallback for when the
   ///   duration is unknown.
   Duration? get duration => null;
+
+  /// Whether this motion needs to settle.
+  ///
+  /// If this is true, the motion will continue to animate until the velocity
+  /// is less than the [tolerance], whenever it is supposed to be stopped:
+  /// a graceful `stop()` lets a controller's motion, or a track's default
+  /// motion, come to rest at the current value instead of halting.
+  ///
+  /// It also tells time-scaling wrappers such as [FixedDurationMotion] and
+  /// [TrimmedMotion] that [duration] is only a characteristic time, so
+  /// they measure when the simulation is actually done.
+  bool get needsSettle;
 
   /// Creates a simulation for this motion.
   ///
@@ -1012,9 +1012,6 @@ class FixedDurationFreeMotion extends FreeMotion {
   final Duration duration;
 
   @override
-  bool get needsSettle => false;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,
@@ -1096,9 +1093,6 @@ class FrictionMotion extends FreeMotion {
   ///
   /// Defaults to 0 (pure exponential friction).
   final double constantDeceleration;
-
-  @override
-  bool get needsSettle => true;
 
   @override
   Simulation createSimulation({
