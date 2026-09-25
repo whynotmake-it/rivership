@@ -4,23 +4,6 @@ import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/motion.dart';
 
-/// A simulation whose finish time is known exactly.
-///
-/// Otherwise playback asks the motion ([Motion.settlingDuration]), and
-/// failing that, has to find a segment's end by sampling `isDone` on a grid
-/// and bisecting. `isDone` isn't monotonic: an underdamped spring can report
-/// done and then not done again near an oscillation peak, where its velocity
-/// check fails. So an end can't be read off `isDone` cheaply or early.
-/// Curves, holds, `.at` arrivals, fixed-duration and trimmed wrappers, and
-/// `NoMotion` know their end and declare it here, so playback skips the
-/// search. That matters when the end is needed ahead of time, for a
-/// following `.at` step or the devtools' look-ahead.
-@internal
-abstract interface class FiniteSimulation {
-  /// The time from which `isDone` is true for good, or null if it never is.
-  double? get finishSeconds;
-}
-
 /// The smallest double greater than [seconds], which must be finite and not
 /// negative: when a simulation whose `isDone` is `time > seconds` is done.
 ///
@@ -40,25 +23,44 @@ double justAfter(double seconds) {
   return bits.getFloat64(0);
 }
 
-/// When [simulation] is done at or right after [seconds], or null if
-/// [seconds] is missing or not finite, or it isn't done by then.
+/// When [simulation] is done at [seconds] or within the microsecond after
+/// it, or null if [seconds] is missing, not finite or negative, or it isn't
+/// done by then.
 ///
-/// Guards the ends motions report through [Motion.settlingDuration]. Curves
-/// are done just after their duration, so that counts too.
+/// Guards the ends motions report through [Motion.settlingDuration], which
+/// has microsecond resolution: curves are done just after their duration,
+/// and a trimmed motion's end falls between two microseconds.
+///
+/// `isDone` isn't monotonic: an underdamped spring can report done and then
+/// not done again near an oscillation peak, where its velocity check fails.
+/// So an end can't be read off `isDone` cheaply or early, only checked.
 @internal
 double? settledAt(Simulation simulation, double? seconds) {
   if (seconds == null || !seconds.isFinite || seconds < 0) return null;
   if (simulation.isDone(seconds)) return seconds;
   final after = justAfter(seconds);
-  return simulation.isDone(after) ? after : null;
+  if (simulation.isDone(after)) return after;
+  var high = seconds + 1e-6;
+  if (!simulation.isDone(high)) return null;
+  var low = after;
+  while (true) {
+    final mid = (low + high) / 2;
+    if (mid <= low || mid >= high) return high;
+    if (simulation.isDone(mid)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
 }
 
 /// Estimates when [simulation] finishes using exponential search followed by
 /// binary search, avoiding fixed-step scans through the whole timeline.
 ///
-/// Motions that time-scale or trim another motion whose
-/// [Motion.settlingDuration] is null use this. Returns [fallback], or [max]
-/// without one, when the simulation isn't done by [max].
+/// Wrappers that time-scale or trim a source whose end isn't known use
+/// this: a [FreeMotion], or a motion whose [Motion.settlingDuration] is null
+/// or fails [settledAt]. Returns [fallback], or [max] without one, when the
+/// simulation isn't done by [max].
 @internal
 double estimateSimulationDuration(
   Simulation simulation, {

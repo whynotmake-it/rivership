@@ -9,7 +9,7 @@ import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
-import 'package:motor/src/simulations/finite_simulation.dart';
+import 'package:motor/src/simulations/simulation_end.dart';
 import 'package:motor/src/track_step.dart';
 
 /// Playback for a list of [TrackStep]s.
@@ -200,18 +200,15 @@ class StepPlayback<T extends Object> {
   late final List<double> _velocities;
   late List<Simulation> _simulations;
 
-  /// When each of the running segment's simulations ends, from its motion's
-  /// [Motion.settlingDuration], or null where that isn't known (yet).
-  List<double?> _settleEnds = const [];
+  /// When the running segment ends, if its step says so up front: holds,
+  /// sync barriers and `.at` arrivals.
+  double? _plannedEnd;
 
-  /// How to ask a spring when its simulation ends, per dimension. Springs
-  /// are asked lazily: they're never done for good before their simulation
-  /// first reports done.
-  List<(SpringMotion, double, double, double)?> _settleArgs = const [];
-
-  /// Whether the running segment's end waits to be asked of its motions:
-  /// when a look-ahead needs it, or once all its simulations report done.
-  var _settleDeferred = false;
+  /// The running segment's motions and targets, per dimension, until they're
+  /// asked when it ends ([Motion.settlingDuration]). Its start values and
+  /// velocities are [_values] and [_velocities] until it ends.
+  List<Motion>? _endMotions;
+  List<double> _endTargets = const [];
   var _stepIndex = 0;
   var _direction = 1;
   var _cycle = 0;
@@ -843,11 +840,8 @@ class StepPlayback<T extends Object> {
   }
 
   void _startCurrentStep() {
-    _settleEnds = List<double?>.filled(_dimensions, null);
-    _settleArgs = List<(SpringMotion, double, double, double)?>.filled(
-      _dimensions,
-      null,
-    );
+    _plannedEnd = null;
+    _endMotions = null;
     if (_direction < 0) {
       _startReverseStep();
     } else {
@@ -881,69 +875,47 @@ class StepPlayback<T extends Object> {
               velocity: _velocities[i],
             ),
         ],
-      StepHold<T>(:final duration) => [
-          for (final value in _values)
-            _HoldSimulation(
-              value: value,
-              duration: duration.toSeconds(),
-            ),
-        ],
+      StepHold<T>(:final duration) => _hold(_values, duration.toSeconds()),
       StepAt<T>(:final at, :final motion, :final motionPerDimension) =>
         _simulateAt(at, _motions(motion, motionPerDimension)),
-      StepSync<T>() => [
-          for (final value in _values)
-            _HoldSimulation(value: value, duration: 0),
-        ],
+      StepSync<T>() => _hold(_values, 0),
     };
   }
 
-  List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) => [
-        for (var i = 0; i < targets.length; i++)
-          _create(motions[i], i, targets[i]),
-      ];
+  /// Holds [values] for [seconds].
+  List<Simulation> _hold(List<double> values, double seconds) {
+    _plannedEnd = seconds;
+    return [
+      for (final value in values)
+        _HoldSimulation(value: value, duration: seconds),
+    ];
+  }
 
-  /// Creates [motion]'s simulation for dimension [i] toward [target], and
-  /// records when it ends.
-  Simulation _create(Motion motion, int i, double target) {
-    final simulation = motion.createSimulation(
-      start: _values[i],
-      end: target,
-      velocity: _velocities[i],
-    );
-    if (simulation is FiniteSimulation) return simulation;
-    if (motion is SpringMotion) {
-      _settleArgs[i] = (motion, _values[i], target, _velocities[i]);
-    } else {
-      _settleEnds[i] = settledAt(
-        simulation,
-        motion
-            .settlingDuration(
-              start: _values[i],
-              end: target,
-              velocity: _velocities[i],
-            )
-            ?.toSeconds(),
-      );
-    }
-    return simulation;
+  List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
+    _endMotions = motions;
+    _endTargets = targets;
+    return [
+      for (var i = 0; i < targets.length; i++)
+        motions[i].createSimulation(
+          start: _values[i],
+          end: targets[i],
+          velocity: _velocities[i],
+        ),
+    ];
   }
 
   List<Simulation> _simulateAt(Duration at, List<Motion> motions) {
     final targets = _waypoints[_stepIndex];
     final gap = _absoluteTimeFor(at) - _segmentStartSeconds;
-    if (gap.abs() < _instant) {
-      // No time left: arrive right away.
-      return [
-        for (final target in targets)
-          _HoldSimulation(value: target, duration: 0),
-      ];
-    }
+    // No time left: arrive right away.
+    if (gap.abs() < _instant) return _hold(targets, 0);
     // A positive gap is filled exactly; a negative one means the arrival
     // time already passed, so the motion runs as authored.
     if (gap <= 0) return _simulateTo(motions, targets);
     final duration = Duration(microseconds: (gap * 1000000).round());
     final scaled =
         _simulateTo([for (final m in motions) m.scaleTo(duration)], targets);
+    _plannedEnd = gap;
     return [
       for (var i = 0; i < scaled.length; i++)
         _ArrivalSimulation(scaled[i], arrival: gap, target: targets[i]),
@@ -979,10 +951,7 @@ class StepPlayback<T extends Object> {
     };
 
     if (motions != null) {
-      _simulations = [
-        for (var i = 0; i < targets.length; i++)
-          _create(motions[i], i, targets[i]),
-      ];
+      _simulations = _simulateTo(motions, targets);
     } else {
       // For free/hold steps in reverse, use a hold at current values with the
       // same duration.
@@ -990,10 +959,7 @@ class StepPlayback<T extends Object> {
         StepHold<T>(:final duration) => duration.toSeconds(),
         _ => 0.0,
       };
-      _simulations = [
-        for (final value in _values)
-          _HoldSimulation(value: value, duration: duration),
-      ];
+      _simulations = _hold(_values, duration);
     }
   }
 
@@ -1051,61 +1017,48 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
-  /// Starts finding when the running segment ends. Simulations that know
-  /// when they finish, and those whose motion says when they settle
-  /// ([Motion.settlingDuration]), skip the search: the first point on a grid
-  /// of [_scanStep] from the segment's start where its simulations report
-  /// done, refined by bisection within that step.
+  /// Starts finding when the running segment ends.
+  ///
+  /// Holds, sync barriers and `.at` arrivals know it up front. Otherwise it
+  /// is found lazily, as time passes: on a grid of [_scanStep] from the
+  /// segment's start, the first point where its simulations report done.
+  /// Their motions are then asked for the exact end
+  /// ([Motion.settlingDuration]), which is never before the last point that
+  /// isn't done. Only if one doesn't know (and for free motions) is the end
+  /// the first time the segment is done, bisected within that grid step. A
+  /// look-ahead asks the motions right away instead of searching the grid.
   ///
   /// The end depends only on the segment, so ticking and seeking always
-  /// agree. It is found lazily, as time passes: see [_findSegmentEndBy].
+  /// agree. See [_findSegmentEndBy].
   void _startSegmentEnd() {
     _segmentEndFound = false;
     _scanLow = 0;
     _scanHigh = 0;
-    _settleDeferred = false;
-    var known = 0.0;
-    for (var i = 0; i < _simulations.length; i++) {
-      final simulation = _simulations[i];
-      final finish = simulation is FiniteSimulation
-          ? (simulation as FiniteSimulation).finishSeconds
-          : _settleEnds[i];
-      if (finish != null) {
-        if (finish > known) known = finish;
-      } else if (simulation is! FiniteSimulation && _settleArgs[i] != null) {
-        _settleDeferred = true;
-      } else {
-        return;
-      }
-    }
-    if (!_settleDeferred) _endSegmentAt(known);
+    if (_plannedEnd case final end?) _endSegmentAt(end);
   }
 
-  /// Asks the running segment's motions when it ends, or returns false if
-  /// one doesn't know, and the end has to be searched for.
-  bool _resolveSettle() {
-    _settleDeferred = false;
-    var known = 0.0;
-    for (var i = 0; i < _simulations.length; i++) {
-      final simulation = _simulations[i];
-      final double? finish;
-      if (simulation is FiniteSimulation) {
-        finish = (simulation as FiniteSimulation).finishSeconds;
-      } else if (_settleEnds[i] case final end?) {
-        finish = end;
-      } else {
-        final (motion, start, end, velocity) = _settleArgs[i]!;
-        finish = settledAt(
-          simulation,
-          motion
-              .settlingDuration(start: start, end: end, velocity: velocity)
-              ?.toSeconds(),
-        );
-      }
-      if (finish == null) return false;
-      if (finish > known) known = finish;
+  /// Asks the running segment's motions when it ends, the first time only.
+  /// Returns false if there are none or one doesn't know.
+  bool _askSegmentEnd() {
+    final motions = _endMotions;
+    if (motions == null) return false;
+    _endMotions = null;
+    var end = 0.0;
+    for (var i = 0; i < motions.length; i++) {
+      final seconds = settledAt(
+        _simulations[i],
+        motions[i]
+            .settlingDuration(
+              start: _values[i],
+              end: _endTargets[i],
+              velocity: _velocities[i],
+            )
+            ?.toSeconds(),
+      );
+      if (seconds == null) return false;
+      if (seconds > end) end = seconds;
     }
-    _endSegmentAt(known);
+    _endSegmentAt(end);
     return true;
   }
 
@@ -1118,16 +1071,13 @@ class StepPlayback<T extends Object> {
   /// into the running segment. Returns whether the end was found, which it
   /// always is when it lies at or before [local].
   bool _findSegmentEndBy(double local) {
-    if (_settleDeferred) {
-      // Until every simulation reports done, the segment hasn't ended: a
-      // motion's settle time is never before its simulation is first done.
-      if (!local.isInfinite && !_segmentIsDone(local)) return false;
-      if (_resolveSettle()) return true;
-    }
+    if (local == double.infinity && !_segmentEndFound) _askSegmentEnd();
     while (!_segmentEndFound && (_scanLow < local || _scanHigh <= local)) {
       final high = _scanHigh;
       if (_segmentIsDone(high)) {
-        _endSegmentAt(high == 0 ? 0 : _bisectSegmentEnd(_scanLow, high));
+        if (!_askSegmentEnd()) {
+          _endSegmentAt(high == 0 ? 0 : _bisectSegmentEnd(_scanLow, high));
+        }
       } else {
         _scanLow = high;
         _scanHigh = high == 0
@@ -1222,7 +1172,7 @@ class _CycleStart {
 
 /// Plays [inner] until [arrival], and holds [target] exactly from then on,
 /// so a [StepAt] lands on its value at its time whatever the motion.
-class _ArrivalSimulation extends Simulation implements FiniteSimulation {
+class _ArrivalSimulation extends Simulation {
   _ArrivalSimulation(
     this.inner, {
     required this.arrival,
@@ -1241,12 +1191,9 @@ class _ArrivalSimulation extends Simulation implements FiniteSimulation {
 
   @override
   bool isDone(double time) => time >= arrival;
-
-  @override
-  double get finishSeconds => arrival;
 }
 
-class _HoldSimulation extends Simulation implements FiniteSimulation {
+class _HoldSimulation extends Simulation {
   _HoldSimulation({
     required this.value,
     required this.duration,
@@ -1263,9 +1210,6 @@ class _HoldSimulation extends Simulation implements FiniteSimulation {
 
   @override
   bool isDone(double time) => time >= duration;
-
-  @override
-  double get finishSeconds => duration;
 }
 
 extension on Duration {

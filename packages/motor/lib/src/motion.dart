@@ -4,8 +4,8 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
-import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
+import 'package:motor/src/simulations/simulation_end.dart';
 import 'package:motor/src/simulations/spring_settle.dart';
 
 export 'motion_curve.dart';
@@ -121,11 +121,14 @@ abstract class Motion extends MotionBase {
   ///
   /// It takes the same arguments as [createSimulation] and describes the
   /// simulation it creates: from this time on, its `isDone` stays true.
-  /// Motor ends every step at this time, including when planning a following
-  /// `TrackStep.at` step, in loops, and in inspection tools. Curves, linear
-  /// motions and [NoMotion] return their duration, springs compute when
-  /// they settle within their [tolerance], and wrappers such as
+  /// Curves, linear motions and [NoMotion] return their duration, springs
+  /// compute when they settle within their [tolerance], and wrappers such as
   /// [FixedDurationMotion] and [TrimmedMotion] ask their parent.
+  ///
+  /// Motor ends every step at this time, and asks only when it needs to
+  /// know: ahead of time to plan a following `TrackStep.at` step, to seek,
+  /// in inspection tools and in [scaleTo] wrappers, and otherwise once, on
+  /// the first frame where the simulation reports done.
   ///
   /// `null` is the default for custom motions. Motor then finds the end by
   /// sampling the simulation's `isDone` on a 1/60 s grid, spread over frames
@@ -1213,7 +1216,7 @@ class FrictionMotion extends FreeMotion {
       'constantDeceleration: $constantDeceleration)';
 }
 
-class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
+class _FixedDurationSimulation extends Simulation {
   _FixedDurationSimulation({
     required this.parent,
     required this.duration,
@@ -1250,9 +1253,6 @@ class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
   // Done exactly at the duration, where x is the end value.
   @override
   bool isDone(double time) => time >= _durationInSeconds;
-
-  @override
-  double get finishSeconds => _durationInSeconds;
 
   double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
@@ -1402,7 +1402,7 @@ class TrimmedMotion extends Motion {
       'TrimmedMotion(parent: $parent, trim: $fromStart-$fromEnd)';
 }
 
-class _TrimmedSimulation extends Simulation implements FiniteSimulation {
+class _TrimmedSimulation extends Simulation {
   _TrimmedSimulation({
     required this.parent,
     required this.startTrim,
@@ -1465,9 +1465,6 @@ class _TrimmedSimulation extends Simulation implements FiniteSimulation {
 
   @override
   bool isDone(double time) => time >= _duration - tolerance.time;
-
-  @override
-  double get finishSeconds => math.max(0, _duration - tolerance.time);
 }
 
 /// Extension methods for [Motion] to provide convenient trimming functionality.

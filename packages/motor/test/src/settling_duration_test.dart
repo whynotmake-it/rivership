@@ -26,6 +26,8 @@ class _CountingMotion extends Motion {
 
   int get isDoneCalls => _calls.count;
 
+  int get settlingDurationCalls => _calls.settlingDuration;
+
   @override
   bool get needsSettle => parent.needsSettle;
 
@@ -34,8 +36,10 @@ class _CountingMotion extends Motion {
     double start = 0,
     double end = 1,
     double velocity = 0,
-  }) =>
-      parent.settlingDuration(start: start, end: end, velocity: velocity);
+  }) {
+    _calls.settlingDuration++;
+    return parent.settlingDuration(start: start, end: end, velocity: velocity);
+  }
 
   @override
   Simulation createSimulation({
@@ -57,6 +61,7 @@ class _CountingMotion extends Motion {
 
 class _Counter {
   int count = 0;
+  int settlingDuration = 0;
 }
 
 class _CountingSimulation extends Simulation {
@@ -169,6 +174,45 @@ void main() {
       playback.advanceTo(settle);
       expect(playback.isDone, isTrue);
       expect(playback.values.single, 300);
+    });
+
+    test('asks the motion only once the step is done', () {
+      final motion = _CountingMotion(const CupertinoMotion.bouncy());
+      final playback = StepPlayback<double>(
+        steps: [TrackStep.to(300, motion: motion)],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+      final simulation = motion.parent.createSimulation(end: 300);
+
+      var t = 0.0;
+      for (; !simulation.isDone(t); t += 1 / 60) {
+        playback.advanceTo(t);
+      }
+      expect(motion.settlingDurationCalls, 0);
+      for (; !playback.isDone; t += 1 / 60) {
+        playback.advanceTo(t);
+      }
+      expect(motion.settlingDurationCalls, 1);
+    });
+
+    test('a trimmed step ends exactly where its simulation is done', () {
+      final motion = const Motion.linear(Duration(seconds: 1))
+          .trimmed(fromStart: 0.25, fromEnd: 0.25);
+      final simulation = motion.createSimulation();
+      final playback = StepPlayback<double>(
+        steps: [
+          TrackStep.to(1, motion: motion),
+          const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      )..advanceTo(1);
+
+      final end = playback.forwardSegmentSeconds.first!;
+      expect(end, closeTo(0.499, 1e-9));
+      expect(simulation.isDone(end), isTrue);
+      expect(simulation.isDone(end - 1e-12), isFalse);
     });
 
     test('planning a following .at step does not search the spring', () {
