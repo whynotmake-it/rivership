@@ -87,7 +87,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
 
 ### Performance
 
- - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocities and segment ends). In AOT release benchmarks against the equivalent `AnimationController` setup, 10 to 1000 tracks on one controller cost 0.89× to 1.06× per frame, a single value about 1.8×, starting or retargeting a spring 1.4× to 4.2× (down from up to 39×), and following a drag with velocity tracking 1.2× to 2.4×. Methodology and all results are in [benchmark/ANALYSIS.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/ANALYSIS.md) (thanks to [definev](https://github.com/definev) for the original harness and allocation work).
+ - **PERF**: per-frame work allocates far less (in-place sampling, reused buffers, lazy velocities and segment ends). In AOT release benchmarks against the equivalent `AnimationController` setup, 10 to 1000 tracks on one controller cost 0.89× to 1.06× per frame, a single value about 1.8×, starting or retargeting a spring 1.4× to 4.2× (down from up to 39×), and following a drag with velocity tracking 1.2× to 2.4×. Results and how to run them are in [benchmark/README.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/README.md) (thanks to [definev](https://github.com/definev) for the original harness and allocation work).
 
 ### Fixes
 

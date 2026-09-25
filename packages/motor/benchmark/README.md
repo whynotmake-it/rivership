@@ -1,7 +1,26 @@
 # Motor vs AnimationController benchmarks
 
 Compares [motor](../) with the `AnimationController` setup you would write
-for the same motion. Results and methodology: [ANALYSIS.md](ANALYSIS.md).
+for the same motion.
+
+## Results
+
+Motor ÷ `AnimationController` time for the same motion, from AOT release
+builds (Flutter 3.44.1, Linux, 8 vCPU Xeon; median of 7 runs over 5
+invocations). Below 1× means motor is cheaper.
+
+| | Motor ÷ Flutter |
+|---|---:|
+| Per frame, 10 to 1000 values on one controller (curves or springs) | 0.89× to 1.06× |
+| Per frame, a single value | about 1.8× (about 0.2 µs) |
+| Per frame, multi-dimensional springs / curves | 0.94× to 1.39× / 1.8× to 2.15× |
+| Starting a motion | 2.1× to 4.2× |
+| Retargeting a spring | 1.4× to 3.1× |
+| Following a drag with velocity tracking, 250 values / 1 value | 1.2× to 1.5× / about 2× |
+| Handing the tracked velocity to a fling | 0.7× to 1.4× |
+
+At scale motor allocates less per frame (0.25× to 0.31× at 1000 values),
+while each track retains about 1.5 KB, about twice an `AnimationController`.
 
 ## Run
 
