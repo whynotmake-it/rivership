@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 /// A controller's logical playback time, driven by ticker elapsed times.
 ///
 /// Tickers restart at zero every time they start, and a controller stops its
@@ -7,6 +9,7 @@
 ///
 /// Time only advances while the ticker runs, scaled by [rate]. Because it is
 /// fed by ticker elapsed times, Flutter's `timeDilation` applies as well.
+@internal
 class PlaybackClock {
   Duration _now = Duration.zero;
   Duration _base = Duration.zero;
