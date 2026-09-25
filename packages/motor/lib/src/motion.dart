@@ -344,6 +344,13 @@ class NoMotion extends Motion {
   NoMotion scaleTo(Duration duration) => NoMotion(duration);
 
   @override
+  bool operator ==(Object other) =>
+      other is NoMotion && duration == other.duration;
+
+  @override
+  int get hashCode => duration.hashCode;
+
+  @override
   String toString() => 'NoMotion($duration)';
 
   @override

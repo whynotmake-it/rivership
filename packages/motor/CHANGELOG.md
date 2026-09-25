@@ -92,6 +92,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
 
  - **FIX**: two-keyframe `SpanningSequence`s with `LoopMode.seamless` now use the full return slice instead of a degenerate zero-extent motion.
  - **FIX**: `SpringMotion` equality (and `hashCode`) now includes `snapToEnd`, so spring motions differing only in `snapToEnd` compare unequal. This affects motion swaps on `MotionController`, which previously ignored a `snapToEnd` change.
+ - **FIX**: `NoMotion` compares by `duration`. In 1.x only the same instance was equal, so setting an equal `NoMotion` on a `MotionController` redirected the animation.
  - **FIX**: `CupertinoMotion.copyWith` now reads its defaults from the stored `duration`/`bounce` fields instead of round-tripping them through `SpringDescription`, so unchanged values are preserved exactly.
  - **FIX**: motion builders no longer stop and reset their value on every rebuild while inactive; they only do so on the active→inactive transition.
  - **FIX**: the velocity of a curve (`CurvedMotion`, `LinearMotion`) is now its actual rate of change instead of 4× too large (see [Breaking changes](#breaking-changes)). A step following a curve in the same plan inherits the full speed the curve ended with.
