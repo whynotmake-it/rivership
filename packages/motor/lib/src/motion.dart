@@ -139,9 +139,18 @@ abstract class Motion extends MotionBase {
   /// without damping), and wrappers such as [FixedDurationMotion] and
   /// [TrimmedMotion] ask their parent.
   ///
-  /// The default samples the simulation's `isDone` for up to two minutes,
-  /// and returns null if it isn't done by then. Override it if you can
-  /// compute the time.
+  /// Motor uses it wherever a motion plays until it is done: the last step
+  /// of a track, steps that wait to settle, `MotionController` animations,
+  /// the natural length of a `TrackStep.at` motion without a [duration], and
+  /// [scaleTo] wrappers. It asks only when it needs to know: ahead of time
+  /// for a look-ahead or seek, and otherwise once, on the first frame where
+  /// the simulation reports done. A step whose motion never settles keeps
+  /// animating until it is retargeted or stopped.
+  ///
+  /// The default samples the simulation's `isDone`: in 1/60 s steps up to a
+  /// minute, then in doubling steps up to two minutes, and returns null if
+  /// it isn't done by then. That is up to 3600 `isDone` calls for a
+  /// minute-long motion. Override it if you can compute the time.
   Duration? settlingDuration({
     double start = 0,
     double end = 1,
@@ -172,8 +181,16 @@ abstract class Motion extends MotionBase {
   ///   * [velocity] - The initial velocity for the simulation, defaults to 0.
   ///
   /// Returns a [Simulation] that can be used by an [AnimationController].
-  /// Its `x`, `dx` and `isDone` must depend only on the time passed in:
-  /// motor re-samples simulations when scrubbing and seeking.
+  ///
+  /// {@template motor.pureSimulation}
+  /// Unlike Flutter, which only queries a simulation at increasing times,
+  /// motor samples it at arbitrary times: ahead, to find when it finishes,
+  /// and backwards when scrubbing or looping. So `x`, `dx` and `isDone` must
+  /// be pure functions of time, without side effects. A simulation that
+  /// integrates step by step can still be used if it restarts from its
+  /// initial state whenever it's asked about an earlier time than the last
+  /// one.
+  /// {@endtemplate}
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -185,10 +202,12 @@ abstract class Motion extends MotionBase {
     return FixedDurationMotion(this, duration: duration);
   }
 
-  /// Motions are equal when they produce the same movement, whatever their
-  /// class: `Motion.linear(d)` equals `Motion.curved(d)`, and springs with
-  /// the same physics are equal. Wrappers such as [FixedDurationMotion] and
-  /// [TrimmedMotion] are equal when their parents and parameters are.
+  /// Whether [other] produces the same movement as this motion.
+  ///
+  /// The class doesn't matter: `Motion.linear(d)` equals `Motion.curved(d)`,
+  /// and springs with the same physics are equal. Wrappers such as
+  /// [FixedDurationMotion] and [TrimmedMotion] are equal when their parents
+  /// and parameters are.
   ///
   /// Steps and timelines compare the motions they hold with this `==`, and a
   /// controller given an equal motion doesn't redirect.
@@ -203,6 +222,10 @@ abstract class Motion extends MotionBase {
 ///
 /// [FreeMotion] is useful for decay, friction, gravity, and other simulations
 /// that evolve from an initial position and velocity.
+///
+/// A free motion that never comes to rest, such as constant drift, keeps its
+/// step running until something replaces it: a new animation for the track,
+/// or a following `.at` step.
 @immutable
 abstract class FreeMotion extends MotionBase {
   /// Creates a free motion.
@@ -218,8 +241,7 @@ abstract class FreeMotion extends MotionBase {
 
   /// Creates a self-directed simulation.
   ///
-  /// Its `x`, `dx` and `isDone` must depend only on the time passed in:
-  /// motor re-samples simulations when scrubbing and seeking.
+  /// {@macro motor.pureSimulation}
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,
@@ -246,8 +268,10 @@ abstract class FreeMotion extends MotionBase {
 
   /// Returns the value this motion will settle to, or `null` if unknown.
   ///
-  /// Override this to provide the resting position for motions where the
-  /// terminal value can be computed cheaply (e.g. friction/decay).
+  /// Like [createSimulation], it works on one normalized dimension; [project]
+  /// applies it to a typed value. Override this to provide the resting
+  /// position for motions where the terminal value can be computed cheaply
+  /// (e.g. friction/decay).
   ///
   /// When non-null, downstream consumers can use this to anticipate the
   /// final position without running the full simulation.
