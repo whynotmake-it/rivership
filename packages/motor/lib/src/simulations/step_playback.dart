@@ -955,8 +955,8 @@ class StepPlayback<T extends Object> {
   /// Decides when the running step yields to a following [StepAt].
   ///
   /// A [StepAt] arrives at its value exactly at its time. If the running step
-  /// ends at least the [StepAt] motion's natural duration before then, the
-  /// [StepAt] stretches to fill the gap. Otherwise the running step is cut
+  /// ends at least the [StepAt] motion's natural duration before then, that
+  /// motion slows down to fill the gap. Otherwise the running step is cut
   /// short so the motion runs its natural duration, but never before the
   /// running step started. Both cases meet where the gap equals the natural
   /// duration, so timing changes continuously with the arrival time.

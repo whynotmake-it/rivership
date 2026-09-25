@@ -61,6 +61,8 @@ and production usage.
 | Multiple properties / choreography | [Tracks & Steps](#tracks--steps-) (`TrackBuilder`, `PhaseTrackBuilder`, `TrackController`) |
 | Legacy sequences (`MotionSequence`) | Deprecated — see [MIGRATION.md](./MIGRATION.md) for moving to Tracks |
 
+The single-value APIs are one-track tracks under the hood, so you can also start with tracks right away and add more later without switching APIs.
+
 ### Motion
 
 The core of Motor's unified motion system is the `Motion` class. It represents the **type of motion** that will drive your animation, whether physics-based or duration-based.
@@ -259,12 +261,31 @@ offset([                               // multiple steps, run in order
 The available steps are the verbs of the system:
 
 - **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle.
-- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). If the previous step ends early enough, the motion is stretched to fill the gap; otherwise the previous step is cut short just early enough for the `.at` motion to run its natural duration and land on `time`. The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
+- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
+  - With time to spare, the `.at` motion starts as soon as the previous step ends and slows down to fill the gap.
+  - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
+
+  The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
 - **`.hold(duration)`** — keep the current value for `duration`.
 - **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
 - **`.sync(token:)`** — a barrier (see below).
 
 Every `.to`/`.at` needs a motion: either on the step or as the track's default. A missing motion is an assertion error in debug mode.
+
+For example, a keyframe with time to spare:
+
+```dart
+offset([
+  // Takes 200 ms, leaving time before the keyframe.
+  .to(const Offset(0, 50), motion: .linear(const Duration(milliseconds: 200))),
+  // Its 300 ms curve starts at 200 ms and slows down to land at 1 s.
+  .at(
+    const Duration(seconds: 1),
+    const Offset(100, 50),
+    motion: .curved(const Duration(milliseconds: 300), Curves.easeOut),
+  ),
+]);
+```
 
 #### Reading values back: the `value` reader
 
@@ -420,14 +441,27 @@ controller.resume();                 // continue smoothly from the scrub
 final s = controller.value(scale);   // read via the reader
 ```
 
-The reader doesn't compose with `Tween.animate` or transitions, so the
-controller also offers a real `Animation<T>` per track:
+#### Interop with Flutter animations
+
+The reader isn't an `Animation`, so for widgets that expect one, such as
+transitions, the controller also offers a real `Animation<T>` per track:
 
 ```dart
 FadeTransition(opacity: controller.animationOf(opacity), child: card);
-
-final grow = Tween(begin: 0.8, end: 1.0).animate(controller.animationOf(scale));
 ```
+
+Coming from Flutter's animation APIs, you'll rarely need a `Tween`. Tracks
+cover what tweens and curves do there:
+
+| In Flutter you'd use | In motor |
+|---|---|
+| `Tween<T>` | a `Track<T>` (its converter handles the type) animated straight to the values you want |
+| `CurvedAnimation`, `Interval` | the step's `motion`, `.hold`, `.at` |
+| `TweenSequence` | a list of steps |
+| One controller driving many tweens | one `TrackController` or `TrackBuilder` with several tracks |
+
+A `Tween` still works on `animationOf` if you really want one value to drive
+several properties.
 
 `animationOf` returns the same instance for a track, listens only while it
 has listeners, notifies only when that track changes, and reports the
