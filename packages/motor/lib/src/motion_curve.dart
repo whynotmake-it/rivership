@@ -15,6 +15,8 @@ import 'package:motor/motor.dart';
 ///
 /// You can also apply an initial velocity to the motion.
 ///
+/// Curves are sampled in any order, so [motion]'s simulation must be pure.
+///
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
