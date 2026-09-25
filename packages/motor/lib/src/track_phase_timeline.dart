@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show listEquals, objectRuntimeType;
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
@@ -31,8 +31,8 @@ import 'package:motor/src/track_timeline.dart';
 ///
 /// Timelines compare by value, so an equal timeline on rebuild does not
 /// restart playback.
-// ignore: deprecated_member_use
-class TrackPhaseTimeline<P extends Object> with EquatableMixin {
+@immutable
+class TrackPhaseTimeline<P extends Object> {
   /// Creates a phase timeline from a map of phases to track animations.
   ///
   /// The iteration order of [phaseAnimations] determines phase ordering.
@@ -235,11 +235,41 @@ class TrackPhaseTimeline<P extends Object> with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [
-        phases,
-        [for (final phase in phases) phaseAnimations[phase]],
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TrackPhaseTimeline<P> ||
+        other.runtimeType != runtimeType ||
+        other.phaseLoop != phaseLoop ||
+        !listEquals(other.phases, phases) ||
+        !listEquals(other.initialValues, initialValues) ||
+        !listEquals(other.initialVelocities, initialVelocities)) {
+      return false;
+    }
+    for (final phase in phases) {
+      if (!listEquals(other.phaseAnimations[phase], phaseAnimations[phase])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
         phaseLoop,
-        initialValues,
-        initialVelocities,
-      ];
+        Object.hashAll([
+          for (final phase in phases) ...[
+            phase,
+            Object.hashAll(phaseAnimations[phase]!),
+          ],
+        ]),
+        Object.hashAll(initialValues),
+        Object.hashAll(initialVelocities),
+      );
+
+  @override
+  String toString() =>
+      '${objectRuntimeType(this, 'TrackPhaseTimeline')}($phaseAnimations, '
+      'phaseLoop: $phaseLoop, initialValues: $initialValues, '
+      'initialVelocities: $initialVelocities)';
 }

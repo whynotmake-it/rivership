@@ -2,12 +2,11 @@
 
 import 'dart:math';
 
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show objectRuntimeType;
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
-import 'package:motor/src/motion_prop.dart';
 
 export 'package:motor/src/loop_mode.dart';
 
@@ -46,8 +45,7 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
   'MotionSequence will be removed in motor 3.0.',
 )
 @immutable
-// ignore: deprecated_member_use
-abstract class MotionSequence<P, T extends Object> with EquatableMixin {
+abstract class MotionSequence<P, T extends Object> {
   /// {@macro MotionSequence}
   @Deprecated(
     'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
@@ -224,14 +222,59 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
     );
   }
 
-  @override
-  List<Object?> get props => [
+  /// What equality compares: the phases, their values and motions, and the
+  /// loop mode.
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
-        ...phases.map((p) => MotionProp(motionForPhase(toPhase: p))),
+        ...phases.map((p) => motionForPhase(toPhase: p)),
         loop,
       ];
+
+  /// Sequences of the same class are equal when they have the same phases,
+  /// values and loop mode, and motions that move the same.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MotionSequence<P, T> &&
+          other.runtimeType == runtimeType &&
+          _deepEquals(other._equality, _equality);
+
+  @override
+  int get hashCode => Object.hash(runtimeType, _deepHash(_equality));
+
+  @override
+  String toString() =>
+      '${objectRuntimeType(this, 'MotionSequence')}(${phases.join(', ')}, '
+      'loop: $loop)';
 }
+
+bool _deepEquals(Object? a, Object? b) {
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_deepEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final MapEntry(:key, :value) in a.entries) {
+      if (!b.containsKey(key) || !_deepEquals(value, b[key])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+
+int _deepHash(Object? value) => switch (value) {
+      final List<Object?> list => Object.hashAll(list.map(_deepHash)),
+      final Map<Object?, Object?> map => Object.hashAllUnordered([
+          for (final MapEntry(:key, :value) in map.entries)
+            Object.hash(key, _deepHash(value)),
+        ]),
+      _ => value.hashCode,
+    };
 
 /// {@template StepSequence}
 /// A sequence that steps through values by index (0, 1, 2...).
@@ -308,13 +351,13 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
         if (_motion case final motion?)
-          MotionProp(motion)
+          motion
         else
-          [for (final (_, motion) in _stepsWithMotions!) MotionProp(motion)],
+          [for (final (_, motion) in _stepsWithMotions!) motion],
         loop,
       ];
 
@@ -412,15 +455,15 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
         if (_motion case final motion?)
-          MotionProp(motion)
+          motion
         else
           {
             for (final MapEntry(:key, :value) in _statesWithMotions!.entries)
-              key: MotionProp(value.$2),
+              key: value.$2,
           },
         loop,
       ];
@@ -485,10 +528,10 @@ class SingleMotionPhaseSequence<P, T extends Object>
   Motion motionForPhase({required P toPhase, P? fromPhase}) => motion;
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
-        MotionProp(motion),
+        motion,
         loop,
       ];
 }
@@ -601,10 +644,10 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
-        MotionProp(motion),
+        motion,
         loop,
       ];
 
