@@ -13,20 +13,16 @@ class _TrackSlot<T extends Object> {
         _velocityValues = List<double>.filled(
           converter.normalize(initialValue).length,
           0,
-        ),
-        _copyBeforeDenormalize = !builtInMotionConverterTypes.contains(
-          converter.runtimeType,
         );
 
   MotionConverter<T> converter;
   final Motion? fallbackMotion;
   final List<Motion>? fallbackMotionPerDimension;
 
-  // Owned by this slot and updated in place while playing. Only handed to
-  // built-in converters directly: others may keep the list they are given.
+  // Owned by this slot and updated in place while playing. Converters get
+  // them directly: they must not keep the list they are given.
   List<double> _currentValues;
   List<double> _velocityValues;
-  bool _copyBeforeDenormalize;
   StepPlayback<T>? _stepPlayback;
   var _playing = false;
   Duration _startOffset = Duration.zero;
@@ -50,9 +46,9 @@ class _TrackSlot<T extends Object> {
   // direction.
   bool? _stoppedDown;
 
-  T get value => _denormalize(_currentValues);
+  T get value => converter.denormalize(_currentValues);
 
-  T get velocity => _denormalize(_velocities);
+  T get velocity => converter.denormalize(_velocities);
 
   /// Whether this track's velocity comes from its velocity tracker, which
   /// the controller then estimates whenever it is needed.
@@ -68,9 +64,6 @@ class _TrackSlot<T extends Object> {
     }
     return _velocityValues;
   }
-
-  T _denormalize(List<double> values) => converter
-      .denormalize(_copyBeforeDenormalize ? _ownedCopy(values) : values);
 
   static List<double> _ownedCopy(List<double> values) =>
       List<double>.of(values, growable: false);
@@ -305,8 +298,6 @@ class _TrackSlot<T extends Object> {
   /// keeps playing.
   void replaceConverter(MotionConverter<T> value) {
     converter = value;
-    _copyBeforeDenormalize =
-        !builtInMotionConverterTypes.contains(value.runtimeType);
     _stepPlayback?.converter = value;
   }
 
@@ -337,8 +328,8 @@ class _TrackSlot<T extends Object> {
     if (_equal(values, _currentValues)) return;
     if (converter case final DirectionalMotionConverter<T> directional) {
       final order = directional.compare(
-        _denormalize(_currentValues),
-        _denormalize(values),
+        converter.denormalize(_currentValues),
+        converter.denormalize(values),
       );
       if (order == 0) return;
       _lastMovesDown = order > 0;

@@ -4,23 +4,6 @@ import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/motion_controller.dart'
     show MotionController;
 
-/// The types of motor's own converters.
-///
-/// None of them keeps the list passed to [MotionConverter.denormalize], so
-/// motor hands them its reused buffers without copying. Add every new
-/// built-in converter here, as long as that stays true.
-@internal
-const builtInMotionConverterTypes = <Type>{
-  SingleMotionConverter,
-  OffsetMotionConverter,
-  SizeMotionConverter,
-  RectMotionConverter,
-  AlignmentMotionConverter,
-  ColorRgbMotionConverter,
-  EdgeInsetsMotionConverter,
-  EdgeInsetsDirectionalMotionConverter,
-};
-
 /// A function that converts a value of type [T] to a list of double values.
 typedef Normalize<T> = List<double> Function(T value);
 
@@ -36,6 +19,11 @@ typedef Denormalize<T> = T Function(List<double> values);
 /// If your values have a defined order (e.g., [double], [int], etc.), consider
 /// using [DirectionalMotionConverter] instead to provide directionality
 /// information to motion controllers.
+///
+/// Motor owns the lists on both sides: don't keep or change the list
+/// [normalize] returns, or the one [denormalize] receives, after the call.
+/// Motor reuses its buffers, so a kept list would change under you. Build a
+/// new value from the numbers instead, as motor's own converters do.
 ///
 /// Controllers and builders only swap to a converter that isn't equal to the
 /// current one. Motor's converters compare by type, and
@@ -90,9 +78,14 @@ abstract class MotionConverter<T> {
   static const edgeInsetsDirectional = EdgeInsetsDirectionalMotionConverter();
 
   /// Converts a value of type [T] to a list of double values.
+  ///
+  /// Motor may keep the returned list, so don't change it afterwards.
   List<double> normalize(T value);
 
   /// Converts a list of double values back to a value of type [T].
+  ///
+  /// [values] is motor's reused buffer and changes after the call, so don't
+  /// keep it or change it; read the numbers you need.
   T denormalize(List<double> values);
 }
 
