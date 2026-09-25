@@ -39,15 +39,16 @@ sealed class TrackStep<T extends Object> {
   /// at [at]. The preceding step always plays at its own speed; this step's
   /// motion adapts to the time left:
   ///
-  /// - If the preceding step ends at least the motion's natural duration
+  /// - If the preceding step ends at least the motion's natural length
   ///   before [at], the motion starts when that step ends and slows down to
-  ///   fill the gap.
-  /// - Otherwise the preceding step is cut short so that the motion runs for
-  ///   its natural duration and ends at [at]. The cut never happens before
-  ///   that step started; if there is not enough time, the motion is
-  ///   compressed, and with no time at all [value] is reached instantly. A
-  ///   motion without a known duration stretches whenever the preceding step
-  ///   ends before [at], and otherwise starts when that step starts.
+  ///   fill the gap. The natural length is [Motion.settlingDuration] from
+  ///   where the preceding step ends: for a spring, until it has settled.
+  /// - Otherwise the preceding step is cut short so that the motion runs its
+  ///   natural length and ends at [at]. The cut never happens before that
+  ///   step started; if there is not enough time, the motion is compressed,
+  ///   and with no time at all [value] is reached instantly. A motion whose
+  ///   `settlingDuration` is null stretches whenever the preceding step ends
+  ///   before [at], and otherwise starts when that step starts.
   ///
   /// Only the step immediately before is ever cut, and it can be another
   /// [TrackStep.at]: the later keyframe wins. [value] arrives late only when

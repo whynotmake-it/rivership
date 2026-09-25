@@ -208,10 +208,10 @@ void _advanceTo(double time) {
 
 ### Custom motions: extend `Motion` instead of implementing it
 
-2.0 added `duration` and `scaleTo(Duration)` to `Motion` and `MotionBase`,
-with default implementations. A class that `implements Motion` doesn't
-inherit them, so it no longer compiles until it provides both. Extend
-`Motion` instead: you keep only the members 1.x required.
+2.0 added `settlingDuration(...)` and `scaleTo(Duration)` to `Motion` and
+`MotionBase`, with default implementations. A class that `implements Motion`
+doesn't inherit them, so it no longer compiles until it provides both.
+Extend `Motion` instead: you keep only the members 1.x required.
 
 ```dart
 // Before (1.x):
@@ -254,6 +254,21 @@ class MyMotion extends Motion {
 
 const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 ```
+
+If you can tell when your simulation is done, override `settlingDuration`
+with the same arguments as `createSimulation`. Motor then ends its steps at
+that time instead of sampling `isDone` to find it.
+
+### Springs finish when they're done for good
+
+A spring step, a `MotionController` animation and a sequence phase now end
+when the spring has settled within its `tolerance` for good. In 1.x they
+ended on the first frame where `isDone` was true, and an underdamped spring
+can report done near a peak and then swing out again. In those cases the
+future completes, the status changes and the next phase starts up to about
+0.3 s later with the presets (more for bouncier springs), while the value
+moves by less than the tolerance. Nothing else changes: the spring moves
+exactly as before.
 
 ### Sequences no longer use `equatable`
 

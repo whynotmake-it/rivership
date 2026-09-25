@@ -10,7 +10,12 @@ class _LyingDurationMotion extends Motion {
   const _LyingDurationMotion();
 
   @override
-  Duration get duration => const Duration(milliseconds: 100);
+  Duration settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      const Duration(milliseconds: 100);
 
   @override
   bool get needsSettle => false;
@@ -32,7 +37,7 @@ class _LyingDurationMotion extends Motion {
   bool operator ==(Object other) => other is _LyingDurationMotion;
 
   @override
-  int get hashCode => Object.hash(_LyingDurationMotion, duration);
+  int get hashCode => (_LyingDurationMotion).hashCode;
 }
 
 class _FiniteFreeMotion extends FreeMotion {

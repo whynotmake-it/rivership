@@ -2,14 +2,16 @@ import 'dart:typed_data';
 
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/motion.dart';
 
 /// A simulation whose finish time is known exactly.
 ///
-/// Otherwise playback has to find a segment's end by sampling `isDone` on a
-/// grid and bisecting. `isDone` isn't monotonic: an underdamped spring can
-/// report done and then not done again near an oscillation peak, where its
-/// velocity check fails. So an end can't be read off `isDone` cheaply or
-/// early. Curves, holds, `.at` arrivals, fixed-duration wrappers and
+/// Otherwise playback asks the motion ([Motion.settlingDuration]), and
+/// failing that, has to find a segment's end by sampling `isDone` on a grid
+/// and bisecting. `isDone` isn't monotonic: an underdamped spring can report
+/// done and then not done again near an oscillation peak, where its velocity
+/// check fails. So an end can't be read off `isDone` cheaply or early.
+/// Curves, holds, `.at` arrivals, fixed-duration and trimmed wrappers, and
 /// `NoMotion` know their end and declare it here, so playback skips the
 /// search. That matters when the end is needed ahead of time, for a
 /// following `.at` step or the devtools' look-ahead.
@@ -38,12 +40,25 @@ double justAfter(double seconds) {
   return bits.getFloat64(0);
 }
 
+/// When [simulation] is done at or right after [seconds], or null if
+/// [seconds] is missing or not finite, or it isn't done by then.
+///
+/// Guards the ends motions report through [Motion.settlingDuration]. Curves
+/// are done just after their duration, so that counts too.
+@internal
+double? settledAt(Simulation simulation, double? seconds) {
+  if (seconds == null || !seconds.isFinite || seconds < 0) return null;
+  if (simulation.isDone(seconds)) return seconds;
+  final after = justAfter(seconds);
+  return simulation.isDone(after) ? after : null;
+}
+
 /// Estimates when [simulation] finishes using exponential search followed by
 /// binary search, avoiding fixed-step scans through the whole timeline.
 ///
-/// Motions that time-scale or trim another simulation whose natural duration
-/// is unknown use this. Returns [fallback], or [max] without one, when the
-/// simulation isn't done by [max].
+/// Motions that time-scale or trim another motion whose
+/// [Motion.settlingDuration] is null use this. Returns [fallback], or [max]
+/// without one, when the simulation isn't done by [max].
 @internal
 double estimateSimulationDuration(
   Simulation simulation, {

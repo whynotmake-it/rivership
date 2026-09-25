@@ -199,6 +199,10 @@ class StepPlayback<T extends Object> {
   late final List<double> _values;
   late final List<double> _velocities;
   late List<Simulation> _simulations;
+
+  /// When each of the running segment's simulations ends, from its motion's
+  /// [Motion.settlingDuration], or null where that isn't known.
+  List<double?> _settleEnds = const [];
   var _stepIndex = 0;
   var _direction = 1;
   var _cycle = 0;
@@ -272,20 +276,29 @@ class StepPlayback<T extends Object> {
         fallbackMotionPerDimension: _fallbackMotionPerDimension,
       );
 
-  Duration? _knownMotionDuration(
+  /// How long the [StepAt] at [index] runs at its natural speed, from where
+  /// the running segment is at [from] seconds (or its start when null), or
+  /// null if its motion doesn't know.
+  double? _atSettleSeconds(
+    int index,
     Motion? motion,
     List<Motion>? motionPerDimension,
+    double? from,
   ) {
-    final motions = motionPerDimension ??
-        (motion == null ? null : [motion]) ??
-        _fallbackMotionPerDimension ??
-        (_fallbackMotion == null ? null : [_fallbackMotion]);
-    if (motions == null || motions.isEmpty) return null;
-    var longest = Duration.zero;
-    for (final candidate in motions) {
-      final duration = candidate.duration;
-      if (duration == null) return null;
-      if (duration > longest) longest = duration;
+    final motions = _motionsOrNull(motion, motionPerDimension);
+    if (motions == null) return null;
+    final targets = _waypoints[index];
+    var longest = 0.0;
+    for (var i = 0; i < motions.length; i++) {
+      final seconds = motions[i]
+          .settlingDuration(
+            start: from == null ? _values[i] : _simulations[i].x(from),
+            end: targets[i],
+            velocity: from == null ? _velocities[i] : _simulations[i].dx(from),
+          )
+          ?.toSeconds();
+      if (seconds == null || !seconds.isFinite) return null;
+      if (seconds > longest) longest = seconds;
     }
     return longest;
   }
@@ -821,6 +834,7 @@ class StepPlayback<T extends Object> {
   }
 
   void _startCurrentStep() {
+    _settleEnds = List<double?>.filled(_dimensions, null);
     if (_direction < 0) {
       _startReverseStep();
     } else {
@@ -872,12 +886,31 @@ class StepPlayback<T extends Object> {
 
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) => [
         for (var i = 0; i < targets.length; i++)
-          motions[i].createSimulation(
-            start: _values[i],
-            end: targets[i],
-            velocity: _velocities[i],
-          ),
+          _create(motions[i], i, targets[i]),
       ];
+
+  /// Creates [motion]'s simulation for dimension [i] toward [target], and
+  /// records when it ends.
+  Simulation _create(Motion motion, int i, double target) {
+    final simulation = motion.createSimulation(
+      start: _values[i],
+      end: target,
+      velocity: _velocities[i],
+    );
+    if (simulation is! FiniteSimulation) {
+      _settleEnds[i] = settledAt(
+        simulation,
+        motion
+            .settlingDuration(
+              start: _values[i],
+              end: target,
+              velocity: _velocities[i],
+            )
+            ?.toSeconds(),
+      );
+    }
+    return simulation;
+  }
 
   List<Simulation> _simulateAt(Duration at, List<Motion> motions) {
     final targets = _waypoints[_stepIndex];
@@ -932,11 +965,7 @@ class StepPlayback<T extends Object> {
     if (motions != null) {
       _simulations = [
         for (var i = 0; i < targets.length; i++)
-          motions[i].createSimulation(
-            start: _values[i],
-            end: targets[i],
-            velocity: _velocities[i],
-          ),
+          _create(motions[i], i, targets[i]),
       ];
     } else {
       // For free/hold steps in reverse, use a hold at current values with the
@@ -955,11 +984,13 @@ class StepPlayback<T extends Object> {
   /// Decides when the running step yields to a following [StepAt].
   ///
   /// A [StepAt] arrives at its value exactly at its time. If the running step
-  /// ends at least the [StepAt] motion's natural duration before then, that
+  /// ends at least the [StepAt] motion's natural length before then, that
   /// motion slows down to fill the gap. Otherwise the running step is cut
-  /// short so the motion runs its natural duration, but never before the
+  /// short so the motion runs its natural length, but never before the
   /// running step started. Both cases meet where the gap equals the natural
-  /// duration, so timing changes continuously with the arrival time.
+  /// length, so timing changes continuously with the arrival time. The
+  /// natural length is the motion's [Motion.settlingDuration] from where the
+  /// running step ends.
   void _scheduleCutForNextAt() {
     _cutAt = null;
     if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
@@ -968,9 +999,9 @@ class StepPlayback<T extends Object> {
     if (_steps[next]
         case StepAt<T>(:final at, :final motion, :final motionPerDimension)) {
       final arrival = _absoluteTimeFor(at);
-      final atDuration =
-          _knownMotionDuration(motion, motionPerDimension)?.toSeconds();
       final duration = _findSegmentEnd();
+      final atDuration =
+          _atSettleSeconds(next, motion, motionPerDimension, duration);
       if (duration != null) {
         // A motion of unknown duration can stretch over any gap.
         final gap = arrival - (_segmentStartSeconds + duration);
@@ -1004,10 +1035,11 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
-  /// Starts finding when the running segment ends: the first point on a
-  /// grid of [_scanStep] from its start where its simulations report done,
-  /// refined by bisection within that step. Simulations that know when they
-  /// finish skip the search.
+  /// Starts finding when the running segment ends. Simulations that know
+  /// when they finish, and those whose motion says when they settle
+  /// ([Motion.settlingDuration]), skip the search: the first point on a grid
+  /// of [_scanStep] from the segment's start where its simulations report
+  /// done, refined by bisection within that step.
   ///
   /// The end depends only on the segment, so ticking and seeking always
   /// agree. It is found lazily, as time passes: see [_findSegmentEndBy].
@@ -1016,9 +1048,11 @@ class StepPlayback<T extends Object> {
     _scanLow = 0;
     _scanHigh = 0;
     var known = 0.0;
-    for (final simulation in _simulations) {
-      if (simulation is! FiniteSimulation) return;
-      final finish = (simulation as FiniteSimulation).finishSeconds;
+    for (var i = 0; i < _simulations.length; i++) {
+      final simulation = _simulations[i];
+      final finish = simulation is FiniteSimulation
+          ? (simulation as FiniteSimulation).finishSeconds
+          : _settleEnds[i];
       if (finish == null) return;
       if (finish > known) known = finish;
     }
