@@ -48,7 +48,7 @@ class _VelocityTrackingOn extends VelocityTracking {
       return velocityTrackerBuilder!(converter);
     }
 
-    return MotionVelocityTracker<T>._builtIn(converter);
+    return MotionVelocityTracker<T>(converter);
   }
 
   @override
@@ -97,13 +97,7 @@ class _VelocityTrackingOff extends VelocityTracking {
 /// ```
 class MotionVelocityTracker<T> {
   /// Creates a motion velocity tracker with the given [converter].
-  MotionVelocityTracker(this.converter) : _builtIn = false;
-
-  MotionVelocityTracker._builtIn(this.converter) : _builtIn = true;
-
-  // Whether this is the tracker motor creates by default, which is not a
-  // subclass, so samples can skip the overridable addPosition.
-  final bool _builtIn;
+  MotionVelocityTracker(this.converter);
 
   /// The converter used to normalize and denormalize values.
   final MotionConverter<T> converter;
@@ -127,22 +121,24 @@ class MotionVelocityTracker<T> {
   /// by the fake clock under test and by real time in production.
   int? _lastSampleAtMicros;
 
+  // The instant of the sample [addPositionAt] is adding, so [addPosition]
+  // doesn't read the clock again.
+  DateTime? _sampledAt;
+
   /// Adds a position sample at the given [time].
   ///
   /// Call this each time the value changes during user interaction.
   /// The tracker stores up to 20 samples in a circular buffer.
   void addPosition(Duration time, T value) =>
-      _add(time.inMicroseconds, value, clock.now());
+      _add(time.inMicroseconds, value, _sampledAt ?? clock.now());
 
   /// Adds a position sample taken at the wall-clock instant [now], which
-  /// also serves as its time. Subclasses get it through [addPosition].
+  /// also serves as its time, through [addPosition].
   @internal
   void addPositionAt(DateTime now, T value) {
-    if (_builtIn) {
-      _add(now.microsecondsSinceEpoch, value, now);
-    } else {
-      addPosition(Duration(microseconds: now.microsecondsSinceEpoch), value);
-    }
+    _sampledAt = now;
+    addPosition(Duration(microseconds: now.microsecondsSinceEpoch), value);
+    _sampledAt = null;
   }
 
   void _add(int timeMicros, T value, DateTime now) {
