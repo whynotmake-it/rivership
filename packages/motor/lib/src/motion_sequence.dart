@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
+import 'package:motor/src/motion_prop.dart';
 
 export 'package:motor/src/loop_mode.dart';
 
@@ -230,7 +231,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        ...phases.map((p) => motionForPhase(toPhase: p)),
+        ...phases.map((p) => MotionProp(motionForPhase(toPhase: p))),
         loop,
       ];
 }
@@ -313,7 +314,10 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        _motion ?? _stepsWithMotions,
+        if (_motion case final motion?)
+          MotionProp(motion)
+        else
+          [for (final (_, motion) in _stepsWithMotions!) MotionProp(motion)],
         loop,
       ];
 
@@ -414,7 +418,13 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        _motion ?? _statesWithMotions,
+        if (_motion case final motion?)
+          MotionProp(motion)
+        else
+          {
+            for (final MapEntry(:key, :value) in _statesWithMotions!.entries)
+              key: MotionProp(value.$2),
+          },
         loop,
       ];
 }
@@ -481,7 +491,7 @@ class SingleMotionPhaseSequence<P, T extends Object>
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        motion,
+        MotionProp(motion),
         loop,
       ];
 }
@@ -597,7 +607,7 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   List<Object?> get props => [
         ...phases,
         ...phases.map(valueForPhase),
-        motion,
+        MotionProp(motion),
         loop,
       ];
 

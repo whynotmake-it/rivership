@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
+import 'package:motor/src/motion_prop.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
 /// A single instruction in a track animation.
@@ -136,8 +137,12 @@ class StepTo<T extends Object> extends TrackStep<T> {
   final bool untilSettled;
 
   @override
-  List<Object?> get props =>
-      [value, motion, motionPerDimension, untilSettled];
+  List<Object?> get props => [
+        value,
+        if (motion case final motion?) MotionProp(motion) else null,
+        MotionProp.all(motionPerDimension),
+        untilSettled,
+      ];
 }
 
 /// A step that runs a self-directed motion.
@@ -152,7 +157,7 @@ class StepFree<T extends Object> extends TrackStep<T> {
   final FreeMotion motion;
 
   @override
-  List<Object?> get props => [motion];
+  List<Object?> get props => [MotionProp(motion)];
 }
 
 /// A step that holds the current value.
@@ -199,7 +204,12 @@ class StepAt<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   @override
-  List<Object?> get props => [at, value, motion, motionPerDimension];
+  List<Object?> get props => [
+        at,
+        value,
+        if (motion case final motion?) MotionProp(motion) else null,
+        MotionProp.all(motionPerDimension),
+      ];
 }
 
 /// A synchronization barrier that keeps sibling tracks aligned.
