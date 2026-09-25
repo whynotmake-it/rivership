@@ -6,9 +6,6 @@ class _FreeTestMotion extends FreeMotion {
   const _FreeTestMotion();
 
   @override
-  bool get needsSettle => false;
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,

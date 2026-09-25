@@ -339,6 +339,19 @@ class StepPlayback<T extends Object> {
   /// The currently active step index.
   int get currentStepIndex => isDone ? -1 : _view.stepIndex;
 
+  /// The per-dimension motions of the active step, or null when it doesn't
+  /// move toward a target (free motions, holds and sync barriers).
+  @internal
+  List<Motion>? get currentMotions {
+    if (isDone) return null;
+    return switch (_steps[_view.stepIndex]) {
+      StepTo<T>(:final motion, :final motionPerDimension) ||
+      StepAt<T>(:final motion, :final motionPerDimension) =>
+        _motionsOrNull(motion, motionPerDimension),
+      _ => null,
+    };
+  }
+
   /// Whether playback has completed.
   bool get isDone =>
       _isDone && _lastElapsedSeconds >= (_segments.last.end ?? double.infinity);
