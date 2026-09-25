@@ -1,7 +1,7 @@
 name: Tag release
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   publish-packages:
@@ -18,6 +18,8 @@ jobs:
           
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3

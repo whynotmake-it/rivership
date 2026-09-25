@@ -28,8 +28,15 @@ pubspec_overrides.yaml
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# Generated dartdoc output
+**/doc/api/
+
+# Xcode build state
+**/DerivedData/
+
 # FVM Version Cache
 .fvm/
 
 # Screenshots
 **/.snaptest/     
+**/test/failures/

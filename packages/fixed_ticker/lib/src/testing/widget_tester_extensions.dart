@@ -27,6 +27,7 @@ extension FixedTickerTesting on WidgetTester {
       }
       await pump(duration);
       count++;
+      // ignore: invalid_use_of_visible_for_testing_member
     } while (binding.hasScheduledFrame || FixedTicker.hasActiveTimers);
     return count;
   }
