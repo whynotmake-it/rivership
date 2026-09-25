@@ -36,12 +36,13 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   ///
   /// [at] is measured from the start of the track animation (and from the
   /// start of the current cycle when looping), and [value] is reached exactly
-  /// at [at]:
+  /// at [at]. The preceding step always plays at its own speed; this step's
+  /// motion adapts to the time left:
   ///
   /// - If the preceding step ends at least the motion's natural length
-  ///   before [at], the motion is stretched to fill the gap. The natural
-  ///   length is [Motion.settlingDuration] from where the preceding step
-  ///   ends: for a spring, until it has settled.
+  ///   before [at], the motion starts when that step ends and slows down to
+  ///   fill the gap. The natural length is [Motion.settlingDuration] from
+  ///   where the preceding step ends: for a spring, until it has settled.
   /// - Otherwise the preceding step is cut short so that the motion runs its
   ///   natural length and ends at [at]. The cut never happens before that
   ///   step started; if there is not enough time, the motion is compressed,
@@ -55,6 +56,19 @@ sealed class TrackStep<T extends Object> with EquatableMixin {
   /// barrier is released after [at], or because [at] had already passed when
   /// the preceding step started (that step is then skipped). [at] must not be
   /// earlier than the total duration of preceding holds (asserted).
+  ///
+  /// ```dart
+  /// track([
+  ///   // Takes 200 ms, leaving time before the keyframe.
+  ///   .to(1, motion: .linear(const Duration(milliseconds: 200))),
+  ///   // Its 300 ms curve starts at 200 ms and slows down to land at 1 s.
+  ///   .at(
+  ///     const Duration(seconds: 1),
+  ///     0,
+  ///     motion: .curved(const Duration(milliseconds: 300), Curves.easeOut),
+  ///   ),
+  /// ]);
+  /// ```
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
