@@ -156,6 +156,13 @@ abstract class Motion extends MotionBase {
     return FixedDurationMotion(this, duration: duration);
   }
 
+  /// Motions are equal when they produce the same movement, whatever their
+  /// class: `Motion.linear(d)` equals `Motion.curved(d)`, and springs with
+  /// the same physics are equal. Wrappers such as [FixedDurationMotion] and
+  /// [TrimmedMotion] are equal when their parents and parameters are.
+  ///
+  /// Steps and timelines compare the motions they hold with this `==`, and a
+  /// controller given an equal motion doesn't redirect.
   @override
   bool operator ==(Object other);
 
@@ -300,14 +307,16 @@ class CurvedMotion extends Motion {
   @override
   bool operator ==(Object other) {
     if (other is CurvedMotion) {
-      return duration == other.duration && curve == other.curve;
+      return duration == other.duration &&
+          curve == other.curve &&
+          tolerance.sameAs(other.tolerance);
     }
     return false;
   }
 
   /// Returns a hash code for this object.
   @override
-  int get hashCode => Object.hash(duration, curve);
+  int get hashCode => Object.hash(duration, curve, tolerance.valueHash);
 
   /// Returns a string representation of this object.
   @override
@@ -448,15 +457,17 @@ abstract class SpringMotion extends Motion {
 
   /// Equality operator for [SpringMotion].
   ///
-  /// Two [SpringMotion] instances are considered equal if their [description]
-  /// descriptions have the same damping, mass, and stiffness values.
+  /// Two spring motions of any class are equal if their [description]s have
+  /// the same damping, mass, and stiffness, and they agree on [snapToEnd] and
+  /// [tolerance].
   @override
   bool operator ==(Object other) {
     if (other is SpringMotion) {
       return description.damping == other.description.damping &&
           description.mass == other.description.mass &&
           description.stiffness == other.description.stiffness &&
-          snapToEnd == other.snapToEnd;
+          snapToEnd == other.snapToEnd &&
+          tolerance.sameAs(other.tolerance);
     }
     return false;
   }
@@ -468,6 +479,7 @@ abstract class SpringMotion extends Motion {
         description.mass,
         description.stiffness,
         snapToEnd,
+        tolerance.valueHash,
       );
 
   /// Returns a string representation of this object.
