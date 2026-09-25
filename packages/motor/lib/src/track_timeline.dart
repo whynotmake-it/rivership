@@ -37,5 +37,5 @@ class TrackTimeline with EquatableMixin {
       ];
 
   @override
-  List<Object?> get props => [...animations, loop];
+  List<Object?> get props => [animations, loop];
 }

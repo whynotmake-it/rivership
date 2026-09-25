@@ -10,6 +10,9 @@ import 'package:motor/src/motion_converter.dart';
 ///
 /// Velocity tracking is enabled by default. Use [VelocityTracking.off] to
 /// disable it, or [VelocityTracking.on] with a custom builder for advanced use.
+///
+/// Compares by value, so an equal configuration on rebuild changes nothing.
+@immutable
 sealed class VelocityTracking {
   const VelocityTracking();
 
@@ -47,6 +50,14 @@ class _VelocityTrackingOn extends VelocityTracking {
 
     return MotionVelocityTracker<T>._builtIn(converter);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is _VelocityTrackingOn &&
+      velocityTrackerBuilder == other.velocityTrackerBuilder;
+
+  @override
+  int get hashCode => velocityTrackerBuilder.hashCode;
 }
 
 class _VelocityTrackingOff extends VelocityTracking {
@@ -56,6 +67,12 @@ class _VelocityTrackingOff extends VelocityTracking {
   MotionVelocityTracker<T>? call<T>(MotionConverter<T> converter) {
     return null;
   }
+
+  @override
+  bool operator ==(Object other) => other is _VelocityTrackingOff;
+
+  @override
+  int get hashCode => (_VelocityTrackingOff).hashCode;
 }
 
 /// Tracks velocity for values of type [T] during user interactions.
@@ -210,6 +227,7 @@ class MotionVelocityTracker<T> {
 }
 
 /// A velocity estimate from recent position samples.
+@immutable
 class MotionVelocityEstimate<T> {
   /// Creates a velocity estimate.
   const MotionVelocityEstimate({
@@ -226,6 +244,17 @@ class MotionVelocityEstimate<T> {
 
   /// The difference between the first and last position sample.
   final T offset;
+
+  @override
+  bool operator ==(Object other) =>
+      other.runtimeType == runtimeType &&
+      other is MotionVelocityEstimate<T> &&
+      perSecond == other.perSecond &&
+      duration == other.duration &&
+      offset == other.offset;
+
+  @override
+  int get hashCode => Object.hash(perSecond, duration, offset);
 
   @override
   String toString() =>

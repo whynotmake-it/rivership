@@ -128,7 +128,8 @@ class StepTo<T extends Object> extends TrackStep<T> {
   /// Per-dimension motions used to reach [value].
   ///
   /// Each entry drives one normalized dimension of [value]. Mutually exclusive
-  /// with [motion]; if both are null the track default is used.
+  /// with [motion]; if both are null the track default is used. Steps compare
+  /// by this list, so don't modify it after passing it in.
   final List<Motion>? motionPerDimension;
 
   /// Whether the next step waits until this one has settled, instead of
@@ -200,7 +201,8 @@ class StepAt<T extends Object> extends TrackStep<T> {
   /// Per-dimension motions used to reach [value].
   ///
   /// Each entry drives one normalized dimension of [value]. Mutually exclusive
-  /// with [motion]; if both are null the track default is used.
+  /// with [motion]; if both are null the track default is used. Steps compare
+  /// by this list, so don't modify it after passing it in.
   final List<Motion>? motionPerDimension;
 
   @override
