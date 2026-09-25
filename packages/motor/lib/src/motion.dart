@@ -46,49 +46,6 @@ sealed class MotionBase {
   /// `static final` fields, instead of in `build` or per frame; they are
   /// immutable and compare by value.
   MotionBase scaleTo(Duration duration);
-
-  /// Estimates when [simulation] finishes using exponential search followed by
-  /// binary search, avoiding fixed-step scans through the whole timeline.
-  ///
-  /// This is a building block for motions that need to time-scale or trim
-  /// another simulation whose natural duration is unknown. It is not part of
-  /// the public API; subclasses may call it from their `createSimulation`
-  /// implementations.
-  @protected
-  double estimateSimulationDuration(
-    Simulation simulation, {
-    Duration? fallback,
-    Duration max = const Duration(seconds: 60),
-  }) {
-    if (simulation.isDone(0)) return 0;
-
-    final fallbackSeconds = fallback?.toSeconds();
-    var lower = 0.0;
-    var upper = fallbackSeconds == null || fallbackSeconds <= 0
-        ? 1 / 60
-        : fallbackSeconds;
-    final maxSeconds = max.toSeconds();
-
-    while (upper < maxSeconds && !simulation.isDone(upper)) {
-      lower = upper;
-      upper *= 2;
-    }
-
-    if (!simulation.isDone(upper)) {
-      return fallbackSeconds ?? maxSeconds;
-    }
-
-    for (var i = 0; i < 24; i++) {
-      final mid = (lower + upper) / 2;
-      if (simulation.isDone(mid)) {
-        upper = mid;
-      } else {
-        lower = mid;
-      }
-    }
-
-    return upper;
-  }
 }
 
 /// {@macro Motion}
@@ -97,9 +54,8 @@ sealed class MotionBase {
 /// a start value to an end value.
 ///
 /// To create a custom motion, extend [Motion] rather than implementing it.
-/// Extending inherits the defaults of [duration], [scaleTo] and
-/// [estimateSimulationDuration], which an implementing class has to provide
-/// itself.
+/// Extending inherits the defaults of [duration] and [scaleTo], which an
+/// implementing class has to provide itself.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
@@ -162,10 +118,6 @@ abstract class Motion extends MotionBase {
   ///
   /// For fixed-duration motions (curves, linear) this is the exact duration.
   /// For springs it is the spring's characteristic settling time.
-  ///
-  /// See also:
-  /// * [estimateSimulationDuration], as an expensive fallback for when the
-  ///   duration is unknown.
   Duration? get duration => null;
 
   /// Whether this motion needs to settle.

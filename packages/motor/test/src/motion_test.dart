@@ -39,6 +39,35 @@ class _ConstantVelocitySimulation extends Simulation {
   bool isDone(double time) => time >= 1;
 }
 
+/// Implements [Motion] with only the members 2.0 requires of implementers.
+class _ImplementedMotion implements Motion {
+  const _ImplementedMotion();
+
+  @override
+  Tolerance get tolerance => Tolerance.defaultTolerance;
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Duration? get duration => const Duration(seconds: 1);
+
+  @override
+  Motion scaleTo(Duration duration) => Motion.linear(duration);
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      const Motion.linear(Duration(seconds: 1))
+          .createSimulation(start: start, end: end);
+}
+
 void main() {
   group('Motion hierarchy', () {
     test('keeps targeted Motion factory source compatibility', () {
@@ -82,6 +111,16 @@ void main() {
       expect(simulation.isDone(0.2), isFalse);
       expect(simulation.x(0.25), equals(10));
       expect(simulation.isDone(0.25), isTrue);
+    });
+
+    test('implementing Motion needs duration and scaleTo only', () {
+      const motion = _ImplementedMotion();
+
+      expect(
+        motion.scaleTo(const Duration(seconds: 2)).duration,
+        const Duration(seconds: 2),
+      );
+      expect(motion.createSimulation().x(0.5), closeTo(0.5, error));
     });
 
     test('wraps free motions in a fixed-duration motion', () {
