@@ -127,10 +127,6 @@ class MotionController<T extends Object> extends Animation<T>
   List<Motion> _motionPerDimension;
   final AnimationBehavior _animationBehavior;
 
-  /// The underlying track controller.
-  @visibleForTesting
-  TrackController get debugInnerController => _inner;
-
   /// The underlying track controller, for inspection tooling.
   @internal
   TrackController get internalInnerController => _inner;
