@@ -1,14 +1,14 @@
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
-import 'package:motor/src/motion_prop.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
 /// A single instruction in a track animation.
+///
+/// Steps compare by value. Their motions compare by movement, so steps with
+/// motions of different classes that move the same are equal.
 @immutable
-// ignore: deprecated_member_use
-sealed class TrackStep<T extends Object> with EquatableMixin {
+sealed class TrackStep<T extends Object> {
   /// Creates a step.
   const TrackStep();
 
@@ -130,11 +130,25 @@ class StepTo<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   @override
-  List<Object?> get props => [
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepTo<T> &&
+          other.runtimeType == runtimeType &&
+          other.value == value &&
+          other.motion == motion &&
+          listEquals(other.motionPerDimension, motionPerDimension);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
         value,
-        if (motion case final motion?) MotionProp(motion) else null,
-        MotionProp.all(motionPerDimension),
-      ];
+        motion,
+        _hashList(motionPerDimension),
+      );
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepTo')}($value, '
+      '${_describeMotion(motion, motionPerDimension)})';
 }
 
 /// A step that runs a self-directed motion.
@@ -149,7 +163,17 @@ class StepFree<T extends Object> extends TrackStep<T> {
   final FreeMotion motion;
 
   @override
-  List<Object?> get props => [MotionProp(motion)];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepFree<T> &&
+          other.runtimeType == runtimeType &&
+          other.motion == motion;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, motion);
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepFree')}($motion)';
 }
 
 /// A step that holds the current value.
@@ -162,7 +186,17 @@ class StepHold<T extends Object> extends TrackStep<T> {
   final Duration duration;
 
   @override
-  List<Object?> get props => [duration];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepHold<T> &&
+          other.runtimeType == runtimeType &&
+          other.duration == duration;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, duration);
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepHold')}($duration)';
 }
 
 /// A step that starts at an absolute time.
@@ -197,12 +231,27 @@ class StepAt<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   @override
-  List<Object?> get props => [
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepAt<T> &&
+          other.runtimeType == runtimeType &&
+          other.at == at &&
+          other.value == value &&
+          other.motion == motion &&
+          listEquals(other.motionPerDimension, motionPerDimension);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
         at,
         value,
-        if (motion case final motion?) MotionProp(motion) else null,
-        MotionProp.all(motionPerDimension),
-      ];
+        motion,
+        _hashList(motionPerDimension),
+      );
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepAt')}($at, $value, '
+      '${_describeMotion(motion, motionPerDimension)})';
 }
 
 /// A synchronization barrier that keeps sibling tracks aligned.
@@ -243,5 +292,25 @@ class StepSync<T extends Object> extends TrackStep<T> {
   final Object token;
 
   @override
-  List<Object?> get props => [token];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepSync<T> &&
+          other.runtimeType == runtimeType &&
+          other.token == token;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, token);
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepSync')}($token)';
 }
+
+int? _hashList(List<Object?>? list) =>
+    list == null ? null : Object.hashAll(list);
+
+String _describeMotion(Motion? motion, List<Motion>? motionPerDimension) =>
+    switch ((motion, motionPerDimension)) {
+      (final motion?, _) => 'motion: $motion',
+      (_, final perDimension?) => 'motionPerDimension: $perDimension',
+      _ => 'track motion',
+    };

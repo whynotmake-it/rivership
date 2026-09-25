@@ -255,6 +255,36 @@ class MyMotion extends Motion {
 const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 ```
 
+### Sequences no longer use `equatable`
+
+motor dropped its `equatable` dependency. `MotionSequence` and its
+subclasses no longer mix in `EquatableMixin`, so `props` and `stringify` are
+gone and `is EquatableMixin` is false. Sequences still compare by value: the
+same class, phases, values, motions that move the same, and loop mode.
+
+Most code needs no change. If your own `MotionSequence` subclass overrode
+`props` to customize equality, override `==` and `hashCode` instead:
+
+```dart
+// Before (1.x):
+@override
+List<Object?> get props => [phases, loop, myExtraField];
+
+// After (2.0):
+@override
+bool operator ==(Object other) =>
+    other is MySequence &&
+    listEquals(other.phases, phases) &&
+    other.loop == loop &&
+    other.myExtraField == myExtraField;
+
+@override
+int get hashCode => Object.hash(Object.hashAll(phases), loop, myExtraField);
+```
+
+Without an override, a subclass compares its phases, values, motions and
+loop mode.
+
 ## Sequences → Tracks
 
 The legacy sequence stack — `MotionSequence` (with `StateSequence`,

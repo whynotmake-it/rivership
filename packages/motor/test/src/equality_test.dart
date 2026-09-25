@@ -93,6 +93,18 @@ void main() {
           // ignore: deprecated_member_use_from_same_package
           MotionSequence.statesWithMotions({'a': (1.0, motion)});
       expectSame(states(cupertino), states(spring));
+      expectDifferent(states(cupertino), states(linear));
+      // ignore: deprecated_member_use_from_same_package
+      MotionSequence<int, double> stepsWith(Motion motion) =>
+          // ignore: deprecated_member_use_from_same_package
+          MotionSequence.stepsWithMotions([(0.0, linear), (1.0, motion)]);
+      expectSame(stepsWith(cupertino), stepsWith(spring));
+      expectDifferent(stepsWith(cupertino), stepsWith(linear));
+    });
+
+    test('a custom sequence compares its phases, values and motions', () {
+      expectSame(_CustomSequence(linear), _CustomSequence(curved));
+      expectDifferent(_CustomSequence(linear), _CustomSequence(cupertino));
     });
   });
 
@@ -334,4 +346,24 @@ class _AreaSizeConverter extends SizeMotionConverter
   @override
   int compare(Size a, Size b) =>
       (a.width * a.height).compareTo(b.width * b.height);
+}
+
+// ignore: deprecated_member_use_from_same_package
+class _CustomSequence extends MotionSequence<int, double> {
+  // ignore: deprecated_member_use_from_same_package
+  const _CustomSequence(this.motion);
+
+  final Motion motion;
+
+  @override
+  List<int> get phases => const [0, 1];
+
+  @override
+  LoopMode get loop => LoopMode.none;
+
+  @override
+  double valueForPhase(int phase) => phase.toDouble();
+
+  @override
+  Motion motionForPhase({required int toPhase, int? fromPhase}) => motion;
 }

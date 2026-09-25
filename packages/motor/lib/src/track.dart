@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show listEquals, objectRuntimeType;
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart'
     show TrackController;
@@ -173,11 +173,13 @@ class Track<T extends Object> {
 /// initial velocities. The same type is reused for `withVelocity:` lists,
 /// where its [value] is interpreted as a velocity.
 ///
+///
+/// Snapshots compare by value.
 /// {@endtemplate}
-// ignore: deprecated_member_use
-class TrackValue<T extends Object> with EquatableMixin {
+@immutable
+class TrackValue<T extends Object> {
   /// Creates a value snapshot for [track].
-  TrackValue._(this.track, this.value);
+  const TrackValue._(this.track, this.value);
 
   /// The track this snapshot applies to.
   final Track<T> track;
@@ -186,7 +188,19 @@ class TrackValue<T extends Object> with EquatableMixin {
   final T value;
 
   @override
-  List<Object?> get props => [track, value];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TrackValue<T> &&
+          other.runtimeType == runtimeType &&
+          other.track == track &&
+          other.value == value;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, track, value);
+
+  @override
+  String toString() =>
+      '${objectRuntimeType(this, 'TrackValue')}($track, $value)';
 }
 
 /// An animation instruction for a single [Track].
@@ -195,8 +209,10 @@ class TrackValue<T extends Object> with EquatableMixin {
 /// override (jump to this value before animating) and an initial
 /// [withVelocity]. `loop` is intentionally not part of an animation — it is a
 /// per-clip concern owned by the timeline or the playback call site.
-// ignore: deprecated_member_use
-class TrackAnimation<T extends Object> with EquatableMixin {
+///
+/// Animations compare by value, including their steps.
+@immutable
+class TrackAnimation<T extends Object> {
   /// Creates an animation for [track] using [steps].
   TrackAnimation._(
     this.track,
@@ -287,5 +303,26 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [track, steps, from, withVelocity];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TrackAnimation<T> &&
+          other.runtimeType == runtimeType &&
+          other.track == track &&
+          listEquals(other.steps, steps) &&
+          other.from == from &&
+          other.withVelocity == withVelocity;
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        track,
+        Object.hashAll(steps),
+        from,
+        withVelocity,
+      );
+
+  @override
+  String toString() =>
+      '${objectRuntimeType(this, 'TrackAnimation')}($track, $steps, '
+      'from: $from, withVelocity: $withVelocity)';
 }
