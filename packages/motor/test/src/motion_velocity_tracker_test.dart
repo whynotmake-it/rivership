@@ -95,5 +95,24 @@ void main() {
       final estimate = tracker.getVelocityEstimate();
       expect(estimate!.perSecond, closeTo(950.0, error));
     });
+
+    test('keeps the latest 20 samples as the buffer wraps around', () {
+      for (final count in [19, 20, 21, 57]) {
+        final tracker = MotionVelocityTracker<Offset>(MotionConverter.offset);
+        for (var i = 0; i < count; i++) {
+          tracker.addPosition(
+            Duration(milliseconds: 16 * i),
+            Offset(i * 8.0, i * -4.0),
+          );
+        }
+
+        final kept = count < 20 ? count : 20;
+        final estimate = tracker.getVelocityEstimate()!;
+        expect(estimate.perSecond.dx, closeTo(500, error), reason: '$count');
+        expect(estimate.perSecond.dy, closeTo(-250, error), reason: '$count');
+        expect(estimate.duration, Duration(milliseconds: 16 * (kept - 1)));
+        expect(estimate.offset, Offset(8.0 * (kept - 1), -4.0 * (kept - 1)));
+      }
+    });
   });
 }
