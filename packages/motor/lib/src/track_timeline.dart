@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/track.dart';
 
@@ -8,11 +8,11 @@ import 'package:motor/src/track.dart';
 /// start values and velocities live on the individual [TrackAnimation]s
 /// (`from:` / `withVelocity:`), not on the timeline.
 ///
-/// Timelines compare by value (`Equatable`): building an equal timeline on
-/// rebuild will not restart playback in `TrackBuilder`. Reuse instances or
-/// hoist them to fields for clarity; equality makes both safe.
-// ignore: deprecated_member_use
-class TrackTimeline with EquatableMixin {
+/// Timelines compare by value: building an equal timeline on rebuild will not
+/// restart playback in `TrackBuilder`. Reuse instances or hoist them to fields
+/// for clarity; equality makes both safe.
+@immutable
+class TrackTimeline {
   /// Creates a timeline from track [animations].
   TrackTimeline(
     List<TrackAnimation> animations, {
@@ -37,5 +37,17 @@ class TrackTimeline with EquatableMixin {
       ];
 
   @override
-  List<Object?> get props => [animations, loop];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TrackTimeline &&
+          other.runtimeType == runtimeType &&
+          other.loop == loop &&
+          listEquals(other.animations, animations);
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, loop, Object.hashAll(animations));
+
+  @override
+  String toString() => 'TrackTimeline($animations, loop: $loop)';
 }

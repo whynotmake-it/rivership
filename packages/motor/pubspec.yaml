@@ -13,7 +13,6 @@ environment:
 
 dependencies:
   clock: ">=1.1.0 <2.0.0"
-  equatable: ">=2.0.0 <3.0.0"
   fixed_ticker: ^0.2.0
   flutter:
     sdk: flutter
