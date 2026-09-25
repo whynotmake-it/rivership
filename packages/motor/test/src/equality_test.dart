@@ -1,3 +1,4 @@
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
@@ -23,6 +24,19 @@ void main() {
       // ignore: prefer_const_constructors
       expectSame(NoMotion(ms100), NoMotion(ms100));
       expectDifferent(const NoMotion(ms100), const NoMotion(ms200));
+    });
+
+    test('FrictionMotion compares drag, deceleration and tolerance', () {
+      // ignore: prefer_const_constructors
+      expectSame(FrictionMotion(drag: 0.2), FrictionMotion(drag: 0.2));
+      expectDifferent(
+        const FrictionMotion(),
+        const FrictionMotion(tolerance: Tolerance(distance: 0.1)),
+      );
+      expectDifferent(
+        const FrictionMotion(),
+        const FrictionMotion(constantDeceleration: 1),
+      );
     });
   });
 }
