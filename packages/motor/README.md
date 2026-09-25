@@ -69,13 +69,13 @@ The core of Motor's unified motion system is the `Motion` class. It represents t
 
 ```dart
 // Duration-based motion (traditional Flutter approach)
-final Motion linear = .linear(Duration(seconds: 1));
+final linear = Motion.linear(Duration(seconds: 1));
 
-final Motion withCurve = .curved(Duration(seconds: 1), Curves.easeInOut);
+final withCurve = Motion.curved(Duration(seconds: 1), Curves.easeInOut);
 
 // Physics-based motion (natural, responsive)
-final CupertinoMotion spring = .bouncy(); // Or `Motion.bouncySpring()`
-final MaterialSpringMotion material = .standardSpatialDefault();
+final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
+final material = MaterialSpringMotion.standardSpatialDefault();
 ```
 
 Motor provides several motion types out of the box, with the ability to create
@@ -550,14 +550,14 @@ Motor provides three sequence types:
 // 1. State sequences — named phases (enums, strings):
 enum ButtonState { idle, pressed, loading }
 
-final MotionSequence<ButtonState, Offset> buttonSequence = .states({
+final buttonSequence = MotionSequence<ButtonState, Offset>.states({
   .idle: Offset(0, 0),
   .pressed: Offset(0, 5),
   .loading: Offset(10, 0),
 }, motion: .bouncySpring());
 
 // 2. Step sequences — ordered progression by index:
-final MotionSequence<int, Color> colorSequence = .steps([
+final colorSequence = MotionSequence.steps<Color>([
   Colors.red,
   Colors.yellow,
   Colors.green,
@@ -649,7 +649,7 @@ Widget build(BuildContext context) {
 Or, just use `MotionConverter.custom` directly and pass the converter functions to its constructor:
 
 ```dart
-final MotionConverter<Vector3> converter = .custom(
+final converter = MotionConverter<Vector3>.custom(
   normalize: (value) => [value.x, value.y, value.z],
   denormalize: (values) => Vector3(values[0], values[1], values[2]),
 );
@@ -684,7 +684,7 @@ For custom types or ad-hoc usage, you can define how "direction" is calculated.
 1. **Using `MotionConverter.customDirectional`:**
 
 ```dart
-final MotionConverter<Size> converter = .customDirectional(
+final converter = MotionConverter<Size>.customDirectional(
   normalize: (Size s) => [s.width, s.height],
   denormalize: (List<double> v) => Size(v[0], v[1]),
   // Compare area to determine direction

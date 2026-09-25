@@ -29,13 +29,13 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 ///
 /// ```dart
 /// // State-based sequence
-/// final MotionSequence<ButtonState, Offset> states = .states({
+/// final states = MotionSequence<ButtonState, Offset>.states({
 ///   .idle: Offset(0, 0),
 ///   .pressed: Offset(0, 10),
 /// }, motion: .bouncySpring());
 ///
 /// // Step sequence
-/// final MotionSequence<int, Color> steps = .steps([
+/// final steps = MotionSequence.steps<Color>([
 ///   Colors.red, Colors.green, Colors.blue
 /// ], motion: .smoothSpring());
 /// ```
@@ -68,7 +68,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// ```dart
   /// enum ButtonState { idle, pressed, loading }
   ///
-  /// final MotionSequence<ButtonState, Offset> sequence = .states({
+  /// final sequence = MotionSequence<ButtonState, Offset>.states({
   ///   .idle: Offset(0, 0),
   ///   .pressed: Offset(0, 5),
   ///   .loading: Offset(10, 0),
@@ -88,7 +88,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence from named phases to values, each with its own motion.
   ///
   /// ```dart
-  /// final MotionSequence<ButtonState, Offset> sequence = .statesWithMotions({
+  /// final sequence = MotionSequence<ButtonState, Offset>.statesWithMotions({
   ///   .idle: (Offset(0, 0), .smoothSpring()),
   ///   .pressed: (Offset(0, 5), .snappySpring()),
   /// });
@@ -113,7 +113,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// for all other phase transitions.
   ///
   /// ```dart
-  /// final MotionSequence<int, Offset> positions = .steps([
+  /// final positions = MotionSequence.steps<Offset>([
   ///   Offset(0, 0),
   ///   Offset(100, 100),
   ///   Offset(200, 0),
@@ -129,7 +129,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence that steps through values, each with its own motion.
   ///
   /// ```dart
-  /// final MotionSequence<int, Offset> sequence = .stepsWithMotions([
+  /// final sequence = MotionSequence.stepsWithMotions<Offset>([
   ///   (Offset(0, 0), .smoothSpring()),
   ///   (Offset(100, 100), .bouncySpring()),
   ///   (Offset(200, 0), .smoothSpring()),
@@ -148,7 +148,7 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///
   /// ```dart
   /// // 2-second animation with proportional timing
-  /// final MotionSequence<double, LogoState> timeline = .spanning({
+  /// final timeline = MotionSequence.spanning<LogoState>({
   ///   0.0: LogoState(opacity: 0),      // Start (0% of time)
   ///   1.0: LogoState(opacity: 1),      // 50% of time
   ///   2.0: LogoState(opacity: 0),      // 100% of time
