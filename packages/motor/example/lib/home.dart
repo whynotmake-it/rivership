@@ -168,17 +168,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       height: 44,
-      child: Row(
-        children: [
-          Spacer(),
-          Flexible(
-            child: FittedBox(
-              fit: .scaleDown,
-              alignment: .centerRight,
-              child: _DevToolsToggle(),
-            ),
-          ),
-        ],
+      child: Align(
+        alignment: .centerRight,
+        child: FittedBox(fit: .scaleDown, child: _DevToolsToggle()),
       ),
     );
   }
