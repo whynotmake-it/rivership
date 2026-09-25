@@ -200,10 +200,10 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   /// Creates an animation for [track] using [steps].
   TrackAnimation._(
     this.track,
-    this.steps, {
+    List<TrackStep<T>> steps, {
     this.from,
     this.withVelocity,
-  });
+  }) : steps = List.unmodifiable(steps);
 
   /// The track this animation targets.
   final Track<T> track;
@@ -280,5 +280,5 @@ class TrackAnimation<T extends Object> with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [track, ...steps, from, withVelocity];
+  List<Object?> get props => [track, steps, from, withVelocity];
 }

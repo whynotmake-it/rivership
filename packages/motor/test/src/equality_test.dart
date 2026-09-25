@@ -211,6 +211,31 @@ void main() {
       );
     });
 
+    test('track animations keep their own copy of the steps', () {
+      final steps = [const TrackStep<double>.to(1)];
+      final animation = a(steps);
+      final hash = animation.hashCode;
+      steps.add(const TrackStep.to(2));
+      expect(animation.steps, hasLength(1));
+      expect(animation.hashCode, hash);
+      expectSame(animation, a([const TrackStep.to(1)]));
+    });
+
+    test('track animations compare steps, from and velocity', () {
+      expectDifferent(a.to(1), a.to(2));
+      expectDifferent(a.to(1), a.to(1, from: 0));
+      expectDifferent(a.to(1), a.to(1, withVelocity: 1));
+      expectDifferent(a.to(1), b.to(1));
+    });
+
+    test('timelines compare animations and loop mode', () {
+      expectSame(TrackTimeline([a.to(1)]), TrackTimeline([a.to(1)]));
+      expectDifferent(
+        TrackTimeline([a.to(1)]),
+        TrackTimeline([a.to(1)], loop: LoopMode.loop),
+      );
+    });
+
     test('phase timelines keep their own copy of the seed lists', () {
       final values = [a.value(1)];
       final timeline = TrackPhaseTimeline(
