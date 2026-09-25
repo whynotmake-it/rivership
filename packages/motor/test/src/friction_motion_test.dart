@@ -136,11 +136,6 @@ void main() {
         expect(motion.needsSettle, isTrue);
       });
 
-      test('unboundedWillSettle is true', () {
-        const motion = FrictionMotion();
-        expect(motion.unboundedWillSettle, isTrue);
-      });
-
       test('default drag is 0.135', () {
         const motion = FrictionMotion();
         expect(motion.drag, equals(0.135));
@@ -296,9 +291,6 @@ class _NullFinalValueMotion extends FreeMotion {
 
   @override
   bool get needsSettle => false;
-
-  @override
-  bool get unboundedWillSettle => true;
 
   @override
   Simulation createSimulation({double start = 0, double velocity = 0}) {
