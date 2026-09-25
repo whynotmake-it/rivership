@@ -897,7 +897,7 @@ Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× 
 
 "Per frame" is one frame of animation work plus reading every value once. Absolute costs are small: 250 springs cost about 39 µs per frame, and starting one spring about 1.5 µs. Following a drag with velocity tracking (on by default) costs 1.2× to 1.5× an `AnimationController` plus a `VelocityTracker` per value at 250 values, and about 2× (0.3 µs per frame) for a single value; the fling that hands over the tracked velocity costs 0.7× to 1.4×.
 
-Method: an AOT release build drives frames through the scheduler with no widgets, checks that both sides produce the same values, and reports the median of 7 runs over 5 invocations. Methodology, memory and all scenarios are in [benchmark/ANALYSIS.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/ANALYSIS.md).
+Method: an AOT release build drives frames through the scheduler with no widgets, checks that both sides produce the same values, and reports the median of 7 runs over 5 invocations. Scenarios, memory and how to run them are in [benchmark/README.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/README.md).
 
 ## Acknowledgements
 
