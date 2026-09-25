@@ -1071,7 +1071,6 @@ class StepPlayback<T extends Object> {
   /// into the running segment. Returns whether the end was found, which it
   /// always is when it lies at or before [local].
   bool _findSegmentEndBy(double local) {
-    if (local == double.infinity && !_segmentEndFound) _askSegmentEnd();
     while (!_segmentEndFound && (_scanLow < local || _scanHigh <= local)) {
       final high = _scanHigh;
       if (_segmentIsDone(high)) {
@@ -1094,6 +1093,7 @@ class StepPlayback<T extends Object> {
   /// How long the running segment lasts, or null if it never finishes,
   /// searching ahead as far as needed.
   double? _findSegmentEnd() {
+    if (!_segmentEndFound) _askSegmentEnd();
     _findSegmentEndBy(double.infinity);
     return _segmentDuration;
   }
