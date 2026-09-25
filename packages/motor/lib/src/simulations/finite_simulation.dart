@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 
 /// A simulation whose finish time is known up front, so playback does not
@@ -27,4 +28,50 @@ double justAfter(double seconds) {
     bits.setUint32(4, low + 1);
   }
   return bits.getFloat64(0);
+}
+
+/// Estimates when [simulation] finishes using exponential search followed by
+/// binary search, avoiding fixed-step scans through the whole timeline.
+///
+/// Motions that time-scale or trim another simulation whose natural duration
+/// is unknown use this. Returns [fallback], or [max] without one, when the
+/// simulation isn't done by [max].
+@internal
+double estimateSimulationDuration(
+  Simulation simulation, {
+  Duration? fallback,
+  Duration max = const Duration(seconds: 60),
+}) {
+  if (simulation.isDone(0)) return 0;
+
+  final fallbackSeconds = fallback?.toSeconds();
+  var lower = 0.0;
+  var upper = fallbackSeconds == null || fallbackSeconds <= 0
+      ? 1 / 60
+      : fallbackSeconds;
+  final maxSeconds = max.toSeconds();
+
+  while (upper < maxSeconds && !simulation.isDone(upper)) {
+    lower = upper;
+    upper *= 2;
+  }
+
+  if (!simulation.isDone(upper)) {
+    return fallbackSeconds ?? maxSeconds;
+  }
+
+  for (var i = 0; i < 24; i++) {
+    final mid = (lower + upper) / 2;
+    if (simulation.isDone(mid)) {
+      upper = mid;
+    } else {
+      lower = mid;
+    }
+  }
+
+  return upper;
+}
+
+extension on Duration {
+  double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
 }
