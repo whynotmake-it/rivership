@@ -18,7 +18,7 @@ export 'src/controllers/phase_track_controller.dart';
 export 'src/controllers/single_motion_controller.dart';
 export 'src/controllers/track_controller.dart';
 export 'src/motion.dart';
-export 'src/motion_converter.dart' hide builtInMotionConverterTypes;
+export 'src/motion_converter.dart';
 export 'src/motion_curve.dart';
 export 'src/motion_sequence.dart';
 export 'src/motion_velocity_tracker.dart'
