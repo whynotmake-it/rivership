@@ -1174,11 +1174,13 @@ class FrictionMotion extends FreeMotion {
   bool operator ==(Object other) {
     return other is FrictionMotion &&
         drag == other.drag &&
-        constantDeceleration == other.constantDeceleration;
+        constantDeceleration == other.constantDeceleration &&
+        tolerance.sameAs(other.tolerance);
   }
 
   @override
-  int get hashCode => Object.hash(drag, constantDeceleration);
+  int get hashCode =>
+      Object.hash(drag, constantDeceleration, tolerance.valueHash);
 
   @override
   String toString() => 'FrictionMotion(drag: $drag, '
@@ -1525,4 +1527,14 @@ double? _knownEnd(
 
 extension on Duration {
   double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
+}
+
+// Tolerance has no value equality of its own.
+extension on Tolerance {
+  bool sameAs(Tolerance other) =>
+      distance == other.distance &&
+      time == other.time &&
+      velocity == other.velocity;
+
+  int get valueHash => Object.hash(distance, time, velocity);
 }

@@ -101,6 +101,18 @@ void main() {
       expectSame(NoMotion(ms100), NoMotion(ms100));
       expectDifferent(const NoMotion(ms100), const NoMotion(ms200));
     });
+
+    test('FrictionMotion compares drag, deceleration and tolerance', () {
+      expectSame(FrictionMotion(drag: 0.2), FrictionMotion(drag: 0.2));
+      expectDifferent(
+        const FrictionMotion(),
+        const FrictionMotion(tolerance: Tolerance(distance: 0.1)),
+      );
+      expectDifferent(
+        const FrictionMotion(),
+        const FrictionMotion(constantDeceleration: 1),
+      );
+    });
   });
 
   group('converter equality', () {
@@ -141,6 +153,169 @@ void main() {
       expectSame(directional(), directional());
     });
   });
+
+  group('velocity equality', () {
+    test('VelocityTracking compares by mode and builder', () {
+      expectSame(VelocityTracking.on(), VelocityTracking.on());
+      expectSame(VelocityTracking.off(), VelocityTracking.off());
+      expectDifferent(VelocityTracking.on(), VelocityTracking.off());
+      expectSame(
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+      );
+      expectDifferent(
+        VelocityTracking.on(velocityTrackerBuilder: _tracker),
+        VelocityTracking.on(),
+      );
+    });
+
+    test('MotionVelocityEstimate compares all fields', () {
+      MotionVelocityEstimate<double> estimate({double offset = 1}) =>
+          MotionVelocityEstimate(perSecond: 2, duration: ms100, offset: offset);
+      expectSame(estimate(), estimate());
+      expectDifferent(estimate(), estimate(offset: 3));
+    });
+  });
+
+  group('timeline equality', () {
+    final a = Track<double>(MotionConverter.single, initial: 0);
+    final b = Track<double>(MotionConverter.single, initial: 0);
+
+    test('phase timelines tell apart which phase an animation is in', () {
+      expectDifferent(
+        TrackPhaseTimeline({
+          #first: [a.to(1, motion: const LinearMotion(ms100))],
+          #second: [b.to(1, motion: const LinearMotion(ms100))],
+        }),
+        TrackPhaseTimeline({
+          #first: [
+            a.to(1, motion: const LinearMotion(ms100)),
+            b.to(1, motion: const LinearMotion(ms100)),
+          ],
+          #second: <TrackAnimation>[],
+        }),
+      );
+    });
+
+    test('phase timelines tell initial values and velocities apart', () {
+      final phases = {
+        #only: [a.to(1, motion: const LinearMotion(ms100))],
+      };
+      expectDifferent(
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+        TrackPhaseTimeline(phases, initialVelocities: [a.velocity(1)]),
+      );
+      expectSame(
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+        TrackPhaseTimeline(phases, initialValues: [a.value(1)]),
+      );
+    });
+
+    test('track animations keep their own copy of the steps', () {
+      final steps = [const TrackStep<double>.to(1)];
+      final animation = a(steps);
+      final hash = animation.hashCode;
+      steps.add(const TrackStep.to(2));
+      expect(animation.steps, hasLength(1));
+      expect(animation.hashCode, hash);
+      expectSame(animation, a([const TrackStep.to(1)]));
+    });
+
+    test('track animations compare steps, from and velocity', () {
+      expectDifferent(a.to(1), a.to(2));
+      expectDifferent(a.to(1), a.to(1, from: 0));
+      expectDifferent(a.to(1), a.to(1, withVelocity: 1));
+      expectDifferent(a.to(1), b.to(1));
+    });
+
+    test('timelines compare animations and loop mode', () {
+      expectSame(TrackTimeline([a.to(1)]), TrackTimeline([a.to(1)]));
+      expectDifferent(
+        TrackTimeline([a.to(1)]),
+        TrackTimeline([a.to(1)], loop: LoopMode.loop),
+      );
+    });
+
+    test('phase timelines keep their own copy of the seed lists', () {
+      final values = [a.value(1)];
+      final timeline = TrackPhaseTimeline(
+        {
+          #only: [a.to(1, motion: const LinearMotion(ms100))],
+        },
+        initialValues: values,
+      );
+      final hash = timeline.hashCode;
+      values.add(b.value(2));
+      expect(timeline.initialValues, hasLength(1));
+      expect(timeline.hashCode, hash);
+    });
+  });
+
+  group('step and phase equality', () {
+    final a = Track<double>(MotionConverter.single, initial: 0);
+    const linear = LinearMotion(ms100);
+
+    test('steps compare every field', () {
+      expectSame(
+        TrackStep<double>.to(1, motion: linear),
+        TrackStep<double>.to(1, motion: linear),
+      );
+      expectDifferent(
+        const TrackStep<double>.to(1, motion: linear),
+        const TrackStep<double>.to(1, motionPerDimension: [linear]),
+      );
+      expectDifferent(
+        const TrackStep<double>.to(1, motion: linear),
+        const TrackStep<double>.at(ms100, 1, motion: linear),
+      );
+      expectDifferent(
+        const TrackStep<double>.at(ms100, 1),
+        const TrackStep<double>.at(ms200, 1),
+      );
+      expectDifferent(
+        const TrackStep<double>.hold(ms100),
+        const TrackStep<double>.hold(ms200),
+      );
+      expectDifferent(
+        const TrackStep<double>.free(motion: FrictionMotion()),
+        const TrackStep<double>.free(motion: FrictionMotion(drag: 0.2)),
+      );
+      expectSame(
+        TrackStep<double>.sync(token: #meet),
+        TrackStep<double>.sync(token: #meet),
+      );
+      expectDifferent(
+        const TrackStep<double>.sync(token: #meet),
+        const TrackStep<double>.sync(token: #part),
+      );
+    });
+
+    test('track values compare track and value', () {
+      expectSame(a.value(1), a.value(1));
+      expectDifferent(a.value(1), a.value(2));
+      expectDifferent(
+        a.value(1),
+        Track<double>(MotionConverter.single).value(1),
+      );
+    });
+
+    test('phase transitions compare their phases', () {
+      expectSame(PhaseSettled(1), PhaseSettled(1));
+      expectDifferent(const PhaseSettled(1), const PhaseSettled(2));
+      expectSame(
+        PhaseTransitioning(from: 1, to: 2),
+        PhaseTransitioning(from: 1, to: 2),
+      );
+      expectDifferent(
+        const PhaseTransitioning(from: 1, to: 2),
+        const PhaseTransitioning(from: 2, to: 1),
+      );
+      expectDifferent(
+        const PhaseSettled(2),
+        const PhaseTransitioning(from: 1, to: 2),
+      );
+    });
+  });
 }
 
 List<double> _normalize(double value) => [value];
@@ -148,6 +323,9 @@ List<double> _normalize(double value) => [value];
 double _denormalize(List<double> values) => values[0];
 
 int _compare(double a, double b) => a.compareTo(b);
+
+MotionVelocityTracker<T> _tracker<T>(MotionConverter<T> converter) =>
+    MotionVelocityTracker<T>(converter);
 
 class _AreaSizeConverter extends SizeMotionConverter
     with DirectionalMotionConverter<Size> {

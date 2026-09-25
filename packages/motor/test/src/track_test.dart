@@ -71,7 +71,7 @@ void main() {
       final animation = track(steps);
 
       expect(animation.track, same(track));
-      expect(animation.steps, same(steps));
+      expect(animation.steps, equals(steps));
     });
 
     test('creates value snapshots', () {
