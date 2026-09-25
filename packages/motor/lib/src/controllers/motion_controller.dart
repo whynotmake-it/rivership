@@ -1,14 +1,19 @@
-import 'dart:collection';
-
 import 'package:flutter/animation.dart';
-import 'package:flutter/foundation.dart' show objectRuntimeType;
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/controllers/frame_anchored_sync_token.dart';
 import 'package:motor/src/controllers/single_motion_controller.dart';
+import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
+import 'package:motor/src/track.dart';
+import 'package:motor/src/track_step.dart';
+import 'package:motor/src/track_timeline.dart';
+
+part 'sequence_motion_controller.dart';
 
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
@@ -17,19 +22,16 @@ import 'package:motor/src/phase_transition.dart';
 /// differences have been made to make it generalize easier for different types
 /// of motion.
 ///
-/// 1. [status] works differently for unbounded controllers:
-///   - It will always return [AnimationStatus.forward] if the controller is
-///     running.
-///   - It will return [AnimationStatus.dismissed] if the controller is stopped
-///     and at its initial value.
-///   - It will return [AnimationStatus.completed] if the controller is stopped
-///     and not at its initial value.
-///   - Note: [BoundedMotionController]s restore a concept of directionality,
-///     and will return [AnimationStatus.reverse] in certain cases.
+/// 1. [status] follows the direction of the motion, as judged by the
+///   [converter], and ends in [AnimationStatus.dismissed] after moving down.
+///   See [status] for details.
 /// 2. [stop] will not stop the animation right away, unless `canceled` is true.
 ///   Instead, it will wait until the simulation is done, and then settle at
 ///   the current value. This allows for a more graceful stop, for example, a
 ///   bouncy spring will perform its overshoot.
+///
+/// Internally this is a thin wrapper over a single-[Track] [TrackController],
+/// so the single-value and multi-track stacks share one engine.
 ///
 /// See also:
 ///   * [BoundedMotionController] for a version that adds bounds, as well as
@@ -37,29 +39,32 @@ import 'package:motor/src/phase_transition.dart';
 ///   * [SingleMotionController] and [BoundedSingleMotionController] for a one-
 ///     dimensional version of this class. These are most closely related to
 ///     [AnimationController]s.
-///   * [SequenceMotionController] for a version that can play
-///     [MotionSequence]s.
 class MotionController<T extends Object> extends Animation<T>
     with
         AnimationLocalListenersMixin,
         AnimationLocalStatusListenersMixin,
         AnimationEagerListenerMixin {
   /// Creates a motion controller with a single motion for all dimensions.
+  ///
+  /// Velocity tracking is enabled by default to track velocity when manually
+  /// setting [value]. Use [VelocityTracking.off] to disable.
   MotionController({
     required Motion motion,
     required TickerProvider vsync,
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
-          motionPerDimension: List.filled(
-            converter.normalize(initialValue).length,
-            motion,
-          ),
+          motionPerDimension:
+              List.filled(converter.normalize(initialValue).length, motion),
           vsync: vsync,
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   /// Creates a motion controller with individual motions per dimension.
@@ -69,12 +74,16 @@ class MotionController<T extends Object> extends Animation<T>
     required MotionConverter<T> converter,
     required T initialValue,
     AnimationBehavior behavior = AnimationBehavior.normal,
+    VelocityTracking velocityTracking = const VelocityTracking.on(),
+    String? debugLabel,
   }) : this._(
           motionPerDimension: motionPerDimension,
           vsync: vsync,
           converter: converter,
           initialValue: initialValue,
           behavior: behavior,
+          velocityTracking: velocityTracking,
+          debugLabel: debugLabel,
         );
 
   MotionController._({
@@ -82,161 +91,187 @@ class MotionController<T extends Object> extends Animation<T>
     required TickerProvider vsync,
     required MotionConverter<T> converter,
     required T initialValue,
-    AnimationBehavior behavior = AnimationBehavior.normal,
+    required AnimationBehavior behavior,
+    required VelocityTracking velocityTracking,
+    required String? debugLabel,
   })  : assert(
           converter.normalize(initialValue).isNotEmpty,
           'normalizing all given values must result in a non-empty list',
         ),
-        _converter = converter {
-    _initialValue = initialValue;
-    final normalized = converter.normalize(initialValue);
-    _motionPerDimension = motionPerDimension;
-    _dimensions = normalized.length;
-
-    // Initialize the values and velocities
-    _currentValues = List.of(normalized);
-
-    // Create the ticker
-    _ticker = vsync.createTicker(_tick);
-
-    // Initialize status based on its position relative to bounds
-    _animationBehavior = behavior;
-
-    // Initialize with a dismissed status by default
-    _status = AnimationStatus.dismissed;
+        assert(
+          motionPerDimension.length == converter.normalize(initialValue).length,
+          'the number of motions must match the number of dimensions',
+        ),
+        _converter = converter,
+        _motionPerDimension = List.of(motionPerDimension),
+        _animationBehavior = behavior {
+    _inner = _MotionTrackController(
+      vsync: vsync,
+      velocityTracking: velocityTracking,
+      debugLabel: debugLabel,
+      onCompleted: _onRunCompleted,
+    );
+    _track = Track<T>(
+      converter,
+      initial: initialValue,
+      debugLabel: debugLabel == null ? null : '$debugLabel value',
+    );
+    _inner
+      ..addListener(notifyListeners)
+      ..addStatusListener(_syncStatus);
   }
 
-  late final T _initialValue;
-
+  late final TrackController _inner;
   MotionConverter<T> _converter;
+  late Track<T> _track;
+  List<Motion> _motionPerDimension;
+  final AnimationBehavior _animationBehavior;
 
+  /// The underlying track controller, for inspection tooling.
+  @internal
+  TrackController get internalInnerController => _inner;
+
+  /// The most recent animation target, for redirecting to it.
+  T? _lastTarget;
+
+  /// Converts the value of type T to a `List<double>` for internal processing.
+  MotionConverter<T> get converter => _converter;
+
+  /// Swaps the [converter] used by this controller.
+  ///
+  /// The current normalized values are reinterpreted under the new converter,
+  /// so the new converter must have the same number of dimensions.
   set converter(MotionConverter<T> value) {
     if (value == _converter) return;
 
-    final normalized = value.normalize(value.denormalize(_currentValues));
+    final normalized = _converter.normalize(this.value);
+    final velocityNormalized = _converter.normalize(velocity);
+    final reinterpreted = value.denormalize(normalized);
     assert(
-      normalized.length == _dimensions,
+      value.normalize(reinterpreted).length == normalized.length,
       'new converter must have the same number of dimensions as the '
       'previous converter',
     );
+    final reinterpretedVelocity = value.denormalize(velocityNormalized);
 
+    if (_lastTarget case final target?) {
+      _lastTarget = value.denormalize(_converter.normalize(target));
+    }
+    final oldTrack = _track;
     _converter = value;
-    _internalSetValue(normalized);
+    _track = Track<T>(
+      value,
+      initial: reinterpreted,
+      debugLabel: oldTrack.debugLabel,
+    );
+    _inner
+      ..replaceTrack(
+        oldTrack,
+        _track,
+        value: reinterpreted,
+        velocity: reinterpretedVelocity,
+      )
+      ..resetVelocityTracking();
+    notifyListeners();
   }
-
-  /// Converts the value of type T to a List<double> for internal processing.
-  MotionConverter<T> get converter => _converter;
-
-  /// Number of dimensions being animated
-  late final int _dimensions;
-
-  /// The motion style controlling the animation characteristics.
-  late List<Motion> _motionPerDimension;
-
-  /// The current values for each dimension
-  late List<double> _currentValues;
-
-  /// The amount of time that has passed between the time the animation started
-  /// and the most recent tick of the animation.
-  ///
-  /// If the controller is not animating, the last elapsed duration is null.
-  Duration? get lastElapsedDuration => _lastElapsedDuration;
-  Duration? _lastElapsedDuration;
-
-  /// The ticker that drives the animation
-  Ticker? _ticker;
-
-  /// The normalized target values for each dimension when animating.
-  List<double>? _target;
-
-  /// List of simulations, one for each dimension
-  List<Simulation> _simulations = [];
-
-  /// The current status of the animation
-  late AnimationStatus _status;
-
-  /// The animation behavior
-  late final AnimationBehavior _animationBehavior;
 
   /// The current value of this animation.
   @override
-  T get value => converter.denormalize(_currentValues);
+  T get value => _inner.value(_track);
 
   /// Sets the current value of the animation.
+  ///
+  /// When velocity tracking is enabled (the default), this tracks the value
+  /// for velocity estimation. The tracked velocity is used when [animateTo]
+  /// is called without explicit velocity, and is available via [velocity].
   set value(T newValue) {
-    _ticker?.stop();
-    _status = _getStatusWhenDone();
-
-    final normalized = converter.normalize(newValue);
-    _internalSetValue(normalized);
-    notifyListeners();
-    _checkStatusChanged();
-  }
-
-  /// Updates the internal values array
-  void _internalSetValue(List<double> newValues) {
-    assert(
-      newValues.length == _dimensions,
-      'New values must have the same number of dimensions as the controller',
-    );
-
-    _currentValues = List.of(newValues);
+    _reversing = false;
+    // As in 1.x, the future of an interrupted animation completes.
+    final wasAnimating = _inner.isAnimating;
+    _inner.stopTicker(canceled: false);
+    if (wasAnimating) _inner.stop(canceled: true);
+    _inner.set([_track.value(newValue)]);
+    _syncStatus();
   }
 
   /// The current status of this [Animation].
   ///
-  /// Spring simulations don't really have a concept of directionality,
-  /// especially in higher dimensions.
-  /// Thus, this will never return [AnimationStatus.reverse].
+  /// - It is [AnimationStatus.dismissed] until the value first moves.
+  /// - While animating, it is [AnimationStatus.reverse] when heading for a
+  ///   smaller value (directional converters such as [SingleMotionConverter]
+  ///   only), otherwise [AnimationStatus.forward].
+  /// - Once the motion finished or [value] was set, it is
+  ///   [AnimationStatus.dismissed] if the last move went down, otherwise
+  ///   [AnimationStatus.completed]. For converters without a direction
+  ///   (common for multi-dimensional types), dismissed means exactly back at
+  ///   the initial value.
+  /// - After [stop], it keeps the direction it was moving in, as in 1.x: a
+  ///   stop interrupts the move rather than finishing it.
+  ///
+  /// A [BoundedMotionController] whose converter has no direction reports
+  /// [AnimationStatus.reverse] while `reverse()` runs, as in 1.x.
   @override
-  AnimationStatus get status => _status;
+  AnimationStatus get status {
+    final status = _inner.status;
+    if (_reversing &&
+        status == AnimationStatus.forward &&
+        converter is! DirectionalMotionConverter<T>) {
+      return AnimationStatus.reverse;
+    }
+    return status;
+  }
+
+  // Whether the running animation was started by BoundedMotionController's
+  // reverse(), and whether the next animateTo is.
+  var _reversing = false;
+  var _reverseNext = false;
+
+  var _reportedStatus = AnimationStatus.dismissed;
+
+  void _syncStatus([AnimationStatus? _]) {
+    final current = status;
+    if (current == _reportedStatus) return;
+    _reportedStatus = current;
+    notifyStatusListeners(current);
+  }
 
   /// Whether this animation is currently animating in either the forward or
   /// reverse direction.
   @override
-  bool get isAnimating => switch (_ticker) {
-        null => false,
-        Ticker(:final isActive) => isActive,
-      };
+  bool get isAnimating => _inner.isAnimating;
 
   /// The current velocity of the simulation in units per second for each
   /// dimension.
-  List<double> get velocities {
-    if (!isAnimating) return List.filled(_dimensions, 0);
-
-    return [
-      for (var i = 0; i < _dimensions; i++)
-        _simulations[i].dx(_lastElapsedDuration!.toSec()),
-    ];
-  }
+  List<double> get velocities => _converter.normalize(velocity);
 
   /// The type-specific velocity representation.
-  T get velocity => converter.denormalize(velocities);
+  ///
+  /// When animating, this returns the velocity from the active simulation.
+  /// When not animating, this returns the tracked velocity from user input
+  /// if a velocity tracker is available, otherwise the zero value for type T.
+  T get velocity => _inner.velocity(_track);
 
   /// The single motion that is used for all dimensions.
   ///
   /// This assumes that all motions in [motionPerDimension] are the same.
   Motion get motion {
     assert(
-      motionPerDimension.every((e) => e == motionPerDimension.first),
-      'tried to access a single motion in a '
-      '${objectRuntimeType(this, 'MotionController')}, but not all motions '
-      'per dimension are the same',
+      _motionPerDimension.every((e) => e == _motionPerDimension.first),
+      'tried to access a single motion in a MotionController, but not all '
+      'motions per dimension are the same',
     );
-    return motionPerDimension.first;
+    return _motionPerDimension.first;
   }
 
   /// Sets the default motion to use for each dimension.
-  set motion(Motion value) {
-    _motionPerDimension = List.filled(_motionPerDimension.length, value);
-    _redirectSimulation();
-  }
+  set motion(Motion value) =>
+      motionPerDimension = List.filled(_motionPerDimension.length, value);
 
   /// {@template MotionController.motionStyle}
-  /// The current motion style
+  /// The current motion style.
   ///
-  /// When set, this will create a new simulation with the current velocity if
-  /// an animation is in progress.
+  /// When set, this will redirect any in-progress animation with the current
+  /// velocity.
   /// {@endtemplate}
   List<Motion> get motionPerDimension => List.unmodifiable(_motionPerDimension);
 
@@ -249,21 +284,25 @@ class MotionController<T extends Object> extends Animation<T>
     if (motionsEqual(_motionPerDimension, value)) return;
 
     _motionPerDimension = value.toList();
-    _redirectSimulation();
+    _redirect();
   }
 
   /// The behavior of the animation.
-  ///
-  /// Defaults to [AnimationBehavior.normal] for bounded, and
-  /// [AnimationBehavior.preserve] for unbounded controllers.
   AnimationBehavior get animationBehavior => _animationBehavior;
 
+  /// Returns the tracked velocity estimate from user input.
+  ///
+  /// Returns `null` if no velocity tracker is available or no samples have
+  /// been recorded.
+  MotionVelocityEstimate<T>? get trackedVelocityEstimate =>
+      _inner.trackedVelocityEstimate(_track);
+
+  /// The amount of time that has passed between the time the animation started
+  /// and the most recent tick of the animation, or null if not animating.
+  Duration? get lastElapsedDuration => _inner.lastElapsedDuration;
+
   /// Recreates the [Ticker] with the new [TickerProvider].
-  void resync(TickerProvider vsync) {
-    final oldTicker = _ticker!;
-    _ticker = vsync.createTicker(_tick);
-    _ticker!.absorbTicker(oldTicker);
-  }
+  void resync(TickerProvider vsync) => _inner.resync(vsync);
 
   /// Animates towards [target], while ensuring that any current velocity is
   /// maintained.
@@ -273,126 +312,147 @@ class MotionController<T extends Object> extends Animation<T>
   ///
   /// If [withVelocity] is provided, the animation will start with that velocity
   /// instead of [velocity].
+  ///
+  /// Like [AnimationController], the returned future completes when this
+  /// animation finishes, or when [value] is set during it. Starting another
+  /// animation or stopping with `canceled: true` cancels it.
   TickerFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
-  }) =>
-      _animateToInternal(
-        target: converter.normalize(target),
-        from: from != null ? converter.normalize(from) : null,
-        velocity:
-            withVelocity != null ? converter.normalize(withVelocity) : null,
-      );
-
-  TickerFuture _animateToInternal({
-    required List<double> target,
-    List<double>? from,
-    List<double>? velocity,
-    bool forward = true,
   }) {
-    _target = target;
-
-    final fromValue = from ?? List.of(_currentValues);
-    final velocityValue = velocity ?? velocities;
-
-    // Stop any existing animations
-    _stopTicker(canceled: true);
-
-    _simulations = [
-      for (var i = 0; i < _dimensions; i++)
-        _motionPerDimension[i].createSimulation(
-          start: fromValue[i],
-          end: target[i],
-          velocity: velocityValue[i],
+    _lastTarget = target;
+    _reversing = _reverseNext;
+    _reverseNext = false;
+    // As in 1.x, each call gets its own future and cancels the previous one.
+    _inner.stopTicker(canceled: true);
+    final future = _inner.animate(
+      [
+        _track.to(
+          target,
+          motionPerDimension: _motionPerDimension,
+          from: from,
+          withVelocity: withVelocity,
         ),
-    ];
-
-    _internalSetValue(_simulations.map((e) => e.x(0)).toList());
-    _lastElapsedDuration = Duration.zero;
-    final result = _ticker!.start();
-    _status = forward ? AnimationStatus.forward : AnimationStatus.reverse;
-    _checkStatusChanged();
-    return result;
+      ],
+    );
+    _inner.resetVelocityTracking();
+    _syncStatus();
+    return future;
   }
 
-  /// Evaluates the current status when we're at the end of the animation.
-  AnimationStatus _getStatusWhenDone() => switch (_target) {
-        final v? when converter.denormalize(v) == _initialValue =>
-          AnimationStatus.dismissed,
-        _ => AnimationStatus.completed
-      };
+  /// Plays [steps] from the current value.
+  ///
+  /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
+  /// controller's [motionPerDimension].
+  ///
+  /// Non-looping playback completes when all chained simulations finish.
+  /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
+  TickerFuture play(
+    List<TrackStep<T>> steps, {
+    LoopMode? loop,
+    void Function(int stepIndex)? onStep,
+  }) {
+    if (steps.isEmpty) return TickerFuture.complete();
 
-  /// Tick function called by the ticker
-  void _tick(Duration elapsed) {
-    _lastElapsedDuration = elapsed;
-
-    final elapsedInSeconds = elapsed.toSec();
-
-    assert(elapsedInSeconds >= 0, 'elapsed must be non-negative');
-
-    _currentValues = [
-      for (var i = 0; i < _dimensions; i++) _simulations[i].x(elapsedInSeconds),
-    ];
-
-    // Check if all simulations are done
-    if (_simulations.every((e) => e.isDone(elapsedInSeconds))) {
-      _status = _getStatusWhenDone();
-      _stopTicker();
-    }
-
-    notifyListeners();
-    _checkStatusChanged();
+    _lastTarget = null;
+    _reversing = false;
+    _inner.stopTicker(canceled: true);
+    final future = _inner.play(
+      TrackTimeline(
+        [_track(_withDefaultMotions(steps))],
+        loop: loop ?? LoopMode.none,
+      ),
+      onStep: onStep == null ? null : (track, index) => onStep(index),
+    );
+    _inner.resetVelocityTracking();
+    _syncStatus();
+    return future;
   }
 
-  /// Redirect a motion when the [motionPerDimension] changes.
-  void _redirectSimulation() {
-    if (!isAnimating) return;
-
-    if (_target case final target?) {
-      animateTo(converter.denormalize(target));
-    }
-  }
-
-  AnimationStatus _lastReportedStatus = AnimationStatus.dismissed;
-  void _checkStatusChanged() {
-    if (_status != _lastReportedStatus) {
-      _lastReportedStatus = _status;
-      notifyStatusListeners(_status);
-    }
-  }
+  List<TrackStep<T>> _withDefaultMotions(List<TrackStep<T>> steps) => [
+        for (final step in steps)
+          switch (step) {
+            StepTo<T>(motion: null, motionPerDimension: null, :final value) =>
+              TrackStep.to(value, motionPerDimension: _motionPerDimension),
+            StepAt<T>(
+              motion: null,
+              motionPerDimension: null,
+              :final at,
+              :final value,
+            ) =>
+              TrackStep.at(at, value, motionPerDimension: _motionPerDimension),
+            _ => step,
+          },
+      ];
 
   /// Stops the current simulation, and depending on the value of [canceled],
   /// either settles the simulation at the current value, or interrupts the
-  /// simulation immediately
+  /// simulation immediately.
   ///
   /// Unlike [AnimationController.stop], [canceled] defaults to false.
   /// If you set it to true, the simulation will be stopped immediately.
   /// Otherwise, the simulation will redirect to settle at the current value, if
-  /// [Motion.needsSettle] is true for any [motionPerDimension].
+  /// [Motion.needsSettle] is true for any [motionPerDimension], or, during
+  /// [play], for the motion of the running step.
+  ///
+  /// Either way, [status] keeps the direction it was moving in.
   TickerFuture stop({bool canceled = false}) {
-    if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
-      _stopTicker(canceled: canceled);
-      return TickerFuture.complete();
-    } else {
-      return animateTo(value);
+    if (canceled) return _inner.stop(canceled: true);
+    if (!isAnimating || _motionPerDimension.every((e) => !e.needsSettle)) {
+      return _inner.stop();
+    }
+    return _settle(() => animateTo(value));
+  }
+
+  /// Runs [start], the animation that settles a graceful stop, keeping the
+  /// direction the controller was moving in as its status.
+  TickerFuture _settle(TickerFuture Function() start) {
+    final movingDown = _inner.internalMovingDown(_track);
+    final reversing = _reversing;
+    final future = start();
+    _reversing = reversing;
+    _inner.internalKeepStopDirection(_track, movingDown: movingDown);
+    _syncStatus();
+    return future;
+  }
+
+  /// Redirects an in-progress animation to [_lastTarget] using the current
+  /// motions and velocity. No-op when not animating.
+  void _redirect() {
+    if (!_inner.isAnimating) return;
+    if (_lastTarget case final target?) {
+      animateTo(target);
     }
   }
 
-  void _stopTicker({bool canceled = false}) {
-    _lastElapsedDuration = null;
-    if (isAnimating) {
-      _ticker?.stop(canceled: canceled);
-    }
-  }
+  /// Called when a playback run finished; a continuation started here hides
+  /// the run boundary from status listeners.
+  void _onRunCompleted() {}
 
   /// Frees any resources used by this object.
   @override
   void dispose() {
-    _ticker?.dispose();
-    _ticker = null;
+    _inner
+      ..removeListener(notifyListeners)
+      ..removeStatusListener(_syncStatus)
+      ..dispose();
     super.dispose();
   }
+}
+
+class _MotionTrackController extends TrackController {
+  _MotionTrackController({
+    required super.vsync,
+    required super.velocityTracking,
+    required super.debugLabel,
+    required this.onCompleted,
+  });
+
+  final VoidCallback onCompleted;
+
+  @override
+  void onPlaybackCompleted() => onCompleted();
 }
 
 /// A [MotionController] that is bounded.
@@ -405,16 +465,14 @@ class MotionController<T extends Object> extends Animation<T>
 /// (although) it can still overshoot as part of the [motion]s that are used.
 ///
 /// This also adds [forward] and [reverse] methods that will animate towards
-/// the [lowerBound] and [upperBound] respectively.
+/// the [upperBound] and [lowerBound] respectively.
 ///
-/// Furthermore, [status] behaves differently for bounded controllers:
-///   - It will return [AnimationStatus.reverse] when animating towards the
-///     [lowerBound], and [AnimationStatus.forward] when animating towards the
-///     [upperBound].
-///   - [status] will return [AnimationStatus.dismissed] if the controller is
-///     stopped and at its lower bound.
-///   - [status] will return the last reported direction if the controller is
-///     stopped and not at its lower or upper bound.
+/// [status] works as for [MotionController]: with a directional converter,
+/// [reverse] reports [AnimationStatus.reverse] and then
+/// [AnimationStatus.dismissed], and [forward] reports
+/// [AnimationStatus.forward] and then [AnimationStatus.completed]. Without
+/// a direction, [reverse] still reports [AnimationStatus.reverse] while it
+/// runs, as in 1.x.
 /// {@endtemplate}
 class BoundedMotionController<T extends Object> extends MotionController<T> {
   /// Creates a [BoundedMotionController].
@@ -426,6 +484,8 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound);
 
@@ -439,17 +499,15 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     required T lowerBound,
     required T upperBound,
     super.behavior,
+    super.velocityTracking,
+    super.debugLabel,
   })  : _lowerBound = converter.normalize(lowerBound),
         _upperBound = converter.normalize(upperBound),
         super.motionPerDimension();
 
-  /// The lower bounds for each dimension.
   final List<double> _lowerBound;
-
-  /// The upper bounds for each dimension.
   final List<double> _upperBound;
 
-  /// The lower bound of the animation value.
   /// The lower bound of the animation value.
   ///
   /// {@template motor.spring_simulation.bounds_overshoot_warning}
@@ -466,58 +524,17 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Sets the current value of the animation.
   ///
-  /// This will clamp the value to be within the bounds.
+  /// The value is clamped to be within bounds. When velocity tracking is
+  /// enabled (the default), this also tracks the value for velocity estimation.
   @override
-  set value(T newValue) {
-    final normalized = converter.normalize(newValue);
-    _status = _getStatusWhenDone();
-    final clamped = [
+  set value(T newValue) => super.value = _clamp(newValue);
+
+  T _clamp(T value) {
+    final normalized = converter.normalize(value);
+    return converter.denormalize([
       for (final (i, v) in normalized.indexed)
         v.clamp(_lowerBound[i], _upperBound[i]),
-    ];
-    _internalSetValue(clamped);
-    notifyListeners();
-  }
-
-  bool _forward = true;
-
-  /// Evaluates the current status when we're at the end of the animation.
-  @override
-  AnimationStatus _getStatusWhenDone() => switch (_target) {
-        final v? when converter.denormalize(v) == lowerBound =>
-          AnimationStatus.dismissed,
-        final v? when converter.denormalize(v) == upperBound =>
-          AnimationStatus.completed,
-        _ when !_forward => AnimationStatus.reverse,
-        _ => AnimationStatus.forward,
-      };
-
-  /// Animates towards [upperBound].
-  TickerFuture forward({
-    T? from,
-    T? withVelocity,
-  }) {
-    return animateTo(
-      upperBound,
-      from: from,
-      withVelocity: withVelocity,
-    );
-  }
-
-  /// Animates towards [lowerBound].
-  ///
-  /// **Note**: [status] will still return [AnimationStatus.forward] when
-  /// this is called. See [status] for more information.
-  TickerFuture reverse({
-    T? from,
-    T? withVelocity,
-  }) {
-    return animateTo(
-      lowerBound,
-      from: from,
-      withVelocity: withVelocity,
-      forward: false,
-    );
+    ]);
   }
 
   @override
@@ -525,33 +542,46 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
     T target, {
     T? from,
     T? withVelocity,
-    bool forward = true,
+  }) =>
+      super.animateTo(_clamp(target), from: from, withVelocity: withVelocity);
+
+  /// Animates towards [upperBound].
+  TickerFuture forward({
+    T? from,
+    T? withVelocity,
+  }) =>
+      animateTo(upperBound, from: from, withVelocity: withVelocity);
+
+  /// Animates towards [lowerBound], reporting [AnimationStatus.reverse]
+  /// while running, even when [converter] has no direction.
+  TickerFuture reverse({
+    T? from,
+    T? withVelocity,
   }) {
-    _forward = forward;
-    final normalizedTarget = converter.normalize(target);
-    final clamped = [
-      for (final (i, v) in normalizedTarget.indexed)
-        v.clamp(_lowerBound[i], _upperBound[i]),
-    ];
-    return _animateToInternal(
-      target: clamped,
-      from: from != null ? converter.normalize(from) : null,
-      velocity: withVelocity != null ? converter.normalize(withVelocity) : null,
-      forward: forward,
-    );
+    _reverseNext = true;
+    return animateTo(lowerBound, from: from, withVelocity: withVelocity);
   }
 
   @override
   TickerFuture stop({bool canceled = false}) {
-    if (canceled || _motionPerDimension.every((e) => !e.needsSettle)) {
-      _stopTicker(canceled: canceled);
-      return TickerFuture.complete();
-    } else {
-      return animateTo(value, forward: _forward);
+    if (canceled ||
+        !isAnimating ||
+        motionPerDimension.every((e) => !e.needsSettle)) {
+      return super.stop(canceled: canceled);
     }
+    // Settle at the clamped current value.
+    final target = _clamp(value);
+    _lastTarget = target;
+    return _settle(() {
+      _inner.stopTicker(canceled: true);
+      return _inner.animate([
+        _track.to(target, motionPerDimension: motionPerDimension),
+      ]);
+    });
   }
 }
 
+/// Compares two iterables of [Motion]s for equality.
 @internal
 bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
   if (a == null && b == null) return true;
@@ -559,405 +589,4 @@ bool motionsEqual(Iterable<Motion>? a, Iterable<Motion>? b) {
 
   return a.length == b.length &&
       [for (final (i, m) in a.indexed) m == b.elementAt(i)].every((e) => e);
-}
-
-/// A motion controller that adds the capability to play motion sequences.
-///
-/// Extends [MotionController] with sequence playback capabilities,
-/// automatic phase progression, and loop mode support.
-///
-/// ```dart
-/// final controller = SequenceMotionController<ButtonState, Offset>(
-///   motion: Motion.smoothSpring(),
-///   vsync: this,
-///   converter: MotionConverter.offset,
-///   initialValue: Offset.zero,
-/// );
-///
-/// final sequence = MotionSequence.states({
-///   ButtonState.idle: Offset(0, 0),
-///   ButtonState.pressed: Offset(0, 5),
-/// }, motion: Motion.smoothSpring());
-///
-/// await controller.playSequence(sequence);
-/// ```
-class SequenceMotionController<P, T extends Object>
-    extends MotionController<T> {
-  /// Creates a phase motion controller with single motion for all dimensions.
-  SequenceMotionController({
-    required super.motion,
-    required super.vsync,
-    required super.converter,
-    required super.initialValue,
-    super.behavior,
-  });
-
-  /// Creates a seequence motion controller with motion per dimension.
-  SequenceMotionController.motionPerDimension({
-    required super.motionPerDimension,
-    required super.vsync,
-    required super.converter,
-    required super.initialValue,
-    super.behavior,
-  }) : super.motionPerDimension();
-
-  /// Active phase sequence being played
-  MotionSequence<P, T>? _activeSequence;
-
-  /// Current phase index in the sequence
-  int _currentSequencePhaseIndex = 0;
-
-  /// Direction for ping-pong sequences (1 = forward, -1 = reverse)
-  int _sequenceDirection = 1;
-
-  /// Callback for phase transition changes
-  void Function(PhaseTransition<P> transition)? _onPhaseTransition;
-
-  /// Whether we're currently playing a sequence
-  bool _isPlayingSequence = false;
-
-  /// Target phase we're currently animating toward
-  P? _currentSequencePhase;
-
-  /// The previous phase we're transitioning from
-  P? _previousSequencePhase;
-
-  /// The elapsed time when the current phase started
-  Duration? _currentPhaseStartTime;
-
-  /// Current target phase (null if not playing sequence).
-  P? get currentSequencePhase => _currentSequencePhase;
-
-  /// Whether a sequence is currently playing.
-  bool get isPlayingSequence => _isPlayingSequence;
-
-  /// The active sequence (null if not playing).
-  MotionSequence<P, T>? get activeSequence => _activeSequence;
-
-  /// Progress through current sequence (0.0 to 1.0).
-  double get sequenceProgress {
-    if (_activeSequence == null || !_isPlayingSequence) return 0;
-
-    final totalPhases = _activeSequence!.phases.length;
-    if (totalPhases <= 1) return 1;
-
-    return _currentSequencePhaseIndex / (totalPhases - 1);
-  }
-
-  @override
-  set motion(Motion value) {
-    _motionPerDimension = List.filled(_motionPerDimension.length, value);
-  }
-
-  @override
-  set motionPerDimension(Iterable<Motion> value) {
-    assert(
-      value.length == _motionPerDimension.length,
-      'the number of motions must match the number of dimensions',
-    );
-    if (motionsEqual(_motionPerDimension, value)) return;
-
-    _motionPerDimension = value.toList();
-  }
-
-  /// Plays through a motion sequence with automatic phase progression.
-  ///
-  /// Returns a future that completes when non-looping sequences finish.
-  /// Looping sequences run indefinitely until stopped.
-  ///
-  /// Optionally start [atPhase] and receive [onTransition] callbacks.
-  /// Preserves current velocity unless [withVelocity] is provided.
-  TickerFuture playSequence(
-    MotionSequence<P, T> sequence, {
-    P? atPhase,
-    T? withVelocity,
-    void Function(PhaseTransition<P> transition)? onTransition,
-  }) {
-    // Stop any existing sequence by stopping underlying animation
-    _stopSequence();
-
-    if (sequence.phases.isEmpty) {
-      return TickerFuture.complete();
-    }
-
-    // Initialize sequence state
-    _activeSequence = sequence;
-    _onPhaseTransition = onTransition;
-    _isPlayingSequence = true;
-    _sequenceDirection = 1;
-
-    // Determine target phase
-    final targetPhase = atPhase ?? sequence.initialPhase;
-    _currentSequencePhaseIndex = sequence.phases.indexOf(targetPhase);
-
-    if (_currentSequencePhaseIndex == -1) {
-      throw ArgumentError('Phase $targetPhase not found in sequence');
-    }
-
-    final velocities = switch (withVelocity) {
-      null => this.velocities,
-      final v => converter.normalize(v),
-    };
-
-    // Set up the initial phase simulation
-    _setupPhaseSimulation(targetPhase, velocities);
-
-    // Stop any existing ticker and start fresh
-    _stopTicker(canceled: true);
-    _lastElapsedDuration = Duration.zero;
-    _currentPhaseStartTime = Duration.zero;
-    final tickerFuture = _ticker!.start();
-    _status = AnimationStatus.forward;
-    _checkStatusChanged();
-
-    // Notify phase transition (starting animation to target phase)
-    final previousPhase = _previousSequencePhase;
-    if (previousPhase != null) {
-      _onPhaseTransition?.call(
-        PhaseTransitioning(
-          from: previousPhase,
-          to: targetPhase,
-        ),
-      );
-    }
-
-    return tickerFuture;
-  }
-
-  /// Sets up simulations for transitioning to a specific phase
-  void _setupPhaseSimulation(P phase, List<double> velocities) {
-    if (!_isPlayingSequence || _activeSequence == null) return;
-
-    final sequence = _activeSequence!;
-    _previousSequencePhase = _currentSequencePhase;
-    _currentSequencePhase = phase;
-
-    // Get motion and target for this phase, using the previous phase context
-    final motion = sequence.motionForPhase(
-      toPhase: phase,
-      fromPhase: _previousSequencePhase,
-    );
-    final targetValue = sequence.valueForPhase(phase);
-    final target = converter.normalize(targetValue);
-
-    // Set target for sequence tracking
-    _target = target;
-
-    // Create simulations for this phase, preserving current velocity
-    final velocityValue = velocities;
-    _simulations = [
-      for (var i = 0; i < _dimensions; i++)
-        motion.createSimulation(
-          start: _currentValues[i],
-          end: target[i],
-          velocity: velocityValue[i],
-        ),
-    ];
-
-    // Set the start time for this phase to the current elapsed time
-    _currentPhaseStartTime = _lastElapsedDuration ?? Duration.zero;
-  }
-
-  /// Stops any active sequence (internal method)
-  void _stopSequence() {
-    if (!_isPlayingSequence) return;
-
-    _isPlayingSequence = false;
-    _currentSequencePhase = null;
-    _previousSequencePhase = null;
-    _onPhaseTransition = null;
-    _currentPhaseStartTime = null;
-
-    _activeSequence = null;
-  }
-
-  @override
-  void _tick(Duration elapsed) {
-    if (_isPlayingSequence) {
-      // Handle sequence animation manually
-      _tickSequence(elapsed);
-    } else {
-      // Use parent implementation for normal animations
-      super._tick(elapsed);
-    }
-  }
-
-  /// Handles tick updates during sequence playback
-  void _tickSequence(Duration elapsed) {
-    _lastElapsedDuration = elapsed;
-
-    // Calculate elapsed time for the current phase
-    final phaseElapsed = elapsed - (_currentPhaseStartTime ?? Duration.zero);
-    final phaseElapsedInSeconds = phaseElapsed.toSec();
-
-    assert(phaseElapsedInSeconds >= 0, 'phase elapsed must be non-negative');
-
-    // Update current values from simulations using phase-specific elapsed time
-    _currentValues = [
-      for (var i = 0; i < _dimensions; i++)
-        _simulations[i].x(phaseElapsedInSeconds),
-    ];
-
-    // Check if current phase animation is done
-    final currentPhaseComplete =
-        _simulations.every((e) => e.isDone(phaseElapsedInSeconds));
-
-    if (currentPhaseComplete && _isPlayingSequence) {
-      // Current phase is complete, move to next phase
-      _handleSequencePhaseCompletion(velocities);
-    }
-
-    notifyListeners();
-    _checkStatusChanged();
-  }
-
-  /// Handles sequence progression when a phase animation completes.
-  void _handleSequencePhaseCompletion(List<double> velocities) {
-    if (!_isPlayingSequence || _activeSequence == null) {
-      _completeSequence();
-      return;
-    }
-
-    final sequence = _activeSequence!;
-    final totalPhases = sequence.phases.length;
-
-    // Determine next phase index
-    var nextIndex = _currentSequencePhaseIndex + _sequenceDirection;
-
-    // Handle sequence boundaries
-    if (nextIndex >= totalPhases) {
-      // Reached end of sequence
-      switch (sequence.loop) {
-        case LoopMode.none:
-          _completeSequence();
-          return;
-
-        case LoopMode.loop:
-          nextIndex = 0;
-
-        case LoopMode.seamless:
-          // Jump to start without animation
-          nextIndex = 0;
-          _jumpToSequencePhase(nextIndex);
-          return;
-
-        case LoopMode.pingPong:
-          _sequenceDirection = -1;
-          nextIndex = totalPhases - 2;
-          if (nextIndex < 0) nextIndex = 0;
-      }
-    } else if (nextIndex < 0) {
-      // Reached start during ping-pong reverse
-      _sequenceDirection = 1;
-      nextIndex = 1;
-      if (nextIndex >= totalPhases) nextIndex = totalPhases - 1;
-    }
-
-    _currentSequencePhaseIndex = nextIndex;
-
-    // Set up next phase simulation and continue
-    final nextPhase = sequence.phases[nextIndex];
-    _setupPhaseSimulation(nextPhase, velocities);
-    final previousPhase = _previousSequencePhase;
-    if (previousPhase != null) {
-      _onPhaseTransition?.call(
-        PhaseTransitioning(
-          from: previousPhase,
-          to: nextPhase,
-        ),
-      );
-    }
-  }
-
-  /// Completes the current sequence and stops playback.
-  void _completeSequence() {
-    final finalPhase = _currentSequencePhase;
-
-    _isPlayingSequence = false;
-    _currentSequencePhase = null;
-    _previousSequencePhase = null;
-
-    _activeSequence = null;
-
-    // Notify that we've settled at the final phase
-    if (finalPhase != null) {
-      _onPhaseTransition?.call(PhaseSettled(finalPhase));
-    }
-    _onPhaseTransition = null;
-
-    // Update status and stop ticker
-    _status = _getStatusWhenDone();
-    _stopTicker();
-    _checkStatusChanged();
-  }
-
-  /// Jumps to a sequence phase without animation.
-  void _jumpToSequencePhase(int phaseIndex) {
-    if (_activeSequence == null) return;
-
-    final sequence = _activeSequence!;
-    final phase = sequence.phases[phaseIndex];
-    final targetValue = sequence.valueForPhase(phase);
-
-    // Set value without animation
-    _internalSetValue(converter.normalize(targetValue));
-
-    _currentSequencePhaseIndex = phaseIndex;
-    _currentSequencePhase = phase;
-
-    // Notify phase change
-    _onPhaseTransition?.call(PhaseSettled(phase));
-
-    // Immediately continue with the next phase
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (_isPlayingSequence) {
-        _handleSequencePhaseCompletion(velocities);
-      }
-    });
-  }
-
-  @override
-  set value(T newValue) {
-    // Stop any active sequence when value is set
-    _stopSequence();
-
-    // Call parent implementation
-    super.value = newValue;
-  }
-
-  @override
-  TickerFuture animateTo(
-    T target, {
-    T? from,
-    T? withVelocity,
-  }) {
-    // Stop any active sequence when a manual animateTo is called
-    _stopSequence();
-
-    // Call parent implementation
-    return super.animateTo(
-      target,
-      from: from,
-      withVelocity: withVelocity,
-    );
-  }
-
-  @override
-  TickerFuture stop({bool canceled = false}) {
-    // Stop sequence when animation is stopped
-    _stopSequence();
-
-    // Call parent implementation
-    return super.stop(canceled: canceled);
-  }
-
-  @override
-  void dispose() {
-    _stopSequence();
-    super.dispose();
-  }
-}
-
-extension on Duration {
-  double toSec() => inMicroseconds.toDouble() / Duration.microsecondsPerSecond;
 }

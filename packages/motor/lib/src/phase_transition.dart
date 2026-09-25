@@ -1,24 +1,18 @@
 import 'package:meta/meta.dart';
 
-/// Represents the different states of phase transitions in a sequence
-/// animation.
+/// A phase transition reported while a phased animation plays.
 ///
-/// This sealed class models the various states a phase transition can be in:
-/// - [PhaseSettled]: The animation has settled at a specific phase
-/// - [PhaseTransitioning]: The animation is transitioning from one phase
-///   to another
+/// It is either [PhaseTransitioning] (a new phase began animating) or
+/// [PhaseSettled] (the active phase came to rest).
 @immutable
 sealed class PhaseTransition<P> {
   const PhaseTransition();
 
-  const factory PhaseTransition.settled(P phase) = PhaseSettled<P>;
+  /// The phase where the animation is currently at or transitioning to.
+  P get phase;
 
-  const factory PhaseTransition.transitioning({
-    required P from,
-    required P to,
-  }) = PhaseTransitioning<P>;
-
-  /// Returns the last phase we were at.
+  /// The phase the animation is resting at ([PhaseSettled.phase]) or leaving
+  /// ([PhaseTransitioning.from]).
   P get lastPhase => switch (this) {
         PhaseSettled(:final phase) => phase,
         PhaseTransitioning(from: final fromPhase) => fromPhase,
@@ -33,6 +27,7 @@ final class PhaseSettled<P> extends PhaseTransition<P> {
   const PhaseSettled(this.phase);
 
   /// The phase where the animation has settled.
+  @override
   final P phase;
 
   @override
@@ -64,6 +59,9 @@ final class PhaseTransitioning<P> extends PhaseTransition<P> {
 
   /// The phase the animation is transitioning to.
   final P to;
+
+  @override
+  P get phase => to;
 
   @override
   bool operator ==(Object other) =>

@@ -148,6 +148,16 @@ void main() {
       controller.dispose();
     });
 
+    testWidgets('the bounded factory passes on debugLabel', (tester) async {
+      controller = SingleMotionController.bounded(
+        motion: spring,
+        vsync: tester,
+        debugLabel: 'progress',
+      ) as BoundedSingleMotionController;
+
+      expect(controller.internalInnerController.debugLabel, 'progress');
+    });
+
     testWidgets('creates with default bounds', (tester) async {
       controller = BoundedSingleMotionController(
         motion: spring,
@@ -257,9 +267,18 @@ void main() {
         animationController.forward();
         controller.forward();
 
+        // Neither controller emits a value synchronously when the animation
+        // starts; the first notification comes from the first tick.
+        expect(motionValues, isEmpty);
+        expect(animationValues, isEmpty);
+
         await tester.pumpAndSettle();
 
-        expect(animationValues, equals(motionValues));
+        // MotionController drives a Ticker exactly like AnimationController and
+        // emits the identical value sequence - no extra (synchronous) value at
+        // the start and no duplicated frames. This locks the emission behavior
+        // so a regression that adds or drops a frame is caught.
+        expect(motionValues, equals(animationValues));
       });
     });
 

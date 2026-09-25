@@ -1,22 +1,66 @@
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/src/simulations/finite_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
 
 export 'motion_curve.dart';
 
 /// {@template Motion}
-/// A motion pattern such as spring physics or duration-based curves.
+/// The root of motor's motion family.
 ///
-/// [Motion] provides a foundation for creating various types of animation
-/// behaviors. Concrete implementations of this class define specific motion
-/// patterns like spring physics or duration-based curves.
+/// Concrete motions extend [Motion] (target-based) or [FreeMotion]
+/// (self-directed); this root is sealed.
 /// {@endtemplate}
 @immutable
-abstract class Motion {
+sealed class MotionBase {
+  /// {@macro Motion}
+  const MotionBase({
+    this.tolerance = Tolerance.defaultTolerance,
+  });
+
+  /// The tolerance for this motion.
+  ///
+  /// Default is [Tolerance.defaultTolerance].
+  final Tolerance tolerance;
+
+  /// Whether this motion will settle without bounds.
+  ///
+  /// Motor never reads it, so it is always true unless overridden.
+  @Deprecated(
+    'Motor never reads unboundedWillSettle, so overrides can be removed. '
+    'It will be removed in motor 3.0.',
+  )
+  bool get unboundedWillSettle => true;
+
+  /// Returns a version of this motion that finishes in exactly [duration].
+  ///
+  /// Curves, linear motions and [NoMotion] return a copy with the new
+  /// duration. Everything else is wrapped in a [FixedDurationMotion] or
+  /// [FixedDurationFreeMotion], which plays the whole motion faster or slower;
+  /// see those for what happens to a spring's settle and to velocity.
+  ///
+  /// Wrappers that have to find their source's length probe its simulation
+  /// on each `createSimulation` call. Create them once, for example as
+  /// `static final` fields, instead of in `build` or per frame; they are
+  /// immutable and compare by value.
+  MotionBase scaleTo(Duration duration);
+}
+
+/// {@macro Motion}
+///
+/// [Motion] describes target-based motion. It always creates a simulation from
+/// a start value to an end value.
+///
+/// To create a custom motion, extend [Motion] rather than implementing it.
+/// Extending inherits the defaults of [duration] and [scaleTo], which an
+/// implementing class has to provide itself.
+@immutable
+abstract class Motion extends MotionBase {
   /// {@macro Motion}
   const Motion({
-    this.tolerance = Tolerance.defaultTolerance,
+    super.tolerance,
   });
 
   /// {@macro CurvedMotion}
@@ -29,7 +73,10 @@ abstract class Motion {
   const factory Motion.none([Duration duration]) = NoMotion;
 
   /// {@macro SpringMotion}
-  const factory Motion.customSpring(SpringDescription spring) = SpringMotion;
+  const factory Motion.customSpring(
+    SpringDescription spring, {
+    bool snapToEnd,
+  }) = SpringMotion;
 
   /// {@macro CupertinoMotion}
   const factory Motion.cupertino({
@@ -66,21 +113,38 @@ abstract class Motion {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
-  /// The tolerance for this motion.
+  /// Return the duration whenever it is cheap to compute.
   ///
-  /// Default is [Tolerance.defaultTolerance].
-  final Tolerance tolerance;
+  /// This is the duration of this motion, or `null` if it isn't known up
+  /// front. For curves and linear motions it is the exact duration. For
+  /// springs it is the characteristic settling time; the simulation runs a
+  /// little longer, until it is within [tolerance].
+  ///
+  /// `null` is the default for custom motions. Motor then finds out how long
+  /// the motion runs by sampling its simulation's `isDone`:
+  ///
+  /// - [scaleTo] wrappers probe the simulation on every `createSimulation`:
+  ///   a doubling search up to 60 s, then 24 bisection steps.
+  /// - Playback searches for the step's end on a 1/60 s grid. That search is
+  ///   spread over frames during normal playback, but runs ahead of time when
+  ///   a following `.at` step, a seek, or an inspection tool needs the end:
+  ///   up to 3600 `isDone` calls per dimension for a minute-long motion.
+  /// - A following `.at` step can't start "just in time". It slows down to
+  ///   fill the whole gap before its time, or replaces the previous step
+  ///   entirely if that step would run past it.
+  Duration? get duration => null;
 
   /// Whether this motion needs to settle.
   ///
   /// If this is true, the motion will continue to animate until the velocity
-  /// is less than the [tolerance], whenever it is supposed to be stopped.
-  bool get needsSettle;
-
-  /// Whether this motion will settle without bounds.
+  /// is less than the [tolerance], whenever it is supposed to be stopped:
+  /// a graceful `stop()` lets the running motion come to rest at the current
+  /// value instead of halting.
   ///
-  /// If this is false, this motion will never terminate without bounds.
-  bool get unboundedWillSettle;
+  /// It also tells time-scaling wrappers such as [FixedDurationMotion] and
+  /// [TrimmedMotion] that [duration] is only a characteristic time, so
+  /// they measure when the simulation is actually done.
+  bool get needsSettle;
 
   /// Creates a simulation for this motion.
   ///
@@ -93,6 +157,16 @@ abstract class Motion {
   ///   * [velocity] - The initial velocity for the simulation, defaults to 0.
   ///
   /// Returns a [Simulation] that can be used by an [AnimationController].
+  ///
+  /// {@template motor.pureSimulation}
+  /// Unlike Flutter, which only queries a simulation at increasing times,
+  /// motor samples it at arbitrary times: ahead, to find when it finishes,
+  /// and backwards when scrubbing or looping. So `x`, `dx` and `isDone` must
+  /// be pure functions of time, without side effects. A simulation that
+  /// integrates step by step can still be used if it restarts from its
+  /// initial state whenever it's asked about an earlier time than the last
+  /// one.
+  /// {@endtemplate}
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -100,10 +174,101 @@ abstract class Motion {
   });
 
   @override
+  Motion scaleTo(Duration duration) {
+    return FixedDurationMotion(this, duration: duration);
+  }
+
+  /// Whether [other] produces the same movement as this motion.
+  ///
+  /// The class doesn't matter: `Motion.linear(d)` equals `Motion.curved(d)`,
+  /// and springs with the same physics are equal. Wrappers such as
+  /// [FixedDurationMotion] and [TrimmedMotion] are equal when their parents
+  /// and parameters are.
+  ///
+  /// Steps and timelines compare the motions they hold with this `==`, and a
+  /// controller given an equal motion doesn't redirect.
+  @override
   bool operator ==(Object other);
 
   @override
   int get hashCode;
+}
+
+/// A self-directed motion that does not require an end value.
+///
+/// [FreeMotion] is useful for decay, friction, gravity, and other simulations
+/// that evolve from an initial position and velocity.
+///
+/// A free motion that never comes to rest, such as constant drift, keeps its
+/// step running until something replaces it: a new animation for the track,
+/// or a following `.at` step.
+@immutable
+abstract class FreeMotion extends MotionBase {
+  /// Creates a free motion.
+  const FreeMotion({
+    super.tolerance,
+  });
+
+  /// {@macro FrictionMotion}
+  const factory FreeMotion.friction({
+    double drag,
+    double constantDeceleration,
+  }) = FrictionMotion;
+
+  /// Creates a self-directed simulation.
+  ///
+  /// {@macro motor.pureSimulation}
+  Simulation createSimulation({
+    double start = 0,
+    double velocity = 0,
+  });
+
+  /// Returns the value this motion will settle to, or `null` if unknown.
+  ///
+  /// Like [createSimulation], it works on one normalized dimension; [project]
+  /// applies it to a typed value. Override this to provide the resting
+  /// position for motions where the terminal value can be computed cheaply
+  /// (e.g. friction/decay).
+  ///
+  /// When non-null, downstream consumers can use this to anticipate the
+  /// final position without running the full simulation.
+  double? finalValue({double start = 0, double velocity = 0}) => null;
+
+  /// Projects where this motion will come to rest for a typed value.
+  ///
+  /// Normalizes [from] and [velocity] through [converter], computes
+  /// [finalValue] for each dimension, and denormalizes the result back to `T`.
+  ///
+  /// Returns `null` if any dimension's [finalValue] is unknown.
+  ///
+  /// ```dart
+  /// const friction = FrictionMotion();
+  /// final resting = friction.project(
+  ///   from: currentOffset,
+  ///   velocity: flingVelocity,
+  ///   converter: .offset,
+  /// );
+  /// ```
+  T? project<T>({
+    required T from,
+    required T velocity,
+    required MotionConverter<T> converter,
+  }) {
+    final starts = converter.normalize(from);
+    final velocities = converter.normalize(velocity);
+    final result = <double>[];
+    for (var i = 0; i < starts.length; i++) {
+      final v = finalValue(start: starts[i], velocity: velocities[i]);
+      if (v == null) return null;
+      result.add(v);
+    }
+    return converter.denormalize(result);
+  }
+
+  @override
+  FreeMotion scaleTo(Duration duration) {
+    return FixedDurationFreeMotion(this, duration: duration);
+  }
 }
 
 /// {@template CurvedMotion}
@@ -125,6 +290,7 @@ class CurvedMotion extends Motion {
   ]) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
+  @override
   final Duration duration;
 
   /// The curve that defines the rate of change of the motion over time.
@@ -139,13 +305,6 @@ class CurvedMotion extends Motion {
   @override
   bool get needsSettle => false;
 
-  /// Whether this motion will settle without bounds.
-  ///
-  /// Always returns true for [CurvedMotion] because it always terminates
-  /// after the specified duration.
-  @override
-  bool get unboundedWillSettle => true;
-
   /// Creates a new [CurvedMotion] with the given parameters.
   CurvedMotion copyWith({
     Duration? duration,
@@ -155,6 +314,9 @@ class CurvedMotion extends Motion {
 
   /// Applies [curve] to the current [duration].
   CurvedMotion withCurve(Curve curve) => copyWith(curve: curve);
+
+  @override
+  CurvedMotion scaleTo(Duration duration) => copyWith(duration: duration);
 
   @override
   Simulation createSimulation({
@@ -174,14 +336,16 @@ class CurvedMotion extends Motion {
   @override
   bool operator ==(Object other) {
     if (other is CurvedMotion) {
-      return duration == other.duration && curve == other.curve;
+      return duration == other.duration &&
+          curve == other.curve &&
+          tolerance.sameAs(other.tolerance);
     }
     return false;
   }
 
   /// Returns a hash code for this object.
   @override
-  int get hashCode => Object.hash(duration, curve);
+  int get hashCode => Object.hash(duration, curve, tolerance.valueHash);
 
   /// Returns a string representation of this object.
   @override
@@ -192,6 +356,9 @@ class CurvedMotion extends Motion {
 class LinearMotion extends CurvedMotion {
   /// Creates a linear motion with a fixed duration.
   const LinearMotion(Duration duration) : super(duration, Curves.linear);
+
+  @override
+  LinearMotion scaleTo(Duration duration) => LinearMotion(duration);
 
   @override
   String toString() => 'LinearMotion($duration)';
@@ -208,7 +375,18 @@ class NoMotion extends Motion {
   const NoMotion([this.duration = Duration.zero]);
 
   /// The duration that this motion holds its value.
+  @override
   final Duration duration;
+
+  @override
+  NoMotion scaleTo(Duration duration) => NoMotion(duration);
+
+  @override
+  bool operator ==(Object other) =>
+      other is NoMotion && duration == other.duration;
+
+  @override
+  int get hashCode => duration.hashCode;
 
   @override
   String toString() => 'NoMotion($duration)';
@@ -228,9 +406,6 @@ class NoMotion extends Motion {
 
   @override
   bool get needsSettle => false;
-
-  @override
-  bool get unboundedWillSettle => true;
 }
 
 /// {@template SpringMotion}
@@ -256,7 +431,7 @@ abstract class SpringMotion extends Motion {
 
   /// Internal constructor;
   const SpringMotion._({
-    this.snapToEnd = false,
+    this.snapToEnd = true,
   });
 
   /// The physical description of the spring.
@@ -265,11 +440,16 @@ abstract class SpringMotion extends Motion {
   /// how the spring behaves.
   SpringDescription get description;
 
+  @override
+  Duration get duration => description.duration;
+
   /// Whether to snap to the end of the spring.
   ///
   /// If true, the spring will snap to the end of the motion when the simulation
   /// is done.
   /// This ensures that the simulation will settle exactly to the target value.
+  ///
+  /// Defaults to true.
   final bool snapToEnd;
 
   /// Whether this motion needs to settle.
@@ -278,13 +458,6 @@ abstract class SpringMotion extends Motion {
   /// the animation to continue until the spring naturally settles.
   @override
   bool get needsSettle => true;
-
-  /// Whether this motion will settle without bounds.
-  ///
-  /// Returns false for [SpringMotion] because spring physics may not
-  /// necessarily terminate without bounds in all configurations.
-  @override
-  bool get unboundedWillSettle => false;
 
   /// Creates a simulation for this motion.
   ///
@@ -313,22 +486,30 @@ abstract class SpringMotion extends Motion {
 
   /// Equality operator for [SpringMotion].
   ///
-  /// Two [SpringMotion] instances are considered equal if their [description]
-  /// descriptions have the same damping, mass, and stiffness values.
+  /// Two spring motions of any class are equal if their [description]s have
+  /// the same damping, mass, and stiffness, and they agree on [snapToEnd] and
+  /// [tolerance].
   @override
   bool operator ==(Object other) {
     if (other is SpringMotion) {
       return description.damping == other.description.damping &&
           description.mass == other.description.mass &&
-          description.stiffness == other.description.stiffness;
+          description.stiffness == other.description.stiffness &&
+          snapToEnd == other.snapToEnd &&
+          tolerance.sameAs(other.tolerance);
     }
     return false;
   }
 
   /// Returns a hash code for this object.
   @override
-  int get hashCode =>
-      Object.hash(description.damping, description.mass, description.stiffness);
+  int get hashCode => Object.hash(
+        description.damping,
+        description.mass,
+        description.stiffness,
+        snapToEnd,
+        tolerance.valueHash,
+      );
 
   /// Returns a string representation of this object.
   @override
@@ -375,6 +556,8 @@ class CupertinoMotion extends SpringMotion {
   ///
   /// By default, this creates a smooth spring with no bounce, matching the
   /// [standard iOS spring motion behavior](https://developer.apple.com/documentation/swiftui/animation/default).
+  ///
+  /// [snapToEnd] defaults to true.
   const CupertinoMotion({
     this.duration = const Duration(milliseconds: 550),
     this.bounce = 0,
@@ -390,7 +573,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.bouncy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this(
           duration: duration,
           bounce: 0.3 + extraBounce,
@@ -407,7 +590,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.snappy({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this(
           duration: duration,
           bounce: 0.15 + extraBounce,
@@ -423,7 +606,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.smooth({
     Duration duration = const Duration(milliseconds: 500),
     double extraBounce = 0.0,
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this(
           duration: duration,
           bounce: extraBounce,
@@ -440,7 +623,7 @@ class CupertinoMotion extends SpringMotion {
   const CupertinoMotion.interactive({
     Duration duration = const Duration(milliseconds: 150),
     double extraBounce = 0.0,
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this(
           duration: duration,
           bounce: 0.14 + extraBounce,
@@ -448,6 +631,7 @@ class CupertinoMotion extends SpringMotion {
         );
 
   /// The estimated duration of the spring motion.
+  @override
   final Duration duration;
 
   /// The bounce of the spring motion.
@@ -468,8 +652,8 @@ class CupertinoMotion extends SpringMotion {
     bool? snapToEnd,
   }) {
     return CupertinoMotion(
-      duration: duration ?? description.duration,
-      bounce: bounce ?? description.bounce,
+      duration: duration ?? this.duration,
+      bounce: bounce ?? this.bounce,
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
@@ -505,7 +689,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
   const MaterialSpringMotion.standardSpatialFast({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.9,
           stiffness: 1400,
@@ -519,7 +703,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
   const MaterialSpringMotion.standardSpatialDefault({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.9,
           stiffness: 700,
@@ -533,7 +717,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
   const MaterialSpringMotion.standardSpatialSlow({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.9,
           stiffness: 300,
@@ -548,7 +732,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
   const MaterialSpringMotion.standardEffectsFast({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 3800,
@@ -563,7 +747,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
   const MaterialSpringMotion.standardEffectsDefault({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 1600,
@@ -578,7 +762,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
   const MaterialSpringMotion.standardEffectsSlow({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 800,
@@ -593,7 +777,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
   const MaterialSpringMotion.expressiveSpatialFast({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.6,
           stiffness: 800,
@@ -608,7 +792,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
   const MaterialSpringMotion.expressiveSpatialDefault({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.8,
           stiffness: 380,
@@ -623,7 +807,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
   const MaterialSpringMotion.expressiveSpatialSlow({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 0.8,
           stiffness: 200,
@@ -638,7 +822,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
   const MaterialSpringMotion.expressiveEffectsFast({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 3800,
@@ -653,7 +837,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
   const MaterialSpringMotion.expressiveEffectsDefault({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 1600,
@@ -668,7 +852,7 @@ class MaterialSpringMotion extends SpringMotion {
   ///
   /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
   const MaterialSpringMotion.expressiveEffectsSlow({
-    bool snapToEnd = false,
+    bool snapToEnd = true,
   }) : this._(
           damping: 1,
           stiffness: 800,
@@ -704,6 +888,330 @@ class MaterialSpringMotion extends SpringMotion {
       snapToEnd: snapToEnd ?? this.snapToEnd,
     );
   }
+}
+
+/// A target-based motion that plays all of [parent] in exactly [duration].
+///
+/// It keeps [parent]'s shape and changes its speed: time is stretched or
+/// compressed linearly, so [parent]'s whole run fits into [duration].
+///
+/// - For a spring, the whole run lasts until the spring has settled within
+///   its tolerance, found by probing its simulation, not its shorter
+///   [SpringMotion.duration]. Overshoot and settle are kept, just faster or
+///   slower. For curves, the run is their exact [Motion.duration].
+/// - Velocity scales with time, including the start velocity: a spring that
+///   settles in 1 s, scaled to 250 ms, starts 4× as fast as the velocity it
+///   was given.
+/// - At [duration] the value is exactly the target, the velocity is 0, and
+///   the simulation's `isDone` turns true.
+/// - [needsSettle] is false, so a graceful `stop()` halts it right away
+///   instead of letting it settle.
+///
+/// [Motion.scaleTo] returns one of these unless the motion overrides it.
+///
+/// ```dart
+/// // The whole bounce, settle included, takes 300 ms.
+/// final motion = Motion.bouncySpring().scaleTo(
+///   const Duration(milliseconds: 300),
+/// );
+/// ```
+@immutable
+class FixedDurationMotion extends Motion {
+  /// Creates a fixed-duration wrapper around [parent].
+  FixedDurationMotion(
+    this.parent, {
+    required this.duration,
+  }) : super(tolerance: parent.tolerance);
+
+  /// The motion whose shape should be time-scaled.
+  final Motion parent;
+
+  /// The duration this motion should take.
+  @override
+  final Duration duration;
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) {
+    final parentSimulation = parent.createSimulation(
+      start: start,
+      end: end,
+      velocity: velocity,
+    );
+    return _FixedDurationSimulation(
+      parent: parentSimulation,
+      duration: duration,
+      start: start,
+      end: end,
+      // A motion that settles (a spring) only reaches its end once settled,
+      // which its characteristic duration doesn't cover, so it is scaled by
+      // when it settles instead.
+      sourceDuration: parent.needsSettle
+          ? estimateSimulationDuration(
+              parentSimulation,
+              fallback: parent.duration ?? duration,
+            )
+          : parent.duration?.toSeconds() ??
+              estimateSimulationDuration(parentSimulation, fallback: duration),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FixedDurationMotion &&
+        parent == other.parent &&
+        duration == other.duration;
+  }
+
+  @override
+  int get hashCode => Object.hash(parent, duration);
+
+  @override
+  String toString() => 'FixedDurationMotion($parent, duration: $duration)';
+}
+
+/// A free motion that plays all of [parent] in exactly [duration].
+///
+/// Works like [FixedDurationMotion]: [parent] runs until its simulation is
+/// done (for friction, until it has come to rest), and that run is stretched
+/// or compressed linearly into [duration].
+///
+/// - It covers the same distance and ends where [parent] comes to rest, so
+///   [finalValue] is [parent]'s.
+/// - Velocity scales with time, including the start velocity: friction that
+///   coasts for 5 s, scaled to 500 ms, starts 10× as fast as the fling
+///   velocity it was given.
+/// - At [duration] the velocity is 0 and the simulation's `isDone` turns
+///   true.
+/// - A [parent] that never comes to rest, or only after more than a minute
+///   or two, isn't scaled: it plays at its own speed and stops abruptly at
+///   [duration], which is also where [finalValue] puts it.
+///
+/// ```dart
+/// // Coast to the same resting point, but within 400 ms.
+/// final motion = FreeMotion.friction().scaleTo(
+///   const Duration(milliseconds: 400),
+/// );
+/// ```
+@immutable
+class FixedDurationFreeMotion extends FreeMotion {
+  /// Creates a fixed-duration wrapper around [parent].
+  FixedDurationFreeMotion(
+    this.parent, {
+    required this.duration,
+  }) : super(tolerance: parent.tolerance);
+
+  /// The motion whose shape should be time-scaled.
+  final FreeMotion parent;
+
+  /// The duration this motion should take.
+  final Duration duration;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double velocity = 0,
+  }) {
+    final simulation = parent.createSimulation(
+      start: start,
+      velocity: velocity,
+    );
+    // Free motions have no inherent duration, so always probe the simulation.
+    final sourceDuration = estimateSimulationDuration(
+      simulation,
+      fallback: duration,
+    );
+
+    return _FixedDurationSimulation(
+      parent: simulation,
+      duration: duration,
+      start: start,
+      end: simulation.x(sourceDuration),
+      sourceDuration: sourceDuration,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FixedDurationFreeMotion &&
+        parent == other.parent &&
+        duration == other.duration;
+  }
+
+  @override
+  int get hashCode => Object.hash(parent, duration);
+
+  @override
+  double? finalValue({double start = 0, double velocity = 0}) {
+    final resting = parent.finalValue(start: start, velocity: velocity);
+    if (resting == null) return null;
+    final simulation = parent.createSimulation(
+      start: start,
+      velocity: velocity,
+    );
+    final sourceDuration = estimateSimulationDuration(
+      simulation,
+      fallback: duration,
+    );
+    if (simulation.isDone(sourceDuration)) return resting;
+    return simulation.x(duration.toSeconds());
+  }
+
+  @override
+  String toString() => 'FixedDurationFreeMotion($parent, duration: $duration)';
+}
+
+/// {@template FrictionMotion}
+/// A free motion that decelerates due to fluid drag (friction).
+///
+/// Models a particle slowing down through a medium, like a scroll view
+/// coasting to a stop. The [drag] coefficient controls how quickly the motion
+/// decelerates — lower values mean faster deceleration.
+///
+/// An optional [constantDeceleration] can be applied on top of the
+/// exponential drag for a more linear slow-down feel.
+///
+/// Use [finalValue] to compute where the motion will come to rest for a
+/// given start position and velocity, without running the full simulation.
+/// {@endtemplate}
+@immutable
+class FrictionMotion extends FreeMotion {
+  /// {@macro FrictionMotion}
+  ///
+  /// [drag] is the fluid drag coefficient (must be > 0). A typical scrolling
+  /// drag is around 0.135.
+  ///
+  /// [constantDeceleration] adds a fixed deceleration on top of the
+  /// exponential drag. Defaults to 0.
+  const FrictionMotion({
+    this.drag = 0.135,
+    this.constantDeceleration = 0,
+    super.tolerance,
+  })  : assert(drag > 0, 'drag must be positive'),
+        assert(constantDeceleration >= 0, 'constantDeceleration must be >= 0');
+
+  /// The fluid drag coefficient.
+  ///
+  /// Must be greater than 0. Lower values mean faster deceleration.
+  /// A typical scrolling drag is around 0.135.
+  final double drag;
+
+  /// A constant deceleration applied on top of exponential drag.
+  ///
+  /// Defaults to 0 (pure exponential friction).
+  final double constantDeceleration;
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double velocity = 0,
+  }) {
+    return FrictionSimulation(
+      drag,
+      start,
+      velocity,
+      tolerance: tolerance,
+      constantDeceleration: constantDeceleration,
+    );
+  }
+
+  @override
+  double finalValue({double start = 0, double velocity = 0}) {
+    return FrictionSimulation(
+      drag,
+      start,
+      velocity,
+      constantDeceleration: constantDeceleration,
+    ).finalX;
+  }
+
+  @override
+  T project<T>({
+    required T from,
+    required T velocity,
+    required MotionConverter<T> converter,
+  }) {
+    return super.project(from: from, velocity: velocity, converter: converter)!;
+  }
+
+  /// Returns a copy with the given fields replaced.
+  FrictionMotion copyWith({
+    double? drag,
+    double? constantDeceleration,
+    Tolerance? tolerance,
+  }) {
+    return FrictionMotion(
+      drag: drag ?? this.drag,
+      constantDeceleration: constantDeceleration ?? this.constantDeceleration,
+      tolerance: tolerance ?? this.tolerance,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FrictionMotion &&
+        drag == other.drag &&
+        constantDeceleration == other.constantDeceleration &&
+        tolerance.sameAs(other.tolerance);
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(drag, constantDeceleration, tolerance.valueHash);
+
+  @override
+  String toString() => 'FrictionMotion(drag: $drag, '
+      'constantDeceleration: $constantDeceleration)';
+}
+
+class _FixedDurationSimulation extends Simulation implements FiniteSimulation {
+  _FixedDurationSimulation({
+    required this.parent,
+    required this.duration,
+    required this.start,
+    required this.end,
+    required double sourceDuration,
+  })  : _durationInSeconds =
+            duration.inMicroseconds / Duration.microsecondsPerSecond,
+        _sourceDuration = sourceDuration,
+        super(tolerance: parent.tolerance);
+
+  final Simulation parent;
+  final Duration duration;
+  final double start;
+  final double end;
+  final double _durationInSeconds;
+  final double _sourceDuration;
+
+  @override
+  double x(double time) {
+    if (_durationInSeconds == 0 || time >= _durationInSeconds) return end;
+    if (time <= 0) return start;
+    return parent.x(_scaleTime(time));
+  }
+
+  @override
+  double dx(double time) {
+    if (time < 0 || _durationInSeconds == 0 || time >= _durationInSeconds) {
+      return 0;
+    }
+    return parent.dx(_scaleTime(time)) * (_sourceDuration / _durationInSeconds);
+  }
+
+  // Done exactly at the duration, where x is the end value.
+  @override
+  bool isDone(double time) => time >= _durationInSeconds;
+
+  @override
+  double get finishSeconds => _durationInSeconds;
+
+  double _scaleTime(double time) => time / _durationInSeconds * _sourceDuration;
 }
 
 /// {@template TrimmedMotion}
@@ -769,10 +1277,16 @@ class TrimmedMotion extends Motion {
   final double fromEnd;
 
   @override
-  bool get needsSettle => parent.needsSettle;
+  Duration? get duration => switch (parent.duration) {
+        final d? => Duration(
+            microseconds:
+                (d.inMicroseconds * (1 - fromStart - fromEnd)).round(),
+          ),
+        null => null,
+      };
 
   @override
-  bool get unboundedWillSettle => parent.unboundedWillSettle;
+  bool get needsSettle => parent.needsSettle;
 
   @override
   Tolerance get tolerance => parent.tolerance;
@@ -802,6 +1316,19 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
+      parentDuration: switch (parent.duration) {
+        final d? when !parent.needsSettle => d.toSeconds(),
+        final d? => estimateSimulationDuration(
+            scaledSim,
+            fallback: d,
+            max: const Duration(seconds: 10),
+          ),
+        null => estimateSimulationDuration(
+            scaledSim,
+            fallback: const Duration(seconds: 1),
+            max: const Duration(seconds: 10),
+          ),
+      },
     );
   }
 
@@ -831,7 +1358,8 @@ class _TrimmedSimulation extends Simulation {
     required this.trimmedExtent,
     required this.start,
     required this.end,
-  })  : _duration = _findParentDuration(parent) * trimmedExtent,
+    required double parentDuration,
+  })  : _duration = parentDuration * trimmedExtent,
         super(tolerance: parent.tolerance);
 
   final Simulation parent;
@@ -841,16 +1369,6 @@ class _TrimmedSimulation extends Simulation {
   final double start;
   final double end;
   final double _duration;
-
-  static double _findParentDuration(Simulation parent) {
-    // For most simulations, check when isDone returns true
-    for (var t = 0.01; t <= 10; t += 0.01) {
-      if (parent.isDone(t)) {
-        return t;
-      }
-    }
-    return 1; // fallback
-  }
 
   @override
   double x(double time) {
@@ -898,6 +1416,9 @@ class _TrimmedSimulation extends Simulation {
 }
 
 /// Extension methods for [Motion] to provide convenient trimming functionality.
+///
+/// Motion wrappers are immutable value objects; construct and reuse them
+/// because unknown-duration parents are probed on each `createSimulation`.
 ///
 /// **Important**: Trimming behavior varies by motion type:
 /// * **Deterministic motions** (like [CurvedMotion]): Trimming is exact and
@@ -962,4 +1483,18 @@ extension MotionTrimming on Motion {
       fromEnd: 1.0 - (start + length),
     );
   }
+}
+
+extension on Duration {
+  double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
+}
+
+// Tolerance has no value equality of its own.
+extension on Tolerance {
+  bool sameAs(Tolerance other) =>
+      distance == other.distance &&
+      time == other.time &&
+      velocity == other.velocity;
+
+  int get valueHash => Object.hash(distance, time, velocity);
 }

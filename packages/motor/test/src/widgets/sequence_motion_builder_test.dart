@@ -1,8 +1,11 @@
 // ignore_for_file: avoid_positional_boolean_parameters
+// ignore_for_file: deprecated_member_use_from_same_package
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
+
+import '../util.dart';
 
 enum TestPhase { idle, active, complete }
 
@@ -92,7 +95,7 @@ void main() {
       expect(capturedPhase, equals(TestPhase.active));
 
       await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(100.0, 0.001));
+      expect(capturedValue, closeTo(100.0, error));
     });
 
     testWidgets('starts sequence when playing is true', (tester) async {
@@ -222,17 +225,17 @@ void main() {
     testWidgets('calls onAnimationStatusChanged callback', (tester) async {
       final capturedStatuses = <AnimationStatus>[];
 
-      await tester.pumpWidget(
-        SequenceMotionBuilder<TestPhase, double>(
-          sequence: sequence,
-          converter: const SingleMotionConverter(),
-          playing: false,
-          currentPhase: TestPhase.active,
-          onAnimationStatusChanged: capturedStatuses.add,
-          builder: (context, value, phase, child) => const SizedBox(),
-        ),
-      );
+      Widget build(TestPhase phase) => SequenceMotionBuilder<TestPhase, double>(
+            sequence: sequence,
+            converter: const SingleMotionConverter(),
+            playing: false,
+            currentPhase: phase,
+            onAnimationStatusChanged: capturedStatuses.add,
+            builder: (context, value, phase, child) => const SizedBox(),
+          );
 
+      await tester.pumpWidget(build(TestPhase.idle));
+      await tester.pumpWidget(build(TestPhase.active));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -310,7 +313,7 @@ void main() {
       expect(capturedValue, lessThan(50.0));
 
       await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(50.0, 0.001));
+      expect(capturedValue, closeTo(50.0, error));
     });
 
     testWidgets('stops sequence when playing changes to false', (tester) async {
@@ -360,7 +363,7 @@ void main() {
 
       await tester.pumpWidget(buildWidget(trigger));
       await tester.pumpAndSettle();
-      expect(capturedValue, closeTo(100.0, 0.001));
+      expect(capturedValue, closeTo(100.0, error));
 
       // Change trigger to restart animation
       trigger = 'restart';
@@ -430,8 +433,8 @@ void main() {
         expect(capturedValue!.dy, lessThanOrEqualTo(50.0));
 
         await tester.pumpAndSettle();
-        expect(capturedValue!.dx, closeTo(100.0, 0.001));
-        expect(capturedValue!.dy, closeTo(50.0, 0.001));
+        expect(capturedValue!.dx, closeTo(100.0, error));
+        expect(capturedValue!.dy, closeTo(50.0, error));
       });
     });
 

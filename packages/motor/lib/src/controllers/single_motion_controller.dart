@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 
 /// A controller that manages a single-dimensional motion.
 ///
@@ -13,6 +14,8 @@ class SingleMotionController extends MotionController<double> {
     required super.vsync,
     super.initialValue = 0,
     super.behavior = AnimationBehavior.normal,
+    super.velocityTracking,
+    super.debugLabel,
   }) : super(
           converter: const SingleMotionConverter(),
         );
@@ -25,6 +28,8 @@ class SingleMotionController extends MotionController<double> {
     double lowerBound,
     double upperBound,
     AnimationBehavior behavior,
+    VelocityTracking velocityTracking,
+    String? debugLabel,
   }) = BoundedSingleMotionController;
 }
 
@@ -41,6 +46,8 @@ class BoundedSingleMotionController extends BoundedMotionController<double>
     super.lowerBound = 0,
     super.upperBound = 1,
     super.behavior,
+    super.velocityTracking,
+    super.debugLabel,
   }) : super(
           converter: const SingleMotionConverter(),
         );

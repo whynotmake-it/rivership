@@ -1,30 +1,21 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'dart:math';
 
-import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show objectRuntimeType;
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 
-/// The mode in which the phase animation should loop.
-enum LoopMode {
-  /// Don't loop the animation.
-  none,
-
-  /// The animation will loop from the last phase back to the first phase.
-  loop,
-
-  /// The animation will play forward and then reverse back to the start.
-  pingPong,
-
-  /// The animation will loop seamlessly by treating the first and last phases
-  /// as identical, creating smooth circular transitions without jarring jumps.
-  seamless;
-
-  /// Whether the animation should loop.
-  bool get isLooping => this == loop || this == pingPong || this == seamless;
-}
+export 'package:motor/src/loop_mode.dart';
 
 /// A value and its associated motion.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 typedef ValueWithMotion<T> = (T value, Motion motion);
 
 /// {@template MotionSequence}
@@ -37,21 +28,30 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 ///
 /// ```dart
 /// // State-based sequence
-/// final states = MotionSequence.states({
-///   ButtonState.idle: Offset(0, 0),
-///   ButtonState.pressed: Offset(0, 10),
-/// }, motion: Motion.bouncySpring());
+/// final states = MotionSequence<ButtonState, Offset>.states({
+///   .idle: Offset(0, 0),
+///   .pressed: Offset(0, 10),
+/// }, motion: .bouncySpring());
 ///
 /// // Step sequence
-/// final steps = MotionSequence.steps([
+/// final steps = MotionSequence.steps<Color>([
 ///   Colors.red, Colors.green, Colors.blue
-/// ], motion: Motion.smoothSpring());
+/// ], motion: .smoothSpring());
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 @immutable
-// ignore: deprecated_member_use
-abstract class MotionSequence<P, T extends Object> with EquatableMixin {
+abstract class MotionSequence<P, T extends Object> {
   /// {@macro MotionSequence}
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const MotionSequence();
 
   /// Creates a sequence from named phases to values.
@@ -66,12 +66,17 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// ```dart
   /// enum ButtonState { idle, pressed, loading }
   ///
-  /// final sequence = MotionSequence.states({
-  ///   ButtonState.idle: Offset(0, 0),
-  ///   ButtonState.pressed: Offset(0, 5),
-  ///   ButtonState.loading: Offset(10, 0),
-  /// }, motion: Motion.bouncySpring());
+  /// final sequence = MotionSequence<ButtonState, Offset>.states({
+  ///   .idle: Offset(0, 0),
+  ///   .pressed: Offset(0, 5),
+  ///   .loading: Offset(10, 0),
+  /// }, motion: .bouncySpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const factory MotionSequence.states(
     Map<P, T> values, {
     required Motion motion,
@@ -81,11 +86,16 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence from named phases to values, each with its own motion.
   ///
   /// ```dart
-  /// final sequence = MotionSequence.statesWithMotions({
-  ///   ButtonState.idle: (Offset(0, 0), Motion.smoothSpring()),
-  ///   ButtonState.pressed: (Offset(0, 5), Motion.snappySpring()),
+  /// final sequence = MotionSequence<ButtonState, Offset>.statesWithMotions({
+  ///   .idle: (Offset(0, 0), .smoothSpring()),
+  ///   .pressed: (Offset(0, 5), .snappySpring()),
   /// });
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const factory MotionSequence.statesWithMotions(
     Map<P, ValueWithMotion<T>> values, {
     LoopMode loop,
@@ -101,11 +111,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// for all other phase transitions.
   ///
   /// ```dart
-  /// final positions = MotionSequence.steps([
+  /// final positions = MotionSequence.steps<Offset>([
   ///   Offset(0, 0),
   ///   Offset(100, 100),
   ///   Offset(200, 0),
-  /// ], motion: Motion.smoothSpring(), loop: LoopMode.seamless);
+  /// ], motion: .smoothSpring(), loop: .seamless);
   /// ```
   static MotionSequence<int, T> steps<T extends Object>(
     List<T> values, {
@@ -117,10 +127,10 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   /// Creates a sequence that steps through values, each with its own motion.
   ///
   /// ```dart
-  /// final sequence = MotionSequence.stepsWithMotions([
-  ///   (Offset(0, 0), Motion.smoothSpring()),
-  ///   (Offset(100, 100), Motion.bouncySpring()),
-  ///   (Offset(200, 0), Motion.smoothSpring()),
+  /// final sequence = MotionSequence.stepsWithMotions<Offset>([
+  ///   (Offset(0, 0), .smoothSpring()),
+  ///   (Offset(100, 100), .bouncySpring()),
+  ///   (Offset(200, 0), .smoothSpring()),
   /// ]);
   /// ```
   static MotionSequence<int, T> stepsWithMotions<T extends Object>(
@@ -136,11 +146,11 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
   ///
   /// ```dart
   /// // 2-second animation with proportional timing
-  /// final timeline = MotionSequence.spanning({
+  /// final timeline = MotionSequence.spanning<LogoState>({
   ///   0.0: LogoState(opacity: 0),      // Start (0% of time)
   ///   1.0: LogoState(opacity: 1),      // 50% of time
   ///   2.0: LogoState(opacity: 0),      // 100% of time
-  /// }, motion: LinearMotion(Duration(seconds: 2)));
+  /// }, motion: .linear(Duration(seconds: 2)));
   /// ```
   static SpanningSequence<T> spanning<T extends Object>(
     Map<num, T> values, {
@@ -212,22 +222,77 @@ abstract class MotionSequence<P, T extends Object> with EquatableMixin {
     );
   }
 
-  @override
-  List<Object?> get props => [
+  /// What equality compares: the phases, their values and motions, and the
+  /// loop mode.
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
         ...phases.map((p) => motionForPhase(toPhase: p)),
         loop,
       ];
+
+  /// Sequences of the same class are equal when they have the same phases,
+  /// values and loop mode, and motions that move the same.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MotionSequence<P, T> &&
+          other.runtimeType == runtimeType &&
+          _deepEquals(other._equality, _equality);
+
+  @override
+  int get hashCode => Object.hash(runtimeType, _deepHash(_equality));
+
+  @override
+  String toString() =>
+      '${objectRuntimeType(this, 'MotionSequence')}(${phases.join(', ')}, '
+      'loop: $loop)';
 }
+
+bool _deepEquals(Object? a, Object? b) {
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_deepEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final MapEntry(:key, :value) in a.entries) {
+      if (!b.containsKey(key) || !_deepEquals(value, b[key])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+
+int _deepHash(Object? value) => switch (value) {
+      final List<Object?> list => Object.hashAll(list.map(_deepHash)),
+      final Map<Object?, Object?> map => Object.hashAllUnordered([
+          for (final MapEntry(:key, :value) in map.entries)
+            Object.hash(key, _deepHash(value)),
+        ]),
+      _ => value.hashCode,
+    };
 
 /// {@template StepSequence}
 /// A sequence that steps through values by index (0, 1, 2...).
 ///
 /// Use [MotionSequence.steps] to create step sequences.
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class StepSequence<T extends Object> extends MotionSequence<int, T> {
   /// Creates a step sequence with a single motion for all steps.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StepSequence(
     this._steps, {
     required Motion motion,
@@ -236,6 +301,11 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
         _stepsWithMotions = null;
 
   /// Creates a step sequence with individual motions per step.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StepSequence.withMotions(
     this._stepsWithMotions, {
     this.loop = LoopMode.none,
@@ -281,10 +351,13 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
-        _motion ?? _stepsWithMotions,
+        if (_motion case final motion?)
+          motion
+        else
+          [for (final (_, motion) in _stepsWithMotions!) motion],
         loop,
       ];
 
@@ -321,8 +394,18 @@ class StepSequence<T extends Object> extends MotionSequence<int, T> {
 /// Perfect for state machines, enums, or any named phase system.
 /// Use [MotionSequence.states] to create state sequences.
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   /// Creates a state sequence with a single motion for all transitions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StateSequence(
     this._states, {
     required Motion motion,
@@ -331,6 +414,11 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
         _statesWithMotions = null;
 
   /// Creates a state sequence with individual motions per phase.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const StateSequence.withMotions(
     this._statesWithMotions, {
     this.loop = LoopMode.none,
@@ -367,18 +455,34 @@ class StateSequence<P, T extends Object> extends MotionSequence<P, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
-        _motion ?? _statesWithMotions,
+        if (_motion case final motion?)
+          motion
+        else
+          {
+            for (final MapEntry(:key, :value) in _statesWithMotions!.entries)
+              key: value.$2,
+          },
         loop,
       ];
 }
 
 /// Provides methods to modify a given [MotionSequence].
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension SequenceModificationX<P, T extends Object> on MotionSequence<P, T> {
   /// Retains [phases] and values while using a single [motion] for all
   /// transitions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<P, T> withSingleMotion(Motion motion) {
     return SingleMotionPhaseSequence(this, motion);
   }
@@ -386,10 +490,20 @@ extension SequenceModificationX<P, T extends Object> on MotionSequence<P, T> {
 
 /// A phase sequence that wraps a [parent] uses a single motion for all
 /// of its transitions.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 class SingleMotionPhaseSequence<P, T extends Object>
     extends MotionSequence<P, T> {
   /// Creates a [SingleMotionPhaseSequence] with the given parent sequence
   /// and motion.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   const SingleMotionPhaseSequence(
     this.parent,
     this.motion,
@@ -414,7 +528,7 @@ class SingleMotionPhaseSequence<P, T extends Object>
   Motion motionForPhase({required P toPhase, P? fromPhase}) => motion;
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
         motion,
@@ -438,12 +552,22 @@ class SingleMotionPhaseSequence<P, T extends Object>
 /// }, motion: LinearMotion(Duration(seconds: 2)))
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 @immutable
 class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   /// Creates a spanning sequence with positioned phases.
   ///
   /// [values] maps position numbers to property values. The [motion]
   /// spans across all phases proportionally based on their positions.
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence(
     Map<num, T> values, {
     required this.motion,
@@ -520,7 +644,7 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
   }
 
   @override
-  List<Object?> get props => [
+  List<Object?> get _equality => [
         ...phases,
         ...phases.map(valueForPhase),
         motion,
@@ -537,7 +661,7 @@ class SpanningSequence<T extends Object> extends MotionSequence<double, T> {
           case LoopMode.loop:
             return _phasesList.length - 1;
           case LoopMode.seamless:
-            return _phasesList.length - 2;
+            return _phasesList.length > 2 ? _phasesList.length - 2 : 1;
         }
       } else {
         return index - 1;
@@ -572,6 +696,11 @@ Map<double, T> _normalizeTimelineValues<T extends Object>(
 }
 
 /// Extension methods for creating step sequences from value-motion pairs.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension IterableMotionConversionX<T extends Object>
     on Iterable<ValueWithMotion<T>> {
   /// Creates a step sequence from this list of values with motions.
@@ -582,6 +711,11 @@ extension IterableMotionConversionX<T extends Object>
   ///   (Colors.green, Motion.bouncySpring()),
   /// ].toSteps();
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<int, T> toSteps({
     LoopMode loop = LoopMode.none,
   }) =>
@@ -589,6 +723,11 @@ extension IterableMotionConversionX<T extends Object>
 }
 
 /// Extension methods for creating state sequences from maps.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension MapConversionX<P, T extends Object> on Map<P, T> {
   /// Creates a state sequence from this phase-to-value mapping.
   ///
@@ -596,8 +735,13 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
   /// final sequence = {
   ///   ButtonState.idle: Offset(0, 0),
   ///   ButtonState.pressed: Offset(0, 5),
-  /// }.toStates(motion: Motion.bouncySpring());
+  /// }.toStates(motion: .bouncySpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<P, T> toStates({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -610,6 +754,11 @@ extension MapConversionX<P, T extends Object> on Map<P, T> {
 }
 
 /// Extension methods for creating spanning sequences from position maps.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
   /// Creates a spanning sequence from this position-to-value mapping.
   ///
@@ -622,6 +771,11 @@ extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
   ///   3.0: endState,
   /// }.spanning(motion: LinearMotion(Duration(seconds: 2)));
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loop = LoopMode.none,
@@ -634,6 +788,11 @@ extension MapDoubleConversionX<P extends num, T extends Object> on Map<P, T> {
 }
 
 /// Extension methods for creating sequences from lists.
+@Deprecated(
+  'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+  'PhaseTrackController instead. See MIGRATION.md. '
+  'MotionSequence will be removed in motor 3.0.',
+)
 extension IterableConversionX<T extends Object> on Iterable<T> {
   /// Creates a step sequence from this list using indices as phases.
   ///
@@ -644,8 +803,13 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
   ///   Colors.red,
   ///   Colors.green,
   ///   Colors.blue,
-  /// ].toSteps(motion: Motion.smoothSpring());
+  /// ].toSteps(motion: .smoothSpring());
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   MotionSequence<int, T> toSteps({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,
@@ -666,6 +830,11 @@ extension IterableConversionX<T extends Object> on Iterable<T> {
   /// ].spanning(motion: LinearMotion(Duration(seconds: 2)));
   /// // Equivalent to: {0.0: pos1, 1.0: pos2, 2.0: pos3}
   /// ```
+  @Deprecated(
+    'Use Track/TrackPhaseTimeline with PhaseTrackBuilder or '
+    'PhaseTrackController instead. See MIGRATION.md. '
+    'MotionSequence will be removed in motor 3.0.',
+  )
   SpanningSequence<T> spanning({
     required Motion motion,
     LoopMode loopMode = LoopMode.none,
