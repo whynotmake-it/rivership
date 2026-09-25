@@ -1,5 +1,6 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
+import 'package:clock/clock.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -470,6 +471,47 @@ void main() {
       ..set([position.value(2)]);
 
     expect(samples, [1.0, 2.0]);
+  });
+
+  testWidgets('custom velocity trackers take the default path',
+      (tester) async {
+    final position = Track<double>(MotionConverter.single, initial: 0.0);
+    int clockReads(VelocityTracking tracking) {
+      final controller = TrackController(
+        vsync: tester,
+        velocityTracking: tracking,
+      );
+      var reads = 0;
+      final start = DateTime.utc(2026);
+      withClock(Clock(() => start.add(Duration(milliseconds: 16 * reads++))),
+          () {
+        controller
+          ..set([position.value(1)])
+          ..set([position.value(2)]);
+      });
+      controller.dispose();
+      return reads;
+    }
+
+    expect(clockReads(const VelocityTracking.on()), 2);
+    expect(
+      clockReads(
+        VelocityTracking.on(
+          velocityTrackerBuilder: <T>(converter) =>
+              MotionVelocityTracker<T>(converter),
+        ),
+      ),
+      2,
+    );
+    expect(
+      clockReads(
+        VelocityTracking.on(
+          velocityTrackerBuilder: <T>(converter) =>
+              _RecordingTracker<T>(converter, []),
+        ),
+      ),
+      2,
+    );
   });
 
   testWidgets('a finished curve rests, so the next motion starts from rest',
