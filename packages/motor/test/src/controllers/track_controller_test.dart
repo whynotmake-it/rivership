@@ -818,32 +818,35 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets(
-        'values read earlier do not change when a converter keeps its input',
+    testWidgets('custom converters read the reused buffer without a copy',
         (tester) async {
-      final points = Track<List<double>>(
-        MotionConverter<List<double>>.custom(
-          normalize: (value) => value,
-          denormalize: (values) => values,
+      final received = <List<double>>[];
+      final offset = Track<Offset>(
+        MotionConverter<Offset>.custom(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) {
+            received.add(values);
+            return Offset(values[0], values[1]);
+          },
         ),
-        initial: const [0, 0],
+        initial: Offset.zero,
       );
       final controller = TrackController(vsync: tester);
       controller.animate([
-        points.to(
-          const [100, 100],
+        offset.to(
+          const Offset(100, 100),
           motion: const Motion.linear(Duration(milliseconds: 100)),
         ),
       ]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 20));
-      final earlier = controller.value(points);
-      final snapshot = List.of(earlier);
-
+      final earlier = controller.value(offset);
+      final earlierList = received.last;
       await tester.pump(const Duration(milliseconds: 40));
+      final later = controller.value(offset);
 
-      expect(earlier, snapshot);
-      expect(controller.value(points), isNot(snapshot));
+      expect(later, isNot(earlier));
+      expect(identical(received.last, earlierList), isTrue);
       controller.dispose();
     });
 

@@ -151,6 +151,28 @@ final t = PhaseSettled(phase);
 final u = PhaseTransitioning(from: a, to: b);
 ```
 
+### Converters must not keep motor's lists
+
+`MotionConverter.denormalize` now receives motor's reused buffer, which
+changes after the call, and motor may keep the list `normalize` returns.
+In 1.x, `denormalize` got a fresh list each time. This only matters if your
+converter keeps the list itself; converters that build a new value from the
+numbers are unaffected.
+
+```dart
+// Before (1.x):
+final converter = MotionConverter<List<double>>.custom(
+  normalize: (value) => value,
+  denormalize: (values) => values,
+);
+
+// After (2.0):
+final converter = MotionConverter<List<double>>.custom(
+  normalize: (value) => value,
+  denormalize: List.of,
+);
+```
+
 ### Sealed `MotionBase` root
 
 The motion hierarchy is now rooted in the sealed `MotionBase`, with `Motion`
