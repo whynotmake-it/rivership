@@ -148,6 +148,12 @@ class _FlightSpec {
 
   /// Computes the bounding box for a context's render object,
   /// in an ancestor context's coordinate space.
+  ///
+  /// The transform's 2D linear part is decomposed into rotation and per-axis
+  /// scale rather than flattened with [MatrixUtils.transformRect]: a hero
+  /// under a `Transform.rotate` ancestor would otherwise report the inflated
+  /// axis-aligned bounding box of its tilted self, and the flight would land
+  /// on a rect that is both too large and untilted.
   static HeroineLocation _locationFor(
     _HeroineState state,
     BuildContext? ancestorContext,
@@ -159,13 +165,29 @@ class _FlightSpec {
       'RenderObject must have a finite size to be used as a hero',
     );
 
-    final rect = MatrixUtils.transformRect(
-      box.getTransformTo(ancestorContext?.findRenderObject()),
-      Offset.zero & box.size,
+    final transform =
+        box.getTransformTo(ancestorContext?.findRenderObject());
+
+    final m00 = transform.entry(0, 0);
+    final m10 = transform.entry(1, 0);
+    final m01 = transform.entry(0, 1);
+    final m11 = transform.entry(1, 1);
+    final rotation = math.atan2(m10, m00);
+    final scaleX = math.sqrt(m00 * m00 + m10 * m10);
+    final scaleY = math.sqrt(m01 * m01 + m11 * m11);
+
+    final center = MatrixUtils.transformPoint(
+      transform,
+      box.size.center(Offset.zero),
     );
 
-    // TODO(tim): find rotation here
-    return HeroineLocation(boundingBox: rect);
+    final rect = Rect.fromCenter(
+      center: center,
+      width: box.size.width * scaleX,
+      height: box.size.height * scaleY,
+    );
+
+    return HeroineLocation(boundingBox: rect, rotation: rotation);
   }
 
   @override
