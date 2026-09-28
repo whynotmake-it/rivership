@@ -646,17 +646,18 @@ class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
   ///
   /// The duration is the duration of the spring motion, and the bounce is the
-  /// amount of bounce in the spring motion.
+  /// amount of bounce in the spring motion, at most 1 (undamped).
   ///
-  /// By default, this creates a smooth spring with no bounce, matching the
-  /// [standard iOS spring motion behavior](https://developer.apple.com/documentation/swiftui/animation/default).
+  /// By default, this is SwiftUI's default spring, `Spring()` or
+  /// `Animation.spring`: 0.5 s with no bounce, the same as
+  /// [CupertinoMotion.smooth].
   ///
   /// [snapToEnd] defaults to true.
   ///
   /// In a track, the next step takes over after [duration]; a last step
   /// keeps settling.
   const CupertinoMotion({
-    this.duration = const Duration(milliseconds: 550),
+    this.duration = const Duration(milliseconds: 500),
     this.bounce = 0,
     super.snapToEnd,
   }) : super._();
@@ -727,7 +728,7 @@ class CupertinoMotion extends SpringMotion {
   /// keeps settling.
   ///
   /// See also:
-  /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)
+  /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(duration:extrabounce:blendduration:)
   /// {@endtemplate}
   const CupertinoMotion.interactive({
     Duration duration = const Duration(milliseconds: 150),
@@ -735,7 +736,7 @@ class CupertinoMotion extends SpringMotion {
     bool snapToEnd = true,
   }) : this(
           duration: duration,
-          bounce: 0.14 + extraBounce,
+          bounce: 0.15 + extraBounce,
           snapToEnd: snapToEnd,
         );
 
@@ -748,14 +749,24 @@ class CupertinoMotion extends SpringMotion {
   @override
   final Duration duration;
 
-  /// The bounce of the spring motion.
+  /// The bounce of the spring motion, at most 1.
+  ///
+  /// 0 is critically damped, 1 is undamped and oscillates forever, and a
+  /// negative bounce is overdamped. A bounce above 1 asserts in debug builds
+  /// and is treated as 1 otherwise, as SwiftUI does.
   final double bounce;
 
   @override
-  SpringDescription get description => SpringDescription.withDurationAndBounce(
-        duration: duration,
-        bounce: bounce,
-      );
+  SpringDescription get description {
+    assert(
+      bounce <= 1,
+      'A CupertinoMotion bounce must be at most 1 (undamped), but was $bounce.',
+    );
+    return SpringDescription.withDurationAndBounce(
+      duration: duration,
+      bounce: bounce > 1 ? 1 : bounce,
+    );
+  }
 
   /// Creates a new [CupertinoMotion] with the same properties as this one, but
   /// with the specified [bounce] and [duration].

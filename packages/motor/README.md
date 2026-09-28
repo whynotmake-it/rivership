@@ -108,11 +108,11 @@ unknown, so avoid re-creating them in hot paths.
 
 `CupertinoMotion` offers several predefined constants that correspond to [SwiftUI's animation presets](https://developer.apple.com/documentation/swiftui/animation):
 
-- **`CupertinoMotion()`** - The default iOS spring with smooth motion and no bounce
+- **`CupertinoMotion()`** - SwiftUI's default spring (`Spring()`, `Animation.spring`): 0.5 s with no bounce, the same as `.smooth()`
 - **`.smooth()`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
 - **`.bouncy()`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
 - **`.snappy()`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
-- **`.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(response:dampingfraction:blendduration:)) with lower response, designed for user-driven animations
+- **`.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(duration:extrabounce:blendduration:)) with lower response, designed for user-driven animations
 
 You can also create custom `CupertinoMotion` instances:
 

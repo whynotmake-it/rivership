@@ -262,6 +262,27 @@ simulation is done, override `settlingDuration` with the same arguments as
 `createSimulation`. Motor then ends settling steps at that time instead of
 sampling `isDone` to find it.
 
+### Cupertino presets match SwiftUI
+
+`CupertinoMotion()` and `Motion.cupertino()` now default to 500 ms, like
+SwiftUI's `Spring()` and `.smooth()`, instead of 550 ms. `.interactive()` and
+`Motion.interactiveSpring()` use bounce 0.15, like SwiftUI's current
+`Animation.interactiveSpring`, instead of 0.14. The other presets are
+unchanged. To keep the 1.x springs exactly:
+
+```dart
+// Before (1.x):
+const standard = CupertinoMotion();
+const interactive = CupertinoMotion.interactive();
+
+// After (2.0), unchanged motion:
+const standard = CupertinoMotion(duration: Duration(milliseconds: 550));
+const interactive = CupertinoMotion(
+  duration: Duration(milliseconds: 150),
+  bounce: 0.14,
+);
+```
+
 ### Sequences no longer use `equatable`
 
 motor dropped its `equatable` dependency. `MotionSequence` and its
