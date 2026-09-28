@@ -171,7 +171,7 @@ class MotionVelocityTracker<T> {
   /// Returns a velocity estimate based on recent position samples.
   ///
   /// Returns `null` if no samples have been recorded. Returns zero velocity
-  /// with confidence 1.0 if movement stopped more than 40ms ago. Uses weighted
+  /// if movement stopped more than 40ms ago. Uses weighted
   /// average of recent samples (0.6, 0.35, 0.05) for stability.
   MotionVelocityEstimate<T>? getVelocityEstimate() {
     if (_count == 0) return null;
@@ -184,7 +184,6 @@ class MotionVelocityTracker<T> {
       final zeroT = converter.denormalize(List.filled(dims, 0.0));
       return MotionVelocityEstimate<T>(
         perSecond: zeroT,
-        confidence: 1.0,
         duration: Duration.zero,
         offset: zeroT,
       );
@@ -204,31 +203,23 @@ class MotionVelocityTracker<T> {
 
     return MotionVelocityEstimate<T>(
       perSecond: converter.denormalize(estimatedVelocityValues),
-      confidence: 1.0,
       duration: Duration(microseconds: _times[newest] - _times[oldest]),
       offset: converter.denormalize(offsetValues),
     );
   }
 }
 
-/// A velocity estimate with confidence metrics.
+/// A velocity estimate from recent position samples.
 class MotionVelocityEstimate<T> {
   /// Creates a velocity estimate.
   const MotionVelocityEstimate({
     required this.perSecond,
-    required this.confidence,
     required this.duration,
     required this.offset,
   });
 
   /// The estimated rate of change per second.
   final T perSecond;
-
-  /// Confidence in the estimate (0.0 to 1.0).
-  ///
-  /// Motor's built-in tracker always reports 1.0; it returns no estimate at
-  /// all when it has no samples.
-  final double confidence;
 
   /// The time that elapsed between the first and last position sample.
   final Duration duration;
@@ -237,6 +228,7 @@ class MotionVelocityEstimate<T> {
   final T offset;
 
   @override
-  String toString() => 'MotionVelocityEstimate($perSecond; offset: $offset, '
-      'duration: $duration, confidence: ${confidence.toStringAsFixed(1)})';
+  String toString() =>
+      'MotionVelocityEstimate($perSecond; offset: $offset, '
+      'duration: $duration)';
 }

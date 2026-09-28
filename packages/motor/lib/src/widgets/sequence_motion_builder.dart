@@ -182,7 +182,7 @@ class _SequenceMotionBuilderState<P, T extends Object>
   void didUpdateWidget(SequenceMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
-    _controller.debugInnerController.velocityTracking =
+    _controller.internalInnerController.velocityTracking =
         widget.velocityTracking;
 
     // Handle status listener changes

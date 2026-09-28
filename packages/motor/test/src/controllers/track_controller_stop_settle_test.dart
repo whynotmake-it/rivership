@@ -1,6 +1,6 @@
 // ignore_for_file: cascade_invocations, unawaited_futures
 
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
@@ -81,14 +81,30 @@ void main() {
       expect(controller.isAnimating, isFalse);
     });
 
-    testWidgets('stop() hard-stops when the track has no default motion',
+    testWidgets('stop() settles with the spring of the running step',
         (tester) async {
       controller = TrackController(vsync: tester);
 
       final noDefault = Track<double>(MotionConverter.single, initial: 0);
-      // The spring lives on the step, not the track; settle uses the track
-      // default, so there is nothing to settle with.
       controller.animate([noDefault.to(1, motion: spring)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      final valueAtStop = controller.value(noDefault);
+
+      controller.stop();
+      await tester.pump();
+      expect(controller.isAnimating, isTrue);
+
+      await tester.pumpAndSettle();
+      expect(controller.value(noDefault), closeTo(valueAtStop, 1e-2));
+      expect(controller.value(noDefault), lessThan(1));
+    });
+
+    testWidgets('stop() hard-stops a curve step on a spring track',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([springTrack.to(1, motion: linear100)]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
       expect(controller.isAnimating, isTrue);
@@ -96,6 +112,43 @@ void main() {
       controller.stop();
       await tester.pump();
       expect(controller.isAnimating, isFalse);
+    });
+
+    testWidgets('stop() settles a free step with the track default motion',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      controller.animate([
+        springTrack.free(const FrictionMotion(), withVelocity: 5),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+
+      controller.stop();
+      await tester.pump();
+      expect(controller.isAnimating, isTrue);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('stop() settles each dimension with its running motion',
+        (tester) async {
+      controller = TrackController(vsync: tester);
+
+      final offset =
+          Track<Offset>(MotionConverter.offset, initial: Offset.zero);
+      controller.animate([
+        offset.to(
+          const Offset(1, 1),
+          motionPerDimension: const [linear100, spring],
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+
+      controller.stop();
+      await tester.pump();
+      expect(controller.isAnimating, isTrue);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('stop() returns a future that completes when settling finishes',

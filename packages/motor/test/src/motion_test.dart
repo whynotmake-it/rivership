@@ -3,16 +3,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
-import 'package:motor/src/controllers/motion_controller.dart'
-    show motionsEqual;
+import 'package:motor/src/controllers/motion_controller.dart' show motionsEqual;
 
 import 'util.dart';
 
 class _ConstantVelocityMotion extends FreeMotion {
   const _ConstantVelocityMotion();
-
-  @override
-  bool get needsSettle => false;
 
   @override
   Simulation createSimulation({
@@ -40,6 +36,43 @@ class _ConstantVelocitySimulation extends Simulation {
 
   @override
   bool isDone(double time) => time >= 1;
+}
+
+/// Implements [Motion] with only the members 2.0 requires of implementers.
+class _ImplementedMotion implements Motion {
+  const _ImplementedMotion();
+
+  @override
+  Tolerance get tolerance => Tolerance.defaultTolerance;
+
+  @override
+  bool get needsSettle => false;
+
+  @override
+  bool get unboundedWillSettle => true;
+
+  @override
+  Duration? get duration => const Duration(seconds: 1);
+
+  @override
+  Duration? settlingDuration({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      const Duration(seconds: 1);
+
+  @override
+  Motion scaleTo(Duration duration) => Motion.linear(duration);
+
+  @override
+  Simulation createSimulation({
+    double start = 0,
+    double end = 1,
+    double velocity = 0,
+  }) =>
+      const Motion.linear(Duration(seconds: 1))
+          .createSimulation(start: start, end: end);
 }
 
 void main() {
@@ -85,6 +118,22 @@ void main() {
       expect(simulation.isDone(0.2), isFalse);
       expect(simulation.x(0.25), equals(10));
       expect(simulation.isDone(0.25), isTrue);
+    });
+
+    test(
+        'implementing Motion needs duration, settlingDuration and scaleTo '
+        'only', () {
+      const motion = _ImplementedMotion();
+
+      expect(
+        motion.scaleTo(const Duration(seconds: 2)).settlingDuration(),
+        const Duration(seconds: 2),
+      );
+      expect(
+        motion.scaleTo(const Duration(seconds: 2)).duration,
+        const Duration(seconds: 2),
+      );
+      expect(motion.createSimulation().x(0.5), closeTo(0.5, error));
     });
 
     test('wraps free motions in a fixed-duration motion', () {

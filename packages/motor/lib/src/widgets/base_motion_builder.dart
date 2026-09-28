@@ -174,7 +174,7 @@ abstract class BaseMotionBuilderState<T extends Object>
     if (widget.converter != oldWidget.converter) {
       controller.converter = widget.converter;
     }
-    controller.debugInnerController.velocityTracking =
+    controller.internalInnerController.velocityTracking =
         widget.velocityTracking;
 
     if (widget.motion != oldWidget.motion ||
