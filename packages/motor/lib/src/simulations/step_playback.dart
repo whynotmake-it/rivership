@@ -95,12 +95,6 @@ class StepPlayback<T extends Object> {
     );
     _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
-    var lastMotionStep = loop.isLooping ? _steps.length : -1;
-    for (var i = _steps.length - 1; lastMotionStep < 0 && i >= 0; i--) {
-      final step = _steps[i];
-      if (step is! StepHold<T> && step is! StepSync<T>) lastMotionStep = i;
-    }
-    _lastMotionStep = lastMotionStep;
     _buildWaypoints();
     if (loop.isLooping) _recordCycleStart();
     _startCurrentStep();
@@ -197,11 +191,6 @@ class StepPlayback<T extends Object> {
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
 
-  /// Steps before this index have a later motion that takes over, so they end
-  /// after their motion's [Motion.duration] instead of when they have
-  /// settled. Past the last step when looping.
-  late final int _lastMotionStep;
-
   /// Stable predicted durations for the forward playback plan.
   List<double?>? _estimatedSegmentSeconds;
 
@@ -220,8 +209,8 @@ class StepPlayback<T extends Object> {
   /// that holds and sync barriers after it keep playing them out.
   var _handsOver = false;
 
-  /// Whether the running step starts after a jump back to the start.
-  var _jumped = false;
+  /// Whether the step before the running one handed over.
+  var _handedOver = false;
 
   /// The running segment's motions and targets, per dimension, until they're
   /// asked when it ends ([Motion.settlingDuration]). Its start values and
@@ -368,7 +357,7 @@ class StepPlayback<T extends Object> {
   }
 
   void _restoreInitialState() {
-    _jumped = true;
+    _handsOver = false;
     _copyInto(_values, _initialValues);
     _copyInto(_velocities, _initialVelocities);
   }
@@ -867,6 +856,7 @@ class StepPlayback<T extends Object> {
   void _startCurrentStep() {
     _plannedEnd = null;
     _endMotions = null;
+    _handedOver = _handsOver;
     _handsOver = false;
     if (_direction < 0) {
       _startReverseStep();
@@ -882,10 +872,8 @@ class StepPlayback<T extends Object> {
         cycleStart: _cycleStartSeconds,
         start: _segmentStartSeconds,
         simulations: _simulations,
-        handsOver: _handsOver,
       ),
     );
-    _jumped = false;
     _scheduleCutForNextAt();
   }
 
@@ -913,10 +901,8 @@ class StepPlayback<T extends Object> {
   /// Waits for [seconds] at the current value, or while the simulations the
   /// step before handed over keep playing out.
   List<Simulation> _wait(double seconds) {
-    final previous = _segments.isEmpty ? null : _segments.last;
-    if (_jumped || previous == null || !previous.handsOver) {
-      return _hold(_values, seconds);
-    }
+    if (!_handedOver) return _hold(_values, seconds);
+    final previous = _segments.last;
     final offset = previous.end! - previous.start;
     _plannedEnd = seconds;
     _handsOver = true;
@@ -938,7 +924,7 @@ class StepPlayback<T extends Object> {
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
     _endMotions = motions;
     _endTargets = targets;
-    if (_stepIndex < _lastMotionStep) _planHandOver(motions);
+    if (_isFollowed()) _planHandOver(motions);
     return [
       for (var i = 0; i < targets.length; i++)
         motions[i].createSimulation(
@@ -1006,6 +992,18 @@ class StepPlayback<T extends Object> {
       };
       _simulations = _wait(duration);
     }
+  }
+
+  /// Whether a later motion takes over from the running step, so that it
+  /// ends after its motion's [Motion.duration] instead of when it has
+  /// settled. Holds and sync barriers don't take over.
+  bool _isFollowed() {
+    if (_loop.isLooping) return true;
+    for (var i = _stepIndex + 1; i < _steps.length; i++) {
+      final step = _steps[i];
+      if (step is! StepHold && step is! StepSync) return true;
+    }
+    return false;
   }
 
   /// Ends the running step after its [motions]' [Motion.duration], when it
@@ -1204,7 +1202,6 @@ class _Segment {
     required this.cycleStart,
     required this.start,
     required this.simulations,
-    required this.handsOver,
   });
 
   final int stepIndex;
@@ -1213,10 +1210,6 @@ class _Segment {
   final double cycleStart;
   final double start;
   final List<Simulation> simulations;
-
-  /// Whether the segment ends before its simulations are done, handing them
-  /// over to the next step.
-  final bool handsOver;
 
   /// When the segment ends, or null while it is still running.
   double? end;
