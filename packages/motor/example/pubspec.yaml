@@ -30,3 +30,6 @@ flutter:
     - family: Archivo
       fonts:
         - asset: lib/assets/Archivo-VariableFont_wdth,wght.ttf
+    - family: JetBrains Mono
+      fonts:
+        - asset: lib/assets/JetBrainsMono-VariableFont_wght.ttf
