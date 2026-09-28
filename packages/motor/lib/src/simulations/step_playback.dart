@@ -95,14 +95,12 @@ class StepPlayback<T extends Object> {
     );
     _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
-    _takesOver = List<bool>.filled(_steps.length, loop.isLooping);
-    if (!loop.isLooping) {
-      var later = false;
-      for (var i = _steps.length - 1; i >= 0; i--) {
-        _takesOver[i] = later;
-        later = later || _steps[i] is! StepHold<T> && _steps[i] is! StepSync<T>;
-      }
+    var lastMotionStep = loop.isLooping ? _steps.length : -1;
+    for (var i = _steps.length - 1; lastMotionStep < 0 && i >= 0; i--) {
+      final step = _steps[i];
+      if (step is! StepHold<T> && step is! StepSync<T>) lastMotionStep = i;
     }
+    _lastMotionStep = lastMotionStep;
     _buildWaypoints();
     if (loop.isLooping) _recordCycleStart();
     _startCurrentStep();
@@ -199,9 +197,10 @@ class StepPlayback<T extends Object> {
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
 
-  /// Whether a later motion takes over from each step, so that it ends after
-  /// its motion's [Motion.duration] instead of when it has settled.
-  late final List<bool> _takesOver;
+  /// Steps before this index have a later motion that takes over, so they end
+  /// after their motion's [Motion.duration] instead of when they have
+  /// settled. Past the last step when looping.
+  late final int _lastMotionStep;
 
   /// Stable predicted durations for the forward playback plan.
   List<double?>? _estimatedSegmentSeconds;
@@ -940,7 +939,8 @@ class StepPlayback<T extends Object> {
     _endMotions = motions;
     _endTargets = targets;
     final step = _steps[_stepIndex];
-    if (_takesOver[_stepIndex] && !(step is StepTo<T> && step.waitForSettle)) {
+    if (_stepIndex < _lastMotionStep &&
+        !(step is StepTo<T> && step.waitForSettle)) {
       if (_logicalSeconds(motions) case final seconds?) {
         _plannedEnd = seconds;
         _handsOver = true;
