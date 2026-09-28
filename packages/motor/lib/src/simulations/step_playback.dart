@@ -938,14 +938,7 @@ class StepPlayback<T extends Object> {
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
     _endMotions = motions;
     _endTargets = targets;
-    final step = _steps[_stepIndex];
-    if (_stepIndex < _lastMotionStep &&
-        !(step is StepTo<T> && step.waitForSettle)) {
-      if (_logicalSeconds(motions) case final seconds?) {
-        _plannedEnd = seconds;
-        _handsOver = true;
-      }
-    }
+    if (_stepIndex < _lastMotionStep) _planHandOver(motions);
     return [
       for (var i = 0; i < targets.length; i++)
         motions[i].createSimulation(
@@ -1012,6 +1005,17 @@ class StepPlayback<T extends Object> {
         _ => 0.0,
       };
       _simulations = _wait(duration);
+    }
+  }
+
+  /// Ends the running step after its [motions]' [Motion.duration], when it
+  /// doesn't wait to settle, so that the next step takes over then.
+  void _planHandOver(List<Motion> motions) {
+    final step = _steps[_stepIndex];
+    if (step is StepTo<T> && step.waitForSettle) return;
+    if (_logicalSeconds(motions) case final seconds?) {
+      _plannedEnd = seconds;
+      _handsOver = true;
     }
   }
 
