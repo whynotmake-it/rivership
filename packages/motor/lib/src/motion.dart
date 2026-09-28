@@ -44,10 +44,10 @@ sealed class MotionBase {
   /// [FixedDurationFreeMotion], which plays the whole motion faster or slower;
   /// see those for what happens to a spring's settle and to velocity.
   ///
-  /// Wrappers ask their source how long it runs with
-  /// [Motion.settlingDuration], and probe its simulation on each
-  /// `createSimulation` call only when it doesn't say. They are immutable and
-  /// compare by value, so they can be created in `build`.
+  /// Wrappers ask their source how long it runs ([Motion.settlingDuration],
+  /// [FreeMotion.settlingDuration]) on each `createSimulation`. A source that
+  /// never settles plays at its own speed and stops at [duration]. Wrappers
+  /// are immutable and compare by value, so they can be created in `build`.
   MotionBase scaleTo(Duration duration);
 }
 
@@ -130,35 +130,37 @@ abstract class Motion extends MotionBase {
   Duration? get duration => null;
 
   /// How long a simulation from [start] to [end] with [velocity] runs until
-  /// it is done, or null if that isn't cheap to compute.
+  /// it is done, or null if it never is.
   ///
   /// It takes the same arguments as [createSimulation] and describes the
   /// simulation it creates: from this time on, its `isDone` stays true.
   /// Curves, linear motions and [NoMotion] return their duration, springs
-  /// compute when they settle within their [tolerance], and wrappers such as
-  /// [FixedDurationMotion] and [TrimmedMotion] ask their parent.
+  /// compute when they settle within their [tolerance] (null for a spring
+  /// without damping), and wrappers such as [FixedDurationMotion] and
+  /// [TrimmedMotion] ask their parent.
   ///
   /// Motor uses it wherever a motion plays until it is done: the last step
   /// of a track, steps that wait to settle, `MotionController` animations,
   /// the natural length of a `TrackStep.at` motion without a [duration], and
   /// [scaleTo] wrappers. It asks only when it needs to know: ahead of time
   /// for a look-ahead or seek, and otherwise once, on the first frame where
-  /// the simulation reports done.
+  /// the simulation reports done. A step whose motion never settles keeps
+  /// animating until it is retargeted or stopped.
   ///
-  /// `null` is the default for custom motions. Motor then finds the end by
-  /// sampling the simulation's `isDone` on a 1/60 s grid, spread over frames
-  /// during normal playback but up front when a following `.at` step, a seek
-  /// or an inspection tool needs it: up to 3600 `isDone` calls per dimension
-  /// for a minute-long motion. [scaleTo] wrappers probe the simulation on
-  /// every `createSimulation` instead. The same search is the fallback when
-  /// the returned time isn't finite or the simulation isn't done by then.
-  /// Return the time whenever it is cheap to compute.
+  /// The default samples the simulation's `isDone`: in 1/60 s steps up to a
+  /// minute, then in doubling steps up to two minutes, and returns null if
+  /// it isn't done by then. That is up to 3600 `isDone` calls for a
+  /// minute-long motion. Override it if you can compute the time.
   Duration? settlingDuration({
     double start = 0,
     double end = 1,
     double velocity = 0,
   }) =>
-      null;
+      settlingDurationOf(
+        searchSettlingSeconds(
+          createSimulation(start: start, end: end, velocity: velocity),
+        ),
+      );
 
   /// Whether this motion needs to settle.
   ///
@@ -244,6 +246,25 @@ abstract class FreeMotion extends MotionBase {
     double start = 0,
     double velocity = 0,
   });
+
+  /// How long a simulation from [start] with [velocity] runs until it comes
+  /// to rest, or null if it never does.
+  ///
+  /// It takes the same arguments as [createSimulation] and describes the
+  /// simulation it creates: from this time on, its `isDone` stays true. A
+  /// `TrackStep.free` lasts this long, and [scaleTo] wrappers scale this
+  /// run. A free step that never comes to rest keeps animating until it is
+  /// retargeted or stopped.
+  ///
+  /// The default samples the simulation's `isDone`, like
+  /// [Motion.settlingDuration], and returns null if it isn't done within two
+  /// minutes. Override it if you can compute the time.
+  Duration? settlingDuration({double start = 0, double velocity = 0}) =>
+      settlingDurationOf(
+        searchSettlingSeconds(
+          createSimulation(start: start, velocity: velocity),
+        ),
+      );
 
   /// Returns the value this motion will settle to, or `null` if unknown.
   ///
@@ -489,22 +510,28 @@ abstract class SpringMotion extends Motion {
   /// true. Near a peak an underdamped spring can briefly report done before
   /// it swings out again; this is after the last such swing. It is computed
   /// from the spring's closed form, without sampling, and is 0 when the
-  /// spring starts at rest on its target.
+  /// spring starts at rest on its target. Null if the spring has no damping,
+  /// so it never settles.
   @override
   Duration? settlingDuration({
     double start = 0,
     double end = 1,
     double velocity = 0,
   }) {
+    final spring = description;
+    if (!(spring.damping > 0)) return null;
     final seconds = springSettleSeconds(
-      description,
+      spring,
       start: start,
       end: end,
       velocity: velocity,
       tolerance: tolerance,
     );
-    if (seconds == null) return null;
-    return Duration(microseconds: (seconds * 1e6).ceil());
+    // The closed form doesn't cover every spring; sample the rest.
+    if (seconds == null) {
+      return super.settlingDuration(start: start, end: end, velocity: velocity);
+    }
+    return settlingDurationOf(seconds);
   }
 
   /// Whether to snap to the end of the spring.
@@ -1043,14 +1070,12 @@ class FixedDurationMotion extends Motion {
       duration: duration,
       start: start,
       end: end,
-      sourceDuration: _knownEnd(
-            parent,
+      // A parent that never settles plays at its own speed until the end.
+      sourceDuration: _settledEnd(
             parentSimulation,
-            start: start,
-            end: end,
-            velocity: velocity,
+            parent.settlingDuration(start: start, end: end, velocity: velocity),
           ) ??
-          estimateSimulationDuration(parentSimulation, fallback: duration),
+          duration.toSeconds(),
     );
   }
 
@@ -1114,11 +1139,7 @@ class FixedDurationFreeMotion extends FreeMotion {
       start: start,
       velocity: velocity,
     );
-    // Free motions have no inherent duration, so always probe the simulation.
-    final sourceDuration = estimateSimulationDuration(
-      simulation,
-      fallback: duration,
-    );
+    final sourceDuration = _sourceSeconds(simulation, start, velocity);
 
     return _FixedDurationSimulation(
       parent: simulation,
@@ -1147,13 +1168,23 @@ class FixedDurationFreeMotion extends FreeMotion {
       start: start,
       velocity: velocity,
     );
-    final sourceDuration = estimateSimulationDuration(
-      simulation,
-      fallback: duration,
-    );
+    final sourceDuration = _sourceSeconds(simulation, start, velocity);
     if (simulation.isDone(sourceDuration)) return resting;
     return simulation.x(duration.toSeconds());
   }
+
+  /// How long [parent] runs until it comes to rest, or [duration] if it
+  /// never does, so that it plays at its own speed and stops there.
+  double _sourceSeconds(Simulation simulation, double start, double velocity) =>
+      _settledEnd(
+        simulation,
+        parent.settlingDuration(start: start, velocity: velocity),
+      ) ??
+      duration.toSeconds();
+
+  @override
+  Duration settlingDuration({double start = 0, double velocity = 0}) =>
+      duration;
 
   @override
   String toString() => 'FixedDurationFreeMotion($parent, duration: $duration)';
@@ -1383,11 +1414,11 @@ class TrimmedMotion extends Motion {
   }) {
     final extent = 1.0 - fromStart - fromEnd;
     final parentDuration = parent.settlingDuration(
-      start: start - extent * fromStart,
-      end: end + extent * fromEnd,
-      velocity: velocity,
-    );
-    if (parentDuration == null) return null;
+          start: start - extent * fromStart,
+          end: end + extent * fromEnd,
+          velocity: velocity,
+        ) ??
+        _parentFallback;
     // Done a tolerance before the trimmed end; see _TrimmedSimulation.
     final microseconds = parentDuration.inMicroseconds * extent -
         parent.tolerance.time * Duration.microsecondsPerSecond;
@@ -1425,20 +1456,20 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      parentDuration: _knownEnd(
-            parent,
+      parentDuration: _settledEnd(
             scaledSim,
-            start: parentStart,
-            end: parentEnd,
-            velocity: velocity,
+            parent.settlingDuration(
+              start: parentStart,
+              end: parentEnd,
+              velocity: velocity,
+            ),
           ) ??
-          estimateSimulationDuration(
-            scaledSim,
-            fallback: const Duration(seconds: 1),
-            max: const Duration(seconds: 10),
-          ),
+          _parentFallback.toSeconds(),
     );
   }
+
+  /// The length the trim is taken from when [parent] never settles.
+  Duration get _parentFallback => parent.duration ?? const Duration(seconds: 1);
 
   @override
   bool operator ==(Object other) {
@@ -1593,21 +1624,13 @@ extension MotionTrimming on Motion {
   }
 }
 
-/// [motion]'s [Motion.settlingDuration] for [simulation] in seconds, or null
-/// if it doesn't know it or [simulation] isn't done by then.
-double? _knownEnd(
-  Motion motion,
-  Simulation simulation, {
-  required double start,
-  required double end,
-  required double velocity,
-}) {
-  return settledAt(
-    simulation,
-    motion
-        .settlingDuration(start: start, end: end, velocity: velocity)
-        ?.toSeconds(),
-  );
+/// When [simulation] settles, from its motion's [reported] settling duration,
+/// or null if it never does. A reported time the simulation isn't done by is
+/// searched for instead.
+double? _settledEnd(Simulation simulation, Duration? reported) {
+  if (reported == null) return null;
+  return settledAt(simulation, reported.toSeconds()) ??
+      searchSettlingSeconds(simulation);
 }
 
 extension on Duration {

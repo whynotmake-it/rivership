@@ -83,7 +83,8 @@ void main() {
       p.advanceTo(low);
       expect(p.values.single, isNot(closeTo(start, error)));
 
-      p.advanceTo(high);
+      // Settling times have microsecond resolution.
+      p.advanceTo(high + 1e-6);
       expect(p.values.single, closeTo(start, error));
       expect(p.isDone, isFalse);
     });

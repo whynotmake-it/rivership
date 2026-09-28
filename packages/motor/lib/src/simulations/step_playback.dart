@@ -216,6 +216,10 @@ class StepPlayback<T extends Object> {
   /// asked when it ends ([Motion.settlingDuration]). Its start values and
   /// velocities are [_values] and [_velocities] until it ends.
   List<Motion>? _endMotions;
+
+  /// The running free step's motion, until it's asked when it comes to rest
+  /// ([FreeMotion.settlingDuration]).
+  FreeMotion? _endFreeMotion;
   List<double> _endTargets = const [];
   var _stepIndex = 0;
   var _direction = 1;
@@ -856,6 +860,7 @@ class StepPlayback<T extends Object> {
   void _startCurrentStep() {
     _plannedEnd = null;
     _endMotions = null;
+    _endFreeMotion = null;
     _handedOver = _handsOver;
     _handsOver = false;
     if (_direction < 0) {
@@ -884,13 +889,7 @@ class StepPlayback<T extends Object> {
           _motions(motion, motionPerDimension),
           _waypoints[_stepIndex],
         ),
-      StepFree<T>(:final motion) => [
-          for (var i = 0; i < _values.length; i++)
-            motion.createSimulation(
-              start: _values[i],
-              velocity: _velocities[i],
-            ),
-        ],
+      StepFree<T>(:final motion) => _simulateFree(motion),
       StepHold<T>(:final duration) => _wait(duration.toSeconds()),
       StepAt<T>(:final at, :final motion, :final motionPerDimension) =>
         _simulateAt(at, _motions(motion, motionPerDimension)),
@@ -909,6 +908,14 @@ class StepPlayback<T extends Object> {
     return [
       for (final simulation in previous.simulations)
         _ContinuedSimulation.after(simulation, offset),
+    ];
+  }
+
+  List<Simulation> _simulateFree(FreeMotion motion) {
+    _endFreeMotion = motion;
+    return [
+      for (var i = 0; i < _values.length; i++)
+        motion.createSimulation(start: _values[i], velocity: _velocities[i]),
     ];
   }
 
@@ -1097,14 +1104,14 @@ class StepPlayback<T extends Object> {
 
   /// Starts finding when the running segment ends.
   ///
-  /// Holds, sync barriers and `.at` arrivals know it up front. Otherwise it
-  /// is found lazily, as time passes: on a grid of [_scanStep] from the
-  /// segment's start, the first point where its simulations report done.
-  /// Their motions are then asked for the exact end
-  /// ([Motion.settlingDuration]), which is never before the last point that
-  /// isn't done. Only if one doesn't know (and for free motions) is the end
-  /// the first time the segment is done, bisected within that grid step. A
-  /// look-ahead asks the motions right away instead of searching the grid.
+  /// Holds, sync barriers, `.at` arrivals and steps a later motion takes over
+  /// from know it up front. Otherwise it is found lazily, as time passes: on
+  /// a grid of [_scanStep] from the segment's start, the first point where
+  /// its simulations report done. Their motions are then asked for the exact
+  /// end ([Motion.settlingDuration], [FreeMotion.settlingDuration]), which is
+  /// never before the last point that isn't done. A look-ahead asks right
+  /// away instead of searching the grid. A motion that never settles leaves
+  /// the segment open: it keeps playing until it is retargeted or stopped.
   ///
   /// The end depends only on the segment, so ticking and seeking always
   /// agree. See [_findSegmentEndBy].
@@ -1113,27 +1120,58 @@ class StepPlayback<T extends Object> {
     _scanLow = 0;
     _scanHigh = 0;
     if (_plannedEnd case final end?) _endSegmentAt(end);
+    assert(
+      !_loop.isLooping || _segmentEndFound || !_neverEnds(),
+      'Step $_stepIndex of a looping plan never ends: its motion never '
+      'settles (settlingDuration is null) and the step has no duration to '
+      'hand over at, so the loop would never repeat. Give the motion a '
+      'duration, or play the step without looping.',
+    );
   }
 
-  /// Asks the running segment's motions when it ends, the first time only.
-  /// Returns false if there are none or one doesn't know.
+  /// When the running segment's [i]th simulation settles, per its motion, or
+  /// null if it never does.
+  double? _settleSeconds(int i, List<Motion>? motions, FreeMotion? free) {
+    final reported = motions != null
+        ? motions[i].settlingDuration(
+            start: _values[i],
+            end: _endTargets[i],
+            velocity: _velocities[i],
+          )
+        : free!.settlingDuration(start: _values[i], velocity: _velocities[i]);
+    if (reported == null) return null;
+    // A reported time the simulation isn't done by is searched for instead.
+    return settledAt(_simulations[i], reported.toSeconds()) ??
+        searchSettlingSeconds(_simulations[i]);
+  }
+
+  /// Whether one of the running segment's motions never settles.
+  bool _neverEnds() {
+    final motions = _endMotions;
+    final free = _endFreeMotion;
+    if (motions == null && free == null) return false;
+    for (var i = 0; i < _simulations.length; i++) {
+      if (_settleSeconds(i, motions, free) == null) return true;
+    }
+    return false;
+  }
+
+  /// Asks the running segment's motions when it ends, the first time only:
+  /// when the last one settles, or never if one doesn't. Returns false if
+  /// there's nothing to ask.
   bool _askSegmentEnd() {
     final motions = _endMotions;
-    if (motions == null) return false;
+    final free = _endFreeMotion;
+    if (motions == null && free == null) return false;
     _endMotions = null;
+    _endFreeMotion = null;
     var end = 0.0;
-    for (var i = 0; i < motions.length; i++) {
-      final seconds = settledAt(
-        _simulations[i],
-        motions[i]
-            .settlingDuration(
-              start: _values[i],
-              end: _endTargets[i],
-              velocity: _velocities[i],
-            )
-            ?.toSeconds(),
-      );
-      if (seconds == null) return false;
+    for (var i = 0; i < _simulations.length; i++) {
+      final seconds = _settleSeconds(i, motions, free);
+      if (seconds == null) {
+        _endSegmentAt(null);
+        return true;
+      }
       if (seconds > end) end = seconds;
     }
     _endSegmentAt(end);
@@ -1152,9 +1190,7 @@ class StepPlayback<T extends Object> {
     while (!_segmentEndFound && (_scanLow < local || _scanHigh <= local)) {
       final high = _scanHigh;
       if (_segmentIsDone(high)) {
-        if (!_askSegmentEnd()) {
-          _endSegmentAt(high == 0 ? 0 : _bisectSegmentEnd(_scanLow, high));
-        }
+        if (!_askSegmentEnd()) _endSegmentAt(high);
       } else {
         _scanLow = high;
         _scanHigh = high == 0
@@ -1162,7 +1198,7 @@ class StepPlayback<T extends Object> {
             : high < _scanLimit
                 ? high + _scanStep
                 : high * 2;
-        if (_scanHigh > _horizon) _endSegmentAt(null);
+        if (_scanHigh > _horizon && !_askSegmentEnd()) _endSegmentAt(null);
       }
     }
     return _segmentEndFound;
@@ -1174,22 +1210,6 @@ class StepPlayback<T extends Object> {
     if (!_segmentEndFound) _askSegmentEnd();
     _findSegmentEndBy(double.infinity);
     return _segmentDuration;
-  }
-
-  /// The first time in `(notDone, done]` the segment is done, to the precision
-  /// of a double, given it is not done at [notDone] and done at [done].
-  double _bisectSegmentEnd(double notDone, double done) {
-    var low = notDone;
-    var high = done;
-    while (true) {
-      final mid = (low + high) / 2;
-      if (mid <= low || mid >= high) return high;
-      if (_segmentIsDone(mid)) {
-        high = mid;
-      } else {
-        low = mid;
-      }
-    }
   }
 }
 

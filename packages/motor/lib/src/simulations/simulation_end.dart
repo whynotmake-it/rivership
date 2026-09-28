@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/physics.dart';
@@ -29,7 +30,8 @@ double justAfter(double seconds) {
 ///
 /// Guards the ends motions report through [Motion.settlingDuration], which
 /// has microsecond resolution: curves are done just after their duration,
-/// and a trimmed motion's end falls between two microseconds.
+/// a trimmed motion's end falls between two microseconds, and a sampled or
+/// computed time is rounded up to the next one.
 ///
 /// `isDone` isn't monotonic: an underdamped spring can report done and then
 /// not done again near an oscillation peak, where its velocity check fails.
@@ -54,49 +56,41 @@ double? settledAt(Simulation simulation, double? seconds) {
   }
 }
 
-/// Estimates when [simulation] finishes using exponential search followed by
-/// binary search, avoiding fixed-step scans through the whole timeline.
-///
-/// Wrappers that time-scale or trim a source whose end isn't known use
-/// this: a [FreeMotion], or a motion whose [Motion.settlingDuration] is null
-/// or fails [settledAt]. Returns [fallback], or [max] without one, when the
-/// simulation isn't done by [max].
+/// How far ahead motor looks for when a simulation settles, in seconds.
 @internal
-double estimateSimulationDuration(
-  Simulation simulation, {
-  Duration? fallback,
-  Duration max = const Duration(seconds: 60),
-}) {
+const settleSearchSeconds = 120.0;
+
+/// When [simulation] is first done, or null if it isn't within
+/// [settleSearchSeconds].
+///
+/// It samples `isDone` on the grid playback uses (1/60 s steps up to a
+/// minute, then doubling) and bisects the first grid step that is done, to
+/// the precision of a double. The default [Motion.settlingDuration] and
+/// [FreeMotion.settlingDuration] use this.
+@internal
+double? searchSettlingSeconds(Simulation simulation) {
   if (simulation.isDone(0)) return 0;
-
-  final fallbackSeconds = fallback?.toSeconds();
-  var lower = 0.0;
-  var upper = fallbackSeconds == null || fallbackSeconds <= 0
-      ? 1 / 60
-      : fallbackSeconds;
-  final maxSeconds = max.toSeconds();
-
-  while (upper < maxSeconds && !simulation.isDone(upper)) {
-    lower = upper;
-    upper *= 2;
+  const step = 1 / 60;
+  var low = 0.0;
+  var high = step;
+  while (!simulation.isDone(high)) {
+    if (high >= settleSearchSeconds) return null;
+    low = high;
+    high = high < 60 ? high + step : math.min(high * 2, settleSearchSeconds);
   }
-
-  if (!simulation.isDone(upper)) {
-    return fallbackSeconds ?? maxSeconds;
-  }
-
-  for (var i = 0; i < 24; i++) {
-    final mid = (lower + upper) / 2;
+  while (true) {
+    final mid = (low + high) / 2;
+    if (mid <= low || mid >= high) return high;
     if (simulation.isDone(mid)) {
-      upper = mid;
+      high = mid;
     } else {
-      lower = mid;
+      low = mid;
     }
   }
-
-  return upper;
 }
 
-extension on Duration {
-  double toSeconds() => inMicroseconds / Duration.microsecondsPerSecond;
-}
+/// [seconds] as a [Duration], rounded up to whole microseconds, or null.
+@internal
+Duration? settlingDurationOf(double? seconds) => seconds == null
+    ? null
+    : Duration(microseconds: (seconds * Duration.microsecondsPerSecond).ceil());
