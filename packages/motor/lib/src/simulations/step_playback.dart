@@ -9,6 +9,7 @@ import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
+import 'package:motor/src/simulations/cut_motion.dart';
 import 'package:motor/src/simulations/simulation_end.dart';
 import 'package:motor/src/track_step.dart';
 
@@ -94,6 +95,14 @@ class StepPlayback<T extends Object> {
     );
     _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
+    _takesOver = List<bool>.filled(_steps.length, loop.isLooping);
+    if (!loop.isLooping) {
+      var later = false;
+      for (var i = _steps.length - 1; i >= 0; i--) {
+        _takesOver[i] = later;
+        later = later || _steps[i] is! StepHold<T> && _steps[i] is! StepSync<T>;
+      }
+    }
     _buildWaypoints();
     if (loop.isLooping) _recordCycleStart();
     _startCurrentStep();
@@ -190,6 +199,10 @@ class StepPlayback<T extends Object> {
   /// The duration each step occupied during forward playback.
   late final List<double?> _forwardSegmentSeconds;
 
+  /// Whether a later motion takes over from each step, so that it ends after
+  /// its motion's [Motion.duration] instead of when it has settled.
+  late final List<bool> _takesOver;
+
   /// Stable predicted durations for the forward playback plan.
   List<double?>? _estimatedSegmentSeconds;
 
@@ -201,8 +214,15 @@ class StepPlayback<T extends Object> {
   late List<Simulation> _simulations;
 
   /// When the running segment ends, if its step says so up front: holds,
-  /// sync barriers and `.at` arrivals.
+  /// sync barriers, `.at` arrivals, and steps a later motion takes over from.
   double? _plannedEnd;
+
+  /// Whether the running segment ends before its simulations are done, so
+  /// that holds and sync barriers after it keep playing them out.
+  var _handsOver = false;
+
+  /// Whether the running step starts after a jump back to the start.
+  var _jumped = false;
 
   /// The running segment's motions and targets, per dimension, until they're
   /// asked when it ends ([Motion.settlingDuration]). Its start values and
@@ -282,10 +302,11 @@ class StepPlayback<T extends Object> {
         fallbackMotionPerDimension: _fallbackMotionPerDimension,
       );
 
-  /// How long the [StepAt] at [index] runs at its natural speed, from where
-  /// the running segment is at [from] seconds (or its start when null), or
-  /// null if its motion doesn't know.
-  double? _atSettleSeconds(
+  /// How long the [StepAt] at [index] runs at its natural speed: its
+  /// motion's [Motion.duration], or its [Motion.settlingDuration] from where
+  /// the running segment is at [from] seconds (or its start when null). Null
+  /// if its motion doesn't know.
+  double? _atNaturalSeconds(
     int index,
     Motion? motion,
     List<Motion>? motionPerDimension,
@@ -296,13 +317,15 @@ class StepPlayback<T extends Object> {
     final targets = _waypoints[index];
     var longest = 0.0;
     for (var i = 0; i < motions.length; i++) {
-      final seconds = motions[i]
-          .settlingDuration(
-            start: from == null ? _values[i] : _simulations[i].x(from),
-            end: targets[i],
-            velocity: from == null ? _velocities[i] : _simulations[i].dx(from),
-          )
-          ?.toSeconds();
+      final seconds = motions[i].duration?.toSeconds() ??
+          motions[i]
+              .settlingDuration(
+                start: from == null ? _values[i] : _simulations[i].x(from),
+                end: targets[i],
+                velocity:
+                    from == null ? _velocities[i] : _simulations[i].dx(from),
+              )
+              ?.toSeconds();
       if (seconds == null || !seconds.isFinite) return null;
       if (seconds > longest) longest = seconds;
     }
@@ -346,6 +369,7 @@ class StepPlayback<T extends Object> {
   }
 
   void _restoreInitialState() {
+    _jumped = true;
     _copyInto(_values, _initialValues);
     _copyInto(_velocities, _initialVelocities);
   }
@@ -577,7 +601,9 @@ class StepPlayback<T extends Object> {
   void releaseSync({required double atSeconds}) {
     if (!_isWaitingForSync) return;
     _isWaitingForSync = false;
-    _closeSegment(math.max(atSeconds, _segmentStartSeconds));
+    final release = math.max(atSeconds, _segmentStartSeconds);
+    _sample(release - _segmentStartSeconds);
+    _closeSegment(release);
     _advanceStep();
     _show(_lastElapsedSeconds);
   }
@@ -842,6 +868,7 @@ class StepPlayback<T extends Object> {
   void _startCurrentStep() {
     _plannedEnd = null;
     _endMotions = null;
+    _handsOver = false;
     if (_direction < 0) {
       _startReverseStep();
     } else {
@@ -856,8 +883,10 @@ class StepPlayback<T extends Object> {
         cycleStart: _cycleStartSeconds,
         start: _segmentStartSeconds,
         simulations: _simulations,
+        handsOver: _handsOver,
       ),
     );
+    _jumped = false;
     _scheduleCutForNextAt();
   }
 
@@ -875,11 +904,27 @@ class StepPlayback<T extends Object> {
               velocity: _velocities[i],
             ),
         ],
-      StepHold<T>(:final duration) => _hold(_values, duration.toSeconds()),
+      StepHold<T>(:final duration) => _wait(duration.toSeconds()),
       StepAt<T>(:final at, :final motion, :final motionPerDimension) =>
         _simulateAt(at, _motions(motion, motionPerDimension)),
-      StepSync<T>() => _hold(_values, 0),
+      StepSync<T>() => _wait(0),
     };
+  }
+
+  /// Waits for [seconds] at the current value, or while the simulations the
+  /// step before handed over keep playing out.
+  List<Simulation> _wait(double seconds) {
+    final previous = _segments.isEmpty ? null : _segments.last;
+    if (_jumped || previous == null || !previous.handsOver) {
+      return _hold(_values, seconds);
+    }
+    final offset = previous.end! - previous.start;
+    _plannedEnd = seconds;
+    _handsOver = true;
+    return [
+      for (final simulation in previous.simulations)
+        _ContinuedSimulation.after(simulation, offset),
+    ];
   }
 
   /// Holds [values] for [seconds].
@@ -894,6 +939,13 @@ class StepPlayback<T extends Object> {
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
     _endMotions = motions;
     _endTargets = targets;
+    final step = _steps[_stepIndex];
+    if (_takesOver[_stepIndex] && !(step is StepTo<T> && step.waitForSettle)) {
+      if (_logicalSeconds(motions) case final seconds?) {
+        _plannedEnd = seconds;
+        _handsOver = true;
+      }
+    }
     return [
       for (var i = 0; i < targets.length; i++)
         motions[i].createSimulation(
@@ -913,9 +965,12 @@ class StepPlayback<T extends Object> {
     // time already passed, so the motion runs as authored.
     if (gap <= 0) return _simulateTo(motions, targets);
     final duration = Duration(microseconds: (gap * 1000000).round());
-    final scaled =
-        _simulateTo([for (final m in motions) m.scaleTo(duration)], targets);
+    final scaled = _simulateTo(
+      [for (final motion in motions) _landing(motion, duration)],
+      targets,
+    );
     _plannedEnd = gap;
+    _handsOver = false;
     return [
       for (var i = 0; i < scaled.length; i++)
         _ArrivalSimulation(scaled[i], arrival: gap, target: targets[i]),
@@ -936,13 +991,10 @@ class StepPlayback<T extends Object> {
           final resolved = _motionsOrNull(motion, motionPerDimension);
           final forwardSeconds = _forwardSegmentSeconds[_stepIndex];
           if (resolved == null || forwardSeconds == null) return resolved;
+          final duration =
+              Duration(microseconds: (forwardSeconds * 1000000).round());
           return [
-            for (final motion in resolved)
-              motion.scaleTo(
-                Duration(
-                  microseconds: (forwardSeconds * 1000000).round(),
-                ),
-              ),
+            for (final motion in resolved) _landing(motion, duration),
           ];
         }(),
       StepFree<T>() => null,
@@ -959,8 +1011,32 @@ class StepPlayback<T extends Object> {
         StepHold<T>(:final duration) => duration.toSeconds(),
         _ => 0.0,
       };
-      _simulations = _hold(_values, duration);
+      _simulations = _wait(duration);
     }
+  }
+
+  /// The longest [Motion.duration] of [motions], in seconds, or null if one
+  /// has none.
+  static double? _logicalSeconds(List<Motion> motions) {
+    var longest = 0.0;
+    for (final motion in motions) {
+      final duration = motion.duration;
+      if (duration == null) return null;
+      final seconds = duration.toSeconds();
+      if (seconds > longest) longest = seconds;
+    }
+    return longest;
+  }
+
+  /// [motion] played over exactly [duration], landing on its target. A
+  /// motion that keeps settling after its [Motion.duration] is cut there
+  /// first, so that it lands at its natural speed when [duration] matches.
+  static Motion _landing(Motion motion, Duration duration) {
+    final length = motion.duration;
+    final lands = length != null && motion.needsSettle
+        ? CutMotion(motion, duration: length)
+        : motion;
+    return lands.scaleTo(duration);
   }
 
   /// Decides when the running step yields to a following [StepAt].
@@ -971,8 +1047,8 @@ class StepPlayback<T extends Object> {
   /// short so the motion runs its natural length, but never before the
   /// running step started. Both cases meet where the gap equals the natural
   /// length, so timing changes continuously with the arrival time. The
-  /// natural length is the motion's [Motion.settlingDuration] from where the
-  /// running step ends.
+  /// natural length is the motion's [Motion.duration], or its
+  /// [Motion.settlingDuration] from where the running step ends.
   void _scheduleCutForNextAt() {
     _cutAt = null;
     if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
@@ -983,7 +1059,7 @@ class StepPlayback<T extends Object> {
       final arrival = _absoluteTimeFor(at);
       final duration = _findSegmentEnd();
       final atDuration =
-          _atSettleSeconds(next, motion, motionPerDimension, duration);
+          _atNaturalSeconds(next, motion, motionPerDimension, duration);
       if (duration != null) {
         // A motion of unknown duration can stretch over any gap.
         final gap = arrival - (_segmentStartSeconds + duration);
@@ -1124,6 +1200,7 @@ class _Segment {
     required this.cycleStart,
     required this.start,
     required this.simulations,
+    required this.handsOver,
   });
 
   final int stepIndex;
@@ -1132,6 +1209,10 @@ class _Segment {
   final double cycleStart;
   final double start;
   final List<Simulation> simulations;
+
+  /// Whether the segment ends before its simulations are done, handing them
+  /// over to the next step.
+  final bool handsOver;
 
   /// When the segment ends, or null while it is still running.
   double? end;
@@ -1191,6 +1272,28 @@ class _ArrivalSimulation extends Simulation {
 
   @override
   bool isDone(double time) => time >= arrival;
+}
+
+/// [inner] from [offset] seconds on.
+class _ContinuedSimulation extends Simulation {
+  _ContinuedSimulation._(this.inner, this.offset);
+
+  factory _ContinuedSimulation.after(Simulation simulation, double offset) =>
+      simulation is _ContinuedSimulation
+          ? _ContinuedSimulation._(simulation.inner, simulation.offset + offset)
+          : _ContinuedSimulation._(simulation, offset);
+
+  final Simulation inner;
+  final double offset;
+
+  @override
+  double x(double time) => inner.x(offset + time);
+
+  @override
+  double dx(double time) => inner.dx(offset + time);
+
+  @override
+  bool isDone(double time) => inner.isDone(offset + time);
 }
 
 class _HoldSimulation extends Simulation {

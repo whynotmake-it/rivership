@@ -14,9 +14,11 @@ sealed class TrackStep<T extends Object> {
 
   /// Animates to [value] using a target-based [motion].
   ///
-  /// The step lasts until the motion is done: a spring keeps settling after
-  /// its duration. Use `motion.skipTail()` to end it at its duration, or
-  /// `motion.cutAfter(d)` to end it after any time.
+  /// The step lasts the motion's [Motion.duration]: the next step takes over
+  /// then, from the current value and velocity, while a spring is still
+  /// settling. The last step plays out until it is done, and so does a step
+  /// whose motion has no duration. Set [waitForSettle] to make the next step
+  /// wait until this one has settled ([Motion.settlingDuration]).
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
@@ -26,6 +28,7 @@ sealed class TrackStep<T extends Object> {
     T value, {
     Motion? motion,
     List<Motion>? motionPerDimension,
+    bool waitForSettle,
   }) = StepTo<T>;
 
   /// Runs a self-directed free [motion].
@@ -33,7 +36,10 @@ sealed class TrackStep<T extends Object> {
     required FreeMotion motion,
   }) = StepFree<T>;
 
-  /// Holds the current value for [duration].
+  /// Waits for [duration] before the next step.
+  ///
+  /// It holds the current value. A spring the step before handed over while
+  /// still settling keeps playing out meanwhile.
   const factory TrackStep.hold(Duration duration) = StepHold<T>;
 
   /// A keyframe that targets [value] at absolute time [at].
@@ -45,9 +51,9 @@ sealed class TrackStep<T extends Object> {
   ///
   /// - If the preceding step ends at least the motion's natural length
   ///   before [at], the motion starts when that step ends and slows down to
-  ///   fill the gap. The natural length is [Motion.settlingDuration] from
-  ///   where the preceding step ends: for a spring, until it has settled,
-  ///   or its duration with `.skipTail()`.
+  ///   fill the gap. The natural length is the motion's [Motion.duration],
+  ///   or its [Motion.settlingDuration] from where the preceding step ends if
+  ///   it has none. A spring is cut at its duration so that it lands.
   /// - Otherwise the preceding step is cut short so that the motion runs its
   ///   natural length and ends at [at]. The cut never happens before that
   ///   step started; if there is not enough time, the motion is compressed,
@@ -91,17 +97,15 @@ sealed class TrackStep<T extends Object> {
   /// When playback reaches this step, the track holds its current value until
   /// every other active track that shares the same [token] (by `==`) also
   /// reaches a matching sync step. The controller then releases them together,
-  /// so the tracks continue in lockstep. Each track waits at rest, so the
-  /// step after the barrier starts from rest, without the velocity the step
-  /// before it ended with.
+  /// so the tracks continue in lockstep. While a track waits, a spring the
+  /// step before handed over while still settling keeps playing out, and the
+  /// step after the barrier starts from where it is at the release.
   ///
   /// {@template motor.TrackStep.sync.arrival}
-  /// A track arrives once the step before the barrier has finished. For a
-  /// spring, that means fully settled, with distance and velocity under its
-  /// tolerance, which often takes 2–3× its nominal duration. To sync on the
-  /// visual arrival, end that spring at its duration (`motion.skipTail()`),
-  /// give that step a fixed duration (`motion.scaleTo(d)`), use a curve, or
-  /// place the arrival with [TrackStep.at].
+  /// A track arrives once the step before the barrier reaches its logical
+  /// end, its motion's [Motion.duration]. A spring keeps settling while it
+  /// waits. To arrive only once it has settled, set `waitForSettle` on that
+  /// step; a motion without a duration always waits to settle.
   /// {@endtemplate}
   ///
   /// Use this to keep independent tracks aligned at key moments without
@@ -117,6 +121,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
     this.value, {
     this.motion,
     this.motionPerDimension,
+    this.waitForSettle = false,
   }) : assert(
           motion == null || motionPerDimension == null,
           'Provide either motion or motionPerDimension, not both.',
@@ -136,6 +141,10 @@ class StepTo<T extends Object> extends TrackStep<T> {
   /// by this list, so don't modify it after passing it in.
   final List<Motion>? motionPerDimension;
 
+  /// Whether the next step waits until this one has settled, instead of
+  /// taking over after the motion's [Motion.duration].
+  final bool waitForSettle;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -143,7 +152,8 @@ class StepTo<T extends Object> extends TrackStep<T> {
           other.runtimeType == runtimeType &&
           other.value == value &&
           other.motion == motion &&
-          listEquals(other.motionPerDimension, motionPerDimension);
+          listEquals(other.motionPerDimension, motionPerDimension) &&
+          other.waitForSettle == waitForSettle;
 
   @override
   int get hashCode => Object.hash(
@@ -151,11 +161,13 @@ class StepTo<T extends Object> extends TrackStep<T> {
         value,
         motion,
         _hashList(motionPerDimension),
+        waitForSettle,
       );
 
   @override
   String toString() => '${objectRuntimeType(this, 'StepTo')}($value, '
-      '${_describeMotion(motion, motionPerDimension)})';
+      '${_describeMotion(motion, motionPerDimension)}'
+      '${waitForSettle ? ', waitForSettle' : ''})';
 }
 
 /// A step that runs a self-directed motion.

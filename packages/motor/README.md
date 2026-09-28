@@ -127,14 +127,17 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 
 #### My spring runs longer than its duration
 
-A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long, so steps, phases and futures end later. To end it at its duration, skip the tail:
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. In a track, the next step takes over after `duration`, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when futures complete and the ticker stops. To make the next step wait, set `waitForSettle`:
 
 ```dart
-final motion = Motion.bouncySpring().skipTail(); // done after 500 ms
-final quick = Motion.smoothSpring().cutAfter(const Duration(milliseconds: 300));
+opacity([
+  .to(1, motion: .bouncySpring()), // the next step starts at 500 ms
+  .to(0, motion: .bouncySpring(), waitForSettle: true), // the next one waits
+  .to(1),
+]);
 ```
 
-The spring plays at its own speed, lands exactly on its target at the cut and hands its velocity to the next step.
+`MotionController` and the deprecated sequences keep 1.x timing: each spring settles before the next phase.
 
 ### MaterialSpringMotion
 
@@ -271,13 +274,13 @@ offset([                               // multiple steps, run in order
 
 The available steps are the verbs of the system:
 
-- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts as long as its motion needs to settle, which for a spring is longer than its duration (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
+- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts its motion's `duration`; then the next step takes over from the current value and velocity, while a spring is still settling. The last step plays out until it has settled (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
 - **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
   - With time to spare, the `.at` motion starts as soon as the previous step ends and slows down to fill the gap.
   - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
 
   The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
-- **`.hold(duration)`** — keep the current value for `duration`.
+- **`.hold(duration)`** — wait for `duration` at the current value. A spring the step before handed over keeps settling meanwhile.
 - **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
 - **`.sync(token:)`** — a barrier (see below).
 
@@ -382,13 +385,10 @@ coordinate tracks playing on the same controller (one `TrackBuilder` or
 barrier stops participating, so it never holds the others hostage. When
 scrubbing, barriers are resolved exactly as during playback.
 
-A track reaches the barrier when the step before it has *finished*. For a
-spring, that means fully settled, with distance and velocity under its
-tolerance. That often takes 2–3× its nominal duration, well after it looks
-done. To sync on the visual arrival, end the spring at its duration
-(`motion.skipTail()`), give that step a fixed duration
-(`motion.scaleTo(duration)`), use a curve, or place the arrival with an
-`.at` keyframe.
+A track reaches the barrier when the step before it ends: after its motion's
+`duration`. A spring keeps settling while the track waits, and the step after
+the barrier continues from there. To arrive only once the spring has settled,
+set `waitForSettle: true` on that step.
 
 #### Phases — named states
 

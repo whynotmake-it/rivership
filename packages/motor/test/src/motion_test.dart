@@ -3,8 +3,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
-import 'package:motor/src/controllers/motion_controller.dart'
-    show motionsEqual;
+import 'package:motor/src/controllers/motion_controller.dart' show motionsEqual;
 
 import 'util.dart';
 
@@ -51,6 +50,9 @@ class _ImplementedMotion implements Motion {
 
   @override
   bool get unboundedWillSettle => true;
+
+  @override
+  Duration? get duration => const Duration(seconds: 1);
 
   @override
   Duration? settlingDuration({
@@ -118,11 +120,17 @@ void main() {
       expect(simulation.isDone(0.25), isTrue);
     });
 
-    test('implementing Motion needs settlingDuration and scaleTo only', () {
+    test(
+        'implementing Motion needs duration, settlingDuration and scaleTo '
+        'only', () {
       const motion = _ImplementedMotion();
 
       expect(
         motion.scaleTo(const Duration(seconds: 2)).settlingDuration(),
+        const Duration(seconds: 2),
+      );
+      expect(
+        motion.scaleTo(const Duration(seconds: 2)).duration,
         const Duration(seconds: 2),
       );
       expect(motion.createSimulation().x(0.5), closeTo(0.5, error));

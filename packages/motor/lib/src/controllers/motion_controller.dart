@@ -373,8 +373,17 @@ class MotionController<T extends Object> extends Animation<T>
   List<TrackStep<T>> _withDefaultMotions(List<TrackStep<T>> steps) => [
         for (final step in steps)
           switch (step) {
-            StepTo<T>(motion: null, motionPerDimension: null, :final value) =>
-              TrackStep.to(value, motionPerDimension: _motionPerDimension),
+            StepTo<T>(
+              motion: null,
+              motionPerDimension: null,
+              :final value,
+              :final waitForSettle,
+            ) =>
+              TrackStep.to(
+                value,
+                motionPerDimension: _motionPerDimension,
+                waitForSettle: waitForSettle,
+              ),
             StepAt<T>(
               motion: null,
               motionPerDimension: null,

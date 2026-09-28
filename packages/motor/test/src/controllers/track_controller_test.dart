@@ -654,14 +654,15 @@ void main() {
 
         await tester.pump();
 
-        // First cycle reaches the last step's value (1.0) at 100ms.
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value(opacity), closeTo(1, error));
+        // First cycle nearly reaches the last step's value (1.0); the next
+        // cycle takes over at exactly 100ms.
+        await tester.pump(const Duration(milliseconds: 99));
+        expect(controller.value(opacity), closeTo(0.99, error));
 
         // seamless must JUMP back to the start (0) and immediately replay
         // forward. A short while after the last step the value should already
         // be near 0 (animating 0 -> 1 again), NOT unwinding from 1.
-        await tester.pump(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 21));
         expect(
           controller.value(opacity),
           lessThan(0.5),

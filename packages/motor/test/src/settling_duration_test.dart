@@ -201,10 +201,7 @@ void main() {
           .trimmed(fromStart: 0.25, fromEnd: 0.25);
       final simulation = motion.createSimulation();
       final playback = StepPlayback<double>(
-        steps: [
-          TrackStep.to(1, motion: motion),
-          const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
-        ],
+        steps: [TrackStep.to(1, motion: motion)],
         converter: MotionConverter.single,
         start: 0,
       )..advanceTo(1);

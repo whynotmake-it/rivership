@@ -141,12 +141,14 @@ class SequenceMotionController<P, T extends Object>
     _currentSequencePhaseIndex = sequence.phases.indexOf(run.first);
 
     final steps = <TrackStep<T>>[
+      // Each phase settles before the next, as in 1.x.
       TrackStep.to(
         sequence.valueForPhase(run.first),
         motion: sequence.motionForPhase(
           toPhase: run.first,
           fromPhase: fromPhaseForFirstLeg,
         ),
+        waitForSettle: true,
       ),
       for (var i = 1; i < run.length; i++) ...[
         // A fresh token keeps each phase barrier independent; releasing on
@@ -158,6 +160,7 @@ class SequenceMotionController<P, T extends Object>
             toPhase: run[i],
             fromPhase: run[i - 1],
           ),
+          waitForSettle: true,
         ),
       ],
     ];

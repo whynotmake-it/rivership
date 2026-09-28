@@ -1,32 +1,19 @@
 import 'dart:math' as math;
 
-import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
-import 'package:motor/src/simulations/step_playback.dart';
+import 'package:motor/src/simulations/cut_motion.dart';
 
 double _seconds(Duration duration) => duration.inMicroseconds / 1e6;
-
-StepPlayback<double> _playback(
-  List<TrackStep<double>> steps, {
-  double velocity = 0,
-  LoopMode loop = LoopMode.none,
-}) =>
-    StepPlayback<double>(
-      steps: steps,
-      converter: MotionConverter.single,
-      start: 0,
-      velocity: velocity,
-      loop: loop,
-    );
 
 void main() {
   group('CutMotion', () {
     const spring = CupertinoMotion.bouncy();
-    final cut = spring.skipTail();
+    final cut = CutMotion(spring, duration: spring.duration);
     final d = _seconds(spring.duration);
 
     test('ends at exactly its duration for every move', () {
+      expect(cut.duration, spring.duration);
       for (final (end, velocity) in [
         (1.0, 0.0),
         (300.0, -5000.0),
@@ -92,8 +79,10 @@ void main() {
     });
 
     test('holds a parent that finishes before the cut', () {
-      final curve = const Motion.linear(Duration(milliseconds: 200))
-          .cutAfter(const Duration(milliseconds: 500));
+      final curve = CutMotion(
+        const Motion.linear(Duration(milliseconds: 200)),
+        duration: const Duration(milliseconds: 500),
+      );
       final simulation = curve.createSimulation();
       expect(simulation.x(0.1), closeTo(0.5, 1e-9));
       expect(simulation.x(0.3), 1);
@@ -101,155 +90,27 @@ void main() {
       expect(simulation.isDone(0.5), isTrue);
     });
 
-    test('skipTail cuts springs at their perceptual duration', () {
-      expect(
-        const Motion.bouncySpring().skipTail(),
-        spring.cutAfter(const Duration(milliseconds: 500)),
-      );
-      const material = MaterialSpringMotion.expressiveSpatialDefault();
-      expect(
-        material.skipTail(),
-        material.cutAfter(material.description.duration),
-      );
-      const curve = Motion.linear(Duration(milliseconds: 300));
-      expect(identical(curve.skipTail(), curve), isTrue);
-    });
-
     test('compares by parent movement and duration', () {
-      expect(cut, spring.cutAfter(spring.duration));
-      expect(cut.hashCode, spring.cutAfter(spring.duration).hashCode);
-      expect(cut, isNot(spring.cutAfter(const Duration(milliseconds: 400))));
-      expect(cut, isNot(const CupertinoMotion().cutAfter(spring.duration)));
+      expect(cut, CutMotion(spring, duration: spring.duration));
+      final same = CutMotion(spring, duration: spring.duration);
+      expect(cut.hashCode, same.hashCode);
+      const shorter = Duration(milliseconds: 400);
+      expect(cut, isNot(CutMotion(spring, duration: shorter)));
+      const other = CupertinoMotion();
+      expect(cut, isNot(CutMotion(other, duration: spring.duration)));
 
       const duration = Duration(milliseconds: 300);
       const cutDuration = Duration(milliseconds: 200);
       expect(
-        const Motion.linear(duration).cutAfter(cutDuration),
-        const Motion.curved(duration).cutAfter(cutDuration),
+        CutMotion(const Motion.linear(duration), duration: cutDuration),
+        CutMotion(const Motion.curved(duration), duration: cutDuration),
       );
       expect(
-        const Motion.linear(duration).cutAfter(cutDuration).hashCode,
-        const Motion.curved(duration).cutAfter(cutDuration).hashCode,
+        CutMotion(const Motion.linear(duration), duration: cutDuration)
+            .hashCode,
+        CutMotion(const Motion.curved(duration), duration: cutDuration)
+            .hashCode,
       );
-    });
-  });
-
-  group('playback', () {
-    const spring = CupertinoMotion.bouncy();
-    final cut = spring.skipTail();
-    final d = _seconds(spring.duration);
-
-    test('plays the same and ends at the cut whatever comes next', () {
-      final nexts = <List<TrackStep<double>>>[
-        [],
-        [const TrackStep.hold(Duration(milliseconds: 100))],
-        [const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1)))],
-        [const TrackStep.to(0, motion: CupertinoMotion.snappy())],
-        [
-          const TrackStep.at(
-            Duration(seconds: 3),
-            0,
-            motion: Motion.linear(Duration(milliseconds: 300)),
-          ),
-        ],
-      ];
-      final reference = cut.createSimulation(end: 300, velocity: 400);
-      for (final next in nexts) {
-        final playback = _playback(
-          [TrackStep.to(300, motion: cut), ...next],
-          velocity: 400,
-        );
-        for (var t = 0.0; t < d; t += 1 / 60) {
-          playback.advanceTo(t);
-          expect(playback.values.single, reference.x(t), reason: '$next at $t');
-        }
-        playback.advanceTo(d);
-        expect(playback.forwardSegmentSeconds.first, d, reason: '$next');
-        if (next.isEmpty) {
-          expect(playback.isDone, isTrue);
-          expect(playback.values.single, 300);
-        } else {
-          expect(playback.currentStepIndex, 1, reason: '$next');
-        }
-      }
-    });
-
-    test('a following spring starts with the velocity at the cut', () {
-      final playback = _playback([
-        TrackStep.to(300, motion: cut),
-        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
-      ])
-        ..advanceTo(d);
-      expect(
-        playback.velocities.single,
-        closeTo(cut.createSimulation(end: 300).dx(d), 1e-9),
-      );
-    });
-
-    test('.at plans with the cut as its natural length', () {
-      final atCut = const CupertinoMotion().skipTail();
-      final natural = _seconds(const CupertinoMotion().duration);
-
-      // Enough time: the .at motion starts when the preceding step ends.
-      final early = _playback([
-        const TrackStep.to(
-          1,
-          motion: Motion.linear(Duration(milliseconds: 200)),
-        ),
-        TrackStep.at(const Duration(seconds: 1), 0, motion: atCut),
-      ])
-        ..advanceTo(1);
-      expect(early.forwardSegmentSeconds.first, closeTo(0.2, 1e-6));
-      expect(early.values.single, 0);
-
-      // Not enough: the preceding step is cut so the motion runs its cut.
-      final late = _playback([
-        const TrackStep.to(
-          1,
-          motion: Motion.linear(Duration(milliseconds: 900)),
-        ),
-        TrackStep.at(const Duration(seconds: 1), 0, motion: atCut),
-      ])
-        ..advanceTo(0.999);
-      expect(late.forwardSegmentSeconds.first, closeTo(1 - natural, 1e-6));
-      late.advanceTo(1);
-      expect(late.values.single, 0);
-      expect(late.isDone, isTrue);
-    });
-
-    test('ticking and seeking agree', () {
-      final steps = <TrackStep<double>>[
-        TrackStep.to(300, motion: cut),
-        TrackStep.to(
-          -50,
-          motion: const CupertinoMotion.snappy().skipTail(),
-        ),
-        TrackStep.at(
-          const Duration(seconds: 2),
-          100,
-          motion:
-              const Motion.curved(Duration(milliseconds: 400), Curves.easeOut)
-                  .cutAfter(const Duration(milliseconds: 250)),
-        ),
-      ];
-      for (final loop in [LoopMode.none, LoopMode.pingPong]) {
-        final ticked = _playback(steps, velocity: -800, loop: loop);
-        for (var t = 0.0; t <= 5; t += 1 / 240) {
-          ticked.advanceTo(t);
-          final sought = _playback(steps, velocity: -800, loop: loop)
-            ..advanceTo(t);
-          expect(
-            sought.values.single,
-            ticked.values.single,
-            reason: '$loop $t',
-          );
-          expect(
-            sought.velocities.single,
-            ticked.velocities.single,
-            reason: '$loop $t',
-          );
-        }
-      }
     });
   });
 }
