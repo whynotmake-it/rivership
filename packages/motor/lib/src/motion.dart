@@ -125,7 +125,7 @@ abstract class Motion extends MotionBase {
   ///
   /// In a track, a step lasts this long: the next step takes over then,
   /// from the current value and velocity. The last step, a step with
-  /// `waitForSettle`, and a motion whose [duration] is null last until
+  /// `untilSettled`, and a motion whose [duration] is null last until
   /// [settlingDuration] instead.
   Duration? get duration => null;
 

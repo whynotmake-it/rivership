@@ -377,12 +377,12 @@ class MotionController<T extends Object> extends Animation<T>
               motion: null,
               motionPerDimension: null,
               :final value,
-              :final waitForSettle,
+              :final untilSettled,
             ) =>
               TrackStep.to(
                 value,
                 motionPerDimension: _motionPerDimension,
-                waitForSettle: waitForSettle,
+                untilSettled: untilSettled,
               ),
             StepAt<T>(
               motion: null,

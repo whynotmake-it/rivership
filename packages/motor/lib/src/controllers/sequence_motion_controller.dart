@@ -148,7 +148,7 @@ class SequenceMotionController<P, T extends Object>
           toPhase: run.first,
           fromPhase: fromPhaseForFirstLeg,
         ),
-        waitForSettle: true,
+        untilSettled: true,
       ),
       for (var i = 1; i < run.length; i++) ...[
         // A fresh token keeps each phase barrier independent; releasing on
@@ -160,7 +160,7 @@ class SequenceMotionController<P, T extends Object>
             toPhase: run[i],
             fromPhase: run[i - 1],
           ),
-          waitForSettle: true,
+          untilSettled: true,
         ),
       ],
     ];

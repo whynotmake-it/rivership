@@ -1017,7 +1017,7 @@ class StepPlayback<T extends Object> {
   /// doesn't wait to settle, so that the next step takes over then.
   void _planHandOver(List<Motion> motions) {
     final step = _steps[_stepIndex];
-    if (step is StepTo<T> && step.waitForSettle) return;
+    if (step is StepTo<T> && step.untilSettled) return;
     if (_logicalSeconds(motions) case final seconds?) {
       _plannedEnd = seconds;
       _handsOver = true;

@@ -127,17 +127,17 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 
 #### My spring runs longer than its duration
 
-A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. In a track, the next step takes over after `duration`, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when futures complete and the ticker stops. To make the next step wait, set `waitForSettle`:
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. In a track, the next step takes over after `duration`, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when futures complete and the ticker stops. To make the next step wait, set `untilSettled`:
 
 ```dart
 opacity([
   .to(1, motion: .bouncySpring()), // the next step starts at 500 ms
-  .to(0, motion: .bouncySpring(), waitForSettle: true), // the next one waits
+  .to(0, motion: .bouncySpring(), untilSettled: true), // the next one waits
   .to(1),
 ]);
 ```
 
-`MotionController` and the deprecated sequences keep 1.x timing: each spring settles before the next phase.
+Taking over at `duration` is what SwiftUI's `PhaseAnimator` does. If you're used to Motion, anime.js or Compose, where the next animation starts once the previous one has settled, set `untilSettled: true`. `MotionController` and the deprecated sequences keep 1.x timing: each spring settles before the next phase.
 
 ### MaterialSpringMotion
 
@@ -388,7 +388,7 @@ scrubbing, barriers are resolved exactly as during playback.
 A track reaches the barrier when the step before it ends: after its motion's
 `duration`. A spring keeps settling while the track waits, and the step after
 the barrier continues from there. To arrive only once the spring has settled,
-set `waitForSettle: true` on that step.
+set `untilSettled: true` on that step.
 
 #### Phases — named states
 

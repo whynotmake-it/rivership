@@ -17,8 +17,13 @@ sealed class TrackStep<T extends Object> {
   /// The step lasts the motion's [Motion.duration]: the next step takes over
   /// then, from the current value and velocity, while a spring is still
   /// settling. The last step plays out until it is done, and so does a step
-  /// whose motion has no duration. Set [waitForSettle] to make the next step
+  /// whose motion has no duration. Set [untilSettled] to make the next step
   /// wait until this one has settled ([Motion.settlingDuration]).
+  ///
+  /// Taking over at the duration mirrors SwiftUI's `PhaseAnimator`, which
+  /// moves to the next phase at the spring's duration and keeps its
+  /// velocity. If you come from Motion, anime.js or Compose, where the next
+  /// animation starts once the previous one has settled, set [untilSettled].
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
@@ -28,7 +33,7 @@ sealed class TrackStep<T extends Object> {
     T value, {
     Motion? motion,
     List<Motion>? motionPerDimension,
-    bool waitForSettle,
+    bool untilSettled,
   }) = StepTo<T>;
 
   /// Runs a self-directed free [motion].
@@ -104,7 +109,7 @@ sealed class TrackStep<T extends Object> {
   /// {@template motor.TrackStep.sync.arrival}
   /// A track arrives once the step before the barrier reaches its logical
   /// end, its motion's [Motion.duration]. A spring keeps settling while it
-  /// waits. To arrive only once it has settled, set `waitForSettle` on that
+  /// waits. To arrive only once it has settled, set `untilSettled` on that
   /// step; a motion without a duration always waits to settle.
   /// {@endtemplate}
   ///
@@ -121,7 +126,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
     this.value, {
     this.motion,
     this.motionPerDimension,
-    this.waitForSettle = false,
+    this.untilSettled = false,
   }) : assert(
           motion == null || motionPerDimension == null,
           'Provide either motion or motionPerDimension, not both.',
@@ -142,8 +147,9 @@ class StepTo<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   /// Whether the next step waits until this one has settled, instead of
-  /// taking over after the motion's [Motion.duration].
-  final bool waitForSettle;
+  /// taking over after the motion's [Motion.duration], as SwiftUI's
+  /// `PhaseAnimator` does. Defaults to false.
+  final bool untilSettled;
 
   @override
   bool operator ==(Object other) =>
@@ -153,7 +159,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
           other.value == value &&
           other.motion == motion &&
           listEquals(other.motionPerDimension, motionPerDimension) &&
-          other.waitForSettle == waitForSettle;
+          other.untilSettled == untilSettled;
 
   @override
   int get hashCode => Object.hash(
@@ -161,13 +167,13 @@ class StepTo<T extends Object> extends TrackStep<T> {
         value,
         motion,
         _hashList(motionPerDimension),
-        waitForSettle,
+        untilSettled,
       );
 
   @override
   String toString() => '${objectRuntimeType(this, 'StepTo')}($value, '
       '${_describeMotion(motion, motionPerDimension)}'
-      '${waitForSettle ? ', waitForSettle' : ''})';
+      '${untilSettled ? ', untilSettled' : ''})';
 }
 
 /// A step that runs a self-directed motion.

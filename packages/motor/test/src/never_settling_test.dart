@@ -223,7 +223,7 @@ void main() {
       );
       expect(
         () => _playback(
-          const [TrackStep.to(1, motion: _undamped, waitForSettle: true)],
+          const [TrackStep.to(1, motion: _undamped, untilSettled: true)],
           loop: LoopMode.pingPong,
         ),
         throwsAssertionError,

@@ -100,9 +100,9 @@ void main() {
       expect(playback.values.single, 300);
     });
 
-    test('waitForSettle makes the next step wait', () {
+    test('untilSettled makes the next step wait', () {
       final playback = _playback([
-        const TrackStep.to(300, motion: spring, waitForSettle: true),
+        const TrackStep.to(300, motion: spring, untilSettled: true),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ])
         ..advanceTo(settle + 0.01);
@@ -250,12 +250,12 @@ void main() {
       expect(playback.loopPeriodSeconds, closeTo(3 * d, 1e-9));
     });
 
-    test('waitForSettle is part of step equality', () {
+    test('untilSettled is part of step equality', () {
       const a = TrackStep<double>.to(1, motion: spring);
-      const b = TrackStep<double>.to(1, motion: spring, waitForSettle: true);
+      const b = TrackStep<double>.to(1, motion: spring, untilSettled: true);
       expect(a, isNot(b));
       expect(a.hashCode, isNot(b.hashCode));
-      const same = TrackStep<double>.to(1, motion: spring, waitForSettle: true);
+      const same = TrackStep<double>.to(1, motion: spring, untilSettled: true);
       expect(b, same);
     });
   });
