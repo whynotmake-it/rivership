@@ -1407,9 +1407,12 @@ class TrimmedMotion extends Motion {
   /// Amount to trim from the end of the motion curve.
   final double fromEnd;
 
-  /// [parent]'s [Motion.duration] for the part that's kept.
+  /// [parent]'s [Motion.duration] for the part that's kept, or null for a
+  /// parent that settles, such as a spring: its slice is taken from the
+  /// whole settle, so a step with it lasts until the slice ends.
   @override
-  Duration? get duration => switch (parent.duration) {
+  Duration? get duration =>
+      switch (parent.needsSettle ? null : parent.duration) {
         final d? => Duration(
             microseconds:
                 (d.inMicroseconds * (1 - fromStart - fromEnd)).round(),

@@ -70,6 +70,7 @@ void main() {
             .duration,
         const Duration(milliseconds: 500),
       );
+      expect(spring.trimmed(fromEnd: 0.9).duration, isNull);
       expect(const _NoDurationSpring().duration, isNull);
     });
   });
@@ -133,6 +134,19 @@ void main() {
       expect(playback.currentStepIndex, 2);
       expect(playback.values.single, closeTo(first.x(d + 0.4), 1e-9));
       expect(playback.velocities.single, closeTo(first.dx(d + 0.4), 1e-9));
+    });
+
+    test('a trimmed spring lasts until its slice ends', () {
+      final slice = const Motion.smoothSpring().trimmed(fromEnd: 0.9);
+      final playback = _playback([
+        TrackStep.to(400, motion: slice),
+        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
+      ])
+        ..advanceTo(1);
+      expect(
+        playback.forwardSegmentSeconds.first,
+        closeTo(_seconds(slice.settlingDuration(end: 400)!), 1e-5),
+      );
     });
 
     test('a trailing hold follows a settled last motion', () {
