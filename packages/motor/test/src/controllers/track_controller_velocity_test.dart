@@ -65,7 +65,7 @@ void main() {
     testWidgets('feeds its tracked velocity into the next play',
         (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       // Build up velocity by setting values rapidly.
       controller.set([position.value(0.0)]);
@@ -117,7 +117,7 @@ void main() {
     testWidgets('keeps its tracked velocity when play starts in a later frame',
         (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       controller.set([position.value(0.0)]);
       await tester.pump(const Duration(milliseconds: 16));
@@ -187,7 +187,7 @@ void main() {
 
     testWidgets('is used as the initial playback velocity', (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       // Start from 2.0 with positive velocity — should overshoot target.
       controller.play(
@@ -208,7 +208,7 @@ void main() {
     testWidgets('defaults to a zero initial velocity when omitted',
         (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       // Start at the target with no velocity — should settle immediately
       // without overshooting.
@@ -228,7 +228,7 @@ void main() {
 
     testWidgets('overrides the tracked velocity', (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       // Build up negative tracked velocity.
       controller.set([position.value(3.0)]);
@@ -270,7 +270,7 @@ void main() {
         vsync: tester,
         velocityTracking: const VelocityTracking.off(),
       );
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       controller.set([position.value(2.0)]);
 
@@ -293,7 +293,7 @@ void main() {
 
     testWidgets('overrides auto-tracked velocity', (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       // Build up negative tracked velocity.
       controller.set([position.value(3.0)]);
@@ -332,7 +332,7 @@ void main() {
     testWidgets('set followed by animate carries velocity over',
         (tester) async {
       controller = TrackController(vsync: tester);
-      const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const spring = Motion.smoothSpring();
 
       controller.set(
         [position.value(5.0)],

@@ -333,7 +333,7 @@ void main() {
 
     testWidgets('redirects from current value and velocity', (tester) async {
       controller = TrackController(vsync: tester);
-      const motion = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+      const motion = Motion.smoothSpring();
 
       controller.play(
         TrackTimeline([
@@ -804,7 +804,7 @@ void main() {
 
   group('TrackController lifecycle and redirection', () {
     final position = Track<double>(MotionConverter.single, initial: 0);
-    const spring = Motion.smoothSpring(duration: Duration(milliseconds: 500));
+    const spring = Motion.smoothSpring();
 
     testWidgets('dispose while animating stops the ticker cleanly',
         (tester) async {

@@ -375,9 +375,10 @@ void main() {
     });
 
     test('preserves spring parent samples', () {
-      final simulation = const CupertinoMotion()
-          .trimmed(fromStart: 0.2, fromEnd: 0.1)
-          .createSimulation();
+      final simulation =
+          const CupertinoMotion(duration: Duration(milliseconds: 550))
+              .trimmed(fromStart: 0.2, fromEnd: 0.1)
+              .createSimulation();
 
       // 1e-7 tolerance: these positions were sampled with a probed parent
       // length, about 3e-8 s from its exact settle time.
