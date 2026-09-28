@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track_phase_timeline.dart';
@@ -138,10 +139,13 @@ class _PhaseTrackBuilderState<P extends Object>
   @override
   void initState() {
     super.initState();
-    _controller = PhaseTrackController<P>(
-      vsync: this,
-      velocityTracking: widget.velocityTracking,
-      debugLabel: widget.debugLabel,
+    _controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => PhaseTrackController<P>(
+        vsync: this,
+        velocityTracking: widget.velocityTracking,
+        debugLabel: widget.debugLabel,
+      ),
     );
     if (widget.onAnimationStatusChanged != null) {
       _controller.addStatusListener(widget.onAnimationStatusChanged!);

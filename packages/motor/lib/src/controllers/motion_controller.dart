@@ -131,6 +131,10 @@ class MotionController<T extends Object> extends Animation<T>
   @visibleForTesting
   TrackController get debugInnerController => _inner;
 
+  /// The underlying track controller, for inspection tooling.
+  @internal
+  TrackController get internalInnerController => _inner;
+
   /// The most recent animation target, for redirecting to it.
   T? _lastTarget;
 
