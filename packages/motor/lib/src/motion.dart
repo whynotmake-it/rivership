@@ -57,8 +57,8 @@ sealed class MotionBase {
 /// a start value to an end value.
 ///
 /// To create a custom motion, extend [Motion] rather than implementing it.
-/// Extending inherits the defaults of [settlingDuration] and [scaleTo], which
-/// an implementing class has to provide itself.
+/// Extending inherits the defaults of [duration], [settlingDuration] and
+/// [scaleTo], which an implementing class has to provide itself.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
