@@ -57,7 +57,7 @@ class ZoomTransitionExample extends StatelessWidget {
   const ZoomTransitionExample({super.key});
 
   static const name = 'Zoom Transition';
-  static const path = 'zoom';
+  static const path = '/zoom';
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +136,7 @@ class DetailsPage extends StatelessWidget {
   const DetailsPage({super.key, required this.index});
 
   static const name = 'Details';
-  static const path = 'details';
+  static const path = '/details';
 
   final int index;
 
@@ -199,7 +199,7 @@ class SecondDetailsPage extends StatelessWidget {
   const SecondDetailsPage({super.key});
 
   static const name = 'Second Details';
-  static const path = 'second-details';
+  static const path = '/second-details';
 
   @override
   Widget build(BuildContext context) {

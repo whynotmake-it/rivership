@@ -19,7 +19,7 @@ void main() async {
 final heroineRoutes = [
   NamedRouteDef(
     name: 'Heroine',
-    path: '',
+    path: '/',
     type: RouteType.cupertino(),
     builder: (context, _) => HeroineExamplePicker(),
   ),

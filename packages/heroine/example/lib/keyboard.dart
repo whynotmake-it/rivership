@@ -10,7 +10,7 @@ class KeyboardCardExample extends StatelessWidget {
   const KeyboardCardExample({super.key});
 
   static const name = 'Keyboard Card';
-  static const path = 'keyboard-card';
+  static const path = '/keyboard-card';
 
   @override
   Widget build(BuildContext context) {
