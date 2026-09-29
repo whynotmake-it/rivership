@@ -5,19 +5,21 @@ part of 'track_controller.dart';
 ///
 /// Two moments matter for an animation:
 ///
-/// - It has **ended** once its steps' time is up: the last step's
-///   `duration` has elapsed, so the next animation may take over. A spring
-///   is nearly at its target by then and may still be moving.
+/// - It has **ended** once its last step has ended, so the next animation
+///   may take over. A step ends when its `until` condition is reached: by
+///   default once it has settled, or with `until: .duration` after its
+///   motion's duration, when a spring is nearly at its target and may still
+///   be moving. A hold ends after its duration, and a `.at` at its time.
 /// - It has **settled** once it is at rest, exactly on its target.
 ///
 /// Awaiting the future itself waits until the animation has settled, like
-/// the [TickerFuture] of an [AnimationController], and like a track step
-/// waits by default. Await [ended] to chain the way a step with
-/// `until: .duration` does, taking over at the previous motion's duration:
+/// the [TickerFuture] of an [AnimationController]. By default a step ends
+/// once settled too, so both coincide. Await [ended] to chain in code the
+/// way the step after an `until: .duration` step takes over:
 ///
 /// ```dart
-/// await controller.animateTo(1).ended; // after the spring's duration
-/// controller.animateTo(0);             // takes over, keeping its velocity
+/// await controller.play([.to(1, until: .duration)]).ended; // at 500 ms
+/// controller.animateTo(0); // takes over, keeping its velocity
 /// ```
 ///
 /// Both follow the same rules when the animation is interrupted. A later
@@ -30,11 +32,12 @@ abstract interface class MotionFuture implements TickerFuture {
   /// nothing.
   factory MotionFuture.complete() => _TrackFuture.completed();
 
-  /// Completes once this animation has ended: its last step's duration has
-  /// elapsed, while it may still be settling.
+  /// Completes once this animation has ended: its last step has reached its
+  /// `until` condition, while it may still be settling.
   ///
-  /// A last step whose motion has no duration, and a barrier, end when they
-  /// settle. It never completes if the animation is canceled first.
+  /// That is when it settles, unless the last step has `until: .duration`
+  /// (and a motion with a duration), is a hold or is a `.at`. It never
+  /// completes if the animation is canceled first.
   Future<void> get ended;
 }
 

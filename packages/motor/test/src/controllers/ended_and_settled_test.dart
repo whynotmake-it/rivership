@@ -99,21 +99,41 @@ double _settleSeconds(Motion motion, {double start = 0, double end = 1}) =>
         .inMicroseconds /
     1e6;
 
+/// [track] to [value] with [motion], ending at the motion's duration.
+TrackAnimation<double> _toByDuration(
+  Track<double> track,
+  double value, {
+  Motion motion = _bouncy,
+}) =>
+    track([TrackStep.to(value, motion: motion, until: StepEnd.duration)]);
+
 void main() {
   final a = Track<double>(MotionConverter.single, initial: 0);
   final b = Track<double>(MotionConverter.single, initial: 0);
+  final settle = _settleSeconds(_bouncy);
 
   group('one step', () {
-    testWidgets('a spring ends after its duration and settles later',
-        (tester) async {
+    testWidgets('by default ends when it settles', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
       final moments = await _watch(
         tester,
         controller.animate([a.to(1, motion: _bouncy)]),
       );
+      expect(moments.ended, moments.settled);
+      expect(moments.settled, _frameAfter(settle));
+    });
+
+    testWidgets('until its duration, ends then and settles later',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final moments = await _watch(
+        tester,
+        controller.animate([_toByDuration(a, 1)]),
+      );
       expect(moments.ended, 0.5);
-      expect(moments.settled, _frameAfter(_settleSeconds(_bouncy)));
+      expect(moments.settled, _frameAfter(settle));
       expect(moments.settled, greaterThan(0.9));
     });
 
@@ -123,7 +143,7 @@ void main() {
       addTearDown(controller.dispose);
       final moments = await _watch(
         tester,
-        controller.animate([a.to(1, motion: _linear300)]),
+        controller.animate([_toByDuration(a, 1, motion: _linear300)]),
       );
       expect(moments.ended, 0.3);
       // Its simulation is done just after its duration, so on a frame that
@@ -135,12 +155,11 @@ void main() {
         (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final moments = await _watch(
-        tester,
-        controller.animate([a.to(0, motion: _bouncy)]),
-      );
-      expect(moments.ended, 0);
-      expect(moments.settled, 0);
+      for (final animation in [a.to(0, motion: _bouncy), _toByDuration(a, 0)]) {
+        final moments = await _watch(tester, controller.animate([animation]));
+        expect(moments.ended, 0);
+        expect(moments.settled, 0);
+      }
     });
 
     test('a call that starts nothing has ended and settled', () async {
@@ -160,7 +179,7 @@ void main() {
         controller.animate([
           a([
             const TrackStep.to(1, motion: _bouncy, until: StepEnd.duration),
-            const TrackStep.to(0, motion: _bouncy),
+            const TrackStep.to(0, motion: _bouncy, until: StepEnd.duration),
           ]),
         ]),
       );
@@ -168,49 +187,9 @@ void main() {
       expect(moments.settled, greaterThan(1.5));
     });
 
-    testWidgets('of several tracks ends when the last track ends',
-        (tester) async {
+    testWidgets('by default ends when its last step settles', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final moments = await _watch(
-        tester,
-        controller.animate([
-          a.to(1, motion: _bouncy),
-          b([
-            const TrackStep.hold(Duration(milliseconds: 200)),
-            const TrackStep.to(1, motion: _bouncy),
-          ]),
-        ]),
-      );
-      expect(moments.ended, 0.7);
-      expect(
-        moments.settled,
-        _frameAfter(0.2 + _settleSeconds(_bouncy)),
-      );
-    });
-
-    testWidgets('a last step ends after its duration, whatever its end',
-        (tester) async {
-      final controller = TrackController(vsync: tester);
-      addTearDown(controller.dispose);
-      for (final until in StepEnd.values) {
-        final moments = await _watch(
-          tester,
-          controller.animate([
-            a([TrackStep.to(1, motion: _bouncy, until: until)]),
-          ]),
-        );
-        expect(moments.ended, 0.5, reason: '$until');
-        expect(moments.settled, greaterThan(0.9), reason: '$until');
-        controller.set([a.value(0)]);
-      }
-    });
-
-    testWidgets('a step that waits to settle ends the plan a duration later',
-        (tester) async {
-      final controller = TrackController(vsync: tester);
-      addTearDown(controller.dispose);
-      final settle = _settleSeconds(_bouncy);
       final moments = await _watch(
         tester,
         controller.animate([
@@ -220,8 +199,43 @@ void main() {
           ]),
         ]),
       );
+      expect(moments.ended, moments.settled);
+      expect(moments.settled, closeTo(2 * settle, 0.011));
+    });
+
+    testWidgets('waiting for one step, then ending at a duration',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final moments = await _watch(
+        tester,
+        controller.animate([
+          a([
+            const TrackStep.to(1, motion: _bouncy),
+            const TrackStep.to(0, motion: _bouncy, until: StepEnd.duration),
+          ]),
+        ]),
+      );
       expect(moments.ended, _frameAfter(settle + 0.5));
       expect(moments.settled, greaterThan(moments.ended!));
+    });
+
+    testWidgets('of several tracks ends when the last track ends',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final moments = await _watch(
+        tester,
+        controller.animate([
+          _toByDuration(a, 1),
+          b([
+            const TrackStep.hold(Duration(milliseconds: 200)),
+            const TrackStep.to(1, motion: _bouncy, until: StepEnd.duration),
+          ]),
+        ]),
+      );
+      expect(moments.ended, 0.7);
+      expect(moments.settled, _frameAfter(0.2 + settle));
     });
 
     testWidgets('ending in a hold or a keyframe ends at its time',
@@ -258,30 +272,32 @@ void main() {
     testWidgets('that loops never ends or settles', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final moments = await _watch(
-        tester,
-        controller.animate(
-          [
-            a([
-              const TrackStep.to(1, motion: _bouncy),
-              const TrackStep.to(0, motion: _bouncy),
-            ]),
-          ],
-          loop: LoopMode.loop,
-        ),
-        until: 3,
-      );
-      expect(moments.ended, isNull);
-      expect(moments.settled, isNull);
+      for (final until in StepEnd.values) {
+        final moments = await _watch(
+          tester,
+          controller.animate(
+            [
+              a([
+                TrackStep.to(1, motion: _bouncy, until: until),
+                TrackStep.to(0, motion: _bouncy, until: until),
+              ]),
+            ],
+            loop: LoopMode.loop,
+          ),
+          until: 3,
+        );
+        expect(moments.ended, isNull, reason: '$until');
+        expect(moments.settled, isNull, reason: '$until');
+      }
       await controller.stop(canceled: true);
     });
   });
 
   group('never settling', () {
-    testWidgets('with a duration, ends but never settles', (tester) async {
+    testWidgets('until its duration, ends but never settles', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final run = controller.animate([a.to(1, motion: _undamped)]);
+      final run = controller.animate([_toByDuration(a, 1, motion: _undamped)]);
       final moments = await _watch(tester, run, until: 60);
       expect(moments.ended, _frameAfter(0.628));
       expect(moments.settled, isNull);
@@ -290,16 +306,22 @@ void main() {
       await expectLater(run.orCancel, throwsA(isA<TickerCanceled>()));
     });
 
-    testWidgets('without a duration, neither ends nor settles', (tester) async {
+    testWidgets('by default, or without a duration, neither ends nor settles',
+        (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final moments = await _watch(
-        tester,
-        controller.animate([a.to(1, motion: const _Drift())]),
-        until: 60,
-      );
-      expect(moments.ended, isNull);
-      expect(moments.settled, isNull);
+      for (final animation in [
+        a.to(1, motion: _undamped),
+        _toByDuration(a, 1, motion: const _Drift()),
+      ]) {
+        final moments = await _watch(
+          tester,
+          controller.animate([animation]),
+          until: 60,
+        );
+        expect(moments.ended, isNull);
+        expect(moments.settled, isNull);
+      }
       await controller.stop(canceled: true);
     });
   });
@@ -308,12 +330,12 @@ void main() {
     testWidgets('a retarget before the end cancels both', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final first = controller.animate([a.to(1, motion: _bouncy)]);
+      final first = controller.animate([_toByDuration(a, 1)]);
       var ended = false;
       unawaited(first.ended.then((_) => ended = true));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      final second = controller.animate([a.to(-1, motion: _bouncy)]);
+      final second = controller.animate([_toByDuration(a, -1)]);
       await expectLater(first.orCancel, throwsA(isA<TickerCanceled>()));
       final moments = await _watch(tester, second);
       expect(ended, isFalse);
@@ -325,10 +347,12 @@ void main() {
         (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final first = controller.animate([a.to(1, motion: _bouncy)]);
+      final first = controller.animate([_toByDuration(a, 1)]);
+      var ended = false;
+      unawaited(first.ended.then((_) => ended = true));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      await first.ended;
+      expect(ended, isTrue);
       controller.animate([a.to(0, motion: _bouncy)]);
       await expectLater(first.orCancel, throwsA(isA<TickerCanceled>()));
       await tester.pumpAndSettle();
@@ -370,7 +394,7 @@ void main() {
     testWidgets('a canceling stop cancels both', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final run = controller.animate([a.to(1, motion: _bouncy)]);
+      final run = controller.animate([_toByDuration(a, 1)]);
       var ended = false;
       unawaited(run.ended.then((_) => ended = true));
       await tester.pump();
@@ -399,7 +423,7 @@ void main() {
       ]);
       unawaited(
         chained
-            .animate([c.to(1, motion: _bouncy)])
+            .animate([_toByDuration(c, 1)])
             .ended
             .then((_) => chained.animate([c.to(0, motion: _bouncy)])),
       );
@@ -415,24 +439,37 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('awaiting the run hands over only once settled',
+    testWidgets('awaiting the future chains the way a plan does by default',
         (tester) async {
-      final controller = MotionController<double>(
-        motion: _bouncy,
-        vsync: tester,
-        converter: MotionConverter.single,
-        initialValue: 0,
+      final chained = TrackController(vsync: tester);
+      final planned = TrackController(vsync: tester);
+      addTearDown(chained.dispose);
+      addTearDown(planned.dispose);
+      final c = Track<double>(MotionConverter.single, initial: 0);
+      final p = Track<double>(MotionConverter.single, initial: 0);
+
+      planned.animate([
+        p([
+          const TrackStep.to(1, motion: _linear300),
+          const TrackStep.to(0, motion: _linear300),
+        ]),
+      ]);
+      unawaited(
+        chained.animate([c.to(1, motion: _linear300)]).then(
+          (_) => chained.animate([c.to(0, motion: _linear300)]),
+        ),
       );
-      addTearDown(controller.dispose);
-      final moments = await _watch(tester, controller.animateTo(1));
-      expect(moments.ended, 0.5);
-      expect(moments.settled, _frameAfter(_settleSeconds(_bouncy)));
+      await tester.pump();
+      for (var frame = 1; frame <= 70; frame++) {
+        await tester.pump(_frame);
+      }
+      expect(chained.value(c), planned.value(p));
+      await tester.pumpAndSettle();
     });
   });
 
   group('MotionController', () {
-    testWidgets('animateTo ends after the duration and settles later',
-        (tester) async {
+    testWidgets('animateTo ends when it settles', (tester) async {
       final controller = BoundedMotionController<double>(
         motion: _bouncy,
         vsync: tester,
@@ -443,9 +480,25 @@ void main() {
       );
       addTearDown(controller.dispose);
       final moments = await _watch(tester, controller.forward());
-      expect(moments.ended, 0.5);
-      expect(moments.settled, greaterThan(0.9));
+      expect(moments.ended, moments.settled);
+      expect(moments.settled, _frameAfter(settle));
       expect(controller.status, AnimationStatus.completed);
+    });
+
+    testWidgets('play until the duration ends after it', (tester) async {
+      final controller = MotionController<double>(
+        motion: _bouncy,
+        vsync: tester,
+        converter: MotionConverter.single,
+        initialValue: 0,
+      );
+      addTearDown(controller.dispose);
+      final moments = await _watch(
+        tester,
+        controller.play(const [TrackStep.to(1, until: StepEnd.duration)]),
+      );
+      expect(moments.ended, 0.5);
+      expect(moments.settled, _frameAfter(settle));
     });
 
     testWidgets('setting the value ends and settles it', (tester) async {
@@ -490,14 +543,13 @@ void main() {
         TrackPhaseTimeline<int>({
           0: [a.to(0, motion: _bouncy)],
           1: [a.to(1, motion: _bouncy)],
-          2: [a.to(0, motion: _bouncy)],
+          2: [_toByDuration(a, 0)],
         }),
         onTransition: (transition) => events.add('$transition'),
       );
       final moments = await _watch(tester, run);
       // Each phase waits until its step has settled; the first is already on
-      // its target. The last phase ends after its step's duration.
-      final settle = _settleSeconds(_bouncy);
+      // its target. The last one ends after its duration.
       expect(moments.ended, closeTo(settle + 0.5, 0.011));
       expect(moments.settled, greaterThan(moments.ended!));
       expect(events.last, 'PhaseSettled(2)');

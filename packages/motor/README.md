@@ -137,11 +137,11 @@ opacity([
 ]);
 ```
 
-Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x, or await its `ended` to take over the way the next step after an `until: .duration` step does:
+Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x and like a default step. Its `ended` completes when the last step has ended, which for a step with `until: .duration` is after the motion's duration, so code can take over the way the next step of such a plan does:
 
 ```dart
-await controller.animateTo(1).ended; // after the spring's duration
-controller.animateTo(0);             // continues with the current velocity
+await controller.play([.to(1, until: .duration)]).ended; // at 500 ms
+controller.animateTo(0); // continues with the current velocity
 ```
 
 This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled).

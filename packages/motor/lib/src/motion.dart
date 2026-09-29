@@ -128,14 +128,13 @@ abstract class Motion extends MotionBase {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
-  /// How long this motion takes, as a step: its perceived duration, after
-  /// which the step has ended and the next step takes over.
+  /// How long this motion takes: its perceived duration.
   ///
-  /// In a track, a step with this motion lasts [duration], and the next step
-  /// then continues from the current value and velocity. A controller call's
-  /// `MotionFuture.ended` completes at this time too. It is a fixed
-  /// property of the motion, the same for every move, so loops and staggers
-  /// keep their rhythm whatever the distance.
+  /// A track step with `until: StepEnd.duration` ends after it, and the next
+  /// step continues from the current value and velocity; by default a step
+  /// waits until settled. It is a fixed property of the motion, the same for
+  /// every move, so loops and staggers keep their rhythm whatever the
+  /// distance.
   ///
   /// Curves, linear motions and [NoMotion] end their movement here too. A
   /// spring's is its perceptual duration, the same number as SwiftUI's

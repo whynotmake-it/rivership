@@ -404,13 +404,13 @@ class StepPlayback<T extends Object> {
   bool get isDone =>
       _isDone && _lastElapsedSeconds >= (_segments.last.end ?? double.infinity);
 
-  /// Whether playback has ended: its last step's length has elapsed, so a
+  /// Whether playback has ended: its last step has reached its end, so a
   /// following animation may take over, while it may still be settling.
   ///
-  /// The last step ends after its motion's [MotionBase.duration], whatever
-  /// its [StepEnd], a hold after its duration and a `.at` at its time. A
-  /// motion without a duration and a barrier end when playback settles.
-  /// Looping playback never ends.
+  /// A last step with [StepEnd.duration] ends after its motion's
+  /// [MotionBase.duration], a hold after its duration and a `.at` at its
+  /// time. Other steps, a motion without a duration and a barrier end when
+  /// playback settles. Looping playback never ends.
   bool get hasEnded =>
       isDone || (_lastEndsAt != null && _lastElapsedSeconds >= _lastEndsAt!);
 
@@ -1041,7 +1041,10 @@ class StepPlayback<T extends Object> {
   /// How long the running step, the last one, lasts before it ends, or null
   /// if it ends when it settles.
   double? _lastStepSeconds() => switch (_steps[_stepIndex]) {
-        StepSync<T>() => null,
+        StepSync<T>() ||
+        StepTo<T>(until: StepEnd.settled) ||
+        StepFree<T>(until: StepEnd.settled) =>
+          null,
         StepTo<T>(:final motion, :final motionPerDimension) =>
           _logicalSeconds(_motions(motion, motionPerDimension)),
         StepFree<T>(:final motion) => motion.duration?.toSeconds(),
