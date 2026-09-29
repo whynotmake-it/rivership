@@ -972,7 +972,7 @@ class MaterialSpringMotion extends SpringMotion {
 ///
 /// ```dart
 /// // This spring ends after 300 ms and settles later.
-/// final motion = SpringMotion(description).scaleTo(
+/// final motion = Motion.bouncySpring().scaleTo(
 ///   const Duration(milliseconds: 300),
 /// );
 /// ```
