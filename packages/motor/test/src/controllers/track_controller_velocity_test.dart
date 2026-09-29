@@ -473,8 +473,7 @@ void main() {
     expect(samples, [1.0, 2.0]);
   });
 
-  testWidgets('custom velocity trackers take the default path',
-      (tester) async {
+  testWidgets('custom velocity trackers take the default path', (tester) async {
     final position = Track<double>(MotionConverter.single, initial: 0.0);
     int clockReads(VelocityTracking tracking) {
       final controller = TrackController(

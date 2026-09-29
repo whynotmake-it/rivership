@@ -137,11 +137,11 @@ opacity([
 ]);
 ```
 
-Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x and like a default step. Its `ended` completes when the last step has ended, which for a step with `until: .duration` is after the motion's duration, so code can take over the way the next step of such a plan does:
+Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x and like a default step. Its `ended` completes once the last step's motion has reached its `duration`, whatever the steps' `until`, so code can take over the way the step after an `until: .duration` step does:
 
 ```dart
-await controller.play([.to(1, until: .duration)]).ended; // at 500 ms
-controller.animateTo(0); // continues with the current velocity
+await controller.animateTo(1).ended; // at 500 ms, still settling
+controller.animateTo(0);             // continues with the current velocity
 ```
 
 This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled).
@@ -492,8 +492,8 @@ A few semantics worth knowing:
 
 - `play`, `animate`, and `stop` return a `MotionFuture` (a `TickerFuture`) for
   the tracks that call started: it completes when they have settled, even if
-  other tracks keep running, and its `ended` completes when their last steps
-  have ended. As with `AnimationController`, restarting one of those tracks
+  other tracks keep running, and its `ended` completes once their last
+  steps' motions have reached their `duration`. As with `AnimationController`, restarting one of those tracks
   or stopping it with `canceled: true` cancels both (`orCancel` throws
   `TickerCanceled`); a graceful `stop()` ends it at once. Looping playback
   never ends or settles, so don't `await` it.

@@ -314,11 +314,11 @@ class MotionController<T extends Object> extends Animation<T>
   /// instead of [velocity].
   ///
   /// Like [AnimationController], the returned [MotionFuture] completes when
-  /// this animation has settled, or when [value] is set during it, and so
-  /// does its [MotionFuture.ended]. To take over at the motion's duration
-  /// instead, [play] a step with `until: .duration` and await its `ended`.
-  /// Starting another animation or stopping with `canceled: true` cancels
-  /// both.
+  /// this animation has settled, or when [value] is set during it. Its
+  /// [MotionFuture.ended] completes once the motion's duration has passed,
+  /// so a following animation can take over while a spring is still
+  /// settling. Starting another animation or stopping with `canceled: true`
+  /// cancels both.
   MotionFuture animateTo(
     T target, {
     T? from,
@@ -349,8 +349,8 @@ class MotionController<T extends Object> extends Animation<T>
   /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
   /// controller's [motionPerDimension].
   ///
-  /// The returned [MotionFuture] ends when the last step has ended (see
-  /// [StepEnd]) and completes when playback has settled. Looping playback
+  /// The returned [MotionFuture] ends when the last step's motion has reached
+  /// its duration and completes when playback has settled. Looping playback
   /// runs until [stop], [animateTo], or [value] interrupts it.
   MotionFuture play(
     List<TrackStep<T>> steps, {

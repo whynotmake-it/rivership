@@ -327,10 +327,11 @@ class TrackController extends Animation<TrackValueReader>
   /// {@template TrackController.future}
   /// Returns a [MotionFuture] for this call's tracks, whatever other tracks are
   /// still running. Awaiting it waits until all of them have settled;
-  /// [MotionFuture.ended] completes once all of them have ended, when the next
-  /// animation may take over. Like [AnimationController], a later call that
-  /// restarts one of these tracks, or a [stop] with `canceled: true` that
-  /// halts one, cancels it instead: neither completes, and its
+  /// [MotionFuture.ended] completes once all of them have ended: each last
+  /// step's motion has reached its duration. Like [AnimationController], a
+  /// later call that restarts one of these tracks, or a [stop] with
+  /// `canceled: true` that halts one, cancels it instead: neither completes,
+  /// and its
   /// [TickerFuture.orCancel] fails with a [TickerCanceled]. A graceful [stop]
   /// ends it right away and lets it settle. Looping playback
   /// ([LoopMode.loop]/[LoopMode.pingPong]/[LoopMode.seamless]) never ends or
@@ -607,9 +608,10 @@ class TrackController extends Animation<TrackValueReader>
   /// tracks keep the direction they were moving in as their status.
   ///
   /// Returns a [MotionFuture] that settles when the settling tracks come to
-  /// rest, or an already settled one when none settles. Runs of earlier
-  /// calls for the stopped tracks are canceled when [canceled] is true, and
-  /// otherwise end right away and settle once those tracks come to rest.
+  /// rest, or an already settled one when none settles. The futures of
+  /// earlier calls for the stopped tracks are canceled when [canceled] is
+  /// true, and otherwise end right away and settle once those tracks come to
+  /// rest.
   MotionFuture stop({
     List<Track>? tracks,
     bool canceled = false,

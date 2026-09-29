@@ -253,7 +253,6 @@ class MotionVelocityEstimate<T> {
   int get hashCode => Object.hash(perSecond, duration, offset);
 
   @override
-  String toString() =>
-      'MotionVelocityEstimate($perSecond; offset: $offset, '
+  String toString() => 'MotionVelocityEstimate($perSecond; offset: $offset, '
       'duration: $duration)';
 }

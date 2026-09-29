@@ -70,8 +70,8 @@ class _TrackSlot<T extends Object> {
 
   bool get isAnimating => _playing;
 
-  /// Whether this track's plan has ended: its last step's length has
-  /// elapsed, or it is idle, or a graceful stop is settling it.
+  /// Whether this track's plan has ended: its last step's motion has reached
+  /// its duration, or it is idle, or a graceful stop is settling it.
   bool get hasEnded =>
       !_playing || _stoppedDown != null || (_stepPlayback?.hasEnded ?? true);
 
