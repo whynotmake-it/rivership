@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -74,9 +76,13 @@ void main() {
 
       testWidgets('1D horizontal phase animation through sequence',
           (tester) async {
+        // snapToEnd defaults to true as of Motor 2.0. This golden intentionally
+        // opts out so it keeps exercising the off-target (non-snapping) spring
+        // settling path; see the spring snapToEnd default tests in
+        // motion_test.dart for the new default behavior.
         const sequence = MotionSequence.states(
           phaseMap,
-          motion: CupertinoMotion.bouncy(),
+          motion: CupertinoMotion.bouncy(snapToEnd: false),
         );
 
         final widget = animationSheet.record(

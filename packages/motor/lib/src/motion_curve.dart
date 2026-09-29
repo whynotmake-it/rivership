@@ -15,10 +15,12 @@ import 'package:motor/motor.dart';
 ///
 /// You can also apply an initial velocity to the motion.
 ///
+/// Curves are sampled in any order, so [motion]'s simulation must be pure.
+///
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
-///   curve: MotionCurve(spring: CupertinoMotion.bouncy, velocity: .3),
+///   curve: MotionCurve(motion: .bouncySpring(), velocity: .3),
 ///   height: size,
 ///   width: size,
 ///   color: Colors.blue,

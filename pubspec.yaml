@@ -12,6 +12,7 @@ workspace:
   - packages/heroine
   - packages/heroine/example
   - packages/motor
+  - packages/motor/benchmark
   - packages/motor/example
   - packages/rivership
   - packages/rivership_test
@@ -58,6 +59,7 @@ melos:
         concurrency: 6
       packageFilters:
         dirExists: test
+        ignore: [motor_benchmark]
       description: Run `flutter test test` for selected packages.
 
     test:
@@ -72,12 +74,31 @@ melos:
         concurrency: 6
       packageFilters:
         dirExists: test
+        ignore: [motor_benchmark]
       description: Generate coverage for the selected package.
 
     coverage:
       run: melos run coverage:select --no-select
       description: Generate coverage for all packages.
     
+    benchmark:
+      run: ./tool/run_aot.sh
+      exec:
+        concurrency: 1
+        failFast: true
+      packageFilters:
+        scope: motor_benchmark
+      description: Run Motor vs AnimationController benchmarks as an AOT desktop app (BENCH_BUILD=profile adds allocations).
+
+    benchmark:smoke:
+      run: BENCH_QUICK=1 flutter test test/run_benchmarks_test.dart
+      exec:
+        concurrency: 1
+        failFast: true
+      packageFilters:
+        scope: motor_benchmark
+      description: Quick benchmark smoke run under flutter test (JIT).
+
     generate:select:
       description: Run code generation for selected packages.
       run: dart run build_runner build --delete-conflicting-outputs
