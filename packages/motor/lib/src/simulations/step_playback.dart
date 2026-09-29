@@ -1375,8 +1375,12 @@ class _ContinuedSimulation extends Simulation with SettlingSimulation {
   @override
   double x(double time) => inner.x(offset + time);
 
+  /// At rest once [inner] is done: a curve keeps reporting the slope it
+  /// ended with, for a step that takes over right then, but a hold or
+  /// barrier after it holds still.
   @override
-  double dx(double time) => inner.dx(offset + time);
+  double dx(double time) =>
+      inner.isDone(offset + time) ? 0 : inner.dx(offset + time);
 
   @override
   bool isDone(double time) => inner.isDone(offset + time);
