@@ -410,11 +410,18 @@ class StepPlayback<T extends Object> {
   /// That holds whatever the step's [WaitUntil]. A hold ends after its
   /// duration and a `.at` at its time. A motion without a duration and a
   /// barrier end when playback settles. Looping playback never ends.
-  bool get hasEnded =>
-      isDone || (_lastEndsAt != null && _lastElapsedSeconds >= _lastEndsAt!);
+  bool get hasEnded {
+    if (isDone) return true;
+    if (_loop.isLooping || _direction < 0 || _stepIndex != _steps.length - 1) {
+      return false;
+    }
+    final end = _lastEndsAt ??=
+        _segmentStartSeconds + (_lastStepSeconds() ?? double.infinity);
+    return _lastElapsedSeconds >= end;
+  }
 
-  /// When the last step ends, once it has started and if that's before it
-  /// settles.
+  /// When the last step ends, once asked after it has started; infinite if
+  /// it ends when it settles.
   double? _lastEndsAt;
 
   /// Whether playback is paused at a [StepSync], waiting for external release.
@@ -900,11 +907,6 @@ class StepPlayback<T extends Object> {
       _startForwardStep();
     }
     _startSegmentEnd();
-    if (!_loop.isLooping && _direction > 0 && _stepIndex == _steps.length - 1) {
-      if (_lastStepSeconds() case final seconds?) {
-        _lastEndsAt = _segmentStartSeconds + seconds;
-      }
-    }
     _segments.add(
       _Segment(
         stepIndex: _stepIndex,
@@ -1043,10 +1045,21 @@ class StepPlayback<T extends Object> {
   double? _lastStepSeconds() => switch (_steps[_stepIndex]) {
         StepSync<T>() => null,
         StepTo<T>(:final motion, :final motionPerDimension) =>
-          _logicalSeconds(_motions(motion, motionPerDimension)),
+          _stepSeconds(motion, motionPerDimension),
         StepFree<T>(:final motion) => motion.duration?.toSeconds(),
         StepHold<T>() || StepAt<T>() => _plannedEnd,
       };
+
+  /// The [MotionBase.duration] of a target step's motions, as
+  /// [_logicalSeconds] of [_motions] finds it, without building the list.
+  double? _stepSeconds(Motion? stepMotion, List<Motion>? stepPerDim) {
+    if (stepPerDim != null) return _logicalSeconds(stepPerDim);
+    if (stepMotion != null) return stepMotion.duration?.toSeconds();
+    if (_fallbackMotionPerDimension case final perDim?) {
+      return _logicalSeconds(perDim);
+    }
+    return _fallbackMotion?.duration?.toSeconds();
+  }
 
   /// Whether a later motion takes over from the running step, so that it
   /// ends after its motion's [MotionBase.duration] instead of when it has

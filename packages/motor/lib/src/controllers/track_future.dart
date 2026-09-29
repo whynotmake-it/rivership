@@ -45,31 +45,47 @@ abstract interface class MotionFuture implements TickerFuture {
 /// Flutter only creates pending ticker futures for a whole [Ticker], so this
 /// implements the same contract for a subset of tracks.
 class _TrackFuture implements MotionFuture {
-  _TrackFuture(this.tracks);
+  _TrackFuture(this.tracks, this._controller);
 
-  _TrackFuture.completed() : tracks = const {} {
+  _TrackFuture.completed()
+      : tracks = const {},
+        _controller = null {
     complete();
   }
 
   /// The tracks this future waits for.
   final Set<Track> tracks;
 
+  final TrackController? _controller;
+
   final _primary = Completer<void>();
-  final _ended = Completer<void>();
   Completer<void>? _secondary;
+
+  // Created when [ended] is first read. Until then the controller doesn't
+  // watch for the end, and [ended] asks it whether the tracks have ended.
+  Completer<void>? _ended;
+  var _hasEnded = false;
 
   /// Null while pending, true once completed, false once canceled.
   bool? _completed;
 
   @override
-  Future<void> get ended => _ended.future;
+  Future<void> get ended {
+    final ended = _ended ??= Completer<void>();
+    if (!_hasEnded && _completed == null && _tracksHaveEnded) _hasEnded = true;
+    if (_hasEnded && !ended.isCompleted) ended.complete();
+    return ended.future;
+  }
 
-  /// Whether [ended] has completed.
-  bool get hasEnded => _ended.isCompleted;
+  /// Whether [ended] was read and is still waiting for the tracks to end.
+  bool get awaitsEnd => _ended != null && !_hasEnded && _completed == null;
+
+  bool get _tracksHaveEnded => _controller?._haveEnded(tracks) ?? true;
 
   void end() {
-    if (_completed != null || _ended.isCompleted) return;
-    _ended.complete();
+    if (_completed != null || _hasEnded) return;
+    _hasEnded = true;
+    _ended?.complete();
   }
 
   void complete() {
@@ -80,8 +96,11 @@ class _TrackFuture implements MotionFuture {
     _secondary?.complete();
   }
 
+  /// Cancels this future. If its tracks had ended by now, [ended] still
+  /// completes.
   void cancel() {
     if (_completed != null) return;
+    if (!_hasEnded && _tracksHaveEnded) end();
     _completed = false;
     _secondary?.completeError(const TickerCanceled());
   }
@@ -136,7 +155,7 @@ class _TrackFuture implements MotionFuture {
   @override
   String toString() => '${describeIdentity(this)}('
       '${switch (_completed) {
-        null => _ended.isCompleted ? 'ended' : 'active',
+        null => _hasEnded ? 'ended' : 'active',
         true => 'complete',
         false => 'canceled',
       }})';

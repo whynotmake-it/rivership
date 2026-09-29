@@ -335,6 +335,52 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('reading ended only after the end completes it at once',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final run = controller.animate([a.to(1, motion: _bouncy)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      var ended = false;
+      unawaited(run.ended.then((_) => ended = true));
+      await tester.pump();
+      expect(ended, isTrue);
+      expect(controller.isAnimating, isTrue);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a retarget after the end, before ended is read, keeps it',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final first = controller.animate([a.to(1, motion: _bouncy)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      controller.animate([a.to(0, motion: _bouncy)]);
+      await expectLater(first.orCancel, throwsA(isA<TickerCanceled>()));
+      var ended = false;
+      unawaited(first.ended.then((_) => ended = true));
+      await tester.pump();
+      expect(ended, isTrue);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reading ended after a canceling stop before the end', (
+      tester,
+    ) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final run = controller.animate([a.to(1, motion: _bouncy)]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      controller.stop(canceled: true);
+      var ended = false;
+      unawaited(run.ended.then((_) => ended = true));
+      await tester.pump(const Duration(seconds: 2));
+      expect(ended, isFalse);
+    });
+
     testWidgets('a retarget of another track leaves the run alone',
         (tester) async {
       final controller = TrackController(vsync: tester);

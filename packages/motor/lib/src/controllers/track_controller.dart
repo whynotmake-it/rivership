@@ -674,6 +674,7 @@ class TrackController extends Animation<TrackValueReader>
     _pruneTokenParticipants(targets);
     _releaseArrivedBarriers(_clock.now);
     _completeFinishedFutures();
+    _endStoppedFutures(tracks);
     if (_activeTracks.isEmpty) {
       _ticker?.stop();
       notifyListeners();
@@ -687,8 +688,9 @@ class TrackController extends Animation<TrackValueReader>
       for (final track in targets)
         if (_slots[track]?.isAnimating ?? false) track,
     };
-    final future =
-        settling.isEmpty ? MotionFuture.complete() : _futureFor(settling);
+    final future = settling.isEmpty
+        ? MotionFuture.complete()
+        : (_futureFor(settling)..end());
     _startTicker();
     notifyListeners();
     _updateStatus();
@@ -1111,7 +1113,7 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   _TrackFuture _futureFor(Set<Track> tracks) {
-    final future = _TrackFuture(tracks);
+    final future = _TrackFuture(tracks, this);
     _futures.add(future);
     return future;
   }
@@ -1138,8 +1140,7 @@ class TrackController extends Animation<TrackValueReader>
     for (final future in _futures) {
       if (!future.tracks.any((track) => _slots[track]?.isAnimating ?? false)) {
         settled.add(future);
-      } else if (!future.hasEnded &&
-          future.tracks.every((track) => _slots[track]?.hasEnded ?? true)) {
+      } else if (future.awaitsEnd && _haveEnded(future.tracks)) {
         future.end();
       }
     }
@@ -1147,6 +1148,24 @@ class TrackController extends Animation<TrackValueReader>
       _futures.remove(future);
       future.complete();
     }
+  }
+
+  /// Ends the pending futures whose tracks a graceful stop of [tracks] (all
+  /// of them when null) stopped, since a graceful stop ends them at once.
+  void _endStoppedFutures(List<Track>? tracks) {
+    final stopped = tracks?.toSet();
+    for (final future in _futures) {
+      if (stopped == null || future.tracks.every(stopped.contains)) {
+        future.end();
+      }
+    }
+  }
+
+  bool _haveEnded(Set<Track> tracks) {
+    for (final track in tracks) {
+      if (!(_slots[track]?.hasEnded ?? true)) return false;
+    }
+    return true;
   }
 
   /// Called when a group of tracks is released past a sync barrier.
