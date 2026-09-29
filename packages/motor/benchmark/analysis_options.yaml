@@ -1,0 +1,19 @@
+include: package:lintervention/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - results/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+  errors:
+    prefer_int_literals: ignore
+    public_member_api_docs: ignore
+    comment_references: ignore
+    lines_longer_than_80_chars: ignore
+    sort_constructors_first: ignore
+    cascade_invocations: ignore

@@ -1,3 +1,4 @@
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/material.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
@@ -17,6 +18,7 @@ class MotionPadding extends StatelessWidget {
     required this.motion,
     required this.padding,
     required this.child,
+    this.tickerRate,
     super.key,
   });
 
@@ -28,6 +30,9 @@ class MotionPadding extends StatelessWidget {
 
   /// The child widget to apply the padding to.
   final Widget child;
+
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +52,7 @@ class MotionPadding extends StatelessWidget {
           child: child,
         );
       },
+      tickerRate: tickerRate,
       child: child,
     );
   }
