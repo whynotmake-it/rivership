@@ -49,6 +49,14 @@ class StepPlayback<T extends Object> {
           _validateStepTiming(steps),
           'steps must have non-decreasing absolute times',
         ),
+        assert(
+          _validateDurations(
+            steps,
+            fallbackMotion,
+            fallbackMotionPerDimension,
+          ),
+          'durations must not be negative',
+        ),
         _steps = List.of(steps),
         _converter = converter,
         _loop = loop,
@@ -152,6 +160,48 @@ class StepPlayback<T extends Object> {
         minElapsed = at;
       } else if (step case StepHold<S>(:final duration)) {
         minElapsed += duration;
+      }
+    }
+    return true;
+  }
+
+  /// Throws if a hold or a motion lasts a negative time, which would move
+  /// playback back in time.
+  static bool _validateDurations<S extends Object>(
+    List<TrackStep<S>> steps,
+    Motion? fallbackMotion,
+    List<Motion>? fallbackMotionPerDimension,
+  ) {
+    void check(MotionBase? motion, String where) {
+      final duration = motion?.duration;
+      if (duration == null || !duration.isNegative) return;
+      throw AssertionError(
+        '$where has a negative duration (${duration.inMicroseconds} µs).',
+      );
+    }
+
+    check(fallbackMotion, 'The track motion');
+    for (final motion in fallbackMotionPerDimension ?? const <Motion>[]) {
+      check(motion, 'A track motion');
+    }
+    for (var i = 0; i < steps.length; i++) {
+      final where = 'The motion of the step at index $i';
+      switch (steps[i]) {
+        case StepHold<S>(:final duration) when duration.isNegative:
+          throw AssertionError(
+            'TrackStep.hold at index $i has a negative duration '
+            '(${duration.inMicroseconds} µs).',
+          );
+        case StepTo<S>(:final motion, :final motionPerDimension) ||
+              StepAt<S>(:final motion, :final motionPerDimension):
+          check(motion, where);
+          for (final motion in motionPerDimension ?? const <Motion>[]) {
+            check(motion, where);
+          }
+        case StepFree<S>(:final motion):
+          check(motion, where);
+        default:
+          break;
       }
     }
     return true;
