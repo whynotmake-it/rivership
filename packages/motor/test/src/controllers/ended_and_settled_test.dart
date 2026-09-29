@@ -105,7 +105,7 @@ TrackAnimation<double> _toByDuration(
   double value, {
   Motion motion = _bouncy,
 }) =>
-    track([TrackStep.to(value, motion: motion, until: StepEnd.duration)]);
+    track([TrackStep.to(value, motion: motion, until: WaitUntil.duration)]);
 
 void main() {
   final a = Track<double>(MotionConverter.single, initial: 0);
@@ -167,8 +167,8 @@ void main() {
         tester,
         controller.animate([
           a([
-            const TrackStep.to(1, motion: _bouncy, until: StepEnd.duration),
-            const TrackStep.to(0, motion: _bouncy, until: StepEnd.duration),
+            const TrackStep.to(1, motion: _bouncy, until: WaitUntil.duration),
+            const TrackStep.to(0, motion: _bouncy, until: WaitUntil.duration),
           ]),
         ]),
       );
@@ -180,7 +180,7 @@ void main() {
         (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      for (final until in StepEnd.values) {
+      for (final until in WaitUntil.values) {
         controller.set([a.value(0)]);
         final moments = await _watch(
           tester,
@@ -250,7 +250,7 @@ void main() {
     testWidgets('that loops never ends or settles', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      for (final until in StepEnd.values) {
+      for (final until in WaitUntil.values) {
         final moments = await _watch(
           tester,
           controller.animate(
@@ -394,7 +394,7 @@ void main() {
 
       planned.animate([
         p([
-          const TrackStep.to(1, motion: _bouncy, until: StepEnd.duration),
+          const TrackStep.to(1, motion: _bouncy, until: WaitUntil.duration),
           const TrackStep.to(0, motion: _bouncy),
         ]),
       ]);
@@ -472,7 +472,7 @@ void main() {
         initialValue: 0,
       );
       addTearDown(controller.dispose);
-      for (final until in StepEnd.values) {
+      for (final until in WaitUntil.values) {
         controller.value = 0;
         final moments = await _watch(
           tester,

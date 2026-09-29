@@ -92,7 +92,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: spring,
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ]);
@@ -108,7 +108,7 @@ void main() {
     });
 
     test('the last step plays out until it has settled', () {
-      for (final until in StepEnd.values) {
+      for (final until in WaitUntil.values) {
         final playback = _playback([
           TrackStep.to(
             300,
@@ -129,7 +129,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: _NoDurationSpring(),
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ])
@@ -142,7 +142,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: spring,
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.hold(Duration(milliseconds: 400)),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
@@ -189,7 +189,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: spring,
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.hold(Duration(milliseconds: 100)),
       ])
@@ -219,7 +219,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: spring,
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.sync(token: #beat),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
@@ -284,7 +284,7 @@ void main() {
         const TrackStep.to(
           300,
           motion: CupertinoMotion.bouncy(),
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         const TrackStep.at(Duration(seconds: 2), 0, motion: keyframe),
       ])
@@ -294,7 +294,7 @@ void main() {
     });
 
     test('ticking and seeking agree', () {
-      for (final until in StepEnd.values) {
+      for (final until in WaitUntil.values) {
         final steps = <TrackStep<double>>[
           TrackStep.to(
             300,
@@ -352,12 +352,12 @@ void main() {
           TrackStep.to(
             300,
             motion: spring,
-            until: StepEnd.duration,
+            until: WaitUntil.duration,
           ),
           TrackStep.to(
             0,
             motion: spring,
-            until: StepEnd.duration,
+            until: WaitUntil.duration,
           ),
         ],
         loop: LoopMode.loop,
@@ -369,16 +369,16 @@ void main() {
     test('until is part of step equality', () {
       const a = TrackStep<double>.to(1, motion: spring);
       const b =
-          TrackStep<double>.to(1, motion: spring, until: StepEnd.duration);
+          TrackStep<double>.to(1, motion: spring, until: WaitUntil.duration);
       expect(a, isNot(b));
       expect(a.hashCode, isNot(b.hashCode));
       const same =
-          TrackStep<double>.to(1, motion: spring, until: StepEnd.duration);
+          TrackStep<double>.to(1, motion: spring, until: WaitUntil.duration);
       expect(b, same);
       expect(
         const TrackStep<double>.free(
           motion: FrictionMotion(),
-          until: StepEnd.duration,
+          until: WaitUntil.duration,
         ),
         isNot(const TrackStep<double>.free(motion: FrictionMotion())),
       );

@@ -257,7 +257,7 @@ const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 
 Override `duration` if your motion has a perceived length: it has ended
 then, so `MotionFuture.ended` completes there, and a track step with
-`until: StepEnd.duration` lets the next step take over. If you can tell when
+`until: WaitUntil.duration` lets the next step take over. If you can tell when
 your simulation settles, mix `SettlingSimulation` into it and return that
 time from `settlesAt`. Motor then uses it instead of sampling `isDone` to
 find it.

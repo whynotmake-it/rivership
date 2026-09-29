@@ -4,17 +4,18 @@ import 'package:motor/src/motion.dart';
 import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
-/// When the step after a [TrackStep.to] or [TrackStep.free] starts.
+/// What the step after a [TrackStep.to] or [TrackStep.free] waits for before
+/// it starts.
 ///
 /// ```dart
 /// .to(1, motion: m)                   // until: .settled
 /// .to(1, motion: m, until: .duration) // the next step takes over sooner
 /// ```
 ///
-/// Either way the motion plays out: the timeline never cuts it short, and
-/// the controller call's `MotionFuture.ended` completes at the last step's
-/// duration.
-enum StepEnd {
+/// Either way the motion plays out: the timeline never cuts it short, unless
+/// a [TrackStep.at] follows. The controller call's `MotionFuture.ended`
+/// completes at the last step's duration either way.
+enum WaitUntil {
   /// Once the step has settled: at rest and exactly on its target. The next
   /// step starts from rest. This is the default, as in 1.x and in Motion,
   /// anime.js and Compose.
@@ -43,7 +44,7 @@ sealed class TrackStep<T extends Object> {
   /// ([SettlingSimulation.settlesAt]), from rest, as in 1.x and in Motion,
   /// anime.js and Compose.
   ///
-  /// Pass `until: .duration` ([StepEnd.duration]) to start the next step
+  /// Pass `until: .duration` ([WaitUntil.duration]) to start the next step
   /// once this one has ended instead, after its motion's [Motion.duration]
   /// (a spring's perceptual duration): it takes over the current value and
   /// velocity while a spring is still settling. That mirrors SwiftUI's
@@ -59,18 +60,18 @@ sealed class TrackStep<T extends Object> {
     T value, {
     Motion? motion,
     List<Motion>? motionPerDimension,
-    StepEnd until,
+    WaitUntil until,
   }) = StepTo<T>;
 
   /// Runs a self-directed free [motion]. The next step starts once it has
   /// come to rest.
   ///
-  /// Pass `until: .duration` ([StepEnd.duration]) to start the next step
+  /// Pass `until: .duration` ([WaitUntil.duration]) to start the next step
   /// once the motion's [FreeMotion.duration] has passed instead, if it has
   /// one, taking over its value and velocity, as with [TrackStep.to].
   const factory TrackStep.free({
     required FreeMotion motion,
-    StepEnd until,
+    WaitUntil until,
   }) = StepFree<T>;
 
   /// Waits for [duration] before the next step.
@@ -158,7 +159,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
     this.value, {
     this.motion,
     this.motionPerDimension,
-    this.until = StepEnd.settled,
+    this.until = WaitUntil.settled,
   }) : assert(
           motion == null || motionPerDimension == null,
           'Provide either motion or motionPerDimension, not both.',
@@ -179,9 +180,9 @@ class StepTo<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   /// When the next step starts: once this one has settled
-  /// ([StepEnd.settled], the default), or once it has ended, after its
-  /// motion's [Motion.duration] ([StepEnd.duration]).
-  final StepEnd until;
+  /// ([WaitUntil.settled], the default), or once it has ended, after its
+  /// motion's [Motion.duration] ([WaitUntil.duration]).
+  final WaitUntil until;
 
   @override
   bool operator ==(Object other) =>
@@ -205,7 +206,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
   @override
   String toString() => '${objectRuntimeType(this, 'StepTo')}($value, '
       '${_describeMotion(motion, motionPerDimension)}'
-      '${until == StepEnd.duration ? ', until: duration' : ''})';
+      '${until == WaitUntil.duration ? ', until: duration' : ''})';
 }
 
 /// A step that runs a self-directed motion.
@@ -214,16 +215,16 @@ class StepFree<T extends Object> extends TrackStep<T> {
   /// Creates a free-motion step.
   const StepFree({
     required this.motion,
-    this.until = StepEnd.settled,
+    this.until = WaitUntil.settled,
   });
 
   /// The free motion to run.
   final FreeMotion motion;
 
   /// When the next step starts: once this one has come to rest
-  /// ([StepEnd.settled], the default), or once it has ended, after the
-  /// motion's [FreeMotion.duration] ([StepEnd.duration]).
-  final StepEnd until;
+  /// ([WaitUntil.settled], the default), or once it has ended, after the
+  /// motion's [FreeMotion.duration] ([WaitUntil.duration]).
+  final WaitUntil until;
 
   @override
   bool operator ==(Object other) =>
@@ -238,7 +239,7 @@ class StepFree<T extends Object> extends TrackStep<T> {
 
   @override
   String toString() => '${objectRuntimeType(this, 'StepFree')}($motion'
-      '${until == StepEnd.duration ? ', until: duration' : ''})';
+      '${until == WaitUntil.duration ? ', until: duration' : ''})';
 }
 
 /// A step that holds the current value.

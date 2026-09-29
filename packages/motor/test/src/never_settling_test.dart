@@ -155,7 +155,7 @@ void main() {
   group('a motion that never settles', () {
     test('ending at its duration, hands over in the middle of a plan', () {
       final playback = _playback([
-        const TrackStep.to(1, motion: _undamped, until: StepEnd.duration),
+        const TrackStep.to(1, motion: _undamped, until: WaitUntil.duration),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ])
         ..advanceTo(1);
@@ -233,7 +233,7 @@ void main() {
       // Ending at its duration, the loop hands over and repeats.
       expect(
         () => _playback(
-          const [TrackStep.to(1, motion: _undamped, until: StepEnd.duration)],
+          const [TrackStep.to(1, motion: _undamped, until: WaitUntil.duration)],
           loop: LoopMode.loop,
         ).advanceTo(10),
         returnsNormally,

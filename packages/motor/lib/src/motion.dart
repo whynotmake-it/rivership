@@ -136,7 +136,7 @@ abstract class Motion extends MotionBase {
   /// It is a fixed property of the motion, the same for every move, so loops
   /// and staggers keep their rhythm whatever the distance. A controller
   /// call's `MotionFuture.ended` completes here, and a track step with
-  /// `until: StepEnd.duration` lets the next step take over here. By default
+  /// `until: WaitUntil.duration` lets the next step take over here. By default
   /// the next step waits until this one has settled.
   ///
   /// Curves, linear motions and [NoMotion] settle here too. A spring's is its
@@ -246,7 +246,7 @@ abstract class FreeMotion extends MotionBase {
   /// no fixed length, so that it ends when it comes to rest.
   ///
   /// Like [Motion.duration], it is a fixed property of the motion, the same
-  /// for every move. A `TrackStep.free` with `until: StepEnd.duration` lets
+  /// for every move. A `TrackStep.free` with `until: WaitUntil.duration` lets
   /// the next step take over here, from the current value and velocity. Free
   /// motions such as [FrictionMotion] have no fixed length.
   @override
