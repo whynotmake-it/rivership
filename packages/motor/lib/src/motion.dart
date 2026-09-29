@@ -395,7 +395,7 @@ class LinearMotion extends CurvedMotion {
 
 /// {@template NoMotion}
 /// A motion that holds at the current value for [duration] and never reaches
-/// its target.
+/// its target. It ends and settles after [duration], where it started.
 /// {@endtemplate}
 class NoMotion extends Motion {
   /// {@macro NoMotion}

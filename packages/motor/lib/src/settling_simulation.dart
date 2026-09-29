@@ -24,7 +24,7 @@ import 'package:motor/src/simulations/simulation_end.dart';
 /// }
 /// ```
 mixin SettlingSimulation on Simulation {
-  /// When the move is done for good, or null if it never is.
+  /// When the move settles, or null if it never does.
   ///
   /// From this time on [isDone] stays true: the value is at rest, and with
   /// a spring's `snapToEnd` exactly on the target. A [Duration] has
@@ -36,7 +36,7 @@ mixin SettlingSimulation on Simulation {
 
 /// When a [Simulation] settles, whether or not it knows.
 extension SimulationSettling on Simulation {
-  /// When this simulation is done for good, or null if it never is.
+  /// When this simulation settles, or null if it never does.
   ///
   /// A [SettlingSimulation] answers with its [SettlingSimulation.settlesAt],
   /// checked against [isDone]. Any other simulation, or one that isn't done
