@@ -1,5 +1,5 @@
 name: motor_example
-description: "A new Flutter project."
+description: "Motor's interactive example gallery."
 
 # Prevent accidental publishing to pub.dev.
 publish_to: 'none'
@@ -8,16 +8,20 @@ version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.10.0
   flutter: ^3.27.0
 
 dependencies:
   auto_route: ^10.0.1
+  cupertino_icons: ^1.0.8
+  example_design:
+    path: ../../example_design
   flutter:
     sdk: flutter
-  pull_down_button: ^0.10.2
   motor:
     path: ../
+  motor_devtools:
+    path: ../../motor_devtools
 
 dev_dependencies:
   flutter_test:
@@ -30,3 +34,6 @@ flutter:
     - family: Archivo
       fonts:
         - asset: lib/assets/Archivo-VariableFont_wdth,wght.ttf
+    - family: JetBrains Mono
+      fonts:
+        - asset: lib/assets/JetBrainsMono-VariableFont_wght.ttf
