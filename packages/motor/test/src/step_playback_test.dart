@@ -61,20 +61,31 @@ void main() {
   group('a scaled spring', () {
     const spring = CupertinoMotion();
 
-    test('ends exactly on its target', () {
+    test('lasts its new duration and keeps settling after it', () {
+      final scaled = spring.scaleTo(const Duration(milliseconds: 300));
       final playback = StepPlayback<double>(
         steps: [
-          TrackStep.to(
-            100,
-            motion: spring.scaleTo(const Duration(milliseconds: 300)),
-          ),
+          TrackStep.to(100, motion: scaled),
+          const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
         ],
         converter: MotionConverter.single,
         start: 0,
-      );
+      )..advanceTo(0.3 - 1e-3);
+      expect(playback.currentStepIndex, 0);
       playback.advanceTo(0.3);
-      expect(playback.values.single, 100);
-      expect(playback.isDone, isTrue);
+      expect(playback.currentStepIndex, 1);
+
+      final last = StepPlayback<double>(
+        steps: [TrackStep.to(100, motion: scaled)],
+        converter: MotionConverter.single,
+        start: 0,
+      )..advanceTo(0.3);
+      expect(last.isDone, isFalse);
+      final settle =
+          (scaled.createSimulation(end: 100) as TimedSimulation).settlesAt!;
+      last.advanceTo(settle.inMicroseconds / 1e6);
+      expect(last.values.single, 100);
+      expect(last.isDone, isTrue);
     });
 
     test('with a zero duration jumps to its target', () {

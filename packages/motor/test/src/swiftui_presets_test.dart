@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
+import 'util.dart';
+
 // SwiftUI's `Spring.value(target: 1, initialVelocity: v, time: t)`, sampled
 // on macOS 26 with Xcode 26.
 const _times = [0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0];

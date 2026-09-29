@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 
+import 'util.dart';
+
 double _seconds(Duration duration) => duration.inMicroseconds / 1e6;
 
 /// The time from which [simulation] stays done, on a 1e-5 s grid.
@@ -32,16 +34,6 @@ class _CountingMotion extends Motion {
   bool get needsSettle => parent.needsSettle;
 
   @override
-  Duration? settlingDuration({
-    double start = 0,
-    double end = 1,
-    double velocity = 0,
-  }) {
-    _calls.settlingDuration++;
-    return parent.settlingDuration(start: start, end: end, velocity: velocity);
-  }
-
-  @override
   Simulation createSimulation({
     double start = 0,
     double end = 1,
@@ -49,7 +41,8 @@ class _CountingMotion extends Motion {
   }) =>
       _CountingSimulation(
         this,
-        parent.createSimulation(start: start, end: end, velocity: velocity),
+        parent.createSimulation(start: start, end: end, velocity: velocity)
+            as TimedSimulation,
       );
 
   @override
@@ -64,11 +57,20 @@ class _Counter {
   int settlingDuration = 0;
 }
 
-class _CountingSimulation extends Simulation {
+class _CountingSimulation extends Simulation with TimedSimulation {
   _CountingSimulation(this.motion, this.parent);
 
   final _CountingMotion motion;
-  final Simulation parent;
+  final TimedSimulation parent;
+
+  @override
+  Duration? get duration => parent.duration;
+
+  @override
+  Duration? get settlesAt {
+    motion._calls.settlingDuration++;
+    return parent.settlesAt;
+  }
 
   @override
   double x(double time) => parent.x(time);
@@ -84,7 +86,7 @@ class _CountingSimulation extends Simulation {
 }
 
 void main() {
-  group('Motion.settlingDuration', () {
+  group('TimedSimulation.settlesAt', () {
     test('curves and NoMotion return their duration', () {
       const duration = Duration(milliseconds: 300);
       expect(const Motion.linear(duration).settlingDuration(), duration);
@@ -148,7 +150,12 @@ void main() {
     test('wrappers ask their parent', () {
       const spring = CupertinoMotion.bouncy();
       const duration = Duration(milliseconds: 400);
-      expect(spring.scaleTo(duration).settlingDuration(), duration);
+      final paced = FixedDurationMotion(spring, duration: duration);
+      expect(paced.duration, duration);
+      expect(
+        _seconds(paced.settlingDuration()!),
+        closeTo(_seconds(spring.settlingDuration()!) * 400 / 500, 2e-6),
+      );
 
       final trimmed = spring.trimmed(fromStart: 0.2, fromEnd: 0.2);
       final parent = spring.settlingDuration(start: -0.12, end: 1.12)!;

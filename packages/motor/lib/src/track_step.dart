@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/motion.dart';
+import 'package:motor/src/timed_simulation.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
 /// A single instruction in a track animation.
@@ -14,11 +15,13 @@ sealed class TrackStep<T extends Object> {
 
   /// Animates to [value] using a target-based [motion].
   ///
-  /// The step lasts the motion's [Motion.duration]: the next step takes over
-  /// then, from the current value and velocity, while a spring is still
-  /// settling. The last step plays out until it is done, and so does a step
-  /// whose motion has no duration. Set [untilSettled] to make the next step
-  /// wait until this one has settled ([Motion.settlingDuration]).
+  /// The step lasts the step length of the motion's simulation
+  /// ([TimedSimulation.duration]; a spring's perceptual duration): the next
+  /// step takes over then, from the current value and velocity, while a
+  /// spring is still settling. The last step plays out until it has settled,
+  /// and so does a step whose simulation has no step length. Set
+  /// [untilSettled] to make the next step wait until this one has settled
+  /// ([TimedSimulation.settlesAt]).
   ///
   /// Taking over at the duration mirrors SwiftUI's `PhaseAnimator`, which
   /// moves to the next phase at the spring's duration and keeps its
@@ -56,14 +59,15 @@ sealed class TrackStep<T extends Object> {
   ///
   /// - If the preceding step ends at least the motion's natural length
   ///   before [at], the motion starts when that step ends and slows down to
-  ///   fill the gap. The natural length is the motion's [Motion.duration],
-  ///   or its [Motion.settlingDuration] from where the preceding step ends if
-  ///   it has none. A spring is cut at its duration so that it lands.
+  ///   fill the gap. The natural length is the step length of the motion's
+  ///   simulation from where the preceding step ends
+  ///   ([TimedSimulation.duration]), or when it settles if it has none. A
+  ///   spring is cut at its duration so that it lands.
   /// - Otherwise the preceding step is cut short so that the motion runs its
   ///   natural length and ends at [at]. The cut never happens before that
   ///   step started; if there is not enough time, the motion is compressed,
-  ///   and with no time at all [value] is reached instantly. A motion whose
-  ///   `settlingDuration` is null stretches whenever the preceding step ends
+  ///   and with no time at all [value] is reached instantly. A motion that
+  ///   never settles stretches whenever the preceding step ends
   ///   before [at], and otherwise starts when that step starts.
   ///
   /// Only the step immediately before is ever cut, and it can be another
@@ -108,9 +112,10 @@ sealed class TrackStep<T extends Object> {
   ///
   /// {@template motor.TrackStep.sync.arrival}
   /// A track arrives once the step before the barrier reaches its logical
-  /// end, its motion's [Motion.duration]. A spring keeps settling while it
-  /// waits. To arrive only once it has settled, set `untilSettled` on that
-  /// step; a motion without a duration always waits to settle.
+  /// end, the step length of its motion's simulation
+  /// ([TimedSimulation.duration]). A spring keeps settling while it waits. To
+  /// arrive only once it has settled, set `untilSettled` on that step; a
+  /// simulation without a step length always waits to settle.
   /// {@endtemplate}
   ///
   /// Use this to keep independent tracks aligned at key moments without
@@ -147,8 +152,8 @@ class StepTo<T extends Object> extends TrackStep<T> {
   final List<Motion>? motionPerDimension;
 
   /// Whether the next step waits until this one has settled, instead of
-  /// taking over after the motion's [Motion.duration], as SwiftUI's
-  /// `PhaseAnimator` does. Defaults to false.
+  /// taking over after its simulation's [TimedSimulation.duration], as
+  /// SwiftUI's `PhaseAnimator` does. Defaults to false.
   final bool untilSettled;
 
   @override

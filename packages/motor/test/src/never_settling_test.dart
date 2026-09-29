@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 
+import 'util.dart';
+
 double _seconds(Duration duration) => duration.inMicroseconds / 1e6;
 
 StepPlayback<double> _playback(
@@ -26,7 +28,7 @@ const _undamped = SpringMotion(
 );
 
 /// Moves toward its target at a constant speed and overshoots forever: no
-/// duration and no `settlingDuration` override.
+/// duration and no [TimedSimulation].
 class _Drift extends Motion {
   const _Drift();
 
@@ -64,8 +66,8 @@ class _DriftSimulation extends Simulation {
   bool isDone(double time) => false;
 }
 
-/// A spring motion without a `settlingDuration` override or a duration, so
-/// both come from the defaults.
+/// A spring motion whose simulation has no [TimedSimulation], so its step
+/// lasts until it is done, found by sampling.
 class _PlainSpring extends Motion {
   const _PlainSpring();
 
@@ -263,12 +265,22 @@ void main() {
   });
 
   group('wrappers', () {
-    test('scaleTo plays a never-settling parent at its own speed', () {
-      final scaled =
-          _undamped.scaleTo(const Duration(seconds: 1)).createSimulation();
+    test('scaleTo paces a never-settling parent by its step', () {
+      final scaled = _undamped
+          .scaleTo(const Duration(seconds: 1))
+          .createSimulation() as TimedSimulation;
       final parent = _undamped.createSimulation();
+      final factor = _seconds(_undamped.duration!);
+      expect(scaled.x(0.5), closeTo(parent.x(0.5 * factor), 1e-9));
+      expect(scaled.duration, const Duration(seconds: 1));
+      expect(scaled.settlesAt, isNull);
+    });
+
+    test('scaleTo plays a parent without timing at its own speed', () {
+      final scaled =
+          const _Drift().scaleTo(const Duration(seconds: 1)).createSimulation();
+      final parent = const _Drift().createSimulation();
       expect(scaled.x(0.5), closeTo(parent.x(0.5), 1e-9));
-      expect(scaled.isDone(1), isTrue);
     });
 
     test(

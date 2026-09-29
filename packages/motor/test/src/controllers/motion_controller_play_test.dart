@@ -6,16 +6,9 @@ import 'package:motor/motor.dart';
 
 import '../util.dart';
 
+/// Its simulation claims to settle after 100 ms but is done after 1 s.
 class _LyingDurationMotion extends Motion {
   const _LyingDurationMotion();
-
-  @override
-  Duration settlingDuration({
-    double start = 0,
-    double end = 1,
-    double velocity = 0,
-  }) =>
-      const Duration(milliseconds: 100);
 
   @override
   bool get needsSettle => false;
@@ -26,7 +19,7 @@ class _LyingDurationMotion extends Motion {
     double end = 1,
     double velocity = 0,
   }) {
-    return _TimedLinearSimulation(
+    return _LyingLinearSimulation(
       start: start,
       end: end,
       doneAtSeconds: 1,
@@ -54,6 +47,21 @@ class _FiniteFreeMotion extends FreeMotion {
       doneAtSeconds: 0.2,
     );
   }
+}
+
+class _LyingLinearSimulation extends _TimedLinearSimulation
+    with TimedSimulation {
+  _LyingLinearSimulation({
+    required super.start,
+    required super.end,
+    required super.doneAtSeconds,
+  });
+
+  @override
+  Duration? get duration => null;
+
+  @override
+  Duration get settlesAt => const Duration(milliseconds: 100);
 }
 
 class _TimedLinearSimulation extends Simulation {

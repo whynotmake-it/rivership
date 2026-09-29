@@ -129,20 +129,24 @@ void main() {
         expect(wrapped, equals(original));
       });
 
-      test('reports where a cut-off FixedDurationFreeMotion stops', () {
-        // Coasts for minutes, so the wrapper cuts it off instead of scaling.
+      test('scales even a coast that lasts minutes', () {
+        // Friction knows when it stops, here after about 995 s, so the
+        // wrapper doesn't need to cut it off.
         const motion = FrictionMotion(drag: 0.99);
         final scaled = motion.scaleTo(const Duration(milliseconds: 400));
         final simulation = scaled.createSimulation(velocity: 1000);
+        final coast =
+            motion.createSimulation(velocity: 1000) as TimedSimulation;
 
+        expect(coast.settlesAt!.inSeconds, inInclusiveRange(990, 1000));
         expect(simulation.isDone(0.4), isTrue);
         expect(
           scaled.finalValue(velocity: 1000),
-          closeTo(simulation.x(0.4), 1e-9),
+          closeTo(simulation.x(0.4), 1e-6),
         );
         expect(
           scaled.finalValue(velocity: 1000),
-          lessThan(motion.finalValue(velocity: 1000)),
+          motion.finalValue(velocity: 1000),
         );
       });
     });

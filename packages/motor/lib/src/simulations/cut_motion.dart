@@ -1,46 +1,45 @@
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/motion.dart';
+import 'package:motor/src/simulations/simulation_end.dart';
+import 'package:motor/src/timed_simulation.dart';
 
 /// A target-based motion that plays [parent] at its own speed and ends at
-/// exactly [duration].
+/// exactly [duration], or by default at the end of [parent]'s step
+/// ([TimedSimulation.duration] of its simulation).
 ///
-/// Where [parent] hasn't arrived yet at [duration], the played part is
+/// Where [parent] hasn't arrived yet at the cut, the played part is
 /// corrected so that the value lands exactly on the target there:
 ///
 /// - The correction grows with [parent]'s own progress from rest, so the
 ///   start value and velocity are unchanged. For a move from rest this
-///   scales the played part by `1 / progress(duration)`: about 1.45% for a
+///   scales the played part by `1 / progress(cut)`: about 1.45% for a
 ///   [CupertinoMotion] cut at its perceptual duration.
-/// - The velocity at [duration] is handed to a following step. A last step
+/// - The velocity at the cut is handed to a following step. A last step
 ///   stops there, with that velocity.
-/// - If [parent] finishes earlier, it holds its target until [duration].
+/// - If [parent] finishes earlier, it holds its target until the cut.
 ///
-/// [settlingDuration] and [duration] are both [duration], for every move.
+/// Its simulation's step length and settle are both the cut, for every move.
+/// A [parent] without a step length and without [duration] isn't cut.
 /// Playback uses it for `TrackStep.at`, so a motion that keeps settling
-/// after its logical length still lands exactly on its keyframe.
+/// after its step still lands exactly on its keyframe.
 @internal
 @immutable
 class CutMotion extends Motion {
-  /// Creates a motion that plays [parent] and ends at [duration].
-  CutMotion(this.parent, {required this.duration})
-      : assert(!duration.isNegative, 'duration must not be negative'),
+  /// Creates a motion that plays [parent] and ends at [duration], or at the
+  /// end of [parent]'s step.
+  CutMotion(this.parent, {this.duration})
+      : assert(
+          duration == null || !duration.isNegative,
+          'duration must not be negative',
+        ),
         super(tolerance: parent.tolerance);
 
   /// The motion that plays until the cut.
   final Motion parent;
 
-  /// When the motion ends.
-  @override
-  final Duration duration;
-
-  @override
-  Duration settlingDuration({
-    double start = 0,
-    double end = 1,
-    double velocity = 0,
-  }) =>
-      duration;
+  /// When the motion ends, or null for the end of [parent]'s step.
+  final Duration? duration;
 
   @override
   bool get needsSettle => parent.needsSettle;
@@ -50,13 +49,21 @@ class CutMotion extends Motion {
     double start = 0,
     double end = 1,
     double velocity = 0,
-  }) =>
-      _CutSimulation(
-        parent.createSimulation(start: start, end: end, velocity: velocity),
-        progress: parent.createSimulation(start: 1, end: 0),
-        cut: duration.inMicroseconds / Duration.microsecondsPerSecond,
-        end: end,
-      );
+  }) {
+    final simulation =
+        parent.createSimulation(start: start, end: end, velocity: velocity);
+    final cut = switch (duration) {
+      final duration? => duration.inMicroseconds / 1e6,
+      null => stepSecondsOf(simulation),
+    };
+    if (cut == null) return simulation;
+    return _CutSimulation(
+      simulation,
+      progress: parent.createSimulation(start: 1, end: 0),
+      cut: cut,
+      end: end,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -71,7 +78,7 @@ class CutMotion extends Motion {
   String toString() => 'CutMotion($parent, duration: $duration)';
 }
 
-class _CutSimulation extends Simulation {
+class _CutSimulation extends Simulation with TimedSimulation {
   _CutSimulation(
     this.parent, {
     required Simulation progress,
@@ -94,6 +101,12 @@ class _CutSimulation extends Simulation {
   var _miss = 0.0;
   var _scale = 0.0;
   var _linear = false;
+
+  @override
+  Duration get duration => Duration(microseconds: (cut * 1e6).round());
+
+  @override
+  Duration get settlesAt => settlingDurationOf(cut)!;
 
   // How much of the miss at the cut is corrected by [time], from 0 to 1.
   double _share(double time) =>

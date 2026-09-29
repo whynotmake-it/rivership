@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/timed_simulation.dart';
 
 @internal
-class CurveSimulation extends Simulation {
+class CurveSimulation extends Simulation with TimedSimulation {
   CurveSimulation({
     required this.duration,
     required this.curve,
@@ -13,8 +14,12 @@ class CurveSimulation extends Simulation {
     required super.tolerance,
   }) : _seconds = duration.inMicroseconds / Duration.microsecondsPerSecond;
 
-  /// The duration of the curve.
+  /// The duration of the curve, which is also when it has settled.
+  @override
   final Duration duration;
+
+  @override
+  Duration get settlesAt => duration;
 
   final double _seconds;
 

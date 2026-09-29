@@ -1,18 +1,23 @@
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/timed_simulation.dart';
 
 @internal
-class NoMotionSimulation extends Simulation {
+class NoMotionSimulation extends Simulation with TimedSimulation {
   NoMotionSimulation({
     required this.duration,
     required this.value,
     required super.tolerance,
   });
 
-  /// The duration of the curve.
+  /// How long the value is held, which is also when it has settled.
+  @override
   final Duration duration;
 
-  /// The start value of the curve.
+  @override
+  Duration get settlesAt => duration;
+
+  /// The value that is held.
   final double value;
 
   @override

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
-import 'package:motor/src/motion.dart';
+import 'package:motor/src/timed_simulation.dart';
 
 /// The smallest double greater than [seconds], which must be finite and not
 /// negative: when a simulation whose `isDone` is `time > seconds` is done.
@@ -28,8 +28,8 @@ double justAfter(double seconds) {
 /// it, or null if [seconds] is missing, not finite or negative, or it isn't
 /// done by then.
 ///
-/// Guards the ends motions report through [Motion.settlingDuration], which
-/// has microsecond resolution: curves are done just after their duration,
+/// Guards the ends simulations report through [TimedSimulation.settlesAt],
+/// which has microsecond resolution: curves are done just after their duration,
 /// a trimmed motion's end falls between two microseconds, and a sampled or
 /// computed time is rounded up to the next one.
 ///
@@ -65,8 +65,8 @@ const settleSearchSeconds = 120.0;
 ///
 /// It samples `isDone` on the grid playback uses (1/60 s steps up to a
 /// minute, then doubling) and bisects the first grid step that is done, to
-/// the precision of a double. The default [Motion.settlingDuration] and
-/// [FreeMotion.settlingDuration] use this.
+/// the precision of a double. Simulations without [TimedSimulation] settle
+/// where this finds.
 @internal
 double? searchSettlingSeconds(Simulation simulation) {
   if (simulation.isDone(0)) return 0;
@@ -88,6 +88,27 @@ double? searchSettlingSeconds(Simulation simulation) {
     }
   }
 }
+
+/// When [simulation] settles, in seconds, or null if it never does.
+///
+/// A [TimedSimulation] says so. Its time is only checked, and searched for
+/// if the simulation isn't done by then. Other simulations are searched.
+@internal
+double? settleSecondsOf(Simulation simulation) {
+  if (simulation is! TimedSimulation) return searchSettlingSeconds(simulation);
+  final reported = simulation.settlesAt;
+  if (reported == null) return null;
+  return settledAt(simulation, reported.inMicroseconds / 1e6) ??
+      searchSettlingSeconds(simulation);
+}
+
+/// How long a step with [simulation] lasts, in seconds, or null if it lasts
+/// until [simulation] has settled.
+@internal
+double? stepSecondsOf(Simulation simulation) => switch (simulation) {
+      TimedSimulation(:final duration?) => duration.inMicroseconds / 1e6,
+      _ => null,
+    };
 
 /// [seconds] as a [Duration], rounded up to whole microseconds, or null.
 @internal

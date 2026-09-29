@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_redundant_argument_values
 
+import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -52,17 +53,6 @@ class _ImplementedMotion implements Motion {
   bool get unboundedWillSettle => true;
 
   @override
-  Duration? get duration => const Duration(seconds: 1);
-
-  @override
-  Duration? settlingDuration({
-    double start = 0,
-    double end = 1,
-    double velocity = 0,
-  }) =>
-      const Duration(seconds: 1);
-
-  @override
   Motion scaleTo(Duration duration) => Motion.linear(duration);
 
   @override
@@ -107,32 +97,71 @@ void main() {
       );
     });
 
-    test('wraps target-based physics in a fixed-duration motion', () {
-      const spring = Motion.smoothSpring();
-      final scaled = spring.scaleTo(const Duration(milliseconds: 250));
-
+    test('paces a CupertinoMotion like the retimed spring', () {
+      const spring = CupertinoMotion.bouncy(snapToEnd: false);
+      const target = Duration(milliseconds: 250);
+      final scaled = spring.scaleTo(target);
       expect(scaled, isA<FixedDurationMotion>());
 
-      final simulation = scaled.createSimulation(start: 0, end: 10);
-      expect(simulation.x(0), equals(0));
-      expect(simulation.isDone(0.2), isFalse);
-      expect(simulation.x(0.25), equals(10));
-      expect(simulation.isDone(0.25), isTrue);
+      final simulation =
+          scaled.createSimulation(end: 10, velocity: 30) as TimedSimulation;
+      final retimed = spring
+          .copyWith(duration: target)
+          .createSimulation(end: 10, velocity: 30);
+      expect(simulation.duration, target);
+      expect(simulation.dx(0), closeTo(30, 1e-9));
+      for (var t = 0.0; t < 2; t += 0.01) {
+        expect(simulation.x(t), closeTo(retimed.x(t), 1e-6));
+      }
+      // It keeps settling after its step.
+      expect(simulation.isDone(0.25), isFalse);
     });
 
-    test(
-        'implementing Motion needs duration, settlingDuration and scaleTo '
-        'only', () {
+    test('paces other springs, keeping the start velocity', () {
+      final description = SpringDescription.withDampingRatio(
+        mass: 1,
+        stiffness: 380,
+        ratio: 0.8,
+      );
+      final spring = SpringMotion(description, snapToEnd: false);
+      const target = Duration(milliseconds: 200);
+      final scaled = spring.scaleTo(target);
+      expect(scaled, isA<FixedDurationMotion>());
+      expect(scaled.needsSettle, isTrue);
+
+      final simulation =
+          scaled.createSimulation(end: 300, velocity: -900) as TimedSimulation;
+      expect(simulation.duration, target);
+      expect(simulation.dx(0), closeTo(-900, 1e-6));
+
+      // The same as the spring retimed by hand.
+      final factor = description.duration.inMicroseconds / 200000;
+      final retimed = SpringSimulation(
+        SpringDescription(
+          mass: 1,
+          stiffness: description.stiffness * factor * factor,
+          damping: description.damping * factor,
+        ),
+        0,
+        300,
+        -900,
+      );
+      for (var t = 0.0; t < 1; t += 0.01) {
+        expect(simulation.x(t), closeTo(retimed.x(t), 1e-6));
+      }
+      expect(simulation.settlesAt, isNotNull);
+      expect(
+        simulation.isDone(simulation.settlesAt!.inMicroseconds / 1e6),
+        isTrue,
+      );
+    });
+
+    test('implementing Motion needs scaleTo only', () {
       const motion = _ImplementedMotion();
 
-      expect(
-        motion.scaleTo(const Duration(seconds: 2)).settlingDuration(),
-        const Duration(seconds: 2),
-      );
-      expect(
-        motion.scaleTo(const Duration(seconds: 2)).duration,
-        const Duration(seconds: 2),
-      );
+      final scaled = motion.scaleTo(const Duration(seconds: 2));
+      expect(scaled.settlingDuration(), const Duration(seconds: 2));
+      expect(scaled.duration, const Duration(seconds: 2));
       expect(motion.createSimulation().x(0.5), closeTo(0.5, error));
     });
 

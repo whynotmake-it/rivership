@@ -11,6 +11,7 @@ import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
 import 'package:motor/src/simulations/cut_motion.dart';
 import 'package:motor/src/simulations/simulation_end.dart';
+import 'package:motor/src/timed_simulation.dart';
 import 'package:motor/src/track_step.dart';
 
 /// Playback for a list of [TrackStep]s.
@@ -212,15 +213,9 @@ class StepPlayback<T extends Object> {
   /// Whether the step before the running one handed over.
   var _handedOver = false;
 
-  /// The running segment's motions and targets, per dimension, until they're
-  /// asked when it ends ([Motion.settlingDuration]). Its start values and
-  /// velocities are [_values] and [_velocities] until it ends.
-  List<Motion>? _endMotions;
-
-  /// The running free step's motion, until it's asked when it comes to rest
-  /// ([FreeMotion.settlingDuration]).
-  FreeMotion? _endFreeMotion;
-  List<double> _endTargets = const [];
+  /// Whether the running segment's simulations are still to be asked when
+  /// they settle ([TimedSimulation.settlesAt]).
+  var _askEnd = false;
   var _stepIndex = 0;
   var _direction = 1;
   var _cycle = 0;
@@ -294,10 +289,10 @@ class StepPlayback<T extends Object> {
         fallbackMotionPerDimension: _fallbackMotionPerDimension,
       );
 
-  /// How long the [StepAt] at [index] runs at its natural speed: its
-  /// motion's [Motion.duration], or its [Motion.settlingDuration] from where
-  /// the running segment is at [from] seconds (or its start when null). Null
-  /// if its motion doesn't know.
+  /// How long the [StepAt] at [index] runs at its natural speed, from where
+  /// the running segment is at [from] seconds (or its start when null): its
+  /// simulations' step length ([TimedSimulation.duration]), or when they
+  /// settle if they have none. Null if they never settle.
   double? _atNaturalSeconds(
     int index,
     Motion? motion,
@@ -309,15 +304,12 @@ class StepPlayback<T extends Object> {
     final targets = _waypoints[index];
     var longest = 0.0;
     for (var i = 0; i < motions.length; i++) {
-      final seconds = motions[i].duration?.toSeconds() ??
-          motions[i]
-              .settlingDuration(
-                start: from == null ? _values[i] : _simulations[i].x(from),
-                end: targets[i],
-                velocity:
-                    from == null ? _velocities[i] : _simulations[i].dx(from),
-              )
-              ?.toSeconds();
+      final simulation = motions[i].createSimulation(
+        start: from == null ? _values[i] : _simulations[i].x(from),
+        end: targets[i],
+        velocity: from == null ? _velocities[i] : _simulations[i].dx(from),
+      );
+      final seconds = stepSecondsOf(simulation) ?? settleSecondsOf(simulation);
       if (seconds == null || !seconds.isFinite) return null;
       if (seconds > longest) longest = seconds;
     }
@@ -859,8 +851,7 @@ class StepPlayback<T extends Object> {
 
   void _startCurrentStep() {
     _plannedEnd = null;
-    _endMotions = null;
-    _endFreeMotion = null;
+    _askEnd = false;
     _handedOver = _handsOver;
     _handsOver = false;
     if (_direction < 0) {
@@ -912,7 +903,7 @@ class StepPlayback<T extends Object> {
   }
 
   List<Simulation> _simulateFree(FreeMotion motion) {
-    _endFreeMotion = motion;
+    _askEnd = true;
     return [
       for (var i = 0; i < _values.length; i++)
         motion.createSimulation(start: _values[i], velocity: _velocities[i]),
@@ -924,15 +915,13 @@ class StepPlayback<T extends Object> {
     _plannedEnd = seconds;
     return [
       for (final value in values)
-        _HoldSimulation(value: value, duration: seconds),
+        _HoldSimulation(value: value, seconds: seconds),
     ];
   }
 
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
-    _endMotions = motions;
-    _endTargets = targets;
-    if (_isFollowed()) _planHandOver(motions);
-    return [
+    _askEnd = true;
+    final simulations = [
       for (var i = 0; i < targets.length; i++)
         motions[i].createSimulation(
           start: _values[i],
@@ -940,6 +929,8 @@ class StepPlayback<T extends Object> {
           velocity: _velocities[i],
         ),
     ];
+    if (_isFollowed()) _planHandOver(simulations);
+    return simulations;
   }
 
   List<Simulation> _simulateAt(Duration at, List<Motion> motions) {
@@ -1002,8 +993,8 @@ class StepPlayback<T extends Object> {
   }
 
   /// Whether a later motion takes over from the running step, so that it
-  /// ends after its motion's [Motion.duration] instead of when it has
-  /// settled. Holds and sync barriers don't take over.
+  /// ends after its simulations' [TimedSimulation.duration] instead of when
+  /// they have settled. Holds and sync barriers don't take over.
   bool _isFollowed() {
     if (_loop.isLooping) return true;
     for (var i = _stepIndex + 1; i < _steps.length; i++) {
@@ -1013,40 +1004,35 @@ class StepPlayback<T extends Object> {
     return false;
   }
 
-  /// Ends the running step after its [motions]' [Motion.duration], when it
-  /// doesn't wait to settle, so that the next step takes over then.
-  void _planHandOver(List<Motion> motions) {
+  /// Ends the running step after its [simulations]' step length
+  /// ([TimedSimulation.duration]), when it doesn't wait to settle, so that
+  /// the next step takes over then.
+  void _planHandOver(List<Simulation> simulations) {
     final step = _steps[_stepIndex];
     if (step is StepTo<T> && step.untilSettled) return;
-    if (_logicalSeconds(motions) case final seconds?) {
+    if (_stepSeconds(simulations) case final seconds?) {
       _plannedEnd = seconds;
       _handsOver = true;
     }
   }
 
-  /// The longest [Motion.duration] of [motions], in seconds, or null if one
+  /// The longest step length of [simulations], in seconds, or null if one
   /// has none.
-  static double? _logicalSeconds(List<Motion> motions) {
+  static double? _stepSeconds(List<Simulation> simulations) {
     var longest = 0.0;
-    for (final motion in motions) {
-      final duration = motion.duration;
-      if (duration == null) return null;
-      final seconds = duration.toSeconds();
+    for (final simulation in simulations) {
+      final seconds = stepSecondsOf(simulation);
+      if (seconds == null) return null;
       if (seconds > longest) longest = seconds;
     }
     return longest;
   }
 
   /// [motion] played over exactly [duration], landing on its target. A
-  /// motion that keeps settling after its [Motion.duration] is cut there
+  /// motion that keeps settling after its step is cut at the end of its step
   /// first, so that it lands at its natural speed when [duration] matches.
-  static Motion _landing(Motion motion, Duration duration) {
-    final length = motion.duration;
-    final lands = length != null && motion.needsSettle
-        ? CutMotion(motion, duration: length)
-        : motion;
-    return lands.scaleTo(duration);
-  }
+  static Motion _landing(Motion motion, Duration duration) =>
+      (motion.needsSettle ? CutMotion(motion) : motion).scaleTo(duration);
 
   /// Decides when the running step yields to a following [StepAt].
   ///
@@ -1056,8 +1042,8 @@ class StepPlayback<T extends Object> {
   /// short so the motion runs its natural length, but never before the
   /// running step started. Both cases meet where the gap equals the natural
   /// length, so timing changes continuously with the arrival time. The
-  /// natural length is the motion's [Motion.duration], or its
-  /// [Motion.settlingDuration] from where the running step ends.
+  /// natural length is the step length of the motion's simulation from where
+  /// the running step ends, or when it settles if it has none.
   void _scheduleCutForNextAt() {
     _cutAt = null;
     if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
@@ -1107,11 +1093,12 @@ class StepPlayback<T extends Object> {
   /// Holds, sync barriers, `.at` arrivals and steps a later motion takes over
   /// from know it up front. Otherwise it is found lazily, as time passes: on
   /// a grid of [_scanStep] from the segment's start, the first point where
-  /// its simulations report done. Their motions are then asked for the exact
-  /// end ([Motion.settlingDuration], [FreeMotion.settlingDuration]), which is
-  /// never before the last point that isn't done. A look-ahead asks right
-  /// away instead of searching the grid. A motion that never settles leaves
-  /// the segment open: it keeps playing until it is retargeted or stopped.
+  /// its simulations report done. They are then asked for the exact end
+  /// ([TimedSimulation.settlesAt]), which is never before the last point that
+  /// isn't done; one without the mixin is searched. A look-ahead asks right
+  /// away instead of searching the grid. A simulation that never settles
+  /// leaves the segment open: it keeps playing until it is retargeted or
+  /// stopped.
   ///
   /// The end depends only on the segment, so ticking and seeking always
   /// agree. See [_findSegmentEndBy].
@@ -1123,51 +1110,30 @@ class StepPlayback<T extends Object> {
     assert(
       !_loop.isLooping || _segmentEndFound || !_neverEnds(),
       'Step $_stepIndex of a looping plan never ends: its motion never '
-      'settles (settlingDuration is null) and the step has no duration to '
-      'hand over at, so the loop would never repeat. Give the motion a '
+      'settles (settlesAt is null) and the step has no duration to hand '
+      'over at, so the loop would never repeat. Give its simulation a '
       'duration, or play the step without looping.',
     );
   }
 
-  /// When the running segment's [i]th simulation settles, per its motion, or
-  /// null if it never does.
-  double? _settleSeconds(int i, List<Motion>? motions, FreeMotion? free) {
-    final reported = motions != null
-        ? motions[i].settlingDuration(
-            start: _values[i],
-            end: _endTargets[i],
-            velocity: _velocities[i],
-          )
-        : free!.settlingDuration(start: _values[i], velocity: _velocities[i]);
-    if (reported == null) return null;
-    // A reported time the simulation isn't done by is searched for instead.
-    return settledAt(_simulations[i], reported.toSeconds()) ??
-        searchSettlingSeconds(_simulations[i]);
-  }
-
-  /// Whether one of the running segment's motions never settles.
+  /// Whether one of the running segment's simulations never settles.
   bool _neverEnds() {
-    final motions = _endMotions;
-    final free = _endFreeMotion;
-    if (motions == null && free == null) return false;
-    for (var i = 0; i < _simulations.length; i++) {
-      if (_settleSeconds(i, motions, free) == null) return true;
+    if (!_askEnd) return false;
+    for (final simulation in _simulations) {
+      if (settleSecondsOf(simulation) == null) return true;
     }
     return false;
   }
 
-  /// Asks the running segment's motions when it ends, the first time only:
-  /// when the last one settles, or never if one doesn't. Returns false if
-  /// there's nothing to ask.
+  /// Asks the running segment's simulations when it ends, the first time
+  /// only: when the last one settles, or never if one doesn't. Returns false
+  /// if there's nothing to ask.
   bool _askSegmentEnd() {
-    final motions = _endMotions;
-    final free = _endFreeMotion;
-    if (motions == null && free == null) return false;
-    _endMotions = null;
-    _endFreeMotion = null;
+    if (!_askEnd) return false;
+    _askEnd = false;
     var end = 0.0;
-    for (var i = 0; i < _simulations.length; i++) {
-      final seconds = _settleSeconds(i, motions, free);
+    for (final simulation in _simulations) {
+      final seconds = settleSecondsOf(simulation);
       if (seconds == null) {
         _endSegmentAt(null);
         return true;
@@ -1270,7 +1236,7 @@ class _CycleStart {
 
 /// Plays [inner] until [arrival], and holds [target] exactly from then on,
 /// so a [StepAt] lands on its value at its time whatever the motion.
-class _ArrivalSimulation extends Simulation {
+class _ArrivalSimulation extends Simulation with TimedSimulation {
   _ArrivalSimulation(
     this.inner, {
     required this.arrival,
@@ -1280,6 +1246,12 @@ class _ArrivalSimulation extends Simulation {
   final Simulation inner;
   final double arrival;
   final double target;
+
+  @override
+  Duration get duration => settlesAt;
+
+  @override
+  Duration get settlesAt => settlingDurationOf(arrival)!;
 
   @override
   double x(double time) => time >= arrival ? target : inner.x(time);
@@ -1292,7 +1264,7 @@ class _ArrivalSimulation extends Simulation {
 }
 
 /// [inner] from [offset] seconds on.
-class _ContinuedSimulation extends Simulation {
+class _ContinuedSimulation extends Simulation with TimedSimulation {
   _ContinuedSimulation._(this.inner, this.offset);
 
   factory _ContinuedSimulation.after(Simulation simulation, double offset) =>
@@ -1302,6 +1274,20 @@ class _ContinuedSimulation extends Simulation {
 
   final Simulation inner;
   final double offset;
+
+  /// The rest of [inner]'s step, which has ended when a hold or barrier
+  /// continues it.
+  @override
+  Duration? get duration => switch (stepSecondsOf(inner)) {
+        final seconds? => settlingDurationOf(math.max(0, seconds - offset)),
+        null => null,
+      };
+
+  @override
+  Duration? get settlesAt => switch (settleSecondsOf(inner)) {
+        final seconds? => settlingDurationOf(math.max(0, seconds - offset)),
+        null => null,
+      };
 
   @override
   double x(double time) => inner.x(offset + time);
@@ -1313,14 +1299,20 @@ class _ContinuedSimulation extends Simulation {
   bool isDone(double time) => inner.isDone(offset + time);
 }
 
-class _HoldSimulation extends Simulation {
+class _HoldSimulation extends Simulation with TimedSimulation {
   _HoldSimulation({
     required this.value,
-    required this.duration,
+    required this.seconds,
   });
 
   final double value;
-  final double duration;
+  final double seconds;
+
+  @override
+  Duration get duration => settlesAt;
+
+  @override
+  Duration get settlesAt => settlingDurationOf(seconds)!;
 
   @override
   double x(double time) => value;
@@ -1329,7 +1321,7 @@ class _HoldSimulation extends Simulation {
   double dx(double time) => 0;
 
   @override
-  bool isDone(double time) => time >= duration;
+  bool isDone(double time) => time >= seconds;
 }
 
 extension on Duration {

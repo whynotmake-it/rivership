@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/cut_motion.dart';
 
+import 'util.dart';
+
 double _seconds(Duration duration) => duration.inMicroseconds / 1e6;
 
 void main() {
