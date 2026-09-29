@@ -14,8 +14,8 @@ StepPlayback<double> _playback(List<TrackStep<double>> steps) =>
       start: 0,
     );
 
-/// A plain custom motion, as in 1.x: no timing, so its step lasts until its
-/// simulation is done, which motor finds by sampling.
+/// A plain custom motion, as in 1.x: no duration and no settle time, so its
+/// step lasts until its simulation is done, which motor finds by sampling.
 class EaseOutMotion extends Motion {
   const EaseOutMotion({this.timeConstant = 0.1});
 
@@ -65,8 +65,8 @@ class _EaseOutSimulation extends Simulation {
 
 /// Falls onto `end` as if under gravity, and bounces until it rests there.
 ///
-/// It has no step length, since the bounces depend on the height, so a step
-/// with it lasts until it rests. Its simulation says when that is.
+/// It has no duration, since the bounces depend on the height, so a step with
+/// it lasts until it rests. Its simulation says when that is.
 class FloorBounceMotion extends Motion {
   const FloorBounceMotion({this.gravity = 8000, this.restitution = 0.5});
 
@@ -101,7 +101,7 @@ class FloorBounceMotion extends Motion {
   int get hashCode => Object.hash(gravity, restitution);
 }
 
-class _FloorBounceSimulation extends Simulation with TimedSimulation {
+class _FloorBounceSimulation extends Simulation with SettlingSimulation {
   _FloorBounceSimulation({
     required double start,
     required this.floor,
@@ -137,9 +137,6 @@ class _FloorBounceSimulation extends Simulation with TimedSimulation {
   final _impacts = <double>[];
 
   @override
-  Duration? get duration => null;
-
-  @override
   Duration get settlesAt =>
       Duration(microseconds: (_impacts.last * 1e6).ceil());
 
@@ -171,14 +168,21 @@ class _FloorBounceSimulation extends Simulation with TimedSimulation {
 
 /// A wrapper: holds still for [delay], then plays [parent].
 ///
-/// It passes its parent's timing on, shifted by [delay]. A parent without
-/// timing gets a wrapper without it too, so that motor samples it.
+/// Its duration is its parent's plus the delay. Its simulation settles when
+/// its parent's does, plus the delay, which [SimulationSettling.estimateSettle]
+/// finds whether or not the parent's simulation knows.
 class DelayedMotion extends Motion {
   DelayedMotion(this.parent, {required this.delay})
       : super(tolerance: parent.tolerance);
 
   final Motion parent;
   final Duration delay;
+
+  @override
+  Duration? get duration => switch (parent.duration) {
+        final duration? => delay + duration,
+        null => null,
+      };
 
   @override
   bool get needsSettle => parent.needsSettle;
@@ -188,13 +192,12 @@ class DelayedMotion extends Motion {
     double start = 0,
     double end = 1,
     double velocity = 0,
-  }) {
-    final inner =
-        parent.createSimulation(start: start, end: end, velocity: velocity);
-    return inner is TimedSimulation
-        ? _TimedDelayedSimulation(inner, delay, start)
-        : _DelayedSimulation(inner, delay, start);
-  }
+  }) =>
+      _DelayedSimulation(
+        parent.createSimulation(start: start, end: end, velocity: velocity),
+        delay,
+        start,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -204,47 +207,30 @@ class DelayedMotion extends Motion {
   int get hashCode => Object.hash(parent, delay);
 }
 
-class _DelayedSimulation extends Simulation {
-  _DelayedSimulation(this.inner, Duration delay, this.start)
-      : delay = delay.inMicroseconds / 1e6,
+class _DelayedSimulation extends Simulation with SettlingSimulation {
+  _DelayedSimulation(this.inner, this.delay, this.start)
+      : _delay = delay.inMicroseconds / 1e6,
         super(tolerance: inner.tolerance);
 
   final Simulation inner;
-  final double delay;
+  final Duration delay;
   final double start;
+  final double _delay;
 
   @override
-  double x(double time) => time < delay ? start : inner.x(time - delay);
+  late final Duration? settlesAt = switch (inner.estimateSettle()) {
+    final settle? => delay + settle,
+    null => null,
+  };
 
   @override
-  double dx(double time) => time < delay ? 0 : inner.dx(time - delay);
+  double x(double time) => time < _delay ? start : inner.x(time - _delay);
 
   @override
-  bool isDone(double time) => time >= delay && inner.isDone(time - delay);
-}
-
-class _TimedDelayedSimulation extends _DelayedSimulation with TimedSimulation {
-  _TimedDelayedSimulation(
-    TimedSimulation super.inner,
-    super.delay,
-    super.start,
-  ) : _delay = delay;
-
-  final Duration _delay;
-
-  TimedSimulation get _timed => inner as TimedSimulation;
+  double dx(double time) => time < _delay ? 0 : inner.dx(time - _delay);
 
   @override
-  Duration? get duration => switch (_timed.duration) {
-        final duration? => _delay + duration,
-        null => null,
-      };
-
-  @override
-  Duration? get settlesAt => switch (_timed.settlesAt) {
-        final settlesAt? => _delay + settlesAt,
-        null => null,
-      };
+  bool isDone(double time) => time >= _delay && inner.isDone(time - _delay);
 }
 
 void main() {
@@ -287,9 +273,10 @@ void main() {
       const spring = CupertinoMotion.bouncy();
       const delay = Duration(milliseconds: 200);
       final delayed = DelayedMotion(spring, delay: delay);
-      final simulation = delayed.createSimulation(end: 300) as TimedSimulation;
-      final inner = spring.createSimulation(end: 300) as TimedSimulation;
-      expect(simulation.duration, delay + spring.duration);
+      final simulation =
+          delayed.createSimulation(end: 300) as SettlingSimulation;
+      final inner = spring.createSimulation(end: 300) as SettlingSimulation;
+      expect(delayed.duration, delay + spring.duration);
       expect(simulation.settlesAt, delay + inner.settlesAt!);
 
       final playback = _playback([
@@ -299,9 +286,47 @@ void main() {
         ..advanceTo(1);
       expect(playback.forwardSegmentSeconds.first, 0.7);
 
-      // Without timing on the parent, the wrapper has none either.
+      // A parent without a settle time is sampled.
       final plain = DelayedMotion(const EaseOutMotion(), delay: delay);
-      expect(plain.createSimulation(), isNot(isA<TimedSimulation>()));
+      final sampled = const EaseOutMotion().createSimulation().estimateSettle();
+      expect(plain.duration, isNull);
+      expect(
+        (plain.createSimulation() as SettlingSimulation).settlesAt,
+        delay + sampled!,
+      );
+    });
+  });
+
+  group('estimateSettle', () {
+    test('returns what a settling simulation reports', () {
+      const curve = Motion.linear(Duration(milliseconds: 300));
+      expect(
+        curve.createSimulation().estimateSettle(),
+        const Duration(milliseconds: 300),
+      );
+      final spring = const CupertinoMotion.bouncy().createSimulation(end: 300)
+          as SettlingSimulation;
+      expect(spring.estimateSettle(), spring.settlesAt);
+    });
+
+    test('samples other simulations, up to two minutes', () {
+      final done = 0.1 * math.log(1000);
+      final sampled = const EaseOutMotion().createSimulation().estimateSettle();
+      expect(_seconds(sampled!), closeTo(done, 1e-6));
+      // Never done within two minutes: never settles.
+      expect(
+        const EaseOutMotion(timeConstant: 100)
+            .createSimulation()
+            .estimateSettle(),
+        isNull,
+      );
+    });
+
+    test('is null for a simulation that never settles', () {
+      final undamped = const SpringMotion(
+        SpringDescription(mass: 1, stiffness: 100, damping: 0),
+      ).createSimulation();
+      expect(undamped.estimateSettle(), isNull);
     });
   });
 
@@ -328,7 +353,7 @@ void main() {
     test('a mixin simulation is not searched for its end', () {
       const motion = FloorBounceMotion();
       final rest = _seconds(
-        (motion.createSimulation(end: 300) as TimedSimulation).settlesAt!,
+        (motion.createSimulation(end: 300) as SettlingSimulation).settlesAt!,
       );
       // An .at after it plans from settlesAt; with a search, the end would
       // only be found to within the grid.

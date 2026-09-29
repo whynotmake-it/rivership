@@ -208,9 +208,9 @@ void _advanceTo(double time) {
 
 ### Custom motions: extend `Motion` instead of implementing it
 
-2.0 added `scaleTo(Duration)` to `MotionBase`, with a default implementation.
-A class that `implements Motion` doesn't inherit it, so it no longer compiles
-until it provides it.
+2.0 added `duration` and `scaleTo(Duration)` to `Motion` and `MotionBase`,
+with default implementations. A class that `implements Motion` doesn't
+inherit them, so it no longer compiles until it provides both.
 Extend `Motion` instead: you keep only the members 1.x required.
 
 ```dart
@@ -255,23 +255,19 @@ class MyMotion extends Motion {
 const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 ```
 
-A motion's timing lives on its simulation. Mix `TimedSimulation` into it if
-the move has a step length, `duration` (a track step then lasts that long,
-and the next step takes over), or if you can tell when it is done,
-`settlesAt` (motor then ends settling steps there instead of sampling
-`isDone` to find it). Without the mixin, a step lasts until the simulation is
-done, as a 1.x sequence phase did.
+Override `duration` if your motion has a perceived duration: a track step
+then lasts that long, and the next step takes over. If you can tell when your
+simulation is done, mix `SettlingSimulation` into it and return that time
+from `settlesAt`. Motor then ends settling steps there instead of sampling
+`isDone` to find it.
 
 ```dart
-class _MySimulation extends SpringSimulation with TimedSimulation {
+class _MySimulation extends SpringSimulation with SettlingSimulation {
   _MySimulation(double start, double end, double velocity)
       : super(_spring, start, end, velocity);
 
   @override
-  Duration get duration => _spring.duration; // the next step takes over here
-
-  @override
-  Duration? get settlesAt => null; // unknown: motor samples isDone
+  Duration? get settlesAt => _computeRestTime(); // null: never settles
 }
 ```
 

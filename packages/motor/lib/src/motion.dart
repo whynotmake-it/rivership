@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/simulations/curve_simulation.dart';
 import 'package:motor/src/simulations/no_motion_simulation.dart';
 import 'package:motor/src/simulations/simulation_end.dart';
 import 'package:motor/src/simulations/spring_settle.dart';
-import 'package:motor/src/timed_simulation.dart';
 
 export 'motion_curve.dart';
 
@@ -46,10 +46,16 @@ sealed class MotionBase {
   /// [FixedDurationMotion] or [FixedDurationFreeMotion]; see those for what
   /// happens to a spring's settle and to velocity.
   ///
-  /// Wrappers read their source's timing from its simulation
-  /// ([TimedSimulation]) on each `createSimulation`. Wrappers are immutable
-  /// and compare by value, so they can be created in `build`.
+  /// Wrappers read when their source settles from its simulation
+  /// ([SimulationSettling.estimateSettle]) on each `createSimulation`.
+  /// Wrappers are immutable and compare by value, so they can be created in
+  /// `build`.
   MotionBase scaleTo(Duration duration);
+
+  /// How long a step with this motion lasts, the same for every move, or
+  /// null if the step lasts until the simulation settles. See
+  /// [Motion.duration] and [FreeMotion.duration].
+  Duration? get duration;
 }
 
 /// {@macro Motion}
@@ -61,10 +67,10 @@ sealed class MotionBase {
 /// Extending inherits the default [scaleTo], which an implementing class has
 /// to provide itself.
 ///
-/// A motion has no timing of its own: each simulation it creates is one
-/// move, and says how long its step lasts and when it has settled if it
-/// mixes in [TimedSimulation]. Without it, a step with the motion lasts until
-/// the simulation is done.
+/// A motion has two times. Its [duration] is how long a step with it lasts,
+/// the same for every move. When a move settles depends on the move, so its
+/// simulation says it, if it mixes in [SettlingSimulation]; otherwise motor
+/// samples `isDone`.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
@@ -122,6 +128,25 @@ abstract class Motion extends MotionBase {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
+  /// How long this motion takes, as a step: its perceived duration, where
+  /// the next step takes over.
+  ///
+  /// In a track, a step with this motion lasts [duration], and the next step
+  /// then continues from the current value and velocity. It is a fixed
+  /// property of the motion, the same for every move, so loops and staggers
+  /// keep their rhythm whatever the distance.
+  ///
+  /// Curves, linear motions and [NoMotion] end their movement here too. A
+  /// spring's is its perceptual duration, the same number as SwiftUI's
+  /// `Spring.duration`: it is nearly at its target by then and keeps
+  /// settling for a while, during a following hold or barrier, or until its
+  /// simulation's [SettlingSimulation.settlesAt] if its step is the last one.
+  ///
+  /// Null if the motion has no pace of its own: its step then lasts until
+  /// the simulation settles. That is the default.
+  @override
+  Duration? get duration => null;
+
   /// Whether this motion needs to settle.
   ///
   /// If this is true, the motion will continue to animate until the velocity
@@ -142,9 +167,8 @@ abstract class Motion extends MotionBase {
   ///
   /// Returns a [Simulation] that can be used by an [AnimationController].
   ///
-  /// Mix [TimedSimulation] into it to tell motor how long its step lasts and
-  /// when it has settled. Otherwise its step lasts until it is done, which
-  /// motor finds by sampling `isDone`.
+  /// Mix [SettlingSimulation] into it to tell motor when the move has
+  /// settled. Otherwise motor finds that by sampling `isDone`.
   ///
   /// {@template motor.pureSimulation}
   /// Unlike Flutter, which only queries a simulation at increasing times,
@@ -205,16 +229,27 @@ abstract class FreeMotion extends MotionBase {
 
   /// Creates a self-directed simulation.
   ///
-  /// A `TrackStep.free` lasts until it has settled: at its
-  /// [TimedSimulation.settlesAt] if it mixes that in, otherwise when it's
-  /// done, found by sampling `isDone`. A free step that never comes to rest
-  /// keeps animating until it is retargeted or stopped.
+  /// The move settles at its [SettlingSimulation.settlesAt] if it mixes
+  /// that in; otherwise motor finds when by sampling `isDone`. A free step
+  /// that never comes to rest keeps animating until it is retargeted or
+  /// stopped.
   ///
   /// {@macro motor.pureSimulation}
   Simulation createSimulation({
     double start = 0,
     double velocity = 0,
   });
+
+  /// How long a step with this motion lasts, or null (the default) if the
+  /// step lasts until the simulation settles.
+  ///
+  /// Like [Motion.duration], it is a fixed property of the motion, the same
+  /// for every move. In a track, the next step takes over after it, from the
+  /// current value and velocity. Free motions such as [FrictionMotion] have
+  /// no pace of their own, so a `TrackStep.free` usually coasts until it
+  /// comes to rest.
+  @override
+  Duration? get duration => null;
 
   /// Returns the value this motion will settle to, or `null` if unknown.
   ///
@@ -283,6 +318,7 @@ class CurvedMotion extends Motion {
   ]) : super(tolerance: Tolerance.defaultTolerance);
 
   /// The total duration of the motion.
+  @override
   final Duration duration;
 
   /// The curve that defines the rate of change of the motion over time.
@@ -367,6 +403,7 @@ class NoMotion extends Motion {
   const NoMotion([this.duration = Duration.zero]);
 
   /// The duration that this motion holds its value.
+  @override
   final Duration duration;
 
   @override
@@ -433,8 +470,10 @@ abstract class SpringMotion extends Motion {
   /// how the spring behaves.
   SpringDescription get description;
 
-  /// How long a step with this spring lasts: the perceptual duration.
-  Duration get _stepDuration => description.duration;
+  /// The perceptual duration of the spring, [SpringDescription.duration]:
+  /// its pace. It keeps settling after this time.
+  @override
+  Duration? get duration => description.duration;
 
   /// Whether to snap to the end of the spring.
   ///
@@ -455,11 +494,11 @@ abstract class SpringMotion extends Motion {
   /// Creates a simulation for this motion.
   ///
   /// Returns a [SpringSimulation] that follows the physical behavior
-  /// defined by the [description] description. As a [TimedSimulation], its
-  /// step lasts the spring's perceptual duration, and it settles when it is
-  /// done for good: from then on its position and velocity stay within
-  /// [tolerance]. Near a peak an underdamped spring can briefly report done
-  /// before it swings out again; this is after the last such swing.
+  /// defined by the [description] description. As a [SettlingSimulation],
+  /// it settles when it is done for good: from then on its position and
+  /// velocity stay within [tolerance]. Near a peak an underdamped spring can
+  /// briefly report done before it swings out again; this is after the last
+  /// such swing.
   ///
   /// Parameters:
   ///   * [start] - The starting value for the simulation, defaults to 0.
@@ -477,7 +516,6 @@ abstract class SpringMotion extends Motion {
         start,
         end,
         velocity,
-        duration: _stepDuration,
         tolerance: tolerance,
         snapToEnd: snapToEnd,
       );
@@ -652,11 +690,9 @@ class CupertinoMotion extends SpringMotion {
   /// finishes settling later.
   ///
   /// In a track, the next step takes over at this time; a last step keeps
-  /// settling until its simulation's [TimedSimulation.settlesAt].
-  final Duration duration;
-
+  /// settling until its simulation's [SettlingSimulation.settlesAt].
   @override
-  Duration get _stepDuration => duration;
+  final Duration duration;
 
   /// The bounce of the spring motion, at most 1.
   ///
@@ -930,13 +966,12 @@ class MaterialSpringMotion extends SpringMotion {
 /// It keeps [parent]'s shape and changes its speed: time is stretched or
 /// compressed linearly by the same factor for the whole move.
 ///
-/// - The factor is [parent]'s step length ([TimedSimulation.duration] of its
-///   simulation) over [duration]. A spring's tail scales along, so it keeps
-///   settling after [duration], and the result is the same spring retimed,
-///   with the same bounce.
+/// - The factor is [parent]'s [Motion.duration] over [duration]. A spring's
+///   tail scales along, so it keeps settling after [duration], and the
+///   result is the same spring retimed, with the same bounce.
 /// - The start velocity is kept: the parent is given the velocity divided by
 ///   the factor, so a step handed over to this motion continues smoothly.
-/// - A [parent] without a step length is scaled per move instead, so that
+/// - A [parent] without a duration is scaled per move instead, so that
 ///   the move settles at [duration]. Its start velocity scales with it. A
 ///   [parent] that also never settles plays at its own speed.
 /// - [needsSettle] is [parent]'s.
@@ -962,6 +997,7 @@ class FixedDurationMotion extends Motion {
   final Motion parent;
 
   /// How long a step with this motion lasts.
+  @override
   final Duration duration;
 
   @override
@@ -974,27 +1010,27 @@ class FixedDurationMotion extends Motion {
     double velocity = 0,
   }) {
     final seconds = duration.toSeconds();
-    var simulation = parent.createSimulation(
+    if (seconds <= 0) return _ArrivedSimulation(end, tolerance: tolerance);
+    final length = parent.duration?.toSeconds();
+    if (length != null && length > 0) {
+      final factor = length / seconds;
+      return _PacedSimulation(
+        parent.createSimulation(
+          start: start,
+          end: end,
+          velocity: velocity / factor,
+        ),
+        factor,
+      );
+    }
+    final simulation = parent.createSimulation(
       start: start,
       end: end,
       velocity: velocity,
     );
-    if (seconds <= 0) return _ArrivedSimulation(end, tolerance: tolerance);
-    final length = stepSecondsOf(simulation);
-    if (length != null && length > 0) {
-      final factor = length / seconds;
-      if (velocity != 0 && factor != 1) {
-        simulation = parent.createSimulation(
-          start: start,
-          end: end,
-          velocity: velocity / factor,
-        );
-      }
-      return _PacedSimulation(simulation, factor, duration: duration);
-    }
     final settle = settleSecondsOf(simulation);
     final factor = settle == null || settle <= 0 ? 1.0 : settle / seconds;
-    return _PacedSimulation(simulation, factor, duration: duration);
+    return _PacedSimulation(simulation, factor);
   }
 
   @override
@@ -1047,6 +1083,7 @@ class FixedDurationFreeMotion extends FreeMotion {
   final FreeMotion parent;
 
   /// The duration this motion should take.
+  @override
   final Duration duration;
 
   @override
@@ -1206,7 +1243,7 @@ class FrictionMotion extends FreeMotion {
 
 /// A [FrictionSimulation] that knows when it comes to rest: when its speed,
 /// which only decreases, drops below the velocity tolerance.
-class _FrictionSimulation extends FrictionSimulation with TimedSimulation {
+class _FrictionSimulation extends FrictionSimulation with SettlingSimulation {
   _FrictionSimulation(
     this._drag,
     double position,
@@ -1222,9 +1259,6 @@ class _FrictionSimulation extends FrictionSimulation with TimedSimulation {
 
   final double _drag;
   final double _velocity;
-
-  @override
-  Duration? get duration => null;
 
   @override
   late final Duration? settlesAt = settlingDurationOf(_restSeconds());
@@ -1254,13 +1288,10 @@ class _FrictionSimulation extends FrictionSimulation with TimedSimulation {
 }
 
 /// At [end] from the start, and done.
-class _ArrivedSimulation extends Simulation with TimedSimulation {
+class _ArrivedSimulation extends Simulation with SettlingSimulation {
   _ArrivedSimulation(this.end, {required super.tolerance});
 
   final double end;
-
-  @override
-  Duration get duration => Duration.zero;
 
   @override
   Duration get settlesAt => Duration.zero;
@@ -1275,16 +1306,13 @@ class _ArrivedSimulation extends Simulation with TimedSimulation {
   bool isDone(double time) => true;
 }
 
-/// [parent] with time scaled by [factor], so that its step lasts [duration].
-class _PacedSimulation extends Simulation with TimedSimulation {
-  _PacedSimulation(this.parent, this.factor, {required this.duration})
+/// [parent] with time scaled by [factor].
+class _PacedSimulation extends Simulation with SettlingSimulation {
+  _PacedSimulation(this.parent, this.factor)
       : super(tolerance: parent.tolerance);
 
   final Simulation parent;
   final double factor;
-
-  @override
-  final Duration duration;
 
   @override
   late final Duration? settlesAt = switch (settleSecondsOf(parent)) {
@@ -1302,7 +1330,7 @@ class _PacedSimulation extends Simulation with TimedSimulation {
   bool isDone(double time) => parent.isDone(factor * time);
 }
 
-class _FixedDurationSimulation extends Simulation with TimedSimulation {
+class _FixedDurationSimulation extends Simulation with SettlingSimulation {
   _FixedDurationSimulation({
     required this.parent,
     required this.duration,
@@ -1315,7 +1343,6 @@ class _FixedDurationSimulation extends Simulation with TimedSimulation {
         super(tolerance: parent.tolerance);
 
   final Simulation parent;
-  @override
   final Duration duration;
   final double start;
   final double end;
@@ -1409,6 +1436,19 @@ class TrimmedMotion extends Motion {
   /// Amount to trim from the end of the motion curve.
   final double fromEnd;
 
+  /// [parent]'s [Motion.duration] for the part that's kept, or null for a
+  /// parent that settles, such as a spring: its slice is taken from the
+  /// whole settle, so a step with it lasts until the slice ends.
+  @override
+  Duration? get duration =>
+      switch (parent.needsSettle ? null : parent.duration) {
+        final d? => Duration(
+            microseconds:
+                (d.inMicroseconds * (1 - fromStart - fromEnd)).round(),
+          ),
+        null => null,
+      };
+
   @override
   bool get needsSettle => parent.needsSettle;
 
@@ -1440,12 +1480,13 @@ class TrimmedMotion extends Motion {
       trimmedExtent: trimmedExtent,
       start: start,
       end: end,
-      // A parent that never settles is trimmed from its step, or from 1 s.
-      parentDuration:
-          settleSecondsOf(scaledSim) ?? stepSecondsOf(scaledSim) ?? 1.0,
-      timed: !parent.needsSettle,
+      // A parent that never settles is trimmed from its duration, or 1 s.
+      parentDuration: settleSecondsOf(scaledSim) ?? _parentFallback.toSeconds(),
     );
   }
+
+  /// The length the trim is taken from when [parent] never settles.
+  Duration get _parentFallback => parent.duration ?? const Duration(seconds: 1);
 
   @override
   bool operator ==(Object other) {
@@ -1465,9 +1506,8 @@ class TrimmedMotion extends Motion {
       'TrimmedMotion(parent: $parent, trim: $fromStart-$fromEnd)';
 }
 
-/// A slice of [parent]. Its step lasts the slice for a parent that doesn't
-/// need to settle, such as a curve, and otherwise until it has settled.
-class _TrimmedSimulation extends Simulation with TimedSimulation {
+/// A slice of [parent], settled at its end.
+class _TrimmedSimulation extends Simulation with SettlingSimulation {
   _TrimmedSimulation({
     required this.parent,
     required this.startTrim,
@@ -1476,16 +1516,8 @@ class _TrimmedSimulation extends Simulation with TimedSimulation {
     required this.start,
     required this.end,
     required double parentDuration,
-    required bool timed,
   })  : _duration = parentDuration * trimmedExtent,
-        _timed = timed,
         super(tolerance: parent.tolerance);
-
-  final bool _timed;
-
-  @override
-  Duration? get duration =>
-      _timed ? Duration(microseconds: (_duration * 1e6).round()) : null;
 
   // Done a tolerance before the trimmed end; see isDone. Rounded down, so
   // it may be up to a microsecond early.

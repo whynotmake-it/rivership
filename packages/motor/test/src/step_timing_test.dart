@@ -35,10 +35,7 @@ class _NoDurationSpring extends Motion {
     double end = 1,
     double velocity = 0,
   }) =>
-      _NoDurationSimulation(
-        _spring.createSimulation(start: start, end: end, velocity: velocity)
-            as TimedSimulation,
-      );
+      _spring.createSimulation(start: start, end: end, velocity: velocity);
 
   @override
   bool operator ==(Object other) => other is _NoDurationSpring;
@@ -47,34 +44,12 @@ class _NoDurationSpring extends Motion {
   int get hashCode => (_NoDurationSpring).hashCode;
 }
 
-/// [inner] without a step length, so that its step lasts until it settles.
-class _NoDurationSimulation extends Simulation with TimedSimulation {
-  _NoDurationSimulation(this.inner);
-
-  final TimedSimulation inner;
-
-  @override
-  Duration? get duration => null;
-
-  @override
-  Duration? get settlesAt => inner.settlesAt;
-
-  @override
-  double x(double time) => inner.x(time);
-
-  @override
-  double dx(double time) => inner.dx(time);
-
-  @override
-  bool isDone(double time) => inner.isDone(time);
-}
-
 void main() {
   const spring = CupertinoMotion.bouncy();
   final d = _seconds(spring.duration);
   final settle = _seconds(spring.settlingDuration(end: 300)!);
 
-  group('TimedSimulation.duration', () {
+  group('Motion.duration', () {
     test('is the logical length', () {
       const curve = Duration(milliseconds: 300);
       expect(const Motion.curved(curve).duration, curve);

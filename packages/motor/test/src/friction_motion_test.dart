@@ -136,7 +136,7 @@ void main() {
         final scaled = motion.scaleTo(const Duration(milliseconds: 400));
         final simulation = scaled.createSimulation(velocity: 1000);
         final coast =
-            motion.createSimulation(velocity: 1000) as TimedSimulation;
+            motion.createSimulation(velocity: 1000) as SettlingSimulation;
 
         expect(coast.settlesAt!.inSeconds, inInclusiveRange(990, 1000));
         expect(simulation.isDone(0.4), isTrue);

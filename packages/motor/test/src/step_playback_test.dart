@@ -82,7 +82,7 @@ void main() {
       )..advanceTo(0.3);
       expect(last.isDone, isFalse);
       final settle =
-          (scaled.createSimulation(end: 100) as TimedSimulation).settlesAt!;
+          (scaled.createSimulation(end: 100) as SettlingSimulation).settlesAt!;
       last.advanceTo(settle.inMicroseconds / 1e6);
       expect(last.values.single, 100);
       expect(last.isDone, isTrue);

@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
-import 'package:motor/src/timed_simulation.dart';
+import 'package:motor/src/settling_simulation.dart';
 
 @internal
-class NoMotionSimulation extends Simulation with TimedSimulation {
+class NoMotionSimulation extends Simulation with SettlingSimulation {
   NoMotionSimulation({
     required this.duration,
     required this.value,
@@ -11,7 +11,6 @@ class NoMotionSimulation extends Simulation with TimedSimulation {
   });
 
   /// How long the value is held, which is also when it has settled.
-  @override
   final Duration duration;
 
   @override

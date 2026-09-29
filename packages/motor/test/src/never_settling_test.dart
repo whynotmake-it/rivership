@@ -28,7 +28,7 @@ const _undamped = SpringMotion(
 );
 
 /// Moves toward its target at a constant speed and overshoots forever: no
-/// duration and no [TimedSimulation].
+/// duration and no [SettlingSimulation].
 class _Drift extends Motion {
   const _Drift();
 
@@ -66,7 +66,7 @@ class _DriftSimulation extends Simulation {
   bool isDone(double time) => false;
 }
 
-/// A spring motion whose simulation has no [TimedSimulation], so its step
+/// A spring motion whose simulation has no [SettlingSimulation], so its step
 /// lasts until it is done, found by sampling.
 class _PlainSpring extends Motion {
   const _PlainSpring();
@@ -268,11 +268,14 @@ void main() {
     test('scaleTo paces a never-settling parent by its step', () {
       final scaled = _undamped
           .scaleTo(const Duration(seconds: 1))
-          .createSimulation() as TimedSimulation;
+          .createSimulation() as SettlingSimulation;
       final parent = _undamped.createSimulation();
       final factor = _seconds(_undamped.duration!);
       expect(scaled.x(0.5), closeTo(parent.x(0.5 * factor), 1e-9));
-      expect(scaled.duration, const Duration(seconds: 1));
+      expect(
+        _undamped.scaleTo(const Duration(seconds: 1)).duration,
+        const Duration(seconds: 1),
+      );
       expect(scaled.settlesAt, isNull);
     });
 

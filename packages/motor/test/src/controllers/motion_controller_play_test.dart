@@ -50,15 +50,12 @@ class _FiniteFreeMotion extends FreeMotion {
 }
 
 class _LyingLinearSimulation extends _TimedLinearSimulation
-    with TimedSimulation {
+    with SettlingSimulation {
   _LyingLinearSimulation({
     required super.start,
     required super.end,
     required super.doneAtSeconds,
   });
-
-  @override
-  Duration? get duration => null;
 
   @override
   Duration get settlesAt => const Duration(milliseconds: 100);

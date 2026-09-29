@@ -42,7 +42,7 @@ class _CountingMotion extends Motion {
       _CountingSimulation(
         this,
         parent.createSimulation(start: start, end: end, velocity: velocity)
-            as TimedSimulation,
+            as SettlingSimulation,
       );
 
   @override
@@ -57,14 +57,11 @@ class _Counter {
   int settlingDuration = 0;
 }
 
-class _CountingSimulation extends Simulation with TimedSimulation {
+class _CountingSimulation extends Simulation with SettlingSimulation {
   _CountingSimulation(this.motion, this.parent);
 
   final _CountingMotion motion;
-  final TimedSimulation parent;
-
-  @override
-  Duration? get duration => parent.duration;
+  final SettlingSimulation parent;
 
   @override
   Duration? get settlesAt {
@@ -86,7 +83,7 @@ class _CountingSimulation extends Simulation with TimedSimulation {
 }
 
 void main() {
-  group('TimedSimulation.settlesAt', () {
+  group('SettlingSimulation.settlesAt', () {
     test('curves and NoMotion return their duration', () {
       const duration = Duration(milliseconds: 300);
       expect(const Motion.linear(duration).settlingDuration(), duration);

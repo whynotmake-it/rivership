@@ -14,8 +14,7 @@ import 'package:motor/src/track_timeline.dart';
 /// boundaries so all tracks advance together.
 ///
 /// The next phase starts once every track has reached the end of its last
-/// step: after its simulation's `TimedSimulation.duration`, while a spring
-/// keeps settling.
+/// step: after the step's `Motion.duration`, while a spring keeps settling.
 /// Set `untilSettled` on a step to wait until it has settled.
 ///
 /// ```dart

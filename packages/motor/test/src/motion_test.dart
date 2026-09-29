@@ -53,6 +53,9 @@ class _ImplementedMotion implements Motion {
   bool get unboundedWillSettle => true;
 
   @override
+  Duration? get duration => const Duration(seconds: 1);
+
+  @override
   Motion scaleTo(Duration duration) => Motion.linear(duration);
 
   @override
@@ -103,12 +106,11 @@ void main() {
       final scaled = spring.scaleTo(target);
       expect(scaled, isA<FixedDurationMotion>());
 
-      final simulation =
-          scaled.createSimulation(end: 10, velocity: 30) as TimedSimulation;
+      final simulation = scaled.createSimulation(end: 10, velocity: 30);
       final retimed = spring
           .copyWith(duration: target)
           .createSimulation(end: 10, velocity: 30);
-      expect(simulation.duration, target);
+      expect(scaled.duration, target);
       expect(simulation.dx(0), closeTo(30, 1e-9));
       for (var t = 0.0; t < 2; t += 0.01) {
         expect(simulation.x(t), closeTo(retimed.x(t), 1e-6));
@@ -129,9 +131,9 @@ void main() {
       expect(scaled, isA<FixedDurationMotion>());
       expect(scaled.needsSettle, isTrue);
 
-      final simulation =
-          scaled.createSimulation(end: 300, velocity: -900) as TimedSimulation;
-      expect(simulation.duration, target);
+      final simulation = scaled.createSimulation(end: 300, velocity: -900)
+          as SettlingSimulation;
+      expect(scaled.duration, target);
       expect(simulation.dx(0), closeTo(-900, 1e-6));
 
       // The same as the spring retimed by hand.
@@ -156,7 +158,7 @@ void main() {
       );
     });
 
-    test('implementing Motion needs scaleTo only', () {
+    test('implementing Motion needs duration and scaleTo only', () {
       const motion = _ImplementedMotion();
 
       final scaled = motion.scaleTo(const Duration(seconds: 2));

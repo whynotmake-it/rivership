@@ -2,24 +2,22 @@ import 'dart:math' as math;
 
 import 'package:flutter/physics.dart';
 import 'package:meta/meta.dart';
+import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/simulations/simulation_end.dart';
-import 'package:motor/src/timed_simulation.dart';
 
 /// The [SpringSimulation] motor's springs create.
 ///
-/// Its [duration] is the spring's perceptual duration. [settlesAt] is when
-/// it is done for good, from [springSettleSeconds], and computed only when
-/// it is first asked for.
+/// [settlesAt] is when it is done for good, from [springSettleSeconds], and
+/// computed only when it is first asked for.
 @internal
-class SettlingSpringSimulation extends SpringSimulation with TimedSimulation {
-  /// Creates a spring from `start` to `end` with `velocity` whose step lasts
-  /// [duration].
+class SettlingSpringSimulation extends SpringSimulation
+    with SettlingSimulation {
+  /// Creates a spring from `start` to `end` with `velocity`.
   SettlingSpringSimulation(
     this._spring,
     this._start,
     this._end,
     this._velocity, {
-    required this.duration,
     required super.tolerance,
     required super.snapToEnd,
   }) : super(_spring, _start, _end, _velocity);
@@ -28,9 +26,6 @@ class SettlingSpringSimulation extends SpringSimulation with TimedSimulation {
   final double _start;
   final double _end;
   final double _velocity;
-
-  @override
-  final Duration duration;
 
   @override
   late final Duration? settlesAt = _settlesAt();
