@@ -15,29 +15,30 @@ class SettlingSpringSimulation extends SpringSimulation
   /// Creates a spring from `start` to `end` with `velocity`.
   SettlingSpringSimulation(
     this._spring,
-    this._start,
+    double start,
     this._end,
-    this._velocity, {
+    double velocity, {
     required super.tolerance,
     required super.snapToEnd,
-  }) : super(_spring, _start, _end, _velocity);
+  }) : super(_spring, start, _end, velocity);
 
+  // Only what the settle time needs and SpringSimulation doesn't expose; the
+  // start and velocity are read back from x(0) and dx(0).
   final SpringDescription _spring;
-  final double _start;
   final double _end;
-  final double _velocity;
 
   @override
   late final Duration? settlesAt = _settlesAt();
 
   Duration? _settlesAt() {
     if (!(_spring.damping > 0)) return null;
+    if (isDone(0)) return Duration.zero;
     return settlingDurationOf(
       springSettleSeconds(
             _spring,
-            start: _start,
+            start: x(0),
             end: _end,
-            velocity: _velocity,
+            velocity: dx(0),
             tolerance: tolerance,
           ) ??
           // The closed form doesn't cover every spring; sample the rest.
