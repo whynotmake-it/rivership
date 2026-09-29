@@ -1164,7 +1164,7 @@ class TrackController extends Animation<TrackValueReader>
   /// then only see the continuation's status, not the run boundary.
   @protected
   @visibleForOverriding
-  void onPlaybackCompleted() {}
+  void onPlaybackSettled() {}
 
   void _tick(Duration elapsed) {
     final now = _clock.tick(elapsed);
@@ -1216,7 +1216,7 @@ class TrackController extends Animation<TrackValueReader>
     // the resulting status is reported.
     _holdStatus = true;
     try {
-      onPlaybackCompleted();
+      onPlaybackSettled();
     } finally {
       _holdStatus = false;
     }

@@ -90,7 +90,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       return play(timeline.flattened);
     } else {
       // Start partway through the timeline by playing only the animations
-      // from [startPhase] onward. Looping (handled in [onPlaybackCompleted])
+      // from [startPhase] onward. Looping (handled in [onPlaybackSettled])
       // still restarts from the full timeline.
       return animate(timeline.animationsFrom(startPhase));
     }
@@ -261,7 +261,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   }
 
   @override
-  void onPlaybackCompleted() {
+  void onPlaybackSettled() {
     final timeline = _activeTimeline;
 
     if (_isPlayingPhases && timeline != null && timeline.phaseLoop.isLooping) {

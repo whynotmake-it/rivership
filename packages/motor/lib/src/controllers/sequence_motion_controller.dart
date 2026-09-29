@@ -244,16 +244,16 @@ class SequenceMotionController<P, T extends Object>
       ..dispose();
   }
 
-  /// Chains the next cycle when a run finishes.
+  /// Chains the next cycle when a run has settled.
   ///
-  /// This runs inside the completion hook, so status listeners never see
+  /// This runs inside the settle hook, so status listeners never see
   /// [AnimationStatus.completed] between loop cycles. Everything here runs
-  /// synchronously inside the completion tick, so each cycle anchors where
-  /// the previous one ended — the same timing the legacy controller
+  /// synchronously inside the settling tick, so each cycle anchors where
+  /// the previous one settled — the same timing the legacy controller
   /// produced. Deferring any of this to a post-frame callback would lose
   /// that anchoring.
   @override
-  void _onRunCompleted() {
+  void _onRunSettled() {
     if (!_isPlayingSequence) return;
     final sequence = _activeSequence!;
     final phases = sequence.phases;

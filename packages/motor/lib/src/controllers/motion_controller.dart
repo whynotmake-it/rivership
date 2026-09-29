@@ -109,7 +109,7 @@ class MotionController<T extends Object> extends Animation<T>
       vsync: vsync,
       velocityTracking: velocityTracking,
       debugLabel: debugLabel,
-      onCompleted: _onRunCompleted,
+      onSettled: _onRunSettled,
     );
     _track = Track<T>(
       converter,
@@ -439,9 +439,9 @@ class MotionController<T extends Object> extends Animation<T>
     }
   }
 
-  /// Called when a playback run finished; a continuation started here hides
-  /// the run boundary from status listeners.
-  void _onRunCompleted() {}
+  /// Called when a playback run has settled; a continuation started here
+  /// hides the run boundary from status listeners.
+  void _onRunSettled() {}
 
   /// Frees any resources used by this object.
   @override
@@ -459,13 +459,13 @@ class _MotionTrackController extends TrackController {
     required super.vsync,
     required super.velocityTracking,
     required super.debugLabel,
-    required this.onCompleted,
+    required this.onSettled,
   });
 
-  final VoidCallback onCompleted;
+  final VoidCallback onSettled;
 
   @override
-  void onPlaybackCompleted() => onCompleted();
+  void onPlaybackSettled() => onSettled();
 }
 
 /// A [MotionController] that is bounded.
