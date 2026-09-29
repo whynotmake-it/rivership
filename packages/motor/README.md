@@ -381,7 +381,7 @@ TrackBuilder(
 
 #### Keep tracks aligned: `.sync` barriers
 
-Independent tracks finish at different times. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together from the moment the last one arrived.
+Independent tracks end at different times. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together from the moment the last one arrived.
 
 ```dart
 offset([.to(a), .sync(token: #beat), .to(b)]);
