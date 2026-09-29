@@ -670,9 +670,14 @@ class StepPlayback<T extends Object> {
       }
 
       final local = seconds - _segmentStartSeconds;
-      if (!_findSegmentEndBy(local)) return;
+      if (!_findSegmentEndBy(_searchedLocal(seconds, local))) return;
       final completionSeconds = _segmentDuration;
-      if (completionSeconds == null || local < completionSeconds) return;
+      // Compared where the segment is closed, so that a time that rounds
+      // onto the end is past it however playback got there.
+      if (completionSeconds == null ||
+          seconds < _segmentStartSeconds + completionSeconds) {
+        return;
+      }
       _sample(completionSeconds);
       _recordForwardSegmentDuration(completionSeconds);
 
@@ -686,6 +691,16 @@ class StepPlayback<T extends Object> {
       _closeSegment(_segmentStartSeconds + completionSeconds);
       _advanceStep();
     }
+  }
+
+  /// How far into the running segment its end is searched for at [seconds]:
+  /// [local], `seconds - start`, or one rounding step further when a
+  /// segment a hair longer than [local] still ends at [seconds] once its
+  /// start is added. The search finds the same end either way.
+  double _searchedLocal(double seconds, double local) {
+    if (local < 0 || !seconds.isFinite) return local;
+    if (_segmentStartSeconds + justAfter(local) > seconds) return local;
+    return local + (justAfter(seconds) - seconds);
   }
 
   /// Ends the segment being resolved at [seconds], where the next one starts.
