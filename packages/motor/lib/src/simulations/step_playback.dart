@@ -141,8 +141,9 @@ class StepPlayback<T extends Object> {
     return true;
   }
 
-  /// Upper bound on segments resolved in one call, so zero-length loops
-  /// cannot spin forever.
+  /// Upper bound on segments resolved in a row without time passing, so
+  /// zero-length loops cannot spin forever. Segments that take time don't
+  /// count, so a jump far ahead always catches up.
   static const _maxSegmentsPerCall = 1000;
 
   // Segment durations are searched in fine steps up to [_scanLimit] seconds,
@@ -610,11 +611,18 @@ class StepPlayback<T extends Object> {
   }
 
   void _resolveUntil(double seconds) {
-    var resolved = 0;
+    var stalled = 0;
+    var from = _segmentStartSeconds;
     while (!_isDone &&
         !_isWaitingForSync &&
         _period == null &&
-        resolved++ < _maxSegmentsPerCall) {
+        stalled < _maxSegmentsPerCall) {
+      if (_segmentStartSeconds - from > _instant) {
+        from = _segmentStartSeconds;
+        stalled = 0;
+      } else {
+        stalled++;
+      }
       final cut = _cutAt;
       if (cut != null && seconds >= cut) {
         final local = cut - _segmentStartSeconds;
