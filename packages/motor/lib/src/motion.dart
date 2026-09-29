@@ -24,7 +24,8 @@ sealed class MotionBase {
     this.tolerance = Tolerance.defaultTolerance,
   });
 
-  /// The tolerance for this motion.
+  /// The tolerance for this motion: how close to its target and to rest it
+  /// has to be to count as settled.
   ///
   /// Default is [Tolerance.defaultTolerance].
   final Tolerance tolerance;
@@ -38,8 +39,8 @@ sealed class MotionBase {
   )
   bool get unboundedWillSettle => true;
 
-  /// Returns this motion played faster or slower, so that a step with it
-  /// lasts [duration].
+  /// Returns this motion played faster or slower, so that its [duration] is
+  /// the given one.
   ///
   /// Curves, linear motions and [NoMotion] return a copy with the new
   /// duration. Everything else is wrapped in a
@@ -52,9 +53,9 @@ sealed class MotionBase {
   /// `build`.
   MotionBase scaleTo(Duration duration);
 
-  /// How long a step with this motion lasts, the same for every move, or
-  /// null if the step lasts until the simulation settles. See
-  /// [Motion.duration] and [FreeMotion.duration].
+  /// The perceived length of this motion, the same for every move, or null
+  /// if it has no fixed length. See [Motion.duration] and
+  /// [FreeMotion.duration].
   Duration? get duration;
 }
 
@@ -67,10 +68,11 @@ sealed class MotionBase {
 /// Extending inherits the default [scaleTo], which an implementing class has
 /// to provide itself.
 ///
-/// A motion has two times. Its [duration] is how long a step with it lasts,
-/// the same for every move. When a move settles depends on the move, so its
-/// simulation says it, if it mixes in [SettlingSimulation]; otherwise motor
-/// samples `isDone`.
+/// A motion has two moments. It has *ended* once its [duration] has passed,
+/// which is the same for every move. It has *settled* once it is at rest,
+/// exactly on its target, which depends on the move, so its simulation says
+/// when, if it mixes in [SettlingSimulation]; otherwise motor samples
+/// `isDone`.
 @immutable
 abstract class Motion extends MotionBase {
   /// {@macro Motion}
@@ -128,22 +130,22 @@ abstract class Motion extends MotionBase {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
-  /// How long this motion takes: its perceived duration.
+  /// How long this motion takes: its perceived length. Once it has passed,
+  /// the motion has ended, while it may still be settling.
   ///
-  /// A track step with `until: StepEnd.duration` ends after it, and the next
-  /// step continues from the current value and velocity; by default a step
-  /// waits until settled. It is a fixed property of the motion, the same for
-  /// every move, so loops and staggers keep their rhythm whatever the
-  /// distance.
+  /// It is a fixed property of the motion, the same for every move, so loops
+  /// and staggers keep their rhythm whatever the distance. A controller
+  /// call's `MotionFuture.ended` completes here, and a track step with
+  /// `until: StepEnd.duration` lets the next step take over here. By default
+  /// the next step waits until this one has settled.
   ///
-  /// Curves, linear motions and [NoMotion] end their movement here too. A
-  /// spring's is its perceptual duration, the same number as SwiftUI's
-  /// `Spring.duration`: it is nearly at its target by then and keeps
-  /// settling for a while, during a following hold or barrier, or until its
-  /// simulation's [SettlingSimulation.settlesAt] if its step is the last one.
+  /// Curves, linear motions and [NoMotion] settle here too. A spring's is its
+  /// perceptual duration, the same number as SwiftUI's `Spring.duration`: it
+  /// is nearly at its target by then and settles later, at its simulation's
+  /// [SettlingSimulation.settlesAt].
   ///
-  /// Null if the motion has no pace of its own: its step then lasts until
-  /// the simulation settles. That is the default.
+  /// Null (the default) if the motion has no fixed length: it then ends when
+  /// it settles.
   @override
   Duration? get duration => null;
 
@@ -172,7 +174,7 @@ abstract class Motion extends MotionBase {
   ///
   /// {@template motor.pureSimulation}
   /// Unlike Flutter, which only queries a simulation at increasing times,
-  /// motor samples it at arbitrary times: ahead, to find when it finishes,
+  /// motor samples it at arbitrary times: ahead, to find when it settles,
   /// and backwards when scrubbing or looping. So `x`, `dx` and `isDone` must
   /// be pure functions of time, without side effects. A simulation that
   /// integrates step by step can still be used if it restarts from its
@@ -240,14 +242,13 @@ abstract class FreeMotion extends MotionBase {
     double velocity = 0,
   });
 
-  /// How long a step with this motion lasts, or null (the default) if the
-  /// step lasts until the simulation settles.
+  /// The perceived length of this motion, or null (the default) if it has
+  /// no fixed length, so that it ends when it comes to rest.
   ///
   /// Like [Motion.duration], it is a fixed property of the motion, the same
-  /// for every move. In a track, the next step takes over after it, from the
-  /// current value and velocity. Free motions such as [FrictionMotion] have
-  /// no pace of their own, so a `TrackStep.free` usually coasts until it
-  /// comes to rest.
+  /// for every move. A `TrackStep.free` with `until: StepEnd.duration` lets
+  /// the next step take over here, from the current value and velocity. Free
+  /// motions such as [FrictionMotion] have no fixed length.
   @override
   Duration? get duration => null;
 
@@ -306,8 +307,8 @@ abstract class FreeMotion extends MotionBase {
 /// a fixed [Duration]. This is the most common type of animation in Flutter,
 /// similar to what is used with [AnimationController.animateTo].
 ///
-/// This motion always completes in the specified duration and does not need to
-/// settle.
+/// This motion ends and settles at its duration, so it doesn't need to
+/// settle after a graceful stop.
 /// {@endtemplate}
 @immutable
 class CurvedMotion extends Motion {
@@ -328,8 +329,8 @@ class CurvedMotion extends Motion {
 
   /// Whether this motion needs to settle.
   ///
-  /// Always returns false for [CurvedMotion] because it completes in a
-  /// fixed duration.
+  /// Always returns false for [CurvedMotion] because it settles at its
+  /// duration.
   @override
   bool get needsSettle => false;
 
@@ -444,9 +445,9 @@ class NoMotion extends Motion {
 /// is useful for creating natural and responsive animations.
 ///
 /// Spring motions continue until they naturally settle based on physics,
-/// rather than completing in a predetermined duration. In a track, the next
-/// step takes over after the perceptual duration,
-/// [SpringDescription.duration], while the spring keeps settling.
+/// rather than stopping at a predetermined time. A spring has ended after
+/// its perceptual duration, [SpringDescription.duration], and settles
+/// later.
 /// {@endtemplate}
 @immutable
 abstract class SpringMotion extends Motion {
@@ -471,17 +472,15 @@ abstract class SpringMotion extends Motion {
   SpringDescription get description;
 
   /// The perceptual duration of the spring, [SpringDescription.duration]:
-  /// its pace. It keeps settling after this time.
+  /// its pace. The spring has ended by then and keeps settling for a while.
   @override
   Duration? get duration => description.duration;
 
-  /// Whether to snap to the end of the spring.
+  /// Whether the spring jumps to its end value, the target, once it is
+  /// within [tolerance], so that it settles exactly on it.
   ///
-  /// If true, the spring will snap to the end of the motion when the simulation
-  /// is done.
-  /// This ensures that the simulation will settle exactly to the target value.
-  ///
-  /// Defaults to true.
+  /// Defaults to true. When false, the spring comes to rest within
+  /// [tolerance] of its end value.
   final bool snapToEnd;
 
   /// Whether this motion needs to settle.
@@ -584,8 +583,7 @@ class _DescriptionSpringMotion extends SpringMotion {
 /// {@template CupertinoMotion}
 /// A collection of spring motions that are commonly used in Cupertino apps.
 ///
-/// In a track, the next step takes over after `duration`; a last step
-/// keeps settling.
+/// A spring has ended after its `duration` and settles later.
 /// {@endtemplate}
 class CupertinoMotion extends SpringMotion {
   /// Creates a new [CupertinoMotion] with the specified duration and bounce.
@@ -599,8 +597,7 @@ class CupertinoMotion extends SpringMotion {
   ///
   /// [snapToEnd] defaults to true.
   ///
-  /// In a track, the next step takes over after [duration]; a last step
-  /// keeps settling.
+  /// The spring has ended after [duration] and settles later.
   const CupertinoMotion({
     this.duration = const Duration(milliseconds: 500),
     this.bounce = 0,
@@ -610,8 +607,7 @@ class CupertinoMotion extends SpringMotion {
   /// {@template CupertinoMotion.bouncy}
   /// A spring animation with a predefined duration and higher amount of bounce.
   ///
-  /// In a track, the next step takes over after `duration`; a last step
-  /// keeps settling.
+  /// The spring has ended after `duration` and settles later.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/bouncy
@@ -630,8 +626,7 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a predefined duration and small amount of bounce
   /// that feels more snappy.
   ///
-  /// In a track, the next step takes over after `duration`; a last step
-  /// keeps settling.
+  /// The spring has ended after `duration` and settles later.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/snappy
@@ -649,8 +644,7 @@ class CupertinoMotion extends SpringMotion {
   /// {@template CupertinoMotion.smooth}
   /// A smooth spring animation with a predefined duration and no bounce.
   ///
-  /// In a track, the next step takes over after `duration`; a last step
-  /// keeps settling.
+  /// The spring has ended after `duration` and settles later.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/smooth
@@ -669,8 +663,7 @@ class CupertinoMotion extends SpringMotion {
   /// A spring animation with a lower response value,
   /// intended for driving interactive animations.
   ///
-  /// In a track, the next step takes over after `duration`; a last step
-  /// keeps settling.
+  /// The spring has ended after `duration` and settles later.
   ///
   /// See also:
   /// * https://developer.apple.com/documentation/swiftui/animation/interactivespring(duration:extrabounce:blendduration:)
@@ -686,11 +679,9 @@ class CupertinoMotion extends SpringMotion {
         );
 
   /// The perceptual duration of the spring motion: its pace, the undamped
-  /// period. The spring gets close to its target around this time and
-  /// finishes settling later.
-  ///
-  /// In a track, the next step takes over at this time; a last step keeps
-  /// settling until its simulation's [SettlingSimulation.settlesAt].
+  /// period. The spring gets close to its target around this time, when it
+  /// has ended, and settles later, at its simulation's
+  /// [SettlingSimulation.settlesAt].
   @override
   final Duration duration;
 
@@ -960,8 +951,8 @@ class MaterialSpringMotion extends SpringMotion {
   }
 }
 
-/// A target-based motion that plays [parent] faster or slower, so that a
-/// step with it lasts [duration].
+/// A target-based motion that plays [parent] faster or slower, so that its
+/// duration is [duration].
 ///
 /// It keeps [parent]'s shape and changes its speed: time is stretched or
 /// compressed linearly by the same factor for the whole move.
@@ -980,7 +971,7 @@ class MaterialSpringMotion extends SpringMotion {
 /// arrive exactly at a time, use `TrackStep.at`.
 ///
 /// ```dart
-/// // A step with this spring lasts 300 ms; it then keeps settling.
+/// // This spring ends after 300 ms and settles later.
 /// final motion = SpringMotion(description).scaleTo(
 ///   const Duration(milliseconds: 300),
 /// );
@@ -996,7 +987,7 @@ class FixedDurationMotion extends Motion {
   /// The motion whose shape should be time-scaled.
   final Motion parent;
 
-  /// How long a step with this motion lasts.
+  /// The perceived length of this motion.
   @override
   final Duration duration;
 
@@ -1051,7 +1042,7 @@ class FixedDurationMotion extends Motion {
 ///
 /// [parent] runs until its simulation is done (for friction, until it has
 /// come to rest), and that run is stretched or compressed linearly into
-/// [duration]. Free motions have no step length of their own, so unlike
+/// [duration]. Free motions have no fixed length of their own, so unlike
 /// [FixedDurationMotion] this always scales the whole run.
 ///
 /// - It covers the same distance and ends where [parent] comes to rest, so
@@ -1437,8 +1428,9 @@ class TrimmedMotion extends Motion {
   final double fromEnd;
 
   /// [parent]'s [Motion.duration] for the part that's kept, or null for a
-  /// parent that settles, such as a spring: its slice is taken from the
-  /// whole settle, so a step with it lasts until the slice ends.
+  /// parent that needs to settle, such as a spring: its slice is taken from
+  /// the whole settle, which depends on the move, so it has no fixed length
+  /// and ends when the slice settles.
   @override
   Duration? get duration =>
       switch (parent.needsSettle ? null : parent.duration) {

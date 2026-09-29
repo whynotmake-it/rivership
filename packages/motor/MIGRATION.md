@@ -75,10 +75,10 @@ controller.animateTo(0); // status: AnimationStatus.reverse when moving down
 If you branched on `status == .forward` to mean "animating",
 use `controller.isAnimating` instead.
 
-### Moves down finish `dismissed`
+### Moves down settle as `dismissed`
 
 With a directional converter, the resting status follows the direction too.
-A move down finishes `dismissed`, and anything else finishes `completed`. This applies to every
+A move down settles as `dismissed`, and anything else as `completed`. This applies to every
 controller, builder, and status listener. For converters without a direction
 (for example `Offset`), `dismissed` means exactly back at the initial value.
 
@@ -187,7 +187,7 @@ class MyDecayMotion extends FreeMotion { ... }  // new: evolves from value+veloc
 
 ### Custom simulations must be pure functions of time
 
-Motor queries a simulation at any time: ahead, to find when it finishes, and
+Motor queries a simulation at any time: ahead, to find when it settles, and
 backwards when scrubbing, seeking or looping. In 1.x, like Flutter's
 `AnimationController`, motor only queried it at increasing times, so a
 simulation that integrated step by step or kept state between calls worked.
@@ -255,11 +255,12 @@ class MyMotion extends Motion {
 const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 ```
 
-Override `duration` if your motion has a perceived duration: a track step
-with `until: StepEnd.duration` then lasts that long, and the next step takes
-over. If you can tell when your simulation is done, mix `SettlingSimulation`
-into it and return that time from `settlesAt`. Motor then ends settling steps there instead of sampling
-`isDone` to find it.
+Override `duration` if your motion has a perceived length: it has ended
+then, so `MotionFuture.ended` completes there, and a track step with
+`until: StepEnd.duration` lets the next step take over. If you can tell when
+your simulation settles, mix `SettlingSimulation` into it and return that
+time from `settlesAt`. Motor then uses it instead of sampling `isDone` to
+find it.
 
 ```dart
 class _MySimulation extends SpringSimulation with SettlingSimulation {

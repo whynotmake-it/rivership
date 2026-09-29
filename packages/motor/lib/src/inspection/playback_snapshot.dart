@@ -117,7 +117,7 @@ class TrackPlayback {
   /// The loop mode used by this track's running plan.
   final LoopMode loop;
 
-  /// The active step index, or `-1` when playback has completed.
+  /// The active step index, or `-1` once playback has settled.
   final int currentStepIndex;
 
   /// The current direction: `1` while forward and `-1` while reversing.
@@ -151,7 +151,11 @@ class TrackPlayback {
   /// release moment.
   final List<Duration?> stepStarts;
 
-  /// Actual durations occupied by forward steps, or `null` until recorded.
+  /// How long each forward step occupied the timeline, from its start until
+  /// the next step started, or `null` until recorded.
+  ///
+  /// By default the next step waits until a step has settled, so this can be
+  /// longer than the step's motion duration.
   final List<Duration?> stepDurations;
 
   /// Stable duration estimates computed when this playback plan was created.
@@ -160,7 +164,7 @@ class TrackPlayback {
   /// plan ahead of playback, releasing sync barriers the way playback would,
   /// so estimates match the actual durations unless the plan is interrupted.
   /// Only tracks started together are waited for at barriers. Entries stay
-  /// `null` for simulations that do not finish within a day.
+  /// `null` for simulations that do not settle within a day.
   final List<Duration?> estimatedStepDurations;
 
   /// The resolved segments of this plan, oldest first, on the slot-local
@@ -203,7 +207,9 @@ class PlaybackSegment {
   /// When the segment starts, on the slot-local axis.
   final Duration start;
 
-  /// When it ends, or `null` while it has no known end yet.
+  /// When the segment is over on the timeline: when the next segment starts,
+  /// or for the last one when it settles. `null` while that isn't known
+  /// yet.
   final Duration? end;
 }
 

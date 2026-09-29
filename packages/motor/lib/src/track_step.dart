@@ -4,23 +4,27 @@ import 'package:motor/src/motion.dart';
 import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
-/// When a [TrackStep.to] or [TrackStep.free] ends, and the next step takes
-/// over.
+/// When the step after a [TrackStep.to] or [TrackStep.free] starts.
 ///
 /// ```dart
 /// .to(1, motion: m)                   // until: .settled
 /// .to(1, motion: m, until: .duration) // the next step takes over sooner
 /// ```
+///
+/// Either way the motion plays out: the timeline never cuts it short, and
+/// the controller call's `MotionFuture.ended` completes at the last step's
+/// duration.
 enum StepEnd {
-  /// Once the move has settled: at rest and exactly on its target. The next
+  /// Once the step has settled: at rest and exactly on its target. The next
   /// step starts from rest. This is the default, as in 1.x and in Motion,
   /// anime.js and Compose.
   settled,
 
-  /// After the motion's duration ([Motion.duration], a spring's perceptual
-  /// duration). The next step takes over the current value and velocity
-  /// while a spring is still settling, as SwiftUI's `PhaseAnimator` moves
-  /// between phases. A motion without a duration still waits to settle.
+  /// Once the step has ended: its motion's duration ([Motion.duration], a
+  /// spring's perceptual duration) has passed. The next step takes over the
+  /// current value and velocity while a spring is still settling, as
+  /// SwiftUI's `PhaseAnimator` moves between phases. A motion without a
+  /// duration still waits to settle.
   duration,
 }
 
@@ -35,17 +39,17 @@ sealed class TrackStep<T extends Object> {
 
   /// Animates to [value] using a target-based [motion].
   ///
-  /// The step lasts until the move has settled
-  /// ([SettlingSimulation.settlesAt]), as in 1.x and in Motion, anime.js and
-  /// Compose. Then the next step starts from rest.
+  /// The next step starts once the move has settled
+  /// ([SettlingSimulation.settlesAt]), from rest, as in 1.x and in Motion,
+  /// anime.js and Compose.
   ///
-  /// Pass `until: .duration` ([StepEnd.duration]) to end the step after its
-  /// motion's [Motion.duration] (a spring's perceptual duration) instead:
-  /// the next step takes over then, from the current value and velocity,
-  /// while a spring is still settling. That mirrors SwiftUI's
+  /// Pass `until: .duration` ([StepEnd.duration]) to start the next step
+  /// once this one has ended instead, after its motion's [Motion.duration]
+  /// (a spring's perceptual duration): it takes over the current value and
+  /// velocity while a spring is still settling. That mirrors SwiftUI's
   /// `PhaseAnimator`, which moves to the next phase at the spring's duration
   /// and keeps its velocity. A motion without a duration always waits to
-  /// settle, and so does the last step.
+  /// settle.
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
@@ -58,11 +62,12 @@ sealed class TrackStep<T extends Object> {
     StepEnd until,
   }) = StepTo<T>;
 
-  /// Runs a self-directed free [motion] until it comes to rest.
+  /// Runs a self-directed free [motion]. The next step starts once it has
+  /// come to rest.
   ///
-  /// Pass `until: .duration` ([StepEnd.duration]) to end the step after the
-  /// motion's [FreeMotion.duration] instead, if it has one, and hand its
-  /// value and velocity to the next step, as [TrackStep.to] does.
+  /// Pass `until: .duration` ([StepEnd.duration]) to start the next step
+  /// once the motion's [FreeMotion.duration] has passed instead, if it has
+  /// one, taking over its value and velocity, as with [TrackStep.to].
   const factory TrackStep.free({
     required FreeMotion motion,
     StepEnd until,
@@ -70,7 +75,7 @@ sealed class TrackStep<T extends Object> {
 
   /// Waits for [duration] before the next step.
   ///
-  /// It holds the current value. A spring whose step ended at its duration
+  /// It holds the current value. A spring before it with `until: .duration`
   /// keeps settling meanwhile.
   const factory TrackStep.hold(Duration duration) = StepHold<T>;
 
@@ -81,17 +86,18 @@ sealed class TrackStep<T extends Object> {
   /// at [at]. The preceding step always plays at its own speed; this step's
   /// motion adapts to the time left:
   ///
-  /// - If the preceding step ends at least the motion's natural length
-  ///   before [at], the motion starts when that step ends and slows down to
-  ///   fill the gap. The natural length is the motion's [Motion.duration],
-  ///   or when its move from where the preceding step ends settles if it
-  ///   has none. A spring is cut at its duration so that it lands.
+  /// - If this step can start at least the motion's natural length before
+  ///   [at], it starts then and slows down to fill the gap. The natural
+  ///   length is the motion's [Motion.duration], or, if it has none, when
+  ///   its move from where the preceding step leaves off settles. A spring
+  ///   is cut at its duration so that it lands.
   /// - Otherwise the preceding step is cut short so that the motion runs its
-  ///   natural length and ends at [at]. The cut never happens before that
-  ///   step started; if there is not enough time, the motion is compressed,
-  ///   and with no time at all [value] is reached instantly. A motion that
-  ///   never settles stretches whenever the preceding step ends
-  ///   before [at], and otherwise starts when that step starts.
+  ///   natural length and arrives at [at]. This is the only case where a
+  ///   step cuts a motion short. The cut never happens before that step
+  ///   started; if there is not enough time, the motion is compressed, and
+  ///   with no time at all [value] is reached instantly. A motion that never
+  ///   settles stretches whenever this step can start before [at], and
+  ///   otherwise starts when the preceding step starts.
   ///
   /// Only the step immediately before is ever cut, and it can be another
   /// [TrackStep.at]: the later keyframe wins. [value] arrives late only when
@@ -129,13 +135,13 @@ sealed class TrackStep<T extends Object> {
   /// When playback reaches this step, the track holds its current value until
   /// every other active track that shares the same [token] (by `==`) also
   /// reaches a matching sync step. The controller then releases them together,
-  /// so the tracks continue in lockstep. While a track waits, a spring whose
-  /// step ended at its duration keeps settling, and the step after the
+  /// so the tracks continue in lockstep. While a track waits, a spring before
+  /// it with `until: .duration` keeps settling, and the step after the
   /// barrier starts from where it is at the release.
   ///
   /// {@template motor.TrackStep.sync.arrival}
-  /// A track arrives once the step before the barrier has ended: by default
-  /// once it has settled, or with `until: .duration` after its motion's
+  /// A track arrives once the step before the barrier has settled, or, with
+  /// `until: .duration`, once it has ended, after its motion's
   /// [Motion.duration], while a spring keeps settling as it waits.
   /// {@endtemplate}
   ///
@@ -172,9 +178,9 @@ class StepTo<T extends Object> extends TrackStep<T> {
   /// by this list, so don't modify it after passing it in.
   final List<Motion>? motionPerDimension;
 
-  /// When this step ends and the next one takes over: once it has settled
-  /// ([StepEnd.settled], the default), or after its motion's
-  /// [Motion.duration] ([StepEnd.duration]).
+  /// When the next step starts: once this one has settled
+  /// ([StepEnd.settled], the default), or once it has ended, after its
+  /// motion's [Motion.duration] ([StepEnd.duration]).
   final StepEnd until;
 
   @override
@@ -214,9 +220,9 @@ class StepFree<T extends Object> extends TrackStep<T> {
   /// The free motion to run.
   final FreeMotion motion;
 
-  /// When this step ends and the next one takes over: once it has come to
-  /// rest ([StepEnd.settled], the default), or after the motion's
-  /// [FreeMotion.duration] ([StepEnd.duration]).
+  /// When the next step starts: once this one has come to rest
+  /// ([StepEnd.settled], the default), or once it has ended, after the
+  /// motion's [FreeMotion.duration] ([StepEnd.duration]).
   final StepEnd until;
 
   @override
@@ -323,9 +329,11 @@ class StepAt<T extends Object> extends TrackStep<T> {
 /// barrier holds every cycle: a track that comes around again waits for the
 /// others to reach the barrier of that same cycle.
 ///
-/// A track waits at rest, so the step after the barrier starts from rest,
-/// without the velocity the step before it ended with. This holds for phase
-/// boundaries in a [TrackPhaseTimeline] too.
+/// By default the step before the barrier has settled, so a track waits at
+/// rest and the step after the barrier starts from rest. If that step has
+/// `until: .duration`, its spring keeps settling while the track waits, and
+/// the step after the barrier takes over from where it is at the release.
+/// This holds for phase boundaries in a [TrackPhaseTimeline] too.
 ///
 /// {@macro motor.TrackStep.sync.arrival}
 ///

@@ -4,13 +4,14 @@ import 'package:motor/src/simulations/simulation_end.dart';
 /// A [Simulation] that knows when it settles.
 ///
 /// A motion's simulation is one move, from a start value to an end value
-/// with a start velocity. How long a *step* with it lasts is the motion's
-/// own `duration`, the same for every move. When the *move* is done depends
-/// on the move (a spring takes longer to settle over a longer distance), so
-/// the simulation says it, through [settlesAt].
+/// with a start velocity. When the motion has *ended* is its own
+/// `duration`, the same for every move. When the move has *settled*, at
+/// rest and exactly on its target, depends on the move (a spring takes
+/// longer to settle over a longer distance), so the simulation says it,
+/// through [settlesAt].
 ///
-/// Futures, `status` and the ticker wait for it, and so does the last step
-/// of a track and every step that ends once settled. Every simulation motor
+/// Awaited futures, `status` and the ticker wait for it, and by default so
+/// does the next step of a track. Every simulation motor
 /// creates has this mixin. A simulation without it still works: motor
 /// samples its [isDone] instead, for up to two minutes; see
 /// [SimulationSettling.estimateSettle].

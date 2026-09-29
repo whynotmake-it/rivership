@@ -19,8 +19,7 @@ sealed class PhaseTransition<P> {
       };
 }
 
-/// Represents a settled state where the animation has completed and is at rest
-/// at a specific phase.
+/// The animation has settled: it is at rest at [phase].
 @immutable
 final class PhaseSettled<P> extends PhaseTransition<P> {
   /// Creates a settled phase transition.
@@ -44,8 +43,8 @@ final class PhaseSettled<P> extends PhaseTransition<P> {
   String toString() => 'PhaseSettled($phase)';
 }
 
-/// Represents an animating state where the animation is transitioning from
-/// one phase to another.
+/// The animation is moving from one phase to the next. It is reported when
+/// the next phase starts.
 @immutable
 final class PhaseTransitioning<P> extends PhaseTransition<P> {
   /// Creates an animating phase transition.

@@ -86,7 +86,7 @@ class TrackBuilder extends StatefulWidget {
   /// Whether the animations play.
   ///
   /// While false, nothing animates. Turning it off moves every track straight
-  /// to where its animation ends, and later changes jump there too, like
+  /// to its animation's end value, and later changes jump there too, like
   /// `active: false` on the motion builders. A track whose animation has no
   /// target (only holds or free motions) keeps its value. Built inactive, the
   /// tracks start at their start values, and turning it back on plays the
@@ -198,7 +198,7 @@ class _TrackBuilderState extends State<TrackBuilder>
     }
   }
 
-  /// Stops every track and moves it straight to where its animation ends.
+  /// Stops every track and moves it straight to its animation's end value.
   void _jumpToEnd() {
     _controller.stop(canceled: true);
     final animations = widget.timeline?.animations ?? widget.animations!;

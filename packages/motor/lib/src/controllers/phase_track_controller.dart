@@ -65,9 +65,9 @@ class PhaseTrackController<P extends Object> extends TrackController {
   ///
   /// Returns a [MotionFuture] for the timeline's tracks (see
   /// [TrackController.play]): for a non-looping timeline it ends when the
-  /// last phase's steps end, and settles when the whole phase sequence
-  /// settles. A looping phase timeline replays each cycle
-  /// as a new call, so the future resolves at the end of the first cycle — do
+  /// last phase's motions have reached their duration, and settles when the
+  /// last phase has settled. A looping phase timeline replays each cycle as a
+  /// new call, so the future completes once the first cycle has settled — do
   /// not `await` a looping timeline.
   MotionFuture playPhases(
     TrackPhaseTimeline<P> timeline, {
@@ -102,8 +102,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// without playing preceding phases.
   ///
   /// Returns a [MotionFuture] for the phase's tracks (see
-  /// [TrackController.animate]). Returns an already settled run when there
-  /// is no active timeline or the phase is unknown.
+  /// [TrackController.animate]). Returns an already settled future when
+  /// there is no active timeline or the phase is unknown.
   MotionFuture goToPhase(P phase) {
     final timeline = _activeTimeline;
     assert(timeline != null, 'Call setTimeline or playPhases first.');

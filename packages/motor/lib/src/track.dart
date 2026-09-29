@@ -277,7 +277,7 @@ class TrackAnimation<T extends Object> {
     );
   }
 
-  /// Where this animation ends: its last `TrackStep.to`/`TrackStep.at`
+  /// The end value of this animation: its last `TrackStep.to`/`TrackStep.at`
   /// value, or null when no step carries a value.
   @internal
   TrackValue<T>? get endValue {

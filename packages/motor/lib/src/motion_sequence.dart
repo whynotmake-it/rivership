@@ -26,8 +26,8 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 /// - [MotionSequence.steps] for indexed progressions (0, 1, 2...)
 /// - [MotionSequence.spanning] for time-based positioning
 ///
-/// A phase ends when its motion has settled, as in 1.x, which for a spring
-/// is some time after its duration.
+/// The next phase starts once the previous one's motion has settled, as in
+/// 1.x, which for a spring is some time after its duration.
 ///
 /// ```dart
 /// // State-based sequence

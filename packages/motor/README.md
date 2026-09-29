@@ -99,8 +99,8 @@ This unified approach means you can easily switch between physics and duration-b
 
 **Tip:** Motions and their wrappers are immutable value objects, so declare
 them as `const` or `static final` and reuse them. Wrappers such as `scaleTo`
-and `trimmed` probe simulation durations when the underlying duration is
-unknown, so avoid re-creating them in hot paths.
+and `trimmed` probe when the underlying simulation settles if it doesn't say,
+so avoid re-creating them in hot paths.
 
 ### CupertinoMotion
 
@@ -127,24 +127,7 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 
 #### My spring runs longer than its duration
 
-A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. Motor names the two moments: a spring has **settled** once it is at rest, exactly on its target, and a step has **ended** once its `until` condition is reached, so the next step takes over. By default a step lasts `until: .settled`, as in 1.x, Motion, anime.js and Compose: the next step starts from rest. With `until: .duration` it ends after its motion's `duration`, and the next step takes over from the current value and velocity while the spring is still settling, so a sequence keeps its rhythm. That's how SwiftUI's `PhaseAnimator` moves between phases. The last step always plays out until it has settled, which is when awaited animations complete and the ticker stops.
-
-```dart
-opacity([
-  .to(1, motion: .bouncySpring()),                   // waits until settled
-  .to(0, motion: .bouncySpring(), until: .duration), // the next one starts at 500 ms
-  .to(1),
-]);
-```
-
-Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x and like a default step. Its `ended` completes once the last step's motion has reached its `duration`, whatever the steps' `until`, so code can take over the way the step after an `until: .duration` step does:
-
-```dart
-await controller.animateTo(1).ended; // at 500 ms, still settling
-controller.animateTo(0);             // continues with the current velocity
-```
-
-This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled).
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. Motor calls the first moment *ended* and the second *settled*; see [Timing: ended and settled](#timing-ended-and-settled).
 
 ### MaterialSpringMotion
 
@@ -281,13 +264,13 @@ offset([                               // multiple steps, run in order
 
 The available steps are the verbs of the system:
 
-- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts until it has settled; with `until: .duration` it ends after its motion's `duration`, and the next step takes over from the current value and velocity while a spring is still settling (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
+- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The next step starts once it has settled; with `until: .duration`, once it has ended, after its motion's `duration`, taking over the current value and velocity while a spring is still settling (see [Timing: ended and settled](#timing-ended-and-settled)).
 - **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
-  - With time to spare, the `.at` motion starts as soon as the previous step ends and slows down to fill the gap.
+  - With time to spare, the `.at` motion starts as soon as it can and slows down to fill the gap.
   - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
 
   The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
-- **`.hold(duration)`** — wait for `duration` at the current value. A spring whose step ended at its duration keeps settling meanwhile.
+- **`.hold(duration)`** — wait for `duration` at the current value. A spring before it with `until: .duration` keeps settling meanwhile.
 - **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity, until it comes to rest.
 - **`.sync(token:)`** — a barrier (see below).
 
@@ -307,6 +290,34 @@ offset([
   ),
 ]);
 ```
+
+#### Timing: ended and settled
+
+Motor names two moments of a motion:
+
+- **Ended**: the motion's `duration` has passed. That's how long it feels. A spring may still be moving.
+- **Settled**: the motion is at rest, exactly on its target.
+
+A motion never settles before it ends, and a curve does both at once. `Motion.duration` is a fixed property of the motion, the same for every move; `null` means it has no fixed length and ends when it settles. The simulation says when it settles: `SettlingSimulation.settlesAt`, or `simulation.estimateSettle()` for any simulation.
+
+**Steps.** By default the next step starts once the previous one has settled, as in 1.x, Motion, anime.js and Compose. With `until: .duration` it starts once the previous one has ended, and takes over its value and velocity while it is still moving. That's how SwiftUI's `PhaseAnimator` moves between phases. The timeline never cuts a motion short: a spring keeps settling during a following `.hold` or `.sync`. The one exception is `.at`: to land exactly on time, it may cut the step before it short, and it stops its own spring at its duration.
+
+```dart
+opacity([
+  .to(1, motion: .bouncySpring()),                   // the next step waits until settled
+  .to(0, motion: .bouncySpring(), until: .duration), // the next step starts 500 ms later
+  .to(1),
+]);
+```
+
+**Futures.** Every controller call returns a `MotionFuture`. Awaiting it waits until everything has settled, as in 1.x. Its `ended` completes once the duration has passed, whatever `until` says; for a plan, once the last step's motion has reached its duration. `animateTo` and `Track.to` have no `until:`, so await `ended` when you don't want to wait for settling:
+
+```dart
+await controller.animateTo(1).ended; // at 500 ms, still settling
+controller.animateTo(0);             // continues with the current velocity
+```
+
+This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled). A retarget or `stop(canceled: true)` cancels the future, as with a `TickerFuture`, and a graceful `stop()` ends it right away. Everything else waits until settled: `status` turning `completed` or `dismissed`, the ticker stopping, and `PhaseSettled`.
 
 #### Reading values back: the `value` reader
 
@@ -379,7 +390,7 @@ TrackBuilder(
 
 #### Keep tracks aligned: `.sync` barriers
 
-Independent tracks end at different times. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together from the moment the last one arrived.
+Independent tracks take different amounts of time. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together from the moment the last one arrived.
 
 ```dart
 offset([.to(a), .sync(token: #beat), .to(b)]);
@@ -392,10 +403,10 @@ coordinate tracks playing on the same controller (one `TrackBuilder` or
 barrier stops participating, so it never holds the others hostage. When
 scrubbing, barriers are resolved exactly as during playback.
 
-A track reaches the barrier when the step before it ends: by default once it
-has settled. With `until: .duration` on that step it arrives after the motion's
-`duration`, the spring keeps settling while the track waits, and the step after
-the barrier continues from there.
+A track reaches the barrier once the step before it has settled. With
+`until: .duration` on that step it arrives once the step has ended, after the
+motion's `duration`; the spring keeps settling while the track waits, and the
+step after the barrier continues from there.
 
 #### Phases — named states
 
@@ -485,7 +496,7 @@ several properties.
 `animationOf` returns the same instance for a track, listens only while it
 has listeners, notifies only when that track changes, and reports the
 track's own status: `dismissed` until it moves, `forward`/`reverse` while it
-plays, and once done `dismissed` if its last move went down, otherwise
+plays, and once settled `dismissed` if its last move went down, otherwise
 `completed`.
 
 A few semantics worth knowing:
