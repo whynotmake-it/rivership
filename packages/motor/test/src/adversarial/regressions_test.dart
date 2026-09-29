@@ -1,0 +1,209 @@
+// ignore_for_file: cascade_invocations
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
+import 'package:motor/src/simulations/step_playback.dart';
+
+import 'fuzz_support.dart';
+
+/// Minimal reproductions of bugs the adversarial fuzzers found.
+void main() {
+  group('StepPlayback', () {
+    test('a seek to an exact step boundary shows what playback showed', () {
+      // The boundaries fall where rounding makes `end - start` a hair less
+      // than the step's length, although `start + length` is `end`.
+      StepPlayback<double> build() => StepPlayback<double>(
+            steps: const [
+              TrackStep.to(
+                1,
+                motion: Motion.linear(Duration(milliseconds: 400)),
+              ),
+              TrackStep.hold(Duration(milliseconds: 200)),
+              TrackStep.to(
+                3,
+                motion: Motion.linear(Duration(milliseconds: 700)),
+              ),
+              TrackStep.hold(Duration(milliseconds: 200)),
+            ],
+            converter: MotionConverter.single,
+            start: 0,
+          );
+      final boundaries = [
+        for (final segment in (build()..advanceTo(10)).segmentsView)
+          segment.end!,
+      ];
+      for (final boundary in boundaries) {
+        final played = build()
+          ..advanceTo(10)
+          ..advanceTo(boundary);
+        final sought = build()..advanceTo(boundary);
+        final reason = 'at $boundary';
+        expect(sought.isDone, played.isDone, reason: reason);
+        expect(
+          sought.currentStepIndex,
+          played.currentStepIndex,
+          reason: reason,
+        );
+        expect(sought.values.single, played.values.single, reason: reason);
+        expect(
+          sought.velocities.single,
+          played.velocities.single,
+          reason: reason,
+        );
+      }
+    });
+
+    test('a hold after a curve that handed over is at rest', () {
+      final playback = StepPlayback<double>(
+        steps: const [
+          TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 100)),
+            until: WaitUntil.duration,
+          ),
+          TrackStep.hold(Duration(seconds: 1)),
+          TrackStep.to(1, motion: Motion.smoothSpring()),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      );
+
+      playback.advanceTo(0.5);
+      expect(playback.values.single, 1);
+      expect(playback.velocities.single, 0);
+      // The spring to where the track already is has nothing to do.
+      for (var t = 1.1; t < 2; t += 0.05) {
+        playback.advanceTo(t);
+        expect(playback.values.single, closeTo(1, 1e-9), reason: 't=$t');
+      }
+    });
+
+    test('a zero-length hold after a curve keeps its velocity', () {
+      final playback = StepPlayback<double>(
+        steps: const [
+          TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 100)),
+            until: WaitUntil.duration,
+          ),
+          TrackStep.hold(Duration.zero),
+          TrackStep.to(2, motion: Motion.smoothSpring()),
+        ],
+        converter: MotionConverter.single,
+        start: 0,
+      )..advanceTo(0.1 + 1e-6);
+
+      expect(playback.velocities.single, closeTo(10, 0.1));
+    });
+
+    test('a plan played to its end and sought back into it has ended', () {
+      StepPlayback<double> build() => StepPlayback<double>(
+            steps: const [
+              TrackStep.to(
+                1,
+                motion: Motion.linear(Duration(milliseconds: 100)),
+              ),
+              TrackStep.to(2, motion: Motion.bouncySpring()),
+            ],
+            converter: MotionConverter.single,
+            start: 0,
+          );
+      // Past the spring's 500 ms duration, before it settles.
+      const t = 0.1 + 0.6;
+      final sought = build()..advanceTo(t);
+      final played = build()
+        ..advanceTo(10)
+        ..advanceTo(t);
+
+      expect(sought.hasEnded, isTrue);
+      expect(sought.isDone, isFalse);
+      expect(played.isDone, isFalse);
+      expect(played.hasEnded, isTrue);
+    });
+
+    test(
+      'looking ahead at a step does not change when it ends',
+      () {
+        // One dimension flickers done at 0.1 s to 0.2 s and is done from
+        // 0.3 s; the other ramps and says it settles at 0.2 s. Asked, the
+        // step ends at 0.2 s; found on the grid, at the first point where
+        // both are done, 0.3 s, and then asked.
+        StepPlayback<Offset> build() => StepPlayback<Offset>(
+              steps: const [
+                TrackStep.to(
+                  Offset(1, 1),
+                  motionPerDimension: [FlickeringMotion(), ReportingMotion()],
+                ),
+                TrackStep.to(
+                  Offset.zero,
+                  motion: Motion.linear(Duration(seconds: 1)),
+                ),
+              ],
+              converter: MotionConverter.offset,
+              start: Offset.zero,
+            );
+        final looked = build();
+        // Inspection snapshots read this, and so does a following `.at`.
+        looked.segmentsView;
+        looked.advanceTo(0.25);
+        final unlooked = build()..advanceTo(0.25);
+
+        expect(unlooked.currentStepIndex, looked.currentStepIndex);
+        expect(unlooked.values, looked.values);
+      },
+      skip: 'Needs a decision: a look-ahead asks settlesAt right away, while '
+          'ticking only asks at the first grid point where every dimension '
+          'is done, and the answer is not clamped to the last point that is '
+          'not done. With a flickering isDone the two disagree, so attaching '
+          'devtools or adding a `.at` can move a step boundary. See '
+          'docs/adversarial-engine-tests.md.',
+    );
+
+    test(
+      'a looping free motion with a curve returning it stays bounded',
+      () {
+        final playback = StepPlayback<double>(
+          steps: const [TrackStep.free(motion: FrictionMotion())],
+          converter: MotionConverter.single,
+          start: 0,
+          velocity: 1,
+          loop: LoopMode.loop,
+          fallbackMotion: const Motion.linear(Duration(milliseconds: 300)),
+        );
+        for (var t = 0.0; t < 120; t += 0.5) {
+          playback.advanceTo(t);
+          expect(playback.values.single.abs(), lessThan(2), reason: 't=$t');
+        }
+      },
+      skip: 'Needs a decision (same cause as the next test): the loop returns '
+          'with a settled curve whose end slope the next friction inherits, '
+          'so each cycle flings further than the last and the value grows '
+          'without bound (221 after 60 s; NaN with FrictionMotion.scaleTo). '
+          'See docs/adversarial-engine-tests.md.',
+    );
+
+    test(
+      'a step after a curve that settled starts from rest',
+      () {
+        final playback = StepPlayback<double>(
+          steps: const [
+            TrackStep.to(1, motion: Motion.linear(Duration(milliseconds: 100))),
+            TrackStep.to(1, motion: Motion.smoothSpring()),
+          ],
+          converter: MotionConverter.single,
+          start: 0,
+        );
+
+        for (var t = 0.1001; t < 1; t += 0.05) {
+          playback.advanceTo(t);
+          expect(playback.values.single, closeTo(1, 1e-9), reason: 't=$t');
+        }
+      },
+      skip: 'Needs a decision: TrackStep.to and WaitUntil.settled say the next '
+          'step starts from rest, but CurveSimulation.dx keeps its end slope '
+          'after the end on purpose, so a spring after a settled curve '
+          'inherits it (here overshooting to 1.026). See '
+          'docs/adversarial-engine-tests.md.',
+    );
+  });
+}
