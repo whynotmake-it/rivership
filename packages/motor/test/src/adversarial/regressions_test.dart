@@ -67,7 +67,7 @@ void main() {
       // rounds that take time too. A longer jump (a muted ticker, a scrub)
       // leaves tracks waiting at a barrier in the past, showing stale
       // values, and later frames or scrubs to the same time show other
-      // values. See docs/adversarial-engine-tests.md.
+      // values.
       skip: true,
     );
 
@@ -115,7 +115,6 @@ void main() {
       // later phase is measured from the start of the timeline when played
       // through, but from the phase start after goToPhase or
       // playPhases(atPhase:). The timeline docs don't say which is meant.
-      // See docs/adversarial-engine-tests.md.
       skip: true,
     );
 
@@ -178,8 +177,7 @@ void main() {
       // Needs a decision: set() stops the track without canceling its
       // future, so the next frame settles it as if it had come to rest,
       // though loops never end or settle. AnimationController's value
-      // setter cancels its TickerFuture. See
-      // docs/adversarial-engine-tests.md.
+      // setter cancels its TickerFuture.
       skip: true,
     );
   });
@@ -331,8 +329,7 @@ void main() {
           'ticking only asks at the first grid point where every dimension '
           'is done, and the answer is not clamped to the last point that is '
           'not done. With a flickering isDone the two disagree, so attaching '
-          'devtools or adding a `.at` can move a step boundary. See '
-          'docs/adversarial-engine-tests.md.',
+          'devtools or adding a `.at` can move a step boundary.',
     );
 
     test(
@@ -354,8 +351,7 @@ void main() {
       skip: 'Needs a decision (same cause as the next test): the loop returns '
           'with a settled curve whose end slope the next friction inherits, '
           'so each cycle flings further than the last and the value grows '
-          'without bound (221 after 60 s; NaN with FrictionMotion.scaleTo). '
-          'See docs/adversarial-engine-tests.md.',
+          'without bound (221 after 60 s; NaN with FrictionMotion.scaleTo).',
     );
 
     test(
@@ -378,8 +374,7 @@ void main() {
       skip: 'Needs a decision: TrackStep.to and WaitUntil.settled say the next '
           'step starts from rest, but CurveSimulation.dx keeps its end slope '
           'after the end on purpose, so a spring after a settled curve '
-          'inherits it (here overshooting to 1.026). See '
-          'docs/adversarial-engine-tests.md.',
+          'inherits it (here overshooting to 1.026).',
     );
   });
 }

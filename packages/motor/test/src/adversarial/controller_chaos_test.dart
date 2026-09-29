@@ -442,8 +442,7 @@ void main() {
       // Needs a decision: an exception from onStep (or from a simulation)
       // escapes the ticker callback, so the ticker stays active but never
       // schedules another frame. The controller is wedged: isAnimating stays
-      // true, and animate/resume do nothing until stop(canceled: true). See
-      // docs/adversarial-engine-tests.md.
+      // true, and animate/resume do nothing until stop(canceled: true).
       skip: true,
     );
 
