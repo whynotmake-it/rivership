@@ -412,16 +412,12 @@ class StepPlayback<T extends Object> {
   /// barrier end when playback settles. Looping playback never ends.
   bool get hasEnded {
     if (isDone) return true;
-    if (_loop.isLooping || _direction < 0 || _stepIndex != _steps.length - 1) {
-      return false;
-    }
-    final end = _lastEndsAt ??=
-        _segmentStartSeconds + (_lastStepSeconds() ?? double.infinity);
-    return _lastElapsedSeconds >= end;
+    final end = _lastEndsAt;
+    return end != null && _lastElapsedSeconds >= end;
   }
 
-  /// When the last step ends, once asked after it has started; infinite if
-  /// it ends when it settles.
+  /// When the last step of a plan that doesn't loop ends, once it has
+  /// started; infinite if it ends when it settles.
   double? _lastEndsAt;
 
   /// Whether playback is paused at a [StepSync], waiting for external release.
@@ -922,6 +918,10 @@ class StepPlayback<T extends Object> {
       _startForwardStep();
     }
     _startSegmentEnd();
+    if (!_loop.isLooping && _stepIndex == _steps.length - 1) {
+      _lastEndsAt =
+          _segmentStartSeconds + (_lastStepSeconds() ?? double.infinity);
+    }
     _segments.add(
       _Segment(
         stepIndex: _stepIndex,
