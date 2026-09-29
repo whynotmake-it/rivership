@@ -20,7 +20,7 @@ import 'package:motor/src/simulations/simulation_end.dart';
 ///
 /// Its [duration] and its simulation's settle are both [duration], for
 /// every move. Playback uses it for `TrackStep.at`, so a motion that keeps
-/// settling after its logical length still lands exactly on its keyframe.
+/// settling after its step has ended still lands exactly on its keyframe.
 @internal
 @immutable
 class CutMotion extends Motion {

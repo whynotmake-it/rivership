@@ -128,11 +128,12 @@ abstract class Motion extends MotionBase {
     bool snapToEnd,
   }) = CupertinoMotion.interactive;
 
-  /// How long this motion takes, as a step: its perceived duration, where
-  /// the next step takes over.
+  /// How long this motion takes, as a step: its perceived duration, after
+  /// which the step has ended and the next step takes over.
   ///
   /// In a track, a step with this motion lasts [duration], and the next step
-  /// then continues from the current value and velocity. It is a fixed
+  /// then continues from the current value and velocity. A controller call's
+  /// `MotionRun.ended` completes at this time too. It is a fixed
   /// property of the motion, the same for every move, so loops and staggers
   /// keep their rhythm whatever the distance.
   ///

@@ -70,6 +70,11 @@ class _TrackSlot<T extends Object> {
 
   bool get isAnimating => _playing;
 
+  /// Whether this track's plan has ended: its last step's length has
+  /// elapsed, or it is idle, or a graceful stop is settling it.
+  bool get hasEnded =>
+      !_playing || _stoppedDown != null || (_stepPlayback?.hasEnded ?? true);
+
   bool get hasPlayback => _stepPlayback != null;
 
   Object? get pendingSyncToken => _stepPlayback?.pendingSyncToken;

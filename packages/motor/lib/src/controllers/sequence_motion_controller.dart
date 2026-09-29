@@ -352,13 +352,13 @@ class SequenceMotionController<P, T extends Object>
   }
 
   @override
-  TickerFuture animateTo(T target, {T? from, T? withVelocity}) {
+  MotionRun animateTo(T target, {T? from, T? withVelocity}) {
     _stopSequence();
     return super.animateTo(target, from: from, withVelocity: withVelocity);
   }
 
   @override
-  TickerFuture play(
+  MotionRun play(
     List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
@@ -368,7 +368,7 @@ class SequenceMotionController<P, T extends Object>
   }
 
   @override
-  TickerFuture stop({bool canceled = false}) {
+  MotionRun stop({bool canceled = false}) {
     _endLoop(canceled: canceled);
     _stopSequence();
     return super.stop(canceled: canceled);

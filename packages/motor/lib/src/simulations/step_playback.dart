@@ -384,9 +384,23 @@ class StepPlayback<T extends Object> {
     };
   }
 
-  /// Whether playback has completed.
+  /// Whether playback has settled: its last step is done and at rest.
   bool get isDone =>
       _isDone && _lastElapsedSeconds >= (_segments.last.end ?? double.infinity);
+
+  /// Whether playback has ended: its last step's length has elapsed, so a
+  /// following animation may take over, while it may still be settling.
+  ///
+  /// The last step ends after its motion's [MotionBase.duration], a hold
+  /// after its duration and a `.at` at its time. A step with `untilSettled`,
+  /// a motion without a duration and a barrier end when playback settles.
+  /// Looping playback never ends.
+  bool get hasEnded =>
+      isDone || (_lastEndsAt != null && _lastElapsedSeconds >= _lastEndsAt!);
+
+  /// When the last step ends, once it has started and if that's before it
+  /// settles.
+  double? _lastEndsAt;
 
   /// Whether playback is paused at a [StepSync], waiting for external release.
   bool get isWaitingForSync => _isWaitingForSync && _viewIsLatest;
@@ -871,6 +885,11 @@ class StepPlayback<T extends Object> {
       _startForwardStep();
     }
     _startSegmentEnd();
+    if (!_loop.isLooping && _direction > 0 && _stepIndex == _steps.length - 1) {
+      if (_lastStepSeconds() case final seconds?) {
+        _lastEndsAt = _segmentStartSeconds + seconds;
+      }
+    }
     _segments.add(
       _Segment(
         stepIndex: _stepIndex,
@@ -1002,6 +1021,16 @@ class StepPlayback<T extends Object> {
       _simulations = _wait(duration);
     }
   }
+
+  /// How long the running step, the last one, lasts before it ends, or null
+  /// if it ends when it settles.
+  double? _lastStepSeconds() => switch (_steps[_stepIndex]) {
+        StepTo<T>(untilSettled: true) || StepSync<T>() => null,
+        StepTo<T>(:final motion, :final motionPerDimension) =>
+          _logicalSeconds(_motions(motion, motionPerDimension)),
+        StepFree<T>(:final motion) => motion.duration?.toSeconds(),
+        StepHold<T>() || StepAt<T>() => _plannedEnd,
+      };
 
   /// Whether a later motion takes over from the running step, so that it
   /// ends after its motion's [MotionBase.duration] instead of when it has

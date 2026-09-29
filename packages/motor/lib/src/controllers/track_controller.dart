@@ -199,7 +199,7 @@ class TrackController extends Animation<TrackValueReader>
   ///   when heading for a smaller value, as judged by a
   ///   [DirectionalMotionConverter], otherwise [AnimationStatus.forward].
   ///   Steps without a direction (holds, barriers) keep the previous one.
-  /// - Once its plan finished or it jumped with [set]:
+  /// - Once its plan has settled, or it jumped with [set]:
   ///   [AnimationStatus.dismissed] if its last move went down, otherwise
   ///   [AnimationStatus.completed]. For converters without a direction,
   ///   dismissed means exactly back at the track's initial value.
@@ -325,15 +325,16 @@ class TrackController extends Animation<TrackValueReader>
   /// Plays [timeline].
   ///
   /// {@template TrackController.future}
-  /// Returns a [TickerFuture] for this call's tracks: it completes once all of
-  /// them have finished, whatever other tracks are still running. Like
-  /// [AnimationController], a later call that restarts one of these tracks,
-  /// or a [stop] with `canceled: true` that halts one, cancels it instead:
-  /// the future never completes, and its [TickerFuture.orCancel] fails with a
-  /// [TickerCanceled]. A graceful [stop] lets it complete once the tracks
-  /// come to rest. Looping playback ([LoopMode.loop]/[LoopMode.pingPong]/
-  /// [LoopMode.seamless]) never finishes, so its future never completes — do
-  /// not `await` it.
+  /// Returns a [MotionRun] for this call's tracks, whatever other tracks are
+  /// still running. Awaiting it waits until all of them have settled;
+  /// [MotionRun.ended] completes once all of them have ended, when the next
+  /// animation may take over. Like [AnimationController], a later call that
+  /// restarts one of these tracks, or a [stop] with `canceled: true` that
+  /// halts one, cancels it instead: neither completes, and its
+  /// [TickerFuture.orCancel] fails with a [TickerCanceled]. A graceful [stop]
+  /// ends it right away and lets it settle. Looping playback
+  /// ([LoopMode.loop]/[LoopMode.pingPong]/[LoopMode.seamless]) never ends or
+  /// settles — do not `await` it.
   /// {@endtemplate}
   ///
   /// {@template TrackController.onStep}
@@ -341,7 +342,7 @@ class TrackController extends Animation<TrackValueReader>
   /// including steps shorter than a frame. It is not called while scrubbing,
   /// or for the internal step that returns a [LoopMode.loop] to its start.
   /// {@endtemplate}
-  TickerFuture play(
+  MotionRun play(
     TrackTimeline timeline, {
     void Function(Track track, int stepIndex)? onStep,
   }) {
@@ -368,7 +369,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Passing an empty list returns an already-complete future.
   ///
   /// {@macro TrackController.onStep}
-  TickerFuture animate(
+  MotionRun animate(
     List<TrackAnimation> animations, {
     LoopMode loop = LoopMode.none,
     void Function(Track track, int stepIndex)? onStep,
@@ -380,7 +381,7 @@ class TrackController extends Animation<TrackValueReader>
     );
   }
 
-  TickerFuture _startAnimations({
+  MotionRun _startAnimations({
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
@@ -402,7 +403,7 @@ class TrackController extends Animation<TrackValueReader>
 
     // Naming no tracks is a no-op: tracks not named in this call are left
     // running untouched.
-    if (timelineTracks.isEmpty) return TickerFuture.complete();
+    if (timelineTracks.isEmpty) return MotionRun.complete();
 
     _playbackRevision++;
     _cancelFutures(timelineTracks);
@@ -605,18 +606,18 @@ class TrackController extends Animation<TrackValueReader>
   /// does every targeted track when [canceled] is true. Either way, stopped
   /// tracks keep the direction they were moving in as their status.
   ///
-  /// Returns a [TickerFuture] that completes when the settling tracks come to
-  /// rest, or an already-complete future when none settles. Futures of
-  /// earlier calls for the stopped tracks are canceled when [canceled] is
-  /// true, and otherwise complete once those tracks come to rest.
-  TickerFuture stop({
+  /// Returns a [MotionRun] that settles when the settling tracks come to
+  /// rest, or an already settled one when none settles. Runs of earlier
+  /// calls for the stopped tracks are canceled when [canceled] is true, and
+  /// otherwise end right away and settle once those tracks come to rest.
+  MotionRun stop({
     List<Track>? tracks,
     bool canceled = false,
   }) {
     return canceled ? _hardStop(tracks) : _gracefulStop(tracks);
   }
 
-  TickerFuture _hardStop(List<Track>? tracks) {
+  MotionRun _hardStop(List<Track>? tracks) {
     _playbackRevision++;
     _cancelFutures(tracks);
     if (tracks == null) {
@@ -647,10 +648,10 @@ class TrackController extends Animation<TrackValueReader>
     }
     notifyListeners();
     _updateStatus();
-    return TickerFuture.complete();
+    return MotionRun.complete();
   }
 
-  TickerFuture _gracefulStop(List<Track>? tracks) {
+  MotionRun _gracefulStop(List<Track>? tracks) {
     _playbackRevision++;
     final targets = tracks ?? _slots.keys.toList();
     for (final track in targets) {
@@ -675,7 +676,7 @@ class TrackController extends Animation<TrackValueReader>
       _ticker?.stop();
       notifyListeners();
       _updateStatus();
-      return TickerFuture.complete();
+      return MotionRun.complete();
     }
 
     // Settling tracks keep running; the (already active) ticker finishes them
@@ -685,7 +686,7 @@ class TrackController extends Animation<TrackValueReader>
         if (_slots[track]?.isAnimating ?? false) track,
     };
     final future =
-        settling.isEmpty ? TickerFuture.complete() : _futureFor(settling);
+        settling.isEmpty ? MotionRun.complete() : _futureFor(settling);
     _startTicker();
     notifyListeners();
     _updateStatus();
@@ -1127,15 +1128,20 @@ class TrackController extends Animation<TrackValueReader>
     }
   }
 
-  /// Completes the pending futures whose tracks have all finished.
+  /// Ends the pending futures whose tracks have all ended, and completes
+  /// those whose tracks have all settled.
   void _completeFinishedFutures() {
     if (_futures.isEmpty) return;
-    final finished = [
-      for (final future in _futures)
-        if (!future.tracks.any((track) => _slots[track]?.isAnimating ?? false))
-          future,
-    ];
-    for (final future in finished) {
+    final settled = <_TrackFuture>[];
+    for (final future in _futures) {
+      if (!future.tracks.any((track) => _slots[track]?.isAnimating ?? false)) {
+        settled.add(future);
+      } else if (!future.hasEnded &&
+          future.tracks.every((track) => _slots[track]?.hasEnded ?? true)) {
+        future.end();
+      }
+    }
+    for (final future in settled) {
       _futures.remove(future);
       future.complete();
     }
@@ -1149,7 +1155,8 @@ class TrackController extends Animation<TrackValueReader>
   @visibleForOverriding
   void onSyncReleased(Object token) {}
 
-  /// Called after every active track finishes a non-looping playback run.
+  /// Called after every active track settles at the end of a non-looping
+  /// playback run.
   ///
   /// A subclass may synchronously start a continuation here. Status listeners
   /// then only see the continuation's status, not the run boundary.

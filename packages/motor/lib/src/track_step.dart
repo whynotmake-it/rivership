@@ -109,8 +109,8 @@ sealed class TrackStep<T extends Object> {
   /// step after the barrier starts from where it is at the release.
   ///
   /// {@template motor.TrackStep.sync.arrival}
-  /// A track arrives once the step before the barrier reaches its logical
-  /// end, its motion's [Motion.duration]. A spring keeps settling while it
+  /// A track arrives once the step before the barrier has ended, after its
+  /// motion's [Motion.duration]. A spring keeps settling while it
   /// waits. To arrive only once it has settled, set `untilSettled` on that
   /// step; a motion without a duration always waits to settle.
   /// {@endtemplate}

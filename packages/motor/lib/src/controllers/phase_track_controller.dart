@@ -1,4 +1,3 @@
-import 'package:flutter/animation.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/loop_mode.dart';
@@ -64,12 +63,13 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// If [atPhase] is provided, playback starts from that phase (skipping
   /// earlier phases). Otherwise, playback starts from the first phase.
   ///
-  /// Returns a [TickerFuture] for the timeline's tracks (see
-  /// [TrackController.play]): for a non-looping timeline it completes when the
-  /// whole phase sequence settles. A looping phase timeline replays each cycle
+  /// Returns a [MotionRun] for the timeline's tracks (see
+  /// [TrackController.play]): for a non-looping timeline it ends when the
+  /// last phase's steps end, and settles when the whole phase sequence
+  /// settles. A looping phase timeline replays each cycle
   /// as a new call, so the future resolves at the end of the first cycle — do
   /// not `await` a looping timeline.
-  TickerFuture playPhases(
+  MotionRun playPhases(
     TrackPhaseTimeline<P> timeline, {
     P? atPhase,
     void Function(PhaseTransition<P> transition)? onTransition,
@@ -101,17 +101,17 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// Plays only that phase's animations from the current track values,
   /// without playing preceding phases.
   ///
-  /// Returns a [TickerFuture] for the phase's tracks (see
-  /// [TrackController.animate]). Returns an already-complete future when there
+  /// Returns a [MotionRun] for the phase's tracks (see
+  /// [TrackController.animate]). Returns an already settled run when there
   /// is no active timeline or the phase is unknown.
-  TickerFuture goToPhase(P phase) {
+  MotionRun goToPhase(P phase) {
     final timeline = _activeTimeline;
     assert(timeline != null, 'Call setTimeline or playPhases first.');
-    if (timeline == null) return TickerFuture.complete();
+    if (timeline == null) return MotionRun.complete();
 
     final index = timeline.phases.indexOf(phase);
     assert(index >= 0, 'Phase $phase not found in timeline.');
-    if (index < 0) return TickerFuture.complete();
+    if (index < 0) return MotionRun.complete();
 
     final wasPlayingPhases = _isPlayingPhases;
     _isPlayingPhases = false;
@@ -241,7 +241,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       track.value(value(track));
 
   @override
-  TickerFuture stop({List<Track>? tracks, bool canceled = false}) {
+  MotionRun stop({List<Track>? tracks, bool canceled = false}) {
     if (tracks == null) _isPlayingPhases = false;
     return super.stop(tracks: tracks, canceled: canceled);
   }

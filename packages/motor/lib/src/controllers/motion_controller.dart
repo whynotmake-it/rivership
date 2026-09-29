@@ -200,7 +200,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// - While animating, it is [AnimationStatus.reverse] when heading for a
   ///   smaller value (directional converters such as [SingleMotionConverter]
   ///   only), otherwise [AnimationStatus.forward].
-  /// - Once the motion finished or [value] was set, it is
+  /// - Once the motion has settled or [value] was set, it is
   ///   [AnimationStatus.dismissed] if the last move went down, otherwise
   ///   [AnimationStatus.completed]. For converters without a direction
   ///   (common for multi-dimensional types), dismissed means exactly back at
@@ -313,10 +313,13 @@ class MotionController<T extends Object> extends Animation<T>
   /// If [withVelocity] is provided, the animation will start with that velocity
   /// instead of [velocity].
   ///
-  /// Like [AnimationController], the returned future completes when this
-  /// animation finishes, or when [value] is set during it. Starting another
-  /// animation or stopping with `canceled: true` cancels it.
-  TickerFuture animateTo(
+  /// Like [AnimationController], the returned [MotionRun] completes when this
+  /// animation has settled, or when [value] is set during it. Its
+  /// [MotionRun.ended] completes earlier, once the motion's `duration` has
+  /// elapsed, when a following animation may take over, as the next step of
+  /// a plan does. Starting another animation or stopping with
+  /// `canceled: true` cancels both.
+  MotionRun animateTo(
     T target, {
     T? from,
     T? withVelocity,
@@ -346,14 +349,15 @@ class MotionController<T extends Object> extends Animation<T>
   /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
   /// controller's [motionPerDimension].
   ///
-  /// Non-looping playback completes when all chained simulations finish.
-  /// Looping playback runs until [stop], [animateTo], or [value] interrupts it.
-  TickerFuture play(
+  /// The returned [MotionRun] ends when the last step's length has elapsed
+  /// and completes when playback has settled. Looping playback runs until
+  /// [stop], [animateTo], or [value] interrupts it.
+  MotionRun play(
     List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {
-    if (steps.isEmpty) return TickerFuture.complete();
+    if (steps.isEmpty) return MotionRun.complete();
 
     _lastTarget = null;
     _reversing = false;
@@ -406,7 +410,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// [play], for the motion of the running step.
   ///
   /// Either way, [status] keeps the direction it was moving in.
-  TickerFuture stop({bool canceled = false}) {
+  MotionRun stop({bool canceled = false}) {
     if (canceled) return _inner.stop(canceled: true);
     if (!isAnimating || _motionPerDimension.every((e) => !e.needsSettle)) {
       return _inner.stop();
@@ -416,7 +420,7 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// Runs [start], the animation that settles a graceful stop, keeping the
   /// direction the controller was moving in as its status.
-  TickerFuture _settle(TickerFuture Function() start) {
+  MotionRun _settle(MotionRun Function() start) {
     final movingDown = _inner.internalMovingDown(_track);
     final reversing = _reversing;
     final future = start();
@@ -547,7 +551,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }
 
   @override
-  TickerFuture animateTo(
+  MotionRun animateTo(
     T target, {
     T? from,
     T? withVelocity,
@@ -555,7 +559,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       super.animateTo(_clamp(target), from: from, withVelocity: withVelocity);
 
   /// Animates towards [upperBound].
-  TickerFuture forward({
+  MotionRun forward({
     T? from,
     T? withVelocity,
   }) =>
@@ -563,7 +567,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Animates towards [lowerBound], reporting [AnimationStatus.reverse]
   /// while running, even when [converter] has no direction.
-  TickerFuture reverse({
+  MotionRun reverse({
     T? from,
     T? withVelocity,
   }) {
@@ -572,7 +576,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }
 
   @override
-  TickerFuture stop({bool canceled = false}) {
+  MotionRun stop({bool canceled = false}) {
     if (canceled ||
         !isAnimating ||
         motionPerDimension.every((e) => !e.needsSettle)) {

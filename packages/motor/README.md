@@ -127,7 +127,7 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 
 #### My spring runs longer than its duration
 
-A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. In a track, the next step takes over after `duration`, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when futures complete and the ticker stops. To make the next step wait, set `untilSettled`:
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. Motor names the two moments: a step has **ended** once its `duration` has elapsed, and it has **settled** once it is at rest, exactly on its target. In a track, the next step takes over when the previous one has ended, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when awaited animations complete and the ticker stops. To make the next step wait until settled, set `untilSettled`:
 
 ```dart
 opacity([
@@ -138,6 +138,15 @@ opacity([
 ```
 
 Taking over at `duration` is what SwiftUI's `PhaseAnimator` does. If you're used to Motion, anime.js or Compose, where the next animation starts once the previous one has settled, set `untilSettled: true`. `MotionController` and the deprecated sequences keep 1.x timing: each spring settles before the next phase.
+
+Chaining calls in code works the same way. Every controller call returns a `MotionRun`: `await` it to wait until it has settled, as in 1.x, or await its `ended` to take over the way the next step of a plan does:
+
+```dart
+await controller.animateTo(1).ended; // after the spring's duration
+controller.animateTo(0);             // continues with the current velocity
+```
+
+This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled).
 
 ### MaterialSpringMotion
 
@@ -483,11 +492,13 @@ plays, and once done `dismissed` if its last move went down, otherwise
 
 A few semantics worth knowing:
 
-- `play`, `animate`, and `stop` return a `TickerFuture` for the tracks that
-  call started: it completes when they finish, even if other tracks keep
-  running. As with `AnimationController`, restarting one of those tracks or
-  stopping it with `canceled: true` cancels it (`orCancel` throws
-  `TickerCanceled`). Looping playback never completes, so don't `await` it.
+- `play`, `animate`, and `stop` return a `MotionRun` (a `TickerFuture`) for
+  the tracks that call started: it completes when they have settled, even if
+  other tracks keep running, and its `ended` completes when their last steps
+  have ended. As with `AnimationController`, restarting one of those tracks
+  or stopping it with `canceled: true` cancels both (`orCancel` throws
+  `TickerCanceled`); a graceful `stop()` ends it at once. Looping playback
+  never ends or settles, so don't `await` it.
 - `stop()` lets tracks whose default motion is a spring settle gracefully;
   `stop(canceled: true)` halts immediately. Either way, stopped tracks keep
   the direction they were moving in (`forward` or `reverse`) as their
