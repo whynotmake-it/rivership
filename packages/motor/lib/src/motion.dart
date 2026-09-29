@@ -688,8 +688,9 @@ class CupertinoMotion extends SpringMotion {
   /// The bounce of the spring motion, at most 1.
   ///
   /// 0 is critically damped, 1 is undamped and oscillates forever, and a
-  /// negative bounce is overdamped. A bounce above 1 asserts in debug builds
-  /// and is treated as 1 otherwise, as SwiftUI does.
+  /// negative bounce, above -1, is overdamped. A bounce above 1 asserts in
+  /// debug builds and is treated as 1 otherwise, as SwiftUI does; one of -1
+  /// or below asserts.
   final double bounce;
 
   @override
@@ -697,6 +698,12 @@ class CupertinoMotion extends SpringMotion {
     assert(
       bounce <= 1,
       'A CupertinoMotion bounce must be at most 1 (undamped), but was $bounce.',
+    );
+    assert(
+      bounce > -1,
+      'A CupertinoMotion bounce must be more than -1, but was $bounce. At -1 '
+      'the spring is infinitely damped, and below it it gains energy and '
+      'never settles.',
     );
     return SpringDescription.withDurationAndBounce(
       duration: duration,
