@@ -127,19 +127,17 @@ Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can
 
 #### My spring runs longer than its duration
 
-A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. Motor names the two moments: a step has **ended** once its `duration` has elapsed, and it has **settled** once it is at rest, exactly on its target. In a track, the next step takes over when the previous one has ended, from the current value and velocity, so a sequence keeps its rhythm. The last step plays out until it has settled, which is when awaited animations complete and the ticker stops. To make the next step wait until settled, set `untilSettled`:
+A spring's `duration` is its pace: it gets close to its target around then and keeps settling within its tolerance for 2–3× as long. Motor names the two moments: a spring has **settled** once it is at rest, exactly on its target, and a step has **ended** once its `until` condition is reached, so the next step takes over. By default a step lasts `until: .settled`, as in 1.x, Motion, anime.js and Compose: the next step starts from rest. With `until: .duration` it ends after its motion's `duration`, and the next step takes over from the current value and velocity while the spring is still settling, so a sequence keeps its rhythm. That's how SwiftUI's `PhaseAnimator` moves between phases. The last step always plays out until it has settled, which is when awaited animations complete and the ticker stops.
 
 ```dart
 opacity([
-  .to(1, motion: .bouncySpring()), // the next step starts at 500 ms
-  .to(0, motion: .bouncySpring(), untilSettled: true), // the next one waits
+  .to(1, motion: .bouncySpring()),                   // waits until settled
+  .to(0, motion: .bouncySpring(), until: .duration), // the next one starts at 500 ms
   .to(1),
 ]);
 ```
 
-Taking over at `duration` is what SwiftUI's `PhaseAnimator` does. If you're used to Motion, anime.js or Compose, where the next animation starts once the previous one has settled, set `untilSettled: true`. `MotionController` and the deprecated sequences keep 1.x timing: each spring settles before the next phase.
-
-Chaining calls in code works the same way. Every controller call returns a `MotionRun`: `await` it to wait until it has settled, as in 1.x, or await its `ended` to take over the way the next step of a plan does:
+Chaining calls in code works the same way. Every controller call returns a `MotionFuture`: `await` it to wait until it has settled, as in 1.x, or await its `ended` to take over the way the next step after an `until: .duration` step does:
 
 ```dart
 await controller.animateTo(1).ended; // after the spring's duration
@@ -283,14 +281,14 @@ offset([                               // multiple steps, run in order
 
 The available steps are the verbs of the system:
 
-- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts its motion's `duration`; then the next step takes over from the current value and velocity, while a spring is still settling. The last step plays out until it has settled (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
+- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The step lasts until it has settled; with `until: .duration` it ends after its motion's `duration`, and the next step takes over from the current value and velocity while a spring is still settling (see [My spring runs longer than its duration](#my-spring-runs-longer-than-its-duration)).
 - **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
   - With time to spare, the `.at` motion starts as soon as the previous step ends and slows down to fill the gap.
   - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
 
   The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
-- **`.hold(duration)`** — wait for `duration` at the current value. A spring the step before handed over keeps settling meanwhile.
-- **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity.
+- **`.hold(duration)`** — wait for `duration` at the current value. A spring whose step ended at its duration keeps settling meanwhile.
+- **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity, until it comes to rest.
 - **`.sync(token:)`** — a barrier (see below).
 
 Every `.to`/`.at` needs a motion: either on the step or as the track's default. A missing motion is an assertion error in debug mode.
@@ -394,10 +392,10 @@ coordinate tracks playing on the same controller (one `TrackBuilder` or
 barrier stops participating, so it never holds the others hostage. When
 scrubbing, barriers are resolved exactly as during playback.
 
-A track reaches the barrier when the step before it ends: after its motion's
-`duration`. A spring keeps settling while the track waits, and the step after
-the barrier continues from there. To arrive only once the spring has settled,
-set `untilSettled: true` on that step.
+A track reaches the barrier when the step before it ends: by default once it
+has settled. With `until: .duration` on that step it arrives after the motion's
+`duration`, the spring keeps settling while the track waits, and the step after
+the barrier continues from there.
 
 #### Phases — named states
 
@@ -492,7 +490,7 @@ plays, and once done `dismissed` if its last move went down, otherwise
 
 A few semantics worth knowing:
 
-- `play`, `animate`, and `stop` return a `MotionRun` (a `TickerFuture`) for
+- `play`, `animate`, and `stop` return a `MotionFuture` (a `TickerFuture`) for
   the tracks that call started: it completes when they have settled, even if
   other tracks keep running, and its `ended` completes when their last steps
   have ended. As with `AnimationController`, restarting one of those tracks

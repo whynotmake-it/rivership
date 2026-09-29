@@ -133,7 +133,7 @@ abstract class Motion extends MotionBase {
   ///
   /// In a track, a step with this motion lasts [duration], and the next step
   /// then continues from the current value and velocity. A controller call's
-  /// `MotionRun.ended` completes at this time too. It is a fixed
+  /// `MotionFuture.ended` completes at this time too. It is a fixed
   /// property of the motion, the same for every move, so loops and staggers
   /// keep their rhythm whatever the distance.
   ///

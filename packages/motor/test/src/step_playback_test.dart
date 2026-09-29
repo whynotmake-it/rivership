@@ -65,7 +65,7 @@ void main() {
       final scaled = spring.scaleTo(const Duration(milliseconds: 300));
       final playback = StepPlayback<double>(
         steps: [
-          TrackStep.to(100, motion: scaled),
+          TrackStep.to(100, motion: scaled, until: StepEnd.duration),
           const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
         ],
         converter: MotionConverter.single,

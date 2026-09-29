@@ -1,7 +1,7 @@
 part of 'track_controller.dart';
 
-/// One animation started on a controller, which you can `await` until it has
-/// settled, or until it has [ended].
+/// The future of one animation started on a controller: `await` it until the
+/// animation has settled, or await [ended] until it has ended.
 ///
 /// Two moments matter for an animation:
 ///
@@ -10,10 +10,10 @@ part of 'track_controller.dart';
 ///   is nearly at its target by then and may still be moving.
 /// - It has **settled** once it is at rest, exactly on its target.
 ///
-/// Awaiting the run itself waits until it has settled, like the
-/// [TickerFuture] of an [AnimationController]. Await [ended] to chain the
-/// way a track plan does, where the next step takes over at the previous
-/// step's duration:
+/// Awaiting the future itself waits until the animation has settled, like
+/// the [TickerFuture] of an [AnimationController], and like a track step
+/// waits by default. Await [ended] to chain the way a step with
+/// `until: .duration` does, taking over at the previous motion's duration:
 ///
 /// ```dart
 /// await controller.animateTo(1).ended; // after the spring's duration
@@ -25,25 +25,25 @@ part of 'track_controller.dart';
 /// it: neither completes, and [orCancel] fails with a [TickerCanceled]. A
 /// graceful stop ends it right away and lets it settle. A looping animation
 /// never ends or settles.
-abstract interface class MotionRun implements TickerFuture {
-  /// A run that has already ended and settled, for calls that start nothing.
-  factory MotionRun.complete() => _TrackFuture.completed();
+abstract interface class MotionFuture implements TickerFuture {
+  /// A future that has already ended and settled, for calls that start
+  /// nothing.
+  factory MotionFuture.complete() => _TrackFuture.completed();
 
   /// Completes once this animation has ended: its last step's duration has
   /// elapsed, while it may still be settling.
   ///
-  /// A last step with `untilSettled`, a motion without a duration and a
-  /// barrier end when they settle. It never completes if the run is canceled
-  /// first.
+  /// A last step whose motion has no duration, and a barrier, end when they
+  /// settle. It never completes if the animation is canceled first.
   Future<void> get ended;
 }
 
-/// The [MotionRun] of one [TrackController] call, resolved by the
+/// The [MotionFuture] of one [TrackController] call, resolved by the
 /// controller when that call's [tracks] end, settle or are interrupted.
 ///
 /// Flutter only creates pending ticker futures for a whole [Ticker], so this
 /// implements the same contract for a subset of tracks.
-class _TrackFuture implements MotionRun {
+class _TrackFuture implements MotionFuture {
   _TrackFuture(this.tracks);
 
   _TrackFuture.completed() : tracks = const {} {

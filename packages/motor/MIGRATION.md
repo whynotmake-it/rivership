@@ -256,9 +256,9 @@ const _spring = SpringDescription(mass: 1, stiffness: 200, damping: 20);
 ```
 
 Override `duration` if your motion has a perceived duration: a track step
-then lasts that long, and the next step takes over. If you can tell when your
-simulation is done, mix `SettlingSimulation` into it and return that time
-from `settlesAt`. Motor then ends settling steps there instead of sampling
+with `until: StepEnd.duration` then lasts that long, and the next step takes
+over. If you can tell when your simulation is done, mix `SettlingSimulation`
+into it and return that time from `settlesAt`. Motor then ends settling steps there instead of sampling
 `isDone` to find it.
 
 ```dart

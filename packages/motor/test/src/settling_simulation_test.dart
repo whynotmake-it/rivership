@@ -280,7 +280,7 @@ void main() {
       expect(simulation.settlesAt, delay + inner.settlesAt!);
 
       final playback = _playback([
-        TrackStep.to(300, motion: delayed),
+        TrackStep.to(300, motion: delayed, until: StepEnd.duration),
         const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
       ])
         ..advanceTo(1);
@@ -340,7 +340,11 @@ void main() {
         ),
       ).scaleTo(const Duration(milliseconds: 200));
       final playback = _playback([
-        const TrackStep.to(100, motion: CupertinoMotion.bouncy()),
+        const TrackStep.to(
+          100,
+          motion: CupertinoMotion.bouncy(),
+          until: StepEnd.duration,
+        ),
         TrackStep.to(0, motion: scaled),
       ])
         ..advanceTo(0.5);

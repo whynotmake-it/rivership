@@ -10,7 +10,7 @@ import 'package:motor/src/simulations/simulation_end.dart';
 /// the simulation says it, through [settlesAt].
 ///
 /// Futures, `status` and the ticker wait for it, and so does the last step
-/// of a track and a step with `untilSettled`. Every simulation motor
+/// of a track and every step that ends once settled. Every simulation motor
 /// creates has this mixin. A simulation without it still works: motor
 /// samples its [isDone] instead, for up to two minutes; see
 /// [SimulationSettling.estimateSettle].

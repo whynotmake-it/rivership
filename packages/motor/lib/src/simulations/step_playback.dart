@@ -70,15 +70,22 @@ class StepPlayback<T extends Object> {
     if (loop == LoopMode.loop) {
       // `loop` animates back to the start after the last step. Model that as a
       // synthetic final step that returns to the start snapshot, reusing the
-      // first real step's motion(s). The wrap (in `_advanceStep`) then
-      // continues from there without a jump. `seamless` skips this and jumps.
+      // first real step's motion(s) and how it ends. The wrap (in
+      // `_advanceStep`) then continues from there without a jump. `seamless`
+      // skips this and jumps.
       final returnMotions = _firstStepMotions(_steps, _initialValues.length) ??
           _fallbackMotionPerDimension ??
           (fallbackMotion != null
               ? List<Motion>.filled(_initialValues.length, fallbackMotion)
               : null);
       if (returnMotions != null) {
-        _steps.add(StepTo<T>(start, motionPerDimension: returnMotions));
+        _steps.add(
+          StepTo<T>(
+            start,
+            motionPerDimension: returnMotions,
+            until: _firstStepEnd(_steps),
+          ),
+        );
         _hasReturnStep = true;
       }
     }
@@ -119,6 +126,15 @@ class StepPlayback<T extends Object> {
       }
     }
     return null;
+  }
+
+  /// How the first step that targets a value ends.
+  static StepEnd _firstStepEnd<S extends Object>(List<TrackStep<S>> steps) {
+    for (final step in steps) {
+      if (step is StepTo<S>) return step.until;
+      if (step is StepAt<S>) return StepEnd.settled;
+    }
+    return StepEnd.settled;
   }
 
   static bool _validateStepTiming<S extends Object>(List<TrackStep<S>> steps) {
@@ -391,9 +407,9 @@ class StepPlayback<T extends Object> {
   /// Whether playback has ended: its last step's length has elapsed, so a
   /// following animation may take over, while it may still be settling.
   ///
-  /// The last step ends after its motion's [MotionBase.duration], a hold
-  /// after its duration and a `.at` at its time. A step with `untilSettled`,
-  /// a motion without a duration and a barrier end when playback settles.
+  /// The last step ends after its motion's [MotionBase.duration], whatever
+  /// its [StepEnd], a hold after its duration and a `.at` at its time. A
+  /// motion without a duration and a barrier end when playback settles.
   /// Looping playback never ends.
   bool get hasEnded =>
       isDone || (_lastEndsAt != null && _lastElapsedSeconds >= _lastEndsAt!);
@@ -934,7 +950,7 @@ class StepPlayback<T extends Object> {
 
   List<Simulation> _simulateFree(FreeMotion motion) {
     _askEnd = true;
-    if (_isFollowed() && motion.duration != null) _planHandOver([motion]);
+    if (_isFollowed()) _planHandOver([motion]);
     return [
       for (var i = 0; i < _values.length; i++)
         motion.createSimulation(start: _values[i], velocity: _velocities[i]),
@@ -1025,7 +1041,7 @@ class StepPlayback<T extends Object> {
   /// How long the running step, the last one, lasts before it ends, or null
   /// if it ends when it settles.
   double? _lastStepSeconds() => switch (_steps[_stepIndex]) {
-        StepTo<T>(untilSettled: true) || StepSync<T>() => null,
+        StepSync<T>() => null,
         StepTo<T>(:final motion, :final motionPerDimension) =>
           _logicalSeconds(_motions(motion, motionPerDimension)),
         StepFree<T>(:final motion) => motion.duration?.toSeconds(),
@@ -1045,10 +1061,14 @@ class StepPlayback<T extends Object> {
   }
 
   /// Ends the running step after its [motions]' [MotionBase.duration], when
-  /// it doesn't wait to settle, so that the next step takes over then.
+  /// it ends at its duration ([StepEnd.duration]) instead of once settled, so
+  /// that the next step takes over then.
   void _planHandOver(List<MotionBase> motions) {
-    final step = _steps[_stepIndex];
-    if (step is StepTo<T> && step.untilSettled) return;
+    final until = switch (_steps[_stepIndex]) {
+      StepTo<T>(:final until) || StepFree<T>(:final until) => until,
+      _ => StepEnd.settled,
+    };
+    if (until != StepEnd.duration) return;
     if (_logicalSeconds(motions) case final seconds?) {
       _plannedEnd = seconds;
       _handsOver = true;
@@ -1155,9 +1175,10 @@ class StepPlayback<T extends Object> {
     assert(
       !_loop.isLooping || _segmentEndFound || !_neverEnds(),
       'Step $_stepIndex of a looping plan never ends: its motion never '
-      'settles (settlesAt is null) and the step has no duration to hand '
-      'over at, so the loop would never repeat. Give the motion a '
-      'duration, or play the step without looping.',
+      'settles (settlesAt is null) and the step does not end at a '
+      'duration, so the loop would never repeat. Give the step '
+      'until: StepEnd.duration and the motion a duration, or play the step '
+      'without looping.',
     );
   }
 

@@ -63,13 +63,13 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// If [atPhase] is provided, playback starts from that phase (skipping
   /// earlier phases). Otherwise, playback starts from the first phase.
   ///
-  /// Returns a [MotionRun] for the timeline's tracks (see
+  /// Returns a [MotionFuture] for the timeline's tracks (see
   /// [TrackController.play]): for a non-looping timeline it ends when the
   /// last phase's steps end, and settles when the whole phase sequence
   /// settles. A looping phase timeline replays each cycle
   /// as a new call, so the future resolves at the end of the first cycle — do
   /// not `await` a looping timeline.
-  MotionRun playPhases(
+  MotionFuture playPhases(
     TrackPhaseTimeline<P> timeline, {
     P? atPhase,
     void Function(PhaseTransition<P> transition)? onTransition,
@@ -101,17 +101,17 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// Plays only that phase's animations from the current track values,
   /// without playing preceding phases.
   ///
-  /// Returns a [MotionRun] for the phase's tracks (see
+  /// Returns a [MotionFuture] for the phase's tracks (see
   /// [TrackController.animate]). Returns an already settled run when there
   /// is no active timeline or the phase is unknown.
-  MotionRun goToPhase(P phase) {
+  MotionFuture goToPhase(P phase) {
     final timeline = _activeTimeline;
     assert(timeline != null, 'Call setTimeline or playPhases first.');
-    if (timeline == null) return MotionRun.complete();
+    if (timeline == null) return MotionFuture.complete();
 
     final index = timeline.phases.indexOf(phase);
     assert(index >= 0, 'Phase $phase not found in timeline.');
-    if (index < 0) return MotionRun.complete();
+    if (index < 0) return MotionFuture.complete();
 
     final wasPlayingPhases = _isPlayingPhases;
     _isPlayingPhases = false;
@@ -241,7 +241,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       track.value(value(track));
 
   @override
-  MotionRun stop({List<Track>? tracks, bool canceled = false}) {
+  MotionFuture stop({List<Track>? tracks, bool canceled = false}) {
     if (tracks == null) _isPlayingPhases = false;
     return super.stop(tracks: tracks, canceled: canceled);
   }

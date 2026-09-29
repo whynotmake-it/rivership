@@ -240,10 +240,10 @@ class TrackAnimation<T extends Object> {
         [
           for (final step in steps)
             switch (step) {
-              StepTo<T>(:final value, :final untilSettled) => TrackStep.to(
+              StepTo<T>(:final value, :final until) => TrackStep.to(
                   value,
                   motion: motion,
-                  untilSettled: untilSettled,
+                  until: until,
                 ),
               StepAt<T>(:final at, :final value) => TrackStep.at(
                   at,

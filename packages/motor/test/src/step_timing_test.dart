@@ -70,9 +70,30 @@ void main() {
   });
 
   group('step timing', () {
-    test('the next step takes over after the duration', () {
+    test('the next step waits until the previous one has settled', () {
       final playback = _playback([
         const TrackStep.to(300, motion: spring),
+        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
+      ])
+        ..advanceTo(d);
+      expect(playback.currentStepIndex, 0);
+      playback.advanceTo(settle - 1e-3);
+      expect(playback.currentStepIndex, 0);
+      playback.advanceTo(settle);
+      expect(playback.forwardSegmentSeconds.first, closeTo(settle, 1e-5));
+      expect(playback.currentStepIndex, 1);
+      // It starts from rest on the target.
+      expect(playback.values.single, 300);
+      expect(playback.velocities.single, closeTo(0, 1e-3));
+    });
+
+    test('ending at the duration, the next step takes over', () {
+      final playback = _playback([
+        const TrackStep.to(
+          300,
+          motion: spring,
+          until: StepEnd.duration,
+        ),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ]);
       final first = spring.createSimulation(end: 300);
@@ -87,35 +108,42 @@ void main() {
     });
 
     test('the last step plays out until it has settled', () {
-      final playback = _playback([const TrackStep.to(300, motion: spring)])
-        ..advanceTo(d + 0.1);
-      expect(playback.isDone, isFalse);
-      playback.advanceTo(settle);
-      expect(playback.isDone, isTrue);
-      expect(playback.values.single, 300);
+      for (final until in StepEnd.values) {
+        final playback = _playback([
+          TrackStep.to(
+            300,
+            motion: spring,
+            until: until,
+          ),
+        ])
+          ..advanceTo(d + 0.1);
+        expect(playback.isDone, isFalse);
+        playback.advanceTo(settle);
+        expect(playback.isDone, isTrue);
+        expect(playback.values.single, 300);
+      }
     });
 
-    test('untilSettled makes the next step wait', () {
+    test('a motion without a duration waits to settle, whatever its end', () {
       final playback = _playback([
-        const TrackStep.to(300, motion: spring, untilSettled: true),
+        const TrackStep.to(
+          300,
+          motion: _NoDurationSpring(),
+          until: StepEnd.duration,
+        ),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ])
         ..advanceTo(settle + 0.01);
       expect(playback.forwardSegmentSeconds.first, closeTo(settle, 1e-5));
     });
 
-    test('a motion without a duration waits to settle', () {
+    test('a hold lets a spring that ended at its duration play out', () {
       final playback = _playback([
-        const TrackStep.to(300, motion: _NoDurationSpring()),
-        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
-      ])
-        ..advanceTo(settle + 0.01);
-      expect(playback.forwardSegmentSeconds.first, closeTo(settle, 1e-5));
-    });
-
-    test('a hold lets the handed-over spring play out', () {
-      final playback = _playback([
-        const TrackStep.to(300, motion: spring),
+        const TrackStep.to(
+          300,
+          motion: spring,
+          until: StepEnd.duration,
+        ),
         const TrackStep.hold(Duration(milliseconds: 400)),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ]);
@@ -128,6 +156,19 @@ void main() {
       expect(playback.currentStepIndex, 2);
       expect(playback.values.single, closeTo(first.x(d + 0.4), 1e-9));
       expect(playback.velocities.single, closeTo(first.dx(d + 0.4), 1e-9));
+    });
+
+    test('a hold after a settled spring holds its target', () {
+      final playback = _playback([
+        const TrackStep.to(300, motion: spring),
+        const TrackStep.hold(Duration(milliseconds: 400)),
+        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
+      ])
+        ..advanceTo(settle + 0.2);
+      expect(playback.currentStepIndex, 1);
+      expect(playback.values.single, 300);
+      playback.advanceTo(settle + 0.401);
+      expect(playback.currentStepIndex, 2);
     });
 
     test('a trimmed spring lasts until its slice ends', () {
@@ -145,7 +186,11 @@ void main() {
 
     test('a trailing hold follows a settled last motion', () {
       final playback = _playback([
-        const TrackStep.to(300, motion: spring),
+        const TrackStep.to(
+          300,
+          motion: spring,
+          until: StepEnd.duration,
+        ),
         const TrackStep.hold(Duration(milliseconds: 100)),
       ])
         ..advanceTo(settle + 0.2);
@@ -153,11 +198,29 @@ void main() {
       expect(playback.isDone, isTrue);
     });
 
-    test(
-        'a sync barrier is reached after the duration, and waits playing '
-        'the spring out', () {
+    test('a sync barrier is reached once the spring has settled', () {
       final playback = _playback([
         const TrackStep.to(300, motion: spring),
+        const TrackStep.sync(token: #beat),
+        const TrackStep.to(0, motion: CupertinoMotion.snappy()),
+      ])
+        ..advanceTo(settle - 1e-3);
+      expect(playback.isWaitingForSync, isFalse);
+      playback.advanceTo(settle + 0.1);
+      expect(playback.isWaitingForSync, isTrue);
+      expect(playback.pendingSyncArrivalSeconds, closeTo(settle, 1e-5));
+      expect(playback.values.single, 300);
+    });
+
+    test(
+        'ending at the duration, a sync barrier is reached then, and '
+        'waits playing the spring out', () {
+      final playback = _playback([
+        const TrackStep.to(
+          300,
+          motion: spring,
+          until: StepEnd.duration,
+        ),
         const TrackStep.sync(token: #beat),
         const TrackStep.to(0, motion: CupertinoMotion.snappy()),
       ]);
@@ -204,67 +267,121 @@ void main() {
       expect(late.values.single, 0);
       expect(late.isDone, isTrue);
 
-      // A spring before a keyframe hands over after its duration.
-      final spring = _playback([
+      // A spring before a keyframe settles first; here too late, so it is
+      // cut where the keyframe must start.
+      final waits = _playback([
         const TrackStep.to(300, motion: CupertinoMotion.bouncy()),
         const TrackStep.at(Duration(seconds: 2), 0, motion: keyframe),
       ])
         ..advanceTo(2);
-      expect(spring.forwardSegmentSeconds.first, d);
-      expect(spring.values.single, 0);
+      expect(settle, greaterThan(2 - natural));
+      expect(waits.forwardSegmentSeconds.first, closeTo(2 - natural, 1e-6));
+      expect(waits.values.single, 0);
+
+      // Ending at its duration, it leaves the keyframe time to fill the
+      // gap.
+      final atDuration = _playback([
+        const TrackStep.to(
+          300,
+          motion: CupertinoMotion.bouncy(),
+          until: StepEnd.duration,
+        ),
+        const TrackStep.at(Duration(seconds: 2), 0, motion: keyframe),
+      ])
+        ..advanceTo(2);
+      expect(atDuration.forwardSegmentSeconds.first, d);
+      expect(atDuration.values.single, 0);
     });
 
     test('ticking and seeking agree', () {
-      final steps = <TrackStep<double>>[
-        const TrackStep.to(300, motion: spring),
-        const TrackStep.hold(Duration(milliseconds: 150)),
-        const TrackStep.to(-50, motion: CupertinoMotion.snappy()),
-        const TrackStep.at(
-          Duration(seconds: 2),
-          100,
-          motion: CupertinoMotion.smooth(),
-        ),
-        const TrackStep.to(
-          20,
-          motion: Motion.curved(Duration(milliseconds: 400), Curves.easeOut),
-        ),
-      ];
-      for (final loop in [LoopMode.none, LoopMode.pingPong, LoopMode.loop]) {
-        final ticked = _playback(steps, velocity: -800, loop: loop);
-        for (var t = 0.0; t <= 6; t += 1 / 240) {
-          ticked.advanceTo(t);
-          final sought = _playback(steps, velocity: -800, loop: loop)
-            ..advanceTo(t);
-          final reason = '$loop $t';
-          expect(sought.values.single, ticked.values.single, reason: reason);
-          expect(
-            sought.velocities.single,
-            ticked.velocities.single,
-            reason: '$loop $t',
-          );
+      for (final until in StepEnd.values) {
+        final steps = <TrackStep<double>>[
+          TrackStep.to(
+            300,
+            motion: spring,
+            until: until,
+          ),
+          const TrackStep.hold(Duration(milliseconds: 150)),
+          TrackStep.to(
+            -50,
+            motion: const CupertinoMotion.snappy(),
+            until: until,
+          ),
+          const TrackStep.at(
+            Duration(seconds: 2),
+            100,
+            motion: CupertinoMotion.smooth(),
+          ),
+          const TrackStep.to(
+            20,
+            motion: Motion.curved(Duration(milliseconds: 400), Curves.easeOut),
+          ),
+        ];
+        for (final loop in [LoopMode.none, LoopMode.pingPong, LoopMode.loop]) {
+          final ticked = _playback(steps, velocity: -800, loop: loop);
+          for (var t = 0.0; t <= 6; t += 1 / 240) {
+            ticked.advanceTo(t);
+            final sought = _playback(steps, velocity: -800, loop: loop)
+              ..advanceTo(t);
+            final reason = '$until $loop $t';
+            expect(sought.values.single, ticked.values.single, reason: reason);
+            expect(
+              sought.velocities.single,
+              ticked.velocities.single,
+              reason: reason,
+            );
+          }
         }
       }
     });
 
     test('a looping spring plan folds', () {
-      final playback = _playback(
+      final settles = _playback(
         const [
           TrackStep.to(300, motion: spring),
           TrackStep.to(0, motion: spring),
         ],
         loop: LoopMode.loop,
       )..advanceTo(30);
-      // The loop adds a step back to the start.
-      expect(playback.loopPeriodSeconds, closeTo(3 * d, 1e-9));
+      // Each leg settles over the same distance; the step back to the start
+      // is already there.
+      expect(settles.loopPeriodSeconds, closeTo(2 * settle, 1e-5));
+
+      final atDuration = _playback(
+        const [
+          TrackStep.to(
+            300,
+            motion: spring,
+            until: StepEnd.duration,
+          ),
+          TrackStep.to(
+            0,
+            motion: spring,
+            until: StepEnd.duration,
+          ),
+        ],
+        loop: LoopMode.loop,
+      )..advanceTo(30);
+      // The loop adds a step back to the start, which waits to settle.
+      expect(atDuration.loopPeriodSeconds, isNotNull);
     });
 
-    test('untilSettled is part of step equality', () {
+    test('until is part of step equality', () {
       const a = TrackStep<double>.to(1, motion: spring);
-      const b = TrackStep<double>.to(1, motion: spring, untilSettled: true);
+      const b =
+          TrackStep<double>.to(1, motion: spring, until: StepEnd.duration);
       expect(a, isNot(b));
       expect(a.hashCode, isNot(b.hashCode));
-      const same = TrackStep<double>.to(1, motion: spring, untilSettled: true);
+      const same =
+          TrackStep<double>.to(1, motion: spring, until: StepEnd.duration);
       expect(b, same);
+      expect(
+        const TrackStep<double>.free(
+          motion: FrictionMotion(),
+          until: StepEnd.duration,
+        ),
+        isNot(const TrackStep<double>.free(motion: FrictionMotion())),
+      );
     });
   });
 }

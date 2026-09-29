@@ -325,9 +325,9 @@ class TrackController extends Animation<TrackValueReader>
   /// Plays [timeline].
   ///
   /// {@template TrackController.future}
-  /// Returns a [MotionRun] for this call's tracks, whatever other tracks are
+  /// Returns a [MotionFuture] for this call's tracks, whatever other tracks are
   /// still running. Awaiting it waits until all of them have settled;
-  /// [MotionRun.ended] completes once all of them have ended, when the next
+  /// [MotionFuture.ended] completes once all of them have ended, when the next
   /// animation may take over. Like [AnimationController], a later call that
   /// restarts one of these tracks, or a [stop] with `canceled: true` that
   /// halts one, cancels it instead: neither completes, and its
@@ -342,7 +342,7 @@ class TrackController extends Animation<TrackValueReader>
   /// including steps shorter than a frame. It is not called while scrubbing,
   /// or for the internal step that returns a [LoopMode.loop] to its start.
   /// {@endtemplate}
-  MotionRun play(
+  MotionFuture play(
     TrackTimeline timeline, {
     void Function(Track track, int stepIndex)? onStep,
   }) {
@@ -369,7 +369,7 @@ class TrackController extends Animation<TrackValueReader>
   /// Passing an empty list returns an already-complete future.
   ///
   /// {@macro TrackController.onStep}
-  MotionRun animate(
+  MotionFuture animate(
     List<TrackAnimation> animations, {
     LoopMode loop = LoopMode.none,
     void Function(Track track, int stepIndex)? onStep,
@@ -381,7 +381,7 @@ class TrackController extends Animation<TrackValueReader>
     );
   }
 
-  MotionRun _startAnimations({
+  MotionFuture _startAnimations({
     required List<TrackAnimation> animations,
     required LoopMode loop,
     void Function(Track track, int stepIndex)? onStep,
@@ -403,7 +403,7 @@ class TrackController extends Animation<TrackValueReader>
 
     // Naming no tracks is a no-op: tracks not named in this call are left
     // running untouched.
-    if (timelineTracks.isEmpty) return MotionRun.complete();
+    if (timelineTracks.isEmpty) return MotionFuture.complete();
 
     _playbackRevision++;
     _cancelFutures(timelineTracks);
@@ -606,18 +606,18 @@ class TrackController extends Animation<TrackValueReader>
   /// does every targeted track when [canceled] is true. Either way, stopped
   /// tracks keep the direction they were moving in as their status.
   ///
-  /// Returns a [MotionRun] that settles when the settling tracks come to
+  /// Returns a [MotionFuture] that settles when the settling tracks come to
   /// rest, or an already settled one when none settles. Runs of earlier
   /// calls for the stopped tracks are canceled when [canceled] is true, and
   /// otherwise end right away and settle once those tracks come to rest.
-  MotionRun stop({
+  MotionFuture stop({
     List<Track>? tracks,
     bool canceled = false,
   }) {
     return canceled ? _hardStop(tracks) : _gracefulStop(tracks);
   }
 
-  MotionRun _hardStop(List<Track>? tracks) {
+  MotionFuture _hardStop(List<Track>? tracks) {
     _playbackRevision++;
     _cancelFutures(tracks);
     if (tracks == null) {
@@ -648,10 +648,10 @@ class TrackController extends Animation<TrackValueReader>
     }
     notifyListeners();
     _updateStatus();
-    return MotionRun.complete();
+    return MotionFuture.complete();
   }
 
-  MotionRun _gracefulStop(List<Track>? tracks) {
+  MotionFuture _gracefulStop(List<Track>? tracks) {
     _playbackRevision++;
     final targets = tracks ?? _slots.keys.toList();
     for (final track in targets) {
@@ -676,7 +676,7 @@ class TrackController extends Animation<TrackValueReader>
       _ticker?.stop();
       notifyListeners();
       _updateStatus();
-      return MotionRun.complete();
+      return MotionFuture.complete();
     }
 
     // Settling tracks keep running; the (already active) ticker finishes them
@@ -686,7 +686,7 @@ class TrackController extends Animation<TrackValueReader>
         if (_slots[track]?.isAnimating ?? false) track,
     };
     final future =
-        settling.isEmpty ? MotionRun.complete() : _futureFor(settling);
+        settling.isEmpty ? MotionFuture.complete() : _futureFor(settling);
     _startTicker();
     notifyListeners();
     _updateStatus();

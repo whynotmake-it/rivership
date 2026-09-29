@@ -4,6 +4,26 @@ import 'package:motor/src/motion.dart';
 import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/track_phase_timeline.dart';
 
+/// When a [TrackStep.to] or [TrackStep.free] ends, and the next step takes
+/// over.
+///
+/// ```dart
+/// .to(1, motion: m)                   // until: .settled
+/// .to(1, motion: m, until: .duration) // the next step takes over sooner
+/// ```
+enum StepEnd {
+  /// Once the move has settled: at rest and exactly on its target. The next
+  /// step starts from rest. This is the default, as in 1.x and in Motion,
+  /// anime.js and Compose.
+  settled,
+
+  /// After the motion's duration ([Motion.duration], a spring's perceptual
+  /// duration). The next step takes over the current value and velocity
+  /// while a spring is still settling, as SwiftUI's `PhaseAnimator` moves
+  /// between phases. A motion without a duration still waits to settle.
+  duration,
+}
+
 /// A single instruction in a track animation.
 ///
 /// Steps compare by value. Their motions compare by movement, so steps with
@@ -15,17 +35,17 @@ sealed class TrackStep<T extends Object> {
 
   /// Animates to [value] using a target-based [motion].
   ///
-  /// The step lasts the motion's [Motion.duration] (a spring's perceptual
-  /// duration): the next step takes over then, from the current value and
-  /// velocity, while a spring is still settling. The last step plays out
-  /// until it has settled, and so does a step whose motion has no duration.
-  /// Set [untilSettled] to make the next step wait until this one has
-  /// settled ([SettlingSimulation.settlesAt]).
+  /// The step lasts until the move has settled
+  /// ([SettlingSimulation.settlesAt]), as in 1.x and in Motion, anime.js and
+  /// Compose. Then the next step starts from rest.
   ///
-  /// Taking over at the duration mirrors SwiftUI's `PhaseAnimator`, which
-  /// moves to the next phase at the spring's duration and keeps its
-  /// velocity. If you come from Motion, anime.js or Compose, where the next
-  /// animation starts once the previous one has settled, set [untilSettled].
+  /// Pass `until: .duration` ([StepEnd.duration]) to end the step after its
+  /// motion's [Motion.duration] (a spring's perceptual duration) instead:
+  /// the next step takes over then, from the current value and velocity,
+  /// while a spring is still settling. That mirrors SwiftUI's
+  /// `PhaseAnimator`, which moves to the next phase at the spring's duration
+  /// and keeps its velocity. A motion without a duration always waits to
+  /// settle, and so does the last step.
   ///
   /// Provide either a single [motion] (applied to every dimension) or
   /// [motionPerDimension] (one motion per normalized dimension), not both. If
@@ -35,18 +55,23 @@ sealed class TrackStep<T extends Object> {
     T value, {
     Motion? motion,
     List<Motion>? motionPerDimension,
-    bool untilSettled,
+    StepEnd until,
   }) = StepTo<T>;
 
-  /// Runs a self-directed free [motion].
+  /// Runs a self-directed free [motion] until it comes to rest.
+  ///
+  /// Pass `until: .duration` ([StepEnd.duration]) to end the step after the
+  /// motion's [FreeMotion.duration] instead, if it has one, and hand its
+  /// value and velocity to the next step, as [TrackStep.to] does.
   const factory TrackStep.free({
     required FreeMotion motion,
+    StepEnd until,
   }) = StepFree<T>;
 
   /// Waits for [duration] before the next step.
   ///
-  /// It holds the current value. A spring the step before handed over while
-  /// still settling keeps playing out meanwhile.
+  /// It holds the current value. A spring whose step ended at its duration
+  /// keeps settling meanwhile.
   const factory TrackStep.hold(Duration duration) = StepHold<T>;
 
   /// A keyframe that targets [value] at absolute time [at].
@@ -104,15 +129,14 @@ sealed class TrackStep<T extends Object> {
   /// When playback reaches this step, the track holds its current value until
   /// every other active track that shares the same [token] (by `==`) also
   /// reaches a matching sync step. The controller then releases them together,
-  /// so the tracks continue in lockstep. While a track waits, a spring the
-  /// step before handed over while still settling keeps playing out, and the
-  /// step after the barrier starts from where it is at the release.
+  /// so the tracks continue in lockstep. While a track waits, a spring whose
+  /// step ended at its duration keeps settling, and the step after the
+  /// barrier starts from where it is at the release.
   ///
   /// {@template motor.TrackStep.sync.arrival}
-  /// A track arrives once the step before the barrier has ended, after its
-  /// motion's [Motion.duration]. A spring keeps settling while it
-  /// waits. To arrive only once it has settled, set `untilSettled` on that
-  /// step; a motion without a duration always waits to settle.
+  /// A track arrives once the step before the barrier has ended: by default
+  /// once it has settled, or with `until: .duration` after its motion's
+  /// [Motion.duration], while a spring keeps settling as it waits.
   /// {@endtemplate}
   ///
   /// Use this to keep independent tracks aligned at key moments without
@@ -128,7 +152,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
     this.value, {
     this.motion,
     this.motionPerDimension,
-    this.untilSettled = false,
+    this.until = StepEnd.settled,
   }) : assert(
           motion == null || motionPerDimension == null,
           'Provide either motion or motionPerDimension, not both.',
@@ -148,10 +172,10 @@ class StepTo<T extends Object> extends TrackStep<T> {
   /// by this list, so don't modify it after passing it in.
   final List<Motion>? motionPerDimension;
 
-  /// Whether the next step waits until this one has settled, instead of
-  /// taking over after the motion's [Motion.duration], as SwiftUI's
-  /// `PhaseAnimator` does. Defaults to false.
-  final bool untilSettled;
+  /// When this step ends and the next one takes over: once it has settled
+  /// ([StepEnd.settled], the default), or after its motion's
+  /// [Motion.duration] ([StepEnd.duration]).
+  final StepEnd until;
 
   @override
   bool operator ==(Object other) =>
@@ -161,7 +185,7 @@ class StepTo<T extends Object> extends TrackStep<T> {
           other.value == value &&
           other.motion == motion &&
           listEquals(other.motionPerDimension, motionPerDimension) &&
-          other.untilSettled == untilSettled;
+          other.until == until;
 
   @override
   int get hashCode => Object.hash(
@@ -169,13 +193,13 @@ class StepTo<T extends Object> extends TrackStep<T> {
         value,
         motion,
         _hashList(motionPerDimension),
-        untilSettled,
+        until,
       );
 
   @override
   String toString() => '${objectRuntimeType(this, 'StepTo')}($value, '
       '${_describeMotion(motion, motionPerDimension)}'
-      '${untilSettled ? ', untilSettled' : ''})';
+      '${until == StepEnd.duration ? ', until: duration' : ''})';
 }
 
 /// A step that runs a self-directed motion.
@@ -184,23 +208,31 @@ class StepFree<T extends Object> extends TrackStep<T> {
   /// Creates a free-motion step.
   const StepFree({
     required this.motion,
+    this.until = StepEnd.settled,
   });
 
   /// The free motion to run.
   final FreeMotion motion;
+
+  /// When this step ends and the next one takes over: once it has come to
+  /// rest ([StepEnd.settled], the default), or after the motion's
+  /// [FreeMotion.duration] ([StepEnd.duration]).
+  final StepEnd until;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is StepFree<T> &&
           other.runtimeType == runtimeType &&
-          other.motion == motion;
+          other.motion == motion &&
+          other.until == until;
 
   @override
-  int get hashCode => Object.hash(runtimeType, motion);
+  int get hashCode => Object.hash(runtimeType, motion, until);
 
   @override
-  String toString() => '${objectRuntimeType(this, 'StepFree')}($motion)';
+  String toString() => '${objectRuntimeType(this, 'StepFree')}($motion'
+      '${until == StepEnd.duration ? ', until: duration' : ''})';
 }
 
 /// A step that holds the current value.

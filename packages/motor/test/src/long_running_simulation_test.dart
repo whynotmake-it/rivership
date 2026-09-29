@@ -436,7 +436,7 @@ void main() {
         duration: const Duration(milliseconds: 300),
       );
       final playback = _playback([
-        TrackStep.to(1, motion: motion),
+        TrackStep.to(1, motion: motion, until: StepEnd.duration),
         const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
       ])
         ..advanceTo(2);
@@ -449,6 +449,7 @@ void main() {
         const [
           TrackStep.free(
             motion: _ReportedDrift(duration: Duration(milliseconds: 500)),
+            until: StepEnd.duration,
           ),
           TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
         ],
@@ -531,8 +532,8 @@ void main() {
     // An undamped spring hands over mid-swing, so no two cycles start in the
     // same state and the loop can't fold into a period.
     final steps = [
-      const TrackStep<double>.to(1, motion: _undamped),
-      const TrackStep<double>.to(0, motion: _undamped),
+      const TrackStep<double>.to(1, motion: _undamped, until: StepEnd.duration),
+      const TrackStep<double>.to(0, motion: _undamped, until: StepEnd.duration),
     ];
 
     test('one jump far ahead shows what ticking there shows', () {
@@ -623,7 +624,7 @@ void main() {
     test('a scaled never-settling step still hands over at its duration', () {
       final scaled = _undamped.scaleTo(const Duration(milliseconds: 250));
       final playback = _playback([
-        TrackStep.to(1, motion: scaled),
+        TrackStep.to(1, motion: scaled, until: StepEnd.duration),
         const TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
       ])
         // A curve is done just after its duration.
@@ -698,8 +699,8 @@ void main() {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
       const steps = [
-        TrackStep<double>.to(1, motion: _undamped),
-        TrackStep<double>.to(0, motion: _undamped),
+        TrackStep<double>.to(1, motion: _undamped, until: StepEnd.duration),
+        TrackStep<double>.to(0, motion: _undamped, until: StepEnd.duration),
       ];
       unawaited(
         controller

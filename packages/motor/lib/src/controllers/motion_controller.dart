@@ -313,13 +313,13 @@ class MotionController<T extends Object> extends Animation<T>
   /// If [withVelocity] is provided, the animation will start with that velocity
   /// instead of [velocity].
   ///
-  /// Like [AnimationController], the returned [MotionRun] completes when this
-  /// animation has settled, or when [value] is set during it. Its
-  /// [MotionRun.ended] completes earlier, once the motion's `duration` has
-  /// elapsed, when a following animation may take over, as the next step of
-  /// a plan does. Starting another animation or stopping with
-  /// `canceled: true` cancels both.
-  MotionRun animateTo(
+  /// Like [AnimationController], the returned [MotionFuture] completes when
+  /// this animation has settled, or when [value] is set during it. Its
+  /// [MotionFuture.ended] completes earlier, once the motion's `duration` has
+  /// elapsed, when a following animation may take over, as the next step
+  /// after one with `until: .duration` does. Starting another animation or
+  /// stopping with `canceled: true` cancels both.
+  MotionFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
@@ -349,15 +349,15 @@ class MotionController<T extends Object> extends Animation<T>
   /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
   /// controller's [motionPerDimension].
   ///
-  /// The returned [MotionRun] ends when the last step's length has elapsed
+  /// The returned [MotionFuture] ends when the last step's length has elapsed
   /// and completes when playback has settled. Looping playback runs until
   /// [stop], [animateTo], or [value] interrupts it.
-  MotionRun play(
+  MotionFuture play(
     List<TrackStep<T>> steps, {
     LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {
-    if (steps.isEmpty) return MotionRun.complete();
+    if (steps.isEmpty) return MotionFuture.complete();
 
     _lastTarget = null;
     _reversing = false;
@@ -381,12 +381,12 @@ class MotionController<T extends Object> extends Animation<T>
               motion: null,
               motionPerDimension: null,
               :final value,
-              :final untilSettled,
+              :final until,
             ) =>
               TrackStep.to(
                 value,
                 motionPerDimension: _motionPerDimension,
-                untilSettled: untilSettled,
+                until: until,
               ),
             StepAt<T>(
               motion: null,
@@ -410,7 +410,7 @@ class MotionController<T extends Object> extends Animation<T>
   /// [play], for the motion of the running step.
   ///
   /// Either way, [status] keeps the direction it was moving in.
-  MotionRun stop({bool canceled = false}) {
+  MotionFuture stop({bool canceled = false}) {
     if (canceled) return _inner.stop(canceled: true);
     if (!isAnimating || _motionPerDimension.every((e) => !e.needsSettle)) {
       return _inner.stop();
@@ -420,7 +420,7 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// Runs [start], the animation that settles a graceful stop, keeping the
   /// direction the controller was moving in as its status.
-  MotionRun _settle(MotionRun Function() start) {
+  MotionFuture _settle(MotionFuture Function() start) {
     final movingDown = _inner.internalMovingDown(_track);
     final reversing = _reversing;
     final future = start();
@@ -551,7 +551,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }
 
   @override
-  MotionRun animateTo(
+  MotionFuture animateTo(
     T target, {
     T? from,
     T? withVelocity,
@@ -559,7 +559,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
       super.animateTo(_clamp(target), from: from, withVelocity: withVelocity);
 
   /// Animates towards [upperBound].
-  MotionRun forward({
+  MotionFuture forward({
     T? from,
     T? withVelocity,
   }) =>
@@ -567,7 +567,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
 
   /// Animates towards [lowerBound], reporting [AnimationStatus.reverse]
   /// while running, even when [converter] has no direction.
-  MotionRun reverse({
+  MotionFuture reverse({
     T? from,
     T? withVelocity,
   }) {
@@ -576,7 +576,7 @@ class BoundedMotionController<T extends Object> extends MotionController<T> {
   }
 
   @override
-  MotionRun stop({bool canceled = false}) {
+  MotionFuture stop({bool canceled = false}) {
     if (canceled ||
         !isAnimating ||
         motionPerDimension.every((e) => !e.needsSettle)) {

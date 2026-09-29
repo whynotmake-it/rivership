@@ -13,9 +13,10 @@ import 'package:motor/src/track_timeline.dart';
 /// a single [TrackTimeline] with [StepSync] barriers inserted at phase
 /// boundaries so all tracks advance together.
 ///
-/// The next phase starts once every track has reached the end of its last
-/// step: after the step's `Motion.duration`, while a spring keeps settling.
-/// Set `untilSettled` on a step to wait until it has settled.
+/// The next phase starts once every track's last step has ended: by
+/// default once it has settled. Give a step `until: .duration` to move on
+/// after its motion's duration instead, while a spring keeps settling, as
+/// SwiftUI's `PhaseAnimator` does.
 ///
 /// ```dart
 /// final timeline = TrackPhaseTimeline<Phase>({
