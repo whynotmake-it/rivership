@@ -1,6 +1,9 @@
-// ignore_for_file: cascade_invocations
+// ignore_for_file: cascade_invocations, unawaited_futures
+
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 
@@ -8,6 +11,100 @@ import 'fuzz_support.dart';
 
 /// Minimal reproductions of bugs the adversarial fuzzers found.
 void main() {
+  group('TrackController', () {
+    final a = Track<double>(MotionConverter.single, initial: 0);
+    final b = Track<double>(MotionConverter.single, initial: 0);
+    final timeline = TrackTimeline(
+      [
+        a([
+          const TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 50)),
+          ),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(
+            0,
+            motion: Motion.linear(Duration(milliseconds: 50)),
+          ),
+        ]),
+        b([
+          const TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 30)),
+          ),
+          const TrackStep.sync(token: #meet),
+          const TrackStep.to(
+            0,
+            motion: Motion.linear(Duration(milliseconds: 70)),
+          ),
+        ]),
+      ],
+      loop: LoopMode.loop,
+    );
+
+    testWidgets(
+      'one long frame through many barrier rounds shows what ticking shows',
+      (tester) async {
+        final ticked = TrackController(vsync: tester)..play(timeline);
+        addTearDown(ticked.dispose);
+        final jumped = TrackController(vsync: tester)..play(timeline);
+        addTearDown(jumped.dispose);
+        await tester.pump();
+        jumped.pause();
+        // 60 fps for 30 s: 300 cycles of 100 ms, one barrier round each.
+        for (var i = 0; i < 1800; i++) {
+          await tester.pump(const Duration(microseconds: 16667));
+        }
+        final position = ticked.inspectPlayback().position;
+        jumped.scrubTo(position);
+
+        expect(jumped.value(a), closeTo(ticked.value(a), 1e-9));
+        expect(jumped.value(b), closeTo(ticked.value(b), 1e-9));
+        ticked.stop(canceled: true);
+      },
+      // Needs a decision: TrackController._advanceTracks releases at most
+      // _maxBarrierPasses (100) barrier rounds per frame or scrub, counting
+      // rounds that take time too. A longer jump (a muted ticker, a scrub)
+      // leaves tracks waiting at a barrier in the past, showing stale
+      // values, and later frames or scrubs to the same time show other
+      // values. See docs/adversarial-engine-tests.md.
+      skip: true,
+    );
+
+    testWidgets(
+      'setting a looping track leaves its future unsettled',
+      (tester) async {
+        final controller = TrackController(vsync: tester);
+        addTearDown(controller.dispose);
+        final events = <String>[];
+        final future = controller.animate(
+          [a.to(1, motion: const Motion.linear(Duration(milliseconds: 100)))],
+          loop: LoopMode.pingPong,
+        );
+        unawaited(future.ended.then((_) => events.add('ended')));
+        unawaited(
+          future.orCancel.then(
+            (_) => events.add('settled'),
+            onError: (Object _) => events.add('canceled'),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 150));
+        controller.set([a.value(0.5)]);
+        await tester.pump(const Duration(milliseconds: 16));
+        await tester.pump(const Duration(milliseconds: 16));
+
+        expect(events, ['canceled']);
+      },
+      // Needs a decision: set() stops the track without canceling its
+      // future, so the next frame settles it as if it had come to rest,
+      // though loops never end or settle. AnimationController's value
+      // setter cancels its TickerFuture. See
+      // docs/adversarial-engine-tests.md.
+      skip: true,
+    );
+  });
+
   group('StepPlayback', () {
     test('a seek to an exact step boundary shows what playback showed', () {
       // The boundaries fall where rounding makes `end - start` a hair less
