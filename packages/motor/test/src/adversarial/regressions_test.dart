@@ -72,6 +72,85 @@ void main() {
     );
 
     testWidgets(
+      'a keyframe in a later phase lands the same however the phase starts',
+      (tester) async {
+        final timeline = TrackPhaseTimeline<int>({
+          0: [
+            a.to(1, motion: const Motion.linear(Duration(milliseconds: 300))),
+          ],
+          1: [
+            a([
+              const TrackStep.at(
+                Duration(milliseconds: 200),
+                2,
+                motion: Motion.linear(Duration(milliseconds: 100)),
+              ),
+            ]),
+          ],
+        });
+        final played = PhaseTrackController<int>(vsync: tester);
+        addTearDown(played.dispose);
+        played.playPhases(timeline);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 310));
+        expect(played.currentPhase, 1);
+        await tester.pump(const Duration(milliseconds: 90));
+
+        final jumped = PhaseTrackController<int>(vsync: tester);
+        addTearDown(jumped.dispose);
+        jumped
+          ..set([a.value(1)])
+          ..setTimeline(timeline)
+          ..goToPhase(1);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Played through, the keyframe counts from the start of the whole
+        // timeline, so it has passed and the step runs late (2 here);
+        // jumped to, it counts from the phase start (1.5 here).
+        expect(played.value(a), closeTo(jumped.value(a), 1e-6));
+        await tester.pumpAndSettle();
+      },
+      // Needs a decision: phases are flattened into one plan, so a `.at` in a
+      // later phase is measured from the start of the timeline when played
+      // through, but from the phase start after goToPhase or
+      // playPhases(atPhase:). The timeline docs don't say which is meant.
+      // See docs/adversarial-engine-tests.md.
+      skip: true,
+    );
+
+    testWidgets(
+      'a keyframe in a later phase after long holds does not assert',
+      (tester) async {
+        final controller = PhaseTrackController<int>(vsync: tester);
+        addTearDown(controller.dispose);
+        controller.playPhases(
+          TrackPhaseTimeline<int>({
+            0: [
+              a(const [TrackStep.hold(Duration(milliseconds: 500))]),
+            ],
+            1: [
+              a(const [
+                TrackStep.at(
+                  Duration(milliseconds: 200),
+                  2,
+                  motion: Motion.linear(Duration(milliseconds: 100)),
+                ),
+              ]),
+            ],
+          }),
+        );
+        await tester.pumpAndSettle();
+        expect(controller.value(a), 2);
+      },
+      // Needs a decision, same cause as the previous test: the flattened
+      // plan's `.at(200ms)` comes after 500 ms of holds, which StepPlayback
+      // asserts is going back in time, from inside playPhases (or a
+      // PhaseTrackBuilder's build).
+      skip: true,
+    );
+
+    testWidgets(
       'setting a looping track leaves its future unsettled',
       (tester) async {
         final controller = TrackController(vsync: tester);

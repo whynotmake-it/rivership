@@ -182,12 +182,16 @@ final class PlanGenerator {
     required this.loop,
     this.tokens = const [#barrier],
     this.maxSteps = 6,
+    this.keyframes = true,
   });
 
   final math.Random random;
   final LoopMode loop;
   final List<Object> tokens;
   final int maxSteps;
+
+  /// Whether to include `.at` steps.
+  final bool keyframes;
 
   late final _targets = targetMotions.keys.toList();
   late final _frees = freeMotions.keys.toList();
@@ -266,7 +270,7 @@ final class PlanGenerator {
           final microseconds = pick([0, 1, 30000, 120000]);
           earliest += microseconds / 1e6;
           steps.add(TrackStep.hold(Duration(microseconds: microseconds)));
-        case 4 || 5:
+        case 4 || 5 when keyframes:
           // Sometimes at the same time as the previous keyframe, or as soon
           // as the holds before it allow.
           final at = switch (random.nextInt(4)) {
@@ -513,6 +517,10 @@ class _Integrating extends Simulation {
       ..add((_x, _v));
   }
 
+  /// The step at which it came to rest, once integration got there; it
+  /// stays at rest.
+  int? _restStep;
+
   void _integrateTo(double time) {
     final target = (time / _step).floor();
     if (target < _steps) {
@@ -522,13 +530,20 @@ class _Integrating extends Simulation {
       _v = v;
       _steps = checkpoint * 8;
     }
-    while (_steps < target) {
+    // Past where it came to rest, nothing is left to integrate.
+    final restStep = _restStep;
+    final last = restStep == null ? target : math.min(target, restStep);
+    while (_steps < last) {
       final a = -_stiffness * (_x - end) - _damping * _v;
       _v += a * _step;
       _x += _v * _step;
       _steps++;
       if (_steps % 8 == 0 && _steps ~/ 8 == _checkpoints.length) {
         _checkpoints.add((_x, _v));
+      }
+      if (_restStep == null && (_x - end).abs() < 1e-3 && _v.abs() < 1e-2) {
+        _restStep = _steps;
+        break;
       }
     }
   }
@@ -549,8 +564,10 @@ class _Integrating extends Simulation {
 
   @override
   bool isDone(double time) {
+    final step = (time / _step).floor();
+    if (_restStep case final rest? when step >= rest) return true;
     _integrateTo(time);
-    return (_x - end).abs() < 1e-3 && _v.abs() < 1e-2;
+    return _restStep != null && step >= _restStep!;
   }
 }
 
