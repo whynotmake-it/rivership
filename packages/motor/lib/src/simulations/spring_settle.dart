@@ -74,6 +74,7 @@ double? springSettleSeconds(
   final c = spring.damping;
   if (!(m > 0 && k > 0 && c > 0)) return null;
   final distance = start - end;
+  if (!distance.isFinite || !velocity.isFinite) return null;
 
   final _Form x;
   final _Form v;
@@ -235,6 +236,8 @@ class _Underdamped extends _Form {
   double lastAtLeast(double tol) {
     final magnitude = math.sqrt(p * p + q * q);
     if (magnitude == 0) return 0;
+    // Overflows for moves far beyond what a double can square.
+    if (!magnitude.isFinite) return double.infinity;
     final a = -r;
     final theta = math.atan2(q, p);
     final psi = math.atan2(w, a);
