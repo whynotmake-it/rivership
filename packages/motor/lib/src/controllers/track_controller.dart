@@ -1225,6 +1225,12 @@ class TrackController extends Animation<TrackValueReader>
       }
       if (!_releaseArrivedBarriers(now, anchorFrames: !scrubbing)) break;
     }
+    // An onStep callback may have started playback after its track was
+    // ticked.
+    if (allDone) {
+      allDone =
+          !_activeTracks.any((track) => _slots[track]?.isAnimating ?? false);
+    }
     return allDone;
   }
 
