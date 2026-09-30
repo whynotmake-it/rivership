@@ -1,8 +1,14 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion_converter.dart';
 import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// A function that builds a widget based on the current phase and interpolated
 /// value.
@@ -25,15 +31,15 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// ```dart
 /// enum ButtonState { idle, pressed, loading }
 ///
-/// final sequence = MotionSequence.states({
-///   ButtonState.idle: Offset(100, 40),
-///   ButtonState.pressed: Offset(95, 38),
-///   ButtonState.loading: Offset(40, 40),
-/// }, motion: Motion.smoothSpring());
+/// final sequence = MotionSequence<ButtonState, Offset>.states({
+///   .idle: Offset(100, 40),
+///   .pressed: Offset(95, 38),
+///   .loading: Offset(40, 40),
+/// }, motion: .smoothSpring());
 ///
 /// SequenceMotionBuilder(
 ///   sequence: sequence,
-///   converter: MotionConverter.offset,
+///   converter: .offset,
 ///   playing: true, // Auto-progress through phases
 ///   onTransition: (transition) {
 ///     // Handle phase transitions
@@ -56,18 +62,30 @@ typedef SequenceWidgetBuilder<P, T extends Object> = Widget Function(
 /// )
 /// ```
 /// {@endtemplate}
+@Deprecated(
+  'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+  'See MIGRATION.md. '
+  'SequenceMotionBuilder will be removed in motor 3.0.',
+)
 class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// {@macro SequenceMotionBuilder}
+  @Deprecated(
+    'Use PhaseTrackBuilder with a TrackPhaseTimeline instead. '
+    'See MIGRATION.md. '
+    'SequenceMotionBuilder will be removed in motor 3.0.',
+  )
   const SequenceMotionBuilder({
     required this.sequence,
     required this.converter,
     required this.builder,
+    this.velocityTracking = const VelocityTracking.on(),
     this.playing = true,
     this.currentPhase,
     this.onTransition,
     this.onAnimationStatusChanged,
     this.child,
     this.restartTrigger,
+    this.tickerRate,
     super.key,
   });
 
@@ -79,6 +97,9 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
 
   /// The builder function that creates the widget tree.
   final SequenceWidgetBuilder<P, T> builder;
+
+  /// {@macro motor.velocityTracking}
+  final VelocityTracking velocityTracking;
 
   /// Whether to automatically progress through the sequence.
   ///
@@ -106,14 +127,24 @@ class SequenceMotionBuilder<P, T extends Object> extends StatefulWidget {
   /// Useful for triggering replays without rebuilding the widget.
   final Object? restartTrigger;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<SequenceMotionBuilder<P, T>> createState() =>
       _SequenceMotionBuilderState<P, T>();
 }
 
 class _SequenceMotionBuilderState<P, T extends Object>
-    extends State<SequenceMotionBuilder<P, T>> with TickerProviderStateMixin {
+    extends State<SequenceMotionBuilder<P, T>>
+    with TickerProviderStateMixin, TickerRateStateMixin {
   late SequenceMotionController<P, T> _controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => _controller.resync(this);
   P? _previousPhase;
 
   @override
@@ -122,14 +153,18 @@ class _SequenceMotionBuilderState<P, T extends Object>
 
     // Create controller once, like BaseMotionBuilder
     final initialPhase = widget.currentPhase ?? widget.sequence.initialPhase;
-    _controller = SequenceMotionController<P, T>(
-      motion: widget.sequence.motionForPhase(
-        fromPhase: initialPhase,
-        toPhase: initialPhase,
+    _controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => SequenceMotionController<P, T>(
+        motion: widget.sequence.motionForPhase(
+          fromPhase: initialPhase,
+          toPhase: initialPhase,
+        ),
+        vsync: this,
+        converter: widget.converter,
+        initialValue: _getInitialValue(),
+        velocityTracking: widget.velocityTracking,
       ),
-      vsync: this,
-      converter: widget.converter,
-      initialValue: _getInitialValue(),
     )..addListener(_onControllerUpdate);
 
     // Add status listener if provided
@@ -146,6 +181,9 @@ class _SequenceMotionBuilderState<P, T extends Object>
   @override
   void didUpdateWidget(SequenceMotionBuilder<P, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
+    _controller.internalInnerController.velocityTracking =
+        widget.velocityTracking;
 
     // Handle status listener changes
     if (widget.onAnimationStatusChanged != oldWidget.onAnimationStatusChanged) {

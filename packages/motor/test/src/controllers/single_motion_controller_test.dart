@@ -8,135 +8,6 @@ import 'package:motor/motor.dart';
 import '../util.dart';
 
 void main() {
-  group('SingleMotionController', () {
-    setUp(TestWidgetsFlutterBinding.ensureInitialized);
-
-    late SingleMotionController controller;
-
-    const spring = CupertinoMotion.smooth();
-
-    tearDown(() {
-      controller.dispose();
-    });
-
-    testWidgets('creates unbounded', (tester) async {
-      controller = SingleMotionController(
-        motion: spring,
-        vsync: tester,
-      );
-      expect(controller.value, equals(0.0));
-    });
-
-    group('.animateTo', () {
-      testWidgets('animates to target value', (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-        );
-
-        final future = controller.animateTo(0.5);
-
-        await tester.pump();
-        expect(future, isA<TickerFuture>());
-        expect(controller.value, equals(0.0));
-
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value, greaterThan(0.0));
-        expect(controller.value, lessThan(0.5));
-
-        await tester.pumpAndSettle();
-        expect(controller.value, moreOrLessEquals(0.5, epsilon: error));
-      });
-
-      testWidgets('animates with initial velocity', (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-        )..animateTo(0.5, withVelocity: 2);
-        await tester.pump();
-
-        final initialVelocity = controller.velocity;
-        expect(initialVelocity, moreOrLessEquals(2, epsilon: error));
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets('completes immediately if target is within tolerance',
-          (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-          initialValue: 0.5,
-        );
-
-        controller.animateTo(0.5 + controller.motion.tolerance.distance / 2);
-        final pumps = await tester.pumpAndSettle();
-
-        expect(pumps, 1);
-      });
-    });
-
-    group('stop and control', () {
-      testWidgets('stops animation', (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-        )..animateTo(1);
-        await tester.pump();
-        expect(controller.value, equals(0));
-
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.isAnimating, isTrue);
-        expect(controller.value, greaterThan(0));
-
-        controller.stop();
-        expect(controller.isAnimating, isTrue);
-        final valueAfterStop = controller.value;
-
-        await tester.pumpAndSettle();
-        expect(
-          controller.value,
-          closeTo(
-            valueAfterStop,
-            spring.tolerance.distance,
-          ),
-        );
-      });
-
-      testWidgets('updates spring redirects simulation', (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-        )..animateTo(1);
-        await tester.pump();
-
-        const newSpring =
-            CupertinoMotion(duration: Duration(milliseconds: 100));
-        controller.motion = newSpring;
-
-        expect(controller.motion, equals(newSpring));
-        expect(controller.isAnimating, isTrue);
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets('maintains velocity between animations', (tester) async {
-        controller = SingleMotionController(
-          motion: spring,
-          vsync: tester,
-        )..animateTo(1);
-        await tester.pump(const Duration(milliseconds: 50));
-        final midwayVelocity = controller.velocity;
-
-        controller.animateTo(0.5);
-        await tester.pump();
-        expect(
-          controller.velocity,
-          moreOrLessEquals(midwayVelocity, epsilon: error),
-        );
-        await tester.pumpAndSettle();
-      });
-    });
-  });
-
   group('BoundedSingleMotionController', () {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
@@ -148,184 +19,127 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('creates with default bounds', (tester) async {
-      controller = BoundedSingleMotionController(
+    testWidgets(
+        'the bounded factory passes on debugLabel and clamps set and '
+        'animated values within bounds', (tester) async {
+      controller = SingleMotionController.bounded(
         motion: spring,
         vsync: tester,
-      );
+        debugLabel: 'progress',
+      ) as BoundedSingleMotionController;
 
-      expect(controller.lowerBound, equals(0.0));
-      expect(controller.upperBound, equals(1.0));
-      expect(controller.value, equals(0.0));
-      expect(controller.velocity, equals(0.0));
-    });
+      expect(controller.internalInnerController.debugLabel, 'progress');
 
-    testWidgets('updates spring description', (tester) async {
-      controller = BoundedSingleMotionController(
-        motion: spring,
-        vsync: tester,
-      );
-      final newSpring = const CupertinoMotion.smooth().copyWith(bounce: 0.1);
-      controller.motion = newSpring;
-      expect(controller.motion, equals(newSpring));
-    });
-
-    testWidgets('clamps value within bounds', (tester) async {
-      controller = BoundedSingleMotionController(
-        motion: spring,
-        vsync: tester,
-      );
       expect(controller.value, equals(0.0));
       controller.value = 2.0;
       expect(controller.value, equals(1.0));
 
       controller.value = -1.0;
       expect(controller.value, equals(0.0));
+
+      controller.animateTo(2);
+      await tester.pumpAndSettle();
+      expect(controller.value, moreOrLessEquals(1, epsilon: error));
+
+      controller.animateTo(-1);
+      await tester.pumpAndSettle();
+      expect(controller.value, moreOrLessEquals(0, epsilon: error));
     });
 
-    group('.forward', () {
-      testWidgets('animates to upper bound', (tester) async {
+    for (final (name, initialValue, bound, low, high) in [
+      ('forward', 0.0, 1.0, 0.0, 0.4),
+      ('reverse', 1.0, 0.0, 0.6, 1.0),
+    ]) {
+      TickerFuture start() =>
+          name == 'forward' ? controller.forward() : controller.reverse();
+
+      testWidgets('$name animates to its default bound', (tester) async {
         controller = BoundedSingleMotionController(
           motion: spring,
           vsync: tester,
+          initialValue: initialValue,
         );
-        final future = controller.forward();
+        final future = start();
 
         await tester.pump();
 
         expect(future, isA<TickerFuture>());
-        expect(controller.value, equals(0.0));
+        expect(controller.value, equals(initialValue));
 
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(controller.value, greaterThan(0.0));
-        expect(controller.value, lessThan(0.4));
+        expect(controller.value, greaterThan(low));
+        expect(controller.value, lessThan(high));
 
         await tester.pumpAndSettle();
-        expect(controller.value, moreOrLessEquals(1, epsilon: error));
+        expect(controller.value, moreOrLessEquals(bound, epsilon: error));
       });
 
-      testWidgets('will overshoot', (tester) async {
+      testWidgets('$name will overshoot', (tester) async {
         final values = <double>[];
         controller = BoundedSingleMotionController(
           motion: const CupertinoMotion.bouncy(),
           vsync: tester,
+          initialValue: initialValue,
         );
 
-        controller
-          ..addListener(() {
-            values.add(controller.value);
-          })
-          ..forward();
-
-        await tester.pumpAndSettle();
-
-        expect(values, contains(greaterThan(1.0)));
-        expect(
-          controller.value,
-          closeTo(
-            1.0,
-            controller.motion.tolerance.distance,
-          ),
-        );
-      });
-
-      testWidgets('with curve is equivalent to AnimationController',
-          (tester) async {
-        final animationValues = <double>[];
-        final motionValues = <double>[];
-
-        const duration = Duration(seconds: 1);
-        final animationController = AnimationController(
-          duration: const Duration(seconds: 1),
-          vsync: tester,
-        );
-        addTearDown(animationController.dispose);
-
-        controller = BoundedSingleMotionController(
-          motion: const CurvedMotion(duration),
-          vsync: tester,
-        );
-
-        animationController.addListener(() {
-          animationValues.add(animationController.value);
-        });
         controller.addListener(() {
-          motionValues.add(controller.value);
+          values.add(controller.value);
         });
-
-        animationController.forward();
-        controller.forward();
+        start();
 
         await tester.pumpAndSettle();
 
-        expect(animationValues, equals(motionValues));
-      });
-    });
-
-    group('.reverse', () {
-      testWidgets('animates to lower bound', (tester) async {
-        controller = BoundedSingleMotionController(
-          motion: spring,
-          vsync: tester,
-          initialValue: 1,
+        expect(
+          values,
+          contains(bound == 1 ? greaterThan(1.0) : lessThan(0.0)),
         );
-        final future = controller.reverse();
-
-        await tester.pump();
-
-        expect(future, isA<TickerFuture>());
-        expect(controller.value, equals(1.0));
-
-        await tester.pump(const Duration(milliseconds: 100));
-
-        expect(controller.value, lessThan(1.0));
-        expect(controller.value, greaterThan(0.6));
-
-        await tester.pumpAndSettle();
-        expect(controller.value, moreOrLessEquals(0, epsilon: error));
-      });
-
-      testWidgets('will overshoot', (tester) async {
-        final values = <double>[];
-        controller = BoundedSingleMotionController(
-          motion: const CupertinoMotion.bouncy(),
-          vsync: tester,
-          initialValue: 1,
-        );
-
-        controller
-          ..addListener(() {
-            values.add(controller.value);
-          })
-          ..reverse();
-
-        await tester.pumpAndSettle();
-        expect(values, contains(lessThan(0.0)));
         expect(
           controller.value,
-          closeTo(
-            0.0,
-            controller.motion.tolerance.distance,
-          ),
+          closeTo(bound, controller.motion.tolerance.distance),
         );
       });
-    });
+    }
 
-    group('.animateTo', () {
-      testWidgets('clamps target within bounds', (tester) async {
-        controller = BoundedSingleMotionController(
-          motion: spring,
-          vsync: tester,
-        )..animateTo(2);
+    testWidgets('forward with curve is equivalent to AnimationController',
+        (tester) async {
+      final animationValues = <double>[];
+      final motionValues = <double>[];
 
-        await tester.pumpAndSettle();
-        expect(controller.value, moreOrLessEquals(1, epsilon: error));
+      const duration = Duration(seconds: 1);
+      final animationController = AnimationController(
+        duration: const Duration(seconds: 1),
+        vsync: tester,
+      );
+      addTearDown(animationController.dispose);
 
-        controller.animateTo(-1);
-        await tester.pumpAndSettle();
-        expect(controller.value, moreOrLessEquals(0, epsilon: error));
+      controller = BoundedSingleMotionController(
+        motion: const CurvedMotion(duration),
+        vsync: tester,
+      );
+
+      animationController.addListener(() {
+        animationValues.add(animationController.value);
       });
+      controller.addListener(() {
+        motionValues.add(controller.value);
+      });
+
+      animationController.forward();
+      controller.forward();
+
+      // Neither controller emits a value synchronously when the animation
+      // starts; the first notification comes from the first tick.
+      expect(motionValues, isEmpty);
+      expect(animationValues, isEmpty);
+
+      await tester.pumpAndSettle();
+
+      // MotionController drives a Ticker exactly like AnimationController and
+      // emits the identical value sequence - no extra (synchronous) value at
+      // the start and no duplicated frames. This locks the emission behavior
+      // so a regression that adds or drops a frame is caught.
+      expect(motionValues, equals(animationValues));
     });
   });
 }

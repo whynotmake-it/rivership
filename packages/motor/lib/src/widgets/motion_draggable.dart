@@ -2,6 +2,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// A widget that works like [Draggable] but with a [Motion]-based animation
 /// upon return.
@@ -61,8 +63,13 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter,
     this.feedbackMatchesConstraints = false,
+    this.debugLabel,
+    this.tickerRate,
     super.key,
   });
+
+  /// {@macro motor.debugLabel}
+  final String? debugLabel;
 
   /// The data that will be dropped by this draggable.
   final T? data;
@@ -263,15 +270,24 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Defaults to false.
   final bool feedbackMatchesConstraints;
 
+  /// {@macro motor.tickerRate}
+  final TickerRate? tickerRate;
+
   @override
   State<MotionDraggable> createState() => _MotionDraggableState();
 }
 
 class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, TickerRateStateMixin {
   bool isReturning = false;
 
   late final MotionController<Offset> controller;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => controller.resync(this);
 
   OverlayEntry? currentEntry;
 
@@ -281,11 +297,15 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
 
   @override
   void initState() {
-    controller = MotionController(
-      motion: widget.motion,
-      vsync: this,
-      converter: const OffsetMotionConverter(),
-      initialValue: Offset.zero,
+    controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => MotionController(
+        motion: widget.motion,
+        vsync: this,
+        converter: const OffsetMotionConverter(),
+        initialValue: Offset.zero,
+        debugLabel: widget.debugLabel,
+      ),
     );
     controller.addListener(_redirectReturn);
     super.initState();
@@ -296,6 +316,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     if (widget.motion != oldWidget.motion) {
       controller.motion = widget.motion;
     }
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
     super.didUpdateWidget(oldWidget);
   }
 
@@ -391,13 +412,19 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     }
 
     if (context.findRenderObject() case final RenderBox box) {
+      final targetPosition = box.localToGlobal(Offset.zero);
+
+      if ((offset - targetPosition).distanceSquared <
+          controller.motion.tolerance.distance *
+              controller.motion.tolerance.distance) {
+        return;
+      }
+
       setState(() {
         isReturning = true;
       });
 
       final overlay = Overlay.of(context);
-
-      final targetPosition = box.localToGlobal(Offset.zero);
 
       currentEntry = OverlayEntry(
         builder: (context) => Stack(
@@ -423,6 +450,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
 
       overlay.insert(currentEntry!);
 
+      _targetPosition = targetPosition;
       final adjustedVelocity = velocity.pixelsPerSecond;
 
       controller
