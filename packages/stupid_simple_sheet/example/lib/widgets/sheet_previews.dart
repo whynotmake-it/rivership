@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
-import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
+import 'package:example_design/example_design.dart';
 
 // ---------------------------------------------------------------------------
 // Shared mini-sheet preview primitives

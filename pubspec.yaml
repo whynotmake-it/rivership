@@ -9,6 +9,7 @@ environment:
 
 workspace:
   - apps/example
+  - packages/example_design
   - packages/heroine
   - packages/heroine/example
   - packages/motor

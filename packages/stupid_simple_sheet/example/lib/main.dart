@@ -1,9 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
-import 'package:stupid_simple_sheet_example/widgets/example_card.dart';
-import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
-import 'package:stupid_simple_sheet_example/widgets/section_header.dart';
+import 'package:example_design/example_design.dart';
 import 'package:stupid_simple_sheet_example/widgets/sheet_logo.dart';
 import 'advanced/custom_route_example.dart';
 import 'advanced/dynamic_content_example.dart';
@@ -210,7 +208,6 @@ class _HomePage extends StatelessWidget {
           index: 0,
           pillLabel: 'Scroll + Drag',
           pillIcon: CupertinoIcons.arrow_up_arrow_down,
-          pillColor: t.accentGreen,
           codeHint: 'StupidSimpleSheetRoute(child: ...)',
           preview: const BasicSheetPreview(),
           title: 'Basic Sheet',
@@ -221,7 +218,6 @@ class _HomePage extends StatelessWidget {
           index: 1,
           pillLabel: 'How to hide',
           pillIcon: CupertinoIcons.arrow_turn_down_right,
-          pillColor: t.accentBlue,
           codeHint: 'dismissalMode: DismissalMode.shrink',
           preview: const SlideVsShrinkPreview(),
           title: 'Slide vs Shrink',
@@ -232,7 +228,6 @@ class _HomePage extends StatelessWidget {
           index: 2,
           pillLabel: 'Detents',
           pillIcon: CupertinoIcons.line_horizontal_3,
-          pillColor: t.accentGold,
           codeHint: 'SheetSnappingConfig([0.33, 0.66, 1.0])',
           preview: const SnappingPreview(),
           title: 'Snapping',
@@ -243,7 +238,6 @@ class _HomePage extends StatelessWidget {
           index: 3,
           pillLabel: 'Intrinsic Height',
           pillIcon: CupertinoIcons.crop,
-          pillColor: t.accentIndigo,
           codeHint: 'Size',
           preview: const ContentSizedPreview(),
           title: 'Content-Sized Sheet',
@@ -255,7 +249,6 @@ class _HomePage extends StatelessWidget {
           index: 4,
           pillLabel: 'View Inset',
           pillIcon: CupertinoIcons.keyboard,
-          pillColor: t.accentOrange,
           codeHint: 'originateAboveBottomViewInset: true',
           preview: const ContentSizedKeyboardPreview(),
           title: 'Above Keyboard',
@@ -266,7 +259,6 @@ class _HomePage extends StatelessWidget {
           index: 5,
           pillLabel: 'Drag Resistance',
           pillIcon: CupertinoIcons.lock_fill,
-          pillColor: t.accentPurple,
           codeHint: 'draggable: false',
           preview: const NonDraggablePreview(),
           title: 'Non-Draggable',
@@ -277,7 +269,6 @@ class _HomePage extends StatelessWidget {
           index: 6,
           pillLabel: 'Shrink + Footer',
           pillIcon: CupertinoIcons.pin_fill,
-          pillColor: t.accentGreen,
           codeHint: 'DismissalMode.shrink',
           preview: const StickyFooterPreview(),
           title: 'Sticky Footer',
@@ -288,7 +279,6 @@ class _HomePage extends StatelessWidget {
           index: 7,
           pillLabel: 'SheetController',
           pillIcon: CupertinoIcons.slider_horizontal_3,
-          pillColor: t.accentBlue,
           codeHint: 'controller.animateToRelative(0.5)',
           preview: const ProgrammaticControlPreview(),
           title: 'Programmatic Control',
@@ -302,7 +292,6 @@ class _HomePage extends StatelessWidget {
           index: 0,
           pillLabel: 'Configurator',
           pillIcon: CupertinoIcons.slider_horizontal_below_rectangle,
-          pillColor: t.accentOrange,
           codeHint: 'Toggle every setting live',
           preview: const PlaygroundPreview(),
           title: 'Playground',
@@ -316,7 +305,6 @@ class _HomePage extends StatelessWidget {
           index: 0,
           pillLabel: 'iOS 18',
           pillIcon: CupertinoIcons.layers,
-          pillColor: t.accentIndigo,
           codeHint: 'StupidSimpleCupertinoSheetRoute(...)',
           preview: const CupertinoSheetPreview(),
           title: 'Cupertino Sheet',
@@ -327,7 +315,6 @@ class _HomePage extends StatelessWidget {
           index: 1,
           pillLabel: 'iOS 26',
           pillIcon: CupertinoIcons.sparkles,
-          pillColor: t.accentPurple,
           codeHint: 'StupidSimpleGlassSheetRoute(...)',
           preview: const GlassSheetPreview(),
           title: 'Glass Sheet',
@@ -342,7 +329,6 @@ class _HomePage extends StatelessWidget {
           index: 0,
           pillLabel: 'Shrink + Snap',
           pillIcon: CupertinoIcons.share,
-          pillColor: t.accentGold,
           codeHint: 'DismissalMode.shrink + snapping',
           preview: const ShareSheetPreview(),
           title: 'Share Sheet',
@@ -353,7 +339,6 @@ class _HomePage extends StatelessWidget {
           index: 1,
           pillLabel: 'AnimatedSize',
           pillIcon: CupertinoIcons.text_badge_plus,
-          pillColor: t.accentOrange,
           codeHint: 'AnimatedSize + originateAboveKeyboard',
           preview: const DynamicContentPreview(),
           title: 'Dynamic Content',
@@ -364,7 +349,6 @@ class _HomePage extends StatelessWidget {
           index: 2,
           pillLabel: 'TransitionMixin',
           pillIcon: CupertinoIcons.hammer,
-          pillColor: t.accentGreen,
           codeHint: 'StupidSimpleSheetTransitionMixin',
           preview: const CustomRoutePreview(),
           title: 'Custom Route',
