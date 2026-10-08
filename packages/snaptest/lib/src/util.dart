@@ -44,3 +44,9 @@ void deleteDirectoryIfExists(Directory dir) {
     dir.deleteSync(recursive: true);
   }
 }
+
+/// Sanitizes strings for use as snaptest output file names.
+extension SnaptestFileName on String {
+  /// Removes characters that are invalid in file names.
+  String toValidSnaptestFilename() => replaceAll(RegExp(r'[^\w\s]'), '');
+}
