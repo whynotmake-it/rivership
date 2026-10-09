@@ -144,6 +144,98 @@ void main() {
     });
   });
 
+  group('demo app recordings', () {
+    testWidgets(
+      'demo video — real app, device frame, smooth 30fps',
+      (tester) async {
+        final recording = await snap.recordVideo(
+          name: 'demo_app_framed',
+          settings: const SnapVideoSettings(
+            timing: VideoTiming.smooth,
+            includeDeviceFrame: true,
+            finalHold: Duration(milliseconds: 400),
+          ),
+        );
+
+        await tester.pumpWidget(const _DemoFeedApp());
+        await tester.pump(const Duration(milliseconds: 800));
+
+        // Open the first card.
+        await tester.tap(find.byKey(const ValueKey('feed-card-0')));
+        await tester.pump(const Duration(seconds: 1));
+
+        // Back to the feed.
+        await tester.pageBack();
+        await tester.pump(const Duration(milliseconds: 800));
+
+        // Scroll the feed with real gestures.
+        await tester.fling(find.byType(ListView), const Offset(0, -400), 900);
+        await tester.pump(const Duration(milliseconds: 800));
+        await tester.fling(find.byType(ListView), const Offset(0, -600), 2000);
+        await tester.pump(const Duration(seconds: 1));
+
+        // Scroll back to the top.
+        await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
+        await tester.pump(const Duration(seconds: 1));
+
+        // Open the modal sheet and drag it down.
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.drag(find.text('Drag me down'), const Offset(0, 300));
+        await tester.pump(const Duration(seconds: 1));
+
+        final file = await recording.stop();
+        expect(file.existsSync(), isTrue);
+        // ignore: avoid_print
+        print('Demo video (app, framed): ${file.path}');
+      },
+      variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+    );
+
+    testWidgets(
+      'demo video — real app, device frame, landscape 24fps observed',
+      (tester) async {
+        final recording = await snap.recordVideo(
+          name: 'demo_app_landscape',
+          settings: const SnapVideoSettings(
+            frameRate: 24,
+            includeDeviceFrame: true,
+            encoding: VideoEncoding.h264(crf: 23),
+            finalHold: Duration(milliseconds: 400),
+          ),
+        );
+
+        await tester.pumpWidget(const _DemoFeedApp());
+        await tester.pump(const Duration(milliseconds: 800));
+
+        // Open the modal sheet and dismiss it with a barrier tap. (A drag is
+        // flaky in landscape: DeviceFrame can lay the sheet out below the
+        // test view's bounds.)
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.tapAt(const Offset(20, 20));
+        await tester.pump(const Duration(seconds: 1));
+
+        // Fling the feed horizontally.
+        await tester.fling(
+          find.byKey(const ValueKey('feed-list')),
+          const Offset(-600, 0),
+          1200,
+        );
+        await tester.pump(const Duration(seconds: 1));
+
+        final file = await recording.stop();
+        expect(file.existsSync(), isTrue);
+        // ignore: avoid_print
+        print('Demo video (app, landscape): ${file.path}');
+      },
+      variant: TestDevicesVariant(
+        {Devices.ios.iPhone16Pro},
+        orientations: {Orientation.landscape},
+      ),
+    );
+  });
+
   group('demo recordings', () {
     testWidgets('demo video — observed timing', (tester) async {
       final recording = await snap.recordVideo(
@@ -256,6 +348,171 @@ class _AnimatedScene extends StatelessWidget {
       duration: const Duration(seconds: 3),
       curve: Curves.easeInOutCubic,
       builder: (context, progress, _) => _DemoScene(progress: progress),
+    );
+  }
+}
+
+/// A small realistic app used for the demo recordings: a scrollable card
+/// feed with push navigation, a FAB, and a draggable modal sheet, all
+/// driven by real gestures in the demo tests.
+class _DemoFeedApp extends StatelessWidget {
+  const _DemoFeedApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const _FeedScreen(),
+    );
+  }
+}
+
+class _FeedScreen extends StatelessWidget {
+  const _FeedScreen();
+
+  static const _palette = [
+    Color(0xFF6366F1),
+    Color(0xFF14B8A6),
+    Color(0xFFF59E0B),
+    Color(0xFFEC4899),
+    Color(0xFF22C55E),
+    Color(0xFF8B5CF6),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Snaptest Feed')),
+      body: ListView.builder(
+        key: const ValueKey('feed-list'),
+        scrollDirection: isLandscape ? Axis.horizontal : Axis.vertical,
+        itemCount: 30,
+        itemBuilder: (context, index) => _FeedCard(
+          index: index,
+          color: _palette[index % _palette.length],
+          landscape: isLandscape,
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          builder: (context) => const _DemoSheet(),
+        ),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class _FeedCard extends StatelessWidget {
+  const _FeedCard({
+    required this.index,
+    required this.color,
+    required this.landscape,
+  });
+
+  final int index;
+  final Color color;
+  final bool landscape;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: landscape ? 260 : null,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: InkWell(
+          key: ValueKey('feed-card-$index'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => _DetailScreen(index: index, color: color),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ColoredBox(
+                color: color,
+                child: SizedBox(
+                  height: 110,
+                  child: Center(
+                    child: Icon(
+                      Icons.widgets,
+                      size: 48,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                title: Text('Card $index'),
+                subtitle: const Text('Tap me'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailScreen extends StatelessWidget {
+  const _DetailScreen({required this.index, required this.color});
+
+  final int index;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Card $index')),
+      body: Center(
+        child: ColoredBox(
+          color: color,
+          child: const SizedBox(
+            width: 180,
+            height: 180,
+            child: Center(
+              child: Icon(Icons.widgets, size: 72, color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DemoSheet extends StatelessWidget {
+  const _DemoSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('demo-sheet'),
+      height: MediaQuery.sizeOf(context).height * 0.9,
+      padding: const EdgeInsets.all(24),
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Text(
+            'Drag me down',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < 3; i++)
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text('Sheet item $i'),
+            ),
+        ],
+      ),
     );
   }
 }
