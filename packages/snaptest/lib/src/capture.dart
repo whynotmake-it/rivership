@@ -242,6 +242,69 @@ Future<ui.Image> cropCapturedImage(
   return croppedImage;
 }
 
+/// Paints a touch indicator over every [logicalPositions] entry.
+///
+/// Positions are in logical view coordinates (e.g. `PointerEvent.position`)
+/// and are mapped into image coordinates the same way [cropCapturedImage]
+/// maps crops, so indicators land correctly inside composited device frames
+/// and subtree captures. Positions outside [CapturedImage.logicalBounds]
+/// are skipped.
+///
+/// Disposes [image]. Returns a new image that the caller must dispose.
+@internal
+Future<ui.Image> drawPointerIndicators(
+  ui.Image image,
+  CapturedImage captured,
+  Iterable<Offset> logicalPositions,
+) async {
+  final scaleX =
+      captured.imageContentBounds.width / captured.logicalBounds.width;
+  final scaleY =
+      captured.imageContentBounds.height / captured.logicalBounds.height;
+
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder)..drawImage(image, Offset.zero, Paint());
+
+  const logicalRadius = 14.0;
+  final ringPaint = Paint()
+    ..color = const Color(0xB3000000)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.5 * scaleX;
+  final fillPaint = Paint()..color = const Color(0xB3FFFFFF);
+
+  for (final position in logicalPositions) {
+    if (!captured.logicalBounds.contains(position)) {
+      continue;
+    }
+    final center = Offset(
+      captured.imageContentBounds.left +
+          (position.dx - captured.logicalBounds.left) * scaleX,
+      captured.imageContentBounds.top +
+          (position.dy - captured.logicalBounds.top) * scaleY,
+    );
+    final radius = logicalRadius * scaleX;
+    _drawTouchIndicator(canvas, center, radius, fillPaint, ringPaint);
+  }
+
+  final picture = recorder.endRecording();
+  final output = await picture.toImage(image.width, image.height);
+  picture.dispose();
+  image.dispose();
+  return output;
+}
+
+void _drawTouchIndicator(
+  Canvas canvas,
+  Offset center,
+  double radius,
+  Paint fill,
+  Paint ring,
+) {
+  canvas
+    ..drawCircle(center, radius, fill)
+    ..drawCircle(center, radius, ring);
+}
+
 /// Wraps the given [image] with a device frame for the specified [device].
 ///
 /// This creates a new image that includes the device frame around the content

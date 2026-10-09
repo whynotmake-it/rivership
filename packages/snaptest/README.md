@@ -175,6 +175,7 @@ final recording = await snap.recordVideo(
     timing: VideoTiming.smooth,           // or VideoTiming.observed
     encoding: VideoEncoding.h264(crf: 20),// H.264 MP4, yuv420p, +faststart
     includeDeviceFrame: true,             // render inside the device frame
+    showPointers: true,                   // touch indicator at held pointers
     finalHold: Duration(milliseconds: 400), // linger on the last frame
   ),
 );
@@ -182,6 +183,7 @@ final recording = await snap.recordVideo(
 
 - **`VideoTiming.observed`** (default): every pump runs unchanged; painted states are shown at their test-clock timestamps and the last state is held across gaps. Zero impact on test execution — best for debugging.
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
+- **`showPointers`** draws a ring-and-dot touch indicator at each pointer while it is held, like a "show touches" overlay — great for demos that visualize gestures. A quick tap between pumps paints no indicator; drags, flings, and multi-step gestures track the dot across frames.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
 
 ```dart

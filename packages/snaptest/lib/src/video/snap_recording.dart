@@ -372,6 +372,14 @@ class SnapRecording {
     );
 
     var image = captured.image;
+    if (settings.showPointers &&
+        _binding.activePointerPositions.isNotEmpty) {
+      image = await drawPointerIndicators(
+        image,
+        captured,
+        _binding.activePointerPositions.values,
+      );
+    }
     if (crop != null) {
       image = await cropCapturedImage(image, crop!, captured);
     }

@@ -1,5 +1,7 @@
 /// A test binding that can observe pumps for [SnapRecording].
 ///
+/// @docImport 'package:snaptest/src/video/video_settings.dart';
+///
 /// Everything in this file is package-internal except the binding itself,
 /// which users install once in `flutter_test_config.dart`.
 library;
@@ -50,6 +52,25 @@ class SnaptestWidgetsFlutterBinding
   /// paint actually occurred, without scheduling a new frame.
   @internal
   int drawnFrameCount = 0;
+
+  /// Positions of currently-down pointers, in logical view coordinates.
+  ///
+  /// Maintained while a recording with `SnapVideoSettings.showPointers` is
+  /// active; [SnapRecording] reads it to composite touch indicators.
+  @internal
+  final Map<int, Offset> activePointerPositions = {};
+
+  @override
+  void handlePointerEvent(PointerEvent event) {
+    if (activeRecording?.settings.showPointers ?? false) {
+      if (event is PointerDownEvent || event is PointerMoveEvent) {
+        activePointerPositions[event.pointer] = event.position;
+      } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+        activePointerPositions.remove(event.pointer);
+      }
+    }
+    super.handlePointerEvent(event);
+  }
 
   @override
   void handleDrawFrame() {
@@ -104,6 +125,7 @@ class SnaptestWidgetsFlutterBinding
     // timed-out or uncaught failure. Encoding is never triggered here.
     activeRecording?.freeze();
     activeRecording = null;
+    activePointerPositions.clear();
     super.postTest();
   }
 

@@ -121,6 +121,7 @@ class SnapVideoSettings {
     this.timing = VideoTiming.observed,
     this.encoding = const VideoEncoding.h264(),
     this.includeDeviceFrame = false,
+    this.showPointers = false,
     this.backgroundColor = const Color(0xFFFFFFFF),
     this.pathPrefix = kDefaultPathPrefix,
     this.finalHold = Duration.zero,
@@ -152,6 +153,17 @@ class SnapVideoSettings {
   /// Only applies when the test runs with [TestDevicesVariant]; recordings
   /// of tests without a device variant capture the current view as-is.
   final bool includeDeviceFrame;
+
+  /// Whether to paint a touch indicator over each active pointer.
+  ///
+  /// The observing binding tracks down/move/up pointer events and
+  /// composites a ring-and-dot indicator at each current position, like a
+  /// screen-recording "show touches" overlay. Useful for demos that should
+  /// visualize gestures. Indicators appear only while a pointer is held
+  /// across a captured frame — a quick tap between pumps shows no dot.
+  ///
+  /// Defaults to `false`.
+  final bool showPointers;
 
   /// The opaque background composited behind every frame.
   ///
