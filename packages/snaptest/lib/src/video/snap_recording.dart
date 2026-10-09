@@ -161,10 +161,13 @@ class SnapRecording {
       from: from,
       crop: crop,
       outputPath: outputPath,
+      // The spool lives in the system temp dir, not under .snaptest/:
+      // cleanSnaps() wipes .snaptest/ at every test file's startup and
+      // would race with a recording in flight in a parallel test file.
       spoolDir: Directory(
         join(
-          dirname(outputPath),
-          '.video_spool_${fileBase}_pid${pid}_'
+          Directory.systemTemp.path,
+          'snaptest_video_spool_${fileBase}_pid${pid}_'
           '${DateTime.now().microsecondsSinceEpoch}',
         ),
       ),
@@ -605,8 +608,13 @@ class SnapRecording {
   /// it. Runs inside a real-async section.
   Future<File> _encodeAndPublish() async {
     final frameFiles = _resampledFrameFiles();
+    // Encode next to the final output so the publish rename stays on one
+    // filesystem (the spool lives in the system temp dir, which may be
+    // mounted separately).
+    final outputFile = File(_outputPath);
+    await outputFile.parent.create(recursive: true);
     final tempOutput = File(
-      join(_spoolDir.path, 'output${settings.encoding.fileExtension}'),
+      '${_outputPath}.tmp${settings.encoding.fileExtension}',
     );
     final diagnostics = StringBuffer();
 
@@ -627,8 +635,6 @@ class SnapRecording {
       );
     }
 
-    final outputFile = File(_outputPath);
-    await outputFile.parent.create(recursive: true);
     final fileName = _truncationReason == null
         ? outputFile.path
         : '${withoutExtension(outputFile.path)}.truncated'
