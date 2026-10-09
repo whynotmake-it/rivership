@@ -128,6 +128,106 @@ testWidgets('Get image', (tester) async {
 });
 ```
 
+## Recording Videos
+
+`snap.recordVideo()` records a video of what your test actually does — it passively captures the frames your test already paints, so the recording shows the real test timeline. Great for demos, documentation, and debugging visual regressions.
+
+> This feature is experimental and requires FFmpeg on `PATH`.
+
+### Setup
+
+Recording requires the observing binding, installed before any other binding use — put it in `flutter_test_config.dart`:
+
+```dart
+// flutter_test_config.dart
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  SnaptestWidgetsFlutterBinding.ensureInitialized();
+  await loadFonts();
+  await testMain();
+}
+```
+
+The binding is inert unless a recording is active, so it's safe to install globally.
+
+### Basic usage
+
+```dart
+testWidgets('open details', (tester) async {
+  final recording = await snap.recordVideo();
+
+  await tester.pumpWidget(const MyApp());
+  await tester.tap(find.text('Details'));
+  await tester.pumpAndSettle();
+
+  final file = await recording.stop(); // writes .snaptest/<test_name>.mp4
+});
+```
+
+If you never call `stop()`, the recording stops automatically when the test body completes. One recording can be active per test — `stop()` before starting another.
+
+### Settings
+
+```dart
+final recording = await snap.recordVideo(
+  name: 'my_demo',
+  settings: const SnapVideoSettings(
+    frameRate: 30,                        // output fps
+    timing: VideoTiming.smooth,           // or VideoTiming.observed
+    encoding: VideoEncoding.h264(crf: 20),// H.264 MP4, yuv420p, +faststart
+    includeDeviceFrame: true,             // render inside the device frame
+    showPointers: true,                   // touch indicator at held pointers
+    finalHold: Duration(milliseconds: 400), // linger on the last frame
+  ),
+);
+```
+
+- **`VideoTiming.observed`** (default): every pump runs unchanged; painted states are shown at their test-clock timestamps and the last state is held across gaps. Zero impact on test execution — best for debugging.
+- **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
+- **`showPointers`** draws a ring-and-dot touch indicator at each pointer while it is held, like a "show touches" overlay — great for demos that visualize gestures. A quick tap between pumps paints no indicator; drags, flings, and multi-step gestures track the dot across frames.
+- **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
+
+```dart
+testWidgets(
+  'demo',
+  variant: TestDevicesVariant(
+    {Devices.ios.iPhone16Pro},
+    orientations: {Orientation.portrait},
+  ),
+  (tester) async {
+    await snap.recordVideo(
+      settings: const SnapVideoSettings(
+        timing: VideoTiming.smooth,
+        includeDeviceFrame: true,
+      ),
+    );
+    // ...
+  },
+);
+```
+
+### Pitfalls
+
+The recorder faithfully captures what the test paints — most "the video jumps" issues are test-scripting artifacts, not recording bugs:
+
+- **Single `moveBy` teleports.** `tester.drag()` sends one `moveBy` event, so a draggable (e.g. a sheet) jumps to its end position in a single frame. Drive drags with `startGesture`, incremental `moveBy` + small `pump`s in a loop, then `up()`:
+
+  ```dart
+  final gesture = await tester.startGesture(tester.getCenter(sheetFinder));
+  for (var i = 0; i < 12; i++) {
+    await gesture.moveBy(const Offset(0, 30));
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  await gesture.up();
+  ```
+
+- **In observed mode, a big `pump` records only its end state.** `pump(const Duration(seconds: 1))` paints once — slide-ins, dismissals, and settle animations in between are skipped and look like jumps. Pump in frame-sized steps (`15 × 40ms`) around transitions, or use `VideoTiming.smooth` which subdivides for you.
+
+- **Drags inside a scrollable scroll it.** Sheet-style drag-to-dismiss only takes over at the scroll boundary (e.g. the top). Scroll back to the boundary before the dismiss gesture, or start the gesture on non-scrollable chrome like an `AppBar`.
+
+- **`dart:io` futures never complete in the test's zone.** Widget tests run in a `FakeAsync` zone; async IO must go through `binding.runAsync` (the encoder already does this internally). Prefer synchronous IO (`readAsBytesSync`, `writeAsBytesSync`) inside test bodies.
+
+- **Runaway pumps are capped.** `maxSimulatedDuration`, `maxCapturedFrames`, and `maxSpoolBytes` freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long.
+
 ## All the Options
 
 ### Multiple screenshots per test

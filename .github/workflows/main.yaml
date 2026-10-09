@@ -43,6 +43,10 @@ jobs:
       - name: 🧪 Run Analyze
         run: melos run analyze
 
+      - name: 🎬 Install FFmpeg
+        # snaptest's video recording shell-outs to ffmpeg.
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: 📝 Run Test
         run: melos run coverage
       

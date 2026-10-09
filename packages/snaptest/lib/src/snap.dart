@@ -1,17 +1,22 @@
+/// @docImport 'package:snaptest/src/video/snaptest_binding.dart';
+library;
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
-import 'package:snaptest/src/blocked_text_painting_context.dart';
+import 'package:snaptest/src/capture.dart';
 import 'package:snaptest/src/font_loading.dart';
 import 'package:snaptest/src/snaptest_settings.dart';
 import 'package:snaptest/src/test_devices_variant.dart';
+import 'package:snaptest/src/util.dart';
+import 'package:snaptest/src/video/snap_recording.dart';
+import 'package:snaptest/src/video/video_settings.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
 
@@ -344,6 +349,52 @@ class Snap {
     restore();
     return result;
   }
+
+  /// Starts recording a video of the widget test.
+  ///
+  /// Unlike [call], which performs extra pumps and changes the test
+  /// environment, recording passively observes the frames your test already
+  /// paints — it never calls `snap()` internally and never schedules frames
+  /// of its own.
+  ///
+  /// Recording requires [SnaptestWidgetsFlutterBinding] to be installed
+  /// before any other binding use, e.g. in `flutter_test_config.dart`:
+  /// ```dart
+  /// Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  ///   SnaptestWidgetsFlutterBinding.ensureInitialized();
+  ///   await loadFonts();
+  ///   await testMain();
+  /// }
+  /// ```
+  ///
+  /// ```dart
+  /// testWidgets('open details', (tester) async {
+  ///   final recording = await snap.recordVideo();
+  ///   await tester.pumpWidget(const MyApp());
+  ///   await tester.pumpAndSettle();
+  ///   final file = await recording.stop();
+  /// });
+  /// ```
+  ///
+  /// Only one recording can be active per test; call [SnapRecording.stop]
+  /// before starting another. If [SnapRecording.stop] is never called, the
+  /// recording stops
+  /// automatically when the test body completes.
+  ///
+  /// {@macro snaptest_from_and_crop}
+  Future<SnapRecording> recordVideo({
+    String? name,
+    Finder? from,
+    Rect? crop,
+    SnapVideoSettings? settings,
+  }) {
+    return SnapRecording.start(
+      name: name,
+      from: from,
+      crop: crop,
+      settings: settings ?? const SnapVideoSettings(),
+    );
+  }
 }
 
 /// Resolves name, device, orientation, and builds the filename.
@@ -376,7 +427,7 @@ _Resolved _resolve({
       deviceFromExplicitParam &&
           resolvedDevice != null &&
           resolvedDevice.name.isNotEmpty
-      ? '_${resolvedDevice.name.toValidFilename()}'
+      ? '_${resolvedDevice.name.toValidSnaptestFilename()}'
       : '';
 
   final orientationAppendix =
@@ -385,7 +436,7 @@ _Resolved _resolve({
       : '';
 
   final fileName =
-      '${testName.toValidFilename()}'
+      '${testName.toValidSnaptestFilename()}'
       '$counterSuffix$deviceAppendix$orientationAppendix.png';
 
   return _Resolved(
@@ -448,29 +499,6 @@ Future<File> _saveScreenshot({
   });
 
   return file;
-}
-
-/// Runs a given function [fn] in a runAsync block.
-///
-/// If the function is already in a runAsync block, it will be run immediately.
-/// Otherwise, it will be run in a runAsync block.
-Future<T?> maybeRunAsync<T>(Future<T> Function() fn) async {
-  final binding = TestWidgetsFlutterBinding.instance;
-
-  late final bool isInRunAsync;
-
-  try {
-    await binding.runAsync(() async {});
-    isInRunAsync = false;
-  } catch (e) {
-    isInRunAsync = true;
-  }
-
-  if (isInRunAsync) {
-    return fn();
-  }
-
-  return binding.runAsync(fn);
 }
 
 /// Temporarily changes the test environment to simulate a specific device.
@@ -557,7 +585,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
     () async {
       await TestWidgetsFlutterBinding.instance.pump(Duration.zero);
 
-      final captured = await _captureImage(
+      final captured = await captureElementImage(
         finder.evaluate().single,
         blockText: settings.blockText,
         device: device,
@@ -569,7 +597,7 @@ Future<ui.Image?> _takeDeviceScreenshot({
       }
 
       try {
-        return await _cropImage(captured.image, crop, captured);
+        return await cropCapturedImage(captured.image, crop, captured);
       } finally {
         captured.image.dispose();
       }
@@ -700,7 +728,7 @@ extension CaptureImage on Element {
     Orientation orientation = Orientation.portrait,
     bool includeDeviceFrame = false,
   }) async {
-    final captured = await _captureImage(
+    final captured = await captureElementImage(
       this,
       blockText: blockText,
       device: device,
@@ -710,260 +738,6 @@ extension CaptureImage on Element {
 
     return captured.image;
   }
-}
-
-/// Renders the closest [RepaintBoundary] of the [element] into an image.
-///
-/// Set [blockText] to `true` to replace text with colored rectangles for
-/// cross-platform consistency in golden tests.
-///
-/// If [includeDeviceFrame] is `true` and a [device] is provided, the image
-/// will be wrapped with the device's frame.
-///
-/// See also:
-///
-///  * [OffsetLayer.toImage] which is the actual method being called.
-Future<_CapturedImage> _captureImage(
-  Element element, {
-  bool blockText = false,
-  DeviceInfo? device,
-  Orientation orientation = Orientation.portrait,
-  bool includeDeviceFrame = false,
-}) async {
-  final isViewCapture = element.widget is View;
-  assert(
-    element.renderObject != null,
-    'The given element $element does not have a RenderObject',
-  );
-  var renderObject = element.renderObject!;
-  while (!renderObject.isRepaintBoundary) {
-    // ignore: unnecessary_cast
-    renderObject = renderObject.parent! as RenderObject;
-  }
-  assert(!renderObject.debugNeedsPaint, 'The RenderObject needs painting');
-
-  // RepaintBoundary is guaranteed to have an OffsetLayer
-  // ignore: invalid_use_of_protected_member
-  final layer = renderObject.layer! as OffsetLayer;
-
-  if (blockText) {
-    BlockedTextPaintingContext(
-      containerLayer: layer,
-      estimatedBounds: renderObject.paintBounds,
-    ).paintSingleChild(renderObject);
-  }
-
-  final image = await layer.toImage(renderObject.paintBounds);
-  final bounds = isViewCapture
-      ? _viewLogicalBounds()
-      : MatrixUtils.transformRect(
-          renderObject.getTransformTo(null),
-          renderObject.paintBounds,
-        );
-
-  if (element.renderObject is RenderBox) {
-    final expectedSize = (element.renderObject as RenderBox?)!.size;
-    if (expectedSize.width.ceil() != image.width ||
-        expectedSize.height.ceil() != image.height) {
-      // ignore: avoid_print
-      print(
-        'Warning: The screenshot captured of ${element.toStringShort()} is '
-        'larger (${image.width}, ${image.height}) than '
-        '${element.toStringShort()} (${expectedSize.width}, '
-        '${expectedSize.height}) itself.\n'
-        'Wrap the ${element.toStringShort()} in a RepaintBoundary to be able '
-        'to capture only that layer. ',
-      );
-    }
-  }
-
-  if (includeDeviceFrame && device != null) {
-    final framedImage = await _wrapImageWithDeviceFrame(
-      image,
-      device,
-      orientation,
-    );
-    return _CapturedImage(
-      image: framedImage.image,
-      logicalBounds: bounds,
-      imageContentBounds: framedImage.screenBounds,
-    );
-  }
-
-  return _CapturedImage(
-    image: image,
-    logicalBounds: bounds,
-    imageContentBounds: _imageBounds(image),
-  );
-}
-
-Rect _imageBounds(ui.Image image) =>
-    Offset.zero & Size(image.width.toDouble(), image.height.toDouble());
-
-Rect _viewLogicalBounds() {
-  final implicitView =
-      TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
-  final logicalSize = implicitView.physicalSize / implicitView.devicePixelRatio;
-  return Offset.zero & logicalSize;
-}
-
-Future<ui.Image> _cropImage(
-  ui.Image image,
-  Rect crop,
-  _CapturedImage captured,
-) async {
-  final croppedBounds = crop.intersect(captured.logicalBounds);
-  if (croppedBounds.isEmpty) {
-    throw ArgumentError.value(
-      crop,
-      'crop',
-      'Crop rect must intersect the snapped bounds.',
-    );
-  }
-
-  final cropRectInBounds = croppedBounds.translate(
-    -captured.logicalBounds.left,
-    -captured.logicalBounds.top,
-  );
-  final scaleX =
-      captured.imageContentBounds.width / captured.logicalBounds.width;
-  final scaleY =
-      captured.imageContentBounds.height / captured.logicalBounds.height;
-  final sourceRect = Rect.fromLTWH(
-    captured.imageContentBounds.left + cropRectInBounds.left * scaleX,
-    captured.imageContentBounds.top + cropRectInBounds.top * scaleY,
-    cropRectInBounds.width * scaleX,
-    cropRectInBounds.height * scaleY,
-  );
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  final outputWidth = croppedBounds.width.ceil();
-  final outputHeight = croppedBounds.height.ceil();
-  final outputSize = Size(
-    outputWidth.toDouble(),
-    outputHeight.toDouble(),
-  );
-
-  canvas.drawImageRect(
-    image,
-    sourceRect,
-    Offset.zero & outputSize,
-    Paint(),
-  );
-
-  final picture = recorder.endRecording();
-  final croppedImage = await picture.toImage(outputWidth, outputHeight);
-
-  picture.dispose();
-  return croppedImage;
-}
-
-class _CapturedImage {
-  const _CapturedImage({
-    required this.image,
-    required this.logicalBounds,
-    required this.imageContentBounds,
-  });
-
-  final ui.Image image;
-  final Rect logicalBounds;
-  final Rect imageContentBounds;
-}
-
-class _FramedImage {
-  const _FramedImage({
-    required this.image,
-    required this.screenBounds,
-  });
-
-  final ui.Image image;
-  final Rect screenBounds;
-}
-
-/// Wraps the given [image] with a device frame for the specified [device].
-///
-/// This creates a new image that includes the device frame around the content
-/// without modifying the original widget tree.
-Future<_FramedImage> _wrapImageWithDeviceFrame(
-  ui.Image image,
-  DeviceInfo device,
-  Orientation orientation,
-) async {
-  // Create a picture recorder to draw the device frame
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-
-  // Get frame size and screen path based on orientation
-  Size deviceFrameSize;
-  Path screenPath;
-
-  if (orientation == Orientation.landscape) {
-    // For landscape, we need to rotate the device frame
-    deviceFrameSize = Size(device.frameSize.height, device.frameSize.width);
-
-    // Transform the screen path for landscape orientation
-    final transform = Matrix4.identity()
-      // ignore: deprecated_member_use
-      ..translate(
-        deviceFrameSize.width / 2,
-        deviceFrameSize.height / 2,
-      )
-      ..rotateZ(1.5708) // 90 degrees in radians
-      // ignore: deprecated_member_use
-      ..translate(
-        -device.frameSize.width / 2,
-        -device.frameSize.height / 2,
-      );
-
-    screenPath = device.screenPath.transform(transform.storage);
-  } else {
-    deviceFrameSize = device.frameSize;
-    screenPath = device.screenPath;
-  }
-
-  // Save canvas state before transformation
-  canvas.save();
-
-  if (orientation == Orientation.landscape) {
-    // Rotate the canvas for landscape device frame painting
-    canvas
-      ..translate(deviceFrameSize.width / 2, deviceFrameSize.height / 2)
-      ..rotate(1.5708) // 90 degrees
-      ..translate(-device.frameSize.width / 2, -device.frameSize.height / 2);
-  }
-
-  device.framePainter.paint(canvas, device.frameSize);
-
-  // Restore canvas state
-  canvas.restore();
-
-  // Calculate the screen area within the device frame
-  final screenRect = screenPath.getBounds();
-
-  canvas
-    ..clipPath(screenPath)
-    // Draw the captured image in the screen area
-    ..drawImageRect(
-      image,
-      Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
-      screenRect,
-      Paint(),
-    );
-
-  // Convert to image
-  final picture = recorder.endRecording();
-  final framedImage = await picture.toImage(
-    deviceFrameSize.width.round(),
-    deviceFrameSize.height.round(),
-  );
-
-  picture.dispose();
-  image.dispose();
-  return _FramedImage(image: framedImage, screenBounds: screenRect);
-}
-
-extension on String {
-  String toValidFilename() => replaceAll(RegExp(r'[^\w\s]'), '');
 }
 
 extension on EdgeInsets {
