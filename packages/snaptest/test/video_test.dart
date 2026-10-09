@@ -178,10 +178,18 @@ void main() {
         await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
         await tester.pump(const Duration(seconds: 1));
 
-        // Open the modal sheet and drag it down.
+        // Open the modal sheet and drag it down with a real multi-step
+        // gesture (a single moveBy would teleport the sheet in one frame).
         await tester.tap(find.byType(FloatingActionButton));
         await tester.pump(const Duration(seconds: 1));
-        await tester.drag(find.text('Drag me down'), const Offset(0, 300));
+        final sheetDrag = await tester.startGesture(
+          tester.getCenter(find.text('Drag me down')),
+        );
+        for (var i = 0; i < 12; i++) {
+          await sheetDrag.moveBy(const Offset(0, 30));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await sheetDrag.up();
         await tester.pump(const Duration(seconds: 1));
 
         final file = await recording.stop();
@@ -210,19 +218,26 @@ void main() {
 
         // Open the modal sheet and dismiss it with a barrier tap. (A drag is
         // flaky in landscape: DeviceFrame can lay the sheet out below the
-        // test view's bounds.)
+        // test view's bounds.) Pump in ~frame-sized steps so observed timing
+        // captures the slide/dismiss animations instead of skipping them.
         await tester.tap(find.byType(FloatingActionButton));
-        await tester.pump(const Duration(seconds: 1));
+        for (var i = 0; i < 15; i++) {
+          await tester.pump(const Duration(milliseconds: 40));
+        }
         await tester.tapAt(const Offset(20, 20));
-        await tester.pump(const Duration(seconds: 1));
+        for (var i = 0; i < 15; i++) {
+          await tester.pump(const Duration(milliseconds: 40));
+        }
 
-        // Fling the feed horizontally.
+        // Fling the feed horizontally, then watch it settle frame by frame.
         await tester.fling(
           find.byKey(const ValueKey('feed-list')),
           const Offset(-600, 0),
           1200,
         );
-        await tester.pump(const Duration(seconds: 1));
+        for (var i = 0; i < 25; i++) {
+          await tester.pump(const Duration(milliseconds: 40));
+        }
 
         final file = await recording.stop();
         expect(file.existsSync(), isTrue);

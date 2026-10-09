@@ -23,19 +23,31 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('open-sheet')));
       await tester.pump(const Duration(seconds: 1));
 
-      // Scroll inside the sheet's list.
+      // Scroll inside the sheet's list, then fling back to the top —
+      // the sheet only takes over the drag at the scroll boundary.
       await tester.fling(
         find.byKey(const ValueKey('sheet-list')),
         const Offset(0, -300),
         1200,
       );
       await tester.pump(const Duration(seconds: 1));
-
-      // Drag the sheet down from its handle area.
-      await tester.drag(
-        find.byKey(const ValueKey('sheet-content')),
-        const Offset(0, 400),
+      await tester.fling(
+        find.byKey(const ValueKey('sheet-list')),
+        const Offset(0, 600),
+        1500,
       );
+      await tester.pump(const Duration(seconds: 1));
+
+      // Drag the sheet down with a real multi-step gesture (a single
+      // moveBy would teleport the sheet in one frame).
+      final sheetDrag = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('sheet-content'))),
+      );
+      for (var i = 0; i < 12; i++) {
+        await sheetDrag.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await sheetDrag.up();
       await tester.pump(const Duration(seconds: 1));
 
       final file = await recording.stop();
