@@ -614,7 +614,7 @@ class SnapRecording {
     final outputFile = File(_outputPath);
     await outputFile.parent.create(recursive: true);
     final tempOutput = File(
-      '${_outputPath}.tmp${settings.encoding.fileExtension}',
+      '$_outputPath.tmp${settings.encoding.fileExtension}',
     );
     final diagnostics = StringBuffer();
 
