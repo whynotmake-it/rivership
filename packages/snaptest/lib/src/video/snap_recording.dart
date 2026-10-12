@@ -713,7 +713,6 @@ class SnapRecording {
   Future<File> _encodeAndPublish() async {
     final frameFiles = _resampledFrameFiles();
     final outputFile = File(_outputPath);
-    await outputFile.parent.create(recursive: true);
     // Encode inside the unique spool dir: a temporary output next to
     // .snaptest/ would be wiped by a parallel test file's cleanSnaps() and
     // would collide between same-named tests running concurrently.
@@ -743,6 +742,10 @@ class SnapRecording {
         ? outputFile.path
         : '${withoutExtension(outputFile.path)}.truncated'
               '${settings.encoding.fileExtension}';
+    // Recreate the output dir right before copying: a parallel test
+    // file's cleanSnaps() can delete test/.snaptest/ while the encode is
+    // still running.
+    await File(fileName).parent.create(recursive: true);
     // Copy (not rename): the spool lives in the system temp dir, which may
     // be mounted on a different filesystem than the output.
     await tempOutput.copy(fileName);
