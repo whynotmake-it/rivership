@@ -46,6 +46,14 @@ sealed class VideoEncoding {
   /// `'medium'`.
   const factory VideoEncoding.h264({int crf, String preset}) = _H264Encoding;
 
+  /// VP9 in a WebM container (`libvpx-vp9`, `yuva420p`).
+  ///
+  /// Unlike H.264 this keeps the alpha channel, so recordings can be
+  /// transparent — combine with a transparent [SnapVideoSettings]
+  /// background. [crf] controls quality (lower is better; sane range 0-63,
+  /// default 32).
+  const factory VideoEncoding.vp9({int crf}) = _Vp9Encoding;
+
   /// The file extension for the encoded container, including the dot.
   String get fileExtension;
 
@@ -54,6 +62,13 @@ sealed class VideoEncoding {
 
   /// The FFmpeg encoder name to validate, e.g. `libx264`.
   String get ffmpegEncoderName;
+
+  /// Whether this profile preserves the alpha channel.
+  ///
+  /// When `true`, a transparent background stays transparent in the output;
+  /// when `false`, transparency renders as black unless a
+  /// [SnapVideoSettings.backgroundColor] is composited first.
+  bool get supportsAlpha;
 }
 
 class _H264Encoding extends VideoEncoding {
@@ -72,6 +87,9 @@ class _H264Encoding extends VideoEncoding {
   String get ffmpegEncoderName => 'libx264';
 
   @override
+  bool get supportsAlpha => false;
+
+  @override
   List<String> get ffmpegCodecArguments => [
     '-c:v',
     'libx264',
@@ -88,6 +106,47 @@ class _H264Encoding extends VideoEncoding {
   ];
 }
 
+class _Vp9Encoding extends VideoEncoding {
+  const _Vp9Encoding({this.crf = 32}) : super._();
+
+  /// Constant-rate-factor quality for libvpx-vp9 (0-63, lower is better).
+  final int crf;
+
+  @override
+  String get fileExtension => '.webm';
+
+  @override
+  String get ffmpegEncoderName => 'libvpx-vp9';
+
+  @override
+  bool get supportsAlpha => true;
+
+  @override
+  List<String> get ffmpegCodecArguments => [
+    '-c:v',
+    'libvpx-vp9',
+    '-crf',
+    '$crf',
+    '-b:v',
+    '0',
+    '-pix_fmt',
+    'yuva420p',
+    // Alpha output requires alternate reference frames off.
+    '-auto-alt-ref',
+    '0',
+    '-f',
+    'webm',
+  ];
+}
+
+/// Paints the indicator for one held pointer onto a captured frame.
+///
+/// [center] is the pointer's position in image coordinates; [scale]
+/// converts Flutter logical pixels to image pixels, so e.g. a 12-logical-px
+/// radius is `12 * scale`.
+typedef PointerIndicatorPainter =
+    void Function(Canvas canvas, Offset center, double scale);
+
 /// What to do when a recording or its encoder fails.
 enum VideoFailurePolicy {
   /// Throw a [SnapVideoException]. This is the default.
@@ -102,7 +161,7 @@ enum VideoFailurePolicy {
 
 /// Controls how a [SnapRecording] captures and encodes video.
 ///
-/// The defaults produce a 30 fps, observed-timing, H.264 MP4 with an opaque
+/// The defaults produce a 60 fps, observed-timing, H.264 MP4 with an opaque
 /// white background:
 /// ```dart
 /// final recording = await snap.recordVideo(
@@ -117,16 +176,17 @@ enum VideoFailurePolicy {
 class SnapVideoSettings {
   /// Creates video recording settings.
   const SnapVideoSettings({
-    this.frameRate = 30,
+    this.frameRate = 60,
     this.timing = VideoTiming.observed,
     this.encoding = const VideoEncoding.h264(),
     this.includeDeviceFrame = false,
     this.showPointers = false,
-    this.backgroundColor = const Color(0xFFFFFFFF),
+    this.pointerIndicator,
+    this.backgroundColor,
     this.pathPrefix = kDefaultPathPrefix,
     this.finalHold = Duration.zero,
     this.ffmpegPath,
-    this.maxSimulatedDuration = const Duration(minutes: 5),
+    this.maxSimulatedDuration = const Duration(minutes: 1),
     this.maxCapturedFrames = 20000,
     this.maxSpoolBytes = 1 << 30,
     this.encoderTimeout = const Duration(minutes: 2),
@@ -137,7 +197,7 @@ class SnapVideoSettings {
 
   /// Output frames per second, sampled onto a constant-frame-rate grid.
   ///
-  /// Defaults to 30. The grid is anchored to the first captured frame, so
+  /// Defaults to 60. The grid is anchored to the first captured frame, so
   /// recordings do not invent time before the first painted scene.
   final int frameRate;
 
@@ -165,12 +225,21 @@ class SnapVideoSettings {
   /// Defaults to `false`.
   final bool showPointers;
 
-  /// The opaque background composited behind every frame.
+  /// A custom painter for held-pointer indicators.
   ///
-  /// H.264 video (`yuv420p`) has no alpha channel, so transparency would
-  /// otherwise render as black artifacts. Alpha compositing happens at
-  /// capture time; the setting defaults to opaque white.
-  final Color backgroundColor;
+  /// Called once per active pointer per captured frame, in place of the
+  /// built-in ring-and-dot indicator — paint anything you like. Setting
+  /// this also enables indicators, as if [showPointers] were true.
+  final PointerIndicatorPainter? pointerIndicator;
+
+  /// The background composited behind every frame.
+  ///
+  /// `null` (the default) resolves automatically: transparent for encodings
+  /// that [VideoEncoding.supportsAlpha] (e.g. [VideoEncoding.vp9]), opaque
+  /// white otherwise — H.264's `yuv420p` has no alpha channel, so
+  /// transparency would otherwise render as black artifacts. Alpha
+  /// compositing happens at capture time.
+  final Color? backgroundColor;
 
   /// Directory path prefix where the video is saved.
   ///
@@ -195,7 +264,7 @@ class SnapVideoSettings {
   ///
   /// Once the recording's captured timeline exceeds this, capture freezes
   /// and the artifact is marked truncated. Guards against runaway
-  /// `pumpAndSettle` loops filling the disk. Defaults to 5 minutes.
+  /// `pumpAndSettle` loops filling the disk. Defaults to 1 minute.
   final Duration maxSimulatedDuration;
 
   /// Maximum number of captured frames kept in the spool.

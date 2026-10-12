@@ -14,6 +14,7 @@ export 'src/video/snap_recording.dart' show SnapRecording;
 export 'src/video/snaptest_binding.dart' show SnaptestWidgetsFlutterBinding;
 export 'src/video/video_settings.dart'
     show
+        PointerIndicatorPainter,
         SnapVideoSettings,
         VideoEncoding,
         VideoFailurePolicy,

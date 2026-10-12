@@ -38,6 +38,38 @@ void main() {
       expect(recording.wasTruncated, isFalse);
     });
 
+    testWidgets('produces a VP9 WebM with a transparent background', (
+      tester,
+    ) async {
+      final recording = await snap.recordVideo(
+        name: 'unit_vp9',
+        settings: const SnapVideoSettings(
+          encoding: VideoEncoding.vp9(),
+          // backgroundColor resolves to transparent for alpha encodings.
+        ),
+      );
+
+      await tester.pumpWidget(const _DemoScene(progress: 0));
+      for (var i = 1; i <= 4; i++) {
+        await tester.pumpWidget(_DemoScene(progress: i / 4));
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+
+      final file = await recording.stop();
+      expect(file.path, endsWith('.webm'));
+      expect(file.existsSync(), isTrue);
+      expect(file.lengthSync(), greaterThan(1000));
+
+      // WebM files start with the EBML magic 0x1A45DFA3.
+      final handle = file.openSync()..setPositionSync(0);
+      final header = handle.readSync(4);
+      handle.closeSync();
+      expect(
+        header,
+        orderedEquals(const [0x1A, 0x45, 0xDF, 0xA3]),
+      );
+    });
+
     testWidgets('smooth timing subdivides pumps at the frame grid', (
       tester,
     ) async {
