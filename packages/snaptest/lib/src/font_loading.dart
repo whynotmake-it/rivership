@@ -3,6 +3,9 @@
 // modified for Snaptest. Spot is licensed under the Apache License, Version
 // 2.0. See LICENSE and NOTICE in the Snaptest package.
 
+/// @docImport 'package:snaptest/src/snap.dart';
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,8 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart';
+import 'package:snaptest/src/capture.dart';
 import 'package:snaptest/src/flutter_sdk_root.dart';
-import 'package:snaptest/src/snap.dart';
 
 @internal
 const fontFormats = ['.ttf', '.otf', '.ttc'];
