@@ -18,6 +18,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta/meta.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
+import 'package:snaptest/src/video/video_settings.dart';
 
 /// The result of capturing an element's closest [RepaintBoundary].
 @internal
@@ -239,6 +240,7 @@ Future<ui.Image> cropCapturedImage(
   final croppedImage = await picture.toImage(outputWidth, outputHeight);
 
   picture.dispose();
+  image.dispose();
   return croppedImage;
 }
 
@@ -255,8 +257,9 @@ Future<ui.Image> cropCapturedImage(
 Future<ui.Image> drawPointerIndicators(
   ui.Image image,
   CapturedImage captured,
-  Iterable<Offset> logicalPositions,
-) async {
+  Iterable<Offset> logicalPositions, {
+  PointerIndicatorPainter? painter,
+}) async {
   final scaleX =
       captured.imageContentBounds.width / captured.logicalBounds.width;
   final scaleY =
@@ -282,8 +285,12 @@ Future<ui.Image> drawPointerIndicators(
       captured.imageContentBounds.top +
           (position.dy - captured.logicalBounds.top) * scaleY,
     );
-    final radius = logicalRadius * scaleX;
-    _drawTouchIndicator(canvas, center, radius, fillPaint, ringPaint);
+    if (painter != null) {
+      painter(canvas, center, scaleX);
+    } else {
+      final radius = logicalRadius * scaleX;
+      _drawTouchIndicator(canvas, center, radius, fillPaint, ringPaint);
+    }
   }
 
   final picture = recorder.endRecording();

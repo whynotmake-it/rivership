@@ -32,13 +32,16 @@ final Map<String, int> _videoCallCounts = {};
 enum _RecordingState { capturing, frozen, finalized }
 
 class _SpooledFrame {
-  const _SpooledFrame(this.timeUs, this.index);
+  const _SpooledFrame(this.timeUs, this.index, this.bytes);
 
   /// Absolute fake-clock timestamp in microseconds.
   final int timeUs;
 
   /// Sequence number; the PNG is `frames/<index padded to 6>.png`.
   final int index;
+
+  /// Encoded PNG size in bytes, tracked for `maxSpoolBytes`.
+  final int bytes;
 }
 
 /// A video recording in progress, created by [Snap.recordVideo].
@@ -155,6 +158,11 @@ class SnapRecording {
       );
     }
 
+    // Run in a real-async section: awaiting a synchronously-completed
+    // future inside the test's FakeAsync zone deadlocks, because the
+    // continuation is queued on a microtask queue nothing flushes.
+    await maybeRunAsync(_sweepStaleSpools);
+
     final recording = SnapRecording._(
       binding: binding,
       settings: settings,
@@ -215,6 +223,7 @@ class SnapRecording {
   bool _sourceSeen = false;
   String? _truncationReason;
   Object? _captureError;
+  int? _pointerRecaptureUs;
   // ignore: use_late_for_private_fields_and_variables
   Future<File>? _stopFuture;
 
@@ -237,6 +246,21 @@ class SnapRecording {
 
   int get _clockNowUs =>
       _binding.clock.now().microsecondsSinceEpoch;
+
+  /// Flags the current clock time for a re-capture because a pointer
+  /// indicator changed (e.g. a pointer was released without any repaint).
+  ///
+  /// Called by [SnaptestWidgetsFlutterBinding.handlePointerEvent]. It only
+  /// marks a timestamp instead of starting a second real-async section — a
+  /// concurrent `runAsync` asserts on reentrancy, and its inline fallback
+  /// would run `dart:io` in the FakeAsync zone and hang. The flag is drained
+  /// by the next [_captureAt] or by [_doFinalize], both already inside a
+  /// real-async section.
+  @internal
+  void markPointerStateChanged() {
+    if (!isCapturing || _isPlaceholderScene()) return;
+    _pointerRecaptureUs ??= _clockNowUs;
+  }
 
   /// Drives one observed or subdivided pump for this recording.
   ///
@@ -276,16 +300,6 @@ class SnapRecording {
       await binding.pumpOnce(Duration(microseconds: stepUs), phase);
       if (_paintedSince(framesBefore, phase)) {
         await _captureAt(_clockNowUs);
-      }
-
-      if (_frames.isNotEmpty &&
-          _clockNowUs - _frames.first.timeUs >
-              settings.maxSimulatedDuration.inMicroseconds) {
-        _truncate(
-          'Simulated duration exceeded '
-          'SnapVideoSettings.maxSimulatedDuration '
-          '(${settings.maxSimulatedDuration}).',
-        );
       }
     }
 
@@ -336,8 +350,26 @@ class SnapRecording {
     if (!isCapturing || _isPlaceholderScene()) return;
     // Coalesce states at the same timestamp: keep the last painted state.
     if (_frames.isNotEmpty && _frames.last.timeUs == timeUs) {
+      _spooledBytes -= _frames.last.bytes;
       _frames.removeLast();
       _frameSeq--; // reuse the sequence number; the orphan file is temp data
+    }
+    // A pending pointer-state recapture is drained inside this same
+    // real-async section — a second runAsync would trip the reentrancy
+    // assert. If the flag's instant matches the new capture's, the
+    // post-release state is already what gets captured below.
+    final pendingUs = _pointerRecaptureUs;
+    if (pendingUs != null && pendingUs < timeUs) {
+      _pointerRecaptureUs = null;
+      // A frame captured at the release instant already observed the
+      // release; only strictly-earlier states kept the indicator.
+      if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
+        _spooledBytes -= _frames.last.bytes;
+        _frames.removeLast();
+        _frameSeq--; // reuse the sequence number; the orphan file is temp
+      }
+    } else if (pendingUs == timeUs) {
+      _pointerRecaptureUs = null;
     }
     // binding.runAsync (not maybeRunAsync): the returned future is created
     // in the real zone, so code outside the test's fake zone — like the
@@ -345,6 +377,9 @@ class SnapRecording {
     // microtask queue.
     final task = _binding.runAsync(() async {
       try {
+        if (pendingUs != null && pendingUs < timeUs) {
+          await _captureFrame(pendingUs);
+        }
         await _captureFrame(timeUs);
       } catch (e) {
         _captureError = e;
@@ -372,12 +407,13 @@ class SnapRecording {
     );
 
     var image = captured.image;
-    if (settings.showPointers &&
+    if ((settings.showPointers || settings.pointerIndicator != null) &&
         _binding.activePointerPositions.isNotEmpty) {
       image = await drawPointerIndicators(
         image,
         captured,
         _binding.activePointerPositions.values,
+        painter: settings.pointerIndicator,
       );
     }
     if (crop != null) {
@@ -409,7 +445,7 @@ class SnapRecording {
     final bytes = byteData.buffer.asUint8List();
 
     _spooledBytes += bytes.length;
-    _frames.add(_SpooledFrame(timeUs, _frameSeq));
+    _frames.add(_SpooledFrame(timeUs, _frameSeq, bytes.length));
 
     final file = File(
       join(
@@ -421,6 +457,15 @@ class SnapRecording {
     await file.create(recursive: true);
     await file.writeAsBytes(bytes);
     _frameSeq++;
+
+    if (_clockNowUs - _frames.first.timeUs >
+        settings.maxSimulatedDuration.inMicroseconds) {
+      _truncate(
+        'Simulated duration exceeded '
+        'SnapVideoSettings.maxSimulatedDuration '
+        '(${settings.maxSimulatedDuration}).',
+      );
+    }
 
     if (_frames.length > settings.maxCapturedFrames) {
       _truncate(
@@ -463,21 +508,30 @@ class SnapRecording {
   /// Flattens [image] onto [SnapVideoSettings.backgroundColor] and pads odd
   /// dimensions up to even, as required by `yuv420p` encoders.
   Future<ui.Image> _compositeOnBackground(ui.Image image) async {
+    // A null background resolves to transparent for alpha-capable encodings
+    // and opaque white otherwise (H.264's yuv420p has no alpha channel).
+    final background =
+        settings.backgroundColor ??
+        (settings.encoding.supportsAlpha
+            ? const Color(0x00000000)
+            : const Color(0xFFFFFFFF));
     final width = image.width + (image.width & 1);
     final height = image.height + (image.height & 1);
-    if (width == image.width &&
-        height == image.height &&
-        settings.backgroundColor.a == 0.0) {
+    if (width == image.width && height == image.height && background.a == 0) {
       // Nothing to flatten or pad.
       return image;
     }
     final recorder = ui.PictureRecorder();
-    Canvas(recorder)
-      ..drawRect(
-        Offset.zero & Size(width.toDouble(), height.toDouble()),
-        Paint()..color = settings.backgroundColor,
-      )
+    final canvas = Canvas(recorder)
       ..drawImage(image, Offset.zero, Paint());
+    if (background.a > 0) {
+      canvas.drawRect(
+        Offset.zero & Size(width.toDouble(), height.toDouble()),
+        Paint()
+          ..color = background
+          ..blendMode = BlendMode.dstOver,
+      );
+    }
     final picture = recorder.endRecording();
     final composite = await picture.toImage(width, height);
     picture.dispose();
@@ -488,7 +542,10 @@ class SnapRecording {
   /// Stops capturing frames immediately and finishes encoding.
   ///
   /// Idempotent — safe to call multiple times, including concurrently; all
-  /// calls return the same result.
+  /// calls return the same result. Under [VideoFailurePolicy.warn] a failed
+  /// finalization prints diagnostics and returns the retained partial
+  /// artifact (or the intended output path when nothing was produced)
+  /// instead of throwing.
   Future<File> stop() => _stopFuture ??= _stop();
 
   Future<File> _stop() async {
@@ -496,6 +553,20 @@ class SnapRecording {
     final result = await _finalizeAndPublish();
     if (result is File) {
       return result;
+    }
+    if (settings.onFailure == VideoFailurePolicy.warn) {
+      // ignore: avoid_print
+      print(
+        'Warning: snaptest video recording failed to finalize: $result\n'
+        'Retained artifacts are in ${_spoolDir.path}.',
+      );
+      final partial = File(
+        join(_spoolDir.path, 'output${settings.encoding.fileExtension}'),
+      );
+      if (partial.existsSync()) {
+        return partial;
+      }
+      return File(_outputPath);
     }
     if (result is Error) {
       throw result;
@@ -516,6 +587,9 @@ class SnapRecording {
     if (_binding.activeRecording == this) {
       _binding.activeRecording = null;
     }
+    // A recording stopped mid-drag must not leak held pointers into the
+    // next recording's indicators.
+    _binding.activePointerPositions.clear();
   }
 
   void _truncate(String reason) {
@@ -582,6 +656,24 @@ class SnapRecording {
     await Future.wait<dynamic>(_pendingWrites);
     _pendingWrites.clear();
 
+    // A pointer-release recapture flagged near the end drains here, inside
+    // this same real-async section.
+    final pendingUs = _pointerRecaptureUs;
+    if (pendingUs != null) {
+      _pointerRecaptureUs = null;
+      if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
+        _spooledBytes -= _frames.last.bytes;
+        _frames.removeLast();
+        _frameSeq--;
+      }
+      try {
+        await _captureFrame(pendingUs);
+      } catch (e) {
+        _captureError = e;
+        _truncate('Capture failed: $e');
+      }
+    }
+
     try {
       if (_frames.isEmpty) {
         throw const SnapVideoException(
@@ -603,8 +695,12 @@ class SnapRecording {
     } finally {
       // The manifest always reflects the final state, including truncation
       // and capture errors, and survives next to the spool on failure.
+      // On success the spool is already deleted; only leave a manifest
+      // when artifacts were actually retained (failures, truncation).
       try {
-        await _writeManifestNow();
+        if (_spoolDir.existsSync()) {
+          await _writeManifestNow();
+        }
       } catch (_) {
         // Best-effort diagnostics; never mask the real result.
       }
@@ -616,13 +712,13 @@ class SnapRecording {
   /// it. Runs inside a real-async section.
   Future<File> _encodeAndPublish() async {
     final frameFiles = _resampledFrameFiles();
-    // Encode next to the final output so the publish rename stays on one
-    // filesystem (the spool lives in the system temp dir, which may be
-    // mounted separately).
     final outputFile = File(_outputPath);
     await outputFile.parent.create(recursive: true);
+    // Encode inside the unique spool dir: a temporary output next to
+    // .snaptest/ would be wiped by a parallel test file's cleanSnaps() and
+    // would collide between same-named tests running concurrently.
     final tempOutput = File(
-      '$_outputPath.tmp${settings.encoding.fileExtension}',
+      join(_spoolDir.path, 'output${settings.encoding.fileExtension}'),
     );
     final diagnostics = StringBuffer();
 
@@ -647,7 +743,10 @@ class SnapRecording {
         ? outputFile.path
         : '${withoutExtension(outputFile.path)}.truncated'
               '${settings.encoding.fileExtension}';
-    await tempOutput.rename(fileName);
+    // Copy (not rename): the spool lives in the system temp dir, which may
+    // be mounted on a different filesystem than the output.
+    await tempOutput.copy(fileName);
+    await tempOutput.delete();
     // Success: remove the temporary spool. This stays inside the real-async
     // section — dart:io futures never complete in the fake test zone.
     try {
@@ -729,5 +828,33 @@ class SnapRecording {
     await File(
       join(_spoolDir.path, 'manifest.json'),
     ).writeAsString(const JsonEncoder.withIndent('  ').convert(manifest));
+  }
+}
+
+/// Deletes frame spools left behind by crashed or killed test processes.
+///
+/// Only spools older than 30 minutes are removed: a live recording in a
+/// parallel test process could share the system temp dir, so in-flight
+/// spools must never be swept.
+Future<void> _sweepStaleSpools() async {
+  final cutoff = DateTime.now().subtract(const Duration(minutes: 30));
+  try {
+    await for (final entity in Directory.systemTemp.list(
+      followLinks: false,
+    )) {
+      if (entity is! Directory ||
+          !basename(entity.path).startsWith('snaptest_video_spool_')) {
+        continue;
+      }
+      try {
+        if (entity.statSync().modified.isBefore(cutoff)) {
+          entity.deleteSync(recursive: true);
+        }
+      } catch (_) {
+        // Best-effort cleanup; a busy or foreign spool is left alone.
+      }
+    }
+  } catch (_) {
+    // Listing the temp dir is best-effort too.
   }
 }

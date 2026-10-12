@@ -6,6 +6,7 @@
 /// which users install once in `flutter_test_config.dart`.
 library;
 
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,11 +63,20 @@ class SnaptestWidgetsFlutterBinding
 
   @override
   void handlePointerEvent(PointerEvent event) {
-    if (activeRecording?.settings.showPointers ?? false) {
+    final recording = activeRecording;
+    final tracking = recording != null &&
+        (recording.settings.showPointers ||
+            recording.settings.pointerIndicator != null);
+    if (tracking && recording.isCapturing) {
       if (event is PointerDownEvent || event is PointerMoveEvent) {
         activePointerPositions[event.pointer] = event.position;
       } else if (event is PointerUpEvent || event is PointerCancelEvent) {
-        activePointerPositions.remove(event.pointer);
+        if (activePointerPositions.remove(event.pointer) != null) {
+          // The indicator is gone but nothing repaints on release, so the
+          // last captured frame would keep showing it. Flag a re-capture;
+          // the next captured frame or the finalizer records the state.
+          recording.markPointerStateChanged();
+        }
       }
     }
     super.handlePointerEvent(event);

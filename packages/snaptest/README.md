@@ -171,11 +171,17 @@ If you never call `stop()`, the recording stops automatically when the test body
 final recording = await snap.recordVideo(
   name: 'my_demo',
   settings: const SnapVideoSettings(
-    frameRate: 30,                        // output fps
+    frameRate: 60,                        // output fps (default)
     timing: VideoTiming.smooth,           // or VideoTiming.observed
     encoding: VideoEncoding.h264(crf: 20),// H.264 MP4, yuv420p, +faststart
+    // encoding: VideoEncoding.vp9(),     // WebM with alpha (yuva420p)
+    // backgroundColor: Color(0xFF000000), // behind the frame; null = transparent
+                                         // on alpha codecs, opaque white else
     includeDeviceFrame: true,             // render inside the device frame
     showPointers: true,                   // touch indicator at held pointers
+    // pointerIndicator: (canvas, center, scale) {
+    //   // fully custom indicator; scale = logical-to-image px
+    // },
     finalHold: Duration(milliseconds: 400), // linger on the last frame
   ),
 );
@@ -183,7 +189,10 @@ final recording = await snap.recordVideo(
 
 - **`VideoTiming.observed`** (default): every pump runs unchanged; painted states are shown at their test-clock timestamps and the last state is held across gaps. Zero impact on test execution — best for debugging.
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
+- **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
+- **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
 - **`showPointers`** draws a ring-and-dot touch indicator at each pointer while it is held, like a "show touches" overlay — great for demos that visualize gestures. A quick tap between pumps paints no indicator; drags, flings, and multi-step gestures track the dot across frames.
+- **`pointerIndicator`** replaces the indicator painting entirely: `(canvas, center, scale)` is called per held pointer per frame; `center` is in image coordinates, `scale` converts logical pixels to image pixels. Setting it also enables indicators.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
 
 ```dart
@@ -226,7 +235,7 @@ The recorder faithfully captures what the test paints — most "the video jumps"
 
 - **`dart:io` futures never complete in the test's zone.** Widget tests run in a `FakeAsync` zone; async IO must go through `binding.runAsync` (the encoder already does this internally). Prefer synchronous IO (`readAsBytesSync`, `writeAsBytesSync`) inside test bodies.
 
-- **Runaway pumps are capped.** `maxSimulatedDuration`, `maxCapturedFrames`, and `maxSpoolBytes` freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long.
+- **Runaway pumps are capped.** `maxSimulatedDuration` (1 minute of simulated time by default), `maxCapturedFrames`, and `maxSpoolBytes` freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long. Raise them for long demos.
 
 ## All the Options
 

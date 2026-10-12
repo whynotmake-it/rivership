@@ -28,22 +28,21 @@ class SnapVideoException implements Exception {
   String toString() => 'SnapVideoException: $message';
 }
 
-String? _resolvedFfmpegPath;
+final Map<String?, String> _resolvedFfmpegPaths = {};
 final Map<String, Set<String>> _availableEncoders = {};
 
 /// Locates the FFmpeg executable and verifies the [encoding]'s encoder is
 /// available in that build.
 ///
-/// Results are cached: the executable is only resolved once per test process
-/// and `ffmpeg -encoders` is only listed once per executable.
+/// Results are cached per requested override: `ffmpeg -encoders` is only
+/// listed once per executable.
 @internal
 Future<String> resolveFfmpeg({
   required String? executablePath,
   required VideoEncoding encoding,
 }) async {
-  final executable = _resolvedFfmpegPath ??= await _findExecutable(
-    executablePath,
-  );
+  final executable = _resolvedFfmpegPaths[executablePath] ??=
+      await _findExecutable(executablePath);
   final available = _availableEncoders[executable] ??= await _listEncoders(
     executable,
   );
@@ -168,6 +167,7 @@ Future<void> encodeImagePipe({
     },
   );
 
+  Object? writeError;
   try {
     List<int>? lastBytes;
     File? lastFile;
@@ -181,13 +181,28 @@ Future<void> encodeImagePipe({
       process.stdin.add(lastBytes!);
       await process.stdin.flush();
     }
+  } catch (e) {
+    // A write can surface a broken pipe when FFmpeg already died or was
+    // killed for timing out; the exit diagnostics below give the real
+    // cause, so carry the raw error and decide after waiting for exit.
+    writeError = e;
   } finally {
-    await process.stdin.close();
+    try {
+      await process.stdin.close();
+    } catch (_) {
+      // Same story: a dead process makes close fail, too.
+    }
   }
 
   final exitCode = await exitFuture;
   await stderrDone;
 
+  if (writeError != null && !killedByTimeout) {
+    throw SnapVideoException(
+      'Failed writing frames to FFmpeg: $writeError\n'
+      'Diagnostics:\n$diagnostics',
+    );
+  }
   if (killedByTimeout) {
     throw SnapVideoException(
       'FFmpeg did not finish within ${timeout.inSeconds}s and was killed.\n'
