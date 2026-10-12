@@ -199,6 +199,7 @@ Future<ui.Image> cropCapturedImage(
 ) async {
   final croppedBounds = crop.intersect(captured.logicalBounds);
   if (croppedBounds.isEmpty) {
+    image.dispose();
     throw ArgumentError.value(
       crop,
       'crop',

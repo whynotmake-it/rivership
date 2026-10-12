@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
+import 'package:snaptest/src/capture.dart';
 
 void main() {
   group('recordVideo', () {
@@ -49,9 +50,18 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(const _DemoScene(progress: 0));
+      // A small centered widget leaves most of the frame unpainted, i.e.
+      // transparent — the encoded video must keep that alpha.
+      await tester.pumpWidget(
+        const Center(
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: ColoredBox(color: Colors.red),
+          ),
+        ),
+      );
       for (var i = 1; i <= 4; i++) {
-        await tester.pumpWidget(_DemoScene(progress: i / 4));
         await tester.pump(const Duration(milliseconds: 250));
       }
 
@@ -68,6 +78,37 @@ void main() {
         header,
         orderedEquals(const [0x1A, 0x45, 0xDF, 0xA3]),
       );
+
+      // Decode the first frame to raw RGBA and verify some pixels are
+      // actually transparent — this is what proves the alpha channel made
+      // it into the encoded video, not just the container header.
+      // VP9 alpha travels as side-data (alpha_mode=1) alongside a yuv420p
+      // stream: FFmpeg's native VP9 decoder ignores it, so the libvpx-vp9
+      // decoder is required to read alpha back.
+      final rgba = await maybeRunAsync(() async {
+        final result = await Process.run(
+          'ffmpeg',
+          [
+            '-v', 'error',
+            '-c:v', 'libvpx-vp9',
+            '-i', file.path,
+            '-frames:v', '1',
+            '-f', 'rawvideo',
+            '-pix_fmt', 'rgba',
+            '-',
+          ],
+          stdoutEncoding: null,
+        );
+        if (result.exitCode != 0) {
+          throw StateError('ffmpeg frame decode failed: ${result.stderr}');
+        }
+        return result.stdout as List<int>;
+      });
+      var transparent = 0;
+      for (var i = 3; i < rgba!.length; i += 4) {
+        if (rgba[i] < 255) transparent++;
+      }
+      expect(transparent, greaterThan(0));
     });
 
     testWidgets('smooth timing subdivides pumps at the frame grid', (

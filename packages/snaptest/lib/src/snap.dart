@@ -596,11 +596,8 @@ Future<ui.Image?> _takeDeviceScreenshot({
         return captured.image;
       }
 
-      try {
-        return await cropCapturedImage(captured.image, crop, captured);
-      } finally {
-        captured.image.dispose();
-      }
+      // cropCapturedImage takes ownership of the source image.
+      return cropCapturedImage(captured.image, crop, captured);
     },
   );
 
