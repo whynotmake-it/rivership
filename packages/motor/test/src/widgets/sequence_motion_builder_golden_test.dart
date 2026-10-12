@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -74,9 +76,13 @@ void main() {
 
       testWidgets('1D horizontal phase animation through sequence',
           (tester) async {
+        // snapToEnd defaults to true as of Motor 2.0. This golden intentionally
+        // opts out so it keeps exercising the off-target (non-snapping) spring
+        // settling path; see the spring snapToEnd default tests in
+        // motion_test.dart for the new default behavior.
         const sequence = MotionSequence.states(
           phaseMap,
-          motion: CupertinoMotion.bouncy(),
+          motion: CupertinoMotion.bouncy(snapToEnd: false),
         );
 
         final widget = animationSheet.record(
@@ -183,71 +189,43 @@ void main() {
         );
       });
 
-      testWidgets('loop works well', (tester) async {
-        const sequence = MotionSequence.states(
-          phaseMap,
-          loop: LoopMode.loop,
-          motion: CurvedMotion(Duration(milliseconds: 500)),
-        );
+      for (final (name, loop, duration, golden) in [
+        ('loop', LoopMode.loop, const Duration(seconds: 2), 'loop'),
+        (
+          'ping pong loop',
+          LoopMode.pingPong,
+          const Duration(seconds: 3),
+          'ping_pong'
+        ),
+        (
+          'seamless loop',
+          LoopMode.seamless,
+          const Duration(seconds: 3),
+          'seamless'
+        ),
+      ]) {
+        testWidgets('$name works well', (tester) async {
+          final sequence = MotionSequence.states(
+            phaseMap,
+            loop: loop,
+            motion: const CurvedMotion(Duration(milliseconds: 500)),
+          );
 
-        final widget = animationSheet.record(
-          buildTestApp(
-            sequence: sequence,
-            playing: true,
-          ),
-        );
+          final widget = animationSheet.record(
+            buildTestApp(
+              sequence: sequence,
+              playing: true,
+            ),
+          );
 
-        await tester.pumpFrames(widget, const Duration(seconds: 2));
+          await tester.pumpFrames(widget, duration);
 
-        await expectLater(
-          animationSheet.collate(1),
-          matchesGoldenFile('golden/loop_mode_loop.png'),
-        );
-      });
-
-      testWidgets('ping pong loop works well', (tester) async {
-        const sequence = MotionSequence.states(
-          phaseMap,
-          loop: LoopMode.pingPong,
-          motion: CurvedMotion(Duration(milliseconds: 500)),
-        );
-
-        final widget = animationSheet.record(
-          buildTestApp(
-            sequence: sequence,
-            playing: true,
-          ),
-        );
-
-        await tester.pumpFrames(widget, const Duration(seconds: 3));
-
-        await expectLater(
-          animationSheet.collate(1),
-          matchesGoldenFile('golden/loop_mode_ping_pong.png'),
-        );
-      });
-
-      testWidgets('seamless loop works well', (tester) async {
-        const sequence = MotionSequence.states(
-          phaseMap,
-          loop: LoopMode.seamless,
-          motion: CurvedMotion(Duration(milliseconds: 500)),
-        );
-
-        final widget = animationSheet.record(
-          buildTestApp(
-            sequence: sequence,
-            playing: true,
-          ),
-        );
-
-        await tester.pumpFrames(widget, const Duration(seconds: 3));
-
-        await expectLater(
-          animationSheet.collate(1),
-          matchesGoldenFile('golden/loop_mode_seamless.png'),
-        );
-      });
+          await expectLater(
+            animationSheet.collate(1),
+            matchesGoldenFile('golden/loop_mode_$golden.png'),
+          );
+        });
+      }
     });
 
     group('SequenceMotionBuilder with spanning', () {

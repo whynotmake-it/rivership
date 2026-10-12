@@ -1,10 +1,10 @@
 // ignore_for_file: prefer_const_constructors,
 // ignore_for_file: prefer_const_literals_to_create_immutables
+// ignore_for_file: deprecated_member_use_from_same_package
 
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motor/src/motion.dart';
-import 'package:motor/src/motion_sequence.dart';
+import 'package:motor/motor.dart';
 
 import 'src/util.dart';
 
@@ -12,153 +12,104 @@ void main() {
   const motion = CurvedMotion(Duration.zero);
   const motion2 = CurvedMotion(Duration(seconds: 2));
 
-  group('StateSequence', () {
-    const seq1 = StateSequence(
-      {'a': 1, 'b': 2},
-      motion: motion,
-    );
-    const seq2 = StateSequence(
-      {'a': 1, 'b': 2},
-      motion: motion,
-    );
-    const seq3 = StateSequence(
-      {'a': 1, 'b': 3},
-      motion: motion2,
-    );
-
-    test('equality: identical', () {
-      expect(seq1, equals(seq2));
-      expect(seq1.hashCode, equals(seq2.hashCode));
-    });
-    test('equality: different values', () {
-      expect(seq1, isNot(equals(seq3)));
-    });
-    test('phases and valueForPhase', () {
-      expect(seq1.phases, ['a', 'b']);
-      expect(seq1.valueForPhase('a'), 1);
-      expect(seq1.valueForPhase('b'), 2);
-    });
+  test('sequences are equal when their values and motions are', () {
+    final cases = <(String, Object, Object, bool)>[
+      (
+        'identical states',
+        StateSequence({'a': 1, 'b': 2}, motion: motion),
+        StateSequence({'a': 1, 'b': 2}, motion: motion),
+        true,
+      ),
+      (
+        'different states',
+        StateSequence({'a': 1, 'b': 2}, motion: motion),
+        StateSequence({'a': 1, 'b': 3}, motion: motion2),
+        false,
+      ),
+      (
+        'identical steps',
+        StepSequence<int>([1, 2, 3], motion: motion),
+        StepSequence<int>([1, 2, 3], motion: motion),
+        true,
+      ),
+      (
+        'different steps',
+        StepSequence<int>([1, 2, 3], motion: motion),
+        StepSequence<int>([1, 2, 4], motion: motion2),
+        false,
+      ),
+      (
+        'different trimmed motions',
+        StepSequence<int>([1, 2, 4], motion: motion2.trimmed(fromStart: .1)),
+        StepSequence<int>([1, 2, 4], motion: motion2.trimmed(fromStart: .2)),
+        false,
+      ),
+    ];
+    for (final (name, a, b, equal) in cases) {
+      expect(a == b, equal, reason: name);
+      if (equal) expect(a.hashCode, b.hashCode, reason: name);
+    }
   });
 
-  group('StepSequence', () {
-    final seq1 = StepSequence<int>(
-      [1, 2, 3],
-      motion: motion,
-    );
-    final seq2 = StepSequence<int>(
-      [1, 2, 3],
-      motion: motion,
-    );
-    final seq3 = StepSequence<int>(
-      [1, 2, 4],
-      motion: motion2,
-    );
-
-    final seqTrimmed1 = StepSequence<int>(
-      [1, 2, 4],
-      motion: motion2.trimmed(fromStart: .1),
-    );
-
-    final seqTrimmed2 = StepSequence<int>(
-      [1, 2, 4],
-      motion: motion2.trimmed(fromStart: .2),
-    );
-
-    test('equality: identical', () {
-      expect(seq1, equals(seq2));
-      expect(seq1.hashCode, equals(seq2.hashCode));
-    });
-
-    test('equality: different values', () {
-      expect(seq1, isNot(equals(seq3)));
-    });
-
-    test('phases and valueForPhase', () {
-      expect(seq1.phases, [0, 1, 2]);
-      expect(seq1.valueForPhase(2), 3);
-    });
-
-    test('equality: different trimmed motions', () {
-      expect(seqTrimmed1, isNot(equals(seqTrimmed2)));
-    });
+  test('phases are ordered and map to their values', () {
+    final cases =
+        <(String, MotionSequence<Object, Object>, List<Object>, List<Object>)>[
+      (
+        'states',
+        StateSequence({'a': 1, 'b': 2}, motion: motion),
+        ['a', 'b'],
+        [1, 2],
+      ),
+      (
+        'steps',
+        StepSequence<int>([1, 2, 3], motion: motion),
+        [0, 1, 2],
+        [1, 2, 3],
+      ),
+      (
+        'spanning 10-50',
+        SpanningSequence<String>(
+          {10.0: 'start', 30.0: 'middle', 50.0: 'end'},
+          motion: motion,
+        ),
+        [10.0, 30.0, 50.0],
+        ['start', 'middle', 'end'],
+      ),
+      (
+        'spanning -100 to 200',
+        SpanningSequence<int>(
+          {-100.0: 0, 0.0: 50, 200.0: 100},
+          motion: motion2,
+        ),
+        [-100.0, 0.0, 200.0],
+        [0, 50, 100],
+      ),
+      (
+        'spanning single value',
+        SpanningSequence<String>({42.0: 'single'}, motion: motion),
+        [42.0],
+        ['single'],
+      ),
+      (
+        'spanning unordered input',
+        SpanningSequence<String>(
+          {50.0: 'end', 10.0: 'start', 30.0: 'middle'},
+          motion: motion,
+        ),
+        [10.0, 30.0, 50.0],
+        ['start', 'middle', 'end'],
+      ),
+    ];
+    for (final (name, sequence, phases, values) in cases) {
+      expect(sequence.phases, phases, reason: name);
+      for (final (i, phase) in phases.indexed) {
+        expect(sequence.valueForPhase(phase), values[i], reason: name);
+      }
+    }
   });
 
   group('SpanningSequence', () {
-    // Test with non-normalized values (10-50 range)
-    final timeline1 = SpanningSequence<String>(
-      {
-        10.0: 'start',
-        30.0: 'middle',
-        50.0: 'end',
-      },
-      motion: motion,
-    );
-
-    // Test with negative values (-100 to 200 range)
-    final timeline2 = SpanningSequence<int>(
-      {
-        -100.0: 0,
-        0.0: 50,
-        200.0: 100,
-      },
-      motion: motion2,
-    );
-
-    // Test with single value
-    final timeline3 = SpanningSequence<String>(
-      {
-        42.0: 'single',
-      },
-      motion: motion,
-    );
-
-    test('returns original sorted values for 10-50 range', () {
-      final phases = timeline1.phases;
-      expect(phases.length, equals(3));
-      expect(phases[0], equals(10.0)); // Original value
-      expect(phases[1], equals(30.0)); // Original value
-      expect(phases[2], equals(50.0)); // Original value
-
-      expect(timeline1.valueForPhase(10), equals('start'));
-      expect(timeline1.valueForPhase(30), equals('middle'));
-      expect(timeline1.valueForPhase(50), equals('end'));
-    });
-
-    test('returns original sorted values for -100 to 200 range', () {
-      final phases = timeline2.phases;
-      expect(phases.length, equals(3));
-      expect(phases[0], equals(-100.0)); // Original value
-      expect(phases[1], equals(0.0)); // Original value
-      expect(phases[2], equals(200.0)); // Original value
-
-      expect(timeline2.valueForPhase(-100), equals(0));
-      expect(timeline2.valueForPhase(0), equals(50));
-      expect(timeline2.valueForPhase(200), equals(100));
-    });
-
-    test('handles single value correctly', () {
-      final phases = timeline3.phases;
-      expect(phases.length, equals(1));
-      expect(phases[0], equals(42.0)); // Original value
-
-      expect(timeline3.valueForPhase(42), equals('single'));
-    });
-
-    test('sorts phases correctly regardless of input order', () {
-      final unordered = SpanningSequence<String>(
-        {
-          50.0: 'end',
-          10.0: 'start',
-          30.0: 'middle',
-        },
-        motion: motion,
-      );
-
-      final phases = unordered.phases;
-      expect(phases[0], equals(10.0)); // start (original value)
-      expect(phases[1], equals(30.0)); // middle (original value)
-      expect(phases[2], equals(50.0)); // end (original value)
-    });
+    const linear1s = Motion.linear(Duration(seconds: 1));
 
     test('linear trimmed timeline stays linear', () {
       final timeline = SpanningSequence<double>(
@@ -188,6 +139,35 @@ void main() {
           .createSimulation(end: 0.25);
 
       verifySim(sim, 0, 0.25);
+    });
+
+    test('two-keyframe seamless sequence uses a non-zero motion slice', () {
+      final sequence = MotionSequence.spanning(
+        {0.0: 'a', 1.0: 'b'},
+        motion: linear1s,
+        loop: LoopMode.seamless,
+      );
+
+      final motion = sequence.motionForPhase(toPhase: 0);
+
+      expect(motion, isA<TrimmedMotion>());
+      final trimmed = motion as TrimmedMotion;
+      expect(trimmed.fromStart + trimmed.fromEnd, lessThan(1));
+    });
+
+    test('three-keyframe seamless sequence uses the penultimate slice', () {
+      final sequence = MotionSequence.spanning(
+        {0.0: 'a', 0.5: 'b', 1.0: 'c'},
+        motion: linear1s,
+        loop: LoopMode.seamless,
+      );
+
+      final motion = sequence.motionForPhase(toPhase: 0);
+
+      expect(motion, isA<TrimmedMotion>());
+      final trimmed = motion as TrimmedMotion;
+      expect(trimmed.fromStart, 0);
+      expect(trimmed.fromEnd, 0.5);
     });
   });
 }

@@ -26,43 +26,15 @@ void main() {
     const motion = CupertinoMotion.smooth();
     const converter = OffsetMotionConverter();
 
-    testWidgets('creates with initial value', (tester) async {
-      final controller = MotionController<Offset>(
-        motion: motion,
-        vsync: tester,
-        converter: converter,
-        initialValue: Offset.zero,
-      );
-      addTearDown(controller.dispose);
-      expect(controller.value, equals(Offset.zero));
-      expect(controller.velocity, equals(Offset.zero));
-    });
-
-    testWidgets('updates motion style', (tester) async {
-      final controller = MotionController<Offset>(
-        motion: motion,
-        vsync: tester,
-        converter: converter,
-        initialValue: Offset.zero,
-      );
-      addTearDown(controller.dispose);
-      final newSpring = SpringDescription.withDurationAndBounce(
-        duration: const Duration(milliseconds: 100),
-      );
-      controller.motion = SpringMotion(newSpring);
-      expect(controller.motion, isA<SpringMotion>());
-      expect(
-        (controller.motion as SpringMotion).description,
-        equals(newSpring),
-      );
-    });
-
-    testWidgets('creates a single ticker', (tester) async {
+    // One ticker keeps the controller usable with a
+    // SingleTickerProviderStateMixin.
+    testWidgets('creates a single ticker and resync absorbs it',
+        (tester) async {
       final mockTickerProvider = _MockTickerProvider();
       final mockTicker = _MockTicker();
-      when(() => mockTickerProvider.createTicker(any())).thenAnswer((_) {
-        return mockTicker;
-      });
+      when(() => mockTickerProvider.createTicker(any())).thenAnswer(
+        (_) => mockTicker,
+      );
       final controller = MotionController<Offset>(
         motion: motion,
         vsync: mockTickerProvider,
@@ -72,6 +44,68 @@ void main() {
       addTearDown(controller.dispose);
 
       verify(() => mockTickerProvider.createTicker(any())).called(1);
+
+      controller.resync(mockTickerProvider);
+      verify(() => mockTickerProvider.createTicker(any())).called(1);
+      verify(() => mockTicker.absorbTicker(mockTicker));
+    });
+
+    group('futures, like 1.x', () {
+      const linear = Motion.linear(Duration(milliseconds: 100));
+
+      testWidgets('setting value mid-flight completes the future',
+          (tester) async {
+        final controller =
+            SingleMotionController(motion: linear, vsync: tester);
+        addTearDown(controller.dispose);
+        final future = _FutureOutcome(controller.animateTo(1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+
+        controller.value = 0.5;
+        await tester.pump();
+
+        expect(future.completed, isTrue);
+        expect(future.canceled, isFalse);
+      });
+
+      testWidgets('each animateTo gets its own future and cancels the last',
+          (tester) async {
+        final controller =
+            SingleMotionController(motion: linear, vsync: tester);
+        addTearDown(controller.dispose);
+        final firstFuture = controller.animateTo(1);
+        final first = _FutureOutcome(firstFuture);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+
+        final secondFuture = controller.animateTo(0);
+        final second = _FutureOutcome(secondFuture);
+        await tester.pumpAndSettle();
+
+        expect(identical(firstFuture, secondFuture), isFalse);
+        expect(first.completed, isFalse);
+        expect(first.canceled, isTrue);
+        expect(second.completed, isTrue);
+      });
+
+      testWidgets('a graceful stop that settles cancels the last future',
+          (tester) async {
+        final controller = SingleMotionController(
+          motion: const CupertinoMotion(),
+          vsync: tester,
+        );
+        addTearDown(controller.dispose);
+        final first = _FutureOutcome(controller.animateTo(1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        unawaited(controller.stop());
+        await tester.pumpAndSettle();
+
+        expect(first.completed, isFalse);
+        expect(first.canceled, isTrue);
+      });
     });
 
     group('.animateTo', () {
@@ -108,21 +142,6 @@ void main() {
 
         expect(controller.value.dx, moreOrLessEquals(0.5, epsilon: error));
         expect(controller.value.dy, moreOrLessEquals(0.5, epsilon: error));
-      });
-
-      testWidgets('animates with initial velocity', (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-        )..animateTo(const Offset(0.5, 0.5), withVelocity: const Offset(2, 2));
-        await tester.pump();
-
-        final initialVelocity = controller.velocity;
-        expect(initialVelocity.dx, moreOrLessEquals(2, epsilon: error));
-        expect(initialVelocity.dy, moreOrLessEquals(2, epsilon: error));
-        await tester.pumpAndSettle();
       });
 
       testWidgets('completes immediately if target is within tolerance',
@@ -196,121 +215,72 @@ void main() {
       });
 
       // regression: https://github.com/whynotmake-it/rivership/issues/76
-      testWidgets(
-          'animates with from parameter correctly when x values are identical',
-          (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-        );
-
-        // Track actual values during animation to debug
-        final values = <Offset>[];
-        controller.addListener(() {
-          values.add(controller.value);
-        });
-
-        // Use the exact values from the bug report
-        unawaited(
-          controller.animateTo(
-            const Offset(100, 400), // Same x as from value
-            from: const Offset(100, 100),
-          ),
-        );
-
-        await tester.pump();
-
-        // Check first value after animation starts
-        expect(values.isNotEmpty, isTrue);
-        expect(values.first.dx, equals(100));
-        expect(values.first.dy, equals(100));
-
-        // Check intermediate values
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value.dx, equals(100));
-        expect(controller.value.dy, inExclusiveRange(100, 400));
-
-        await tester.pumpAndSettle();
-        expect(controller.value.dx, equals(100));
-        expect(controller.value.dy, moreOrLessEquals(400, epsilon: error));
-
-        // Check all recorded values to ensure x stayed at 100
-        for (final recordedValue in values) {
-          expect(
-            recordedValue.dx,
-            equals(100),
-            reason: 'x changed from 100 during animation',
+      for (final (axis, target) in [
+        ('x', const Offset(100, 400)),
+        ('y', const Offset(400, 100)),
+      ]) {
+        testWidgets(
+            'animates with from parameter correctly when $axis values are '
+            'identical', (tester) async {
+          double still(Offset value) => axis == 'x' ? value.dx : value.dy;
+          double moving(Offset value) => axis == 'x' ? value.dy : value.dx;
+          controller = MotionController<Offset>(
+            motion: motion,
+            vsync: tester,
+            converter: converter,
+            initialValue: Offset.zero,
           );
-        }
-      });
+          final values = <Offset>[];
+          controller.addListener(() {
+            values.add(controller.value);
+          });
 
-      // regression: https://github.com/whynotmake-it/rivership/issues/76
-      testWidgets(
-          'animates with from parameter correctly when y values are identical',
-          (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-        );
-
-        // Track actual values during animation to debug
-        final values = <Offset>[];
-        controller.addListener(() {
-          values.add(controller.value);
-        });
-
-        // Use the exact values from the bug report
-        unawaited(
-          controller.animateTo(
-            const Offset(400, 100), // Same y as from value
-            from: const Offset(100, 100),
-          ),
-        );
-
-        await tester.pump();
-
-        // Check first value after animation starts
-        expect(values.isNotEmpty, isTrue);
-        expect(values.first.dx, equals(100));
-        expect(values.first.dy, equals(100));
-
-        // Check intermediate values
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value.dx, inExclusiveRange(100, 400));
-        expect(controller.value.dy, equals(100));
-
-        await tester.pumpAndSettle();
-        expect(controller.value.dx, moreOrLessEquals(400, epsilon: error));
-        expect(controller.value.dy, equals(100));
-
-        // Check all recorded values to ensure y stayed at 100
-        for (final recordedValue in values) {
-          expect(
-            recordedValue.dy,
-            equals(100),
-            reason: 'y changed from 100 during animation',
+          unawaited(
+            controller.animateTo(target, from: const Offset(100, 100)),
           );
-        }
-      });
+
+          await tester.pump();
+          expect(values.isNotEmpty, isTrue);
+          expect(values.first, equals(const Offset(100, 100)));
+
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(still(controller.value), equals(100));
+          expect(moving(controller.value), inExclusiveRange(100, 400));
+
+          await tester.pumpAndSettle();
+          expect(still(controller.value), equals(100));
+          expect(
+            moving(controller.value),
+            moreOrLessEquals(400, epsilon: error),
+          );
+
+          for (final recordedValue in values) {
+            expect(
+              still(recordedValue),
+              equals(100),
+              reason: '$axis changed from 100 during animation',
+            );
+          }
+        });
+      }
     });
 
     group('.motion', () {
-      late MotionController<Offset> controller;
-      tearDown(() {
-        controller.dispose();
-      });
-
-      testWidgets('redirects simulation', (tester) async {
-        controller = MotionController<Offset>(
+      testWidgets('only updates while idle and redirects simulation',
+          (tester) async {
+        final controller = MotionController<Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
-        )..animateTo(const Offset(1, 1));
+        );
+        addTearDown(controller.dispose);
+
+        controller.motion = const CupertinoMotion.bouncy();
+        expect(controller.motion, const CupertinoMotion.bouncy());
+        expect(controller.isAnimating, isFalse);
+
+        controller.animateTo(const Offset(1, 1));
         await tester.pump();
 
         final newSpring = SpringDescription.withDurationAndBounce(
@@ -383,177 +353,223 @@ void main() {
       });
     });
 
-    group('.resync', () {
-      late MotionController<Offset> controller;
-      tearDown(() {
-        controller.dispose();
-      });
-
-      testWidgets('resyncs the controller', (tester) async {
-        final mockTickerProvider = _MockTickerProvider();
-        final mockTicker = _MockTicker();
-
-        when(() => mockTickerProvider.createTicker(any())).thenAnswer(
-          (_) => mockTicker,
-        );
-
-        controller = MotionController<Offset>(
+    group('.status', () {
+      testWidgets('if converter provides compare, it will be respected',
+          (tester) async {
+        final controller = SingleMotionController(
           motion: motion,
-          vsync: mockTickerProvider,
-          converter: converter,
-          initialValue: Offset.zero,
+          vsync: tester,
+        );
+        addTearDown(controller.dispose);
+
+        unawaited(controller.animateTo(3));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
+
+        unawaited(controller.animateTo(1));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(
+          controller.status,
+          equals(AnimationStatus.dismissed),
+          reason: 'A downward move finishes dismissed',
         );
 
-        verify(() => mockTickerProvider.createTicker(any()));
+        unawaited(controller.animateTo(2));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.completed));
 
-        controller.resync(mockTickerProvider);
-        verify(() => mockTickerProvider.createTicker(any()));
-        verify(() => mockTicker.absorbTicker(mockTicker));
+        unawaited(controller.animateTo(0));
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
+        await tester.pumpAndSettle();
+        expect(controller.status, equals(AnimationStatus.dismissed));
       });
     });
 
-    group('.status', () {
-      late MotionController<Offset> controller;
-      tearDown(() {
-        controller.dispose();
-      });
-
-      testWidgets('is .dismissed initially', (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
+    group('converter swap', () {
+      testWidgets('keeps an in-flight animation going', (tester) async {
+        final controller = MotionController<double>(
+          motion: const Motion.linear(Duration(milliseconds: 100)),
           vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
+          converter: MotionConverter.single,
+          initialValue: 0,
         );
-        expect(controller.status, equals(AnimationStatus.dismissed));
-      });
+        addTearDown(controller.dispose);
 
-      testWidgets('is forward when animating to larger values', (tester) async {
-        controller = MotionController(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-        );
-
-        unawaited(controller.animateTo(const Offset(1, 1)));
+        unawaited(controller.animateTo(1));
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.forward));
+        await tester.pump(const Duration(milliseconds: 30));
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value],
+          denormalize: (values) => values[0],
+        );
+        expect(controller.value, closeTo(0.3, error));
+        expect(controller.isAnimating, isTrue);
+
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(controller.value, closeTo(0.5, error));
         await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.completed));
+        expect(controller.value, closeTo(1, error));
       });
 
-      testWidgets('is forward when animating to smaller values',
+      testWidgets(
+          'in a MotionBuilder with an inline converter, survives a parent '
+          'rebuild mid-flight', (tester) async {
+        var target = 0.0;
+        late StateSetter setState;
+        var built = -1.0;
+        await tester.pumpWidget(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return MotionBuilder<double>(
+                value: target,
+                motion: const Motion.linear(Duration(milliseconds: 100)),
+                converter: MotionConverter.custom(
+                  normalize: (value) => [value],
+                  denormalize: (values) => values[0],
+                ),
+                builder: (context, value, child) {
+                  built = value;
+                  return const SizedBox();
+                },
+              );
+            },
+          ),
+        );
+
+        setState(() => target = 1);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+        setState(() {});
+        await tester.pump();
+        await tester.pumpAndSettle();
+        expect(built, closeTo(1, error));
+      });
+
+      testWidgets('forgets replaced track state', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        for (var i = 0; i < 100; i++) {
+          controller.converter = MotionConverter.custom(
+            normalize: (value) => [value.dx, value.dy],
+            denormalize: (values) => Offset(values[0], values[1]),
+          );
+        }
+
+        expect(controller.internalInnerController.debugTrackCount, 1);
+
+        controller.animateTo(const Offset(1, 1)).ignore();
+        await tester.pumpAndSettle();
+
+        expect(controller.value.dx, moreOrLessEquals(1, epsilon: error));
+        expect(controller.value.dy, moreOrLessEquals(1, epsilon: error));
+      });
+
+      testWidgets('reinterprets the current value under the new converter',
           (tester) async {
-        controller = MotionController<Offset>(
+        final controller = MotionController<Offset>(
           motion: motion,
           vsync: tester,
           converter: converter,
-          initialValue: const Offset(1, 1),
+          initialValue: const Offset(2, 3),
+        );
+        addTearDown(controller.dispose);
+
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dy, value.dx],
+          denormalize: (values) => Offset(values[1], values[0]),
         );
 
-        unawaited(controller.animateTo(Offset.zero));
-        await tester.pump();
-        expect(controller.status, equals(AnimationStatus.forward));
-        await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.completed));
+        expect(controller.value, const Offset(3, 2));
       });
 
-      testWidgets('is dismissed when back at initial value', (tester) async {
-        controller = MotionController<Offset>(
-          motion: motion,
+      testWidgets(
+          'reinterprets a mid-animation swap, keeps animating and does not '
+          'report completion', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: const Motion.linear(Duration(milliseconds: 40)),
           vsync: tester,
           converter: converter,
           initialValue: Offset.zero,
         );
-
-        unawaited(controller.animateTo(const Offset(1, 1)));
+        addTearDown(controller.dispose);
+        final statuses = <AnimationStatus>[];
+        controller
+          ..addStatusListener(statuses.add)
+          ..animateTo(const Offset(10, 20)).ignore();
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.forward));
-        await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.completed));
+        await tester.pump(const Duration(milliseconds: 10));
+        final valueBeforeSwap = controller.value;
 
-        unawaited(controller.animateTo(Offset.zero));
-        await tester.pump();
-        expect(controller.status, equals(AnimationStatus.forward));
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dy, value.dx],
+          denormalize: (values) => Offset(values[1], values[0]),
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(controller.isAnimating, isTrue);
+        expect(
+          controller.value,
+          Offset(valueBeforeSwap.dy, valueBeforeSwap.dx),
+        );
+        expect(statuses, [AnimationStatus.forward]);
         await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.dismissed));
       });
     });
 
     group('.converter', () {
-      late MotionController<EdgeInsetsGeometry> controller;
-      tearDown(() {
-        controller.dispose();
-      });
-
-      testWidgets('will throw in constructor if value type does not match',
+      testWidgets('throws a TypeError for values the converter rejects',
           (tester) async {
         const converter = EdgeInsetsMotionConverter();
 
-        void initializeController() {
-          controller = MotionController<EdgeInsetsGeometry>(
+        expect(
+          () => MotionController<EdgeInsetsGeometry>(
             motion: const CupertinoMotion.smooth(),
             vsync: tester,
             initialValue: EdgeInsetsDirectional.zero,
             converter: converter,
-          );
-        }
+          ),
+          throwsA(isA<TypeError>()),
+        );
 
-        expect(initializeController, throwsA(isA<TypeError>()));
-
-        controller = MotionController<EdgeInsetsGeometry>(
+        final controller = MotionController<EdgeInsetsGeometry>(
           motion: const CupertinoMotion.smooth(),
           vsync: tester,
           initialValue: EdgeInsets.zero,
           converter: converter,
         );
-      });
+        addTearDown(controller.dispose);
 
-      testWidgets('will throw in setter if value type does not match',
-          (tester) async {
-        const converter = EdgeInsetsMotionConverter();
-        controller = MotionController<EdgeInsetsGeometry>(
-          motion: const CupertinoMotion.smooth(),
-          vsync: tester,
-          initialValue: EdgeInsets.zero,
-          converter: converter,
+        expect(
+          () => controller.value = EdgeInsetsDirectional.zero,
+          throwsA(isA<TypeError>()),
         );
-
-        void setValue() {
-          controller.value = EdgeInsetsDirectional.zero;
-        }
-
-        expect(setValue, throwsA(isA<TypeError>()));
-      });
-
-      testWidgets('will throw in animateTo if value type does not match',
-          (tester) async {
-        const converter = EdgeInsetsMotionConverter();
-        controller = MotionController<EdgeInsetsGeometry>(
-          motion: const CupertinoMotion.smooth(),
-          vsync: tester,
-          initialValue: EdgeInsets.zero,
-          converter: converter,
+        expect(
+          () => controller.animateTo(EdgeInsetsDirectional.zero),
+          throwsA(isA<TypeError>()),
         );
-
-        void animate() {
-          controller.animateTo(EdgeInsetsDirectional.zero);
-        }
-
-        expect(animate, throwsA(isA<TypeError>()));
       });
 
       testWidgets('can be swapped mid animation', (tester) async {
         const converterA = EdgeInsetsMotionConverter();
         const converterB = EdgeInsetsDirectionalMotionConverter();
-        controller = MotionController<EdgeInsetsGeometry>(
+        final controller = MotionController<EdgeInsetsGeometry>(
           motion: const CupertinoMotion.smooth(),
           vsync: tester,
           initialValue: EdgeInsets.zero,
           converter: converterA,
         );
-
         addTearDown(controller.dispose);
 
         controller.animateTo(const EdgeInsets.all(100)).ignore();
@@ -583,6 +599,37 @@ void main() {
     });
   });
 
+  group('TrackController.forgetTrack', () {
+    testWidgets('evicts state and allows lazy reinitialization',
+        (tester) async {
+      final controller = TrackController(vsync: tester);
+      addTearDown(controller.dispose);
+      final forgottenTrack = Track<Offset>(
+        const OffsetMotionConverter(),
+        initial: const Offset(2, 3),
+      );
+      final retainedTrack = Track<Offset>(
+        const OffsetMotionConverter(),
+        initial: Offset.zero,
+        motion: const CupertinoMotion.smooth(),
+      );
+
+      controller
+        ..set([forgottenTrack.value(const Offset(4, 5))])
+        ..animate([retainedTrack.to(const Offset(1, 1))]);
+
+      expect(controller.debugTrackCount, 2);
+
+      controller.forgetTrack(forgottenTrack);
+
+      expect(controller.debugTrackCount, 1);
+      expect(controller.value(forgottenTrack), const Offset(2, 3));
+      expect(controller.debugTrackCount, 2);
+
+      await tester.pumpAndSettle();
+    });
+  });
+
   group('BoundedMotionController', () {
     setUp(TestWidgetsFlutterBinding.ensureInitialized);
 
@@ -594,159 +641,37 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('creates with default bounds', (tester) async {
+    testWidgets('animateTo(forward: false) reports reverse, as in 1.x',
+        (tester) async {
       controller = BoundedMotionController<Offset>(
         motion: motion,
         vsync: tester,
         converter: converter,
-        initialValue: Offset.zero,
+        initialValue: const Offset(1, 1),
         lowerBound: Offset.zero,
         upperBound: const Offset(1, 1),
       );
-      expect(controller.lowerBound, equals(Offset.zero));
-      expect(controller.upperBound, equals(const Offset(1, 1)));
-      expect(controller.value, equals(Offset.zero));
-      expect(controller.velocity, equals(Offset.zero));
-    });
+      final statuses = <AnimationStatus>[];
+      controller
+        ..addStatusListener(statuses.add)
+        ..animateTo(const Offset(0.5, 0.5), forward: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(controller.status, AnimationStatus.reverse);
 
-    testWidgets('clamps value within bounds', (tester) async {
-      controller = BoundedMotionController<Offset>(
-        motion: motion,
-        vsync: tester,
-        converter: converter,
-        initialValue: Offset.zero,
-        lowerBound: Offset.zero,
-        upperBound: const Offset(1, 1),
-      );
-      expect(controller.value, equals(Offset.zero));
-      controller.value = const Offset(2, 2);
-      expect(controller.value, equals(const Offset(1, 1)));
+      controller.stop();
+      await tester.pumpAndSettle();
+      expect(controller.status, AnimationStatus.reverse);
 
-      controller.value = const Offset(-1, -1);
-      expect(controller.value, equals(Offset.zero));
-    });
-
-    group('.forward', () {
-      testWidgets('animates to upper bound', (tester) async {
-        controller = BoundedMotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-          lowerBound: Offset.zero,
-          upperBound: const Offset(1, 1),
-        );
-        final future = controller.forward();
-
-        await tester.pump();
-        expect(future, isA<TickerFuture>());
-        expect(controller.value, equals(Offset.zero));
-
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value.dx, greaterThan(0.0));
-        expect(controller.value.dx, lessThan(0.4));
-        expect(controller.value.dy, greaterThan(0.0));
-        expect(controller.value.dy, lessThan(0.4));
-
-        await tester.pumpAndSettle();
-        expect(controller.value.dx, moreOrLessEquals(1, epsilon: error));
-        expect(controller.value.dy, moreOrLessEquals(1, epsilon: error));
-      });
-
-      testWidgets('will overshoot', (tester) async {
-        var overshot = false;
-        controller = BoundedMotionController<Offset>(
-          motion: const CupertinoMotion.bouncy(),
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-          lowerBound: Offset.zero,
-          upperBound: const Offset(1, 1),
-        );
-
-        controller
-          ..addListener(() {
-            if (controller.value.dx > 1.0 || controller.value.dy > 1.0) {
-              overshot = true;
-            }
-          })
-          ..forward();
-
-        await tester.pumpAndSettle();
-
-        expect(overshot, isTrue);
-        expect(controller.value.dx, closeTo(1, motion.tolerance.distance));
-        expect(controller.value.dy, closeTo(1, motion.tolerance.distance));
-      });
-    });
-
-    group('.reverse', () {
-      testWidgets('animates to lower bound', (tester) async {
-        controller = BoundedMotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: const Offset(1, 1),
-          lowerBound: Offset.zero,
-          upperBound: const Offset(1, 1),
-        );
-        final future = controller.reverse();
-
-        await tester.pump();
-        expect(future, isA<TickerFuture>());
-        expect(controller.value, equals(const Offset(1, 1)));
-
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(controller.value.dx, lessThan(1.0));
-        expect(controller.value.dx, greaterThan(0.6));
-        expect(controller.value.dy, lessThan(1.0));
-        expect(controller.value.dy, greaterThan(0.6));
-
-        await tester.pumpAndSettle();
-        expect(controller.value.dx, moreOrLessEquals(0, epsilon: error));
-        expect(controller.value.dy, moreOrLessEquals(0, epsilon: error));
-      });
-
-      testWidgets('will overshoot', (tester) async {
-        var overshot = false;
-        controller = BoundedMotionController<Offset>(
-          motion: const CupertinoMotion.bouncy(),
-          vsync: tester,
-          converter: converter,
-          initialValue: const Offset(1, 1),
-          lowerBound: Offset.zero,
-          upperBound: const Offset(1, 1),
-        );
-
-        controller
-          ..addListener(() {
-            if (controller.value.dx < 0.0 || controller.value.dy < 0.0) {
-              overshot = true;
-            }
-          })
-          ..reverse();
-
-        await tester.pumpAndSettle();
-
-        expect(overshot, isTrue);
-        expect(controller.value.dx, closeTo(0, motion.tolerance.distance));
-        expect(controller.value.dy, closeTo(0, motion.tolerance.distance));
-      });
+      controller.animateTo(const Offset(2, 2));
+      await tester.pump();
+      expect(controller.status, AnimationStatus.forward);
+      await tester.pumpAndSettle();
+      expect(controller.value, const Offset(1, 1));
+      expect(statuses.first, AnimationStatus.reverse);
     });
 
     group('.status', () {
-      testWidgets('is .dismissed initially', (tester) async {
-        controller = BoundedMotionController<Offset>(
-          motion: motion,
-          vsync: tester,
-          converter: converter,
-          initialValue: Offset.zero,
-          lowerBound: Offset.zero,
-          upperBound: const Offset(1, 1),
-        );
-        expect(controller.status, equals(AnimationStatus.dismissed));
-      });
-
       testWidgets('is forward when animating forward', (tester) async {
         controller = BoundedMotionController<Offset>(
           motion: motion,
@@ -764,8 +689,11 @@ void main() {
         expect(controller.status, equals(AnimationStatus.completed));
       });
 
-      testWidgets('is reverse when animating to smaller values',
-          (tester) async {
+      testWidgets(
+          'reports the direction of reverse() and forward() for a '
+          'non-directional converter, as in 1.x', (tester) async {
+        // OffsetMotionConverter has no direction, so the direction comes
+        // from which bound the controller animates towards.
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
@@ -774,19 +702,51 @@ void main() {
           lowerBound: Offset.zero,
           upperBound: const Offset(1, 1),
         );
+        final statuses = <AnimationStatus>[];
+        controller.addStatusListener(statuses.add);
 
         unawaited(controller.reverse());
         await tester.pump();
-        expect(controller.status, equals(AnimationStatus.reverse));
+        expect(controller.status, AnimationStatus.reverse);
+        // Without a direction, dismissed means back at the initial value.
         await tester.pumpAndSettle();
-        expect(controller.status, equals(AnimationStatus.dismissed));
+        expect(controller.status, AnimationStatus.completed);
+
+        unawaited(controller.forward());
+        await tester.pump();
+        expect(controller.status, AnimationStatus.forward);
+        await tester.pumpAndSettle();
+        expect(controller.status, AnimationStatus.dismissed);
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        unawaited(controller.stop(canceled: true));
+        expect(controller.status, AnimationStatus.reverse);
+
+        expect(statuses, [
+          AnimationStatus.reverse,
+          AnimationStatus.completed,
+          AnimationStatus.forward,
+          AnimationStatus.dismissed,
+          AnimationStatus.reverse,
+        ]);
       });
 
-      testWidgets('returns last direction when stopped', (tester) async {
+      testWidgets(
+          'keeps the direction when stopped and settles a directional '
+          'reverse() at dismissed, as in 1.x', (tester) async {
+        // Use a converter that orders based on x direction only
+        final xDirectionConverter = MotionConverter.customDirectional(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+          compare: (a, b) => a.dx.compareTo(b.dx),
+        );
+
         controller = BoundedMotionController<Offset>(
           motion: motion,
           vsync: tester,
-          converter: converter,
+          converter: xDirectionConverter,
           initialValue: Offset.zero,
           lowerBound: Offset.zero,
           upperBound: const Offset(1, 1),
@@ -799,7 +759,6 @@ void main() {
         expect(controller.status, equals(AnimationStatus.forward));
         unawaited(controller.stop());
         await tester.pumpAndSettle();
-
         expect(controller.status, equals(AnimationStatus.forward));
 
         unawaited(controller.reverse());
@@ -810,10 +769,175 @@ void main() {
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.reverse));
 
+        unawaited(controller.forward());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        unawaited(controller.stop(canceled: true));
+        expect(controller.status, equals(AnimationStatus.forward));
+
         unawaited(controller.reverse());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        unawaited(controller.stop(canceled: true));
+        expect(controller.status, equals(AnimationStatus.reverse));
+
+        unawaited(controller.reverse());
+        await tester.pump();
+        expect(controller.status, equals(AnimationStatus.reverse));
         await tester.pumpAndSettle();
         expect(controller.status, equals(AnimationStatus.dismissed));
       });
     });
   });
+
+  group('MotionController velocity tracking', () {
+    setUp(TestWidgetsFlutterBinding.ensureInitialized);
+
+    const motion = CupertinoMotion.smooth();
+    const converter = OffsetMotionConverter();
+
+    testWidgets('when disabled, set values leave the velocity at zero',
+        (tester) async {
+      final controller = MotionController<Offset>(
+        motion: motion,
+        vsync: tester,
+        converter: converter,
+        initialValue: Offset.zero,
+        velocityTracking: const VelocityTracking.off(),
+      );
+      addTearDown(controller.dispose);
+
+      expect(controller.velocity, equals(Offset.zero));
+      expect(controller.trackedVelocityEstimate, isNull);
+
+      controller.value = const Offset(10, 20);
+      expect(controller.velocity, equals(Offset.zero));
+      expect(controller.trackedVelocityEstimate, isNull);
+    });
+
+    group('with velocity tracking enabled (default)', () {
+      testWidgets(
+          'tracks velocity from set values and animateTo adopts it, then '
+          'resets tracking', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        // Set values at a constant 16ms cadence (the fake clock advances with
+        // pump), moving by (10, 20) each frame. Four samples give the velocity
+        // tracker full confidence, so the estimate is exact:
+        // 10px / 16ms = 625 px/s on x, 20px / 16ms = 1250 px/s on y.
+        const frame = Duration(milliseconds: 16);
+        controller.value = Offset.zero;
+        await tester.pump(frame);
+        controller.value = const Offset(10, 20);
+        await tester.pump(frame);
+        controller.value = const Offset(20, 40);
+        await tester.pump(frame);
+        controller.value = const Offset(30, 60);
+
+        final estimate = controller.trackedVelocityEstimate;
+        expect(estimate, isNotNull);
+        expect(estimate!.perSecond.dx, closeTo(625, error));
+        expect(estimate.perSecond.dy, closeTo(1250, error));
+
+        // When not animating, the velocity getter returns the tracked velocity.
+        final trackedVelocity = controller.velocity;
+        expect(trackedVelocity.dx, closeTo(625, error));
+        expect(trackedVelocity.dy, closeTo(1250, error));
+
+        // Without explicit velocity, animateTo adopts the tracked velocity as
+        // its initial velocity (read at t=0).
+        controller.animateTo(const Offset(100, 200));
+        await tester.pump();
+
+        final animationVelocity = controller.velocity;
+        expect(
+          animationVelocity.dx,
+          moreOrLessEquals(trackedVelocity.dx, epsilon: error),
+        );
+        expect(
+          animationVelocity.dy,
+          moreOrLessEquals(trackedVelocity.dy, epsilon: error),
+        );
+        expect(controller.trackedVelocityEstimate, isNull);
+
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets(
+          'animateTo with explicit velocity ignores tracked velocity and '
+          'reads the simulation velocity while animating', (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20)
+          ..value = const Offset(20, 40)
+          ..animateTo(
+            const Offset(100, 200),
+            withVelocity: const Offset(500, 500),
+          );
+        await tester.pump();
+
+        expect(controller.isAnimating, isTrue);
+        final initialVelocity = controller.velocity;
+        expect(initialVelocity.dx, moreOrLessEquals(500.0, epsilon: error));
+        expect(initialVelocity.dy, moreOrLessEquals(500.0, epsilon: error));
+
+        await tester.pumpAndSettle();
+        expect(controller.isAnimating, isFalse);
+
+        // No tracked samples since animateTo reset the tracker.
+        expect(controller.velocity, equals(Offset.zero));
+      });
+
+      testWidgets('changing converter recreates velocity tracker',
+          (tester) async {
+        final controller = MotionController<Offset>(
+          motion: motion,
+          vsync: tester,
+          converter: converter,
+          initialValue: Offset.zero,
+        );
+        addTearDown(controller.dispose);
+
+        controller
+          ..value = Offset.zero
+          ..value = const Offset(10, 20);
+
+        expect(controller.trackedVelocityEstimate, isNotNull);
+
+        controller.converter = MotionConverter.custom(
+          normalize: (value) => [value.dx, value.dy],
+          denormalize: (values) => Offset(values[0], values[1]),
+        );
+
+        expect(controller.trackedVelocityEstimate, isNull);
+      });
+    });
+  });
+}
+
+/// Records whether a [TickerFuture] completed or was canceled.
+class _FutureOutcome {
+  _FutureOutcome(TickerFuture future) {
+    future.then((_) => completed = true);
+    future.orCancel.catchError((Object error) {
+      canceled = error is TickerCanceled;
+    });
+  }
+
+  bool completed = false;
+  bool canceled = false;
 }
