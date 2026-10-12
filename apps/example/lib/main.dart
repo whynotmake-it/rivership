@@ -1,12 +1,15 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
+import 'package:motor_devtools/motor_devtools.dart';
+import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/main.dart';
 import 'package:rivership/rivership.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
 
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -34,13 +37,22 @@ void main() async {
   );
 
   runApp(
-    CupertinoApp.router(
-      debugShowCheckedModeBanner: false,
-      routerConfig: router.config(
-        navigatorObservers: () => [
-          HeroineController(),
-          HeroController(),
-        ],
+    ValueListenableBuilder(
+      valueListenable: devtoolsVisible,
+      builder: (context, visible, child) => MotorDevTools(
+        // The gallery ships the tools on purpose, also in release builds.
+        enabled: true,
+        visible: visible,
+        child: child!,
+      ),
+      child: CupertinoApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router.config(
+          navigatorObservers: () => [
+            HeroineController(),
+            HeroController(),
+          ],
+        ),
       ),
     ),
   );
