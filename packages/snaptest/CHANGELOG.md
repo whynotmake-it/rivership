@@ -1,3 +1,12 @@
+## 1.0.0-dev.5
+
+ - **FEAT**: record widget-test interactions as videos.
+
+    Capture observed test frames or smooth demo animations as H.264/MP4 or
+    alpha-capable VP9/WebM, with optional device frames and pointer indicators.
+    Video recording requires FFmpeg on `PATH` and
+    `SnaptestWidgetsFlutterBinding` installed before any other binding use.
+
 ## 1.0.0-dev.4
 
  - **CHORE**: license this release under Apache-2.0 and document the adapted
