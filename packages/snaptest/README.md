@@ -159,7 +159,7 @@ testWidgets('open details', (tester) async {
   await tester.tap(find.text('Details'));
   await tester.pumpAndSettle();
 
-  final file = await recording.stop(); // writes .snaptest/<test_name>.mp4
+  final file = await recording.stop(); // .mp4 by default; .webm for VP9
 });
 ```
 
