@@ -1,8 +1,7 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:example_design/example_design.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:stupid_simple_sheet_example/widgets/example_theme.dart';
 
 /// The Stupid Simple Sheet logo.
 ///
@@ -90,29 +89,13 @@ class _SheetLogoPainter extends CustomPainter {
 
     canvas.restore();
 
-    // -- Touch point (finger circle, inside the sheet) --
-    final touchRadius = w * 0.09;
-    final touchCenter = Offset(w / 2, sheetTop + sheetTopRadius * 1.4);
-    final gesturePaint = Paint()..color = gestureColor.withValues(alpha: .9);
-    canvas.drawCircle(touchCenter, touchRadius, gesturePaint);
-
-    final arcStroke = w * 0.045;
-    // -- Motion arc (semicircle below the touch point) --
-    final arcPaint = Paint()
-      ..color = gestureColor.withValues(alpha: .9)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = arcStroke
-      ..strokeCap = StrokeCap.round;
-
-    final arcRadius = touchRadius * 1.5;
-    final arcCenterY = touchCenter.dy;
-
-    final arcRect = Rect.fromCircle(
-        center: Offset(w / 2, arcCenterY), radius: arcRadius + arcStroke / 3);
-    final arcSpread = math.pi * 0.3; // 80% of a full semicircle
-    // Align the arc below the circle
-    final arcStart = 0 + (math.pi - arcSpread) / 2;
-    canvas.drawArc(arcRect, arcStart, arcSpread, false, arcPaint);
+    // -- Touch point with its motion arc, shared with the other logos --
+    LogoGlyph.paint(
+      canvas,
+      Offset(w / 2, sheetTop + sheetTopRadius * 1.4),
+      w * 0.09,
+      gestureColor.withValues(alpha: .9),
+    );
   }
 
   @override
