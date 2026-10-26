@@ -9,6 +9,8 @@ import 'package:stupid_simple_sheet/src/sheet_dismissal_transition.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
+export 'package:scroll_drag_detector/scroll_drag_detector.dart'
+    show ScrollDragBehavior;
 
 export 'src/dismissal_mode.dart';
 export 'src/route_snapshot_mode.dart';
@@ -33,6 +35,8 @@ enum SheetDragHandoff {
 /// A modal route that displays a sheet that slides up from the bottom.
 ///
 /// The sheet can be dismissed by dragging down or by tapping the barrier.
+/// When sheet content overrides its [ScrollBehavior], wrap the behavior in
+/// [ScrollDragBehavior] so scrolling still hands off to the sheet correctly.
 /// The animation supports spring physics for natural motion using the
 ///
 ///
