@@ -14,9 +14,15 @@ void main() {
 
   tearDown(SnaptestSettings.resetGlobal);
 
-  for (final glass in [false, true]) {
+  for (final (glass, childOverride) in [
+    (false, false),
+    (true, false),
+    (false, true),
+    (true, true),
+  ]) {
     testWidgets(
-      '${glass ? 'glass' : 'regular'} sheet drags beneath a copied scroll behavior',
+      '${glass ? 'glass' : 'regular'} sheet drags beneath a '
+      'copied scroll behavior (child override=$childOverride)',
       (tester) async {
         final navigator = GlobalKey<NavigatorState>();
         await tester.pumpWidget(
@@ -38,11 +44,21 @@ void main() {
                 ListTile(title: Text('Item $index')),
           ),
         );
-        navigator.currentState!.push(
-          glass
-              ? StupidSimpleGlassSheetRoute<void>(child: child)
-              : StupidSimpleSheetRoute<void>(child: child),
-        );
+        final content = childOverride
+            ? ScrollConfiguration(
+                behavior: const ScrollDragBehavior(
+                  parent: ScrollBehavior(),
+                ).copyWith(physics: const ClampingScrollPhysics()),
+                child: child,
+              )
+            : child;
+        navigator.currentState!
+            .push(
+              glass
+                  ? StupidSimpleGlassSheetRoute<void>(child: content)
+                  : StupidSimpleSheetRoute<void>(child: content),
+            )
+            .ignore();
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
 

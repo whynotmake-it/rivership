@@ -57,6 +57,9 @@ enum ScrollDragMode {
 /// draggable view, and you want the outside view to be dragged whenever the
 /// scrollable would overscroll.
 /// The most common use would be a scrollable sheet.
+///
+/// Descendants that override their [ScrollBehavior] must wrap that behavior in
+/// [ScrollDragBehavior] to preserve drag handoff.
 /// {@endtemplate}
 class ScrollDragDetector extends StatefulWidget {
   ///{@macro scroll_drag_detector}
@@ -312,15 +315,23 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             };
             final blockedAxes = blockedDirections.map(_axisFor).toSet();
 
-            return ScrollConfiguration(
-              behavior: blockedDirections.isNotEmpty
-                  ? _DraggingScrollBehavior(
-                      parent: ScrollConfiguration.of(context),
-                      axes: blockedAxes,
-                      blockedDirections: blockedDirections,
-                    )
-                  : ScrollConfiguration.of(context),
-              child: child!,
+            final parent = ScrollConfiguration.of(context);
+            final behavior = blockedDirections.isNotEmpty
+                ? ScrollDragBehavior._(
+                    parent: parent,
+                    axes: blockedAxes,
+                    blockedDirections: blockedDirections,
+                  )
+                : null;
+            return _ScrollDragBehaviorScope(
+              behaviors: [
+                if (behavior != null) behavior,
+                ..._ScrollDragBehaviorScope.of(context),
+              ],
+              child: ScrollConfiguration(
+                behavior: behavior ?? parent,
+                child: child!,
+              ),
             );
           },
           child: widget.child,
@@ -530,35 +541,93 @@ class _AxisDragState {
   DragStartDetails? dragStartDetails;
 }
 
-class _DraggingScrollBehavior extends ScrollBehavior {
-  const _DraggingScrollBehavior({
-    required this.parent,
-    required this.axes,
-    required this.blockedDirections,
-  });
+/// Preserves [ScrollDragDetector] handoff when overriding scroll behavior.
+///
+/// Use this wrapper when a descendant installs its own [ScrollConfiguration]
+/// or passes a behavior directly to a scrollable, such as
+/// [CustomScrollView.scrollBehavior]. An unwrapped override can hide the
+/// detector's physics and allow its content to keep scrolling during a drag.
+///
+/// ```dart
+/// ScrollConfiguration(
+///   behavior: ScrollDragBehavior(
+///     parent: const ScrollBehavior().copyWith(scrollbars: false),
+///   ),
+///   child: ListView.builder(itemBuilder: buildItem),
+/// )
+/// ```
+///
+/// Ancestor detectors' drag constraints are applied on top of [parent]'s
+/// physics. Other behavior settings are delegated to [parent], except scroll
+/// decorations are suppressed on axes currently controlled by a detector.
+/// Outside a detector, this delegates to [parent] unchanged. [copyWith] retains
+/// this wrapper, including when overriding physics.
+class ScrollDragBehavior extends ScrollBehavior {
+  /// Wraps [parent] while preserving ancestor detectors' drag constraints.
+  const ScrollDragBehavior({required this.parent})
+      : _axes = null,
+        _blockedDirections = null;
 
+  const ScrollDragBehavior._({
+    required this.parent,
+    required Set<Axis>? axes,
+    required Set<AxisDirection>? blockedDirections,
+  })  : _axes = axes,
+        _blockedDirections = blockedDirections;
+
+  /// The consumer's scroll behavior, including its physics and input settings.
   final ScrollBehavior parent;
 
-  final Set<Axis> axes;
+  final Set<Axis>? _axes;
+  final Set<AxisDirection>? _blockedDirections;
 
-  /// Physical pointer directions in which scrolling should be blocked.
-  final Set<AxisDirection> blockedDirections;
+  List<ScrollDragBehavior> _behaviorsOf(BuildContext context) =>
+      _axes != null ? [this] : _ScrollDragBehaviorScope.of(context);
 
-  bool doesApplyToDetails(ScrollableDetails details) {
-    return switch (details.direction) {
-      AxisDirection.up || AxisDirection.down => axes.contains(Axis.vertical),
-      AxisDirection.left ||
-      AxisDirection.right =>
-        axes.contains(Axis.horizontal),
-    };
+  bool _doesApplyToDetails(BuildContext context, ScrollableDetails details) =>
+      _behaviorsOf(context).any(
+        (behavior) => behavior._axes!.contains(
+          axisDirectionToAxis(details.direction),
+        ),
+      );
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    var physics = parent.getScrollPhysics(context);
+    for (final behavior in _behaviorsOf(context).reversed) {
+      physics = _OverscrollScrollPhysics(
+        axes: behavior._axes!,
+        blockedDirections: behavior._blockedDirections!,
+        parent: physics,
+      );
+    }
+    return physics;
   }
 
   @override
-  ScrollPhysics getScrollPhysics(BuildContext context) =>
-      _OverscrollScrollPhysics(
-        axes: axes,
-        blockedDirections: blockedDirections,
-        parent: parent.getScrollPhysics(context),
+  ScrollDragBehavior copyWith({
+    bool? scrollbars,
+    bool? overscroll,
+    Set<PointerDeviceKind>? dragDevices,
+    MultitouchDragStrategy? multitouchDragStrategy,
+    Set<LogicalKeyboardKey>? pointerAxisModifiers,
+    ScrollPhysics? physics,
+    TargetPlatform? platform,
+    ScrollViewKeyboardDismissBehavior? keyboardDismissBehavior,
+  }) =>
+      ScrollDragBehavior._(
+        parent: parent.copyWith(
+          scrollbars: scrollbars,
+          overscroll: overscroll,
+          dragDevices: dragDevices,
+          multitouchDragStrategy: multitouchDragStrategy,
+          pointerAxisModifiers: pointerAxisModifiers,
+          physics: physics,
+          platform: platform,
+          keyboardDismissBehavior: keyboardDismissBehavior,
+        ),
+        axes: _axes,
+        blockedDirections: _blockedDirections,
       );
 
   @override
@@ -567,7 +636,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
     Widget child,
     ScrollableDetails details,
   ) =>
-      doesApplyToDetails(details)
+      _doesApplyToDetails(context, details)
           ? child
           : parent.buildOverscrollIndicator(context, child, details);
 
@@ -577,7 +646,7 @@ class _DraggingScrollBehavior extends ScrollBehavior {
     Widget child,
     ScrollableDetails details,
   ) =>
-      doesApplyToDetails(details)
+      _doesApplyToDetails(context, details)
           ? child
           : parent.buildScrollbar(context, child, details);
 
@@ -608,10 +677,30 @@ class _DraggingScrollBehavior extends ScrollBehavior {
 
   @override
   bool shouldNotify(covariant ScrollBehavior oldDelegate) =>
-      parent.shouldNotify(oldDelegate) ||
-      (oldDelegate is _DraggingScrollBehavior &&
-          (oldDelegate.axes != axes ||
-              oldDelegate.blockedDirections != blockedDirections));
+      oldDelegate is! ScrollDragBehavior ||
+      parent.runtimeType != oldDelegate.parent.runtimeType ||
+      parent.shouldNotify(oldDelegate.parent) ||
+      oldDelegate._axes != _axes ||
+      oldDelegate._blockedDirections != _blockedDirections;
+}
+
+class _ScrollDragBehaviorScope extends InheritedWidget {
+  const _ScrollDragBehaviorScope({
+    required this.behaviors,
+    required super.child,
+  });
+
+  final List<ScrollDragBehavior> behaviors;
+
+  static List<ScrollDragBehavior> of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_ScrollDragBehaviorScope>()
+          ?.behaviors ??
+      const [];
+
+  @override
+  bool updateShouldNotify(_ScrollDragBehaviorScope oldWidget) =>
+      behaviors != oldWidget.behaviors;
 }
 
 /// Scroll physics that don't allow moving from the current position and just
