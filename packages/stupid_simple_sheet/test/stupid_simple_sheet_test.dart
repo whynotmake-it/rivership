@@ -2036,10 +2036,12 @@ void main() {
             (tester) async {
               addTearDown(tester.view.reset);
 
-              await tester.pumpWidget(build(
-                originateAboveBottomViewInset: originateAboveBottomViewInset,
-                dismissalMode: dismissalMode,
-              ));
+              await tester.pumpWidget(
+                build(
+                  originateAboveBottomViewInset: originateAboveBottomViewInset,
+                  dismissalMode: dismissalMode,
+                ),
+              );
               final button = find.byKey(const ValueKey('button'));
               final scaffold = find.byKey(const ValueKey('scaffold'));
               await tester.tap(button);
