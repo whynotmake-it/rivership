@@ -498,6 +498,92 @@ void main() {
     );
   });
 
+  group('inherited scroll behavior', () {
+    for (final mode in [
+      ScrollDragMode.dragFirst,
+      ScrollDragMode.boundaryStart,
+    ]) {
+      testWidgets('$mode hands off with a copied behavior', (tester) async {
+        final starts = <bool>[];
+        await tester.pumpWidget(
+          ScrollConfiguration(
+            behavior: const ScrollBehavior().copyWith(scrollbars: false),
+            child: _TestScrollable(
+              axis: Axis.vertical,
+              reverse: false,
+              modes: {AxisDirection.down: mode},
+              onStart: starts.add,
+            ),
+          ),
+        );
+
+        final scrollable = find.byType(Scrollable);
+        await tester.drag(scrollable, const Offset(0, 120));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(starts, isNotEmpty);
+        expect(tester.state<ScrollableState>(scrollable).position.pixels, 0);
+
+        await tester.drag(scrollable, const Offset(0, -120));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(
+          tester.state<ScrollableState>(scrollable).position.pixels,
+          greaterThan(0),
+        );
+      });
+    }
+
+    testWidgets('updates physics across parent behavior types', (tester) async {
+      for (final (behavior, physicsMatcher) in [
+        (
+          const ScrollBehavior().copyWith(
+            physics: const ClampingScrollPhysics(),
+          ),
+          isA<ClampingScrollPhysics>(),
+        ),
+        (
+          const _TypedScrollBehavior(ClampingScrollPhysics()),
+          isA<ClampingScrollPhysics>(),
+        ),
+        (
+          const _TypedScrollBehavior(BouncingScrollPhysics()),
+          isA<BouncingScrollPhysics>(),
+        ),
+        (
+          const ScrollBehavior().copyWith(
+            physics: const BouncingScrollPhysics(),
+          ),
+          isA<BouncingScrollPhysics>(),
+        ),
+      ]) {
+        await tester.pumpWidget(
+          ScrollConfiguration(
+            behavior: behavior,
+            child: _TestScrollable(
+              axis: Axis.vertical,
+              reverse: false,
+              modes: const {AxisDirection.up: ScrollDragMode.dragFirst},
+              onStart: (_) {},
+            ),
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        var physics = tester
+            .state<ScrollableState>(find.byType(Scrollable))
+            .position
+            .physics;
+        while (physics.parent != null) {
+          physics = physics.parent!;
+        }
+        expect(physics, physicsMatcher);
+      }
+    });
+  });
+
   group('legacy constructor', () {
     for (final canMoveBack in [false, true]) {
       for (final onlyFromTop in [false, true]) {
@@ -535,6 +621,19 @@ void main() {
       }
     }
   });
+}
+
+class _TypedScrollBehavior extends ScrollBehavior {
+  const _TypedScrollBehavior(this.physics);
+
+  final ScrollPhysics physics;
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => physics;
+
+  @override
+  bool shouldNotify(covariant _TypedScrollBehavior oldDelegate) =>
+      physics != oldDelegate.physics;
 }
 
 class _TestScrollable extends StatelessWidget {

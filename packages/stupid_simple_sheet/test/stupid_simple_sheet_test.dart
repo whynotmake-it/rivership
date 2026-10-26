@@ -14,6 +14,55 @@ void main() {
 
   tearDown(SnaptestSettings.resetGlobal);
 
+  for (final glass in [false, true]) {
+    testWidgets(
+      '${glass ? 'glass' : 'regular'} sheet drags beneath a copied scroll behavior',
+      (tester) async {
+        final navigator = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: navigator,
+            builder: (context, child) => ScrollConfiguration(
+              behavior: const ScrollBehavior().copyWith(scrollbars: false),
+              child: child!,
+            ),
+            home: const Scaffold(),
+          ),
+        );
+        const sheetKey = Key('copied-behavior-sheet');
+        final child = Scaffold(
+          key: sheetKey,
+          body: ListView.builder(
+            itemCount: 100,
+            itemBuilder: (context, index) =>
+                ListTile(title: Text('Item $index')),
+          ),
+        );
+        navigator.currentState!.push(
+          glass
+              ? StupidSimpleGlassSheetRoute<void>(child: child)
+              : StupidSimpleSheetRoute<void>(child: child),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        final sheet = find.byKey(sheetKey);
+        final initialTop = tester.getTopLeft(sheet).dy;
+        final gesture = await tester.startGesture(tester.getCenter(sheet));
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 15));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(tester.takeException(), isNull);
+        expect(tester.getTopLeft(sheet).dy, greaterThan(initialTop));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   group('StupidSimpleSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
