@@ -1988,6 +1988,8 @@ void main() {
 
     Widget build({
       ShapeBorder? shape,
+      bool originateAboveBottomViewInset = false,
+      DismissalMode dismissalMode = DismissalMode.slide,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -2002,6 +2004,9 @@ void main() {
                     StupidSimpleGlassSheetRoute<void>(
                       motion: motion,
                       shape: shape ?? StupidSimpleGlassSheetRoute.glassShape,
+                      originateAboveBottomViewInset:
+                          originateAboveBottomViewInset,
+                      dismissalMode: dismissalMode,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -2021,6 +2026,60 @@ void main() {
         ),
       );
     }
+
+    group('originateAboveBottomViewInset', () {
+      for (final dismissalMode in DismissalMode.values) {
+        for (final originateAboveBottomViewInset in [false, true]) {
+          testWidgets(
+            '${dismissalMode.name} respects keyboard insets when '
+            '$originateAboveBottomViewInset',
+            (tester) async {
+              addTearDown(tester.view.reset);
+
+              await tester.pumpWidget(build(
+                originateAboveBottomViewInset: originateAboveBottomViewInset,
+                dismissalMode: dismissalMode,
+              ));
+              final button = find.byKey(const ValueKey('button'));
+              final scaffold = find.byKey(const ValueKey('scaffold'));
+              await tester.tap(button);
+              await tester.pumpAndSettle();
+              final initialBottom = tester.getBottomLeft(scaffold).dy;
+
+              Future<void> checkKeyboardHeight(double height) async {
+                tester.view.viewInsets = FakeViewPadding(
+                  bottom: height * tester.view.devicePixelRatio,
+                );
+                await tester.pumpAndSettle();
+
+                expect(
+                  tester.getBottomLeft(scaffold).dy,
+                  initialBottom - (originateAboveBottomViewInset ? height : 0),
+                );
+                expect(
+                  MediaQuery.viewInsetsOf(tester.element(scaffold)).bottom,
+                  originateAboveBottomViewInset ? 0 : height,
+                );
+              }
+
+              await checkKeyboardHeight(300);
+              await checkKeyboardHeight(200);
+              await checkKeyboardHeight(0);
+
+              Navigator.of(tester.element(scaffold)).pop();
+              await tester.pumpAndSettle();
+              tester.view.viewInsets = FakeViewPadding(
+                bottom: 300 * tester.view.devicePixelRatio,
+              );
+              await tester.pump();
+              await tester.tap(button);
+              await tester.pumpAndSettle();
+              await checkKeyboardHeight(300);
+            },
+          );
+        }
+      }
+    });
 
     group('radius goldens', () {
       setUp(() {
