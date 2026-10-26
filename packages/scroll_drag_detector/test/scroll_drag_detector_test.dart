@@ -285,18 +285,30 @@ void main() {
             expect(starts, [true]);
             expect(updates, isNotEmpty);
             expect(updates, everyElement(isTrue));
-            expect(position.pixels, boundary);
+            expect(
+              tester.state<ScrollableState>(scrollable).position.pixels,
+              boundary,
+            );
             await gesture.up();
             await tester.pumpAndSettle();
 
             // A fresh gesture must still drag without stranding the scrollable.
             starts.clear();
             updates.clear();
-            await tester.drag(scrollable, towardsBoundary * 100);
+            final nextGesture =
+                await tester.startGesture(tester.getCenter(scrollable));
+            for (var i = 0; i < 5; i++) {
+              await nextGesture.moveBy(towardsBoundary * 20);
+              await tester.pump();
+            }
+            await nextGesture.up();
             await tester.pumpAndSettle();
             expect(starts, [true]);
             expect(updates, isNotEmpty);
-            expect(position.pixels, boundary);
+            expect(
+              tester.state<ScrollableState>(scrollable).position.pixels,
+              boundary,
+            );
           });
         }
       }
@@ -337,7 +349,10 @@ void main() {
       await gesture.up();
 
       expect(ends, contains(true));
-      expect(position.pixels, lessThan(position.maxScrollExtent));
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        lessThan(position.maxScrollExtent),
+      );
     },
   );
 
