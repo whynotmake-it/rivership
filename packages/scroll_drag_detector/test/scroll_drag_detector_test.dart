@@ -225,6 +225,84 @@ void main() {
     expect(starts, isEmpty);
   });
 
+  group('returning to the boundary without lifting the pointer', () {
+    for (final mode in [
+      ScrollDragMode.boundaryStart,
+      ScrollDragMode.scrollFirst,
+    ]) {
+      for (final axisDirection in AxisDirection.values) {
+        for (final trailing in [false, true]) {
+          final direction =
+              trailing ? flipAxisDirection(axisDirection) : axisDirection;
+          final axis = axisDirectionToAxis(axisDirection);
+          final reverse = axisDirection == AxisDirection.up ||
+              axisDirection == AxisDirection.left;
+          final sign = direction == AxisDirection.down ||
+                  direction == AxisDirection.right
+              ? 1.0
+              : -1.0;
+          final towardsBoundary =
+              axis == Axis.vertical ? Offset(0, sign) : Offset(sign, 0);
+
+          testWidgets('$mode at $axisDirection trailing=$trailing',
+              (tester) async {
+            final starts = <bool>[];
+            final updates = <bool>[];
+            await tester.pumpWidget(
+              _TestScrollable(
+                axis: axis,
+                reverse: reverse,
+                modes: {direction: mode},
+                onStart: starts.add,
+                onUpdate: updates.add,
+              ),
+            );
+
+            final scrollable = find.byType(Scrollable);
+            final position = tester.state<ScrollableState>(scrollable).position;
+            final boundary =
+                trailing ? position.maxScrollExtent : position.minScrollExtent;
+            if (trailing) {
+              position.jumpTo(boundary);
+              await tester.pump();
+            }
+            expect(position.pixels, boundary);
+
+            final gesture =
+                await tester.startGesture(tester.getCenter(scrollable));
+            for (var i = 0; i < 6; i++) {
+              await gesture.moveBy(towardsBoundary * -20);
+              await tester.pump();
+            }
+            expect((position.pixels - boundary).abs(), greaterThan(50));
+            expect(starts, isEmpty);
+
+            // Small steps expose a handoff that freezes short of the boundary.
+            for (var i = 0; i < 30; i++) {
+              await gesture.moveBy(towardsBoundary * 7);
+              await tester.pump();
+            }
+            expect(starts, [true]);
+            expect(updates, isNotEmpty);
+            expect(updates, everyElement(isTrue));
+            expect(position.pixels, boundary);
+            await gesture.up();
+            await tester.pumpAndSettle();
+
+            // A fresh gesture must still drag without stranding the scrollable.
+            starts.clear();
+            updates.clear();
+            await tester.drag(scrollable, towardsBoundary * 100);
+            await tester.pumpAndSettle();
+            expect(starts, [true]);
+            expect(updates, isNotEmpty);
+            expect(position.pixels, boundary);
+          });
+        }
+      }
+    }
+  });
+
   testWidgets(
     'scrollFirst can reach a boundary, take over, then return to scrolling',
     (tester) async {
@@ -449,6 +527,7 @@ class _TestScrollable extends StatelessWidget {
     required this.axis,
     required this.reverse,
     required this.onStart,
+    this.onUpdate,
     this.onEnd,
     this.onEndDetails,
     this.callbackAxis,
@@ -459,6 +538,7 @@ class _TestScrollable extends StatelessWidget {
   final Axis? callbackAxis;
   final bool reverse;
   final ValueChanged<bool> onStart;
+  final ValueChanged<bool>? onUpdate;
   final ValueChanged<bool>? onEnd;
   final ValueChanged<DragEndDetails>? onEndDetails;
   final Map<AxisDirection, ScrollDragMode> modes;
@@ -474,6 +554,9 @@ class _TestScrollable extends StatelessWidget {
       onVerticalDragStart: effectiveCallbackAxis == Axis.vertical
           ? (details, didScroll) => onStart(didScroll)
           : null,
+      onVerticalDragUpdate: effectiveCallbackAxis == Axis.vertical
+          ? (details, wouldScroll) => onUpdate?.call(wouldScroll)
+          : null,
       onVerticalDragEnd: effectiveCallbackAxis == Axis.vertical
           ? (details, willScroll) {
               onEnd?.call(willScroll);
@@ -482,6 +565,9 @@ class _TestScrollable extends StatelessWidget {
           : null,
       onHorizontalDragStart: effectiveCallbackAxis == Axis.horizontal
           ? (details, didScroll) => onStart(didScroll)
+          : null,
+      onHorizontalDragUpdate: effectiveCallbackAxis == Axis.horizontal
+          ? (details, wouldScroll) => onUpdate?.call(wouldScroll)
           : null,
       onHorizontalDragEnd: effectiveCallbackAxis == Axis.horizontal
           ? (details, willScroll) {
