@@ -1,3 +1,8 @@
+## 1.0.0-dev.5
+
+ - **FIX**(stupid_simple_sheet): respect keyboard insets in glass sheets (#338).
+ - **FIX**(scroll_drag_detector): reach the boundary before drag handoff (#337).
+
 ## 1.0.0-dev.4
 
  - **FIX**: notify `PopScope` when a drag attempts to dismiss a sheet whose
@@ -227,4 +232,3 @@
 
  - **FIX**: remove hard-coded padding from sheet (#155).
  - **FEAT**: stupid simple sheet and drag detector (#154).
-

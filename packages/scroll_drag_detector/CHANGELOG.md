@@ -1,3 +1,8 @@
+## 1.0.0-dev.1
+
+ - **FIX**(scroll_drag_detector): reach the boundary before drag handoff (#337).
+
+
 ## 1.0.0-dev.0
 
 > Note: This release has breaking changes.
@@ -52,4 +57,3 @@
 ## 0.0.2
 
  - **FEAT**: stupid simple sheet and drag detector (#154).
-
