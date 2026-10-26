@@ -456,9 +456,8 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
       metrics.axisDirection,
       primaryDelta,
     );
-    final atBoundary = isLeading
-        ? metrics.extentBefore <= kTouchSlop
-        : metrics.extentAfter <= kTouchSlop;
+    final atBoundary =
+        isLeading ? metrics.extentBefore == 0 : metrics.extentAfter == 0;
     if (!atBoundary) return false;
 
     if (mode == ScrollDragMode.boundaryStart) {
