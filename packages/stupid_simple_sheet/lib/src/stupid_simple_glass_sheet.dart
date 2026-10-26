@@ -166,10 +166,12 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    return MediaQuery.removePadding(
-      context: context,
-      removeTop: true,
-      child: child,
+    return Builder(
+      builder: (context) => MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: child,
+      ),
     );
   }
 
@@ -186,17 +188,24 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
         builder: (context) {
           final snappingConfigForTransition =
               _nextSheet?.effectiveSnappingConfig ?? effectiveSnappingConfig;
-          return GlassSheetTransitions.fullTransition(
-            context,
-            animation: controller!.view,
-            secondaryAnimation: secondaryAnimation,
-            slideBackRange: snappingConfigForTransition.topTwoPoints,
-            opacityRange: snappingConfigForTransition.bottomTwoPoints,
-            backgroundColor: backgroundColor,
-            secondSheet: _isSecondGlassSheet,
-            dismissalMode: dismissalMode,
-            shape: shape,
-            child: maybeSnapshotChild(child),
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: originateAboveBottomViewInset
+                  ? MediaQuery.viewInsetsOf(context).bottom
+                  : 0,
+            ),
+            child: GlassSheetTransitions.fullTransition(
+              context,
+              animation: controller!.view,
+              secondaryAnimation: secondaryAnimation,
+              slideBackRange: snappingConfigForTransition.topTwoPoints,
+              opacityRange: snappingConfigForTransition.bottomTwoPoints,
+              backgroundColor: backgroundColor,
+              secondSheet: _isSecondGlassSheet,
+              dismissalMode: dismissalMode,
+              shape: shape,
+              child: maybeSnapshotChild(child),
+            ),
           );
         },
       ),
