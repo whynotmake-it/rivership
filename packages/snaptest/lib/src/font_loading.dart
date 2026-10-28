@@ -21,6 +21,9 @@ import 'package:snaptest/src/flutter_sdk_root.dart';
 const fontFormats = ['.ttf', '.otf', '.ttc'];
 
 bool _fontsLoaded = false;
+final _fontSources = <String, List<String>>{};
+final _fontAliases = <String, String>{};
+Future<void>? _pendingFontLoad;
 
 /// Controls how Cupertino system fonts (`CupertinoSystemText` and
 /// `CupertinoSystemDisplay`) are loaded for screenshot rendering.
@@ -123,16 +126,65 @@ class _OverrideCupertinoFonts extends CupertinoFontConfig {
 /// [matchesGoldenFile], which will block out all text independent of the
 /// loaded fonts.
 ///
-/// The function is idempotent - calling it multiple times has no additional
-/// effect after the first call.
+/// ## Font aliases
+///
+/// [fontAliases] maps **alias → source family**, reusing all of the source's
+/// font assets (including weight/style variants) under another family name:
+///
+/// ```dart
+/// await loadFonts(fontAliases: {
+///   'SanFranciscoPro': 'SF Pro', // SF Pro must be declared in pubspec.yaml.
+///   'BrandText': 'Roboto',
+///   'AnotherBrandText': 'Roboto',
+/// });
+/// ```
+///
+/// Sources can be SDK families or asset families, including
+/// `packages/my_package/Family`. This does not discover installed fonts or
+/// substitute a fallback: an unknown source or empty alias throws
+/// [ArgumentError]. Replacing a loaded family or retargeting an alias throws
+/// [StateError], because engine fonts cannot be unloaded.
+///
+/// Base fonts and [cupertinoFonts] are configured only on the first successful
+/// call. Further calls can add aliases, including after test-suite setup has
+/// already called [loadFonts]. Repeating the same alias is a no-op. Aliases in
+/// one call must refer to already-loaded families, not each other.
 Future<void> loadFonts({
   CupertinoFontConfig cupertinoFonts = const CupertinoFontConfig.override(),
+  Map<String, String> fontAliases = const {},
 }) async {
-  if (_fontsLoaded) return;
+  if (_fontsLoaded && fontAliases.isEmpty) return;
   TestWidgetsFlutterBinding.ensureInitialized();
+  final aliases = Map.of(fontAliases);
+  final error = await maybeRunAsync(() async {
+    final previous = _pendingFontLoad;
+    final next = () async {
+      await previous;
+      await _loadFonts(cupertinoFonts, aliases);
+    }();
+    _pendingFontLoad = next.catchError((Object _) {});
+    try {
+      await next;
+      return null;
+    } on Object catch (error, stack) {
+      return (error, stack);
+    }
+  });
+  if (error != null) Error.throwWithStackTrace(error.$1, error.$2);
+}
+
+Future<void> _loadFonts(
+  CupertinoFontConfig cupertinoFonts,
+  Map<String, String> fontAliases,
+) async {
+  if (_fontsLoaded) {
+    await _loadFontAliases(fontAliases);
+    return;
+  }
 
   await _loadMaterialFontsFromSdk();
   await _loadFontsFromFontManifest();
+  await _loadFontAliases(fontAliases);
 
   switch (cupertinoFonts) {
     case _MacOsCupertinoFonts(
@@ -151,23 +203,41 @@ Future<void> loadFonts({
             'CupertinoFontConfig.override() for cross-platform consistency.',
           );
         }
-        if (fallbackOverrideFontFamily == 'Roboto') {
-          await _overrideCupertinoFontsWithRoboto();
-        } else {
-          await _overrideCupertinoFontsWithFamily(
-            fallbackOverrideFontFamily,
-          );
-        }
+        await _overrideCupertinoFontsWithFamily(fallbackOverrideFontFamily);
       }
     case _OverrideCupertinoFonts(:final fontFamily):
-      if (fontFamily == 'Roboto') {
-        await _overrideCupertinoFontsWithRoboto();
-      } else {
-        await _overrideCupertinoFontsWithFamily(fontFamily);
-      }
+      await _overrideCupertinoFontsWithFamily(fontFamily);
   }
 
   _fontsLoaded = true;
+}
+
+Future<void> _loadFontAliases(Map<String, String> aliases) async {
+  for (final MapEntry(key: alias, value: source) in aliases.entries) {
+    if (alias.trim().isEmpty || !_fontSources.containsKey(source)) {
+      throw ArgumentError.value(
+        '$alias → $source',
+        'fontAliases',
+        'Use a nonempty alias and a loaded source family. '
+            'Declare asset fonts in pubspec.yaml.',
+      );
+    }
+    final existing = _fontAliases[alias];
+    if ((existing != null && existing != source) ||
+        (existing == null &&
+            alias != source &&
+            _fontSources.containsKey(alias))) {
+      throw StateError(
+        'Cannot replace loaded font family "$alias" with '
+        '"$source": Flutter fonts cannot be unloaded.',
+      );
+    }
+  }
+  for (final MapEntry(key: alias, value: source) in aliases.entries) {
+    if (alias == source || _fontAliases[alias] == source) continue;
+    await loadFont(alias, _fontSources[source]!);
+    _fontAliases[alias] = source;
+  }
 }
 
 /// Loads fonts from the given [fromPaths] into the Flutter engine under the
@@ -195,6 +265,7 @@ Future<void> loadFont(String family, List<String> fromPaths) async {
     }
 
     await fontLoader.load();
+    _fontSources[family] = List.unmodifiable(fromPaths);
   });
 }
 
@@ -272,54 +343,9 @@ List<(String, List<String>)> _parseFontManifest(String content) {
   return fonts;
 }
 
-Future<void> _overrideCupertinoFontsWithRoboto() async {
-  final root = flutterSdkRoot().absolute.path;
-
-  final materialFontsDir = Directory(
-    '$root/bin/cache/artifacts/material_fonts/',
-  );
-
-  final existingFonts = materialFontsDir
-      .listSync()
-      .whereType<File>()
-      .where(
-        (font) => fontFormats.any((element) => font.path.endsWith(element)),
-      )
-      .toList();
-
-  final robotoFonts = existingFonts
-      .where((font) {
-        final name = basename(font.path).toLowerCase();
-        return name.startsWith('Roboto-'.toLowerCase());
-      })
-      .map((file) => file.path)
-      .toList();
-  if (robotoFonts.isEmpty) {
-    debugPrint("Warning: No Roboto font found in SDK");
-  }
-  await loadFont('CupertinoSystemText', robotoFonts);
-  await loadFont('CupertinoSystemDisplay', robotoFonts);
-}
-
 Future<void> _overrideCupertinoFontsWithFamily(String fontFamily) async {
-  final fontManifestContent = await maybeRunAsync(
-    () => rootBundle.loadString('FontManifest.json'),
-  );
-
-  if (fontManifestContent == null || fontManifestContent.isEmpty) {
-    debugPrint(
-      'Warning: Could not load FontManifest.json to find "$fontFamily" fonts.',
-    );
-    return;
-  }
-
-  final entries = _parseFontManifest(fontManifestContent);
-  final assets = entries
-      .where((e) => e.$1 == fontFamily || e.$1.endsWith('/$fontFamily'))
-      .expand((e) => e.$2)
-      .toList();
-
-  if (assets.isEmpty) {
+  final assets = _fontSources[fontFamily];
+  if (assets == null || assets.isEmpty) {
     debugPrint(
       'Warning: No font assets found for "$fontFamily". '
       'Make sure it is declared in your pubspec.yaml.',
