@@ -153,6 +153,7 @@ Future<void> loadFonts({
   CupertinoFontConfig cupertinoFonts = const CupertinoFontConfig.override(),
   Map<String, String> fontAliases = const {},
 }) async {
+  if (_fontsLoaded && fontAliases.isEmpty) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   final aliases = Map.of(fontAliases);
   final error = await maybeRunAsync(() async {
