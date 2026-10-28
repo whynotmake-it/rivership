@@ -216,6 +216,22 @@ testWidgets(
 
 ### Pitfalls
 
+Frames stream as straight-alpha RGBA directly to FFmpeg while the test runs:
+there is no per-frame PNG compression or disk spool. A bounded pipe applies
+backpressure rather than dropping frames. Resolution, output FPS, and codec
+quality settings are unchanged; rendering and video encoding still take time.
+Unchanged retained scenes can reuse their pixels without skipping timestamps;
+textures and custom pointer painters are always captured again.
+
+`maxSpoolBytes` now limits the observed temporary **encoded video** size
+(the legacy name is retained). Encoder buffering may delay detection.
+`encoderTimeout` bounds a streaming batch or finalization, not the entire test.
+Failures retain timing metadata and any partial video, not individual PNGs.
+
+For a repeatable end-to-end benchmark with real gestures and device frames,
+run `time fvm flutter test test/video_test.dart --plain-name 'demo video'`
+from the snaptest package. Compare on the same machine and Flutter version.
+
 The recorder faithfully captures what the test paints — most "the video jumps" issues are test-scripting artifacts, not recording bugs:
 
 - **Single `moveBy` teleports.** `tester.drag()` sends one `moveBy` event, so a draggable (e.g. a sheet) jumps to its end position in a single frame. Drive drags with `startGesture`, incremental `moveBy` + small `pump`s in a loop, then `up()`:

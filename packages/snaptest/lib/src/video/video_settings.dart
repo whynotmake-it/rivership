@@ -267,21 +267,23 @@ class SnapVideoSettings {
   /// `pumpAndSettle` loops filling the disk. Defaults to 1 minute.
   final Duration maxSimulatedDuration;
 
-  /// Maximum number of captured frames kept in the spool.
+  /// Maximum number of captured timestamps kept in the recording.
   ///
   /// Exceeding this freezes capture and marks the artifact truncated.
   final int maxCapturedFrames;
 
-  /// Maximum total bytes of the temporary PNG spool.
+  /// Maximum observed size of the temporary encoded video, in bytes.
   ///
-  /// Exceeding this freezes capture and marks the artifact truncated.
-  /// Defaults to 1 GiB.
+  /// Frames are streamed directly to FFmpeg; there is no PNG spool. The
+  /// legacy name is retained for compatibility. Exceeding this freezes
+  /// capture and marks the artifact truncated. Checked after captures and
+  /// finalization; encoder buffering may delay detection. Defaults to 1 GiB.
   final int maxSpoolBytes;
 
-  /// Wall-clock timeout for the FFmpeg encoder process.
+  /// Wall-clock timeout for a frame batch or encoder finalization.
   ///
-  /// Encoding happens after the test body completes and is not simulated
-  /// time. Defaults to 2 minutes.
+  /// Encoding overlaps capture. This bounds stalled writes and finalization,
+  /// not the total recording or simulated duration. Defaults to 2 minutes.
   final Duration encoderTimeout;
 
   /// Whether capture or encoding failures throw or only warn.

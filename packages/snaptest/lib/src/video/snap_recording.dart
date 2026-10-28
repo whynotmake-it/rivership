@@ -2,15 +2,15 @@
 ///
 /// The session passively observes the frames a widget test paints: it never
 /// pumps, loads fonts, precaches images, or repaints layers of its own. Each
-/// painted frame is rasterized to a PNG spool with its simulated timestamp;
-/// when the recording stops, the spooled timeline is resampled onto the
-/// configured constant-frame-rate grid and encoded by FFmpeg.
+/// painted frame is resampled onto the configured frame grid and streamed
+/// as raw pixels to FFmpeg, with bounded buffering and no PNG spool.
 /// @docImport 'package:snaptest/src/snap.dart';
 library;
 
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
@@ -31,17 +31,11 @@ final Map<String, int> _videoCallCounts = {};
 
 enum _RecordingState { capturing, frozen, finalized }
 
-class _SpooledFrame {
-  const _SpooledFrame(this.timeUs, this.index, this.bytes);
+class _CapturedFrame {
+  const _CapturedFrame(this.timeUs);
 
   /// Absolute fake-clock timestamp in microseconds.
   final int timeUs;
-
-  /// Sequence number; the PNG is `frames/<index padded to 6>.png`.
-  final int index;
-
-  /// Encoded PNG size in bytes, tracked for `maxSpoolBytes`.
-  final int bytes;
 }
 
 /// A video recording in progress, created by [Snap.recordVideo].
@@ -211,13 +205,18 @@ class SnapRecording {
   final Rect? crop;
 
   _RecordingState _state = _RecordingState.capturing;
-  final List<_SpooledFrame> _frames = [];
-  final List<Future<dynamic>> _pendingWrites = [];
+  final List<_CapturedFrame> _frames = [];
+  Future<void>? _pendingWrite;
+  RawVideoEncoder? _encoder;
+  Uint8List? _pendingPixels;
+  int? _pendingTimeUs;
+  late int _originUs;
+  late int _nextOutputFrame = 0;
+  late final _frameCapture = VideoFrameCapture(settings, crop);
+  Object? _streamError;
   // ignore: use_late_for_private_fields_and_variables
   Future<Object?>? _finalizeFuture;
   late final int _anchorUs;
-  int _frameSeq = 0;
-  int _spooledBytes = 0;
   int? _stopUs;
   Size? _outputSize;
   bool _sourceSeen = false;
@@ -244,8 +243,7 @@ class SnapRecording {
   /// The resource limit that truncated this recording, if any.
   String? get truncationReason => _truncationReason;
 
-  int get _clockNowUs =>
-      _binding.clock.now().microsecondsSinceEpoch;
+  int get _clockNowUs => _binding.clock.now().microsecondsSinceEpoch;
 
   /// Flags the current clock time for a re-capture because a pointer
   /// indicator changed (e.g. a pointer was released without any repaint).
@@ -350,9 +348,7 @@ class SnapRecording {
     if (!isCapturing || _isPlaceholderScene()) return;
     // Coalesce states at the same timestamp: keep the last painted state.
     if (_frames.isNotEmpty && _frames.last.timeUs == timeUs) {
-      _spooledBytes -= _frames.last.bytes;
       _frames.removeLast();
-      _frameSeq--; // reuse the sequence number; the orphan file is temp data
     }
     // A pending pointer-state recapture is drained inside this same
     // real-async section — a second runAsync would trip the reentrancy
@@ -364,9 +360,7 @@ class SnapRecording {
       // A frame captured at the release instant already observed the
       // release; only strictly-earlier states kept the indicator.
       if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
-        _spooledBytes -= _frames.last.bytes;
         _frames.removeLast();
-        _frameSeq--; // reuse the sequence number; the orphan file is temp
       }
     } else if (pendingUs == timeUs) {
       _pointerRecaptureUs = null;
@@ -386,7 +380,6 @@ class SnapRecording {
         _truncate('Capture failed: $e');
       }
     });
-    _pendingWrites.add(task);
     await task;
   }
 
@@ -399,64 +392,52 @@ class SnapRecording {
     final device = activeDeviceVariant?.$1;
     final orientation = activeDeviceVariant?.$2 ?? Orientation.portrait;
 
-    final captured = await captureElementImage(
+    final image = await _frameCapture.capture(
       element,
       device: device,
       orientation: orientation,
-      includeDeviceFrame: settings.includeDeviceFrame,
+      pointers: settings.showPointers || settings.pointerIndicator != null
+          ? _binding.activePointerPositions.values
+          : const <Offset>[],
     );
+    final Uint8List bytes;
+    if (image == null) {
+      bytes = _pendingPixels!;
+    } else {
+      final size = Size(image.width.toDouble(), image.height.toDouble());
+      if (_outputSize == null) {
+        _outputSize = size;
+      } else if (_outputSize != size) {
+        image.dispose();
+        throw SnapVideoException(
+          'The captured frame size changed mid-recording from '
+          '${_outputSize!.width}x${_outputSize!.height} to '
+          '${size.width}x${size.height}.\n'
+          'Keep the viewport, orientation, and `from` source fixed while '
+          'recording — mid-recording resizes are not supported.',
+        );
+      }
 
-    var image = captured.image;
-    if ((settings.showPointers || settings.pointerIndicator != null) &&
-        _binding.activePointerPositions.isNotEmpty) {
-      image = await drawPointerIndicators(
-        image,
-        captured,
-        _binding.activePointerPositions.values,
-        painter: settings.pointerIndicator,
+      final ByteData? byteData;
+      try {
+        byteData = await image.toByteData(
+          format: ui.ImageByteFormat.rawStraightRgba,
+        );
+      } finally {
+        image.dispose();
+      }
+      if (byteData == null) {
+        throw const SnapVideoException(
+          'Could not read the captured frame pixels.',
+        );
+      }
+      bytes = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
       );
     }
-    if (crop != null) {
-      image = await cropCapturedImage(image, crop!, captured);
-    }
-    image = await _compositeOnBackground(image);
-
-    final size = Size(image.width.toDouble(), image.height.toDouble());
-    if (_outputSize == null) {
-      _outputSize = size;
-    } else if (_outputSize != size) {
-      image.dispose();
-      throw SnapVideoException(
-        'The captured frame size changed mid-recording from '
-        '${_outputSize!.width}x${_outputSize!.height} to '
-        '${size.width}x${size.height}.\n'
-        'Keep the viewport, orientation, and `from` source fixed while '
-        'recording — mid-recording resizes are not supported.',
-      );
-    }
-
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    if (byteData == null) {
-      throw const SnapVideoException(
-        'Could not encode a captured frame as PNG.',
-      );
-    }
-    final bytes = byteData.buffer.asUint8List();
-
-    _spooledBytes += bytes.length;
-    _frames.add(_SpooledFrame(timeUs, _frameSeq, bytes.length));
-
-    final file = File(
-      join(
-        _spoolDir.path,
-        'frames',
-        '${_frameSeq.toString().padLeft(6, '0')}.png',
-      ),
-    );
-    await file.create(recursive: true);
-    await file.writeAsBytes(bytes);
-    _frameSeq++;
+    await _queueFrame(bytes, timeUs);
+    _frames.add(_CapturedFrame(timeUs));
 
     if (_clockNowUs - _frames.first.timeUs >
         settings.maxSimulatedDuration.inMicroseconds) {
@@ -473,12 +454,56 @@ class SnapRecording {
         'SnapVideoSettings.maxCapturedFrames '
         '(${settings.maxCapturedFrames}).',
       );
-    } else if (_spooledBytes > settings.maxSpoolBytes) {
+    } else if (_temporaryOutput.existsSync() &&
+        _temporaryOutput.lengthSync() > settings.maxSpoolBytes) {
       _truncate(
-        'Spool size exceeded SnapVideoSettings.maxSpoolBytes '
+        'Temporary video size exceeded SnapVideoSettings.maxSpoolBytes '
         '(${settings.maxSpoolBytes} bytes).',
       );
     }
+  }
+
+  File get _temporaryOutput => File(
+    join(_spoolDir.path, 'output${settings.encoding.fileExtension}'),
+  );
+
+  Future<void> _queueFrame(Uint8List pixels, int timeUs) async {
+    await _pendingWrite;
+    if (_streamError != null) {
+      throw SnapVideoException('FFmpeg stream failed: $_streamError');
+    }
+    if (_encoder == null) {
+      await _spoolDir.create(recursive: true);
+      _encoder = await RawVideoEncoder.start(
+        executable: _ffmpegExecutable,
+        encoding: settings.encoding,
+        frameRate: settings.frameRate,
+        width: _outputSize!.width.toInt(),
+        height: _outputSize!.height.toInt(),
+        outputFile: _temporaryOutput,
+        timeout: settings.encoderTimeout,
+      );
+    }
+    if (_pendingTimeUs == null) _originUs = timeUs;
+    if (_pendingPixels != null && timeUs > _pendingTimeUs!) {
+      // Keep one timestamp uncommitted: another paint at that instant may
+      // replace it. Only samples strictly before the new instant are final.
+      final end =
+          ((timeUs - _originUs) * settings.frameRate + 999999) ~/ 1000000;
+      final count = end - _nextOutputFrame;
+      if (count > 0) {
+        _pendingWrite = _encoder!
+            .writeFrames(_pendingPixels!, count)
+            .catchError(
+              (Object error) {
+                _streamError = error;
+              },
+            );
+        _nextOutputFrame = end;
+      }
+    }
+    _pendingPixels = pixels;
+    _pendingTimeUs = timeUs;
   }
 
   Element? _resolveSourceElement() {
@@ -503,40 +528,6 @@ class SnapRecording {
     }
     _sourceSeen = true;
     return elements.single;
-  }
-
-  /// Flattens [image] onto [SnapVideoSettings.backgroundColor] and pads odd
-  /// dimensions up to even, as required by `yuv420p` encoders.
-  Future<ui.Image> _compositeOnBackground(ui.Image image) async {
-    // A null background resolves to transparent for alpha-capable encodings
-    // and opaque white otherwise (H.264's yuv420p has no alpha channel).
-    final background =
-        settings.backgroundColor ??
-        (settings.encoding.supportsAlpha
-            ? const Color(0x00000000)
-            : const Color(0xFFFFFFFF));
-    final width = image.width + (image.width & 1);
-    final height = image.height + (image.height & 1);
-    if (width == image.width && height == image.height && background.a == 0) {
-      // Nothing to flatten or pad.
-      return image;
-    }
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder)
-      ..drawImage(image, Offset.zero, Paint());
-    if (background.a > 0) {
-      canvas.drawRect(
-        Offset.zero & Size(width.toDouble(), height.toDouble()),
-        Paint()
-          ..color = background
-          ..blendMode = BlendMode.dstOver,
-      );
-    }
-    final picture = recorder.endRecording();
-    final composite = await picture.toImage(width, height);
-    picture.dispose();
-    image.dispose();
-    return composite;
   }
 
   /// Stops capturing frames immediately and finishes encoding.
@@ -625,36 +616,32 @@ class SnapRecording {
   }
 
   /// The exception used when `runAsync` completes with no result.
-  static SnapVideoException _finalizeReturnedNull() =>
-      const SnapVideoException(
-        'Video finalization returned no result.',
-      );
+  static SnapVideoException _finalizeReturnedNull() => const SnapVideoException(
+    'Video finalization returned no result.',
+  );
 
-  /// Ensures the recording is finalized: waits for pending spool writes,
-  /// then resamples and encodes on the real event loop.
+  /// Drains pending frames and finishes encoding on the real event loop.
   ///
   /// The whole finalize runs inside one [TestWidgetsFlutterBinding.runAsync]
   /// section so the returned future is a real-zone future — safe to await
   /// from test teardown, which runs outside the fake zone. Errors are
   /// carried as values because `runAsync` reports exceptions instead of
   /// propagating them; callers unwrap and rethrow.
-  Future<Object?> _finalizeAndPublish() =>
-      _finalizeFuture ??=
-          (_binding.inTest
-              ? _binding.runAsync(() async {
-                  try {
-                    return await _doFinalize();
-                  } on Object catch (e) {
-                    return e;
-                  }
-                })
-              : _doFinalize());
+  Future<Object?> _finalizeAndPublish() => _finalizeFuture ??= (_binding.inTest
+      ? _binding.runAsync(_finalizeResult)
+      : _finalizeResult());
+
+  Future<Object> _finalizeResult() async {
+    try {
+      return await _doFinalize();
+    } on Object catch (error) {
+      return error;
+    }
+  }
 
   Future<File> _doFinalize() async {
     freeze();
-    // Wait for any outstanding spool writes; they never throw.
-    await Future.wait<dynamic>(_pendingWrites);
-    _pendingWrites.clear();
+    await _pendingWrite;
 
     // A pointer-release recapture flagged near the end drains here, inside
     // this same real-async section.
@@ -662,9 +649,7 @@ class SnapRecording {
     if (pendingUs != null) {
       _pointerRecaptureUs = null;
       if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
-        _spooledBytes -= _frames.last.bytes;
         _frames.removeLast();
-        _frameSeq--;
       }
       try {
         await _captureFrame(pendingUs);
@@ -676,11 +661,12 @@ class SnapRecording {
 
     try {
       if (_frames.isEmpty) {
-        throw const SnapVideoException(
+        throw SnapVideoException(
           'The recording captured no frames — no painted scene was observed '
           'before the recording stopped.\n'
           'If you started before pumpWidget, make sure the test pumps at '
-          'least once while recording.',
+          'least once while recording.\n'
+          '${_captureError == null ? '' : 'Capture error: $_captureError'}',
         );
       }
 
@@ -693,6 +679,9 @@ class SnapRecording {
       }
       return output;
     } finally {
+      await _encoder?.abort();
+      _frameCapture.dispose();
+      _pendingPixels = null;
       // The manifest always reflects the final state, including truncation
       // and capture errors, and survives next to the spool on failure.
       // On success the spool is already deleted; only leave a manifest
@@ -711,30 +700,37 @@ class SnapRecording {
   /// Resamples the recorded timeline onto the output frame grid and encodes
   /// it. Runs inside a real-async section.
   Future<File> _encodeAndPublish() async {
-    final frameFiles = _resampledFrameFiles();
     final outputFile = File(_outputPath);
     // Encode inside the unique spool dir: a temporary output next to
     // .snaptest/ would be wiped by a parallel test file's cleanSnaps() and
     // would collide between same-named tests running concurrently.
-    final tempOutput = File(
-      join(_spoolDir.path, 'output${settings.encoding.fileExtension}'),
-    );
-    final diagnostics = StringBuffer();
+    final tempOutput = _temporaryOutput;
 
     try {
-      await encodeImagePipe(
-        executable: _ffmpegExecutable,
-        encoding: settings.encoding,
-        frameRate: settings.frameRate,
-        frameFiles: frameFiles,
-        outputFile: tempOutput,
-        timeout: settings.encoderTimeout,
-        diagnostics: diagnostics,
-      );
+      await _pendingWrite;
+      if (_streamError != null) {
+        throw SnapVideoException('FFmpeg stream failed: $_streamError');
+      }
+      final remaining = _outputFrameCount - _nextOutputFrame;
+      await _encoder!.writeFrames(_pendingPixels!, remaining);
+      _nextOutputFrame += remaining;
+      await _encoder!.finish();
+      _encoder = null;
     } on SnapVideoException catch (e) {
+      await _encoder?.abort();
       throw SnapVideoException(
         '${e.message}\n'
-        'Retained frame spool and manifest: ${_spoolDir.path}',
+        '${_encoder?.diagnostics ?? ''}\n'
+        'Retained partial video and manifest: ${_spoolDir.path}',
+      );
+    }
+    if (!tempOutput.existsSync() || tempOutput.lengthSync() == 0) {
+      throw const SnapVideoException('FFmpeg produced no output.');
+    }
+    if (tempOutput.lengthSync() > settings.maxSpoolBytes) {
+      _truncate(
+        'Temporary video size exceeded SnapVideoSettings.maxSpoolBytes '
+        '(${settings.maxSpoolBytes} bytes).',
       );
     }
 
@@ -749,13 +745,12 @@ class SnapRecording {
     // Copy (not rename): the spool lives in the system temp dir, which may
     // be mounted on a different filesystem than the output.
     await tempOutput.copy(fileName);
-    await tempOutput.delete();
-    // Success: remove the temporary spool. This stays inside the real-async
-    // section — dart:io futures never complete in the fake test zone.
-    try {
-      await _spoolDir.delete(recursive: true);
-    } catch (_) {
-      // Cleanup is best-effort.
+    if (_truncationReason == null && _captureError == null) {
+      try {
+        await _spoolDir.delete(recursive: true);
+      } catch (_) {
+        // Cleanup is best-effort.
+      }
     }
     return File(fileName);
   }
@@ -768,7 +763,7 @@ class SnapRecording {
   /// so the final state appears for at least one frame, and
   /// [SnapVideoSettings.finalHold] adds
   /// playback time on top.
-  List<File> _resampledFrameFiles() {
+  int get _outputFrameCount {
     final fps = settings.frameRate;
     final originUs = _frames.first.timeUs;
     final lastRelUs = _frames.last.timeUs - originUs;
@@ -777,41 +772,20 @@ class SnapRecording {
         originUs +
         settings.finalHold.inMicroseconds;
 
-    final frameCount = math.max(
+    return math.max(
       (stopRelUs * fps + 999999) ~/ 1000000,
       (lastRelUs * fps + 999999) ~/ 1000000 + 1,
     );
-
-    final files = <File>[];
-    var cursor = 0;
-    for (var i = 0; i < frameCount; i++) {
-      final sampleUs = (i * 1000000) ~/ fps;
-      while (cursor + 1 < _frames.length &&
-          _frames[cursor + 1].timeUs - originUs <= sampleUs) {
-        cursor++;
-      }
-      final index = _frames[cursor].index;
-      files.add(
-        File(
-          join(
-            _spoolDir.path,
-            'frames',
-            '${index.toString().padLeft(6, '0')}.png',
-          ),
-        ),
-      );
-    }
-    return files;
   }
 
-  /// Writes the spool manifest next to the frame PNGs.
+  /// Writes timing and failure diagnostics next to the temporary video.
   ///
   /// Called once during [_doFinalize], inside the same real-async section —
   /// dart:io futures can never complete in the fake test zone.
   Future<void> _writeManifestNow() async {
     await _spoolDir.create(recursive: true);
     final manifest = <String, Object?>{
-      'version': 1,
+      'version': 2,
       'frameRate': settings.frameRate,
       'timing': settings.timing.name,
       'originUs': _frames.isEmpty ? null : _frames.first.timeUs,
@@ -819,13 +793,13 @@ class SnapRecording {
       'truncated': _truncationReason != null,
       'limit': _truncationReason,
       'captureError': _captureError?.toString(),
+      'streamError': _streamError?.toString(),
+      'submittedFrameCount': _nextOutputFrame,
+      'width': _outputSize?.width,
+      'height': _outputSize?.height,
       'output': _outputPath,
       'frames': [
-        for (final frame in _frames)
-          <String, Object?>{
-            't': frame.timeUs,
-            'file': 'frames/${frame.index.toString().padLeft(6, '0')}.png',
-          },
+        for (final frame in _frames) <String, Object?>{'t': frame.timeUs},
       ],
     };
     await File(
