@@ -73,6 +73,20 @@ This blocks text (colored rectangles), disables images, shadows, and device fram
 
 ## Golden File Testing
 
+### Output directory
+
+Screenshots and videos both accept `pathPrefix`. It is relative to the test
+file, not the working directory. If a recording script already lives in
+`.snaptest/`, use an empty prefix to avoid `.snaptest/.snaptest/`:
+
+```dart
+await snap(settings: const SnaptestSettings(pathPrefix: ''));
+await snap.recordVideo(settings: const SnapVideoSettings(pathPrefix: ''));
+```
+
+Relative directories such as `../recordings` and absolute filesystem paths
+also work; no trailing slash is needed.
+
 Snaptest provides three distinct methods for different use cases:
 
 ### `snap.golden()` — golden comparison only
@@ -179,6 +193,8 @@ final recording = await snap.recordVideo(
                                          // on alpha codecs, opaque white else
     includeDeviceFrame: true,             // render inside the device frame
     showPointers: true,                   // touch indicator at held pointers
+    minimumPointerDuration: Duration(milliseconds: 100), // show quick taps too
+    renderShadows: true,                  // real shadows and Material elevation
     // pointerIndicator: (canvas, center, scale) {
     //   // fully custom indicator; scale = logical-to-image px
     // },
@@ -191,7 +207,8 @@ final recording = await snap.recordVideo(
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
 - **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
 - **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
-- **`showPointers`** draws a ring-and-dot touch indicator at each pointer while it is held, like a "show touches" overlay — great for demos that visualize gestures. A quick tap between pumps paints no indicator; drags, flings, and multi-step gestures track the dot across frames.
+- **`showPointers`** draws a ring-and-dot touch indicator at each held pointer. By default, a quick tap between pumps paints no indicator. Set **`minimumPointerDuration`** (e.g. 100ms) to retain quick taps at their last position until that much simulated time has elapsed since pointer-down. This is overlay-only: it never changes input events, pumps, or test-clock timing, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
+- **`renderShadows`** opts into real shadows and Material elevation while recording. Defaults to false, matching Flutter test rendering. It repaints an existing scene without pumping and restores the previous shadow state on stop, failure, truncation, or automatic teardown.
 - **`pointerIndicator`** replaces the indicator painting entirely: `(canvas, center, scale)` is called per held pointer per frame; `center` is in image coordinates, `scale` converts logical pixels to image pixels. Setting it also enables indicators.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
 
@@ -215,6 +232,28 @@ testWidgets(
 ```
 
 ### Pitfalls
+
+Starting after `pumpWidget` captures the current scene immediately. Starting
+before it waits for the first real painted scene. Recording without any later
+elapsed time creates one video frame (and prints a diagnostic); pump a duration
+for animation, or set `finalHold` for an intentional still image. Stopping before
+any scene is painted fails with a no-frames error instead of encoding a placeholder.
+
+Frames stream as straight-alpha RGBA directly to FFmpeg while the test runs:
+there is no per-frame PNG compression or disk spool. A bounded pipe applies
+backpressure rather than dropping frames. Resolution, output FPS, and codec
+quality settings are unchanged; rendering and video encoding still take time.
+Unchanged retained scenes can reuse their pixels without skipping timestamps;
+textures and custom pointer painters are always captured again.
+
+`maxSpoolBytes` now limits the observed temporary **encoded video** size
+(the legacy name is retained). Encoder buffering may delay detection.
+`encoderTimeout` bounds a streaming batch or finalization, not the entire test.
+Failures retain timing metadata and any partial video, not individual PNGs.
+
+For a repeatable end-to-end benchmark with real gestures and device frames,
+run `time fvm flutter test test/video_test.dart --plain-name 'demo video'`
+from the snaptest package. Compare on the same machine and Flutter version.
 
 The recorder faithfully captures what the test paints — most "the video jumps" issues are test-scripting artifacts, not recording bugs:
 

@@ -1,4 +1,4 @@
-/// FFmpeg discovery, validation, and `image2pipe` encoding for
+/// FFmpeg discovery, validation, and streaming raw-video encoding for
 /// [SnapRecording].
 ///
 /// Everything here is package-internal. Snaptest deliberately requires an
@@ -109,115 +109,135 @@ Future<Set<String>> _listEncoders(String executable) async {
   };
 }
 
-/// Encodes [frameFiles] — one file per output frame on the constant frame
-/// grid — into [outputFile] via FFmpeg's `image2pipe` demuxer.
+/// A bounded raw RGBA pipe to FFmpeg. Calls must be serialized by the caller.
 ///
-/// The caller is responsible for resampling the recorded timeline; files may
-/// repeat consecutively (a held frame is fed repeatedly). Writes the
-/// encoder's stderr diagnostics (bounded) into [diagnostics].
-///
-/// Throws [SnapVideoException] when the process fails, times out, or leaves
-/// no output. [outputFile] is expected to be a temporary path the caller
-/// publishes atomically after this returns.
+/// The pipe is drained after each frame, so a slow encoder applies
+/// backpressure instead of buffering an entire recording in memory.
 @internal
-Future<void> encodeImagePipe({
-  required String executable,
-  required VideoEncoding encoding,
-  required int frameRate,
-  required List<File> frameFiles,
-  required File outputFile,
-  required Duration timeout,
-  required StringBuffer diagnostics,
-}) async {
-  final process = await Process.start(executable, [
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-y',
-    '-f',
-    'image2pipe',
-    '-framerate',
-    '$frameRate',
-    '-i',
-    'pipe:0',
-    ...encoding.ffmpegCodecArguments,
-    outputFile.path,
-  ]);
-
-  // Drain stderr continuously into a bounded tail buffer so verbose
-  // diagnostics can't exhaust memory.
-  const maxDiagnostics = 16 * 1024;
-  final stderrDone = process.stderr.transform(utf8.decoder).forEach((chunk) {
-    diagnostics.write(chunk);
-    if (diagnostics.length > maxDiagnostics) {
-      final tail = diagnostics.toString();
-      diagnostics
-        ..clear()
-        ..write(tail.substring(tail.length - maxDiagnostics));
-    }
-  });
-
-  var killedByTimeout = false;
-  final exitFuture = process.exitCode.timeout(
-    timeout,
-    onTimeout: () {
-      killedByTimeout = true;
-      process.kill();
-      return -1;
-    },
-  );
-
-  Object? writeError;
-  try {
-    List<int>? lastBytes;
-    File? lastFile;
-    for (final frameFile in frameFiles) {
-      // Consecutive output frames usually reuse the same source PNG during
-      // holds; skip re-reading the file in that case.
-      if (frameFile.path != lastFile?.path) {
-        lastFile = frameFile;
-        lastBytes = await frameFile.readAsBytes();
+class RawVideoEncoder {
+  RawVideoEncoder._(this._process, this._timeout) {
+    _stderrDone = _process.stderr.transform(utf8.decoder).forEach((chunk) {
+      _diagnostics.write(chunk);
+      const maxDiagnostics = 16 * 1024;
+      if (_diagnostics.length > maxDiagnostics) {
+        final tail = _diagnostics.toString();
+        _diagnostics
+          ..clear()
+          ..write(tail.substring(tail.length - maxDiagnostics));
       }
-      process.stdin.add(lastBytes!);
-      await process.stdin.flush();
-    }
-  } catch (e) {
-    // A write can surface a broken pipe when FFmpeg already died or was
-    // killed for timing out; the exit diagnostics below give the real
-    // cause, so carry the raw error and decide after waiting for exit.
-    writeError = e;
-  } finally {
+    });
+    _stdoutDone = _process.stdout.drain<void>();
+    // IOSink.done can fail before the next write observes a broken pipe.
+    _process.stdin.done.then<void>(
+      (_) {},
+      onError: (Object error) {
+        _writeError ??= error;
+      },
+    );
+  }
+
+  /// Starts encoding straight-alpha RGBA at the declared dimensions and FPS.
+  static Future<RawVideoEncoder> start({
+    required String executable,
+    required VideoEncoding encoding,
+    required int frameRate,
+    required int width,
+    required int height,
+    required File outputFile,
+    required Duration timeout,
+  }) async {
+    final process = await Process.start(executable, [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-f',
+      'rawvideo',
+      '-pixel_format',
+      'rgba',
+      '-video_size',
+      '${width}x$height',
+      '-framerate',
+      '$frameRate',
+      '-i',
+      'pipe:0',
+      ...encoding.ffmpegCodecArguments,
+      outputFile.path,
+    ]);
+    return RawVideoEncoder._(process, timeout);
+  }
+
+  final Process _process;
+  final Duration _timeout;
+  final StringBuffer _diagnostics = StringBuffer();
+  late final Future<void> _stderrDone;
+  late final Future<void> _stdoutDone;
+  Object? _writeError;
+  Future<void>? _abortFuture;
+
+  /// The bounded tail of FFmpeg's stderr, including failures during capture.
+  String get diagnostics => _diagnostics.toString();
+
+  /// Writes [count] copies of an immutable frame, without dropping samples.
+  Future<void> writeFrames(List<int> rgba, int count) async {
     try {
-      await process.stdin.close();
-    } catch (_) {
-      // Same story: a dead process makes close fail, too.
+      await (() async {
+        for (var i = 0; i < count; i++) {
+          _process.stdin.add(rgba);
+          await _process.stdin.flush();
+        }
+      })().timeout(_timeout);
+    } on Object catch (error) {
+      _writeError ??= error;
+      _process.kill();
+      throw SnapVideoException('Failed streaming frames to FFmpeg: $error');
     }
   }
 
-  final exitCode = await exitFuture;
-  await stderrDone;
+  /// Closes the stream and waits for the encoder to finish its output.
+  Future<void> finish() async {
+    try {
+      await _process.stdin.close().timeout(_timeout);
+    } on Object catch (error) {
+      _writeError ??= error;
+      _process.kill();
+    }
+    final int exitCode;
+    try {
+      exitCode = await _process.exitCode.timeout(_timeout);
+    } on TimeoutException {
+      await abort();
+      throw SnapVideoException(
+        'FFmpeg did not finish within ${_timeout.inSeconds}s and was killed.\n'
+        'Diagnostics:\n$_diagnostics',
+      );
+    }
+    await Future.wait([_stderrDone, _stdoutDone]);
+    if (exitCode != 0 || _writeError != null) {
+      throw SnapVideoException(
+        'FFmpeg exited with code $exitCode. '
+        '${_writeError == null ? '' : 'Stream error: $_writeError'}\n'
+        'Diagnostics:\n$_diagnostics',
+      );
+    }
+  }
 
-  if (writeError != null && !killedByTimeout) {
-    throw SnapVideoException(
-      'Failed writing frames to FFmpeg: $writeError\n'
-      'Diagnostics:\n$diagnostics',
-    );
-  }
-  if (killedByTimeout) {
-    throw SnapVideoException(
-      'FFmpeg did not finish within ${timeout.inSeconds}s and was killed.\n'
-      'Diagnostics:\n$diagnostics',
-    );
-  }
-  if (exitCode != 0) {
-    throw SnapVideoException(
-      'FFmpeg exited with code $exitCode.\nDiagnostics:\n$diagnostics',
-    );
-  }
-  if (!outputFile.existsSync() || outputFile.lengthSync() == 0) {
-    throw SnapVideoException(
-      'FFmpeg reported success but produced no output at '
-      '${outputFile.path}.\nDiagnostics:\n$diagnostics',
-    );
+  /// Releases the child process when recording cannot be finalized.
+  Future<void> abort() => _abortFuture ??= _abort();
+
+  Future<void> _abort() async {
+    _process.kill();
+    try {
+      await _process.exitCode.timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      _process.kill(ProcessSignal.sigkill);
+      await _process.exitCode;
+    }
+    try {
+      await _process.stdin.close();
+    } on Object {
+      // A timed-out flush may still own the sink until its error is delivered.
+    }
+    await Future.wait([_stderrDone, _stdoutDone]);
   }
 }

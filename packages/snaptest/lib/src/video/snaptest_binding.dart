@@ -6,7 +6,6 @@
 /// which users install once in `flutter_test_config.dart`.
 library;
 
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,8 +33,7 @@ import 'package:snaptest/src/video/snap_recording.dart';
 /// callback, timer, process, or file I/O runs, and frame scheduling is
 /// untouched. Screenshots and ordinary tests do not acquire any FFmpeg or
 /// recording dependency.
-class SnaptestWidgetsFlutterBinding
-    extends AutomatedTestWidgetsFlutterBinding {
+class SnaptestWidgetsFlutterBinding extends AutomatedTestWidgetsFlutterBinding {
   /// Initializes the test binding.
   ///
   /// Usually called via [ensureInitialized].
@@ -46,6 +44,11 @@ class SnaptestWidgetsFlutterBinding
   /// Set by [SnapRecording.start] and cleared when the recording freezes.
   @internal
   SnapRecording? activeRecording;
+
+  @override
+  bool get disableShadows =>
+      !(activeRecording?.settings.renderShadows ?? false) &&
+      super.disableShadows;
 
   /// Number of frames drawn since the binding was created.
   ///
@@ -64,7 +67,8 @@ class SnaptestWidgetsFlutterBinding
   @override
   void handlePointerEvent(PointerEvent event) {
     final recording = activeRecording;
-    final tracking = recording != null &&
+    final tracking =
+        recording != null &&
         (recording.settings.showPointers ||
             recording.settings.pointerIndicator != null);
     if (tracking && recording.isCapturing) {
@@ -75,9 +79,14 @@ class SnaptestWidgetsFlutterBinding
           // The indicator is gone but nothing repaints on release, so the
           // last captured frame would keep showing it. Flag a re-capture;
           // the next captured frame or the finalizer records the state.
-          recording.markPointerStateChanged();
+          if (recording.settings.minimumPointerDuration == Duration.zero) {
+            recording.markPointerStateChanged();
+          }
         }
       }
+    }
+    if (tracking && recording.isCapturing) {
+      recording.trackPointerEvent(event);
     }
     super.handlePointerEvent(event);
   }
@@ -117,16 +126,20 @@ class SnaptestWidgetsFlutterBinding
     VoidCallback invariantTester, {
     String description = '',
   }) {
-    return super.runTest(() async {
-      try {
-        await testBody();
-      } finally {
-        // Freeze capture before Flutter replaces the widget tree and pumps
-        // its cleanup frame. Finalization is awaited separately through the
-        // recording's own addTearDown callback.
-        activeRecording?.freeze();
-      }
-    }, invariantTester, description: description);
+    return super.runTest(
+      () async {
+        try {
+          await testBody();
+        } finally {
+          // Freeze capture before Flutter replaces the widget tree and pumps
+          // its cleanup frame. Finalization is awaited separately through the
+          // recording's own addTearDown callback.
+          activeRecording?.freeze();
+        }
+      },
+      invariantTester,
+      description: description,
+    );
   }
 
   @override
