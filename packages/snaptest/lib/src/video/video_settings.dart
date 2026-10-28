@@ -1,3 +1,4 @@
+/// @docImport 'package:flutter_test/flutter_test.dart';
 /// @docImport 'package:snaptest/src/snap.dart';
 /// @docImport 'package:snaptest/src/test_devices_variant.dart';
 /// @docImport 'package:snaptest/src/video/ffmpeg_encoder.dart';
@@ -180,7 +181,9 @@ class SnapVideoSettings {
     this.timing = VideoTiming.observed,
     this.encoding = const VideoEncoding.h264(),
     this.includeDeviceFrame = false,
+    this.renderShadows = false,
     this.showPointers = false,
+    this.minimumPointerDuration = Duration.zero,
     this.pointerIndicator,
     this.backgroundColor,
     this.pathPrefix = kDefaultPathPrefix,
@@ -214,6 +217,14 @@ class SnapVideoSettings {
   /// of tests without a device variant capture the current view as-is.
   final bool includeDeviceFrame;
 
+  /// Paint real shadows and Material elevation instead of flat test shadows.
+  ///
+  /// Defaults to false, preserving Flutter's test rendering. The observing
+  /// binding enables shadows for the recording and restores its previous
+  /// state on stop, truncation, or teardown. An already-painted scene is
+  /// repainted without pumping or advancing the test clock.
+  final bool renderShadows;
+
   /// Whether to paint a touch indicator over each active pointer.
   ///
   /// The observing binding tracks down/move/up pointer events and
@@ -222,12 +233,25 @@ class SnapVideoSettings {
   /// visualize gestures. Indicators appear only while a pointer is held
   /// across a captured frame — a quick tap between pumps shows no dot.
   ///
+  /// Set [minimumPointerDuration] to keep quick taps visible.
   /// Defaults to `false`.
   final bool showPointers;
 
-  /// A custom painter for held-pointer indicators.
+  /// Minimum simulated time to show a pointer, measured from pointer-down.
   ///
-  /// Called once per active pointer per captured frame, in place of the
+  /// Defaults to zero: indicators appear only while held across a captured
+  /// frame. For demos, e.g. `Duration(milliseconds: 100)` also shows taps
+  /// between pumps. A released pointer stays at its last position until its
+  /// minimum duration expires; cancellation removes it immediately.
+  ///
+  /// This changes only the overlay: it never pumps, advances the test clock,
+  /// or extends the recording. A tap near the end may be cut short; use
+  /// [finalHold] explicitly if it should remain visible after stopping.
+  final Duration minimumPointerDuration;
+
+  /// A custom painter for visible pointer indicators.
+  ///
+  /// Called once per visible pointer per captured frame, in place of the
   /// built-in ring-and-dot indicator — paint anything you like. Setting
   /// this also enables indicators, as if [showPointers] were true.
   final PointerIndicatorPainter? pointerIndicator;
@@ -243,8 +267,11 @@ class SnapVideoSettings {
 
   /// Directory path prefix where the video is saved.
   ///
-  /// Defaults to `.snaptest/` (the same directory screenshots go to) and
-  /// should end with a forward slash.
+  /// Defaults to `.snaptest/`, relative to the test file's directory (as
+  /// resolved by [LocalFileComparator]). Use `''` to save beside the test,
+  /// e.g. when the script already lives inside `.snaptest/`. Relative paths
+  /// such as `../recordings` and absolute filesystem paths are also supported.
+  /// No trailing slash is required.
   final String pathPrefix;
 
   /// Extra simulated duration appended after the recording stops.

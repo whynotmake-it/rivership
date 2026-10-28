@@ -1,7 +1,8 @@
 /// A test-scoped video recording session started by [Snap.recordVideo].
 ///
 /// The session passively observes the frames a widget test paints: it never
-/// pumps, loads fonts, precaches images, or repaints layers of its own. Each
+/// pumps, loads fonts, or precaches images. Opting into real shadows repaints
+/// the current scene without advancing the clock. Each
 /// painted frame is resampled onto the configured frame grid and streamed
 /// as raw pixels to FFmpeg, with bounded buffering and no PNG spool.
 /// @docImport 'package:snaptest/src/snap.dart';
@@ -21,6 +22,7 @@ import 'package:snaptest/src/capture.dart';
 import 'package:snaptest/src/test_devices_variant.dart';
 import 'package:snaptest/src/util.dart';
 import 'package:snaptest/src/video/ffmpeg_encoder.dart';
+import 'package:snaptest/src/video/pointer_indicators.dart';
 import 'package:snaptest/src/video/snaptest_binding.dart';
 import 'package:snaptest/src/video/video_settings.dart';
 // ignore: implementation_imports
@@ -99,6 +101,13 @@ class SnapRecording {
         'body.',
       );
     }
+    if (settings.minimumPointerDuration.isNegative) {
+      throw ArgumentError.value(
+        settings.minimumPointerDuration,
+        'minimumPointerDuration',
+        'Must not be negative',
+      );
+    }
     final existing = binding.activeRecording;
     if (existing != null) {
       throw SnapVideoException(
@@ -124,10 +133,12 @@ class SnapRecording {
     if (goldenFileComparator case LocalFileComparator(:final basedir)) {
       outputPath = goldenFileComparator
           .getTestUri(
-            basedir.resolve(
-              join(
-                settings.pathPrefix,
-                '$fileBase${settings.encoding.fileExtension}',
+            basedir.resolveUri(
+              Uri.file(
+                join(
+                  settings.pathPrefix,
+                  '$fileBase${settings.encoding.fileExtension}',
+                ),
               ),
             ),
             null,
@@ -178,6 +189,10 @@ class SnapRecording {
 
     binding.activeRecording = recording;
     addTearDown(recording._finalizeFromTearDown);
+    if (settings.renderShadows) {
+      debugDisableShadows = false;
+      recording._repaintScene();
+    }
 
     // If a real scene is already painted (e.g. recordVideo called after
     // pumpWidget), capture it as the first frame without requiring another
@@ -213,6 +228,12 @@ class SnapRecording {
   late int _originUs;
   late int _nextOutputFrame = 0;
   late final _frameCapture = VideoFrameCapture(settings, crop);
+  late final _pointerIndicators =
+      settings.minimumPointerDuration > Duration.zero &&
+          (settings.showPointers || settings.pointerIndicator != null)
+      ? PointerIndicators(settings.minimumPointerDuration)
+      : null;
+  final bool _previousDisableShadows = debugDisableShadows;
   Object? _streamError;
   // ignore: use_late_for_private_fields_and_variables
   Future<Object?>? _finalizeFuture;
@@ -244,6 +265,25 @@ class SnapRecording {
   String? get truncationReason => _truncationReason;
 
   int get _clockNowUs => _binding.clock.now().microsecondsSinceEpoch;
+
+  void _repaintScene() {
+    void mark(RenderObject object) {
+      object
+        ..markNeedsPaint()
+        ..visitChildren(mark);
+    }
+
+    for (final view in _binding.renderViews) {
+      if (view.debugNeedsPaint || view.debugNeedsLayout) continue;
+      mark(view);
+      view.owner!.flushPaint();
+    }
+  }
+
+  /// Records overlay events without starting async work in a pointer callback.
+  @internal
+  void trackPointerEvent(PointerEvent event) =>
+      _pointerIndicators?.handle(event, _clockNowUs);
 
   /// Flags the current clock time for a re-capture because a pointer
   /// indicator changed (e.g. a pointer was released without any repaint).
@@ -277,7 +317,9 @@ class SnapRecording {
       // pump exactly once, then capture if it painted.
       final framesBefore = binding.drawnFrameCount;
       await binding.pumpOnce(duration, phase);
-      if (_paintedSince(framesBefore, phase)) {
+      if (_paintedSince(framesBefore, phase) ||
+          (_pointerIndicators != null &&
+              phase.index >= EnginePhase.paint.index)) {
         await _captureAt(_clockNowUs);
       }
       return;
@@ -296,7 +338,9 @@ class SnapRecording {
 
       final framesBefore = binding.drawnFrameCount;
       await binding.pumpOnce(Duration(microseconds: stepUs), phase);
-      if (_paintedSince(framesBefore, phase)) {
+      if (_paintedSince(framesBefore, phase) ||
+          (_pointerIndicators != null &&
+              phase.index >= EnginePhase.paint.index)) {
         await _captureAt(_clockNowUs);
       }
     }
@@ -371,10 +415,25 @@ class SnapRecording {
     // microtask queue.
     final task = _binding.runAsync(() async {
       try {
+        final indicators = _pointerIndicators;
+        if (indicators != null) {
+          for (final change in indicators.takeChangesThrough(timeUs)) {
+            if (!isCapturing) break;
+            if (_frames.isNotEmpty && change.timeUs < timeUs) {
+              await _captureFrame(
+                change.timeUs,
+                pointers: change.positions,
+                overlayOnly: true,
+              );
+            }
+          }
+        }
         if (pendingUs != null && pendingUs < timeUs) {
           await _captureFrame(pendingUs);
         }
-        await _captureFrame(timeUs);
+        if (isCapturing) {
+          await _captureFrame(timeUs, pointers: indicators?.positions);
+        }
       } catch (e) {
         _captureError = e;
         _truncate('Capture failed: $e');
@@ -383,23 +442,31 @@ class SnapRecording {
     await task;
   }
 
-  Future<void> _captureFrame(int timeUs) async {
-    final element = _resolveSourceElement();
-    if (element == null) {
+  Future<void> _captureFrame(
+    int timeUs, {
+    List<Offset>? pointers,
+    bool overlayOnly = false,
+  }) async {
+    final element = overlayOnly ? null : _resolveSourceElement();
+    if (!overlayOnly && element == null) {
       return;
     }
 
     final device = activeDeviceVariant?.$1;
     final orientation = activeDeviceVariant?.$2 ?? Orientation.portrait;
 
-    final image = await _frameCapture.capture(
-      element,
-      device: device,
-      orientation: orientation,
-      pointers: settings.showPointers || settings.pointerIndicator != null
-          ? _binding.activePointerPositions.values
-          : const <Offset>[],
-    );
+    final image = overlayOnly
+        ? await _frameCapture.captureOverlay(pointers!)
+        : await _frameCapture.capture(
+            element!,
+            device: device,
+            orientation: orientation,
+            pointers:
+                pointers ??
+                (settings.showPointers || settings.pointerIndicator != null
+                    ? _binding.activePointerPositions.values
+                    : const <Offset>[]),
+          );
     final Uint8List bytes;
     if (image == null) {
       bytes = _pendingPixels!;
@@ -437,10 +504,14 @@ class SnapRecording {
       );
     }
     await _queueFrame(bytes, timeUs);
+    if (_frames.isNotEmpty && _frames.last.timeUs == timeUs) {
+      _frames.removeLast();
+    }
     _frames.add(_CapturedFrame(timeUs));
 
-    if (_clockNowUs - _frames.first.timeUs >
-        settings.maxSimulatedDuration.inMicroseconds) {
+    if (isCapturing &&
+        timeUs - _frames.first.timeUs >
+            settings.maxSimulatedDuration.inMicroseconds) {
       _truncate(
         'Simulated duration exceeded '
         'SnapVideoSettings.maxSimulatedDuration '
@@ -578,6 +649,10 @@ class SnapRecording {
     if (_binding.activeRecording == this) {
       _binding.activeRecording = null;
     }
+    if (settings.renderShadows) {
+      debugDisableShadows = _previousDisableShadows;
+      _repaintScene();
+    }
     // A recording stopped mid-drag must not leak held pointers into the
     // next recording's indicators.
     _binding.activePointerPositions.clear();
@@ -643,23 +718,46 @@ class SnapRecording {
     freeze();
     await _pendingWrite;
 
-    // A pointer-release recapture flagged near the end drains here, inside
-    // this same real-async section.
-    final pendingUs = _pointerRecaptureUs;
-    if (pendingUs != null) {
-      _pointerRecaptureUs = null;
-      if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
-        _frames.removeLast();
-      }
-      try {
-        await _captureFrame(pendingUs);
-      } catch (e) {
-        _captureError = e;
-        _truncate('Capture failed: $e');
-      }
-    }
-
     try {
+      if (_pointerIndicators case final indicators?) {
+        if (_frames.isNotEmpty) {
+          final endUs =
+              (_stopUs ?? _frames.last.timeUs) +
+              settings.finalHold.inMicroseconds;
+          for (final change in indicators.takeChangesThrough(endUs)) {
+            if (_truncationReason != null) break;
+            if (change.timeUs <= (_stopUs ?? _frames.last.timeUs) ||
+                change.timeUs < endUs) {
+              await _captureFrame(
+                change.timeUs,
+                pointers: change.positions,
+                overlayOnly: true,
+              );
+            }
+          }
+        }
+      }
+
+      // A pointer-release recapture flagged near the end drains here, inside
+      // this same real-async section.
+      final pendingUs = _pointerRecaptureUs;
+      if (pendingUs != null) {
+        _pointerRecaptureUs = null;
+        if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
+          _frames.removeLast();
+        }
+        try {
+          await _captureFrame(
+            pendingUs,
+            pointers: _binding.activePointerPositions.values.toList(),
+            overlayOnly: _frames.isNotEmpty,
+          );
+        } catch (e) {
+          _captureError = e;
+          _truncate('Capture failed: $e');
+        }
+      }
+
       if (_frames.isEmpty) {
         throw SnapVideoException(
           'The recording captured no frames — no painted scene was observed '
@@ -667,6 +765,15 @@ class SnapRecording {
           'If you started before pumpWidget, make sure the test pumps at '
           'least once while recording.\n'
           '${_captureError == null ? '' : 'Capture error: $_captureError'}',
+        );
+      }
+
+      if (_outputFrameCount == 1) {
+        // ignore: avoid_print
+        print(
+          'Warning: snaptest video contains only one frame. '
+          'Pump a longer duration while recording, or set finalHold '
+          'for a still image.',
         );
       }
 

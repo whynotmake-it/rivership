@@ -367,61 +367,72 @@ void main() {
   });
 
   group('demo app recordings', () {
-    testWidgets(
-      'demo video — real app, device frame, smooth 30fps',
-      (tester) async {
-        final recording = await snap.recordVideo(
-          name: 'demo_app_framed',
-          settings: const SnapVideoSettings(
-            timing: VideoTiming.smooth,
-            includeDeviceFrame: true,
-            showPointers: true,
-            finalHold: Duration(milliseconds: 400),
-          ),
-        );
+    for (final rendered in [false, true]) {
+      testWidgets(
+        'demo video — real app, device frame, rendered: $rendered',
+        (tester) async {
+          final recording = await snap.recordVideo(
+            name: rendered ? 'demo_shadows_and_taps' : 'demo_app_framed',
+            settings: SnapVideoSettings(
+              frameRate: rendered ? 30 : 60,
+              renderShadows: rendered,
+              minimumPointerDuration: rendered
+                  ? const Duration(milliseconds: 100)
+                  : Duration.zero,
+              timing: VideoTiming.smooth,
+              includeDeviceFrame: true,
+              showPointers: true,
+              finalHold: const Duration(milliseconds: 400),
+            ),
+          );
 
-        await tester.pumpWidget(const _DemoFeedApp());
-        await tester.pump(const Duration(milliseconds: 800));
+          await tester.pumpWidget(const _DemoFeedApp());
+          await tester.pump(const Duration(milliseconds: 800));
 
-        // Open the first card.
-        await tester.tap(find.byKey(const ValueKey('feed-card-0')));
-        await tester.pump(const Duration(seconds: 1));
+          // Open the first card.
+          await tester.tap(find.byKey(const ValueKey('feed-card-0')));
+          await tester.pump(const Duration(seconds: 1));
 
-        // Back to the feed.
-        await tester.pageBack();
-        await tester.pump(const Duration(milliseconds: 800));
+          // Back to the feed.
+          await tester.pageBack();
+          await tester.pump(const Duration(milliseconds: 800));
 
-        // Scroll the feed with real gestures.
-        await tester.fling(find.byType(ListView), const Offset(0, -400), 900);
-        await tester.pump(const Duration(milliseconds: 800));
-        await tester.fling(find.byType(ListView), const Offset(0, -600), 2000);
-        await tester.pump(const Duration(seconds: 1));
+          // Scroll the feed with real gestures.
+          await tester.fling(find.byType(ListView), const Offset(0, -400), 900);
+          await tester.pump(const Duration(milliseconds: 800));
+          await tester.fling(
+            find.byType(ListView),
+            const Offset(0, -600),
+            2000,
+          );
+          await tester.pump(const Duration(seconds: 1));
 
-        // Scroll back to the top.
-        await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
-        await tester.pump(const Duration(seconds: 1));
+          // Scroll back to the top.
+          await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
+          await tester.pump(const Duration(seconds: 1));
 
-        // Open the modal sheet and drag it down with a real multi-step
-        // gesture (a single moveBy would teleport the sheet in one frame).
-        await tester.tap(find.byType(FloatingActionButton));
-        await tester.pump(const Duration(seconds: 1));
-        final sheetDrag = await tester.startGesture(
-          tester.getCenter(find.text('Drag me down')),
-        );
-        for (var i = 0; i < 12; i++) {
-          await sheetDrag.moveBy(const Offset(0, 30));
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-        await sheetDrag.up();
-        await tester.pump(const Duration(seconds: 1));
+          // Open the modal sheet and drag it down with a real multi-step
+          // gesture (a single moveBy would teleport the sheet in one frame).
+          await tester.tap(find.byType(FloatingActionButton));
+          await tester.pump(const Duration(seconds: 1));
+          final sheetDrag = await tester.startGesture(
+            tester.getCenter(find.text('Drag me down')),
+          );
+          for (var i = 0; i < 12; i++) {
+            await sheetDrag.moveBy(const Offset(0, 30));
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          await sheetDrag.up();
+          await tester.pump(const Duration(seconds: 1));
 
-        final file = await recording.stop();
-        expect(file.existsSync(), isTrue);
-        // ignore: avoid_print
-        print('Demo video (app, framed): ${file.path}');
-      },
-      variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
-    );
+          final file = await recording.stop();
+          expect(file.existsSync(), isTrue);
+          // ignore: avoid_print
+          print('Demo video (app, framed): ${file.path}');
+        },
+        variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+      );
+    }
 
     testWidgets(
       'demo video — real app, device frame, landscape 24fps observed',

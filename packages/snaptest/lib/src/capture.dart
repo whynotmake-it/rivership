@@ -427,6 +427,7 @@ class VideoFrameCapture {
   late bool _deviceFrameDirty = true;
   late List<Offset> _pointers = [];
   ui.Picture? _devicePicture;
+  CapturedImage? _scene;
   late Path _screenPath;
   late Size _deviceSize;
 
@@ -496,6 +497,14 @@ class VideoFrameCapture {
       }
     }
     final captured = await captureElementImage(element);
+    if (settings.showPointers || settings.pointerIndicator != null) {
+      _scene?.image.dispose();
+      _scene = CapturedImage(
+        image: captured.image.clone(),
+        logicalBounds: captured.logicalBounds,
+        imageContentBounds: captured.imageContentBounds,
+      );
+    }
     _lastLayer = layer;
     // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
     _lastEngineLayer = layer.engineLayer;
@@ -504,6 +513,16 @@ class VideoFrameCapture {
     _pointers = positions;
     return _compose(captured, positions);
   }
+
+  /// Repaints only overlays on the previous painted scene, not a future scene.
+  Future<ui.Image> captureOverlay(List<Offset> pointers) => _compose(
+    CapturedImage(
+      image: _scene!.image.clone(),
+      logicalBounds: _scene!.logicalBounds,
+      imageContentBounds: _scene!.imageContentBounds,
+    ),
+    pointers,
+  );
 
   void _markDeviceFrameDirty() => _deviceFrameDirty = true;
 
@@ -620,6 +639,8 @@ class VideoFrameCapture {
 
   /// Releases cached engine resources when recording ends.
   void dispose() {
+    _scene?.image.dispose();
+    _scene = null;
     _device?.framePainter.removeListener(_markDeviceFrameDirty);
     _devicePicture?.dispose();
     _devicePicture = null;
