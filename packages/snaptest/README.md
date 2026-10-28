@@ -53,6 +53,23 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
 
 This loads Roboto from the Flutter SDK and uses it for Cupertino system fonts, ensuring consistent text layout across macOS, Linux, and Windows. See [Font Rendering](#font-rendering) for customization options.
 
+Register the same font under another family name with `fontAliases`
+(**alias → source family**):
+
+```dart
+await loadFonts(fontAliases: {
+  'SanFranciscoPro': 'SF Pro', // SF Pro must be declared in pubspec.yaml.
+  'BrandText': 'Roboto',      // SDK fonts can be aliased too.
+});
+```
+
+Aliases reuse every asset of the source family, including weight/style variants.
+Package-qualified families such as `packages/my_package/Family` also work.
+Later calls may add aliases even after suite setup has loaded fonts; identical
+aliases are idempotent. Unknown sources, empty aliases, and attempts to replace
+loaded families fail explicitly rather than silently using a fallback. Fonts
+cannot be unloaded, and later calls do not change the initial Cupertino config.
+
 ### Configure your `.gitignore`
 
 ```gitignore
