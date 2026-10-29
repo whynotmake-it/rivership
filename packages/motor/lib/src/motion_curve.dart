@@ -15,10 +15,12 @@ import 'package:motor/motor.dart';
 ///
 /// You can also apply an initial velocity to the motion.
 ///
+/// Curves are sampled in any order, so [motion]'s simulation must be pure.
+///
 /// ```dart
 ///  AnimatedContainer(
 ///   duration: const Duration(milliseconds: 500),
-///   curve: MotionCurve(spring: CupertinoMotion.bouncy, velocity: .3),
+///   curve: MotionCurve(motion: .bouncySpring(), velocity: .3),
 ///   height: size,
 ///   width: size,
 ///   color: Colors.blue,
@@ -42,6 +44,11 @@ class MotionCurve extends Curve {
   /// The simulation used for the spring.
   Simulation get simulation => _simulation;
 
+  /// Returns [simulation]'s value at `t` seconds.
+  ///
+  /// `t` isn't scaled to the motion's length, so a motion that lasts longer
+  /// than a second hasn't reached its end at `t == 1`. Unlike Flutter's
+  /// curves, the ends aren't special-cased to return exactly 0 and 1.
   @override
   double transform(double t) {
     return _simulation.x(t);
