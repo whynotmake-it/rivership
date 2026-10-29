@@ -1,3 +1,7 @@
+## 1.0.0-dev.2
+
+ - **FIX**(scroll_drag_detector): defer layout-time notifier updates (#344).
+
 ## 1.0.0-dev.1
 
  - **FIX**(scroll_drag_detector): reach the boundary before drag handoff (#337).
