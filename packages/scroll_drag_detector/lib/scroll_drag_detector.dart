@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -346,12 +347,12 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          if (!_draggingAxes.value.contains(metrics.axis)) {
+          if (!_axisStates[metrics.axis]!.isDragging) {
             _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
-        } else if (_draggingAxes.value.contains(metrics.axis) &&
+        } else if (_axisStates[metrics.axis]!.isDragging &&
             dragDetails != null) {
           // The scrollable has resumed scrolling in the opposite direction.
           // End the parent drag while keeping the pointer gesture active.
@@ -366,13 +367,13 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
         final isScrollActuallyDrag =
             dragDetails != null && _isScrollActuallyDrag(metrics, dragDetails);
         if (isScrollActuallyDrag) {
-          if (!_draggingAxes.value.contains(metrics.axis)) {
+          if (!_axisStates[metrics.axis]!.isDragging) {
             _startDrag(metrics.axis);
           } else {
             _handleDragUpdate(metrics.axis, dragDetails);
           }
         } else {
-          if (_draggingAxes.value.contains(metrics.axis)) {
+          if (_axisStates[metrics.axis]!.isDragging) {
             // Either the user let go, or the overscroll is part of normal
             // scrolling, not dragging.
             // In both cases, we end the drag, and if the user's gesture is
@@ -389,13 +390,13 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
       case final ScrollEndNotification n:
         final axis = n.metrics.axis;
-        if (_draggingAxes.value.contains(axis)) {
+        if (_axisStates[axis]!.isDragging) {
           _endDrag(axis);
           final state = _axisStates[axis]!;
           final dragSegment = state.dragSegment;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted &&
-                !_draggingAxes.value.contains(axis) &&
+                !state.isDragging &&
                 state.dragSegment == dragSegment) {
               // The user stopped scrolling, so we also end the drag.
               _handleDragEnd(
@@ -411,16 +412,37 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   }
 
   void _startDrag(Axis axis) {
-    final state = _axisStates[axis]!;
-    _draggingAxes.value = {..._draggingAxes.value, axis};
-    state.dragSegment++;
+    _axisStates[axis]!
+      ..isDragging = true
+      ..dragSegment += 1;
+    _updateDraggingAxes();
     _handleDragStart(axis);
   }
 
   void _endDrag(Axis axis) {
-    final state = _axisStates[axis]!;
-    _draggingAxes.value = {..._draggingAxes.value}..remove(axis);
-    state.dragSegment++;
+    _axisStates[axis]!
+      ..isDragging = false
+      ..dragSegment += 1;
+    _updateDraggingAxes();
+  }
+
+  void _updateDraggingAxes() {
+    void update() {
+      if (!mounted) return;
+      _draggingAxes.value = {
+        for (final entry in _axisStates.entries)
+          if (entry.value.isDragging) entry.key,
+      };
+    }
+
+    // Scroll notifications can arrive during layout. Keep routing synchronous,
+    // but only notify the builder when the widget tree can be marked dirty.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => update());
+    } else {
+      update();
+    }
   }
 
   static DragEndDetails _dragEndDetails(
@@ -524,6 +546,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 }
 
 class _AxisDragState {
+  bool isDragging = false;
   bool scrollStartedAtLeadingEdge = false;
   bool scrollStartedAtTrailingEdge = false;
   int dragSegment = 0;
