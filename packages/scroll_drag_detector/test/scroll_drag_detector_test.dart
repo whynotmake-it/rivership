@@ -1,10 +1,289 @@
 // ignore_for_file: cascade_invocations
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 
 void main() {
+  group('layout-time scroll notifications', () {
+    for (final axis in Axis.values) {
+      testWidgets('ending a $axis drag during layout is safe', (tester) async {
+        final controller = ScrollController();
+        addTearDown(controller.dispose);
+        final starts = <bool>[];
+        final ends = <bool>[];
+        Widget build({VoidCallback? onLayout}) => _TestScrollable(
+              axis: axis,
+              reverse: false,
+              controller: controller,
+              onLayout: onLayout,
+              modes: const {
+                AxisDirection.down: ScrollDragMode.scrollFirst,
+                AxisDirection.right: ScrollDragMode.scrollFirst,
+              },
+              onStart: starts.add,
+              onEnd: ends.add,
+            );
+
+        await tester.pumpWidget(build());
+        final scrollable = find.byType(Scrollable);
+        final gesture = await tester.startGesture(tester.getCenter(scrollable));
+        final delta =
+            axis == Axis.vertical ? const Offset(0, 20) : const Offset(20, 0);
+        for (var i = 0; i < 3; i++) {
+          await gesture.moveBy(delta);
+          await tester.pump();
+        }
+        expect(starts, [true]);
+
+        var endedDuringLayout = false;
+        await tester.pumpWidget(
+          build(
+            onLayout: () {
+              expect(
+                SchedulerBinding.instance.schedulerPhase,
+                SchedulerPhase.persistentCallbacks,
+              );
+              endedDuringLayout = true;
+              controller.jumpTo(controller.offset);
+            },
+          ),
+        );
+
+        expect(endedDuringLayout, isTrue);
+        expect(tester.takeException(), isNull);
+        expect(ends, [false]);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(ends, [false]);
+      });
+
+      for (final overscroll in [false, true]) {
+        for (final end in ['update', 'overscroll', 'end']) {
+          testWidgets(
+            '$axis layout takeover via overscroll=$overscroll, ending via $end',
+            (tester) async {
+              final starts = <bool>[];
+              final updates = <bool>[];
+              final ends = <bool>[];
+              Widget build({VoidCallback? onLayout}) => _TestScrollable(
+                    axis: axis,
+                    reverse: false,
+                    onLayout: onLayout,
+                    modes: const {
+                      AxisDirection.down: ScrollDragMode.scrollFirst,
+                      AxisDirection.right: ScrollDragMode.scrollFirst,
+                    },
+                    onStart: starts.add,
+                    onUpdate: updates.add,
+                    onEnd: ends.add,
+                  );
+
+              await tester.pumpWidget(build());
+              final context = tester.element(find.byType(Scrollable));
+              final metrics = tester
+                  .state<ScrollableState>(
+                    find.byType(Scrollable),
+                  )
+                  .position;
+              final delta = axis == Axis.vertical
+                  ? const Offset(0, 20)
+                  : const Offset(20, 0);
+              final details = DragUpdateDetails(
+                delta: delta,
+                primaryDelta: 20,
+                globalPosition: Offset.zero,
+              );
+              ScrollNotification takeover() => overscroll
+                  ? OverscrollNotification(
+                      metrics: metrics,
+                      context: context,
+                      dragDetails: details,
+                      overscroll: -20,
+                    )
+                  : ScrollUpdateNotification(
+                      metrics: metrics,
+                      context: context,
+                      dragDetails: details,
+                      scrollDelta: -20,
+                    );
+
+              await tester.pumpWidget(
+                build(
+                  onLayout: () {
+                    ScrollStartNotification(
+                      metrics: metrics,
+                      context: context,
+                      dragDetails: DragStartDetails(),
+                    ).dispatch(context);
+                    takeover().dispatch(context);
+                    takeover().dispatch(context);
+                    switch (end) {
+                      case 'update':
+                        ScrollUpdateNotification(
+                          metrics: metrics,
+                          context: context,
+                          dragDetails: DragUpdateDetails(
+                            delta: -delta,
+                            primaryDelta: -20,
+                            globalPosition: Offset.zero,
+                          ),
+                          scrollDelta: 20,
+                        ).dispatch(context);
+                      case 'overscroll':
+                        OverscrollNotification(
+                          metrics: metrics,
+                          context: context,
+                          overscroll: -20,
+                        ).dispatch(context);
+                      case 'end':
+                        ScrollEndNotification(
+                          metrics: metrics,
+                          context: context,
+                        ).dispatch(context);
+                    }
+                    ScrollEndNotification(
+                      metrics: metrics,
+                      context: context,
+                    ).dispatch(context);
+                  },
+                ),
+              );
+
+              expect(tester.takeException(), isNull);
+              expect(starts, [true]);
+              expect(updates, [true]);
+              expect(ends, [end == 'update']);
+              await tester.pumpWidget(build());
+              expect(tester.takeException(), isNull);
+              final currentContext = tester.element(find.byType(Scrollable));
+              final position = tester
+                  .state<ScrollableState>(
+                    find.byType(Scrollable),
+                  )
+                  .position;
+              final physics = ScrollConfiguration.of(currentContext)
+                  .getScrollPhysics(currentContext);
+              expect(
+                physics.applyBoundaryConditions(position, position.pixels + 20),
+                0,
+              );
+            },
+          );
+        }
+      }
+    }
+
+    testWidgets('a restarted drag suppresses the queued end', (tester) async {
+      final starts = <bool>[];
+      final ends = <bool>[];
+      Widget build({VoidCallback? onLayout}) => _TestScrollable(
+            axis: Axis.vertical,
+            reverse: false,
+            onLayout: onLayout,
+            modes: const {AxisDirection.down: ScrollDragMode.scrollFirst},
+            onStart: starts.add,
+            onEnd: ends.add,
+          );
+      await tester.pumpWidget(build());
+      final context = tester.element(find.byType(Scrollable));
+      final metrics =
+          tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      void start() {
+        ScrollStartNotification(
+          metrics: metrics,
+          context: context,
+          dragDetails: DragStartDetails(),
+        ).dispatch(context);
+        OverscrollNotification(
+          metrics: metrics,
+          context: context,
+          overscroll: -20,
+          dragDetails: DragUpdateDetails(
+            delta: const Offset(0, 20),
+            primaryDelta: 20,
+            globalPosition: Offset.zero,
+          ),
+        ).dispatch(context);
+      }
+
+      await tester.pumpWidget(
+        build(
+          onLayout: () {
+            start();
+            ScrollEndNotification(metrics: metrics, context: context)
+                .dispatch(context);
+            start();
+          },
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(starts, [true, true]);
+      expect(ends, isEmpty);
+      await tester.pumpWidget(build());
+      final currentContext = tester.element(find.byType(Scrollable));
+      final position =
+          tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      final physics = ScrollConfiguration.of(currentContext)
+          .getScrollPhysics(currentContext);
+      expect(physics.applyBoundaryConditions(position, 20), 20);
+      ScrollEndNotification(metrics: position, context: currentContext)
+          .dispatch(currentContext);
+      await tester.pumpAndSettle();
+      expect(ends, [false]);
+    });
+
+    testWidgets('queued updates are ignored after disposal', (tester) async {
+      final starts = <bool>[];
+      final ends = <bool>[];
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) => _TestScrollable(
+            axis: Axis.vertical,
+            reverse: false,
+            modes: const {AxisDirection.down: ScrollDragMode.scrollFirst},
+            onStart: starts.add,
+            onEnd: ends.add,
+          ),
+        ),
+      );
+      final context = tester.element(find.byType(Scrollable));
+      final metrics =
+          tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      await tester.pumpWidget(
+        Builder(
+          builder: (_) {
+            ScrollStartNotification(
+              metrics: metrics,
+              context: context,
+              dragDetails: DragStartDetails(),
+            ).dispatch(context);
+            OverscrollNotification(
+              metrics: metrics,
+              context: context,
+              overscroll: -20,
+              dragDetails: DragUpdateDetails(
+                delta: const Offset(0, 20),
+                primaryDelta: 20,
+                globalPosition: Offset.zero,
+              ),
+            ).dispatch(context);
+            ScrollEndNotification(metrics: metrics, context: context)
+                .dispatch(context);
+            return const SizedBox();
+          },
+        ),
+      );
+      expect(starts, [true]);
+      expect(ends, isEmpty);
+      expect(find.byType(ScrollDragDetector), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('ScrollDragMode', () {
     test('exposes every routing mode', () {
       expect(
@@ -546,11 +825,15 @@ class _TestScrollable extends StatelessWidget {
     this.onEnd,
     this.onEndDetails,
     this.callbackAxis,
+    this.controller,
+    this.onLayout,
     this.modes = const {},
   });
 
   final Axis axis;
   final Axis? callbackAxis;
+  final ScrollController? controller;
+  final VoidCallback? onLayout;
   final bool reverse;
   final ValueChanged<bool> onStart;
   final ValueChanged<bool>? onUpdate;
@@ -590,12 +873,18 @@ class _TestScrollable extends StatelessWidget {
               onEndDetails?.call(details);
             }
           : null,
-      child: ListView.builder(
-        scrollDirection: axis,
-        reverse: reverse,
-        itemExtent: 40,
-        itemCount: 100,
-        itemBuilder: (context, index) => const SizedBox(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          onLayout?.call();
+          return ListView.builder(
+            controller: controller,
+            scrollDirection: axis,
+            reverse: reverse,
+            itemExtent: 40,
+            itemCount: 100,
+            itemBuilder: (context, index) => const SizedBox(),
+          );
+        },
       ),
     );
 
