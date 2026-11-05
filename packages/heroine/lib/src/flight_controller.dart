@@ -263,8 +263,13 @@ class _FlightController {
             controller.value.boundingBox.size.width / 2,
         width: controller.value.boundingBox.size.width,
         height: controller.value.boundingBox.size.height,
-        // TODO(timcreatedit): rotate here
-        child: child!,
+        // The rotation rides the same spring as the rect, so a hero leaving
+        // a tilted resting place untwists (or twists back) in step with its
+        // travel.
+        child: Transform.rotate(
+          angle: controller.value.rotation,
+          child: child,
+        ),
       ),
       child: IgnorePointer(
         // TODO(timcreatedit): allow configuring this

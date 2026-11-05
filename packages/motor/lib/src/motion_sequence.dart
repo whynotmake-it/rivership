@@ -50,7 +50,7 @@ typedef ValueWithMotion<T> = (T value, Motion motion);
 /// {@endtemplate}
 @immutable
 // ignore: deprecated_member_use
-abstract class MotionSequence<P, T extends Object> with EquatableMixin {
+abstract class MotionSequence<P, T extends Object> extends Equatable {
   /// {@macro MotionSequence}
   const MotionSequence();
 
