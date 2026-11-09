@@ -163,9 +163,18 @@ class _FlightController {
     required _HeroineState to,
   }) {
     if (from == to) return;
-    to._linkRedirectedMotionController(
-      from._motionController!,
-    );
+
+    // The previous controlling hero may have been disposed while its flight
+    // was still registered (e.g. a back gesture popped its route mid-spring),
+    // which already disposed and cleared its controller. Start the diverted
+    // flight on a fresh controller instead of transferring a missing one.
+    final motionController = from._motionController;
+    if (motionController == null) {
+      to._createMotionController(_spec, _onSpringAnimationStatusChanged);
+      return;
+    }
+
+    to._linkRedirectedMotionController(motionController);
     from._unlinkMotionControllers();
   }
 
