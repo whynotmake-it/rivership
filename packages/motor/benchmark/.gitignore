@@ -1,0 +1,6 @@
+.dart_tool/
+.build/
+build/
+results/
+linux/
+macos/

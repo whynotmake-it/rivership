@@ -26,10 +26,8 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   StupidSimpleGlassSheetRoute({
     required this.child,
     super.settings,
-    this.motion = const CupertinoMotion.smooth(
-      duration: Duration(milliseconds: 350),
-      snapToEnd: true,
-    ),
+    this.motion =
+        const CupertinoMotion.smooth(duration: Duration(milliseconds: 350)),
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,

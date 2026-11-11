@@ -3,10 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 void main() {
-  const motion = CupertinoMotion.smooth(
-    duration: Duration(milliseconds: 300),
-    snapToEnd: true,
-  );
+  const motion = CupertinoMotion.smooth(duration: Duration(milliseconds: 300));
 
   Widget buildApp({
     required RouteSnapshotMode mode,
