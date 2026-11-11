@@ -17,6 +17,8 @@ dependencies:
     sdk: flutter
   heroine_example:
     path: ../../packages/heroine/example
+  motor_devtools:
+    path: ../../packages/motor_devtools
   motor_example:
     path: ../../packages/motor/example
   stupid_simple_sheet_example:
@@ -39,3 +41,6 @@ flutter:
     - family: Archivo
       fonts:
         - asset: packages/motor_example/assets/Archivo-VariableFont_wdth,wght.ttf
+    - family: JetBrains Mono
+      fonts:
+        - asset: packages/motor_example/assets/JetBrainsMono-VariableFont_wght.ttf
