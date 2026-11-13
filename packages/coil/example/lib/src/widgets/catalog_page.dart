@@ -45,51 +45,56 @@ class CatalogPage extends StatelessWidget {
     final sectionGap = CatalogLayout.sectionGapOf(context);
     final summary = this.summary;
     final padding = MediaQuery.paddingOf(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        CatalogHeader(title: title),
-        Expanded(
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            child: ListView(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                gutter + padding.left,
-                8,
-                gutter + padding.right,
-                gutter + padding.bottom,
-              ),
-              children: [
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: CatalogLayout.maxContentWidth,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (summary != null) ...[
-                          RoleText(
-                            summary,
-                            role: TypeRole.subtitle,
-                            muted: true,
-                          ),
-                          SizedBox(height: sectionGap),
+    // A page owns its background, so a page pushed on top covers the one
+    // below instead of showing through it.
+    return ColoredBox(
+      color: CoilTheme.of(context).colors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CatalogHeader(title: title),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: ListView(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  gutter + padding.left,
+                  8,
+                  gutter + padding.right,
+                  gutter + padding.bottom,
+                ),
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: CatalogLayout.maxContentWidth,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (summary != null) ...[
+                            RoleText(
+                              summary,
+                              role: TypeRole.subtitle,
+                              muted: true,
+                            ),
+                            SizedBox(height: sectionGap),
+                          ],
+                          for (final (i, child) in children.indexed) ...[
+                            if (i > 0) SizedBox(height: sectionGap),
+                            child,
+                          ],
                         ],
-                        for (final (i, child) in children.indexed) ...[
-                          if (i > 0) SizedBox(height: sectionGap),
-                          child,
-                        ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

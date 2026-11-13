@@ -176,7 +176,6 @@ class _BlockSpec {
     this.from,
     this.fromCorners,
     this.instant = false,
-    this.seamCorners = false,
     this.visible = true,
   });
 
@@ -188,9 +187,6 @@ class _BlockSpec {
   final _Corners? fromCorners;
   final bool instant;
 
-  /// Whether the corners change only once the block has glided to the
-  /// seam.
-  final bool seamCorners;
   final bool visible;
 }
 
@@ -307,9 +303,9 @@ class CoilSelectionPainter extends CoilLayerPainter {
     _apply(instant: {boundary.survivor}, drop: {boundary.other});
   }
 
-  /// Advances merges while painting: when both halves have glided to the
-  /// seam, their inner corners straighten; when the corners arrive, the
-  /// merge commits. Every step rides the motion tokens, so a slower
+  /// Advances merges while painting: once both halves have glided to the
+  /// seam and their inner corners have squared off (together, on the same
+  /// spring), the merge commits. It rides the motion tokens, so a slower
   /// `standard` spring is never cut short and reduced motion commits at
   /// once.
   void _advanceMerges() {
@@ -319,8 +315,6 @@ class CoilSelectionPainter extends CoilLayerPainter {
       final other = _blocks[b.other];
       if (survivor == null || other == null) continue;
       if (!survivor.glided || !other.glided) continue;
-      survivor.straightenSeam(_motion);
-      other.straightenSeam(_motion);
       if (survivor.cornersArrived && other.cornersArrived) {
         b.committing = true;
         // The halves already meet, so this frame looks the same; the merged
@@ -352,17 +346,15 @@ class CoilSelectionPainter extends CoilLayerPainter {
       final (firstCorners, secondCorners) = _innerSquare(r);
       switch (b.phase) {
         case _Phase.converge:
-          // The two old blocks' inner edges glide to the seam; the corners
-          // there straighten only as the edges are about to meet.
+          // The two old blocks' inner edges glide to the seam while the
+          // corners there square off.
           specs[b.survivor] = _BlockSpec(
             geometry: first,
             corners: firstCorners,
-            seamCorners: true,
           );
           specs[b.other] = _BlockSpec(
             geometry: second,
             corners: secondCorners,
-            seamCorners: true,
           );
         case _Phase.split:
           // Both halves start pinned at the seam, exactly the block they
@@ -549,7 +541,6 @@ class _BlockAnimation {
   bool _retarget = false;
   bool _instant = false;
   _Geometry? pendingFrom;
-  _Corners? pendingSeamCorners;
   Rect? lastPainted;
   bool gone = false;
 
@@ -570,17 +561,15 @@ class _BlockAnimation {
       _instant = next.instant;
     }
     pendingFrom = next.from;
-    pendingSeamCorners = next.seamCorners && !next.instant
-        ? next.corners
-        : null;
     if (first && next.from == null) _retarget = false;
     final travel = next.instant ? const Motion.instant() : m.standard;
     _controller
         .animate([
-          if (next.fromCorners case final from?)
-            _cornersTrack([.to(next.corners, motion: travel)], from: from)
-          else if (!next.seamCorners || next.instant)
-            _cornersTrack([.to(next.corners, motion: travel)]),
+          // The corners change with the glide, on the same spring, so a
+          // merge's seam squares off as the blocks meet, not after.
+          _cornersTrack([
+            .to(next.corners, motion: travel),
+          ], from: next.fromCorners),
           _opacityTrack([
             .to(
               next.visible ? 1 : 0,
@@ -606,19 +595,7 @@ class _BlockAnimation {
       _controller.value(_delta) == Rect.zero;
 
   /// Whether the corners reached the spec's corners.
-  bool get cornersArrived =>
-      pendingSeamCorners == null && corners == spec.corners;
-
-  /// Starts the inner corners straightening, held until the glide reached
-  /// the seam. Does nothing once started.
-  void straightenSeam(CoilMotion m) {
-    final corners = pendingSeamCorners;
-    if (corners == null) return;
-    pendingSeamCorners = null;
-    _controller.animate([
-      _cornersTrack([.to(corners, motion: m.standard)]),
-    ]);
-  }
+  bool get cornersArrived => corners == spec.corners;
 
   /// The rect to paint this frame for [target], starting any glide the
   /// last [setSpec] asked for. Called while painting.

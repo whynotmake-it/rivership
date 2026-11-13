@@ -83,6 +83,7 @@ class CoilTextFieldCore extends StatefulWidget {
     this.textAlign = TextAlign.start,
     this.cursorColor,
     this.cursorWidth = 2,
+    this.cursorHeight,
     this.cursorRadius,
     this.selectionColor,
     this.selectionHandleColor,
@@ -142,6 +143,11 @@ class CoilTextFieldCore extends StatefulWidget {
 
   /// The caret width.
   final double cursorWidth;
+
+  /// The caret height. Defaults to the height of the text itself (the
+  /// font's ascent plus descent at this size), not the line box, so a caret
+  /// in a roomy line stays as tall as the letters beside it.
+  final double? cursorHeight;
 
   /// The caret's corner radius. Defaults to the platform's (rounded on
   /// Apple platforms).
@@ -419,6 +425,29 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
     _editableText?.requestKeyboard();
   }
 
+  /// The height of [style]'s text without its line height: the font's own
+  /// ascent plus descent, as the text engine reports it.
+  static double _textHeight(TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: ' ',
+        style: TextStyle(
+          inherit: false,
+          fontFamily: style.fontFamily,
+          fontFamilyFallback: style.fontFamilyFallback,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          fontVariations: style.fontVariations,
+        ),
+      ),
+      textScaler: scaler,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final height = painter.preferredLineHeight;
+    painter.dispose();
+    return height;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -451,6 +480,9 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       cursorColor: cursorColor,
       backgroundCursorColor: CupertinoColors.inactiveGray,
       cursorWidth: widget.cursorWidth,
+      cursorHeight:
+          widget.cursorHeight ??
+          _textHeight(style, MediaQuery.textScalerOf(context)),
       cursorRadius: widget.cursorRadius ?? platform.cursorRadius,
       cursorOffset: platform.cursorOffset,
       cursorOpacityAnimates: platform.cursorOpacityAnimates,

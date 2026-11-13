@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,20 @@ Widget _app(
 );
 
 void main() {
+  testWidgets('the caret is as tall as the text, not the line', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(const CoilInput(autofocus: true)));
+    await tester.pump();
+    final editable = tester.allRenderObjects.whereType<RenderEditable>().first;
+    final caret = editable.getLocalRectForCaret(const TextPosition(offset: 0));
+    final metrics = CoilTheme.metricsOf(
+      tester.element(find.byType(EditableText)),
+    );
+    expect(caret.height, greaterThanOrEqualTo(metrics.field.fontSize));
+    expect(caret.height, lessThan(metrics.field.lineHeight));
+  });
+
   group('CoilInput.multiline', () {
     testWidgets('grows with its text up to maxLines, then scrolls', (
       tester,

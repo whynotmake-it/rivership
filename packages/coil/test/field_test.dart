@@ -154,6 +154,50 @@ void main() {
       });
     }
 
+    testWidgets('an error appearing keeps the control focused and its text', (
+      tester,
+    ) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      String? error;
+      late StateSetter setState;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return CoilField(
+                label: const Text('Email'),
+                error: error == null ? null : Text(error!),
+                child: CoilInput(controller: controller),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.byType(CoilInput));
+      await tester.enterText(find.byType(EditableText), 'ada@');
+      setState(() => error = 'Enter a full address.');
+      await tester.pump();
+      expect(find.text('Enter a full address.'), findsOneWidget);
+      final editable = tester.state<EditableTextState>(
+        find.byType(EditableText),
+      );
+      expect(editable.widget.focusNode.hasFocus, isTrue);
+      expect(controller.text, 'ada@');
+
+      setState(() => error = null);
+      await tester.pump();
+      expect(
+        tester
+            .state<EditableTextState>(find.byType(EditableText))
+            .widget
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
+    });
+
     testWidgets('a disabled control ignores label taps', (tester) async {
       final focus = FocusNode();
       addTearDown(focus.dispose);

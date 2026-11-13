@@ -229,14 +229,14 @@ class _FieldBody extends StatelessWidget {
             ? ui.SemanticsValidationResult.invalid
             : ui.SemanticsValidationResult.none,
         liveRegion: error != null ? true : null,
-        child: error == null
-            ? body
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                spacing: style.messageGap!,
-                children: [body, error!],
-              ),
+        // Always the same shape: an error appearing or going must not move
+        // the control in the tree, or it would lose its focus and state.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          spacing: style.messageGap!,
+          children: [body, ?error],
+        ),
       ),
     );
   }
