@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 
 /// A widget that provides a background for a sheet, including shape and color.

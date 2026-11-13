@@ -417,6 +417,35 @@ int get hashCode => Object.hash(Object.hashAll(phases), loop, myExtraField);
 Without an override, a subclass compares its phases, values, motions and
 loop mode.
 
+### `MotionPadding` moved to `motor_widgets`
+
+`MotionPadding` and `PaddingExtended` now live in the
+[`motor_widgets`](../motor_widgets) package, together with the other
+spring-driven versions of Flutter's implicit animations. `package:motor`
+no longer exports them. Add the package and change the import; the widgets
+work as before:
+
+```yaml
+dependencies:
+  motor: ^2.0.0
+  motor_widgets: ^0.1.0
+```
+
+```dart
+// Before (1.x):
+import 'package:motor/motor.dart';
+
+// After (2.0):
+import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
+
+MotionPadding(
+  motion: const .smoothSpring(),
+  padding: const .all(16),
+  child: child,
+);
+```
+
 ## Sequences → Tracks
 
 The legacy sequence stack — `MotionSequence` (with `StateSequence`,

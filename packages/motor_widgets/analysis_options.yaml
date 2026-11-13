@@ -1,0 +1,7 @@
+include: package:lintervention/analysis_options.yaml
+analyzer:
+  errors:
+    prefer_int_literals: ignore
+    # Controllers created here are registered with motor's experimental
+    # inspection API, so motor_devtools groups them like motor's own.
+    experimental_member_use: ignore

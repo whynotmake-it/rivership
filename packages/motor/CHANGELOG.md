@@ -30,6 +30,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
  - **BREAKING**: a graceful `stop()` no longer cancels pending futures. On `MotionController`, `BoundedMotionController`, `TrackController` and `PhaseTrackController`, `stop()` completes the stopped tracks' `MotionFuture`: `ended` at once, and the future itself once they have come to rest, for springs and curves alike. `stop(canceled: true)` cancels them. This matches `AnimationController.stop(canceled: false)`. In 1.x, the future of a spring that still had to settle was canceled, so `await controller.stop()` and `orCancel` could throw. If you relied on that cancellation, pass `canceled: true` or check `status`.
  - **BREAKING**: `ColorRgbMotionConverter.denormalize` no longer clamps channels to 0..1. The converter now declares its channels as bounded dimensions, so the shown value is clamped while the spring state and velocity are not. Code that calls `denormalize` directly can see out-of-range channels. See [MIGRATION.md](./MIGRATION.md).
  - **BREAKING**: classes that `implements MotionConverter` (instead of extending it) must add a `dimensions` getter, which 2.0 added with a default of `null`. Return `null` to keep the old behavior. Classes that `extends MotionConverter` or use `MotionConverter.custom` keep compiling. See [MIGRATION.md](./MIGRATION.md).
+ - **BREAKING**: `MotionPadding` and `PaddingExtended` moved to the new [`motor_widgets`](../motor_widgets) package, next to the other spring-driven replacements for Flutter's implicit animations (`MotionContainer`, `MotionSwitcher`, `MotionSize`, …). `package:motor` no longer exports them. In 1.1.0 they came from `package:motor/motor.dart`. Add `motor_widgets` to your dependencies and import `package:motor_widgets/motor_widgets.dart`; the API is unchanged. See [MIGRATION.md](./MIGRATION.md).
 
 ### Tracks: a new multi-property animation system
 
@@ -100,7 +101,7 @@ Each entry says what changed, how 1.x behaved, and how to migrate.
 
 ### Fixed tick rates
 
- - **FEAT**: motor widgets can tick at a fixed rate with [`fixed_ticker`](https://pub.dev/packages/fixed_ticker). `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder`, `MotionDraggable` and `MotionPadding` take an optional `tickerRate` and follow the nearest `TickerRateScope`; `tickerRate` overrides the scope. Without either, they tick every frame as before. Controllers are unchanged: pass them a `FixedTickerProviderStateMixin` state for a fixed rate. `TickerRate`, `TickerRateScope`, `FixedTickerProviderStateMixin` and `SingleFixedTickerProviderStateMixin` are exported from `package:motor`.
+ - **FEAT**: motor widgets can tick at a fixed rate with [`fixed_ticker`](https://pub.dev/packages/fixed_ticker). `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder` and `MotionDraggable` (and `MotionPadding`, now in `motor_widgets`) take an optional `tickerRate` and follow the nearest `TickerRateScope`; `tickerRate` overrides the scope. Without either, they tick every frame as before. Controllers are unchanged: pass them a `FixedTickerProviderStateMixin` state for a fixed rate. `TickerRate`, `TickerRateScope`, `FixedTickerProviderStateMixin` and `SingleFixedTickerProviderStateMixin` are exported from `package:motor`.
 
 ### Performance
 

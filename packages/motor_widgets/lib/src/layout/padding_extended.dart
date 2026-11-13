@@ -2,8 +2,8 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 /// A widget that works exactly like [Padding] but allows negative values for
@@ -64,14 +64,15 @@ class RenderPaddingExtended extends RenderShiftedBox {
     required EdgeInsetsGeometry padding,
     TextDirection? textDirection,
     RenderBox? child,
-  })  : _textDirection = textDirection,
-        _padding = padding,
-        super(child);
+  }) : _textDirection = textDirection,
+       _padding = padding,
+       super(child);
 
   EdgeInsets? _resolvedPaddingCache;
   EdgeInsets get _resolvedPadding {
-    final returnValue =
-        _resolvedPaddingCache ??= padding.resolve(textDirection);
+    final returnValue = _resolvedPaddingCache ??= padding.resolve(
+      textDirection,
+    );
     return returnValue;
   }
 
@@ -109,8 +110,10 @@ class RenderPaddingExtended extends RenderShiftedBox {
     double result;
     if (child != null) {
       // Logic maintained: subtract vertical padding from height availability
-      result = child!
-              .getMinIntrinsicWidth(math.max(0.0, height - padding.vertical)) +
+      result =
+          child!.getMinIntrinsicWidth(
+            math.max(0.0, height - padding.vertical),
+          ) +
           padding.horizontal;
     } else {
       result = padding.horizontal;
@@ -124,8 +127,10 @@ class RenderPaddingExtended extends RenderShiftedBox {
     final padding = _resolvedPadding;
     double result;
     if (child != null) {
-      result = child!
-              .getMaxIntrinsicWidth(math.max(0.0, height - padding.vertical)) +
+      result =
+          child!.getMaxIntrinsicWidth(
+            math.max(0.0, height - padding.vertical),
+          ) +
           padding.horizontal;
     } else {
       result = padding.horizontal;
@@ -138,7 +143,8 @@ class RenderPaddingExtended extends RenderShiftedBox {
     final padding = _resolvedPadding;
     double result;
     if (child != null) {
-      result = child!.getMinIntrinsicHeight(
+      result =
+          child!.getMinIntrinsicHeight(
             math.max(0.0, width - padding.horizontal),
           ) +
           padding.vertical;
@@ -153,7 +159,8 @@ class RenderPaddingExtended extends RenderShiftedBox {
     final padding = _resolvedPadding;
     double result;
     if (child != null) {
-      result = child!.getMaxIntrinsicHeight(
+      result =
+          child!.getMaxIntrinsicHeight(
             math.max(0.0, width - padding.horizontal),
           ) +
           padding.vertical;
@@ -202,7 +209,7 @@ class RenderPaddingExtended extends RenderShiftedBox {
     final innerConstraints = constraints.deflate(padding);
     final result =
         BaselineOffset(child.getDryBaseline(innerConstraints, baseline)) +
-            padding.top;
+        padding.top;
     return result.offset;
   }
 
@@ -226,7 +233,10 @@ class RenderPaddingExtended extends RenderShiftedBox {
 
     (child!.parentData! as BoxParentData)
         // Offsetting by negative padding shifts the child up/left, outside bounds
-        .offset = Offset(padding.left, padding.top);
+        .offset = Offset(
+      padding.left,
+      padding.top,
+    );
 
     // Ensure total size doesn't crash if padding is extremely negative
     size = constraints.constrain(

@@ -1,8 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
-import '../util.dart';
+const error = 1e-4;
 
 void main() {
   group('MotionPadding', () {
@@ -40,8 +41,9 @@ void main() {
       expect(childOffset(tester), const Offset(20, 40));
     });
 
-    testWidgets('applies directional padding on the start side',
-        (tester) async {
+    testWidgets('applies directional padding on the start side', (
+      tester,
+    ) async {
       const padding = EdgeInsetsDirectional.only(start: 20);
 
       await tester.pumpWidget(build(padding));

@@ -1,7 +1,6 @@
 import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:fixed_ticker/testing.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -41,10 +40,6 @@ final _primitives = <String, _Primitive>{
           onBuild();
           return const SizedBox();
         },
-      ),
-  'MotionPadding': ({required onBuild, tickerRate}) => _PaddingAnimation(
-        onBuild: onBuild,
-        tickerRate: tickerRate,
       ),
   'TrackBuilder': ({required onBuild, tickerRate}) => TrackBuilder(
         animations: [
@@ -304,67 +299,6 @@ void main() {
     expect(controller.value<double>(_track), 100);
     await tester.pumpWidget(const SizedBox());
   });
-}
-
-class _PaddingAnimation extends StatefulWidget {
-  const _PaddingAnimation({required this.onBuild, this.tickerRate});
-
-  final VoidCallback onBuild;
-  final TickerRate? tickerRate;
-
-  @override
-  State<_PaddingAnimation> createState() => _PaddingAnimationState();
-}
-
-class _PaddingAnimationState extends State<_PaddingAnimation> {
-  var _padding = EdgeInsets.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() => _padding = const EdgeInsets.all(100));
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MotionPadding(
-      motion: _motion,
-      padding: _padding,
-      tickerRate: widget.tickerRate,
-      child: _BuildCounter(onBuild: widget.onBuild),
-    );
-  }
-}
-
-class _BuildCounter extends SingleChildRenderObjectWidget {
-  const _BuildCounter({required this.onBuild});
-
-  final VoidCallback onBuild;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderBuildCounter(onBuild);
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderBuildCounter renderObject,
-  ) =>
-      renderObject.onLayout = onBuild;
-}
-
-class _RenderBuildCounter extends RenderProxyBox {
-  _RenderBuildCounter(this.onLayout);
-
-  VoidCallback onLayout;
-
-  @override
-  void performLayout() {
-    onLayout();
-    super.performLayout();
-  }
 }
 
 class _Observer implements MotorInspectionObserver {
