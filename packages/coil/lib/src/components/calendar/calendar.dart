@@ -269,7 +269,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
     final weekdays = Row(
       children: [
         for (var i = 0; i < 7; i++)
-          SizedBox(
+          _Column(
             width: cell,
             child: ExcludeSemantics(
               child: Text(
@@ -293,10 +293,12 @@ class _CoilCalendarState extends State<CoilCalendar> {
       children: [
         for (var week = 0; week < 6; week++)
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               for (var weekday = 0; weekday < 7; weekday++)
-                _cellAt(week * 7 + weekday, cell, metrics, selectedIndex),
+                _Column(
+                  width: cell,
+                  child: _cellAt(week * 7 + weekday, metrics, selectedIndex),
+                ),
             ],
           ),
       ],
@@ -359,72 +361,79 @@ class _CoilCalendarState extends State<CoilCalendar> {
       ),
     );
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: metrics.gap,
-      children: [
-        SizedBox(width: cell * 7, child: header),
-        weekdays,
-        CallbackShortcuts(
-          bindings: {
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowRight
-                  : LogicalKeyboardKey.arrowLeft,
-            ): () =>
-                _moveDays(-1),
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowLeft
-                  : LogicalKeyboardKey.arrowRight,
-            ): () =>
-                _moveDays(1),
-            const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-                _moveDays(-7),
-            const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-                _moveDays(7),
-            const SingleActivator(LogicalKeyboardKey.home): () =>
-                _moveDays(-((_current.weekday - widget.firstDayOfWeek) % 7)),
-            const SingleActivator(LogicalKeyboardKey.end): () =>
-                _moveDays(6 - (_current.weekday - widget.firstDayOfWeek) % 7),
-            const SingleActivator(LogicalKeyboardKey.pageUp): () =>
-                _moveMonths(-1),
-            const SingleActivator(LogicalKeyboardKey.pageDown): () =>
-                _moveMonths(1),
-            const SingleActivator(LogicalKeyboardKey.pageUp, shift: true): () =>
-                _moveMonths(-12),
-            const SingleActivator(
-              LogicalKeyboardKey.pageDown,
-              shift: true,
-            ): () =>
-                _moveMonths(12),
-            const SingleActivator(LogicalKeyboardKey.enter): _pickCurrent,
-            const SingleActivator(LogicalKeyboardKey.space): _pickCurrent,
-          },
-
-          child: Focus(
-            focusNode: _focus,
-            autofocus: widget.autofocus,
-            canRequestFocus: widget.onSelected != null,
-            onFocusChange: (focused) {
-              // The ring shows where the keyboard is; it starts on the
-              // selected day.
-              if (focused &&
-                  _active.index == null &&
-                  CoilInputModality.instance.value == CoilModality.keyboard) {
-                _moveTo(_current);
-              }
-              setState(() {});
+    // As wide as seven cells, or as the room allows: on a phone the
+    // columns share a narrower width and rows keep the control height.
+    return IntrinsicWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: metrics.gap,
+        children: [
+          header,
+          weekdays,
+          CallbackShortcuts(
+            bindings: {
+              SingleActivator(
+                rtl
+                    ? LogicalKeyboardKey.arrowRight
+                    : LogicalKeyboardKey.arrowLeft,
+              ): () =>
+                  _moveDays(-1),
+              SingleActivator(
+                rtl
+                    ? LogicalKeyboardKey.arrowLeft
+                    : LogicalKeyboardKey.arrowRight,
+              ): () =>
+                  _moveDays(1),
+              const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+                  _moveDays(-7),
+              const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+                  _moveDays(7),
+              const SingleActivator(LogicalKeyboardKey.home): () =>
+                  _moveDays(-((_current.weekday - widget.firstDayOfWeek) % 7)),
+              const SingleActivator(LogicalKeyboardKey.end): () =>
+                  _moveDays(6 - (_current.weekday - widget.firstDayOfWeek) % 7),
+              const SingleActivator(LogicalKeyboardKey.pageUp): () =>
+                  _moveMonths(-1),
+              const SingleActivator(LogicalKeyboardKey.pageDown): () =>
+                  _moveMonths(1),
+              const SingleActivator(
+                LogicalKeyboardKey.pageUp,
+                shift: true,
+              ): () =>
+                  _moveMonths(-12),
+              const SingleActivator(
+                LogicalKeyboardKey.pageDown,
+                shift: true,
+              ): () =>
+                  _moveMonths(12),
+              const SingleActivator(LogicalKeyboardKey.enter): _pickCurrent,
+              const SingleActivator(LogicalKeyboardKey.space): _pickCurrent,
             },
-            child: Semantics(container: true, child: grid),
+
+            child: Focus(
+              focusNode: _focus,
+              autofocus: widget.autofocus,
+              canRequestFocus: widget.onSelected != null,
+              onFocusChange: (focused) {
+                // The ring shows where the keyboard is; it starts on the
+                // selected day.
+                if (focused &&
+                    _active.index == null &&
+                    CoilInputModality.instance.value == CoilModality.keyboard) {
+                  _moveTo(_current);
+                }
+                setState(() {});
+              },
+              child: Semantics(container: true, child: grid),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _cellAt(int index, double size, CoilMetrics metrics, int? selected) {
+  Widget _cellAt(int index, CoilMetrics metrics, int? selected) {
     final day = _cell(index);
     final enabled = _enabled(day);
     return CoilHoverItem(
@@ -432,7 +441,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
       enabled: enabled,
       child: _Day(
         day: day,
-        size: size,
         metrics: metrics,
         label: widget.labels.dayLabel(day),
         outside: day.month != _month.month,
@@ -449,7 +457,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
 class _Day extends StatefulWidget {
   const _Day({
     required this.day,
-    required this.size,
     required this.metrics,
     required this.label,
     required this.outside,
@@ -459,7 +466,6 @@ class _Day extends StatefulWidget {
   });
 
   final DateTime day;
-  final double size;
   final CoilMetrics metrics;
   final String label;
   final bool outside;
@@ -505,8 +511,8 @@ class _DayState extends State<_Day> {
         excludeFromSemantics: true,
         child: Opacity(
           opacity: enabled ? 1 : widget.metrics.disabledOpacity,
-          child: SizedBox.square(
-            dimension: widget.size,
+          child: SizedBox(
+            height: widget.metrics.controlHeight,
             child: Center(
               child: Text(
                 '${widget.day.day}',
@@ -524,4 +530,17 @@ class _DayState extends State<_Day> {
       ),
     );
   }
+}
+
+/// One of the grid's seven columns: [width] wide, or an equal share of a
+/// narrower row.
+class _Column extends StatelessWidget {
+  const _Column({required this.width, required this.child});
+
+  final double width;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      Flexible(child: SizedBox(width: width, child: child));
 }

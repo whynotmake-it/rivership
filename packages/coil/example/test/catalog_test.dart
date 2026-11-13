@@ -99,7 +99,11 @@ void main() {
 
   testWidgets('planned components are listed but do not open', (tester) async {
     await _pumpCatalog(tester, tier: CatalogTier.pointer);
-    final planned = find.text('Dialog');
+    final built = {for (final entry in catalogEntries) entry.title};
+    final name = designComponents.values
+        .expand((names) => names)
+        .firstWhere((name) => !built.contains(name));
+    final planned = find.text(name);
     await tester.ensureVisible(planned);
     await tester.pumpAndSettle();
     await tester.tap(planned);
