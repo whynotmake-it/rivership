@@ -31,4 +31,5 @@ export 'src/primitives/selection_blocks.dart' hide CoilSelectionPainter;
 export 'src/primitives/sheet.dart';
 export 'src/primitives/surface.dart';
 export 'src/primitives/text_field_core.dart';
+export 'src/primitives/tooltip_anchor.dart';
 export 'src/primitives/typeahead.dart';
