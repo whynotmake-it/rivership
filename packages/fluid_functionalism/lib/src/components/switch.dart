@@ -7,7 +7,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
-import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -309,7 +308,7 @@ class _FluidSwitchState extends State<FluidSwitch>
                     style: theme.typography.style(sizes.body, color: color),
                     child: child!,
                   ),
-                  child: FluidLabel(child: label),
+                  child: label,
                 ),
               ],
             ),

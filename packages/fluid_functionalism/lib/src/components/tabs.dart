@@ -4,7 +4,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_highlight.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_hover.dart';
-import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -320,7 +319,7 @@ class _TabButton extends StatelessWidget {
                             style: semibold,
                             maxLines: 1,
                             softWrap: false,
-                            child: FluidLabel(child: tab.label),
+                            child: tab.label,
                           ),
                         ),
                       ),
@@ -328,7 +327,7 @@ class _TabButton extends StatelessWidget {
                         style: style,
                         maxLines: 1,
                         softWrap: false,
-                        child: FluidLabel(child: tab.label),
+                        child: tab.label,
                       ),
                     ],
                   );

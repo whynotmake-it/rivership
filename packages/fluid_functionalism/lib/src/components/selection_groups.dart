@@ -3,7 +3,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_hover.dart';
-import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_selection.dart';
 import 'package:flutter/widgets.dart';
@@ -150,7 +149,7 @@ class _CheckRowState extends State<_CheckRow> {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    child: FluidLabel(child: widget.label),
+                    child: widget.label,
                   ),
                 ),
               ],
@@ -252,7 +251,7 @@ class FluidToggleGroup extends StatelessWidget {
                             softWrap: false,
                             child: child!,
                           ),
-                          child: FluidLabel(child: item),
+                          child: item,
                         ),
                       ),
                     ),

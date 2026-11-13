@@ -4,7 +4,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart'
     show FluidIconWeight;
 import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
-import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -230,7 +229,7 @@ class _FluidInputState extends State<FluidInput>
                 style: style.copyWith(color: colors.mutedForeground),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                child: FluidLabel(child: placeholder),
+                child: placeholder,
               ),
             ),
           ),
@@ -242,7 +241,7 @@ class _FluidInputState extends State<FluidInput>
             alignment: AlignmentDirectional.centerStart,
             child: DefaultTextStyle(
               style: style,
-              child: FluidLabel(child: editable),
+              child: editable,
             ),
           ),
         ),

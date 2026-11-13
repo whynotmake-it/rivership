@@ -70,7 +70,7 @@ class FluidThemeData with Diagnosticable {
   /// every animation.
   final FluidMotionThemeData motion;
 
-  /// The font family and its metrics (cap height for label centering).
+  /// The font family.
   final FluidTypographyThemeData typography;
 
   /// The focus ring's thickness: 1 (the web's `ring-1`), 2 in high contrast.

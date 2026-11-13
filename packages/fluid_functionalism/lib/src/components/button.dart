@@ -8,7 +8,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart'
     show FluidIconWeight;
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
-import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -33,7 +32,7 @@ enum FluidButtonVariant {
 
 /// A button (`registry/radix/button.tsx`).
 ///
-/// [child] is the label, centered on its cap height ([FluidLabel]).
+/// [child] is the label.
 /// [leading] and [trailing] are icon slots that take any widget, styled
 /// through [IconTheme]: the size for the current density, the label color,
 /// and a `weight` that rises from [FluidIconWeight.rest] to
@@ -326,8 +325,7 @@ class _FluidButtonState extends State<FluidButton> {
       spacing: sizes.buttonGap,
       children: [
         if (leading != null) leading,
-        // Centered on its cap height, like CSS text-box trim.
-        FluidLabel(child: widget.child!),
+        widget.child!,
         if (trailing != null) trailing,
       ],
     );
