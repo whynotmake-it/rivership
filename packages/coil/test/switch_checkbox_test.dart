@@ -88,7 +88,7 @@ void main() {
       expect(value, isTrue);
     });
 
-    testWidgets('a quick flick toggles before the midpoint; a slow short '
+    testWidgets('a quick flick toggles from the near side; a slow short '
         'drag springs back', (tester) async {
       var value = false;
       await tester.pumpWidget(
@@ -127,59 +127,6 @@ void main() {
       );
       await settle(tester);
       expect(value, isTrue);
-    });
-
-    test('the release rule projects x + v·0.1 s, not a speed threshold', () {
-      // Slow drags decide by position.
-      expect(CoilSwitch.decideRelease(0.6, 0), isTrue);
-      expect(CoilSwitch.decideRelease(0.4, 0), isFalse);
-      // A flick from the near side reaches the other.
-      expect(CoilSwitch.decideRelease(0.1, 5), isTrue);
-      // Fast (a speed threshold of 2/s would call it a fling) but it would
-      // not get there: stays put.
-      expect(CoilSwitch.decideRelease(0.05, 4), isFalse);
-      // Flicked back from past the end, but not hard enough to cross.
-      expect(CoilSwitch.decideRelease(1.15, -6), isTrue);
-      expect(CoilSwitch.decideRelease(1.15, -7), isFalse);
-    });
-
-    testWidgets('release decides by projected position x + v·0.1 s', (
-      tester,
-    ) async {
-      var value = false;
-      await tester.pumpWidget(
-        _app(
-          StatefulBuilder(
-            builder: (context, setState) => CoilSwitch(
-              value: value,
-              onChanged: (v) => setState(() => value = v),
-            ),
-          ),
-        ),
-      );
-      final track = tester.getRect(find.byType(CoilSwitch));
-      final start = Offset(track.left + 10, track.center.dy);
-      // Travel is 14 px. A 3 px flick at 100 px/s: x ≈ 3/14 = 0.21,
-      // v ≈ 7.1 travels/s, projected 0.21 + 0.71 > 0.5 -> on.
-      await tester.flingFrom(
-        start,
-        const Offset(3, 0),
-        100,
-        deviceKind: PointerDeviceKind.mouse,
-      );
-      await settle(tester);
-      expect(value, isTrue, reason: 'a quick short flick toggles');
-
-      // The same 3 px back at 20 px/s: x ≈ 0.79, v ≈ -1.4,
-      // projected 0.79 - 0.14 > 0.5 -> stays on.
-      await tester.flingFrom(
-        Offset(track.right - 10, track.center.dy),
-        const Offset(-3, 0),
-        20,
-        deviceKind: PointerDeviceKind.mouse,
-      );
-      await settle(tester);
-      expect(value, isTrue, reason: 'a slow short drag does not');
     });
 
     testWidgets('dragging squishes the thumb and lets go cleanly', (

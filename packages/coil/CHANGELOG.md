@@ -19,5 +19,19 @@ Milestone M0, unreleased.
   inline "Copied" on every platform), and `CoilField` with `CoilFieldSet`,
   `CoilFieldGroup` and `CoilFieldSeparator` (label, description, error and
   required marker, read with the control by screen readers).
+- Components: `CoilBadge`, `CoilSkeleton` (with `CoilSkeletonText` and
+  `CoilSkeletonRegion`), `CoilRadioGroup`.
+- `CoilButton` swaps its spinner in with the blur-fade and takes `motions:`
+  (`CoilButtonTrack`). `CoilSwitchTrack` gains `hover` and `label`.
+  Checkbox, checkbox group, radio group and toggle group have tracks too.
+- `CoilCheckboxIndicator` and `CoilRadioIndicator` draw the box and circle
+  without interaction, for rows that are the tap target.
+- Checkbox and toggle groups: arrow keys, a travelling focus ring and a
+  press fill on touch. Shared by the three groups: `CoilChoiceGroup`,
+  `CoilChoiceItem`, `CoilChoiceRow`; `CoilRovingFocus` gains `tabStops` and
+  `onMoved`.
+- Breaking: `package:coil/selection_groups.dart` is now
+  `checkbox_group.dart` and `toggle_group.dart`. `CoilTapTargetSize` is
+  removed.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

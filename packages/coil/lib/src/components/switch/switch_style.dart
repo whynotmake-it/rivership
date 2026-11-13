@@ -22,21 +22,21 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
     final c = theme.colors;
     final m = metrics.switchMetrics;
     return CoilSwitchStyle(
-      track: WidgetStateProperty.resolveWith((s) {
-        final hovered = s.contains(WidgetState.hovered);
-        return s.contains(WidgetState.selected)
-            ? (hovered
-                  ? CoilColorMix.oklab(c.brand, const Color(0xFF000000), 0.92)
-                  : c.brand)
-            : (hovered
-                  ? CoilColorMix.oklab(c.accent, c.overlay, 0.9)
-                  : c.accent);
+      track: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.selected & WidgetState.hovered: CoilColorMix.oklab(
+          c.brand,
+          const Color(0xFF000000),
+          0.92,
+        ),
+        WidgetState.selected: c.brand,
+        WidgetState.hovered: CoilColorMix.oklab(c.accent, c.overlay, 0.9),
+        WidgetState.any: c.accent,
       }),
       thumb: const Color(0xFFFFFFFF),
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) ? c.foreground : c.mutedForeground,
-      ),
+      label: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.selected: c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
       textStyle: theme.typography.style(metrics.body),
       // A pill: half the track's height.
       radius: theme.shape == CoilShape.sharp ? 0 : m.trackHeight / 2,

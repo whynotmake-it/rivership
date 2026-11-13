@@ -30,26 +30,27 @@ final class CoilSwitchTrack<T extends Object> extends Track<T> {
     .single,
     debugLabel: 'CoilSwitch.tint',
   );
+
+  /// How hovered the thumb and track are, 0 to 1. Default motion: `quick`.
+  static final hover = CoilSwitchTrack<double>._(
+    .single,
+    debugLabel: 'CoilSwitch.hover',
+  );
+
+  /// The label color. Default motion: `fade`.
+  static final label = CoilSwitchTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilSwitch.label',
+  );
 }
 
-/// A switch with an optional label (`registry/radix/switch.tsx`).
+/// A switch with an optional label.
 ///
-/// Built like Motor's toggle example: one [TrackController] animates three
-/// tracks, each 0..1:
+/// Tap, Space or Enter toggles it. It can also be dragged: on release the
+/// thumb decides by where it would land a moment later, so a quick flick
+/// toggles from the near side and a slow drag decides by position.
 ///
-/// * **thumb**: where the thumb is. Dragging [TrackController.set]s it and
-///   may pull it a little past either end, which stretches the switch;
-///   letting go decides by the projected position `x + v·0.1 s` and animates
-///   from the release velocity, so a flick finishes the way it was thrown.
-/// * **squish**: the press. The thumb widens and flattens while pressed.
-/// * **tint**: the track color, off to on, on its own spring.
-///
-/// The tracks carry no default motion: every `.to(...)` passes the theme's
-/// current token (or [motion]), so runtime theme changes apply to the next
-/// animation.
-///
-/// Hover (the thumb turning into a pill, the track darkening) is a plain
-/// [SingleMotionBuilder]. Geometry and colors are Fluid Functionalism's.
+/// The animated parts are [CoilSwitchTrack]s; override them with [motions].
 class CoilSwitch extends StatefulWidget {
   /// Creates a switch.
   const CoilSwitch({
@@ -105,13 +106,6 @@ class CoilSwitch extends StatefulWidget {
   /// A label for assistive technology when [label] is not plain text.
   final String? semanticLabel;
 
-  /// Whether a drag released at [position] (0 off .. 1 on) moving at
-  /// [velocity] (travels per second) ends on: the projected position
-  /// `position + velocity · 0.1 s` past the midpoint.
-  @visibleForTesting
-  static bool decideRelease(double position, double velocity) =>
-      position + velocity * _projection > .5;
-
   @override
   State<CoilSwitch> createState() => _CoilSwitchState();
 }
@@ -123,6 +117,11 @@ const _overdrag = 0.15;
 /// would be this long after letting go (`x + v·t`), so a quick flick
 /// toggles even from the near side and a slow drag decides by position.
 const _projection = 0.1;
+
+/// Whether a drag released at [position] (0 off, 1 on) moving at [velocity]
+/// (travels per second) ends on.
+bool _decidesOn(double position, double velocity) =>
+    position + velocity * _projection > .5;
 
 class _CoilSwitchState extends State<CoilSwitch>
     with SingleTickerProviderStateMixin {
@@ -147,16 +146,23 @@ class _CoilSwitchState extends State<CoilSwitch>
         track,
         instance: widget.motions,
         token: token,
-        spatial: track != CoilSwitchTrack.tint,
+        spatial:
+            track != CoilSwitchTrack.tint && track != CoilSwitchTrack.label,
       );
 
   Motion get _thumbMotion => _motionFor(_thumb, _motion.standard);
   Motion get _squishMotion => _motionFor(_squish, _motion.quick);
   Motion get _tintMotion => _motionFor(_tint, _motion.fade);
+  Motion get _hoverMotion => _motionFor(CoilSwitchTrack.hover, _motion.quick);
+  Motion get _labelMotion => _motionFor(CoilSwitchTrack.label, _motion.fade);
 
   WidgetStatesController? _ownStates;
   WidgetStatesController get _states =>
       widget.statesController ?? (_ownStates ??= WidgetStatesController());
+
+  /// Whether the hover and label tracks have played once, so the first
+  /// build starts at rest instead of animating in.
+  bool _started = false;
 
   bool _dragging = false;
 
@@ -262,7 +268,7 @@ class _CoilSwitchState extends State<CoilSwitch>
     // in travels per second, like the thumb track.
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final speed = details.velocity.pixelsPerSecond.dx / travel * (rtl ? -1 : 1);
-    final on = CoilSwitch.decideRelease(_controller.value(_thumb), speed);
+    final on = _decidesOn(_controller.value(_thumb), speed);
     if (on != widget.value) {
       _dragDecided = true;
       widget.onChanged?.call(on);
@@ -304,67 +310,64 @@ class _CoilSwitchState extends State<CoilSwitch>
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
       statesController: _states,
+      minHitTarget: sizes.minHitTarget,
       builder: (context, states, _) {
-        final track = CoilFocusRing(
-          visible: states.contains(WidgetState.focused),
-          borderRadius: BorderRadius.circular(style.radius!),
-          offset: 2,
-          child: SingleMotionBuilder(
-            value: states.contains(WidgetState.hovered) ? 1 : 0,
-            motion: _motion.quick,
-            debugLabel: 'Hover',
-            builder: (context, hover, _) => ListenableBuilder(
-              listenable: _controller,
-              builder: (context, _) => _SwitchTrack(
-                metrics: m,
-                style: style,
-                sharp: sharp,
-                thumb: _controller.value(_thumb),
-                squish: _controller.value(_squish).clamp(0, 1),
-                tint: _controller.value(_tint).clamp(0, 1),
-                hover: hover.clamp(0, 1),
-              ),
-            ),
-          ),
-        );
-
-        Widget content = track;
-        if (label != null) {
-          content = Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: sizes.controlPaddingX,
-              vertical: sizes.switchRowPaddingY,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: sizes.gap,
-              children: [
-                track,
-                MotionBuilder<Color>(
-                  value: style.label!.resolve({
-                    if (widget.value) WidgetState.selected,
-                  })!,
-                  motion: _motion.fade,
-                  converter: .colorRgb,
-                  debugLabel: 'Label color',
-                  builder: (context, color, child) => DefaultTextStyle(
-                    style: style.textStyle!.copyWith(color: color),
-                    child: child!,
-                  ),
-                  child: label,
-                ),
-              ],
-            ),
-          );
-        }
+        final hovered = states.contains(WidgetState.hovered);
+        final labelColor = style.label!.resolve({
+          if (widget.value) WidgetState.selected,
+        })!;
+        final first = !_started;
+        _started = true;
         return Opacity(
-          opacity: _enabled ? 1 : 0.5,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: sizes.minHitTarget,
-              minWidth: sizes.minHitTarget,
-            ),
-            child: Center(widthFactor: 1, heightFactor: 1, child: content),
+          opacity: _enabled ? 1 : sizes.disabledOpacity,
+          child: TrackBuilder(
+            animations: [
+              CoilSwitchTrack.hover([
+                .to(hovered ? 1 : 0, motion: _hoverMotion),
+              ], from: first ? (hovered ? 1 : 0) : null),
+              CoilSwitchTrack.label([
+                .to(labelColor, motion: _labelMotion),
+              ], from: first ? labelColor : null),
+            ],
+            builder: (context, value, _) {
+              final track = CoilFocusRing(
+                visible: states.contains(WidgetState.focused),
+                borderRadius: BorderRadius.circular(style.radius!),
+                offset: 2,
+                child: ListenableBuilder(
+                  listenable: _controller,
+                  builder: (context, _) => _SwitchTrack(
+                    metrics: m,
+                    style: style,
+                    sharp: sharp,
+                    thumb: _controller.value(_thumb),
+                    squish: _controller.value(_squish).clamp(0, 1),
+                    tint: _controller.value(_tint).clamp(0, 1),
+                    hover: value(CoilSwitchTrack.hover).clamp(0, 1),
+                  ),
+                ),
+              );
+              if (label == null) return track;
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: sizes.controlPaddingX,
+                  vertical: sizes.switchRowPaddingY,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: sizes.gap,
+                  children: [
+                    track,
+                    DefaultTextStyle(
+                      style: style.textStyle!.copyWith(
+                        color: value(CoilSwitchTrack.label),
+                      ),
+                      child: label,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
@@ -467,7 +470,7 @@ class _SwitchTrack extends StatelessWidget {
               height: height,
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  color: style.thumb, // Tailwind `shadow-sm`.
+                  color: style.thumb,
                   shadows: const [
                     BoxShadow(
                       color: Color(0x1A000000),

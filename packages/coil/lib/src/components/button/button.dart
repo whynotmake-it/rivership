@@ -6,19 +6,50 @@ import 'package:coil/src/components/button/button_style.dart';
 import 'package:coil/src/components/button/button_variant.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
-/// A button (`registry/radix/button.tsx`).
+/// The animated parts of a [CoilButton], as Motor tracks. Use them as keys
+/// of [CoilButton.motions] or [CoilThemeData.trackMotions].
+final class CoilButtonTrack<T extends Object> extends Track<T> {
+  CoilButtonTrack._(super.converter, {required String super.debugLabel});
+
+  /// The surface color. Default motion: `fade`.
+  static final fill = CoilButtonTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilButton.fill',
+  );
+
+  /// The label and icon color. Default motion: `fade`.
+  static final label = CoilButtonTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilButton.label',
+  );
+
+  /// The 1 px press collapse, 1 (rest) to 0 (pressed). Default motion:
+  /// `quick` while pressing, `standard` on release.
+  static final collapse = CoilButtonTrack<double>._(
+    .single,
+    debugLabel: 'CoilButton.collapse',
+  );
+
+  /// The icon weight. Default motion: `fade`.
+  static final weight = CoilButtonTrack<double>._(
+    .single,
+    debugLabel: 'CoilButton.weight',
+  );
+}
+
+/// A button.
 ///
-/// [child] is the label.
-/// [leading] and [trailing] are icon slots that take any widget, styled
-/// through [IconTheme]: the size for the current density, the label color,
-/// and a `weight` that rises from [CoilIconWeight.rest] to
-/// [CoilIconWeight.emphasis] on hover (the web's 1.5 → 2 stroke). The
-/// package bundles no icons. [loadingIndicator] replaces the built-in
-/// spinner.
+/// [child] is the label. [leading] and [trailing] take any widget and are
+/// styled through [IconTheme]: icon size, the label color, and a weight that
+/// rises on hover. Pressing shrinks the fill by 1 px per side.
 ///
-/// Pressing collapses the fill by exactly 1 px per side at any width (the
-/// web's shrinking box-shadow spread), rather than scaling.
+/// While [loading], a spinner takes the leading slot (the icon of an
+/// icon-only button, or the whole content when there is no leading slot) and
+/// presses are ignored. The width stays locked and the button keeps full
+/// strength. The animated parts are [CoilButtonTrack]s; override them with
+/// [motions].
 class CoilButton extends StatefulWidget {
   /// Creates a labeled button.
   const CoilButton({
@@ -35,9 +66,11 @@ class CoilButton extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.motions,
     this.style,
     this.semanticLabel,
     this.loadingIndicator,
+    this.loadingLabel,
   }) : icon = null;
 
   /// Creates a square, icon-only button. [semanticLabel] names it for
@@ -47,6 +80,7 @@ class CoilButton extends StatefulWidget {
     required Widget this.icon,
     required String this.semanticLabel,
     this.loadingIndicator,
+    this.loadingLabel,
     super.key,
     this.variant = CoilButtonVariant.primary,
     this.size,
@@ -56,6 +90,7 @@ class CoilButton extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.motions,
     this.style,
   }) : child = null,
        leading = null,
@@ -103,12 +138,21 @@ class CoilButton extends StatefulWidget {
   /// instance.
   final CoilMotion? motion;
 
+  /// Per-track motions for this instance, keyed by [CoilButtonTrack]s:
+  /// `motions: {.collapse: const .snappySpring()}`. They win over the
+  /// theme's [CoilThemeData.trackMotions] and the tokens.
+  final Map<CoilButtonTrack<Object>, Motion>? motions;
+
   /// Overrides for this button's look, on top of the theme's
   /// [CoilButtonStyle] and the defaults.
   final CoilButtonStyle? style;
 
   /// Overrides the label for assistive technology.
   final String? semanticLabel;
+
+  /// What assistive technology announces as the button's value while
+  /// [loading] (for example "Loading", in the app's language).
+  final String? loadingLabel;
 
   /// Replaces the built-in spinner shown while [loading]. It is laid out in
   /// an icon-sized box and inherits the label color through [IconTheme] and
@@ -141,18 +185,27 @@ class _CoilButtonState extends State<CoilButton> {
   CoilMotion get _motion =>
       CoilTheme.motionOf(context, override: widget.motion);
 
-  Track<Color>? _fill;
-  Track<Color>? _label;
-  Track<double>? _spread;
-  Track<double>? _iconWeight;
+  /// Whether the tracks have played once: the first build starts them at
+  /// the resting look instead of animating in from nothing.
+  bool _started = false;
+
+  Motion _motionFor(
+    CoilButtonTrack<Object> track,
+    Motion token, {
+    bool spatial = true,
+  }) => CoilTheme.trackMotionOf(
+    context,
+    track,
+    instance: widget.motions,
+    token: token,
+    spatial: spatial,
+  );
 
   bool get _enabled => widget.onPressed != null && !widget.loading;
 
   _ButtonLook _look(CoilButtonStyle style, Set<WidgetState> raw) {
-    final hovered =
-        !widget.loading && raw.contains(WidgetState.hovered) && _enabled;
-    final pressed =
-        !widget.loading && raw.contains(WidgetState.pressed) && _enabled;
+    final hovered = raw.contains(WidgetState.hovered) && _enabled;
+    final pressed = raw.contains(WidgetState.pressed) && _enabled;
     final states = {
       if (hovered) WidgetState.hovered,
       if (pressed) WidgetState.pressed,
@@ -184,7 +237,7 @@ class _CoilButtonState extends State<CoilButton> {
       button: true,
       enabled: widget.onPressed != null,
       label: widget.semanticLabel,
-      value: widget.loading ? 'Loading' : null,
+      value: widget.loading ? widget.loadingLabel : null,
       child: CoilInteraction(
         onPressed: _enabled ? widget.onPressed : null,
         focusNode: widget.focusNode,
@@ -193,40 +246,65 @@ class _CoilButtonState extends State<CoilButton> {
         minHitTarget: sizes.minHitTarget,
         builder: (context, states, _) {
           final look = _look(style, states);
-          final fill = _fill ??= Track(.colorRgb, initial: look.fill);
-          final labelTrack = _label ??= Track(.colorRgb, initial: look.label);
-          final spread = _spread ??= Track(.single, initial: look.spread);
-          final iconWeight = _iconWeight ??= Track(
-            .single,
-            initial: look.iconWeight,
-          );
+          final first = !_started;
+          _started = true;
           final pressing = states.contains(WidgetState.pressed);
           final radius = style.radius!;
           final disabled = widget.onPressed == null && !widget.loading;
 
           return Opacity(
-            opacity: disabled ? 0.5 : 1,
+            opacity: disabled ? sizes.disabledOpacity : 1,
             child: CoilFocusRing(
               visible: states.contains(WidgetState.focused),
               borderRadius: BorderRadius.circular(radius),
               child: TrackBuilder(
                 animations: [
-                  fill([.to(look.fill, motion: _motion.fade)]),
-                  labelTrack([.to(look.label, motion: _motion.fade)]),
-                  spread([
+                  CoilButtonTrack.fill([
+                    .to(
+                      look.fill,
+                      motion: _motionFor(
+                        CoilButtonTrack.fill,
+                        _motion.fade,
+                        spatial: false,
+                      ),
+                    ),
+                  ], from: first ? look.fill : null),
+                  CoilButtonTrack.label([
+                    .to(
+                      look.label,
+                      motion: _motionFor(
+                        CoilButtonTrack.label,
+                        _motion.fade,
+                        spatial: false,
+                      ),
+                    ),
+                  ], from: first ? look.label : null),
+                  CoilButtonTrack.collapse([
                     .to(
                       look.spread,
-                      motion: pressing ? _motion.quick : _motion.standard,
+                      motion: _motionFor(
+                        CoilButtonTrack.collapse,
+                        pressing ? _motion.quick : _motion.standard,
+                      ),
                     ),
-                  ]),
-                  iconWeight([.to(look.iconWeight, motion: _motion.fade)]),
+                  ], from: first ? look.spread : null),
+                  CoilButtonTrack.weight([
+                    .to(
+                      look.iconWeight,
+                      motion: _motionFor(
+                        CoilButtonTrack.weight,
+                        _motion.fade,
+                        spatial: false,
+                      ),
+                    ),
+                  ], from: first ? look.iconWeight : null),
                 ],
                 builder: (context, value, _) {
-                  final labelColor = value(labelTrack);
+                  final labelColor = value(CoilButtonTrack.label);
                   return CustomPaint(
                     painter: _ButtonSurfacePainter(
-                      fill: value(fill),
-                      spread: value(spread).clamp(0.0, 1.0),
+                      fill: value(CoilButtonTrack.fill),
+                      spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
                       radius: radius,
                       border: style.border!.a == 0 ? null : style.border,
                     ),
@@ -235,7 +313,7 @@ class _CoilButtonState extends State<CoilButton> {
                         size: iconSize,
                         applyTextScaling: true,
                         color: labelColor,
-                        weight: value(iconWeight),
+                        weight: value(CoilButtonTrack.weight),
                       ),
                       child: DefaultTextStyle(
                         style: style.textStyle!.copyWith(color: labelColor),
@@ -256,37 +334,84 @@ class _CoilButtonState extends State<CoilButton> {
     );
   }
 
-  Widget _spinner(CoilMetrics sizes) => SizedBox.square(
-    dimension: sizes.iconSize,
-    child: widget.loadingIndicator ?? _CoilSpinner(size: sizes.iconSize),
+  /// The swap between idle content and the spinner: the blur-fade on
+  /// `quick`, out on `quickExit`.
+  Widget _swap(Widget child) => MotionSwitcher(
+    motion: _motion.quick,
+    exitMotion: _motion.quickExit,
+    transitionBuilder: CoilBlurFade.transition(blur: 2, scale: 0.9),
+    debugLabel: 'CoilButton.loading',
+    child: child,
   );
 
-  Widget _iconContent(CoilMetrics sizes, CoilButtonStyle style) =>
-      SizedBox.square(
-        dimension: style.minHeight,
-        child: Center(
-          child: widget.loading ? _spinner(sizes) : widget.icon,
+  Widget _spinner() => KeyedSubtree(
+    key: const ValueKey('spinner'),
+    child: Builder(
+      builder: (context) => SizedBox.square(
+        // Like the icons beside it, the slot grows with the text.
+        dimension: CoilIconSize.of(context),
+        child: widget.loadingIndicator ?? const _CoilSpinner(),
+      ),
+    ),
+  );
+
+  Widget _iconContent(CoilMetrics sizes, CoilButtonStyle style) {
+    final box = style.minHeight!;
+    return SizedBox.square(
+      dimension: box,
+      child: Center(
+        child: _swap(
+          widget.loading
+              ? _spinner()
+              : KeyedSubtree(key: const ValueKey('idle'), child: widget.icon!),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _labelContent(CoilMetrics sizes, CoilButtonStyle style) {
     final leading = widget.leading;
     final trailing = widget.trailing;
-    Widget content = Row(
+    Widget row(Widget? leadingSlot) => Row(
       mainAxisSize: MainAxisSize.min,
       spacing: sizes.buttonGap,
       children: [
-        if (leading != null) leading,
+        if (leadingSlot != null) leadingSlot,
         widget.child!,
         if (trailing != null) trailing,
       ],
     );
-    if (widget.loading) {
+
+    Widget content;
+    if (leading != null) {
+      // The spinner takes the leading slot; the label stays put.
+      content = row(
+        _swap(
+          widget.loading
+              ? _spinner()
+              : KeyedSubtree(key: const ValueKey('idle'), child: leading),
+        ),
+      );
+    } else if (widget.loading) {
+      // No slot to take: the spinner replaces the content, which stays
+      // laid out (unseen) so the width doesn't change.
       content = Stack(
         alignment: Alignment.center,
         children: [
-          Opacity(opacity: 0, child: content),
-          _spinner(sizes),
+          Opacity(opacity: 0, child: ExcludeSemantics(child: row(null))),
+          _swap(_spinner()),
+        ],
+      );
+    } else {
+      content = Stack(
+        alignment: Alignment.center,
+        children: [
+          _swap(
+            KeyedSubtree(
+              key: const ValueKey('idle'),
+              child: row(null),
+            ),
+          ),
         ],
       );
     }
@@ -370,39 +495,32 @@ class _ButtonSurfacePainter extends CustomPainter {
       old.border != border;
 }
 
-/// The loading spinner: an arc turning one eased lap per second.
+/// The loading spinner: an arc turning one eased lap per second. It fills
+/// the icon-sized box it is given. Reduced motion stops the turn.
 class _CoilSpinner extends StatelessWidget {
-  const _CoilSpinner({required this.size});
-
-  final double size;
+  const _CoilSpinner();
 
   static final _turn = Track<double>(.single, initial: 0);
+
+  static const _lap = CurvedMotion(
+    Duration(seconds: 1),
+    Cubic(0.65, 0, 0.35, 1),
+  );
 
   @override
   Widget build(BuildContext context) {
     final color =
         DefaultTextStyle.of(context).style.color ?? const Color(0xFF000000);
+    final painter = CustomPaint(painter: _SpinnerPainter(color));
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return painter;
     return TrackBuilder(
       loop: LoopMode.loop,
       animations: [
-        _turn([
-          const .to(
-            1,
-            motion: CurvedMotion(
-              Duration(seconds: 1),
-              Cubic(0.65, 0, 0.35, 1),
-            ),
-          ),
-        ], from: 0),
+        _turn([const .to(1, motion: _lap)], from: 0),
       ],
-      builder: (context, value, _) => Transform.rotate(
-        angle: value(_turn) * 2 * math.pi,
-        child: CustomPaint(
-          // Grows with text, like the icons beside it.
-          size: Size.square(MediaQuery.textScalerOf(context).scale(size)),
-          painter: _SpinnerPainter(color),
-        ),
-      ),
+      builder: (context, value, child) =>
+          Transform.rotate(angle: value(_turn) * 2 * math.pi, child: child),
+      child: painter,
     );
   }
 }
@@ -424,7 +542,7 @@ class _SpinnerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5 * scale
       ..strokeCap = StrokeCap.round;
-    // Two opposing arcs, like the web spinner mid-lap.
+    // Two opposing arcs, drawn mid-lap.
     canvas
       ..drawArc(rect, -math.pi / 2, math.pi * 0.55, false, paint)
       ..drawArc(rect, math.pi / 2, math.pi * 0.55, false, paint);

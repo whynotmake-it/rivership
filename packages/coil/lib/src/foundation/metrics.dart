@@ -35,19 +35,6 @@ enum CoilSize {
   compact,
 }
 
-/// Whether a control pads its hit area out to [CoilMetrics.minHitTarget].
-///
-/// Like Flutter's `MaterialTapTargetSize`: a control inside a larger
-/// tappable row (a checkbox in a checkbox-group row) shrink-wraps, because
-/// the row is the target.
-enum CoilTapTargetSize {
-  /// Pads the hit area to the tier's minimum, centered on the visual.
-  padded,
-
-  /// The hit area is the visual.
-  shrinkWrap,
-}
-
 /// Switch geometry for one size step.
 @immutable
 class CoilSwitchMetrics {
@@ -283,6 +270,13 @@ class CoilMetrics {
         (CoilTier.touch, CoilSize.regular) => touch,
         (CoilTier.touch, CoilSize.compact) => touchCompact,
       };
+
+  /// The opacity of a disabled control.
+  double get disabledOpacity => 0.5;
+
+  /// The opacity of a disabled row in a list or group: a little fainter on
+  /// touch, where rows rest at full strength.
+  double get disabledRowOpacity => tier == CoilTier.touch ? 0.4 : 0.5;
 
   /// The tier these sizes are for.
   final CoilTier tier;

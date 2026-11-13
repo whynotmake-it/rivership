@@ -295,7 +295,7 @@ spatial token.
 | 2026-11-13 | The brand color is `CoilColors.brand` (was `fluidAccent`) | `accent` already names FF's neutral `--accent` |
 | 2026-11-13 | `motion:` is the default (token set); `motions: Map<Coil<Name>Track<Object>, Motion>?` keyed by a `final class Coil<Name>Track` with a private constructor and `static final` tracks; the same keys in `CoilThemeData.trackMotions`; maps compare by value; no per-dimension map, no per-component motion classes | user, via PLAN §15 and the orchestrator, 2026-11-13 |
 | 2026-11-13 | `CoilBlurFade` (blur, scale-down, fade, optional offset) is coil's transition and the default enter/exit for overlays; `CoilBlurFade.transition()` fits `MotionSwitcher.transitionBuilder`; opacity and blur clamp, scale and offset use the raw presence | `motor_widgets` holds only Flutter equivalents |
-| 2026-11-13 | Groups take `children` + `values` (`CoilCheckboxGroup`, `CoilToggleGroup`) | composition uses `children`; sets use `values` |
+| 2026-11-13 | Groups take `options` (data entries) and `values`; `CoilRadioGroup` takes `value`. All three take `semanticLabel` | data entries use `options`; sets use `values` |
 | 2026-11-13 | A text field shows its focus border however it was focused | as `:focus-visible` does for inputs; every other control shows the ring only after keyboard use |
 
 ## 10. Open questions
