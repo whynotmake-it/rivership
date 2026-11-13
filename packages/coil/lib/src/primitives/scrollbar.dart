@@ -70,8 +70,7 @@ class CoilScrollbarLook {
   );
 }
 
-/// coil's scroll behavior. Scroll areas, menus, sheets and tables apply it
-/// locally, never app-wide.
+/// coil's scroll behavior. Scroll areas apply it locally, never app-wide.
 ///
 /// * Physics: the platform's, as Flutter picks them (bouncing on Apple
 ///   platforms, clamping elsewhere).
@@ -131,6 +130,9 @@ class CoilScrollBehavior extends ScrollBehavior {
       controller: details.controller,
       look: look,
       tier: tier,
+      fadeDuration:
+          CoilTheme.motionOf(context).fade.duration ??
+          const Duration(milliseconds: 120),
       child: child,
     );
   }
@@ -151,7 +153,8 @@ class CoilScrollBehavior extends ScrollBehavior {
 /// On the touch tier it's a thin overlay bar that shows only while
 /// scrolling and can't be grabbed, like the OS's.
 ///
-/// The hide fade is [RawScrollbar]'s own timed fade, not a spring.
+/// It fades out over [fadeDuration], the theme's `fade` token when built
+/// by [CoilScrollBehavior].
 class CoilScrollbar extends RawScrollbar {
   /// Creates a scrollbar for [child]'s primary scrollable.
   CoilScrollbar({
@@ -173,9 +176,12 @@ class CoilScrollbar extends RawScrollbar {
            borderRadius: BorderRadius.all(Radius.circular(999)),
          ),
          thumbColor: look.color,
-         timeToFade: const Duration(milliseconds: 600),
+         timeToFade: hideDelay,
          pressDuration: Duration.zero,
        );
+
+  /// How long the bar stays after scrolling stops, before it fades.
+  static const hideDelay = Duration(milliseconds: 600);
 
   /// How the bar looks.
   final CoilScrollbarLook look;
@@ -266,156 +272,4 @@ class _CoilScrollbarState extends RawScrollbarState<CoilScrollbar> {
     _dragging = false;
     _emphasize();
   }
-}
-
-/// Fades out the edges of [child]'s scrollable where more content is
-/// hidden.
-///
-/// Each fade grows with the distance left to scroll that way, up to
-/// [extent]. It reads the scroll notifications, so nothing is measured, and
-/// it paints with a [ShaderMask], so layout never changes.
-class CoilEdgeFade extends StatefulWidget {
-  /// Creates an edge fade.
-  const CoilEdgeFade({
-    required this.child,
-    super.key,
-    this.axis = Axis.vertical,
-    this.extent = 32,
-    this.enabled = true,
-  });
-
-  /// The scrollable.
-  final Widget child;
-
-  /// The scroll axis whose edges fade.
-  final Axis axis;
-
-  /// How far each fade reaches.
-  final double extent;
-
-  /// Whether to fade at all.
-  final bool enabled;
-
-  @override
-  State<CoilEdgeFade> createState() => _CoilEdgeFadeState();
-}
-
-class _CoilEdgeFadeState extends State<CoilEdgeFade> {
-  double _before = 0;
-  double _after = 0;
-
-  bool _onMetrics(ScrollMetrics metrics, int depth) {
-    if (depth != 0 || metrics.axis != widget.axis) return false;
-    final before = metrics.extentBefore.clamp(0.0, widget.extent);
-    final after = metrics.extentAfter.clamp(0.0, widget.extent);
-    if (before != _before || after != _after) {
-      setState(() {
-        _before = before;
-        _after = after;
-      });
-    }
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget child = NotificationListener<ScrollMetricsNotification>(
-      onNotification: (n) => _onMetrics(n.metrics, n.depth),
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) => _onMetrics(n.metrics, n.depth),
-        child: widget.child,
-      ),
-    );
-    // Always a ShaderMask, so the tree (and the scroll position) stays the
-    // same whether or not an edge is fading.
-    final before = widget.enabled ? _before : 0.0;
-    final after = widget.enabled ? _after : 0.0;
-    final vertical = widget.axis == Axis.vertical;
-    return ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) {
-        final length = vertical ? bounds.height : bounds.width;
-        if (length <= 0 || (before == 0 && after == 0)) {
-          return const LinearGradient(
-            colors: [Color(0xFF000000), Color(0xFF000000)],
-          ).createShader(bounds);
-        }
-        final start = (before / length).clamp(0.0, 0.5);
-        final end = (after / length).clamp(0.0, 0.5);
-        return LinearGradient(
-          begin: vertical ? Alignment.topCenter : Alignment.centerLeft,
-          end: vertical ? Alignment.bottomCenter : Alignment.centerRight,
-          colors: const [
-            Color(0x00000000),
-            Color(0xFF000000),
-            Color(0xFF000000),
-            Color(0x00000000),
-          ],
-          stops: [0, start, 1 - end, 1],
-        ).createShader(bounds);
-      },
-      child: child,
-    );
-  }
-}
-
-/// Springs a [ScrollController] to a target, for keyboard scrolling.
-///
-/// A repeated key adds to where the scroll is headed instead of starting
-/// over. Call [stop] when a user drag starts, so the drag takes over.
-class CoilScrollSpring {
-  /// Creates a scroll spring ticking on [vsync].
-  CoilScrollSpring({required TickerProvider vsync, String? debugLabel})
-    : _offset = SingleMotionController(
-        motion: const Motion.instant(),
-        vsync: vsync,
-        debugLabel: debugLabel ?? 'CoilScrollSpring',
-      ) {
-    _offset.addListener(_follow);
-  }
-
-  final SingleMotionController _offset;
-  ScrollController? _controller;
-  bool _running = false;
-  double _target = 0;
-
-  /// Where [controller] is headed: the spring's target while it runs, else
-  /// its current offset.
-  double targetOf(ScrollController controller) =>
-      _running && _controller == controller ? _target : controller.offset;
-
-  /// Springs [controller] to [target] (clamped to its extent) on [motion].
-  void scrollTo(ScrollController controller, double target, Motion motion) {
-    if (!controller.hasClients) return;
-    final position = controller.position;
-    final to = target.clamp(position.minScrollExtent, position.maxScrollExtent);
-    if (!_running || _controller != controller) {
-      _offset.value = position.pixels;
-    }
-    _controller = controller;
-    _running = true;
-    _target = to;
-    _offset
-      ..motion = motion
-      ..animateTo(to).whenComplete(() => _running = false);
-  }
-
-  /// Stops following the spring (a user drag took over).
-  void stop() {
-    if (!_running) return;
-    _running = false;
-    _offset.stop();
-  }
-
-  void _follow() {
-    final controller = _controller;
-    if (!_running || controller == null || !controller.hasClients) return;
-    final position = controller.position;
-    position.jumpTo(
-      _offset.value.clamp(position.minScrollExtent, position.maxScrollExtent),
-    );
-  }
-
-  /// Releases the spring.
-  void dispose() => _offset.dispose();
 }

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_matrix.dart';
 import 'src/golden_sheet.dart';
+import 'src/paint_probe.dart';
 
 Widget _rows(int count) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,5 +245,126 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(painter().thickness, 4);
     await finger.up();
+  });
+
+  group('the edge with more content fades', () {
+    const red = Color(0xFFFF0000);
+    const white = Color(0xFFFFFFFF);
+    const probe = ValueKey('probe');
+
+    /// A 200 x 100 area at rest over 1000 px of red, with the hidden part
+    /// on the side [direction] and [reverse] put it.
+    Future<({Color start, Color end})> pump(
+      WidgetTester tester, {
+      required Axis axis,
+      TextDirection direction = TextDirection.ltr,
+      bool reverse = false,
+    }) async {
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: direction,
+          child: CoilTheme(
+            data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+            child: Center(
+              child: RepaintBoundary(
+                key: probe,
+                child: ColoredBox(
+                  color: white,
+                  child: SizedBox(
+                    width: 200,
+                    height: 100,
+                    child: CoilScrollArea.scrollable(
+                      controller: controller,
+                      axis: axis,
+                      scrollbar: CoilScrollbarVisibility.none,
+                      child: ListView(
+                        controller: controller,
+                        scrollDirection: axis,
+                        reverse: reverse,
+                        children: const [
+                          SizedBox.square(
+                            dimension: 1000,
+                            child: ColoredBox(color: red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final rect = tester.getRect(find.byKey(probe));
+      final vertical = axis == Axis.vertical;
+      Offset at(double t) => vertical
+          ? Offset(rect.center.dx, rect.top + 1 + (rect.height - 2) * t)
+          : Offset(rect.left + 1 + (rect.width - 2) * t, rect.center.dy);
+      return (
+        start: await colorAt(tester, find.byKey(probe), at(0)),
+        end: await colorAt(tester, find.byKey(probe), at(1)),
+      );
+    }
+
+    testWidgets('left to right: the right edge', (tester) async {
+      final edges = await pump(tester, axis: Axis.horizontal);
+      expect(isNear(edges.start, red), isTrue);
+      expect(isNear(edges.end, red), isFalse);
+    });
+
+    testWidgets('right to left: the left edge', (tester) async {
+      final edges = await pump(
+        tester,
+        axis: Axis.horizontal,
+        direction: TextDirection.rtl,
+      );
+      expect(isNear(edges.start, red), isFalse);
+      expect(isNear(edges.end, red), isTrue);
+    });
+
+    testWidgets('a reversed list: the top edge', (tester) async {
+      final edges = await pump(tester, axis: Axis.vertical, reverse: true);
+      expect(isNear(edges.start, red), isFalse);
+      expect(isNear(edges.end, red), isTrue);
+    });
+  });
+
+  testWidgets('arrow keys in a text field inside move the caret, not the '
+      'scroll', (tester) async {
+    final text = TextEditingController(text: 'one\ntwo\nthree');
+    final focus = FocusNode();
+    addTearDown(text.dispose);
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea(
+          child: Column(
+            children: [
+              EditableText(
+                controller: text,
+                focusNode: focus,
+                maxLines: null,
+                style: const TextStyle(fontSize: 14),
+                cursorColor: const Color(0xFF000000),
+                backgroundCursorColor: const Color(0xFF000000),
+              ),
+              _rows(12),
+            ],
+          ),
+        ),
+      ),
+    );
+    focus.requestFocus();
+    text.selection = const TextSelection.collapsed(offset: 0);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    final area = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    expect(area.position.pixels, 0);
+    expect(text.selection.baseOffset, greaterThan(0));
   });
 }

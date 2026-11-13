@@ -24,7 +24,6 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     this.selection,
     this.pressedFill,
     this.radius,
-    this.fadeExtent,
   });
 
   /// The defaults from the theme's tokens. Pointer rows rest muted and turn
@@ -59,7 +58,6 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
       selection: c.active,
       pressedFill: c.active,
       radius: theme.shape.radii(metrics.tier).item,
-      fadeExtent: 24,
     );
   }
 
@@ -93,9 +91,6 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   /// The corner radius of the highlight, selection and fills.
   final double? radius;
 
-  /// How far the edge fades reach when the table scrolls sideways.
-  final double? fadeExtent;
-
   @override
   CoilTableStyle merge(CoilTableStyle? other) => other == null
       ? this
@@ -111,7 +106,6 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
           selection: other.selection ?? selection,
           pressedFill: other.pressedFill ?? pressedFill,
           radius: other.radius ?? radius,
-          fadeExtent: other.fadeExtent ?? fadeExtent,
         );
 
   @override
@@ -126,6 +120,5 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     selection,
     pressedFill,
     radius,
-    fadeExtent,
   ];
 }

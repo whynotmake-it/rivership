@@ -8,6 +8,29 @@ import 'package:coil/src/components/scroll_area/scroll_area_style.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
+import 'package:motor/motor.dart';
+
+/// The animated parts of a [CoilScrollArea]. Use them as keys of
+/// [CoilScrollArea.motions] or [CoilThemeData.trackMotions].
+final class CoilScrollAreaTrack<T extends Object> extends Track<T> {
+  CoilScrollAreaTrack._(super.converter, {required String super.debugLabel});
+
+  /// A keyboard scroll. Default motion: `standard`.
+  static final scroll = CoilScrollAreaTrack<double>._(
+    .single,
+    debugLabel: 'CoilScrollArea.scroll',
+  );
+}
+
+/// Whether a [CoilScrollArea] draws a scrollbar.
+enum CoilScrollbarVisibility {
+  /// coil's scrollbar for the tier: on pointer it shows while scrolling or
+  /// hovered; on touch it is a thin bar while scrolling.
+  auto,
+
+  /// No scrollbar.
+  none,
+}
 
 /// Which edges of a [CoilScrollArea] fade.
 enum CoilEdgeFades {
@@ -21,9 +44,10 @@ enum CoilEdgeFades {
 /// A scrolling region with coil's scrollbar, edge fades and platform
 /// physics.
 ///
-/// When the content overflows, the viewport becomes a tab stop. The arrow
-/// keys scroll a line, Page Up and Page Down a page, Home and End to the
-/// ends. Keyboard scrolls spring, and its focus ring sits 1 px inside.
+/// When the content overflows, the viewport becomes a tab stop. While it
+/// has focus, the arrow keys scroll a line, Page Up and Page Down a page,
+/// and Home and End go to the ends. Keys pressed in a focused descendant,
+/// such as a text field, stay with it.
 ///
 /// Use [CoilScrollArea.scrollable] to wrap a list you already have, and pass
 /// both the same [controller].
@@ -36,11 +60,13 @@ class CoilScrollArea extends StatefulWidget {
     this.axis = Axis.vertical,
     this.padding,
     this.edgeFades = CoilEdgeFades.auto,
-    this.scrollbar = true,
+    this.scrollbar = CoilScrollbarVisibility.auto,
+    this.keyboard = true,
     this.focusNode,
     this.semanticLabel,
     this.style,
     this.motion,
+    this.motions,
   }) : _wrapsScrollable = false;
 
   /// Gives [child], a scrollable driven by [controller], coil's scroll
@@ -51,11 +77,13 @@ class CoilScrollArea extends StatefulWidget {
     super.key,
     this.axis = Axis.vertical,
     this.edgeFades = CoilEdgeFades.auto,
-    this.scrollbar = true,
+    this.scrollbar = CoilScrollbarVisibility.auto,
+    this.keyboard = true,
     this.focusNode,
     this.semanticLabel,
     this.style,
     this.motion,
+    this.motions,
   }) : padding = null,
        _wrapsScrollable = true;
 
@@ -75,7 +103,12 @@ class CoilScrollArea extends StatefulWidget {
   final CoilEdgeFades edgeFades;
 
   /// Whether to draw a scrollbar.
-  final bool scrollbar;
+  final CoilScrollbarVisibility scrollbar;
+
+  /// Whether the area is a tab stop that scrolls with the keys. Turn it off
+  /// when the content is the tab stop and handles the keys itself, as a
+  /// table does.
+  final bool keyboard;
 
   /// The viewport's focus node (it takes focus only when it scrolls).
   final FocusNode? focusNode;
@@ -89,14 +122,16 @@ class CoilScrollArea extends StatefulWidget {
   /// Overrides the theme's motion tokens for keyboard scrolling.
   final CoilMotion? motion;
 
+  /// Per-track motions, keyed by [CoilScrollAreaTrack].
+  final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
+
   final bool _wrapsScrollable;
 
   @override
   State<CoilScrollArea> createState() => _CoilScrollAreaState();
 }
 
-class _CoilScrollAreaState extends State<CoilScrollArea>
-    with SingleTickerProviderStateMixin {
+class _CoilScrollAreaState extends State<CoilScrollArea> {
   ScrollController? _ownController;
   ScrollController get _controller =>
       widget.controller ?? (_ownController ??= ScrollController());
@@ -106,20 +141,14 @@ class _CoilScrollAreaState extends State<CoilScrollArea>
       widget.focusNode ??
       (_ownFocusNode ??= FocusNode(debugLabel: 'CoilScrollArea'));
 
-  /// Drives keyboard scrolls on a spring.
-  late final _spring = CoilScrollSpring(
-    vsync: this,
-    debugLabel: 'CoilScrollArea.keyboard',
-  );
-
+  final _states = WidgetStatesController();
   bool _scrolls = false;
-  bool _focused = false;
 
   @override
   void dispose() {
-    _spring.dispose();
     _ownController?.dispose();
     _ownFocusNode?.dispose();
+    _states.dispose();
     super.dispose();
   }
 
@@ -130,72 +159,64 @@ class _CoilScrollAreaState extends State<CoilScrollArea>
     return false;
   }
 
-  bool _onScroll(ScrollNotification n) {
-    // A user drag takes over from a keyboard scroll.
-    if (n.depth == 0 && n is ScrollStartNotification && n.dragDetails != null) {
-      _spring.stop();
+  CoilScrollAreaStyle _style(BuildContext context) =>
+      CoilScrollAreaStyle.fallback(
+            CoilTheme.of(context),
+            CoilTheme.metricsOf(context),
+          )
+          .merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context))
+          .merge(widget.style);
+
+  /// Scrolls for [event] when the viewport itself has focus. Keys from a
+  /// focused descendant pass on to it.
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (!node.hasPrimaryFocus || event is KeyUpEvent) {
+      return KeyEventResult.ignored;
     }
-    return _onMetrics(n.metrics, n.depth);
-  }
-
-  void _scrollBy(double Function(ScrollPosition position) target) {
-    if (!_controller.hasClients) return;
-    final motion = CoilTheme.motionOf(context, override: widget.motion);
-    _spring.scrollTo(
-      _controller,
-      target(_controller.position),
-      motion.standard,
-    );
-  }
-
-  /// One arrow-key step: about three lines of body text.
-  static const _line = 60.0;
-
-  Map<ShortcutActivator, VoidCallback> get _bindings {
+    if (!_controller.hasClients) return KeyEventResult.ignored;
+    final line = _style(context).lineStep!;
+    final position = _controller.position;
+    final from = CoilScrollSpring.targetOf(_controller);
+    final page = math.max(position.viewportDimension - line, line);
     final vertical = widget.axis == Axis.vertical;
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    double page(ScrollPosition p) =>
-        math.max(p.viewportDimension - _line, _line);
+    final key = event.logicalKey;
     final back = vertical
         ? LogicalKeyboardKey.arrowUp
         : (rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft);
     final forward = vertical
         ? LogicalKeyboardKey.arrowDown
         : (rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight);
-    return {
-      SingleActivator(back): () => _scrollBy((p) => _target(p) - _line),
-      SingleActivator(forward): () => _scrollBy((p) => _target(p) + _line),
-      const SingleActivator(LogicalKeyboardKey.pageUp): () =>
-          _scrollBy((p) => _target(p) - page(p)),
-      const SingleActivator(LogicalKeyboardKey.pageDown): () =>
-          _scrollBy((p) => _target(p) + page(p)),
-      const SingleActivator(LogicalKeyboardKey.home): () =>
-          _scrollBy((p) => p.minScrollExtent),
-      const SingleActivator(LogicalKeyboardKey.end): () =>
-          _scrollBy((p) => p.maxScrollExtent),
+    final target = switch (key) {
+      _ when key == back => from - line,
+      _ when key == forward => from + line,
+      LogicalKeyboardKey.pageUp => from - page,
+      LogicalKeyboardKey.pageDown => from + page,
+      LogicalKeyboardKey.home => position.minScrollExtent,
+      LogicalKeyboardKey.end => position.maxScrollExtent,
+      _ => null,
     };
+    if (target == null) return KeyEventResult.ignored;
+    CoilScrollSpring.scrollTo(
+      _controller,
+      target,
+      CoilTheme.trackMotionOf(
+        context,
+        CoilScrollAreaTrack.scroll,
+        instance: widget.motions,
+        token: CoilTheme.motionOf(context, override: widget.motion).standard,
+      ),
+    );
+    return KeyEventResult.handled;
   }
-
-  /// Where the scroll is headed, so repeated keys add up.
-  double _target(ScrollPosition position) => _spring.targetOf(_controller);
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context);
-    final style = CoilScrollAreaStyle.fallback(theme, metrics)
-        .merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context))
-        .merge(widget.style);
+    final style = _style(context);
     final behavior = CoilScrollBehavior(
       tier: CoilTheme.tierOf(context),
-      scrollbar: widget.scrollbar,
-      look: CoilScrollbarLook(
-        color: style.thumb!,
-        hoverColor: style.thumbHovered!,
-        dragColor: style.thumbDragged!,
-        thickness: style.thickness!,
-        hoverThickness: style.hoverThickness!,
-      ),
+      scrollbar: widget.scrollbar == CoilScrollbarVisibility.auto,
+      look: style.scrollbarLook,
     );
 
     final scrollable = widget._wrapsScrollable
@@ -207,52 +228,58 @@ class _CoilScrollAreaState extends State<CoilScrollArea>
             child: widget.child,
           );
 
+    Widget area = ScrollConfiguration(
+      behavior: behavior,
+      child: CoilEdgeFade(
+        axis: widget.axis,
+        extent: style.fadeExtent!,
+        enabled: widget.edgeFades == CoilEdgeFades.auto,
+        child: NotificationListener<ScrollMetricsNotification>(
+          onNotification: (n) => _onMetrics(n.metrics, n.depth),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (n) => _onMetrics(n.metrics, n.depth),
+            child: PrimaryScrollController(
+              controller: _controller,
+              child: scrollable,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (widget.keyboard) {
+      final focusable = _scrolls;
+      area = Focus(
+        focusNode: _focusNode,
+        canRequestFocus: focusable,
+        skipTraversal: !focusable,
+        onKeyEvent: _onKey,
+        child: CoilInteractionDetector(
+          states: _states,
+          focusNode: _focusNode,
+          trackPress: false,
+          child: ListenableBuilder(
+            listenable: _states,
+            builder: (context, child) => CoilFocusRing(
+              visible: _states.value.contains(WidgetState.focused),
+              borderRadius: BorderRadius.circular(
+                CoilTheme.radiiOf(context).item,
+              ),
+              // Inside the clipping viewport.
+              offset: -(1 + CoilTheme.of(context).focusRingWidth),
+              child: child!,
+            ),
+            child: area,
+          ),
+        ),
+      );
+    }
+
     return MotorInspectionScope(
       group: 'CoilScrollArea',
       child: Semantics(
         label: widget.semanticLabel,
         container: widget.semanticLabel != null,
-        child: CallbackShortcuts(
-          bindings: _scrolls ? _bindings : const {},
-          child: Focus(
-            focusNode: _focusNode,
-            canRequestFocus: _scrolls,
-            skipTraversal: !_scrolls,
-            onFocusChange: (focused) => setState(() => _focused = focused),
-            child: ListenableBuilder(
-              listenable: CoilInputModality.instance,
-              builder: (context, child) => CoilFocusRing(
-                visible:
-                    _focused &&
-                    CoilInputModality.instance.value == CoilModality.keyboard,
-                borderRadius: BorderRadius.circular(
-                  CoilTheme.radiiOf(context).item,
-                ),
-                // Inset by 1, inside the clipping viewport.
-                offset: -(1 + theme.focusRingWidth),
-                child: child!,
-              ),
-              child: ScrollConfiguration(
-                behavior: behavior,
-                child: CoilEdgeFade(
-                  axis: widget.axis,
-                  extent: style.fadeExtent!,
-                  enabled: widget.edgeFades == CoilEdgeFades.auto,
-                  child: NotificationListener<ScrollMetricsNotification>(
-                    onNotification: (n) => _onMetrics(n.metrics, n.depth),
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _onScroll,
-                      child: PrimaryScrollController(
-                        controller: _controller,
-                        child: scrollable,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        child: area,
       ),
     );
   }

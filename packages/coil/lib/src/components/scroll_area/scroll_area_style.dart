@@ -1,4 +1,5 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:flutter/widgets.dart';
 
 /// Overrides for how a `CoilScrollArea` looks. Unset fields come from
@@ -13,7 +14,11 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.thumbDragged,
     this.thickness,
     this.hoverThickness,
+    this.touchThickness,
+    this.crossAxisMargin,
+    this.mainAxisMargin,
     this.fadeExtent,
+    this.lineStep,
   });
 
   /// The defaults from the theme's tokens.
@@ -30,7 +35,11 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
       thumbDragged: fg.withValues(alpha: 0.16),
       thickness: 4,
       hoverThickness: 6,
+      touchThickness: 3,
+      crossAxisMargin: 2,
+      mainAxisMargin: 4,
       fadeExtent: 32,
+      lineStep: 60,
     );
   }
 
@@ -49,8 +58,32 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// The pointer thumb's width while hovered or dragged.
   final double? hoverThickness;
 
+  /// The overlay bar's width on the touch tier.
+  final double? touchThickness;
+
+  /// The gap between the thumb and the viewport's edge.
+  final double? crossAxisMargin;
+
+  /// The gap between the thumb and the viewport's ends.
+  final double? mainAxisMargin;
+
   /// How far the edge fades reach.
   final double? fadeExtent;
+
+  /// How far an arrow key scrolls: about three lines of body text.
+  final double? lineStep;
+
+  /// The scrollbar look this style describes. Call it on a resolved style.
+  CoilScrollbarLook get scrollbarLook => CoilScrollbarLook(
+    color: thumb!,
+    hoverColor: thumbHovered!,
+    dragColor: thumbDragged!,
+    thickness: thickness!,
+    hoverThickness: hoverThickness!,
+    touchThickness: touchThickness!,
+    crossAxisMargin: crossAxisMargin!,
+    mainAxisMargin: mainAxisMargin!,
+  );
 
   @override
   CoilScrollAreaStyle merge(CoilScrollAreaStyle? other) => other == null
@@ -61,7 +94,11 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
           thumbDragged: other.thumbDragged ?? thumbDragged,
           thickness: other.thickness ?? thickness,
           hoverThickness: other.hoverThickness ?? hoverThickness,
+          touchThickness: other.touchThickness ?? touchThickness,
+          crossAxisMargin: other.crossAxisMargin ?? crossAxisMargin,
+          mainAxisMargin: other.mainAxisMargin ?? mainAxisMargin,
           fadeExtent: other.fadeExtent ?? fadeExtent,
+          lineStep: other.lineStep ?? lineStep,
         );
 
   @override
@@ -71,6 +108,10 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     thumbDragged,
     thickness,
     hoverThickness,
+    touchThickness,
+    crossAxisMargin,
+    mainAxisMargin,
     fadeExtent,
+    lineStep,
   ];
 }

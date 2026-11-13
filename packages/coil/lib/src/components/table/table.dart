@@ -162,10 +162,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     vsync: this,
     debugLabel: 'CoilTable ring',
   );
-  late final _spring = CoilScrollSpring(
-    vsync: this,
-    debugLabel: 'CoilTable scroll',
-  );
 
   FocusNode? _ownFocusNode;
   FocusNode get _focusNode =>
@@ -189,7 +185,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     _active.dispose();
     _selection.dispose();
     _ring.dispose();
-    _spring.dispose();
     _ownFocusNode?.dispose();
     _ownController?.dispose();
     super.dispose();
@@ -224,18 +219,22 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     }
   }
 
-  void _scrollBy(double delta) {
+  /// Scrolls one line step toward the end ([steps] 1) or the start (-1).
+  void _scrollLine(int steps) {
     if (!_scroll.hasClients) return;
-    final motion = CoilTheme.motionOf(context, override: widget.motion);
-    _spring.scrollTo(
+    final line = _scrollStyle(context).lineStep!;
+    CoilScrollSpring.scrollTo(
       _scroll,
-      _spring.targetOf(_scroll) + delta,
-      motion.standard,
+      CoilScrollSpring.targetOf(_scroll) + steps * line,
+      CoilTheme.motionOf(context, override: widget.motion).standard,
     );
   }
 
-  /// One Left/Right step, as in `CoilScrollArea`.
-  static const _line = 60.0;
+  CoilScrollAreaStyle _scrollStyle(BuildContext context) =>
+      CoilScrollAreaStyle.fallback(
+        CoilTheme.of(context),
+        CoilTheme.metricsOf(context, size: widget.size),
+      ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
@@ -258,9 +257,9 @@ class _CoilTableState<T> extends State<CoilTable<T>>
       case LogicalKeyboardKey.end when count > 0:
         _active.last(count: count);
       case LogicalKeyboardKey.arrowRight:
-        _scrollBy(rtl ? -_line : _line);
+        _scrollLine(rtl ? -1 : 1);
       case LogicalKeyboardKey.arrowLeft:
-        _scrollBy(rtl ? _line : -_line);
+        _scrollLine(rtl ? 1 : -1);
       case LogicalKeyboardKey.space when _active.index != null:
         _active.activate(_active.index, via: CoilModality.keyboard);
         _toggle(widget.rows[_active.index!]);
@@ -282,10 +281,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
       metrics,
     ).merge(CoilTheme.styleOf<CoilTableStyle>(context)).merge(widget.style);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
-    final scrollStyle = CoilScrollAreaStyle.fallback(
-      theme,
-      metrics,
-    ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
     final emphasis =
         metrics.tier == CoilTier.touch || MediaQuery.highContrastOf(context);
     final rows = widget.rows;
@@ -420,33 +415,16 @@ class _CoilTableState<T> extends State<CoilTable<T>>
           autofocus: widget.autofocus,
           onKeyEvent: _onKey,
           onFocusChange: _onFocusChange,
-          child: ScrollConfiguration(
-            behavior: CoilScrollBehavior(
-              tier: metrics.tier,
-              look: CoilScrollbarLook(
-                color: scrollStyle.thumb!,
-                hoverColor: scrollStyle.thumbHovered!,
-                dragColor: scrollStyle.thumbDragged!,
-                thickness: scrollStyle.thickness!,
-                hoverThickness: scrollStyle.hoverThickness!,
-              ),
-            ),
-            child: CoilEdgeFade(
-              axis: Axis.horizontal,
-              extent: style.fadeExtent!,
-              child: NotificationListener<ScrollStartNotification>(
-                // A drag takes over from a keyboard scroll.
-                onNotification: (n) {
-                  if (n.dragDetails != null) _spring.stop();
-                  return false;
-                },
-                child: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    controller: _scroll,
-                    scrollDirection: Axis.horizontal,
-                    child: table(constraints.maxWidth),
-                  ),
-                ),
+          // The table is the tab stop and scrolls with Left and Right.
+          child: CoilScrollArea.scrollable(
+            controller: _scroll,
+            axis: Axis.horizontal,
+            keyboard: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                controller: _scroll,
+                scrollDirection: Axis.horizontal,
+                child: table(constraints.maxWidth),
               ),
             ),
           ),
