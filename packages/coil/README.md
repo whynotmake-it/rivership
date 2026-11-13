@@ -1,64 +1,112 @@
-# fluid_functionalism (spike)
+# coil
 
-A Flutter port of [Fluid Functionalism](https://www.fluidfunctionalism.com)
-built on [Motor](../motor). This is a spike to show UI direction, not a
-published package.
+A Flutter design system built on [Motor](../motor) springs. It works under
+any `WidgetsApp` (no Material or Cupertino app shell) and adapts to pointer
+and touch, keyboard and screen readers on every platform.
 
-## What's here
+> Pre-release. coil depends on unreleased Motor 2.0 and is not published.
+> It needs Flutter 3.47 or later.
 
-| Layer | Files |
-| --- | --- |
-| Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotionThemeData` on `FluidThemeData.motion` (Motor `Motion` tokens from `springs.ts`, runtime-customizable, per-instance `motion:` override, reduced motion applied by `FluidTheme.motionOf`), `FluidTypographyThemeData` (bundled Inter variable, wght/opsz pairs, `capHeight` token) |
-| Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidMotionLayer` + `FluidMotionTarget` (paint layer that reads target rects at paint time), `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlightPainter` (the gliding highlight), `FluidLabel` (cap-height text-box trim), `FluidSelectionPainter` + `FluidSelectionRuns` (merge/split selection) |
-| Components | `FluidButton`, `FluidSwitch`, `FluidCheckbox`, `FluidTabs`, `FluidInput`, `FluidCheckboxGroup`, `FluidToggleGroup` |
+## Credits
 
-Components import only `src/foundation`, `src/primitives` and `src/icons`,
-so any component file can be copied ("ejected") into an app together with
-those public foundations.
+coil is inspired by **[Fluid Functionalism](https://www.fluidfunctionalism.com)**
+by Micka Touillaud (MIT). Its spacing rhythm, type, color restraint, the
+travelling hover highlight and merged selections are the starting point for
+coil's look. coil is its own system: it doesn't aim for pixel or timing
+parity, and its motion tokens are its own. The original license is in
+[`LICENSE.fluid-functionalism`](LICENSE.fluid-functionalism).
 
-## Interaction rules (no sticky hover)
+The bundled font is [Inter](https://rsms.me/inter/), © The Inter Project
+Authors, SIL Open Font License 1.1.
 
-Every control derives its states from one primitive,
-`FluidInteractionDetector` (used by `FluidPressable` and `FluidInput`;
-`FluidHoverRegion` applies the same `FluidInputModality` rules), so ejected
-components keep them:
+## Using it
 
-- **Hover** only from pointers that can hover (mouse, trackpad, hovering
-  pen), decided by `PointerDeviceKind`. A touch never hovers.
-- **Pressed** while a pointer is down; clears on release, cancel, or when the
-  touch becomes a scroll. Nothing stays lit after a tap.
-- **Focus ring** only while focus is keyboard-driven (`FluidInputModality`:
-  last input was a non-modifier key). Taps and clicks hide it.
-- The **fluid highlight** follows hover-capable pointers, and focus only
-  while the keyboard drives it. Selection (tabs) is separate and stays.
+```dart
+import 'package:coil/coil.dart';
+
+CoilTheme(
+  data: CoilThemeData.light,
+  child: CoilButton(onPressed: save, child: const Text('Save')),
+)
+```
+
+`CoilTheme` is optional; without it components follow the platform
+brightness. Import `package:coil/foundation.dart`, `primitives.dart` or a
+single component's library (`package:coil/button.dart`) to depend on less.
+
+Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
+
+## Layers
+
+| Layer | Library | Holds |
+|---|---|---|
+| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilInputModality`, `CoilAdaptiveScope` |
+| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilSpringRoute` + `CoilBlurFade`, `CoilPopoverRoute`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore` |
+| Components | one library each | `CoilButton`, `CoilCheckbox`, `CoilSwitch`, `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
+
+Components reach pointers, overlays, haptics and travelling motion only
+through primitives. `test/architecture/import_rules_test.dart` enforces it,
+so the interaction rules hold in ejected copies too.
+
+## Interaction rules
+
+- Hover only from pointers that can hover (mouse, trackpad, hovering pen).
+  A touch never leaves a highlight behind.
+- Press shows on touch-down, clears on release, cancel or scroll, and a
+  quick tap still shows it for `CoilMotion.minPressDuration` (90 ms).
+- The focus ring shows only after keyboard use; taps and clicks hide it.
+  Text fields show their focus border while editing.
+- Lists have an active item, separate from focus and hover: arrows, hover
+  and typeahead move it, Enter acts on it.
+- The tier latches by platform (desktop → pointer sizes, phone/tablet →
+  touch sizes); each event's pointer kind decides hover and press.
+- Short menus stay anchored on phones; long, searchable and multi-select
+  lists open as sheets (`CoilAdaptivePopup.phonePresentation`).
+- Native first: the iOS system edit menu, the browser's menu on web.
+  Selection handles and toolbars come from `material_ui`/`cupertino_ui`,
+  used only inside `CoilTextFieldCore`.
+
+## Motion
+
+Every token is a Motor spring, exits included, so an interrupted transition
+keeps its velocity. Tokens are theme data: change them app-wide, per
+subtree (`CoilTheme.override`), per component (`motion:`) or per track
+(`motions:`). Reduced motion is applied last: spatial springs become
+instant, fades stay.
+
+| Token | Default (`CupertinoMotion`) | Moves |
+|---|---|---|
+| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight, press collapse |
+| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | tab pill, switch thumb, merge/split, popovers |
+| `gentle` / `gentleExit` | 340 ms bounce 0.1 / 260 ms | sheets, dialogs |
+| `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity, color, check drawing |
 
 ## Icons
 
-The package bundles no icons. Slots take any widget and are styled through
-Flutter's `IconTheme` (size, color, and `weight`, which rises from
-`FluidIconWeight.rest` to `.emphasis` on hover, the web's 1.5 → 2 stroke).
-Glyphs a component draws itself are replaceable: `FluidCheckbox.glyphBuilder`,
-`FluidButton.loadingIndicator`. Tests use painted fixtures in
-`test/src/test_icons.dart`.
+coil bundles no icons. Slots take any widget and are styled through
+Flutter's `IconTheme`. Glyphs a component draws itself (check, chevron,
+spinner) can be replaced through a slot or builder.
 
-## Sizes
+## Tests
 
-| | control | hit target | body / field text |
-| --- | --- | --- | --- |
-| desktop | 36 | 36 | 13/20 |
-| desktop compact | 28 | 28 | 12/18 |
-| touch | 44 | 44 | 15/22, field 16 |
-| touch compact | 36 | 44 (padded) | 14/20, field 16 |
+Run with Flutter 3.47: `flutter test` in this package.
 
-The tier defaults from `defaultTargetPlatform` and can be pinned with
-`FluidThemeData(tier:)` or `FluidSizeScope(tier:, density:)`.
+- `test/goldens/matrix/`: every component across light/dark ×
+  pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
+  with real Inter at 2x; the open select as popover and sheet.
+- `test/patterns_test.dart`: `expectCoilPattern` (semantics, keyboard,
+  focus-visible) for every component in LTR and RTL.
+- `test/label_alignment_test.dart`: label ink centered within 1 px for every
+  component, tier, size and text scale.
+- `test/text_field_core_ime_test.dart`: IME composition guards, the iOS
+  system menu, toolbars under a bare `WidgetsApp`.
+- `test/motion_theme_test.dart`: motion tokens changed at runtime.
+- `test/goldens/web_reference/`: Fluid Functionalism screenshots, for
+  reference only.
 
-## Goldens
+## Known gaps
 
-`flutter test` in this package. Sheets are in `test/goldens/`, the web
-references (Playwright, deviceScaleFactor 2) in
-`test/goldens/web_reference/` with a README and `measurements.json`.
-`tool/capture_web_reference.mjs` recaptures them.
-
-Inter is © The Inter Project Authors, SIL Open Font License 1.1.
-`LICENSE.fluid-functionalism` is the upstream design system's MIT license.
+- `stupid_simple_sheet` uses one motion for both directions and keeps the
+  drag's fling velocity on dismiss, so sheets exit on `gentle`, not
+  `gentleExit`. An `exitMotion` hook upstream would fix it.
+- `style:` classes per component type and instance are planned for M1.
