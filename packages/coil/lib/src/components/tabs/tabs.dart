@@ -16,6 +16,45 @@ enum CoilTabLabels {
   selected,
 }
 
+/// The animated parts of [CoilTabs], as keys of [CoilTabs.motions] and
+/// [CoilThemeData.trackMotions].
+///
+/// A custom motion replaces both the enter and the exit of its part.
+final class CoilTabsTrack<T extends Object> extends Track<T> {
+  CoilTabsTrack._(super.converter, {required String super.debugLabel});
+
+  /// The selected pill gliding between tabs. Default motion: `standard`.
+  static final selected = CoilTabsTrack<double>._(
+    .single,
+    debugLabel: 'CoilTabs.selected',
+  );
+
+  /// The hover pill following the pointer. Default motion: `quick`.
+  static final hover = CoilTabsTrack<double>._(
+    .single,
+    debugLabel: 'CoilTabs.hover',
+  );
+
+  /// The focus ring travelling between tabs. Default motion: `quick`.
+  static final focus = CoilTabsTrack<double>._(
+    .single,
+    debugLabel: 'CoilTabs.focus',
+  );
+
+  /// A tab's label opening and closing under
+  /// [CoilTabLabels.selected]. Default motion: `quick`.
+  static final label = CoilTabsTrack<double>._(
+    .single,
+    debugLabel: 'CoilTabs.label',
+  );
+
+  /// The strip scrolling a tab into view. Default motion: `standard`.
+  static final reveal = CoilTabsTrack<double>._(
+    .single,
+    debugLabel: 'CoilTabs.reveal',
+  );
+}
+
 /// One tab of [CoilTabs].
 @immutable
 class CoilTab<T> {
@@ -42,19 +81,17 @@ class CoilTab<T> {
   final Widget? child;
 }
 
-/// A row of tabs with the fluid highlight.
+/// A row of tabs with a selected pill that glides between them.
 ///
-/// * The selected pill glides between tabs on the theme's `standard` spring.
-/// * A lighter hover pill glides out of the selected one, follows the
-///   pointer on `quick`, and glides back into it when the pointer leaves.
-/// * Arrow keys, Home and End move focus ([CoilRovingFocus]); Enter or Space
-///   selects (manual activation). Only the selected tab is in the Tab order.
-///   A focus ring travels with keyboard focus.
-/// * When the tabs are wider than their space the strip scrolls
-///   horizontally (with the platform's scroll physics), fading out 24 px at
-///   an edge that has more tabs behind it. The selected tab, and the tab
-///   keyboard focus moves to, scroll into view on the `standard` spring.
-///   The pills ride the scrolling content, so they stay on their tab.
+/// * A lighter hover pill follows a mouse and glides back into the selected
+///   pill when it leaves. Touch never hovers.
+/// * Arrows, Home and End move focus; Enter or Space selects. Only the
+///   selected tab is in the Tab order, and a focus ring follows the keyboard.
+/// * Tabs that don't fit scroll horizontally with the platform's physics and
+///   fade out 24 px at an edge with more behind it. The selected tab, and
+///   the one that takes keyboard focus, scroll into view.
+///
+/// Override the motion of one part with [motions].
 class CoilTabs<T> extends StatefulWidget {
   /// Creates tabs.
   const CoilTabs({
@@ -65,9 +102,8 @@ class CoilTabs<T> extends StatefulWidget {
     this.labels = CoilTabLabels.always,
     this.size,
     this.motion,
+    this.motions,
     this.style,
-    this.debugHoveredIndex,
-    this.debugFocusedIndex,
   });
 
   /// The tabs.
@@ -90,17 +126,13 @@ class CoilTabs<T> extends StatefulWidget {
   /// tabs.
   final CoilMotion? motion;
 
+  /// Per-part motions for these tabs, keyed by [CoilTabsTrack]s:
+  /// `motions: {.selected: const .bouncySpring()}`.
+  final Map<CoilTabsTrack<Object>, Motion>? motions;
+
   /// Overrides for these tabs' look, on top of the theme's [CoilTabsStyle]
   /// and the defaults.
   final CoilTabsStyle? style;
-
-  /// Forces a hovered tab (for goldens and docs).
-  @visibleForTesting
-  final int? debugHoveredIndex;
-
-  /// Forces a keyboard-focused tab (for goldens and docs).
-  @visibleForTesting
-  final int? debugFocusedIndex;
 
   @override
   State<CoilTabs<T>> createState() => _CoilTabsState<T>();
@@ -121,6 +153,24 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
     debugLabel: 'CoilTabs.focus',
   );
 
+  /// The enter and exit motions of [track]: the instance's or the theme's
+  /// override for both, else the tokens.
+  ({Motion enter, Motion exit}) _motionFor(
+    CoilTabsTrack<Object> track,
+    Motion enter,
+    Motion exit,
+  ) {
+    final resolved = CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: widget.motions,
+      token: enter,
+    );
+    return identical(resolved, enter)
+        ? (enter: enter, exit: exit)
+        : (enter: resolved, exit: resolved);
+  }
+
   final _nodes = <FocusNode>[];
   final _states = <WidgetStatesController>[];
   int? _focusVisible;
@@ -133,6 +183,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   @override
   void initState() {
     super.initState();
+    _sync();
     // Starts with the selected tab in view, without travelling there.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _reveal(_selectedIndex, animate: false);
@@ -147,6 +198,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   @override
   void didUpdateWidget(CoilTabs<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _sync();
     final before = oldWidget.tabs.indexWhere(
       (tab) => tab.value == oldWidget.value,
     );
@@ -166,10 +218,12 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
     if (index == null || index >= _nodes.length || !_scroll.hasClients) return;
     final context = _nodes[index].context;
     if (context == null || !context.mounted) return;
-    final motion = CoilTheme.motionOf(
-      this.context,
-      override: widget.motion,
-    ).standard;
+    final tokens = CoilTheme.motionOf(this.context, override: widget.motion);
+    final motion = _motionFor(
+      CoilTabsTrack.reveal,
+      tokens.standard,
+      tokens.standardExit,
+    ).enter;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
     // Reveals the tab plus the fade's width on both sides, so a revealed tab
@@ -237,7 +291,6 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
 
   @override
   Widget build(BuildContext context) {
-    _sync();
     final theme = CoilTheme.of(context);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final colors = theme.colors;
@@ -249,7 +302,27 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
     final radius = BorderRadius.circular(style.radius!);
     final index = widget.tabs.indexWhere((tab) => tab.value == widget.value);
     final selected = index < 0 ? null : index;
-    final focused = widget.debugFocusedIndex ?? _focusVisible;
+    final focused = _focusVisible;
+    final selectedMotion = _motionFor(
+      CoilTabsTrack.selected,
+      motion.standard,
+      motion.quickExit,
+    );
+    final hoverMotion = _motionFor(
+      CoilTabsTrack.hover,
+      motion.quick,
+      motion.quickExit,
+    );
+    final focusMotion = _motionFor(
+      CoilTabsTrack.focus,
+      motion.quick,
+      motion.quickExit,
+    );
+    final labelMotion = _motionFor(
+      CoilTabsTrack.label,
+      motion.quick,
+      motion.quickExit,
+    );
 
     return CoilRovingFocus(
       nodes: _nodes,
@@ -269,7 +342,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
             background: [_selectedPill, _hoverPill],
             foreground: [_focusRing],
             onStateChanged: (state) {
-              final hovered = widget.debugHoveredIndex ?? state.activeIndex;
+              final hovered = state.activeIndex;
               final hovering = hovered != null && hovered != selected;
               final fill = ShapeDecoration(
                 color: style.pill,
@@ -277,8 +350,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
               );
               _selectedPill.update(
                 target: selected,
-                motion: motion.standard,
-                exitMotion: motion.quickExit,
+                motion: selectedMotion.enter,
+                exitMotion: selectedMotion.exit,
                 exitTravelMotion: motion.standard,
                 fade: motion.fade,
                 opacity: hovering ? 0.8 : 1,
@@ -290,8 +363,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                 session: state.session,
                 from: selected,
                 opacity: style.hoverPillOpacity!,
-                motion: motion.quick,
-                exitMotion: motion.quickExit,
+                motion: hoverMotion.enter,
+                exitMotion: hoverMotion.exit,
                 exitTravelMotion: motion.standard,
                 fade: motion.fade,
                 // Leaving the strip: glide back into the selected pill.
@@ -301,8 +374,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
               _focusRing.update(
                 target: focused,
                 fadeIn: false,
-                motion: motion.quick,
-                exitMotion: motion.quickExit,
+                motion: focusMotion.enter,
+                exitMotion: focusMotion.exit,
                 exitTravelMotion: motion.standard,
                 fade: motion.fade,
                 inflate: 1 + theme.focusRingWidth,
@@ -322,7 +395,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
             child: Builder(
               builder: (context) {
                 final region = CoilHoverRegion.maybeOf(context);
-                final hovered = widget.debugHoveredIndex ?? region?.activeIndex;
+                final hovered = region?.activeIndex;
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -331,6 +404,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                         index: i,
                         child: _TabButton(
                           motion: motion,
+                          labelMotion: labelMotion,
                           style: style,
                           tab: tab,
                           sizes: sizes,
@@ -503,6 +577,7 @@ class _TabButton extends StatelessWidget {
     required this.statesController,
     required this.onPressed,
     required this.motion,
+    required this.labelMotion,
     required this.style,
   });
 
@@ -515,6 +590,7 @@ class _TabButton extends StatelessWidget {
   final WidgetStatesController statesController;
   final VoidCallback? onPressed;
   final CoilMotion motion;
+  final ({Motion enter, Motion exit}) labelMotion;
   final CoilTabsStyle style;
 
   @override
@@ -601,8 +677,8 @@ class _TabButton extends StatelessWidget {
                       // Collapsed tabs keep their icon; the label springs
                       // its width open and fades in.
                       MotionSizeSwitcher(
-                        motion: motion.quick,
-                        exitMotion: motion.quickExit,
+                        motion: labelMotion.enter,
+                        exitMotion: labelMotion.exit,
                         // MotionSizeSwitcher takes a resolved Alignment.
                         alignment: AlignmentDirectional.centerStart.resolve(
                           Directionality.of(context),

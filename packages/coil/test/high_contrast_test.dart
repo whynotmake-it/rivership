@@ -48,7 +48,6 @@ class _Controls extends StatelessWidget {
           ],
           value: 0,
           onChanged: (_) {},
-          debugFocusedIndex: 1,
         ),
       ],
     );

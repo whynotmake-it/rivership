@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/golden_sheet.dart';
 
@@ -15,12 +16,14 @@ class _Host extends StatefulWidget {
     this.initial = 0,
     this.textDirection = TextDirection.ltr,
     this.tier = CoilTier.pointer,
+    this.motions,
   });
 
   final double width;
   final int initial;
   final TextDirection textDirection;
   final CoilTier tier;
+  final Map<CoilTabsTrack<Object>, Motion>? motions;
 
   @override
   State<_Host> createState() => _HostState();
@@ -53,6 +56,7 @@ class _HostState extends State<_Host> {
                       CoilTab(value: i, label: 'Tab number $i'),
                   ],
                   value: tab,
+                  motions: widget.motions,
                   onChanged: (v) => setState(() => tab = v),
                 ),
               ),
@@ -150,6 +154,31 @@ void main() {
       _position(tester).pixels,
       closeTo(_position(tester).maxScrollExtent, 1),
     );
+  });
+
+  testWidgets('a per-instance reveal motion changes how the strip scrolls', (
+    tester,
+  ) async {
+    Future<double> scrolledAfterEnd(
+      Map<CoilTabsTrack<Object>, Motion>? m,
+    ) async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_Host(motions: m));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.end);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      return _position(tester).pixels / _position(tester).maxScrollExtent;
+    }
+
+    final spring = await scrolledAfterEnd(null);
+    final instant = await scrolledAfterEnd({
+      CoilTabsTrack.reveal: const Motion.linear(Duration(milliseconds: 10)),
+    });
+    expect(spring, lessThan(.95));
+    expect(instant, greaterThan(.99));
   });
 
   testWidgets('keyboard roving still moves focus and selects', (tester) async {

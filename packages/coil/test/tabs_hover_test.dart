@@ -106,17 +106,10 @@ void main() {
         onChanged: (_) {},
         labels: labels,
         size: size,
-        // Keyboard focus lights the tab too, as on the web.
-        debugHoveredIndex: switch (s) {
-          SheetState.hover => 2,
-          SheetState.focus => 1,
-          _ => null,
-        },
-        debugFocusedIndex: s == SheetState.focus ? 1 : null,
       );
-      const columns = [SheetState.rest, SheetState.hover, SheetState.focus];
+      const columns = [SheetState.rest];
       final sheet = ThemedPair(
-        title: 'Tabs (hover → Reports, focus → Analytics)',
+        title: 'Tabs',
         direction: Axis.vertical,
         builder: (context) => StateTable(
           columns: columns,
@@ -183,6 +176,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
+      await expectSheetGolden(
+        tester,
+        find.byKey(liveKey),
+        'goldens/tabs_live_focus.png',
+      );
       expect(selected, 0, reason: 'manual activation: arrows only move focus');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
