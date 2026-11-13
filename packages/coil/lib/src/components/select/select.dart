@@ -291,10 +291,6 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     }
   }
 
-  /// A context below the per-instance motion override, so the overlay
-  /// captures it.
-  BuildContext? _inner;
-
   bool get _enabled => widget.onPick != null;
 
   @override
@@ -308,7 +304,6 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   Future<CoilPopupCloseReason> _show({required bool keyboard}) async {
     if (_popup case final popup?) return popup.closed;
     if (!_enabled) return CoilPopupCloseReason.programmatic;
-    final context = _inner ?? this.context;
     final presentation = CoilAdaptivePopup.presentationOf(
       context,
       override: widget.presentation,
@@ -319,7 +314,9 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       ),
     );
     final sheet = presentation == CoilPresentation.sheet;
-    final motion = CoilTheme.motionOf(context);
+    final motion = CoilTheme.motionOf(context, override: widget.motion);
+    // The open list is a route, not a descendant of this select, so it can't
+    // rebuild with it: it starts from this copy and reports each change.
     var picked = {...widget.picked};
     // The sheet is a touch surface whatever the tier: touch-sized rows.
     final metrics = sheet
@@ -336,35 +333,38 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       // Pointer: a 300 px cap. Touch popovers list at most eight rows, so
       // only the room on screen bounds them.
       maxHeight: pointerTier && !sheet ? 300 : double.infinity,
-      content: (context, popup) => MotorInspectionScope(
-        group: 'CoilSelect',
-        child: CoilOptionList<T>(
-          options: widget.options,
-          picked: picked,
-          multiple: widget.multiple,
-          checkmark: widget.checkmark,
-          metrics: metrics,
-          style: style,
-          keyboardOpened: keyboard,
-          selectedFill: !sheet,
-          fullEmphasis: sheet || !pointerTier,
-          onPick: (value) {
-            if (widget.multiple) {
-              picked = picked.contains(value)
-                  ? ({...picked}..remove(value))
-                  : {...picked, value};
-              widget.onPick?.call(value, picked);
-              return;
-            }
-            widget.onPick?.call(value, {value});
-            // Hold the list open long enough to see the check draw and the
-            // selected fill land on the picked row.
-            acknowledge = Timer(
-              motion.acknowledgeDuration,
-              () => popup.close(.selected),
-            );
-          },
-          onDismiss: popup.close,
+      motion: widget.motion,
+      content: (context, popup) => _withMotion(
+        MotorInspectionScope(
+          group: 'CoilSelect',
+          child: CoilOptionList<T>(
+            options: widget.options,
+            picked: picked,
+            multiple: widget.multiple,
+            checkmark: widget.checkmark,
+            metrics: metrics,
+            style: style,
+            keyboardOpened: keyboard,
+            selectedFill: !sheet,
+            fullEmphasis: sheet || !pointerTier,
+            onPick: (value) {
+              if (widget.multiple) {
+                picked = picked.contains(value)
+                    ? ({...picked}..remove(value))
+                    : {...picked, value};
+                widget.onPick?.call(value, picked);
+                return;
+              }
+              widget.onPick?.call(value, {value});
+              // Hold the list open long enough to see the check draw and the
+              // selected fill land on the picked row.
+              acknowledge = Timer(
+                motion.acknowledgeDuration,
+                () => popup.close(.selected),
+              );
+            },
+            onDismiss: popup.close,
+          ),
         ),
       ),
       popover: (context, content) =>
@@ -383,24 +383,19 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     return reason;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// Applies the per-instance motion to [child]'s subtree.
+  Widget _withMotion(Widget child) {
     final override = widget.motion;
-    Widget scoped(Widget child) => override == null
-        ? child
-        : CoilTheme.override(
-            transform: (t) => t.copyWith(motion: override),
-            child: child,
-          );
-    return scoped(
-      Builder(
-        builder: (inner) {
-          _inner = inner;
-          return _buildTrigger(inner);
-        },
-      ),
+    if (override == null) return child;
+    return CoilTheme.override(
+      transform: (t) => t.copyWith(motion: override),
+      child: child,
     );
   }
+
+  @override
+  Widget build(BuildContext context) =>
+      _withMotion(Builder(builder: _buildTrigger));
 
   CoilSelectStyle _resolveStyle(BuildContext context, CoilMetrics metrics) =>
       CoilSelectStyle.fallback(
@@ -469,7 +464,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
             autofocus: widget.autofocus,
             statesController: _states,
             excludeFromSemantics: true,
-            builder: (context, states, _) => CoilSelectTrigger(
+            builder: (context, states, _) => _SelectTrigger(
               metrics: metrics,
               style: style,
               states: {
@@ -488,15 +483,12 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   }
 }
 
-/// The bordered select trigger: leading glyph, label, chevron. Public so
-/// goldens can render it in any state.
-class CoilSelectTrigger extends StatelessWidget {
-  /// Creates a trigger.
-  const CoilSelectTrigger({
+/// The bordered trigger: leading glyph, label, chevron.
+class _SelectTrigger extends StatelessWidget {
+  const _SelectTrigger({
     required this.metrics,
     required this.label,
     required this.states,
-    super.key,
     this.icon,
     this.indicator,
     this.style,

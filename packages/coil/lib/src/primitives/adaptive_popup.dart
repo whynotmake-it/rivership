@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:coil/src/foundation/adaptive.dart';
 import 'package:coil/src/foundation/metrics.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/anchor.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
@@ -112,6 +113,8 @@ abstract final class CoilAdaptivePopup {
   /// can close with a reason. A tap outside the popup closes it with
   /// [CoilPopupCloseReason.outsideTap] on tap-up; a route popped any other
   /// way (sheet drag, system back) reports [CoilPopupCloseReason.dismissed].
+  /// [motion] overrides the theme's tokens for the popup's own enter and
+  /// exit.
   static CoilPopupHandle show(
     BuildContext anchorContext, {
     required CoilPresentation presentation,
@@ -120,13 +123,14 @@ abstract final class CoilAdaptivePopup {
     required Widget Function(BuildContext context, Widget content) popover,
     required Widget Function(BuildContext context, Widget content) sheet,
     double maxHeight = double.infinity,
+    CoilMotion? motion,
   }) {
     final navigator = Navigator.of(anchorContext);
     final themes = InheritedTheme.capture(
       from: anchorContext,
       to: navigator.context,
     );
-    final motion = CoilTheme.motionOf(anchorContext);
+    final tokens = CoilTheme.motionOf(anchorContext, override: motion);
     final handle = _Handle();
     Widget body(BuildContext context, Widget Function(Widget) chrome) =>
         TapRegion(
@@ -145,8 +149,8 @@ abstract final class CoilAdaptivePopup {
           anchorContext: anchorContext,
           minWidth: box.size.width,
           maxHeight: maxHeight,
-          enterMotion: reduce ? motion.fade : motion.standard,
-          exitMotion: reduce ? motion.fadeExit : motion.standardExit,
+          enterMotion: reduce ? tokens.fade : tokens.standard,
+          exitMotion: reduce ? tokens.fadeExit : tokens.standardExit,
           reduceMotion: reduce,
           capturedThemes: themes,
           // The TapRegion closes on tap-up outside, with its reason.
@@ -156,7 +160,7 @@ abstract final class CoilAdaptivePopup {
         );
       case CoilPresentation.sheet:
         route = CoilSheetRoute<CoilPopupCloseReason>(
-          motion: motion.gentle,
+          motion: tokens.gentle,
           barrierColor: CoilSheetPanel.barrierColorOf(anchorContext),
           barrierDismissible: false,
           capturedThemes: themes,

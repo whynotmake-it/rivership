@@ -85,10 +85,19 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     vsync: this,
     debugLabel: 'CoilSelect.ring',
   );
-  late final _rowKeys = [
-    for (var i = 0; i < widget.options.length; i++)
-      GlobalKey(debugLabel: 'CoilSelect row $i'),
+  late List<GlobalKey> _rowKeys = _keysFor(widget.options.length);
+
+  static List<GlobalKey> _keysFor(int count) => [
+    for (var i = 0; i < count; i++) GlobalKey(debugLabel: 'CoilSelect row $i'),
   ];
+
+  @override
+  void didUpdateWidget(CoilOptionList<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.options.length != widget.options.length) {
+      _rowKeys = _keysFor(widget.options.length);
+    }
+  }
 
   /// The rows showing as picked.
   final Set<int> _checked = {};

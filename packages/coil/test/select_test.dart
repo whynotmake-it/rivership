@@ -1,6 +1,6 @@
 import 'package:coil/coil.dart';
-import 'package:coil/src/components/select/option_list.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +21,10 @@ FocusNode? get _primaryFocus => FocusManager.instance.primaryFocus;
 bool _triggerHasFocus(WidgetTester tester) =>
     _primaryFocus?.debugLabel == 'CoilSelect';
 
-final _list = find.byType(CoilOptionList<String>);
+/// The open list: the menu node.
+final _list = find.byWidgetPredicate(
+  (w) => w is Semantics && w.properties.role == SemanticsRole.menu,
+);
 
 /// The rows of the open list, in order.
 Finder get _rows =>
@@ -110,8 +113,15 @@ Iterable<String> _checkedRows(WidgetTester tester) => [
     if (semantics.properties.selected ?? false) semantics.properties.label!,
 ];
 
-Set<WidgetState> _triggerStates(WidgetTester tester) =>
-    tester.widget<CoilSelectTrigger>(find.byType(CoilSelectTrigger)).states;
+Set<WidgetState> _triggerStates(WidgetTester tester) => tester
+    .widget<CoilInteractionDetector>(
+      find.descendant(
+        of: _select,
+        matching: find.byType(CoilInteractionDetector),
+      ),
+    )
+    .states
+    .value;
 
 void main() {
   group('presentation', () {
@@ -128,7 +138,7 @@ void main() {
 
       expect(find.byType(CoilSheetPanel), findsNothing);
       final trigger = tester.getRect(_select);
-      final list = tester.getRect(find.byType(CoilOptionList<String>));
+      final list = tester.getRect(_list);
       // Under the trigger, 6px away, start-aligned, at least as wide.
       expect(list.top, moreOrLessEquals(trigger.bottom + 6));
       expect(list.left, trigger.left);
@@ -232,7 +242,7 @@ void main() {
       expect(_triggerHasFocus(tester), isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
-      expect(find.byType(CoilOptionList<String>), findsOneWidget);
+      expect(_list, findsOneWidget);
       return picks;
     }
 
@@ -247,7 +257,7 @@ void main() {
       await _settle(tester);
 
       expect(picks, ['mango']);
-      expect(find.byType(CoilOptionList<String>), findsNothing);
+      expect(_list, findsNothing);
       expect(_triggerHasFocus(tester), isTrue);
     });
 
@@ -306,7 +316,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(picks, isEmpty);
-      expect(find.byType(CoilOptionList<String>), findsNothing);
+      expect(_list, findsNothing);
       expect(_triggerHasFocus(tester), isTrue);
     });
 
@@ -317,7 +327,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
       expect(picks, isEmpty);
-      expect(find.byType(CoilOptionList<String>), findsNothing);
+      expect(_list, findsNothing);
       expect(_triggerHasFocus(tester), isTrue);
     });
   });
@@ -338,7 +348,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tapAt(const Offset(400, 420), kind: PointerDeviceKind.mouse);
       await tester.pumpAndSettle();
-      expect(find.byType(CoilOptionList<String>), findsNothing);
+      expect(_list, findsNothing);
       expect(picks, isEmpty);
 
       await tester.tap(_select, kind: PointerDeviceKind.mouse);
@@ -346,10 +356,10 @@ void main() {
       await tester.tap(find.text('Orange'), kind: PointerDeviceKind.mouse);
       // Held open for the acknowledgment.
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.byType(CoilOptionList<String>), findsOneWidget);
+      expect(_list, findsOneWidget);
       await _settle(tester);
       expect(picks, ['orange']);
-      expect(find.byType(CoilOptionList<String>), findsNothing);
+      expect(_list, findsNothing);
       expect(_primaryFocus, isNotNull);
     });
 
@@ -367,7 +377,7 @@ void main() {
       await tester.tap(find.text('Grapes'), kind: PointerDeviceKind.mouse);
       await _settle(tester);
       expect(picks, isEmpty);
-      expect(find.byType(CoilOptionList<String>), findsOneWidget);
+      expect(_list, findsOneWidget);
     });
   });
 
@@ -557,7 +567,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CoilSheetPanel), findsNothing);
       final trigger = tester.getRect(_select);
-      final list = tester.getRect(find.byType(CoilOptionList<String>));
+      final list = tester.getRect(_list);
       expect(list.top, moreOrLessEquals(trigger.bottom + 6));
       expect(tester.getSize(_rows.first).height, 44);
     });
@@ -651,7 +661,7 @@ void main() {
       expect(changes, [
         {'banana', 'mango', 'blueberry'},
       ]);
-      expect(find.byType(CoilOptionList<String>), findsOneWidget);
+      expect(_list, findsOneWidget);
       expect(find.text('Banana, Blueberry, Mango'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
@@ -662,7 +672,7 @@ void main() {
     Color textColor(WidgetTester tester, String label) => tester
         .widget<RichText>(
           find.descendant(
-            of: find.byType(CoilOptionList<String>),
+            of: _list,
             matching: find.byWidgetPredicate(
               (w) => w is RichText && w.text.toPlainText() == label,
             ),
@@ -677,7 +687,7 @@ void main() {
           find
               .ancestor(
                 of: find.descendant(
-                  of: find.byType(CoilOptionList<String>),
+                  of: _list,
                   matching: find.text(label),
                 ),
                 matching: find.byType(Opacity),
