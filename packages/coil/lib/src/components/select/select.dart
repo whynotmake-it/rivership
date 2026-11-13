@@ -395,9 +395,11 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       content: _buildList,
       popover: (context, content) {
         final metrics = CoilTheme.metricsOf(context);
-        return _PopoverSurface(
-          metrics: metrics,
-          style: _resolveStyle(context, metrics),
+        final style = _resolveStyle(context, metrics);
+        return CoilPopoverSurface(
+          color: style.surface,
+          // Concentric with the rows: item radius + the popup's inset.
+          radius: style.radius! + metrics.popupInset,
           child: content,
         );
       },
@@ -596,34 +598,6 @@ class _SelectTrigger extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PopoverSurface extends StatelessWidget {
-  const _PopoverSurface({
-    required this.metrics,
-    required this.style,
-    required this.child,
-  });
-
-  final CoilMetrics metrics;
-  final CoilSelectStyle style;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    // Concentric with the rows: item radius + the popup's inset, which is
-    // the shape's container radius at the default style.
-    final radius = BorderRadius.circular(style.radius! + metrics.popupInset);
-    return IntrinsicWidth(
-      child: CoilSurface(
-        offset: CoilSurface.popoverOffset,
-        shadowLevel: 3,
-        color: style.surface,
-        borderRadius: radius,
-        child: ClipRSuperellipse(borderRadius: radius, child: child),
       ),
     );
   }

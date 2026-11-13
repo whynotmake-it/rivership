@@ -18,6 +18,7 @@ export 'src/primitives/hover.dart';
 export 'src/primitives/interaction.dart';
 export 'src/primitives/line_box.dart';
 export 'src/primitives/motion_layer.dart';
+export 'src/primitives/popover_surface.dart';
 export 'src/primitives/popup_controller.dart';
 export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';

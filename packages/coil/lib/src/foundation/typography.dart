@@ -34,6 +34,14 @@ enum CoilWeight {
     FontVariation('wght', wght),
     FontVariation('opsz', opsz),
   ];
+
+  /// The font variations a fraction [t] of the way from [a] to [b], with
+  /// `opsz` following `wght` as the weights pair them. For animating a
+  /// weight change.
+  static List<FontVariation> lerp(CoilWeight a, CoilWeight b, double t) => [
+    FontVariation('wght', a.wght + (b.wght - a.wght) * t),
+    FontVariation('opsz', a.opsz + (b.opsz - a.opsz) * t),
+  ];
 }
 
 /// One step of the type scale: a font size and a line height in pixels.

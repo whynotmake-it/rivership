@@ -28,6 +28,8 @@ class CoilThemeData with Diagnosticable {
     this.motion = const CoilMotion(),
     this.typography = const CoilTypography(),
     this.focusRingWidth = 1,
+    this.disabledOpacity = 0.5,
+    this.disabledEmphasisOpacity = 0.4,
     this.haptics,
     this.trackMotions = const {},
     this.components = const {},
@@ -62,6 +64,13 @@ class CoilThemeData with Diagnosticable {
 
   /// The focus ring's thickness: 1, or 2 in high contrast.
   final double focusRingWidth;
+
+  /// How opaque a disabled control is.
+  final double disabledOpacity;
+
+  /// How opaque a disabled row is where rows rest at full foreground (touch
+  /// lists), so it still reads as disabled next to them.
+  final double disabledEmphasisOpacity;
 
   /// Which haptic each event plays, or null for the platform's conventions
   /// ([CoilHaptics.platform]). [CoilHaptics.none] turns them off.
@@ -110,6 +119,8 @@ class CoilThemeData with Diagnosticable {
     CoilMotion? motion,
     CoilTypography? typography,
     double? focusRingWidth,
+    double? disabledOpacity,
+    double? disabledEmphasisOpacity,
     Object? haptics = _keep,
     Map<Track<Object>, Motion>? trackMotions,
     Map<Type, CoilComponentStyle<dynamic>>? components,
@@ -121,6 +132,9 @@ class CoilThemeData with Diagnosticable {
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
+    disabledOpacity: disabledOpacity ?? this.disabledOpacity,
+    disabledEmphasisOpacity:
+        disabledEmphasisOpacity ?? this.disabledEmphasisOpacity,
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     trackMotions: trackMotions ?? this.trackMotions,
     components: components ?? this.components,
@@ -140,6 +154,11 @@ class CoilThemeData with Diagnosticable {
         typography: t < 0.5 ? a.typography : b.typography,
         focusRingWidth:
             a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
+        disabledOpacity:
+            a.disabledOpacity + (b.disabledOpacity - a.disabledOpacity) * t,
+        disabledEmphasisOpacity:
+            a.disabledEmphasisOpacity +
+            (b.disabledEmphasisOpacity - a.disabledEmphasisOpacity) * t,
         haptics: t < 0.5 ? a.haptics : b.haptics,
         trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
         components: t < 0.5 ? a.components : b.components,
@@ -155,6 +174,8 @@ class CoilThemeData with Diagnosticable {
       other.motion == motion &&
       other.typography == typography &&
       other.focusRingWidth == focusRingWidth &&
+      other.disabledOpacity == disabledOpacity &&
+      other.disabledEmphasisOpacity == disabledEmphasisOpacity &&
       other.haptics == haptics &&
       mapEquals(other.trackMotions, trackMotions) &&
       mapEquals(other.components, components);
@@ -168,6 +189,8 @@ class CoilThemeData with Diagnosticable {
     motion,
     typography,
     focusRingWidth,
+    disabledOpacity,
+    disabledEmphasisOpacity,
     haptics,
     Object.hashAllUnordered(
       trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
