@@ -97,7 +97,7 @@ class _Heights extends StatelessWidget {
         for (final (label, tier, size) in _columns)
           Builder(
             builder: (context) {
-              final m = CoilMetrics.resolve(tier, size);
+              final m = CoilTheme.of(context).metrics.resolve(tier, size);
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -181,7 +181,10 @@ class _Ladder extends StatelessWidget {
               ),
               for (final (_, tier, size) in _columns)
                 at(
-                  Text(read(CoilMetrics.resolve(tier, size)), style: cell),
+                  Text(
+                    read(CoilTheme.of(context).metrics.resolve(tier, size)),
+                    style: cell,
+                  ),
                   tier,
                 ),
             ],

@@ -11,6 +11,13 @@ const shapesEntry = CatalogEntry(
   page: ShapesPage.new,
 );
 
+/// coil's shape presets, by name.
+const _shapes = [
+  ('rounded', CoilShape.rounded),
+  ('pill', CoilShape.pill),
+  ('sharp', CoilShape.sharp),
+];
+
 class ShapesPage extends StatefulWidget {
   const ShapesPage({super.key});
 
@@ -34,7 +41,7 @@ class _ShapesPageState extends State<ShapesPage> {
         description: 'Item, container and focus ring for each shape family.',
         child: DemoColumn(
           children: [
-            for (final shape in CoilShape.values) _ShapeRow(shape),
+            for (final (name, shape) in _shapes) _ShapeRow(name, shape),
           ],
         ),
       ),
@@ -52,8 +59,8 @@ class _ShapesPageState extends State<ShapesPage> {
                 value: _shape,
                 onChanged: (value) => setState(() => _shape = value),
                 options: [
-                  for (final shape in CoilShape.values)
-                    CoilOption(value: shape, label: shape.name),
+                  for (final (name, shape) in _shapes)
+                    CoilOption(value: shape, label: name),
                 ],
               ),
             ),
@@ -94,8 +101,9 @@ class _ShapesPageState extends State<ShapesPage> {
 }
 
 class _ShapeRow extends StatelessWidget {
-  const _ShapeRow(this.shape);
+  const _ShapeRow(this.name, this.shape);
 
+  final String name;
   final CoilShape shape;
 
   @override
@@ -107,7 +115,7 @@ class _ShapeRow extends StatelessWidget {
     // A pill's item radius is half the control height.
     final item = radii.item.clamp(0, metrics.controlHeight / 2).toDouble();
     return Labeled(
-      '${shape.name} · item ${radii.item.round()} · container '
+      '$name · item ${radii.item.round()} · container '
       '${radii.container.round()} · ring ${radii.focusRing.round()}',
       child: Row(
         children: [

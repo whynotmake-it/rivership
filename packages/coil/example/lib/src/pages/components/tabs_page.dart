@@ -14,10 +14,10 @@ const tabsEntry = CatalogEntry(
 );
 
 enum _View {
-  overview('Home', Glyph.home, 'Three projects, two due this week.'),
+  overview('Overview', Glyph.home, 'Three projects, two due this week.'),
   inbox('Inbox', Glyph.inbox, '12 unread messages from your team.'),
-  reports('Stats', Glyph.chart, 'Weekly active users up 8 %.'),
-  calendar('Events', Glyph.calendar, 'Design review at 14:00.');
+  calendar('Calendar', Glyph.calendar, 'Design review at 14:00.'),
+  reports('Reports', Glyph.chart, 'Weekly active users up 8 %.');
 
   const _View(this.label, this.glyph, this.body);
 
@@ -37,13 +37,14 @@ class _TabsPageState extends State<TabsPage> {
   var _view = _View.overview;
   var _iconView = _View.inbox;
   var _range = 'week';
+  var _month = 'Jun';
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Tabs',
     summary:
-        'For 2–6 peer views. With a keyboard, arrows move focus and Enter or '
-        'Space selects. With a mouse, a lighter pill grows out of the '
+        'For 2 to 6 peer views. With a keyboard, arrows move focus and '
+        'Enter or Space selects. With a mouse, a lighter pill grows out of the '
         'selected one.',
     children: [
       DemoSection(
@@ -111,6 +112,19 @@ class _TabsPageState extends State<TabsPage> {
         ),
       ),
       DemoSection(
+        title: 'Overflow',
+        description:
+            "Tabs that don't fit scroll, with fading edges. The selected "
+            'tab and the keyboard-focused tab scroll into view.',
+        child: CoilTabs<String>(
+          value: _month,
+          onChanged: (value) => setState(() => _month = value),
+          tabs: [
+            for (final m in _months) CoilTab(value: m, label: m),
+          ],
+        ),
+      ),
+      DemoSection(
         title: 'Compact',
         child: CoilTabs<String>(
           size: CoilSize.compact,
@@ -125,4 +139,19 @@ class _TabsPageState extends State<TabsPage> {
       ),
     ],
   );
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 }

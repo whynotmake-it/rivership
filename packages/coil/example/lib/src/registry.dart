@@ -9,6 +9,7 @@ import 'package:coil_example/src/pages/components/input_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
 import 'package:coil_example/src/pages/components/skeleton_page.dart';
+import 'package:coil_example/src/pages/components/slider_page.dart';
 import 'package:coil_example/src/pages/components/switch_page.dart';
 import 'package:coil_example/src/pages/components/tabs_page.dart';
 import 'package:coil_example/src/pages/components/textarea_page.dart';
@@ -93,6 +94,7 @@ const catalogEntries = <CatalogEntry>[
   fieldEntry,
   checkboxGroupEntry,
   radioGroupEntry,
+  sliderEntry,
   toggleGroupEntry,
   tabsEntry,
   inputGroupEntry,
