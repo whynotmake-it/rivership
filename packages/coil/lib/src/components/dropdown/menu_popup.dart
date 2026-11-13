@@ -19,6 +19,7 @@ class CoilMenuPopup extends StatelessWidget {
     required this.child,
     super.key,
     this.presentation,
+    this.search,
     this.style,
     this.motion,
   });
@@ -34,6 +35,9 @@ class CoilMenuPopup extends StatelessWidget {
 
   /// Pins the presentation.
   final CoilPresentation? presentation;
+
+  /// A search field over the rows.
+  final CoilMenuSearch? search;
 
   /// Overrides the theme's dropdown style.
   final CoilDropdownStyle? style;
@@ -76,6 +80,7 @@ class CoilMenuPopup extends StatelessWidget {
           .where((entry) => entry is CoilAction || entry is CoilSubmenu)
           .length,
       submenuDepth: CoilSubmenu.depthOf(entries),
+      hasSearch: search != null,
     ),
     maxHeight: _style(context, CoilTheme.metricsOf(context)).maxHeight!,
     content: (context, popup) {
@@ -104,6 +109,7 @@ class CoilMenuPopup extends StatelessWidget {
           pressFill: look.pressFill,
           radius: look.radius,
           submenu: _surface,
+          search: search,
           motion: motion,
         ),
       );

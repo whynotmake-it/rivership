@@ -30,6 +30,7 @@ class CoilContextMenu extends StatefulWidget {
     super.key,
     this.controller,
     this.presentation,
+    this.search,
     this.style,
     this.motion,
   });
@@ -45,6 +46,10 @@ class CoilContextMenu extends StatefulWidget {
 
   /// Pins the presentation instead of deciding it when the menu opens.
   final CoilPresentation? presentation;
+
+  /// Shows a field over the rows that filters them by label. On a phone a
+  /// menu with search opens as a sheet.
+  final CoilMenuSearch? search;
 
   /// Overrides the theme's dropdown style.
   final CoilDropdownStyle? style;
@@ -84,6 +89,7 @@ class _CoilContextMenuState extends State<CoilContextMenu> {
     entries: widget.entries,
     kind: CoilOverlayKind.contextMenu,
     presentation: widget.presentation,
+    search: widget.search,
     style: widget.style,
     motion: widget.motion,
     child: CoilContextTrigger(

@@ -46,6 +46,7 @@ class CoilDropdown extends StatefulWidget {
     super.key,
     this.controller,
     this.presentation,
+    this.search,
     this.style,
     this.motion,
   });
@@ -61,6 +62,10 @@ class CoilDropdown extends StatefulWidget {
 
   /// Pins the presentation instead of deciding it when the menu opens.
   final CoilPresentation? presentation;
+
+  /// Shows a field over the rows that filters them by label. On a phone a
+  /// menu with search opens as a sheet.
+  final CoilMenuSearch? search;
 
   /// Overrides the theme's dropdown style.
   final CoilDropdownStyle? style;
@@ -90,6 +95,7 @@ class _CoilDropdownState extends State<CoilDropdown> {
     entries: widget.entries,
     kind: CoilOverlayKind.actionMenu,
     presentation: widget.presentation,
+    search: widget.search,
     style: widget.style,
     motion: widget.motion,
     child: ListenableBuilder(

@@ -15,6 +15,7 @@ import 'package:coil/src/primitives/interaction.dart';
 import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/scrollbar.dart';
+import 'package:coil/src/primitives/text_field_core.dart';
 import 'package:coil/src/primitives/typeahead.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -118,6 +119,19 @@ class CoilSubmenu extends CoilMenuEntry {
   );
 }
 
+/// A search field over a [CoilActionList] that filters its rows by label.
+@immutable
+class CoilMenuSearch {
+  /// Describes the search field.
+  const CoilMenuSearch({this.hint = 'Search', this.emptyLabel = 'No results'});
+
+  /// The field's placeholder, also its name for screen readers.
+  final String hint;
+
+  /// Shown when no row matches.
+  final String emptyLabel;
+}
+
 /// A heading over a group of rows.
 class CoilMenuLabel extends CoilMenuEntry {
   /// Creates a heading.
@@ -146,6 +160,8 @@ class CoilMenuSeparator extends CoilMenuEntry {
 /// goes. On the touch tier of [metrics], rows rest at full
 /// strength, since a finger can't hover.
 ///
+/// With [search], a field above the rows filters them.
+///
 /// The rows scroll when the list is taller than its room, with edges that
 /// fade into [surface].
 ///
@@ -169,6 +185,7 @@ class CoilActionList extends StatefulWidget {
     this.radius,
     this.submenu,
     this.onBack,
+    this.search,
     this.motion,
   });
 
@@ -181,6 +198,12 @@ class CoilActionList extends StatefulWidget {
   /// Called by the arrow away from a submenu's side: a submenu closes
   /// itself with it.
   final VoidCallback? onBack;
+
+  /// Shows a search field that keeps focus and filters the rows: typing
+  /// narrows them to labels that contain the text, the arrows move through
+  /// the matches and Enter picks one. Headings and separators stay with
+  /// their matching rows.
+  final CoilMenuSearch? search;
 
   /// Called when a pick, Escape or Tab closes the menu.
   final ValueChanged<CoilPopupCloseReason> onClose;
@@ -217,6 +240,8 @@ class CoilActionList extends StatefulWidget {
 class _CoilActionListState extends State<CoilActionList>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
+  final _query = TextEditingController();
+  late List<CoilMenuEntry?> _items = _compute();
   late List<GlobalKey> _rowKeys = _keysFor(_items.length);
   Timer? _acknowledge;
 
@@ -239,10 +264,62 @@ class _CoilActionListState extends State<CoilActionList>
   bool get _touch => widget.metrics.tier == CoilTier.touch;
 
   /// The rows shown: a drilled-into submenu's under a back row (null), or
-  /// the list's own.
-  List<CoilMenuEntry?> get _items {
+  /// the list's own, narrowed by the search text.
+  List<CoilMenuEntry?> _compute() {
     final open = _drilled;
-    return open == null ? widget.entries : [null, ...open.entries];
+    final level = open == null ? widget.entries : [null, ...open.entries];
+    final query = _query.text.trim().toLowerCase();
+    return widget.search == null || query.isEmpty
+        ? level
+        : _filter(level, query);
+  }
+
+  /// The rows of [level] whose labels contain [query], with the headings
+  /// over them and one separator between groups that kept rows.
+  static List<CoilMenuEntry?> _filter(
+    List<CoilMenuEntry?> level,
+    String query,
+  ) {
+    final shown = <CoilMenuEntry?>[];
+    CoilMenuLabel? heading;
+    var gap = false;
+    for (final entry in level) {
+      switch (entry) {
+        case null:
+          shown.add(null);
+        case CoilMenuSeparator():
+          gap = shown.isNotEmpty;
+          heading = null;
+        case final CoilMenuLabel label:
+          heading = label;
+        case CoilAction() || CoilSubmenu()
+            when _labelOf(entry).toLowerCase().contains(query):
+          if (gap) shown.add(const CoilMenuSeparator());
+          if (heading != null) shown.add(heading);
+          shown.add(entry);
+          gap = false;
+          heading = null;
+        case _:
+      }
+    }
+    return shown;
+  }
+
+  /// Recomputes the rows after the entries, the path or the text changed.
+  void _refresh() {
+    _items = _compute();
+    if (_rowKeys.length != _items.length) _rowKeys = _keysFor(_items.length);
+  }
+
+  void _onQuery() {
+    if (_sub != null) _closeSub();
+    setState(_refresh);
+    // The first match is the one Enter picks.
+    if (_query.text.trim().isEmpty) {
+      _active.clear();
+    } else {
+      _active.first(count: _count, isEnabled: _enabled);
+    }
   }
 
   /// The submenu drilled into, if any.
@@ -279,23 +356,25 @@ class _CoilActionListState extends State<CoilActionList>
     super.initState();
     _startKeyboard();
     _active.addListener(_onActive);
+    _query.addListener(_onQuery);
   }
 
   @override
   void didUpdateWidget(CoilActionList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_pathValid) _path.clear();
+    _refresh();
     if (_sub case final sub?
         when sub >= _count || _items[sub] is! CoilSubmenu) {
       _closeSub();
     }
-    if (_rowKeys.length != _count) _rowKeys = _keysFor(_count);
   }
 
   @override
   void dispose() {
     _acknowledge?.cancel();
     _subTimer?.cancel();
+    _query.dispose();
     _active
       ..removeListener(_onActive)
       ..dispose();
@@ -373,7 +452,7 @@ class _CoilActionListState extends State<CoilActionList>
     setState(() {
       // The back row shifts a drilled-into submenu's rows by one.
       _path.add(_path.isEmpty ? i : i - 1);
-      _rowKeys = _keysFor(_count);
+      _refresh();
     });
     _active.clear();
     _startKeyboard();
@@ -389,7 +468,7 @@ class _CoilActionListState extends State<CoilActionList>
     final row = _path.last + (_path.length > 1 ? 1 : 0);
     setState(() {
       _path.removeLast();
-      _rowKeys = _keysFor(_count);
+      _refresh();
     });
     _active.activate(
       keyboard ? row : null,
@@ -548,12 +627,14 @@ class _CoilActionListState extends State<CoilActionList>
             onPressed: action.enabled ? () => _pick(i) : null,
           ),
         );
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-            _active.move(1, count: _count, isEnabled: _enabled),
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-            _active.move(-1, count: _count, isEnabled: _enabled),
+    final searching = widget.search != null;
+    final bindings = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+          _active.move(1, count: _count, isEnabled: _enabled),
+      const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+          _active.move(-1, count: _count, isEnabled: _enabled),
+      // In a search field these keys edit the text.
+      if (!searching) ...{
         SingleActivator(
           rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight,
         ): _forward,
@@ -564,137 +645,165 @@ class _CoilActionListState extends State<CoilActionList>
             _active.first(count: _count, isEnabled: _enabled),
         const SingleActivator(LogicalKeyboardKey.end): () =>
             _active.last(count: _count, isEnabled: _enabled),
-        const SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false):
-            _pickActive,
-        const SingleActivator(
-          LogicalKeyboardKey.numpadEnter,
-          includeRepeats: false,
-        ): _pickActive,
         const SingleActivator(LogicalKeyboardKey.space, includeRepeats: false):
             _pickActive,
-        const SingleActivator(LogicalKeyboardKey.escape): () =>
-            widget.onClose(CoilPopupCloseReason.escape),
-        const SingleActivator(LogicalKeyboardKey.tab): () =>
-            widget.onClose(CoilPopupCloseReason.dismissed),
       },
-      child: ListenableBuilder(
-        listenable: _active,
-        builder: (context, child) {
-          return CoilTypeahead(
-            labels: [for (final entry in items) _labelOf(entry)],
-            current: _active.index,
-            isEnabled: _enabled,
-            onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
-            child: child!,
-          );
-        },
-        child: Focus(
-          autofocus: true,
-          debugLabel: 'CoilActionList',
-          child: Semantics(
-            role: SemanticsRole.menu,
-            child: CoilScrollEdgeFade.solid(
-              color: widget.surface,
-              extent: widget.fadeExtent,
-              child: ScrollConfiguration(
-                behavior: CoilScrollBehavior(
-                  tier: metrics.tier,
-                  look: widget.scrollbar,
-                ),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(metrics.popupInset),
-                  // The region and its layer scroll with the rows, so the
-                  // highlight and the ring stay on their rows.
-                  child: CoilHoverRegion(
-                    activeItem: _active,
-                    followFocus: false,
-                    hold: _hold,
-                    child: ListenableBuilder(
-                      listenable: _active,
-                      builder: (context, rows) {
-                        final ring = CoilHighlight(
-                          debugLabel: 'CoilActionList.ring',
-                          target: _active.keyboardDriven ? _active.index : null,
-                          fadeIn: false,
-                          motion: motion.quick,
-                          exitMotion: motion.fadeExit,
-                          exitTravelMotion: motion.quick,
-                          fade: motion.fade,
-                          inflate: 1 + theme.focusRingWidth,
-                          decoration: ShapeDecoration(
-                            shape: RoundedSuperellipseBorder(
-                              borderRadius: BorderRadius.circular(
-                                theme.shape.radii(metrics.tier).focusRing,
-                              ),
-                              side: BorderSide(
-                                color: theme.colors.focusRing,
-                                width: theme.focusRingWidth,
-                              ),
-                            ),
-                          ),
-                        );
-                        return CoilHoverHighlight(
-                          color: widget.highlight,
-                          radius: radius,
-                          motion: widget.motion,
-                          foreground: [ring],
-                          child: rows!,
-                        );
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final (i, entry) in items.indexed)
-                            switch (entry) {
-                              null => row(
-                                i,
-                                CoilAction(
-                                  label: _drilled!.label,
-                                  leading: const CoilDrawnGlyph(
-                                    CoilGlyph.chevronStart,
-                                  ),
-                                  onPressed: _back,
-                                ),
-                              ),
-                              final CoilAction action => row(i, action),
-                              final CoilSubmenu sub when _touch => row(
-                                i,
-                                _asAction(sub),
-                                trailing: const CoilDrawnGlyph(
-                                  CoilGlyph.chevronEnd,
-                                ),
-                              ),
-                              final CoilSubmenu sub => _subPopover(
-                                i,
-                                sub,
-                                row(
-                                  i,
-                                  _asAction(sub),
-                                  trailing: const CoilDrawnGlyph(
-                                    CoilGlyph.chevronEnd,
-                                  ),
-                                  expanded: _sub == i,
-                                ),
-                              ),
-                              final CoilMenuLabel label => _GroupLabel(
-                                key: _rowKeys[i],
-                                label: label.label,
-                                metrics: metrics,
-                              ),
-                              CoilMenuSeparator() => _Separator(
-                                key: _rowKeys[i],
-                                inset: metrics.popupInset,
-                              ),
-                            },
-                        ],
+      const SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false):
+          _pickActive,
+      const SingleActivator(
+        LogicalKeyboardKey.numpadEnter,
+        includeRepeats: false,
+      ): _pickActive,
+      const SingleActivator(LogicalKeyboardKey.escape): () =>
+          widget.onClose(CoilPopupCloseReason.escape),
+      const SingleActivator(LogicalKeyboardKey.tab): () =>
+          widget.onClose(CoilPopupCloseReason.dismissed),
+    };
+    final list = Semantics(
+      role: SemanticsRole.menu,
+      child: CoilScrollEdgeFade.solid(
+        color: widget.surface,
+        extent: widget.fadeExtent,
+        child: ScrollConfiguration(
+          behavior: CoilScrollBehavior(
+            tier: metrics.tier,
+            look: widget.scrollbar,
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(metrics.popupInset),
+            // The region and its layer scroll with the rows, so the
+            // highlight and the ring stay on their rows.
+            child: CoilHoverRegion(
+              activeItem: _active,
+              followFocus: false,
+              hold: _hold,
+              child: ListenableBuilder(
+                listenable: _active,
+                builder: (context, rows) {
+                  final ring = CoilHighlight(
+                    debugLabel: 'CoilActionList.ring',
+                    target: _active.keyboardDriven ? _active.index : null,
+                    fadeIn: false,
+                    motion: motion.quick,
+                    exitMotion: motion.fadeExit,
+                    exitTravelMotion: motion.quick,
+                    fade: motion.fade,
+                    inflate: 1 + theme.focusRingWidth,
+                    decoration: ShapeDecoration(
+                      shape: RoundedSuperellipseBorder(
+                        borderRadius: BorderRadius.circular(
+                          theme.shape.radii(metrics.tier).focusRing,
+                        ),
+                        side: BorderSide(
+                          color: theme.colors.focusRing,
+                          width: theme.focusRingWidth,
+                        ),
                       ),
                     ),
-                  ),
+                  );
+                  return CoilHoverHighlight(
+                    color: widget.highlight,
+                    radius: radius,
+                    motion: widget.motion,
+                    foreground: [ring],
+                    child: rows!,
+                  );
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final (i, entry) in items.indexed)
+                      switch (entry) {
+                        null => row(
+                          i,
+                          CoilAction(
+                            label: _drilled!.label,
+                            leading: const CoilDrawnGlyph(
+                              CoilGlyph.chevronStart,
+                            ),
+                            onPressed: _back,
+                          ),
+                        ),
+                        final CoilAction action => row(i, action),
+                        final CoilSubmenu sub when _touch => row(
+                          i,
+                          _asAction(sub),
+                          trailing: const CoilDrawnGlyph(
+                            CoilGlyph.chevronEnd,
+                          ),
+                        ),
+                        final CoilSubmenu sub => _subPopover(
+                          i,
+                          sub,
+                          row(
+                            i,
+                            _asAction(sub),
+                            trailing: const CoilDrawnGlyph(
+                              CoilGlyph.chevronEnd,
+                            ),
+                            expanded: _sub == i,
+                          ),
+                        ),
+                        final CoilMenuLabel label => _GroupLabel(
+                          key: _rowKeys[i],
+                          label: label.label,
+                          metrics: metrics,
+                        ),
+                        CoilMenuSeparator() => _Separator(
+                          key: _rowKeys[i],
+                          inset: metrics.popupInset,
+                        ),
+                      },
+                  ],
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+    if (widget.search case final search?) {
+      // The field keeps focus and drives the list. Its shortcuts are off
+      // while an IME composes, so Enter commits the composition first.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SearchField(
+            controller: _query,
+            search: search,
+            metrics: metrics,
+            onSubmitted: _pickActive,
+            shortcuts: {
+              for (final MapEntry(:key, :value) in bindings.entries)
+                key: VoidCallbackIntent(value),
+            },
+          ),
+          const _Separator(inset: 0, padding: EdgeInsets.zero),
+          Flexible(
+            child: items.isEmpty
+                ? _Empty(label: search.emptyLabel, metrics: metrics)
+                : list,
+          ),
+        ],
+      );
+    }
+    return CallbackShortcuts(
+      bindings: bindings,
+      child: ListenableBuilder(
+        listenable: _active,
+        builder: (context, child) => CoilTypeahead(
+          labels: [for (final entry in items) _labelOf(entry)],
+          current: _active.index,
+          isEnabled: _enabled,
+          onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
+          child: child!,
+        ),
+        child: Focus(
+          autofocus: true,
+          debugLabel: 'CoilActionList',
+          child: list,
         ),
       ),
     );
@@ -974,14 +1083,21 @@ class _GroupLabel extends StatelessWidget {
 
 /// A hairline between groups, reaching the popup's edges.
 class _Separator extends StatelessWidget {
-  const _Separator({required this.inset, super.key});
+  const _Separator({
+    required this.inset,
+    super.key,
+    this.padding = const EdgeInsets.symmetric(vertical: 4),
+  });
 
   /// The popup's padding, which the line reaches across.
   final double inset;
 
+  /// The space around the line.
+  final EdgeInsets padding;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
+    padding: padding,
     // Negative side padding reaches across the popup's inset.
     child: PaddingExtended(
       padding: EdgeInsets.symmetric(horizontal: -inset),
@@ -993,4 +1109,87 @@ class _Separator extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// The search field over a filtered list: a borderless line of text that
+/// keeps focus and hands the list's keys to it.
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.search,
+    required this.metrics,
+    required this.shortcuts,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final CoilMenuSearch search;
+  final CoilMetrics metrics;
+  final Map<ShortcutActivator, Intent> shortcuts;
+
+  /// The soft keyboard's search key: picks the active row.
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
+    return Semantics(
+      label: search.hint,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: metrics.controlHeight),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: metrics.popupInset + metrics.itemPaddingX,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            heightFactor: 1,
+            child: CoilTextFieldCore(
+              controller: controller,
+              autofocus: true,
+              placeholder: Text(search.hint),
+              placeholderColor: colors.mutedForeground,
+              style: theme.typography.style(
+                metrics.body,
+                color: colors.foreground,
+              ),
+              cursorColor: colors.foreground,
+              textInputAction: TextInputAction.search,
+              autocorrect: false,
+              onSubmitted: (_) => onSubmitted(),
+              shortcuts: shortcuts,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What a search shows when no row matches.
+class _Empty extends StatelessWidget {
+  const _Empty({required this.label, required this.metrics});
+
+  final String label;
+  final CoilMetrics metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    return Semantics(
+      liveRegion: true,
+      child: Padding(
+        padding: EdgeInsets.all(metrics.popupInset + metrics.itemPaddingX),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: theme.typography.style(
+            metrics.body,
+            color: theme.colors.mutedForeground,
+          ),
+        ),
+      ),
+    );
+  }
 }
