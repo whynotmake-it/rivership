@@ -30,19 +30,16 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     final c = theme.colors;
     final radii = theme.shape.radii(metrics.tier);
     return CoilInputStyle(
-      fill: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.hovered) && !s.contains(WidgetState.focused)
-            ? c.hover
-            : c.hover.withValues(alpha: 0),
-      ),
-      border: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.focused)
-            ? c.foreground.withValues(alpha: 0.4)
-            : s.contains(WidgetState.error)
-            ? c.destructive.withValues(alpha: 0.5)
-            : c.border,
-      ),
+      fill: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.focused: c.hover.withValues(alpha: 0),
+        WidgetState.hovered: c.hover,
+        WidgetState.any: c.hover.withValues(alpha: 0),
+      }),
+      border: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.focused: c.foreground.withValues(alpha: 0.4),
+        WidgetState.error: c.destructive.withValues(alpha: 0.5),
+        WidgetState.any: c.border,
+      }),
       textStyle: theme.typography.style(metrics.field, color: c.foreground),
       placeholder: c.mutedForeground,
       cursorColor: c.foreground,

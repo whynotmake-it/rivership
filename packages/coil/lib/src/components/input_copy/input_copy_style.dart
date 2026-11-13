@@ -46,20 +46,21 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
             ],
           ),
       actionStyle: t.style(metrics.body),
-      actionColor: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.hovered) ? c.foreground : c.mutedForeground,
-      ),
+      actionColor: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.hovered: c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
       copiedColor: c.foreground,
       failedColor: c.destructive,
-      mark: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.hovered) ? mark : mark.withValues(alpha: 0),
-      ),
+      mark: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.hovered: mark,
+        WidgetState.any: mark.withValues(alpha: 0),
+      }),
       markRadius: 2,
-      fill: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.pressed) ? c.active : transparent,
-      ),
+      fill: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.pressed: c.active,
+        WidgetState.any: transparent,
+      }),
       radius: theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,
       iconSize: metrics.iconSize,

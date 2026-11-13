@@ -310,31 +310,33 @@ class _CoilInputState extends State<CoilInput> {
         };
         final border = look.border!.resolve(resolved)!;
         final fill = look.fill!.resolve(resolved)!;
-        return CoilFirstBuild(
-          builder: (_, {required first}) => TrackBuilder(
-            animations: [
-              CoilInputTrack.border([
-                .to(border, motion: _colorMotion(CoilInputTrack.border)),
-              ], from: first ? border : null),
-              CoilInputTrack.fill([
-                .to(fill, motion: _colorMotion(CoilInputTrack.fill)),
-              ], from: first ? fill : null),
-            ],
-            // A minimum height plus symmetric padding: the line box sits
-            // centered and the field grows with the text scale.
-            builder: (context, value, child) => Container(
-              constraints: BoxConstraints(minHeight: look.minHeight!),
-              decoration: ShapeDecoration(
-                color: value(CoilInputTrack.fill),
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: radius,
-                  side: BorderSide(color: value(CoilInputTrack.border)),
-                ),
+        return TrackBuilder(
+          initialValues: [
+            CoilInputTrack.border.value(border),
+            CoilInputTrack.fill.value(fill),
+          ],
+          animations: [
+            CoilInputTrack.border([
+              .to(border, motion: _colorMotion(CoilInputTrack.border)),
+            ]),
+            CoilInputTrack.fill([
+              .to(fill, motion: _colorMotion(CoilInputTrack.fill)),
+            ]),
+          ],
+          // A minimum height plus symmetric padding: the line box sits
+          // centered and the field grows with the text scale.
+          builder: (context, value, child) => Container(
+            constraints: BoxConstraints(minHeight: look.minHeight!),
+            decoration: ShapeDecoration(
+              color: value(CoilInputTrack.fill),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: radius,
+                side: BorderSide(color: value(CoilInputTrack.border)),
               ),
-              child: child,
             ),
             child: child,
           ),
+          child: child,
         );
       },
       child: Padding(
@@ -368,7 +370,7 @@ class _CoilInputState extends State<CoilInput> {
           enabled: widget.enabled,
           trackPress: false,
           child: Opacity(
-            opacity: widget.enabled ? 1 : 0.5,
+            opacity: widget.enabled ? 1 : sizes.disabledOpacity,
             child: CoilTextFieldCore(
               controller: widget.controller,
               focusNode: _focusNode,

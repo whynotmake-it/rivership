@@ -251,77 +251,81 @@ class _CoilButtonState extends State<CoilButton> {
             child: CoilFocusRing(
               visible: states.contains(WidgetState.focused),
               borderRadius: BorderRadius.circular(radius),
-              child: CoilFirstBuild(
-                builder: (_, {required first}) => TrackBuilder(
-                  animations: [
-                    CoilButtonTrack.fill([
-                      .to(
-                        look.fill,
-                        motion: _motionFor(
-                          CoilButtonTrack.fill,
-                          _motion.fade,
-                          spatial: false,
-                        ),
+              child: TrackBuilder(
+                initialValues: [
+                  CoilButtonTrack.fill.value(look.fill),
+                  CoilButtonTrack.label.value(look.label),
+                  CoilButtonTrack.collapse.value(look.spread),
+                  CoilButtonTrack.weight.value(look.iconWeight),
+                ],
+                animations: [
+                  CoilButtonTrack.fill([
+                    .to(
+                      look.fill,
+                      motion: _motionFor(
+                        CoilButtonTrack.fill,
+                        _motion.fade,
+                        spatial: false,
                       ),
-                    ], from: first ? look.fill : null),
-                    CoilButtonTrack.label([
-                      .to(
-                        look.label,
-                        motion: _motionFor(
-                          CoilButtonTrack.label,
-                          _motion.fade,
-                          spatial: false,
-                        ),
+                    ),
+                  ]),
+                  CoilButtonTrack.label([
+                    .to(
+                      look.label,
+                      motion: _motionFor(
+                        CoilButtonTrack.label,
+                        _motion.fade,
+                        spatial: false,
                       ),
-                    ], from: first ? look.label : null),
-                    CoilButtonTrack.collapse([
-                      .to(
-                        look.spread,
-                        motion: _motionFor(
-                          CoilButtonTrack.collapse,
-                          pressing ? _motion.quick : _motion.standard,
-                        ),
+                    ),
+                  ]),
+                  CoilButtonTrack.collapse([
+                    .to(
+                      look.spread,
+                      motion: _motionFor(
+                        CoilButtonTrack.collapse,
+                        pressing ? _motion.quick : _motion.standard,
                       ),
-                    ], from: first ? look.spread : null),
-                    CoilButtonTrack.weight([
-                      .to(
-                        look.iconWeight,
-                        motion: _motionFor(
-                          CoilButtonTrack.weight,
-                          _motion.fade,
-                          spatial: false,
-                        ),
+                    ),
+                  ]),
+                  CoilButtonTrack.weight([
+                    .to(
+                      look.iconWeight,
+                      motion: _motionFor(
+                        CoilButtonTrack.weight,
+                        _motion.fade,
+                        spatial: false,
                       ),
-                    ], from: first ? look.iconWeight : null),
-                  ],
-                  builder: (context, value, _) {
-                    final labelColor = value(CoilButtonTrack.label);
-                    return CustomPaint(
-                      painter: _ButtonSurfacePainter(
-                        fill: value(CoilButtonTrack.fill),
-                        spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
-                        radius: radius,
-                        border: style.border!.a == 0 ? null : style.border,
+                    ),
+                  ]),
+                ],
+                builder: (context, value, _) {
+                  final labelColor = value(CoilButtonTrack.label);
+                  return CustomPaint(
+                    painter: _ButtonSurfacePainter(
+                      fill: value(CoilButtonTrack.fill),
+                      spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
+                      radius: radius,
+                      border: style.border!.a == 0 ? null : style.border,
+                    ),
+                    child: IconTheme(
+                      data: IconThemeData(
+                        size: iconSize,
+                        applyTextScaling: true,
+                        color: labelColor,
+                        weight: value(CoilButtonTrack.weight),
                       ),
-                      child: IconTheme(
-                        data: IconThemeData(
-                          size: iconSize,
-                          applyTextScaling: true,
-                          color: labelColor,
-                          weight: value(CoilButtonTrack.weight),
-                        ),
-                        child: DefaultTextStyle(
-                          style: style.textStyle!.copyWith(color: labelColor),
-                          maxLines: 1,
-                          softWrap: false,
-                          child: iconOnly
-                              ? _iconContent(sizes, style)
-                              : _labelContent(sizes, style),
-                        ),
+                      child: DefaultTextStyle(
+                        style: style.textStyle!.copyWith(color: labelColor),
+                        maxLines: 1,
+                        softWrap: false,
+                        child: iconOnly
+                            ? _iconContent(sizes, style)
+                            : _labelContent(sizes, style),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           );

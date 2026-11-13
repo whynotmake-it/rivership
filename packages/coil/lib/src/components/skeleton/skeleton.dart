@@ -1,4 +1,5 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil/src/components/skeleton/skeleton_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -125,17 +126,13 @@ class CoilSkeleton extends StatelessWidget {
     final Widget block;
     if (_text) {
       // One real line box fixes the height, so N lines are as tall as N
-      // lines of text at any scale and font. The bar sits inside it.
+      // lines of text at any scale and font.
       block = Stack(
         alignment: AlignmentDirectional.centerStart,
         children: [
-          Opacity(
-            opacity: 0,
-            child: Text(
-              ' ',
-              maxLines: 1,
-              style: theme.typography.style(sizes.body),
-            ),
+          CoilLineBox(
+            style: theme.typography.style(sizes.body),
+            child: const SizedBox.shrink(),
           ),
           Positioned.fill(
             child: FractionallySizedBox(

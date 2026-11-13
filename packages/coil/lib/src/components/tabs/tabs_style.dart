@@ -26,12 +26,10 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     return CoilTabsStyle(
       pill: c.active,
       hoverPillOpacity: 0.4,
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      label: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.selected | WidgetState.hovered: c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,

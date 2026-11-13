@@ -1,4 +1,4 @@
-import 'dart:ui' as ui;
+import 'dart:async';
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -109,32 +109,39 @@ class CoilCheckbox extends StatelessWidget {
       sizes,
     ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(style);
     final enabled = onChanged != null;
+    void report() {
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+      onChanged!(_next);
+    }
 
-    return Semantics(
-      container: true,
-      checked: value ?? false,
-      mixed: value == null,
-      enabled: enabled,
-      label: semanticLabel,
-      child: CoilInteraction(
-        onPressed: enabled ? () => onChanged!(_next) : null,
-        focusNode: focusNode,
-        autofocus: autofocus,
-        statesController: statesController,
-        minHitTarget: sizes.minHitTarget,
-        builder: (context, states, _) => Opacity(
-          opacity: enabled ? 1 : sizes.disabledOpacity,
-          child: CoilFocusRing(
-            visible: states.contains(WidgetState.focused),
-            borderRadius: _radiusOf(context, look),
-            child: CoilCheckboxIndicator(
-              value: value,
-              states: {if (invalid) WidgetState.error, ...states},
-              size: size,
-              motion: motion,
-              motions: motions,
-              style: style,
-              glyphBuilder: glyphBuilder,
+    return CoilFieldControl(
+      onLabelTap: enabled ? report : null,
+      child: Semantics(
+        container: true,
+        checked: value ?? false,
+        mixed: value == null,
+        enabled: enabled,
+        label: semanticLabel,
+        child: CoilInteraction(
+          onPressed: enabled ? report : null,
+          focusNode: focusNode,
+          autofocus: autofocus,
+          statesController: statesController,
+          minHitTarget: sizes.minHitTarget,
+          builder: (context, states, _) => Opacity(
+            opacity: enabled ? 1 : sizes.disabledOpacity,
+            child: CoilFocusRing(
+              visible: states.contains(WidgetState.focused),
+              borderRadius: _radiusOf(context, look),
+              child: CoilCheckboxIndicator(
+                value: value,
+                states: {if (invalid) WidgetState.error, ...states},
+                size: size,
+                motion: motion,
+                motions: motions,
+                style: style,
+                glyphBuilder: glyphBuilder,
+              ),
             ),
           ),
         ),
@@ -270,111 +277,67 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
           spatial: false,
         );
 
-    return MotionBuilder<Color>(
-      value: border,
-      motion: motionFor(CoilCheckboxTrack.border, tokens.fade),
-      converter: MotionConverter.colorRgb,
-      builder: (context, borderColor, child) => Container(
-        width: boxSize,
-        height: boxSize,
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: _radiusOf(context, style),
-            side: BorderSide(color: borderColor, width: style.borderWidth!),
+    // The box keeps its size in a stretched parent (a field, a column) and
+    // sits at the start, like text does.
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: MotionBuilder<Color>(
+        value: border,
+        motion: motionFor(CoilCheckboxTrack.border, tokens.fade),
+        converter: MotionConverter.colorRgb,
+        builder: (context, borderColor, child) => Container(
+          width: boxSize,
+          height: boxSize,
+          decoration: ShapeDecoration(
+            shape: RoundedSuperellipseBorder(
+              borderRadius: _radiusOf(context, style),
+              side: BorderSide(color: borderColor, width: style.borderWidth!),
+            ),
           ),
+          child: child,
         ),
-        child: child,
-      ),
-      child: OverflowBox(
-        maxWidth: glyphSize,
-        maxHeight: glyphSize,
-        child: SingleMotionBuilder(
-          key: ValueKey(_generation),
-          value: on ? 1 : 0,
-          // A new glyph shape draws itself in from nothing.
-          from: _generation == 0 ? null : 0,
-          motion: motionFor(
-            CoilCheckboxTrack.glyph,
-            on ? tokens.fade : tokens.fadeExit,
-          ),
-          builder: (context, progress, _) {
-            final builder = widget.glyphBuilder;
-            if (builder != null && _shown != _Glyph.none) {
-              return builder(
-                context,
-                _shown == _Glyph.dash
-                    ? CoilCheckboxGlyph.dash
-                    : CoilCheckboxGlyph.check,
-                progress.clamp(0, 1),
-                style.glyphColor!,
-                glyphSize,
+        child: OverflowBox(
+          maxWidth: glyphSize,
+          maxHeight: glyphSize,
+          child: SingleMotionBuilder(
+            key: ValueKey(_generation),
+            value: on ? 1 : 0,
+            // A new glyph shape draws itself in from nothing.
+            from: _generation == 0 ? null : 0,
+            motion: motionFor(
+              CoilCheckboxTrack.glyph,
+              on ? tokens.fade : tokens.fadeExit,
+            ),
+            builder: (context, progress, _) {
+              final builder = widget.glyphBuilder;
+              if (builder != null && _shown != _Glyph.none) {
+                return builder(
+                  context,
+                  _shown == _Glyph.dash
+                      ? CoilCheckboxGlyph.dash
+                      : CoilCheckboxGlyph.check,
+                  progress.clamp(0, 1),
+                  style.glyphColor!,
+                  glyphSize,
+                );
+              }
+              return IconTheme(
+                data: IconThemeData(
+                  size: glyphSize,
+                  applyTextScaling: false,
+                  color: style.glyphColor,
+                ),
+                child: CoilDrawnGlyph(
+                  _shown == _Glyph.dash ? CoilGlyph.dash : CoilGlyph.check,
+                  progress: progress,
+                ),
               );
-            }
-            return CustomPaint(
-              size: Size.square(glyphSize),
-              painter: _GlyphPainter(
-                glyph: _shown,
-                progress: progress,
-                color: style.glyphColor!,
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );
   }
-}
-
-class _GlyphPainter extends CustomPainter {
-  _GlyphPainter({
-    required this.glyph,
-    required this.progress,
-    required this.color,
-  });
-
-  final _Glyph glyph;
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (glyph == _Glyph.none || progress <= 0) return;
-    // Paths on a 24-unit grid.
-    final path = ui.Path();
-    if (glyph == _Glyph.dash) {
-      path
-        ..moveTo(7, 12)
-        ..lineTo(17, 12);
-    } else {
-      path
-        ..moveTo(6, 12)
-        ..lineTo(10, 16)
-        ..lineTo(18, 8);
-    }
-    final scale = size.width / 24;
-    final drawn = ui.Path();
-    for (final metric in path.computeMetrics()) {
-      drawn.addPath(
-        metric.extractPath(0, metric.length * progress.clamp(0, 1)),
-        Offset.zero,
-      );
-    }
-    canvas
-      ..save()
-      ..scale(scale)
-      ..drawPath(
-        drawn,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      )
-      ..restore();
-  }
-
-  @override
-  bool shouldRepaint(_GlyphPainter old) =>
-      old.glyph != glyph || old.progress != progress || old.color != color;
 }

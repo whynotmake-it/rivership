@@ -538,7 +538,7 @@ class _SelectTrigger extends StatelessWidget {
     final enabled = !states.contains(WidgetState.disabled);
     final radius = BorderRadius.circular(style.radius!);
     return Opacity(
-      opacity: enabled ? 1 : 0.5,
+      opacity: enabled ? 1 : metrics.disabledOpacity,
       child: CoilFocusRing(
         visible: focusRing,
         borderRadius: radius,

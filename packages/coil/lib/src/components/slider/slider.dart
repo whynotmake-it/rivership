@@ -394,7 +394,7 @@ class _CoilSliderState extends State<CoilSlider>
           onTap: () => _change(_scale.valueAt(_downFraction)),
           cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
           child: Opacity(
-            opacity: _enabled ? 1 : 0.5,
+            opacity: _enabled ? 1 : metrics.disabledOpacity,
             child: ListenableBuilder(
               listenable: _states,
               builder: (context, _) => _buildVisuals(

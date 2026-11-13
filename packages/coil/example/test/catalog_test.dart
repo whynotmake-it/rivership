@@ -128,8 +128,6 @@ void main() {
 
   testWidgets(
     'pinning a tier resizes controls',
-    skip: true, // coil bug: CoilButton's weight track starts at 0 when the
-    // tier flips live, and IconThemeData asserts. Unskip once fixed.
     (tester) async {
       final settings = await _pumpCatalog(tester, tier: CatalogTier.pointer);
       final home = tester.element(find.byType(HomePage));

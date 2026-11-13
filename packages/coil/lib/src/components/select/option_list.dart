@@ -426,7 +426,7 @@ class _OptionRowState extends State<_OptionRow> {
       excludeSemantics: true,
       onTap: onPressed,
       child: Opacity(
-        opacity: option.enabled ? 1 : (fullEmphasis ? 0.4 : 0.5),
+        opacity: option.enabled ? 1 : metrics.disabledRowOpacity,
         // Rows aren't focus stops: the list holds focus and the active item
         // says which row Enter picks. So the detector, not CoilInteraction.
         child: CoilInteractionDetector(
@@ -526,7 +526,6 @@ class _Check extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = IconTheme.of(context);
     final motion = CoilTheme.motionOf(context);
     return SizedBox.square(
       dimension: CoilIconSize.of(context),
@@ -538,42 +537,9 @@ class _Check extends StatelessWidget {
         builder: (context, progress, glyph) {
           final t = progress.clamp(0.0, 1.0);
           if (glyph != null) return Opacity(opacity: t, child: glyph);
-          return CustomPaint(
-            painter: _CheckPainter(t, icons.color ?? const Color(0xFF000000)),
-          );
+          return CoilDrawnGlyph(CoilGlyph.check, progress: t);
         },
       ),
     );
   }
-}
-
-class _CheckPainter extends CustomPainter {
-  _CheckPainter(this.progress, this.color);
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0) return;
-    final s = size.width / 24;
-    final path = Path()
-      ..moveTo(4 * s, 12 * s)
-      ..lineTo(9 * s, 17 * s)
-      ..lineTo(20 * s, 6 * s);
-    final metric = path.computeMetrics().first;
-    canvas.drawPath(
-      metric.extractPath(0, metric.length * progress),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * s
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CheckPainter old) =>
-      old.progress != progress || old.color != color;
 }

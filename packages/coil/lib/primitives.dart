@@ -10,7 +10,6 @@ export 'src/primitives/choice_item.dart';
 export 'src/primitives/choice_row.dart';
 export 'src/primitives/drawn_glyph.dart';
 export 'src/primitives/field_scope.dart';
-export 'src/primitives/first_build.dart';
 export 'src/primitives/focus_ring.dart';
 export 'src/primitives/highlight.dart';
 export 'src/primitives/hover.dart';

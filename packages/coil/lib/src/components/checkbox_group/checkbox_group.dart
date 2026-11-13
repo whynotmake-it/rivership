@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:coil/checkbox.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -131,11 +133,14 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
           final checked = values.contains(option.value);
           final onPressed = onChanged == null || !option.enabled
               ? null
-              : () => onChanged!(
-                  checked
-                      ? ({...values}..remove(option.value))
-                      : {...values, option.value},
-                );
+              : () {
+                  unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+                  onChanged!(
+                    checked
+                        ? ({...values}..remove(option.value))
+                        : {...values, option.value},
+                  );
+                };
           return Semantics(
             container: true,
             checked: checked,

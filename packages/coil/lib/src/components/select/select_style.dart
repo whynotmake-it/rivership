@@ -27,29 +27,28 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
   factory CoilSelectStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     return CoilSelectStyle(
-      triggerFill: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.pressed)
-            ? c.active
-            : s.contains(WidgetState.hovered) &&
-                  !s.contains(WidgetState.selected)
-            ? c.hover
-            : c.hover.withValues(alpha: 0),
-      ),
+      triggerFill: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.pressed: c.active,
+        WidgetState.selected: c.hover.withValues(alpha: 0),
+        WidgetState.hovered: c.hover,
+        WidgetState.any: c.hover.withValues(alpha: 0),
+      }),
       triggerBorder: c.border,
-      indicator: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.hovered) && !s.contains(WidgetState.selected)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      indicator: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.selected: c.mutedForeground,
+        WidgetState.hovered: c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
       textStyle: theme.typography.style(metrics.body, color: c.foreground),
       placeholder: c.mutedForeground,
       radius: theme.shape.radii(metrics.tier).item,
       selectedFill: c.active,
       highlight: c.hover,
-      rowLabel: WidgetStateProperty.resolveWith(
-        (s) => s.isEmpty ? c.mutedForeground : c.foreground,
-      ),
+      rowLabel: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.selected | WidgetState.hovered | WidgetState.focused:
+            c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
     );
   }
 

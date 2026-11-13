@@ -132,6 +132,28 @@ void main() {
       expect(tester.testTextInput.hasAnyClients, isTrue);
     });
 
+    for (final MapEntry(key: name, value: control)
+        in <String, Widget Function(ValueChanged<Object?> changed)>{
+          'switch': (changed) => CoilSwitch(value: false, onChanged: changed),
+          'checkbox': (changed) =>
+              CoilCheckbox(value: false, onChanged: changed),
+        }.entries) {
+      testWidgets('a tap on the label flips a $name', (tester) async {
+        Object? changedTo;
+        await tester.pumpWidget(
+          _app(
+            CoilField(
+              label: const Text('Notifications'),
+              child: control((value) => changedTo = value),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Notifications'));
+        await tester.pump();
+        expect(changedTo, isTrue);
+      });
+    }
+
     testWidgets('a disabled control ignores label taps', (tester) async {
       final focus = FocusNode();
       addTearDown(focus.dispose);

@@ -1,6 +1,8 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+import 'dart:async';
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/switch/switch_style.dart';
@@ -236,7 +238,12 @@ class _CoilSwitchState extends State<CoilSwitch>
       _dragDecided = false;
       return;
     }
-    widget.onChanged?.call(!widget.value);
+    _report(!widget.value);
+  }
+
+  void _report(bool value) {
+    unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+    widget.onChanged?.call(value);
   }
 
   void _dragStart(DragStartDetails _) {
@@ -267,7 +274,7 @@ class _CoilSwitchState extends State<CoilSwitch>
     final on = _decidesOn(_controller.value(_thumb), speed);
     if (on != widget.value) {
       _dragDecided = true;
-      widget.onChanged?.call(on);
+      _report(on);
     }
     // Spring to the decided side right away from the release velocity. If
     // the parent accepts the change, its rebuild keeps this target.
@@ -314,76 +321,81 @@ class _CoilSwitchState extends State<CoilSwitch>
         })!;
         return Opacity(
           opacity: _enabled ? 1 : sizes.disabledOpacity,
-          child: CoilFirstBuild(
-            builder: (_, {required first}) => TrackBuilder(
-              animations: [
-                CoilSwitchTrack.hover([
-                  .to(hovered ? 1 : 0, motion: _hoverMotion),
-                ], from: first ? (hovered ? 1 : 0) : null),
-                CoilSwitchTrack.label([
-                  .to(labelColor, motion: _labelMotion),
-                ], from: first ? labelColor : null),
-              ],
-              builder: (context, value, _) {
-                final track = CoilFocusRing(
-                  visible: states.contains(WidgetState.focused),
-                  borderRadius: BorderRadius.circular(style.radius!),
-                  offset: 2,
-                  child: ListenableBuilder(
-                    listenable: _controller,
-                    builder: (context, _) => _SwitchTrack(
-                      metrics: m,
-                      style: style,
-                      sharp: sharp,
-                      thumb: _controller.value(_thumb),
-                      squish: _controller.value(_squish).clamp(0, 1),
-                      tint: _controller.value(_tint).clamp(0, 1),
-                      hover: value(CoilSwitchTrack.hover).clamp(0, 1),
-                    ),
+          child: TrackBuilder(
+            initialValues: [
+              CoilSwitchTrack.hover.value(hovered ? 1.0 : 0.0),
+              CoilSwitchTrack.label.value(labelColor),
+            ],
+            animations: [
+              CoilSwitchTrack.hover([
+                .to(hovered ? 1 : 0, motion: _hoverMotion),
+              ]),
+              CoilSwitchTrack.label([
+                .to(labelColor, motion: _labelMotion),
+              ]),
+            ],
+            builder: (context, value, _) {
+              final track = CoilFocusRing(
+                visible: states.contains(WidgetState.focused),
+                borderRadius: BorderRadius.circular(style.radius!),
+                offset: 2,
+                child: ListenableBuilder(
+                  listenable: _controller,
+                  builder: (context, _) => _SwitchTrack(
+                    metrics: m,
+                    style: style,
+                    sharp: sharp,
+                    thumb: _controller.value(_thumb),
+                    squish: _controller.value(_squish).clamp(0, 1),
+                    tint: _controller.value(_tint).clamp(0, 1),
+                    hover: value(CoilSwitchTrack.hover).clamp(0, 1),
                   ),
-                );
-                if (label == null) return track;
-                return Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: sizes.controlPaddingX,
-                    vertical: sizes.switchRowPaddingY,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: sizes.gap,
-                    children: [
-                      track,
-                      DefaultTextStyle(
-                        style: style.textStyle!.copyWith(
-                          color: value(CoilSwitchTrack.label),
-                        ),
-                        child: label,
+                ),
+              );
+              if (label == null) return track;
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: sizes.controlPaddingX,
+                  vertical: sizes.switchRowPaddingY,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: sizes.gap,
+                  children: [
+                    track,
+                    DefaultTextStyle(
+                      style: style.textStyle!.copyWith(
+                        color: value(CoilSwitchTrack.label),
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                      child: label,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
     );
 
-    return MotorInspectionScope(
-      group: 'CoilSwitch',
-      child: Semantics(
-        container: true,
-        toggled: widget.value,
-        enabled: _enabled,
-        label: widget.semanticLabel,
-        child: GestureDetector(
-          // Dragging is a pointer nicety; it is not a scroll action.
-          excludeFromSemantics: true,
-          onHorizontalDragStart: _dragStart,
-          onHorizontalDragUpdate: (details) => _dragUpdate(details, travel),
-          onHorizontalDragEnd: (details) => _dragEnd(details, travel),
-          onHorizontalDragCancel: _dragCancel,
-          child: pressable,
+    return CoilFieldControl(
+      onLabelTap: _enabled ? () => _report(!widget.value) : null,
+      child: MotorInspectionScope(
+        group: 'CoilSwitch',
+        child: Semantics(
+          container: true,
+          toggled: widget.value,
+          enabled: _enabled,
+          label: widget.semanticLabel,
+          child: GestureDetector(
+            // Dragging is a pointer nicety; it is not a scroll action.
+            excludeFromSemantics: true,
+            onHorizontalDragStart: _dragStart,
+            onHorizontalDragUpdate: (details) => _dragUpdate(details, travel),
+            onHorizontalDragEnd: (details) => _dragEnd(details, travel),
+            onHorizontalDragCancel: _dragCancel,
+            child: pressable,
+          ),
         ),
       ),
     );

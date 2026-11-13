@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/toggle_group/toggle_group_style.dart';
@@ -121,11 +123,14 @@ class CoilToggleGroup<T> extends StatelessWidget {
           final selected = values.contains(option.value);
           final onPressed = onChanged == null || !option.enabled
               ? null
-              : () => onChanged!(
-                  selected
-                      ? ({...values}..remove(option.value))
-                      : {...values, option.value},
-                );
+              : () {
+                  unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+                  onChanged!(
+                    selected
+                        ? ({...values}..remove(option.value))
+                        : {...values, option.value},
+                  );
+                };
           return Semantics(
             container: true,
             selected: selected,

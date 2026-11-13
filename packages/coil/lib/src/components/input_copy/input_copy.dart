@@ -313,57 +313,61 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                 _motionFor(track, motion.fade, spatial: false);
 
             return Opacity(
-              opacity: widget.enabled ? 1 : 0.5,
+              opacity: widget.enabled ? 1 : sizes.disabledOpacity,
               child: CoilFocusRing(
                 visible: states.contains(WidgetState.focused),
                 borderRadius: radius,
                 child: MotorInspectionScope(
                   group: 'CoilInputCopy',
-                  child: CoilFirstBuild(
-                    builder: (_, {required first}) => TrackBuilder(
-                      animations: [
-                        CoilInputCopyTrack.fill([
-                          .to(fill, motion: fade(CoilInputCopyTrack.fill)),
-                        ], from: first ? fill : null),
-                        CoilInputCopyTrack.mark([
-                          .to(mark, motion: fade(CoilInputCopyTrack.mark)),
-                        ], from: first ? mark : null),
-                        CoilInputCopyTrack.action([
-                          .to(action, motion: fade(CoilInputCopyTrack.action)),
-                        ], from: first ? action : null),
-                        CoilInputCopyTrack.weight([
-                          .to(weight, motion: fade(CoilInputCopyTrack.weight)),
-                        ], from: first ? weight : null),
-                      ],
-                      builder: (context, value, _) => _Row(
+                  child: TrackBuilder(
+                    initialValues: [
+                      CoilInputCopyTrack.fill.value(fill),
+                      CoilInputCopyTrack.mark.value(mark),
+                      CoilInputCopyTrack.action.value(action),
+                      CoilInputCopyTrack.weight.value(weight),
+                    ],
+                    animations: [
+                      CoilInputCopyTrack.fill([
+                        .to(fill, motion: fade(CoilInputCopyTrack.fill)),
+                      ]),
+                      CoilInputCopyTrack.mark([
+                        .to(mark, motion: fade(CoilInputCopyTrack.mark)),
+                      ]),
+                      CoilInputCopyTrack.action([
+                        .to(action, motion: fade(CoilInputCopyTrack.action)),
+                      ]),
+                      CoilInputCopyTrack.weight([
+                        .to(weight, motion: fade(CoilInputCopyTrack.weight)),
+                      ]),
+                    ],
+                    builder: (context, value, _) => _Row(
+                      style: style,
+                      sizes: sizes,
+                      fill: value(CoilInputCopyTrack.fill),
+                      align: widget.align,
+                      value: _Value(
+                        text: widget.value,
                         style: style,
-                        sizes: sizes,
-                        fill: value(CoilInputCopyTrack.fill),
-                        align: widget.align,
-                        value: _Value(
-                          text: widget.value,
-                          style: style,
-                          mark: value(CoilInputCopyTrack.mark),
+                        mark: value(CoilInputCopyTrack.mark),
+                      ),
+                      action: _Action(
+                        status: _status,
+                        generation: _generation,
+                        variant: widget.variant,
+                        icon: widget.icon,
+                        labels: widget.labels,
+                        style: style,
+                        color: value(CoilInputCopyTrack.action),
+                        weight: value(CoilInputCopyTrack.weight),
+                        swapIn: _motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quick,
                         ),
-                        action: _Action(
-                          status: _status,
-                          generation: _generation,
-                          variant: widget.variant,
-                          icon: widget.icon,
-                          labels: widget.labels,
-                          style: style,
-                          color: value(CoilInputCopyTrack.action),
-                          weight: value(CoilInputCopyTrack.weight),
-                          swapIn: _motionFor(
-                            CoilInputCopyTrack.swap,
-                            motion.quick,
-                          ),
-                          swapOut: _motionFor(
-                            CoilInputCopyTrack.swap,
-                            motion.quickExit,
-                          ),
-                          draw: fade(CoilInputCopyTrack.draw),
+                        swapOut: _motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quickExit,
                         ),
+                        draw: fade(CoilInputCopyTrack.draw),
                       ),
                     ),
                   ),

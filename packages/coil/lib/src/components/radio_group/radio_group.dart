@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show SemanticsRole;
 
 import 'package:coil/foundation.dart';
@@ -143,13 +144,18 @@ class CoilRadioGroup<T> extends StatelessWidget {
         fadeMotion: tokens.fade,
         // Arrows move focus; landing on a row selects it.
         onFocusMoved: (v) {
-          if (v != value) onChanged!(v);
+          if (v == value) return;
+          unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+          onChanged!(v);
         },
         itemBuilder: (context, option, node, states) {
           final checked = option.value == value;
           final onPressed = onChanged == null || !option.enabled
               ? null
-              : () => onChanged!(option.value);
+              : () {
+                  unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+                  onChanged!(option.value);
+                };
           return Semantics(
             container: true,
             inMutuallyExclusiveGroup: true,
