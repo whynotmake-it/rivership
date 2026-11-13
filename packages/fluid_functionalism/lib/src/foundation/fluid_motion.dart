@@ -4,7 +4,19 @@ import 'package:motor/motor.dart';
 
 /// The motion tokens of Fluid Functionalism, as runtime theme data.
 ///
-/// Defaults come from `lib/springs.ts`: each tier is an ENTER spring
+/// Defaults come from `lib/springs.ts`, converted exactly. motion.dev's
+/// spring `duration` is the time to settle to 0.1%; Motor's
+/// [CupertinoMotion] duration is the spring's period (2π/ω₀). The springs
+/// below carry the exact stiffness and damping motion.dev's `findSpring`
+/// computes for `{duration: 0.08 / 0.16 / 0.24, bounce: 0 / 0 / 0.12}`
+/// (periods 54.439 / 108.877 / 176.360 ms; research/02-foundations.md
+/// §7.2–7.3). They are written as [SpringDescription]s rather than
+/// `CupertinoMotion(duration:)` because Flutter's
+/// `SpringDescription.withDurationAndBounce` truncates the duration to
+/// whole milliseconds, which would make `fast` 1.6% stiff. Exit tweens
+/// without an explicit ease default to motion.dev's `easeInOut`.
+///
+/// Each tier is an ENTER spring
 /// (critically damped, except [slow] which keeps a little bounce) with a
 /// matching EXIT tween one tier quicker and without bounce, so a dismissal
 /// reads as crisp and final. The bigger the thing that moves, the slower
@@ -19,33 +31,46 @@ import 'package:motor/motor.dart';
 class FluidMotionThemeData with Diagnosticable {
   /// Creates motion tokens. Every token defaults to the web's value.
   const FluidMotionThemeData({
-    this.fast = const CupertinoMotion(duration: Duration(milliseconds: 80)),
+    this.fast = const Motion.customSpring(
+      SpringDescription(
+        mass: 1,
+        stiffness: 13321.238191737151,
+        damping: 230.83533691128966,
+      ),
+    ),
     this.fastExit = const CurvedMotion(
       Duration(milliseconds: 60),
-      Curves.easeOut,
+      Curves.easeInOut,
     ),
-    this.moderate = const CupertinoMotion(
-      duration: Duration(milliseconds: 160),
+    this.moderate = const Motion.customSpring(
+      SpringDescription(
+        mass: 1,
+        stiffness: 3330.309547934288,
+        damping: 115.41766845564483,
+      ),
     ),
     this.moderateExit = const CurvedMotion(
       Duration(milliseconds: 120),
-      Curves.easeOut,
+      Curves.easeInOut,
     ),
-    this.slow = const CupertinoMotion(
-      duration: Duration(milliseconds: 240),
-      bounce: 0.12,
+    this.slow = const Motion.customSpring(
+      SpringDescription(
+        mass: 1,
+        stiffness: 1269.281572731934,
+        damping: 62.70348155959475,
+      ),
     ),
     this.slowExit = const CurvedMotion(
       Duration(milliseconds: 160),
-      Curves.easeOut,
+      Curves.easeInOut,
     ),
     this.fade = const CurvedMotion(
       Duration(milliseconds: 80),
-      Curves.easeOut,
+      Curves.easeInOut,
     ),
     this.color = const CurvedMotion(
       Duration(milliseconds: 80),
-      Cubic(0.4, 0, 0.2, 1),
+      Curves.fastOutSlowIn,
     ),
     this.press = const CurvedMotion(
       Duration(milliseconds: 80),
@@ -66,30 +91,34 @@ class FluidMotionThemeData with Diagnosticable {
   });
 
   /// Small, fast movements: the hover highlight, focus rings, label
-  /// reveals, hover tints. `spring.fast`: 0.08 s, bounce 0.
+  /// reveals, hover tints. `spring.fast` {0.08 s settle, bounce 0}: period
+  /// 54.439 ms (k 13321.24, c 230.835).
   final Motion fast;
 
-  /// Exit of [fast]: a 0.06 s tween.
+  /// Exit of [fast]: a 0.06 s `easeInOut` tween.
   final Motion fastExit;
 
   /// Short travel that must land exactly: the tabs' selected pill, the
-  /// switch thumb. `spring.moderate`: 0.16 s, bounce 0.
+  /// switch thumb, merge/split. `spring.moderate` {0.16 s, bounce 0}:
+  /// period 108.877 ms (k 3330.31, c 115.418).
   final Motion moderate;
 
-  /// Exit of [moderate]: a 0.12 s tween.
+  /// Exit of [moderate]: a 0.12 s `easeInOut` tween.
   final Motion moderateExit;
 
-  /// The largest things that move (panels, sheets). `spring.slow`: 0.24 s,
-  /// bounce 0.12.
+  /// The largest things that move (panels, sheets). `spring.slow`
+  /// {0.24 s, bounce 0.12}: period 176.360 ms (k 1269.28, c 62.703).
   final Motion slow;
 
-  /// Exit of [slow]: a 0.16 s tween.
+  /// Exit of [slow]: a 0.16 s `easeInOut` tween.
   final Motion slowExit;
 
-  /// Opacity fades that accompany the springs (`opacity: { duration: 0.08 }`).
+  /// Opacity fades that accompany the springs (`{duration: 0.08}`, which
+  /// motion.dev eases `easeInOut`).
   final Motion fade;
 
-  /// Color state changes (`transition-colors duration-80`).
+  /// Color state changes (`transition-colors duration-80`, Tailwind's
+  /// `cubic-bezier(.4,0,.2,1)` = [Curves.fastOutSlowIn]).
   final Motion color;
 
   /// The button's press-collapse while pressing.
