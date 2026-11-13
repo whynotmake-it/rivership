@@ -346,11 +346,7 @@ class _RowState extends State<_Row> {
       excludeSemantics: true,
       onTap: widget.onPressed,
       child: Opacity(
-        opacity: enabled
-            ? 1
-            : touch
-            ? theme.disabledEmphasisOpacity
-            : theme.disabledOpacity,
+        opacity: enabled ? 1 : widget.metrics.disabledRowOpacity,
         // Rows aren't focus stops: the list holds focus and the active item
         // says which row Enter picks.
         child: CoilInteractionDetector(

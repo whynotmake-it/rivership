@@ -278,7 +278,10 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
 
     return MotorInspectionScope(
       group: 'CoilAccordion',
-      child: CoilRovingFocus.everyItem(
+      child: CoilRovingFocus(
+        tabStop: null,
+        tabStops: CoilRovingTabStops.each,
+        axis: Axis.vertical,
         nodes: [for (final item in items) _nodes[item.value]!],
         child: list,
       ),

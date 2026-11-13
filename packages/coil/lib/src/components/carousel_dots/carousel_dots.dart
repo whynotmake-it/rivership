@@ -284,7 +284,7 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
           trackPress: false,
           child: ExcludeSemantics(
             child: Opacity(
-              opacity: enabled ? 1 : theme.disabledOpacity,
+              opacity: enabled ? 1 : metrics.disabledOpacity,
               child: strip,
             ),
           ),

@@ -328,6 +328,7 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
                   size: glyphSize,
                   applyTextScaling: false,
                   color: style.glyphColor,
+                  weight: CoilIconWeight.emphasis,
                 ),
                 child: CoilDrawnGlyph(
                   _shown == _Glyph.dash ? CoilGlyph.dash : CoilGlyph.check,

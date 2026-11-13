@@ -586,15 +586,19 @@ class _TabStripState extends State<_TabStrip> {
         onNotification: (n) => onMetrics(n.metrics),
         child: ValueListenableBuilder<_Overflow>(
           valueListenable: overflow,
-          child: SingleChildScrollView(
-            key: _scrollKey,
-            controller: controller,
-            physics: widget.physics,
-            scrollDirection: Axis.horizontal,
-            // The focus ring paints just outside the tabs; only the ends
-            // are clipped (below).
-            clipBehavior: Clip.none,
-            child: widget.child,
+          child: CoilScrollEdgeFade(
+            axis: Axis.horizontal,
+            extent: widget.edgeFade,
+            child: SingleChildScrollView(
+              key: _scrollKey,
+              controller: controller,
+              physics: widget.physics,
+              scrollDirection: Axis.horizontal,
+              // The focus ring paints just outside the tabs; only the ends
+              // are clipped (below).
+              clipBehavior: Clip.none,
+              child: widget.child,
+            ),
           ),
           builder: (context, o, child) {
             // An end with nothing more behind it lets the focus ring bleed.
@@ -609,28 +613,7 @@ class _TabStripState extends State<_TabStrip> {
               ),
               child: child,
             );
-            if (o == _Overflow.none) return clipped;
-            return ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (rect) {
-                final before = (o.before / widget.edgeFade).clamp(0.0, 1.0);
-                final after = (o.after / widget.edgeFade).clamp(0.0, 1.0);
-                final fade = (widget.edgeFade / rect.width).clamp(0.0, 0.5);
-                const opaque = Color(0xFF000000);
-                return LinearGradient(
-                  begin: AlignmentDirectional.centerStart,
-                  end: AlignmentDirectional.centerEnd,
-                  colors: [
-                    opaque.withValues(alpha: 1 - before),
-                    opaque,
-                    opaque,
-                    opaque.withValues(alpha: 1 - after),
-                  ],
-                  stops: [0, fade, 1 - fade, 1],
-                ).createShader(rect, textDirection: direction);
-              },
-              child: clipped,
-            );
+            return clipped;
           },
         ),
       ),

@@ -34,6 +34,7 @@ class ChatMessageMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = theme.metrics.resolve(CoilTier.touch, CoilSize.regular);
+    // TODO(surface-scope): read the popover's surface from the scope.
     final surface = theme.colors.surface(3);
     final scroll = CoilScrollAreaStyle.fallback(
       theme,

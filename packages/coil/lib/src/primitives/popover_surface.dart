@@ -3,8 +3,8 @@ import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/widgets.dart';
 
 /// The raised surface a popover's content sits on: a [CoilSurface] two
-/// levels above its anchor with the level-3 shadow, corners concentric with the rows inside, as wide as its
-/// widest row.
+/// levels up with the level-3 shadow. Its corners are concentric with the
+/// rows inside, and it is as wide as its widest row.
 class CoilPopoverSurface extends StatelessWidget {
   /// Creates a popover surface.
   const CoilPopoverSurface({

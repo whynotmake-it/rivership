@@ -78,7 +78,6 @@ class CrumbLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     final enabled = onPressed != null;
     final radius = BorderRadius.circular(style.radius!);
     return Semantics(
@@ -100,7 +99,7 @@ class CrumbLink extends StatelessWidget {
               ? style.pressFill!
               : style.pressFill!.withValues(alpha: 0);
           return Opacity(
-            opacity: enabled ? 1 : theme.disabledOpacity,
+            opacity: enabled ? 1 : metrics.disabledOpacity,
             child: CoilHoverItem(
               index: index,
               enabled: enabled,

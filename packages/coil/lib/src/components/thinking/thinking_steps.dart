@@ -246,9 +246,7 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
               mainAxisSize: MainAxisSize.min,
               // Touch triggers rest at full foreground, so a disabled one
               // fades further.
-              disabledOpacity: metrics.tier == CoilTier.touch
-                  ? theme.disabledEmphasisOpacity
-                  : theme.disabledOpacity,
+              disabledOpacity: metrics.disabledRowOpacity,
               focusRingOffset: style.focusRingOffset,
               chevronMotion: _track(
                 CoilThinkingStepsTrack.chevron,

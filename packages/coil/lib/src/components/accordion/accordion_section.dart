@@ -75,7 +75,6 @@ class AccordionSection<T> extends StatelessWidget {
       token: token,
       spatial: spatial,
     );
-    final theme = CoilTheme.of(context);
     // Unique per item, so the trigger can point screen readers at its panel.
     final panelId = 'CoilAccordion.panel.${identityHashCode(focusNode)}';
 
@@ -101,9 +100,7 @@ class AccordionSection<T> extends StatelessWidget {
       iconSize: metrics.iconSize,
       minHitTarget: metrics.minHitTarget,
       // Touch rows rest at full foreground, so disabled ones fade further.
-      disabledOpacity: metrics.tier == CoilTier.touch
-          ? theme.disabledEmphasisOpacity
-          : theme.disabledOpacity,
+      disabledOpacity: metrics.disabledRowOpacity,
       // The group draws one shared ring instead.
       focusRingOffset: group ? null : style.focusRingOffset,
       chevronMotion: track(

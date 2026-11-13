@@ -219,9 +219,10 @@ class _CoilCardState extends State<CoilCard> {
           metrics: metrics,
           reserveEnd: widget.onDismissed == null
               ? 0
-              : CoilMetrics.resolve(
-                  metrics.tier,
-                  CoilSize.compact,
+              : CoilTheme.metricsOf(
+                  context,
+                  tier: metrics.tier,
+                  size: CoilSize.compact,
                 ).controlHeight,
         ),
         if (widget.onDismissed != null)

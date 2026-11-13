@@ -269,13 +269,13 @@ void main() {
       expect(await darknessAt(tester, 300 - 14), lessThan(.8));
 
       _position(tester).jumpTo(146);
-      await tester.pump();
+      await settle(tester);
       for (final x in [14.0, 300 - 14.0]) {
         expect(await darknessAt(tester, x), inExclusiveRange(.35, .8));
       }
 
       _position(tester).jumpTo(_position(tester).maxScrollExtent);
-      await tester.pump();
+      await settle(tester);
       expect(await darknessAt(tester, 300 - 14), greaterThan(.9));
       expect(await darknessAt(tester, 14), lessThan(.8));
     });

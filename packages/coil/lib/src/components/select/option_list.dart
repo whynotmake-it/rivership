@@ -537,7 +537,10 @@ class _Check extends StatelessWidget {
         builder: (context, progress, glyph) {
           final t = progress.clamp(0.0, 1.0);
           if (glyph != null) return Opacity(opacity: t, child: glyph);
-          return CoilDrawnGlyph(CoilGlyph.check, progress: t);
+          return IconTheme.merge(
+            data: const IconThemeData(weight: CoilIconWeight.emphasis),
+            child: CoilDrawnGlyph(CoilGlyph.check, progress: t),
+          );
         },
       ),
     );

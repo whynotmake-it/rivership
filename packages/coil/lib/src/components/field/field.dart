@@ -337,7 +337,12 @@ class _FieldError extends StatelessWidget {
               weight: CoilIconWeight.rest,
             ),
             child: ExcludeSemantics(
-              child: icon ?? const CoilDrawnGlyph(CoilGlyph.alert),
+              child:
+                  icon ??
+                  IconTheme.merge(
+                    data: const IconThemeData(weight: CoilIconWeight.emphasis),
+                    child: const CoilDrawnGlyph(CoilGlyph.alert),
+                  ),
             ),
           ),
         ),

@@ -31,8 +31,9 @@ enum CoilGlyph {
 ///
 /// It sizes, colors and weighs itself like an `Icon`, from the ambient
 /// [IconTheme] and scaled with text: the stroke is 1.5 at
-/// [CoilIconWeight.rest], 2 at [CoilIconWeight.emphasis] or with no
-/// weight. [progress] draws the strokes in from 0 (nothing) to 1
+/// [CoilIconWeight.rest] and 2 at [CoilIconWeight.emphasis]. Indicators
+/// (a checkbox tick, a select check, a field alert) draw at emphasis.
+/// [progress] draws the strokes in from 0 (nothing) to 1
 /// (complete), for a glyph that animates in.
 class CoilDrawnGlyph extends StatelessWidget {
   /// Creates a drawn glyph.
@@ -55,10 +56,9 @@ class CoilDrawnGlyph extends StatelessWidget {
         glyph,
         progress.clamp(0, 1),
         color ?? IconTheme.of(context).color ?? const Color(0xFF000000),
-        stroke:
-            1.5 *
-            (IconTheme.of(context).weight ?? CoilIconWeight.emphasis) /
-            CoilIconWeight.rest,
+        // Like a stroke icon: 1.5 at rest, 2 at emphasis. IconTheme.of
+        // always supplies a weight (400 when nothing sets one).
+        stroke: 1.5 * IconTheme.of(context).weight! / CoilIconWeight.rest,
         rtl: Directionality.maybeOf(context) == TextDirection.rtl,
       ),
     ),

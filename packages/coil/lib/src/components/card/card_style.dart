@@ -40,6 +40,7 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     final light = c.brightness == Brightness.light;
     final typography = theme.typography;
     return CoilCardStyle(
+      // TODO(surface-scope): take the elevation from the surface scope.
       surface: c.surface(light ? 3 : 2),
       border: light ? BorderSide.none : BorderSide(color: c.border),
       shadows: light ? c.shadow(3) : const [],

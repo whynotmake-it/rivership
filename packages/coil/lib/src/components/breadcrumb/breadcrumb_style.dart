@@ -45,6 +45,7 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
       separatorSize: 14,
       highlight: c.hover,
       pressFill: c.active,
+      // TODO(surface-scope): take the elevation from the surface scope.
       surface: c.surface(3),
       radius: theme.shape.radii(metrics.tier).item,
       textStyle: theme.typography.style(metrics.body),
