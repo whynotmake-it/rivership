@@ -89,7 +89,7 @@ void main() {
         ),
       );
       final finder = await pumpSheet(tester, sheet);
-      await expectLater(finder, matchesGoldenFile('goldens/button.png'));
+      await expectSheetGolden(tester, finder, 'goldens/button.png');
     });
 
     testWidgets('activates on tap, Enter and Space', (tester) async {

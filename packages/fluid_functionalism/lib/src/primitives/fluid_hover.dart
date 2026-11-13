@@ -1,4 +1,5 @@
 import 'package:fluid_functionalism/src/primitives/fluid_highlight.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
@@ -223,33 +224,62 @@ class _FluidHoverRegionState extends State<FluidHoverRegion> {
     return best;
   }
 
+  // Only pointers that can really hover light items: a touch never leaves
+  // a highlight behind where the finger lifted.
   void _onEnter(PointerEnterEvent event) {
+    if (!FluidInputModality.canHover(event.kind)) return;
     _pointerInside = true;
     _sessionPending = true;
   }
 
   void _onHover(PointerHoverEvent event) {
+    if (!FluidInputModality.canHover(event.kind)) return;
     if (!_pointerInside) _onEnter(PointerEnterEvent.fromMouseEvent(event));
     final index = _hitTest(event.localPosition);
-    // Over empty space without `nearest`, the highlight leaves: a focused
-    // item keeps it though, like the web's blur handling.
-    _setActive(index ?? (widget.followFocus ? _focusedIndex : null));
+    // Over empty space without `nearest`, the highlight leaves: a
+    // keyboard-focused item keeps it though, like the web's blur handling.
+    _setActive(index ?? _focusLitIndex);
   }
 
   void _onExit(PointerExitEvent event) {
+    if (!_pointerInside) return;
     setState(() => _pointerInside = false);
-    _setActive(widget.followFocus ? _focusedIndex : null);
+    _setActive(_focusLitIndex);
   }
 
-  int? get _focusedIndex => _focused.isEmpty ? null : _focused.last;
+  /// The focused item, if focus should light it: only while the keyboard
+  /// drives focus (`:focus-visible`), never after a tap or click.
+  int? get _focusLitIndex =>
+      widget.followFocus &&
+          _focused.isNotEmpty &&
+          FluidInputModality.instance.value == FluidModality.keyboard
+      ? _focused.last
+      : null;
+
+  void _onModality() {
+    if (!mounted || _pointerInside) return;
+    _setActive(_focusLitIndex);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    FluidInputModality.instance.addListener(_onModality);
+  }
+
+  @override
+  void dispose() {
+    FluidInputModality.instance.removeListener(_onModality);
+    super.dispose();
+  }
 
   void _onItemFocusChange(int index, bool focused) {
     if (focused) {
       _focused.add(index);
-      if (widget.followFocus) _setActive(index);
+      if (_focusLitIndex case final lit?) _setActive(lit);
     } else {
       _focused.remove(index);
-      if (!_pointerInside && _activeIndex == index) _setActive(_focusedIndex);
+      if (!_pointerInside && _activeIndex == index) _setActive(_focusLitIndex);
     }
   }
 

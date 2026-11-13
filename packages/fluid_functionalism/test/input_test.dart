@@ -62,7 +62,7 @@ void main() {
         ),
       );
       final finder = await pumpSheet(tester, sheet);
-      await expectLater(finder, matchesGoldenFile('goldens/input.png'));
+      await expectSheetGolden(tester, finder, 'goldens/input.png');
     });
 
     testWidgets('types, keeps IME composing, and submits', (tester) async {

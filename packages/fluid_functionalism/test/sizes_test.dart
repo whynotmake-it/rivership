@@ -141,7 +141,7 @@ void main() {
       ),
     );
     final finder = await pumpSheet(tester, sheet);
-    await expectLater(finder, matchesGoldenFile('goldens/sizes.png'));
+    await expectSheetGolden(tester, finder, 'goldens/sizes.png');
   });
 
   test('touch tier raises every hit target to 44', () {

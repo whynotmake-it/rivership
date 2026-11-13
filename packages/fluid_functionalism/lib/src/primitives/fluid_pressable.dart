@@ -1,22 +1,24 @@
-import 'package:fluid_functionalism/fluid_functionalism.dart' show FluidSizes;
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart'
     show FluidSizes;
+import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// The interaction core of every pressable Fluid control.
 ///
-/// Tracks [WidgetState]s the way the web's CSS pseudo-classes do:
+/// States come from [FluidInteractionDetector], so the rules are the same
+/// everywhere and survive ejecting a component:
 ///
-/// * [WidgetState.hovered]: a mouse is over the control (`:hover`).
-/// * [WidgetState.focused]: the control has focus **and** focus should be
-///   visible, i.e. it was reached with the keyboard (`:focus-visible`).
-///   Pointer focus never sets it. This follows
-///   [FocusManager.highlightMode] through [FocusableActionDetector].
-/// * [WidgetState.pressed]: a pointer is down on the control (`:active`).
+/// * [WidgetState.hovered]: a mouse, trackpad or hovering pen is over the
+///   control. Never a touch, so nothing stays lit after a tap.
+/// * [WidgetState.pressed]: a pointer is down on the control. Clears on
+///   release, cancel, or when the touch becomes a scroll.
+/// * [WidgetState.focused]: focused **and** the last input was the keyboard
+///   (`:focus-visible`). Taps and clicks never show a focus ring.
 /// * [WidgetState.disabled]: [onPressed] is null.
 ///
-/// Enter, Numpad Enter and Space activate it.
+/// Enter, Numpad Enter and Space activate it. Pressing does not take focus
+/// (as on macOS and iOS); Tab does.
 ///
 /// Pass a [statesController] to observe the states or to force some (golden
 /// tests and docs force hovered/pressed/focused this way). The control
@@ -84,46 +86,36 @@ class FluidPressable extends StatefulWidget {
 }
 
 class _FluidPressableState extends State<FluidPressable> {
-  WidgetStatesController? _internalController;
+  WidgetStatesController? _ownStates;
+  FocusNode? _ownFocusNode;
 
   WidgetStatesController get _states =>
-      widget.statesController ??
-      (_internalController ??= WidgetStatesController());
+      widget.statesController ?? (_ownStates ??= WidgetStatesController());
+
+  FocusNode get _focusNode =>
+      widget.focusNode ??
+      (_ownFocusNode ??= FocusNode(debugLabel: 'FluidPressable'));
 
   late final Map<Type, Action<Intent>> _actions = {
     ActivateIntent: CallbackAction<ActivateIntent>(
-      onInvoke: (_) => _activate(),
+      onInvoke: (_) => widget.onPressed?.call(),
     ),
   };
-
-  @override
-  void initState() {
-    super.initState();
-    _states.update(WidgetState.disabled, !widget.enabled);
-  }
 
   @override
   void didUpdateWidget(FluidPressable oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.statesController != widget.statesController) {
-      _internalController?.dispose();
-      _internalController = null;
+      _ownStates?.dispose();
+      _ownStates = null;
     }
-    _states.update(WidgetState.disabled, !widget.enabled);
-    if (!widget.enabled) _states.update(WidgetState.pressed, false);
   }
 
   @override
   void dispose() {
-    _internalController?.dispose();
+    _ownStates?.dispose();
+    _ownFocusNode?.dispose();
     super.dispose();
-  }
-
-  void _activate() => widget.onPressed?.call();
-
-  void _setPressed(bool value) {
-    if (!widget.enabled) return;
-    _states.update(WidgetState.pressed, value);
   }
 
   @override
@@ -145,33 +137,21 @@ class _FluidPressableState extends State<FluidPressable> {
     }
     return FocusableActionDetector(
       enabled: widget.enabled,
-      focusNode: widget.focusNode,
+      focusNode: _focusNode,
       autofocus: widget.autofocus,
       shortcuts: FluidPressable.activationShortcuts,
       actions: _actions,
-      mouseCursor:
-          widget.mouseCursor ??
-          (widget.enabled ? SystemMouseCursors.click : MouseCursor.defer),
-      onShowFocusHighlight: (value) =>
-          _states.update(WidgetState.focused, value),
       onFocusChange: widget.onFocusChange,
-      // Hover is pointer state, not focus state: tracked with a plain
-      // MouseRegion so it works whatever the focus highlight mode is
-      // (FocusableActionDetector hides hover in touch highlight mode).
-      child: MouseRegion(
-        onEnter: (_) {
-          if (widget.enabled) _states.update(WidgetState.hovered, true);
-        },
-        onExit: (_) => _states.update(WidgetState.hovered, false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: widget.excludeFromSemantics,
-          onTapDown: (_) => _setPressed(true),
-          onTapUp: (_) => _setPressed(false),
-          onTapCancel: () => _setPressed(false),
-          onTap: widget.enabled ? _activate : null,
-          child: visual,
-        ),
+      child: FluidInteractionDetector(
+        states: _states,
+        enabled: widget.enabled,
+        focusNode: _focusNode,
+        onTap: widget.onPressed,
+        cursor:
+            widget.mouseCursor ??
+            (widget.enabled ? SystemMouseCursors.click : MouseCursor.defer),
+        excludeFromSemantics: widget.excludeFromSemantics,
+        child: visual,
       ),
     );
   }

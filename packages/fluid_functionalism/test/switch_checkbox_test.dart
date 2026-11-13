@@ -52,7 +52,7 @@ void main() {
         ),
       );
       final finder = await pumpSheet(tester, sheet);
-      await expectLater(finder, matchesGoldenFile('goldens/switch.png'));
+      await expectSheetGolden(tester, finder, 'goldens/switch.png');
     });
 
     testWidgets('toggles on tap, Space, and drag past the midpoint', (
@@ -151,7 +151,7 @@ void main() {
         ),
       );
       final finder = await pumpSheet(tester, sheet);
-      await expectLater(finder, matchesGoldenFile('goldens/checkbox.png'));
+      await expectSheetGolden(tester, finder, 'goldens/checkbox.png');
     });
 
     testWidgets('indeterminate reports true; draws the check in', (

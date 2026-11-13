@@ -16,6 +16,22 @@ Components import only `src/foundation`, `src/primitives` and `src/icons`,
 so any component file can be copied ("ejected") into an app together with
 those public foundations.
 
+## Interaction rules (no sticky hover)
+
+Every control derives its states from one primitive,
+`FluidInteractionDetector` (used by `FluidPressable` and `FluidInput`;
+`FluidHoverRegion` applies the same `FluidInputModality` rules), so ejected
+components keep them:
+
+- **Hover** only from pointers that can hover (mouse, trackpad, hovering
+  pen), decided by `PointerDeviceKind`. A touch never hovers.
+- **Pressed** while a pointer is down; clears on release, cancel, or when the
+  touch becomes a scroll. Nothing stays lit after a tap.
+- **Focus ring** only while focus is keyboard-driven (`FluidInputModality`:
+  last input was a non-modifier key). Taps and clicks hide it.
+- The **fluid highlight** follows hover-capable pointers, and focus only
+  while the keyboard drives it. Selection (tabs) is separate and stays.
+
 ## Sizes
 
 | | control | hit target | body / field text |

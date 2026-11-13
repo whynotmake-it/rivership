@@ -3,6 +3,7 @@ import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -245,10 +246,13 @@ class _FluidInputState extends State<FluidInput>
 
     return Semantics(
       label: widget.semanticLabel,
-      child: MouseRegion(
+      // Hover from hover-capable pointers only; EditableText handles taps
+      // and focus itself, so the detector does not track presses.
+      child: FluidInteractionDetector(
+        states: _states,
+        enabled: widget.enabled,
+        trackPress: false,
         cursor: widget.enabled ? SystemMouseCursors.text : MouseCursor.defer,
-        onEnter: (_) => _states.update(WidgetState.hovered, true),
-        onExit: (_) => _states.update(WidgetState.hovered, false),
         child: IgnorePointer(
           ignoring: !widget.enabled,
           child: Opacity(

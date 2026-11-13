@@ -130,20 +130,24 @@ void main() {
         ),
       );
       final finder = await pumpSheet(tester, sheet);
-      await expectLater(finder, matchesGoldenFile('goldens/tabs.png'));
+      await expectSheetGolden(tester, finder, 'goldens/tabs.png');
     });
 
     testWidgets('real mouse hover lights a tab, arrows move focus', (
       tester,
     ) async {
       var selected = 0;
+      const liveKey = ValueKey('live-tabs');
       await tester.pumpWidget(
         _app(
-          StatefulBuilder(
-            builder: (context, setState) => FluidTabs(
-              tabs: _tabs(),
-              selectedIndex: selected,
-              onSelected: (i) => setState(() => selected = i),
+          RepaintBoundary(
+            key: liveKey,
+            child: StatefulBuilder(
+              builder: (context, setState) => FluidTabs(
+                tabs: _tabs(),
+                selectedIndex: selected,
+                onSelected: (i) => setState(() => selected = i),
+              ),
             ),
           ),
         ),
@@ -159,9 +163,10 @@ void main() {
       expect(FluidHoverRegion.maybeOf(region)?.activeIndex, 2);
 
       // Capture the live hover state for the record.
-      await expectLater(
-        find.byType(FluidTabs),
-        matchesGoldenFile('goldens/tabs_live_hover.png'),
+      await expectSheetGolden(
+        tester,
+        find.byKey(liveKey),
+        'goldens/tabs_live_hover.png',
       );
 
       await mouse.moveTo(const Offset(600, 500));
@@ -214,27 +219,30 @@ void main() {
       await mouse.addPointer(location: Offset.zero);
       await mouse.moveTo(tester.getCenter(find.text('Analytics').first));
       await tester.pumpAndSettle();
-      await expectLater(
+      await expectSheetGolden(
+        tester,
         find.byKey(key),
-        matchesGoldenFile('goldens/fluid_hover_rest.png'),
+        'goldens/fluid_hover_rest.png',
       );
 
       // Move to "Settings": capture mid-glide, then settled.
       await mouse.moveTo(tester.getCenter(find.text('Settings').first));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 40));
-      await expectLater(
+      await expectSheetGolden(
+        tester,
         find.byKey(key),
-        matchesGoldenFile('goldens/fluid_hover_gliding.png'),
+        'goldens/fluid_hover_gliding.png',
       );
       await tester.pumpAndSettle();
 
       // And the dark panel, to show both themes.
       await mouse.moveTo(tester.getCenter(find.text('Reports').last));
       await tester.pumpAndSettle();
-      await expectLater(
+      await expectSheetGolden(
+        tester,
         find.byKey(key),
-        matchesGoldenFile('goldens/fluid_hover_dark.png'),
+        'goldens/fluid_hover_dark.png',
       );
     });
 

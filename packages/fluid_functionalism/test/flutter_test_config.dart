@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fluid_functionalism/fluid_functionalism.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 
 /// Loads real fonts so goldens show Inter instead of Ahem boxes.
@@ -15,5 +17,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   await (FontLoader(
     'packages/fluid_functionalism/Inter',
   )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+  // Fresh input-modality tracking (keyboard vs pointer) for every test.
+  setUp(FluidInputModality.debugReset);
   await testMain();
 }
