@@ -252,22 +252,24 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
             },
       child: CoilHoverRegion(
         axis: horizontal ? CoilHoverAxis.x : CoilHoverAxis.y,
-        background: [
-          if (widget.selection == CoilChoiceSelection.merged)
-            _blocks
-          else
-            _fill,
-        ],
-        foreground: [_ring],
-        highlightColor: widget.highlightColor,
-        highlightRadius: widget.radius,
-        child: horizontal
-            ? Row(mainAxisSize: MainAxisSize.min, children: items)
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: items,
-              ),
+        child: CoilHoverHighlight(
+          background: [
+            if (widget.selection == CoilChoiceSelection.merged)
+              _blocks
+            else
+              _fill,
+          ],
+          foreground: [_ring],
+          color: widget.highlightColor,
+          radius: widget.radius,
+          child: horizontal
+              ? Row(mainAxisSize: MainAxisSize.min, children: items)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: items,
+                ),
+        ),
       ),
     );
   }

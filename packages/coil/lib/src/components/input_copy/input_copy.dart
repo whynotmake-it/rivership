@@ -200,10 +200,6 @@ class CoilInputCopy extends StatefulWidget {
 
 enum _Status { idle, copied, failed }
 
-// The one place InputCopy asks for a haptic, so moving to the theme's
-// haptics is a one-line change.
-void _playCopyHaptic() => unawaited(CoilHaptics.play(CoilHapticEvent.copy));
-
 class _CoilInputCopyState extends State<CoilInputCopy> {
   var _status = _Status.idle;
 
@@ -257,7 +253,7 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
       ),
     );
     if (status == _Status.copied) {
-      _playCopyHaptic();
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.copy));
       widget.onCopied?.call();
     }
   }

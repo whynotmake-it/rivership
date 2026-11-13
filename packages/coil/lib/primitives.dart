@@ -11,7 +11,6 @@ export 'src/primitives/choice_row.dart';
 export 'src/primitives/drawn_glyph.dart';
 export 'src/primitives/field_scope.dart';
 export 'src/primitives/focus_ring.dart';
-export 'src/primitives/haptics.dart';
 export 'src/primitives/highlight.dart';
 export 'src/primitives/hover.dart';
 export 'src/primitives/interaction.dart';

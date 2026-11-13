@@ -37,7 +37,6 @@ class CoilInputGroup extends StatelessWidget {
     final gap = CoilFieldStyle.resolve(context, size: size).fieldGap!;
     Widget group = CoilHoverRegion(
       nearest: true,
-      highlight: false,
       // Focus shows as the field's focus border, not as hover.
       followFocus: false,
       child: Column(
