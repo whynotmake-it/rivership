@@ -113,6 +113,16 @@ final Map<String, WidgetBuilder> _stories = {
       ],
     ),
   ),
+  'tabs_overflow': (context) => SizedBox(
+    width: 260,
+    child: CoilTabs(
+      tabs: [
+        for (var i = 0; i < 8; i++) CoilTab(value: i, label: 'Section $i'),
+      ],
+      value: 3,
+      onChanged: (_) {},
+    ),
+  ),
   'input': (context) => SizedBox(
     width: 240,
     child: Column(
