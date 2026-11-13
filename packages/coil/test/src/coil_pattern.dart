@@ -1,3 +1,6 @@
+// TODO(coil-eject): expose expectCoilPattern outside coil's own tests
+// (e.g. as a coil_test package) so ejected components can use it. Until
+// then it stays internal: not exported, no extra package.
 import 'dart:ui' show CheckedState, SemanticsRole, Tristate;
 
 import 'package:coil/coil.dart';
