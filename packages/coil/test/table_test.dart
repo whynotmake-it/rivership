@@ -1,8 +1,12 @@
+import 'dart:ui' show Tristate;
+
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/coil_pattern.dart';
 import 'src/golden_matrix.dart';
@@ -49,9 +53,13 @@ Widget _app(
   TextDirection direction = TextDirection.ltr,
   bool reducedMotion = false,
   double width = 360,
+  double textScale = 1,
   CoilThemeData theme = CoilThemeData.light,
 }) => MediaQuery(
-  data: MediaQueryData(disableAnimations: reducedMotion),
+  data: MediaQueryData(
+    disableAnimations: reducedMotion,
+    textScaler: TextScaler.linear(textScale),
+  ),
   child: WidgetsApp(
     // A fresh app per pump: the route would keep the first child.
     key: UniqueKey(),
@@ -321,20 +329,127 @@ void main() {
     expect(scrollable.position.pixels, 60);
   });
 
-  testWidgets('the empty state holds its rows of height', (tester) async {
+  testWidgets('an empty table is as tall as one with its rows of data', (
+    tester,
+  ) async {
+    Future<double> height(List<_Person> rows) async {
+      await tester.pumpWidget(
+        _app(
+          textScale: 2,
+          CoilTable<_Person>(
+            columns: _columns(),
+            rows: rows,
+            emptyRows: 4,
+            empty: const Text('No people yet'),
+          ),
+        ),
+      );
+      return tester.getSize(find.byType(CoilTable<_Person>)).height;
+    }
+
+    final empty = await height(const []);
+    expect(find.text('No people yet'), findsOneWidget);
+    expect(empty, await height(_people));
+  });
+
+  testWidgets('after a sort the active row and selection stay on their data', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    var rows = _people;
+    var values = <_Person>{};
+    final opened = <String>[];
+    late StateSetter rebuild;
     await tester.pumpWidget(
       _app(
-        CoilTable<_Person>(
-          columns: _columns(),
-          rows: const [],
-          emptyRows: 4,
-          empty: const Text('No people yet'),
+        StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return CoilTable<_Person>(
+              columns: _columns(),
+              rows: rows,
+              values: values,
+              onChanged: (v) => setState(() => values = v),
+              onRowActivated: (p) => opened.add(p.name),
+            );
+          },
         ),
       ),
     );
-    expect(find.text('No people yet'), findsOneWidget);
-    // A 36 header and four 36 rows (pointer).
-    expect(tester.getSize(find.byType(CoilTable<_Person>)).height, 36 * 5);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(values.map((p) => p.name), {'Grace'});
+
+    // Name, descending: Margaret, Linus, Grace, Ada.
+    rebuild(
+      () => rows = [..._people]..sort((a, b) => b.name.compareTo(a.name)),
+    );
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(opened, ['Grace']);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(opened.last, 'Ada');
+
+    var row = tester.getSemantics(find.text('Grace'));
+    while (row.getSemanticsData().role != SemanticsRole.row) {
+      row = row.parent!;
+    }
+    expect(row.flagsCollection.isSelected, Tristate.isTrue);
+    semantics.dispose();
+  });
+
+  testWidgets('per-track motions apply to the next animation', (
+    tester,
+  ) async {
+    Map<CoilTableTrack<Object>, Motion>? motions;
+    late StateSetter rebuild;
+    await tester.pumpWidget(
+      _app(
+        StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return CoilTable<_Person>(
+              columns: _columns(),
+              rows: _people,
+              motions: motions,
+            );
+          },
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    final colors = CoilThemeData.light.colors;
+
+    // How far Ada's label has gone from muted to foreground, 0 to 1, a
+    // short while into a hover.
+    Future<double> progress() async {
+      await mouse.moveTo(tester.getCenter(find.text('Ada')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      final color = DefaultTextStyle.of(
+        tester.element(find.text('Ada')),
+      ).style.color!;
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle();
+      final span = colors.foreground.r - colors.mutedForeground.r;
+      return (color.r - colors.mutedForeground.r) / span;
+    }
+
+    final fast = await progress();
+    rebuild(
+      () => motions = {
+        CoilTableTrack.rowLabel: const Motion.linear(Duration(seconds: 2)),
+      },
+    );
+    await tester.pump();
+    final slow = await progress();
+    expect(fast, greaterThan(0));
+    expect(slow, lessThan(fast / 2));
   });
 
   testWidgets('style: fallback < theme < instance', (tester) async {

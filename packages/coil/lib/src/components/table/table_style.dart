@@ -6,11 +6,15 @@ import 'package:flutter/widgets.dart';
 /// app-wide or for a subtree with `CoilThemeData.withComponentStyle`, or per
 /// instance with `style:`.
 ///
-/// [cellLabel] is resolved with [WidgetState.hovered] (the row is lit),
-/// [WidgetState.selected], and [WidgetState.focused] for full emphasis
-/// (touch rows and high contrast rest at foreground). [headerLabel] and
-/// [headerFill] are resolved with [WidgetState.hovered] and
-/// [WidgetState.pressed].
+/// By default, pointer rows rest muted and turn foreground when lit or
+/// selected; touch rows and high contrast rest at foreground. A hovering
+/// pointer's [highlight] glides between rows, a finger pressing a row fills
+/// it with [pressedFill] until it lifts, and selected rows merge into one
+/// [selection] block.
+///
+/// [cellLabel] is resolved with [WidgetState.hovered] (the row is lit) and
+/// [WidgetState.selected]. [headerLabel] and [headerFill] are resolved with
+/// [WidgetState.hovered] and [WidgetState.pressed].
 class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   /// Creates a style.
   const CoilTableStyle({
@@ -24,13 +28,22 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     this.selection,
     this.pressedFill,
     this.radius,
+    this.headerIconSize,
+    this.sortIndicatorGap,
+    this.ringInset,
   });
 
   /// The defaults from the theme's tokens. Pointer rows rest muted and turn
-  /// foreground when lit or selected; touch rows rest at foreground.
-  factory CoilTableStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
+  /// foreground when lit or selected; touch rows and [highContrast] ones
+  /// rest at foreground.
+  factory CoilTableStyle.fallback(
+    CoilThemeData theme,
+    CoilMetrics metrics, {
+    bool highContrast = false,
+  }) {
     final c = theme.colors;
     final touch = metrics.tier == CoilTier.touch;
+    final rest = touch || highContrast ? c.foreground : c.mutedForeground;
     const tabular = [FontFeature.tabularFigures()];
     return CoilTableStyle(
       headerStyle: theme.typography
@@ -49,15 +62,17 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
           .style(metrics.body)
           .copyWith(fontFeatures: tabular),
       cellLabel: WidgetStateProperty.fromMap({
-        WidgetState.hovered | WidgetState.selected | WidgetState.focused:
-            c.foreground,
-        WidgetState.any: c.mutedForeground,
+        WidgetState.hovered | WidgetState.selected: c.foreground,
+        WidgetState.any: rest,
       }),
       rule: c.border,
       highlight: c.hover,
       selection: c.active,
       pressedFill: c.active,
       radius: theme.shape.radii(metrics.tier).item,
+      headerIconSize: metrics.caption.lineHeight,
+      sortIndicatorGap: 4,
+      ringInset: 1,
     );
   }
 
@@ -91,6 +106,17 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   /// The corner radius of the highlight, selection and fills.
   final double? radius;
 
+  /// The size of icons in the header, the sort indicator included. It
+  /// scales with text.
+  final double? headerIconSize;
+
+  /// The gap between a header label and its sort indicator.
+  final double? sortIndicatorGap;
+
+  /// How far the focus rings sit inside the row or header cell, so the
+  /// table's clip doesn't cut them.
+  final double? ringInset;
+
   @override
   CoilTableStyle merge(CoilTableStyle? other) => other == null
       ? this
@@ -106,6 +132,9 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
           selection: other.selection ?? selection,
           pressedFill: other.pressedFill ?? pressedFill,
           radius: other.radius ?? radius,
+          headerIconSize: other.headerIconSize ?? headerIconSize,
+          sortIndicatorGap: other.sortIndicatorGap ?? sortIndicatorGap,
+          ringInset: other.ringInset ?? ringInset,
         );
 
   @override
@@ -120,5 +149,8 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     selection,
     pressedFill,
     radius,
+    headerIconSize,
+    sortIndicatorGap,
+    ringInset,
   ];
 }
