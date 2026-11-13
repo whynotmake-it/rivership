@@ -37,8 +37,8 @@ Widget _switcher(
   Widget? child, {
   Motion motion = _spring,
   Motion? exitMotion = _exit,
-  MotionSwitcherLayoutBuilder layoutBuilder =
-      MotionSwitcher.defaultLayoutBuilder,
+  AnimatedSwitcherLayoutBuilder layoutBuilder =
+      AnimatedSwitcher.defaultLayoutBuilder,
 }) => Directionality(
   textDirection: TextDirection.ltr,
   child: MotionSwitcher(
@@ -49,16 +49,20 @@ Widget _switcher(
   ),
 );
 
-/// The presence of the child labeled [label], read from the fade
-/// transition, or null when it is gone.
-double? _presence(WidgetTester tester, String label) {
+/// The presence animation of the child labeled [label], read from the
+/// default fade transition, or null when the child is gone.
+Animation<double>? _animation(WidgetTester tester, String label) {
   final finder = find.ancestor(
     of: find.byKey(ValueKey(label)),
-    matching: find.byType(Opacity),
+    matching: find.byType(FadeTransition),
   );
   if (finder.evaluate().isEmpty) return null;
-  return tester.widget<Opacity>(finder.first).opacity;
+  return tester.widget<FadeTransition>(finder.first).opacity;
 }
+
+/// The raw presence of the child labeled [label], or null when it is gone.
+double? _presence(WidgetTester tester, String label) =>
+    _animation(tester, label)?.value;
 
 void main() {
   setUp(_Child.created.clear);
@@ -177,7 +181,7 @@ void main() {
     final calls = <(Widget?, int)>[];
     Widget layout(Widget? current, List<Widget> previous) {
       calls.add((current, previous.length));
-      return MotionSwitcher.defaultLayoutBuilder(current, previous);
+      return AnimatedSwitcher.defaultLayoutBuilder(current, previous);
     }
 
     await tester.pumpWidget(_switcher(_child('a'), layoutBuilder: layout));
@@ -185,6 +189,68 @@ void main() {
     await tester.pumpWidget(_switcher(_child('c'), layoutBuilder: layout));
     expect(calls.map((call) => call.$2), [0, 1, 2]);
     expect(calls.every((call) => call.$1 != null), isTrue);
+  });
+
+  testWidgets(
+    'hands transitionBuilder a real Animation with forward and reverse '
+    'status',
+    (tester) async {
+      await tester.pumpWidget(_switcher(_child('a')));
+      await tester.pumpWidget(_switcher(_child('b')));
+      await tester.pump(frame);
+      expect(_animation(tester, 'a')!.status, AnimationStatus.reverse);
+      expect(_animation(tester, 'b')!.status, AnimationStatus.forward);
+      await tester.pumpAndSettle(frame);
+      expect(_animation(tester, 'b')!.status, AnimationStatus.completed);
+    },
+  );
+
+  testWidgets('works with Flutter transitions such as ScaleTransition', (
+    tester,
+  ) async {
+    Widget build(String label) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: MotionSwitcher(
+        motion: _spring,
+        transitionBuilder: (child, animation) =>
+            ScaleTransition(scale: animation, child: child),
+        child: _child(label),
+      ),
+    );
+    double scale(String label) => tester
+        .widget<ScaleTransition>(
+          find.ancestor(
+            of: find.byKey(ValueKey(label)),
+            matching: find.byType(ScaleTransition),
+          ),
+        )
+        .scale
+        .value;
+
+    await tester.pumpWidget(build('a'));
+    await tester.pumpWidget(build('b'));
+    await tester.pump(frame * 5);
+    expect(scale('b'), inExclusiveRange(0, 1));
+    await tester.pumpAndSettle(frame);
+    expect(scale('b'), 1);
+  });
+
+  testWidgets('presence overshoots with a bouncy spring, and the default fade '
+      'handles it', (tester) async {
+    const bouncy = Motion.bouncySpring(extraBounce: 0.2);
+    await tester.pumpWidget(_switcher(_child('a'), motion: bouncy));
+    await tester.pumpWidget(_switcher(_child('b'), motion: bouncy));
+    var highest = 0.0;
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(frame);
+      highest = [highest, _presence(tester, 'b')!].reduce(
+        (a, b) => a > b ? a : b,
+      );
+    }
+    expect(highest, greaterThan(1));
+    expect(tester.takeException(), isNull);
+    await tester.pumpAndSettle(frame);
+    expect(_presence(tester, 'b'), 1);
   });
 
   group('MotionSizeSwitcher', () {

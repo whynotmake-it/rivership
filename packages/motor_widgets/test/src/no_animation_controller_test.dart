@@ -6,9 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// widgets in this package are driven by Motor springs only.
 final _forbidden = RegExp(
   r'\b(AnimationController|Tween|CurvedAnimation|ImplicitlyAnimatedWidget|'
-  'AnimatedWidgetBaseState|AnimatedContainer|AnimatedSwitcher|AnimatedSize|'
-  'AnimatedOpacity|AnimatedAlign|AnimatedPadding|AnimatedPositioned|'
-  r'AnimatedScale|AnimatedRotation|AnimatedSlide|Curves?)\b(?!\])',
+  r'AnimatedWidgetBaseState|Curves?)\b'
+  // Constructing a Flutter implicit animation widget. Its static builders,
+  // such as AnimatedSwitcher.defaultTransitionBuilder, are fine.
+  r'|\bAnimated[A-Z]\w*\(',
 );
 
 void main() {

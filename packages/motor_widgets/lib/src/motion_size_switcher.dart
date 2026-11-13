@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/motion_size.dart';
 import 'package:motor_widgets/src/motion_switcher.dart';
-import 'package:motor_widgets/src/motion_transition.dart';
 
 /// A [MotionSwitcher] inside a [MotionSize]: switches its child with a
 /// spring transition and springs its size to fit.
@@ -17,7 +16,7 @@ class MotionSizeSwitcher extends StatelessWidget {
     this.exitMotion,
     this.alignment = Alignment.center,
     this.clipBehavior = Clip.hardEdge,
-    this.transition = MotionTransition.fade,
+    this.transitionBuilder = AnimatedSwitcher.defaultTransitionBuilder,
     this.immediateResize = false,
     this.tickerRate,
     this.debugLabel,
@@ -45,9 +44,11 @@ class MotionSizeSwitcher extends StatelessWidget {
   /// How children are clipped while they overflow the animated size.
   final Clip clipBehavior;
 
-  /// How a child looks at a presence value. Defaults to
-  /// [MotionTransition.fade].
-  final MotionTransition transition;
+  /// Wraps a child in a transition driven by its presence spring. Defaults
+  /// to [AnimatedSwitcher.defaultTransitionBuilder].
+  ///
+  /// See [MotionSwitcher.transitionBuilder]; the animation may overshoot.
+  final AnimatedSwitcherTransitionBuilder transitionBuilder;
 
   /// Whether the size follows the new child at once, ignoring the leaving
   /// children. Defaults to false.
@@ -80,7 +81,7 @@ class MotionSizeSwitcher extends StatelessWidget {
         child: MotionSwitcher(
           motion: motion,
           exitMotion: exitMotion,
-          transition: transition,
+          transitionBuilder: transitionBuilder,
           tickerRate: tickerRate,
           debugLabel: label,
           layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -98,7 +99,7 @@ class MotionSizeSwitcher extends StatelessWidget {
     return MotionSwitcher(
       motion: motion,
       exitMotion: exitMotion,
-      transition: transition,
+      transitionBuilder: transitionBuilder,
       tickerRate: tickerRate,
       debugLabel: label,
       layoutBuilder: (currentChild, previousChildren) => Stack(
