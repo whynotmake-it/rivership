@@ -5,9 +5,9 @@ import 'package:flutter/widgets.dart'
 
 /// The three Inter weights the system uses.
 ///
-/// From `lib/font-weight.ts`: each weight is paired with an optical size so
-/// animating between weights keeps the advance width nearly constant (a
-/// heavier `wght` widens text, a higher `opsz` pulls it back).
+/// Each weight is paired with an optical size, so animating between weights
+/// keeps text nearly the same width: a heavier `wght` widens it, a higher
+/// `opsz` pulls it back.
 enum CoilWeight {
   /// Body text: `'wght' 400, 'opsz' 14`.
   normal(400, 14, FontWeight.w400),
@@ -125,10 +125,9 @@ class CoilTypography {
 
 /// The [IconThemeData.weight]s controls give their icon slots.
 ///
-/// The web draws stroke icons at 1.5 and thickens them to 2 on hover. In
-/// Flutter, slot icons are any widget styled by [IconTheme]: variable icon
-/// fonts (Material Symbols, ...) read `weight` directly, and stroke icons
-/// can scale their stroke with it (`1.5 * weight / 400` reproduces the web).
+/// Controls raise the weight on hover. Variable icon fonts read `weight`
+/// directly; a stroke icon can scale its stroke with it (`1.5 * weight /
+/// 400` goes from a 1.5 to a 2 stroke).
 abstract final class CoilIconWeight {
   /// At rest: a 1.5 stroke.
   static const double rest = 400;

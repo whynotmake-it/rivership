@@ -6,12 +6,10 @@ import 'package:motor/motor.dart';
 /// in and out: the moving fill behind a hovered row, a selected tab's pill,
 /// a focus ring that travels between items.
 ///
-/// The port of `components/ui/fluid-hover-highlight.tsx`, as a layer
-/// painter. It animates a *delta* relative to its target's rect, which the
-/// layer reads at paint time; so when the target resizes, reflows or
-/// scrolls, the highlight stays on it in the same frame, and when the
-/// target changes the delta glides to zero on the given motion (a spring
-/// keeps its velocity when retargeted mid-glide).
+/// It animates an offset from its target's rect, which the layer reads
+/// while painting. So it stays on a target that resizes or reflows, and a
+/// new target makes it glide over on the given spring, keeping its speed
+/// when retargeted mid-glide.
 ///
 /// Drive it with [update] from the owning widget's build:
 ///

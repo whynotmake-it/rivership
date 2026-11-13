@@ -79,7 +79,7 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
   - press with the minimum visibility;
   - the focus ring only after keyboard use.
 - Lists use `CoilActiveItemController`, `CoilRovingFocus`, `CoilTypeahead`
-  and the motion layer (`CoilHoverRegion`, highlight and selection
+  and the motion layer (`CoilHoverRegion` + `CoilHoverHighlight`, highlight and selection
   painters).
 - No `MouseRegion`, `onTapDown`, `HapticFeedback`, `highlightMode`,
   `OverlayPortal`, `PopupRoute` or raw Motor controllers for travel in the

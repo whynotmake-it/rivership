@@ -6,9 +6,8 @@ import 'package:flutter/painting.dart';
 
 /// coil's color tokens.
 ///
-/// Defaults start from Fluid Functionalism's `globals.css`, where every
-/// token is written once as `light-dark(light, dark)`. [CoilColors.light] and
-/// [CoilColors.dark] are the two resolved sides.
+/// [CoilColors.light] and [CoilColors.dark] are the defaults. Change any
+/// token with [copyWith].
 @immutable
 class CoilColors with Diagnosticable {
   /// Creates a color set. Prefer [CoilColors.light] / [CoilColors.dark]

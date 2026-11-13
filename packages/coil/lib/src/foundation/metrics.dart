@@ -95,10 +95,9 @@ class CoilSwitchMetrics {
 
 /// Every size token for one tier and size step.
 ///
-/// Pointer values start from Fluid Functionalism's `sizeMap`. Touch raises
-/// the control height to 44 (regular) and every hit target to at least 44,
-/// with type and glyphs a step larger so the proportions read the same.
-/// Heights are minimums: controls grow with the text scale.
+/// Touch raises the control height to 44 (regular) and every hit target to
+/// at least 44, with type and glyphs a step larger so the proportions read
+/// the same. Heights are minimums: controls grow with the text scale.
 @immutable
 class CoilMetrics {
   /// Creates metrics. Prefer a copy of a default (`CoilMetrics.touch`).
@@ -196,8 +195,7 @@ class CoilMetrics {
   /// Body and field text go to 16/22: the pointer tier's text-to-height
   /// ratio (13 in 36) at 44, and 16 keeps iOS from zooming into a focused
   /// field. Control padding (16) equals popup inset + row padding (6 + 10),
-  /// so a popover's row text lines up with its trigger's. See
-  /// research/08-touch-tier.md.
+  /// so a popover's row text lines up with its trigger's.
   static const touch = CoilMetrics(
     tier: CoilTier.touch,
     size: CoilSize.regular,

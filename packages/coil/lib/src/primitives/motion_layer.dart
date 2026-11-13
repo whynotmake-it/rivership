@@ -56,14 +56,14 @@ class CoilMotionLayerHandle implements CoilLayerGeometry {
   Rect? rectOf(int index) => _layer?.rectOf(index);
 }
 
-/// The paint layer for decorations shared by sibling items (research
-/// 03-architecture §4.4 B).
+/// A paint layer for decorations shared by sibling items: a gliding
+/// highlight, a tab pill, merged selection blocks, a travelling ring.
 ///
-/// Wraps a group of [CoilMotionTarget]s. At paint it resolves each target's
-/// rect from the render tree (after this frame's layout), paints
-/// [background] painters, the child, then [foreground] painters. So a
-/// highlight follows a row that resizes, reflows or scrolls in the same
-/// frame, without measuring passes, post-frame callbacks or rebuilds.
+/// It wraps a group of [CoilMotionTarget]s. While painting it reads each
+/// target's rect, then paints [background], the child and [foreground]. A
+/// decoration follows a target that resizes or reflows in the same frame,
+/// with no measuring pass and no rebuild. Put the layer inside a scroll
+/// view's content so it moves with the items.
 class CoilMotionLayer extends SingleChildRenderObjectWidget {
   /// Creates a motion layer.
   const CoilMotionLayer({

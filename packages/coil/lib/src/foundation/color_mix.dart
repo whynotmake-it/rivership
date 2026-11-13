@@ -1,12 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-/// Color mixing that matches CSS `color-mix(in oklab, ...)`.
+/// Color mixing in Oklab, the way CSS `color-mix(in oklab, ...)` does.
 ///
-/// The web source mixes most of its state colors in Oklab (for example the
-/// primary button's hover fill is `color-mix(in oklab, foreground 90%,
-/// background)`). Mixing in sRGB gives visibly different greys, so the port
-/// mixes in Oklab too.
+/// coil derives state colors by mixing in Oklab (a hovered primary button is
+/// 90 % foreground into the background). Mixing in sRGB gives muddier greys.
 abstract final class CoilColorMix {
   /// Mixes [a] and [b] in Oklab, taking [amountOfA] (0..1) of [a].
   ///

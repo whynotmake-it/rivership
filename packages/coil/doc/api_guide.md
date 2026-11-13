@@ -49,8 +49,8 @@ then this guide, and FF's web names last.
 | Last input modality (focus-visible) | `CoilInputModality.instance`, `CoilModality { keyboard, pointer }` | core `FluidInputModality`, mobile `FluidKeyboardModality`, 02 `FluidInputMode` |
 | Can this pointer hover? | `CoilInputModality.canHover(kind)` | `fluidCanHover` |
 | Interaction states for one control | `CoilInteraction` (widget), `CoilInteractionDetector` (lower level) | `FluidPressable`, 03 `FluidInteraction` |
-| Popover vs sheet | `CoilPresentation { popover, sheet }` | — |
-| Corner family | `CoilShape { rounded, pill, sharp }` | — |
+| Popover vs sheet | `CoilPresentation { popover, sheet }` | none |
+| Corner family | `CoilShape` (`.rounded`, `.pill`, `.sharp` or your own `CoilRadii` per tier) | none |
 | Type | `CoilTypography`, `CoilTypeStep`, `CoilWeight` | `FluidTypographyThemeData`, `FluidTypeRole` |
 
 Rules:
@@ -96,7 +96,8 @@ Rules:
 | arrows/Home/End between items, one tab stop | `CoilRovingFocus` |
 | type-to-jump | `CoilTypeahead` |
 | the item Enter acts on | `CoilActiveItemController` |
-| travelling highlight, pills, merge/split selection | `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` |
+| which item is lit (pointer, keyboard focus) | `CoilHoverRegion`, read with `CoilHoverRegion.maybeOf` |
+| travelling highlight, pills, merge/split selection | `CoilHoverHighlight`, or your own `CoilMotionLayer` with `CoilHighlightPainter` and `CoilSelectionPainter`; inside a scroll view, put it in the scrolled content |
 | anchored popover | `CoilPopoverRoute` via `CoilAdaptivePopup` |
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
@@ -184,7 +185,9 @@ the inherited tokens when only one field changes:
 CoilSwitch(
   value: on,
   onChanged: (v) => setState(() => on = v),
-  motion: CoilTheme.of(context).motion.copyWith(standard: const CupertinoMotion(duration: Duration(milliseconds: 300))),
+  motion: CoilTheme.of(context).motion.copyWith(
+    standard: const CupertinoMotion(duration: Duration(milliseconds: 300)),
+  ),
 )
 ```
 
@@ -266,53 +269,50 @@ spatial token.
   platform keyboards and autofill. Material/Cupertino selection handles and
   toolbars only inside `CoilTextFieldCore`.
 
+Look:
+
+- Every rounded shape is a superellipse: `ShapeDecoration` with
+  `RoundedSuperellipseBorder`, `ClipRSuperellipse`, `drawRSuperellipse`.
+  Pills use radius = height / 2. `test/architecture` fails on rounded rects.
+- Icons scale with text: every `IconThemeData` coil provides sets
+  `applyTextScaling: true`, and drawn glyphs size with
+  `CoilIconSize.of(context)`. Glyph-like boxes (checkbox) scale too; gaps
+  don't.
+- Sizes and radii are theme data: `CoilThemeData.metrics` (a
+  `CoilMetricsTable`) and `CoilThemeData.shape`.
+
 ## 9. Settled-choices log
 
 | Date | Choice | Why |
 |---|---|---|
 | 2026-11-13 | Package `coil`, prefix `Coil` | PLAN §14 |
-| 2026-11-13 | Names in §2 resolve research 02 vs 03: one motion class `CoilMotion`, `CoilTier` for pointer/touch, `CoilSize` for regular/compact, `CoilMetrics`, `CoilInputModality` | 02 and 03 each used two names for the same idea; the spikes added a third |
+| 2026-11-13 | One name per idea (§2) | research 02 and 03 disagreed |
 | 2026-11-13 | Tier names `pointer`/`touch`, not `desktop`/`touch` | an iPad with a trackpad is still `touch` tier; the name says what the sizes are designed for, not the device |
 | 2026-11-13 | Springs only; no `FluidMotionDelta`, `FluidSpring`, `fromWeb`, no curves | PLAN §12; exits are tighter springs so a reversal keeps velocity |
 | 2026-11-13 | Opacity/color use `fade`/`fadeExit`, which survive reduced motion | reduced motion is "fewer and gentler", not none |
-| 2026-11-13 | Tier latches by platform; the pointer kind of each event decides hover/press | PLAN §3. The mobile spike's live input mode (metrics jumping when a mouse clicks on an iPad) is dropped |
+| 2026-11-13 | The tier latches by platform; each event's pointer kind decides hover and press | PLAN §3 |
 | 2026-11-13 | One adaptive scope `CoilAdaptiveScope` for tier, size and presentation pins | the spikes had `FluidSizeScope` and `FluidAdaptiveScope` doing overlapping jobs |
-| 2026-11-13 | Value controls are controlled; `onChanged` reports the new value; null `onChanged` disables | Flutter idiom; removes the mobile spike's `enabled` + callback duplication |
+| 2026-11-13 | Value controls are controlled; null `onChanged` disables | Flutter idiom |
 | 2026-11-13 | `CoilSelect<T>` and `CoilMultiSelect<T>` are two widgets | one `onChanged` name with one type per widget, instead of `onValuesChanged` |
 | 2026-11-13 | Tabs: `value` + `onChanged`, `labels: CoilTabLabels` | same idea, same name; enums over booleans |
-| 2026-11-13 | `CoilCheckbox(value: bool?, tristate:, onChanged: ValueChanged<bool?>?)`: null is indeterminate (dash) and needs `tristate`; only a tristate box cycles false → true → null → false. The `indeterminate` flag is gone. `CoilCheckboxGroup` has no select-all yet; when it gets one it uses the same shape | user review of M0; Flutter's `Checkbox` shape, no contradicting booleans |
-| 2026-11-13 | Icons scale with text: every `IconThemeData` coil provides sets `applyTextScaling: true` (Flutter's `Icon` then scales itself); drawn glyphs (check, chevron, spinner) size through `CoilIconSize.of(context)`, which applies the ambient `TextScaler` the same way; the checkbox box and its radius scale too. Gaps and paddings don't | user review of M0; Flutter's own mechanism, no custom scaling factor |
-| 2026-11-13 | No rounded rectangles: every rounded shape is a superellipse (`ShapeDecoration` + `RoundedSuperellipseBorder`, `ClipRSuperellipse`, `drawRSuperellipse`; pills use radius = height / 2). Merged selection runs use per-corner `BorderRadius` on the border; focus rings follow the superellipse at their offset. `test/architecture` fails on `ClipRRect`, `RRect`, `drawRRect`, `RoundedRectangleBorder`, `StadiumBorder` and a rounded `BoxDecoration` under `lib/` | user review of M0 |
+| 2026-11-13 | `CoilCheckbox` takes `value: bool?` + `tristate`, like `Checkbox`; null is the dash | no contradicting booleans |
+| 2026-11-13 | Icons and glyphs scale with text (§8) | user review of M0 |
+| 2026-11-13 | Superellipses only (§8) | user review of M0 |
 | 2026-11-13 | `expectCoilPattern` stays internal to coil's tests; no export and no `coil_test` package yet (`TODO(coil-eject)`) | user, 2026-11-13 |
-| 2026-11-13 | Style classes for every component, landed together: `Coil<Name>Style extends CoilComponentStyle`, nullable fields, `fallback(theme, metrics, …)` from tokens, `merge`, value equality; type-keyed theme overrides (`CoilThemeData.components`, `withComponentStyle`) and per-instance `style:` (open question 2) | user decision before the component waves |
-| 2026-11-13 | Generic values: `CoilTabs<T>` + `CoilTab<T>.value`; `CoilCheckboxGroup<T>` / `CoilToggleGroup<T>` take `options: List<CoilOption<T>>` and `values: Set<T>`; `CoilOption` moves to the foundation (open question 3) | values match `CoilSelect<T>`; indexes leak layout into app state |
-| 2026-11-13 | Theme-level track motions stay one flat `trackMotions` map (open question 4) | tracks are unique objects; revisit only if per-type styles need it |
-| 2026-11-13 | No per-kind presentation pin (open question 5) | YAGNI; a component's `presentation:` covers the exceptions |
-| 2026-11-13 | `CoilPopupController` like `MenuController` (`isOpen`, `open()`, `close()`), listenable; `open()` resolves once with `CoilPopupCloseReason` {selected, dismissed, escape, outsideTap, programmatic}; outside taps close on tap-up via `TapRegion`, so popover/sheet barriers don't dismiss on their own (open question 6) | research 07 overlay acceptance tests |
+| 2026-11-13 | Every component has a style class (§6) | landed together before the waves |
+| 2026-11-13 | Tabs and groups are generic in `T`; choices are `CoilOption<T>` (§7) | indexes leak layout into app state |
+| 2026-11-13 | Theme-level track motions stay one flat `trackMotions` map | tracks are unique objects; revisit only if per-type styles need it |
+| 2026-11-13 | No per-kind presentation pin | YAGNI; a component's `presentation:` covers the exceptions |
+| 2026-11-13 | `CoilPopupController`, like `MenuController`; `open()` resolves once with a `CoilPopupCloseReason` (§7) | overlay acceptance tests |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
-| 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
+| 2026-11-13 | `CoilTheme.override(transform:)` for subtree changes | root changes still flow through |
 | 2026-11-13 | The brand color is `CoilColors.brand` (was `fluidAccent`) | `accent` already names FF's neutral `--accent` |
-| 2026-11-13 | `motion:` is the default (token set); `motions: Map<Coil<Name>Track<Object>, Motion>?` keyed by a `final class Coil<Name>Track` with a private constructor and `static final` tracks; the same keys in `CoilThemeData.trackMotions`; maps compare by value; no per-dimension map, no per-component motion classes | user, via PLAN §15 and the orchestrator, 2026-11-13 |
-| 2026-11-13 | `CoilBlurFade` (blur, scale-down, fade, optional offset) is coil's transition and the default enter/exit for overlays; `CoilBlurFade.transition()` fits `MotionSwitcher.transitionBuilder`; opacity and blur clamp, scale and offset use the raw presence | `motor_widgets` holds only Flutter equivalents |
 | 2026-11-13 | Groups take `options` (data entries) and `values`; `CoilRadioGroup` takes `value`. All three take `semanticLabel` | data entries use `options`; sets use `values` |
+| 2026-11-13 | `motion:` sets the tokens; `motions:` overrides single tracks (§6) | PLAN §15 |
+| 2026-11-13 | `CoilBlurFade` is the overlay enter/exit, also as a `MotionSwitcher` transition | `motor_widgets` holds only Flutter equivalents |
 | 2026-11-13 | A text field shows its focus border however it was focused | as `:focus-visible` does for inputs; every other control shows the ring only after keyboard use |
 | 2026-11-13 | `CoilSlider` follows Flutter's `Slider` (`value`, `onChanged`, `min`, `max`, `divisions`, `onChangeStart`, `onChangeEnd`) with two differences: `label` is the row's `Widget`, not the value-indicator string, and `valueFormatter` replaces both that string and `semanticFormatterCallback`. The pill is a `variant`, not a size | a Flutter user would guess `label` is a string; size must not change anatomy |
-
-## 10. Open questions
-
-1. ~~Checkbox value shape~~: settled (nullable `bool` + `tristate`, see the log).
-2. ~~When do `style:` classes land?~~ Settled: all at once, in the
-   cross-cutting pass before the component waves (see §6 "Style classes").
-3. ~~Generic tabs and segmented groups?~~ Settled: `CoilTabs<T>`,
-   `CoilCheckboxGroup<T>` and `CoilToggleGroup<T>` take values.
-4. ~~Where do theme-level track motions live?~~ Settled: one flat
-   `CoilThemeData.trackMotions` map for now.
-5. ~~A per-kind presentation pin?~~ Settled: no;
-   `CoilAdaptiveScope.presentation` pins every overlay below it.
-6. ~~A popup controller?~~ Settled: `CoilPopupController`, shaped like
-   `MenuController`, with `open()` resolving once with a
-   `CoilPopupCloseReason`.
-7. ~~Ship `expectCoilPattern`?~~ Settled: it stays internal to coil's
-   tests (`test/src/coil_pattern.dart`); a `TODO(coil-eject)` there tracks
-   exposing it later (e.g. a `coil_test` package) for ejected components.
+| 2026-11-13 | `CoilHoverRegion` only tracks state; `CoilHoverHighlight` paints the default highlight | one job per widget; callers update their own painters in build |
+| 2026-11-13 | Metrics and radii live in the theme (`CoilMetricsTable`, `CoilShape` class) | runtime-customizable, like every other token |
+| 2026-11-13 | The popover picks its side by laying out its content | no size estimates |

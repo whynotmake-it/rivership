@@ -6,22 +6,20 @@ import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// The one place coil controls derive their interaction states from.
+/// Writes a control's interaction states into [states], by coil's rules.
 ///
-/// Writes into [states]:
+/// * [WidgetState.hovered]: only from pointers that can hover (mouse,
+///   trackpad, hovering pen). A touch never hovers, so nothing stays lit
+///   where a finger lifted.
+/// * [WidgetState.pressed]: while a pointer is down on [child]. It clears on
+///   release, on cancel, and when the touch turns into a scroll. A quick tap
+///   still shows it for `CoilMotion.minPressDuration`.
+/// * [WidgetState.focused]: when [focusNode] has focus and the last input
+///   was the keyboard. Taps and clicks never show it.
+/// * [WidgetState.disabled]: when not [enabled].
 ///
-/// * [WidgetState.hovered] only from pointers that can hover
-///   ([CoilInputModality.canHover]). A touch never hovers, so nothing stays
-///   lit where a finger lifted.
-/// * [WidgetState.pressed] while a pointer (any kind) is down on [child],
-///   via a tap recognizer: it clears on release, on cancel, and when the
-///   touch turns into a scroll or drag. A quick tap keeps it for at least
-///   `CoilMotion.minPressDuration`.
-/// * [WidgetState.focused] when [focusNode] has focus **and** the last input
-///   was the keyboard (`:focus-visible`). Taps and clicks never show it.
-/// * [WidgetState.disabled] when not [enabled].
-///
-/// Components only read [states]; ejected copies inherit the rules.
+/// Use it for a control that owns its own focus or gestures (a text field,
+/// a list row); otherwise use [CoilInteraction].
 class CoilInteractionDetector extends StatefulWidget {
   /// Creates an interaction detector.
   const CoilInteractionDetector({
@@ -172,25 +170,14 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
   }
 }
 
-/// The interaction core of every pressable coil control.
+/// A pressable control: focus, keyboard activation and interaction states
+/// for [builder].
 ///
-/// States come from [CoilInteractionDetector], so the rules are the same
-/// everywhere and survive ejecting a component:
+/// States follow [CoilInteractionDetector]'s rules; it is disabled when
+/// [onPressed] is null. Enter, Numpad Enter and Space activate it. Pressing
+/// doesn't take focus (as on macOS and iOS); Tab does.
 ///
-/// * [WidgetState.hovered]: a mouse, trackpad or hovering pen is over the
-///   control. Never a touch, so nothing stays lit after a tap.
-/// * [WidgetState.pressed]: a pointer is down on the control. Clears on
-///   release, cancel, or when the touch becomes a scroll.
-/// * [WidgetState.focused]: focused **and** the last input was the keyboard
-///   (`:focus-visible`). Taps and clicks never show a focus ring.
-/// * [WidgetState.disabled]: [onPressed] is null.
-///
-/// Enter, Numpad Enter and Space activate it. Pressing does not take focus
-/// (as on macOS and iOS); Tab does.
-///
-/// Pass a [statesController] to observe the states or to force some (golden
-/// tests and docs force hovered/pressed/focused this way). The control
-/// still updates the controller from real input.
+/// Pass a [statesController] to observe the states.
 class CoilInteraction extends StatefulWidget {
   /// Creates a pressable.
   const CoilInteraction({
