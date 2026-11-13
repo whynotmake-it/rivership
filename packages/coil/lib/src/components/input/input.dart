@@ -1,5 +1,4 @@
 import 'package:coil/foundation.dart';
-import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input/input_style.dart';
 import 'package:coil/src/components/input/text_field_chrome.dart';
 import 'package:flutter/foundation.dart';
