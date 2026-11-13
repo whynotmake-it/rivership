@@ -60,7 +60,7 @@ final Map<String, WidgetBuilder> _stories = {
       const SizedBox(width: 12),
       CoilCheckbox(value: false, onChanged: (_) {}),
       const SizedBox(width: 12),
-      CoilCheckbox(value: true, indeterminate: true, onChanged: (_) {}),
+      CoilCheckbox(value: null, tristate: true, onChanged: (_) {}),
       const SizedBox(width: 12),
       const CoilCheckbox(value: false, onChanged: null),
     ],

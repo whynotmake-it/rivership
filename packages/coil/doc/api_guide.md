@@ -115,8 +115,9 @@ values today:
 - `CoilButton(variant: .ghost)`, not `ghost: true`.
 - `CoilPresentation.sheet`, not `useSheet: true`.
 
-Two booleans that can contradict each other are a smell; see the open
-question on `CoilCheckbox.indeterminate`.
+Two booleans that can contradict each other are a smell. Where Flutter
+already has a shape for a state, coil uses it: `CoilCheckbox` takes
+`value: bool?` + `tristate`, like `Checkbox`.
 
 ## 5. Slots over flags
 
@@ -246,6 +247,7 @@ spatial token.
 | 2026-11-13 | Value controls are controlled; `onChanged` reports the new value; null `onChanged` disables | Flutter idiom; removes the mobile spike's `enabled` + callback duplication |
 | 2026-11-13 | `CoilSelect<T>` and `CoilMultiSelect<T>` are two widgets | one `onChanged` name with one type per widget, instead of `onValuesChanged` |
 | 2026-11-13 | Tabs: `value` (index) + `onChanged`, `labels: CoilTabLabels` | same idea, same name; enums over booleans |
+| 2026-11-13 | `CoilCheckbox(value: bool?, tristate:, onChanged: ValueChanged<bool?>?)`: null is indeterminate (dash) and needs `tristate`; only a tristate box cycles false → true → null → false. The `indeterminate` flag is gone. `CoilCheckboxGroup` has no select-all yet; when it gets one it uses the same shape | user review of M0; Flutter's `Checkbox` shape, no contradicting booleans |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
@@ -257,9 +259,7 @@ spatial token.
 
 ## 10. Open questions
 
-1. `CoilCheckbox` has `value: bool` + `indeterminate: bool`, two booleans
-   that can contradict. Options: keep (Flutter's `Checkbox` uses
-   `bool? value` + `tristate`), or `value: CoilCheckState`. Undecided.
+1. ~~Checkbox value shape~~: settled (nullable `bool` + `tristate`, see the log).
 2. `style:` classes (per type and per instance): the shape (nullable fields
    + `merge`, `fallback(resolvedTokens)`) is agreed in research 03 §5.2 but
    not built. Do they land in M1 for all components at once, or per

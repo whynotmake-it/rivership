@@ -82,7 +82,7 @@ void main() {
           (s) => CoilCheckbox(
             value: s.checked,
             semanticLabel: 'Accept',
-            onChanged: (v) => s.update(() => s.checked = v),
+            onChanged: (v) => s.update(() => s.checked = v!),
           ),
           CoilPattern.checkbox,
         );

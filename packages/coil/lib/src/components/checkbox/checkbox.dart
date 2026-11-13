@@ -7,17 +7,22 @@ import 'package:motor/motor.dart';
 
 /// A checkbox (`registry/radix/checkbox.tsx`).
 ///
-/// A 1.5 px outlined square with no fill. Checking draws a check (or, for
-/// [indeterminate], a dash) in the foreground color that slightly overhangs
-/// the box, drawing itself in over the theme's `drawIn` motion and
-/// retracting over its `drawOut`.
+/// A 1.5 px outlined square with no fill. Checking draws a check (or, when
+/// [value] is null, a dash) in the foreground color that slightly overhangs
+/// the box, drawing itself in on the theme's `fade` spring and retracting on
+/// `fadeExit`.
+///
+/// Like Flutter's `Checkbox`: [value] is a `bool?` where null means
+/// indeterminate, which needs [tristate]. Only a tristate checkbox cycles
+/// through null when tapped (false → true → null → false); otherwise a tap
+/// reports `!value`.
 class CoilCheckbox extends StatefulWidget {
   /// Creates a checkbox.
   const CoilCheckbox({
     required this.value,
     required this.onChanged,
     super.key,
-    this.indeterminate = false,
+    this.tristate = false,
     this.invalid = false,
     this.size,
     this.focusNode,
@@ -26,17 +31,18 @@ class CoilCheckbox extends StatefulWidget {
     this.motion,
     this.semanticLabel,
     this.glyphBuilder,
-  });
+  }) : assert(tristate || value != null, 'Only a tristate checkbox is null');
 
-  /// Whether the box is checked.
-  final bool value;
+  /// Whether the box is checked; null (only with [tristate]) shows a dash:
+  /// some, not all, of what this box stands for is on.
+  final bool? value;
 
-  /// Called with the new value. Clicking an indeterminate box reports true.
-  /// Null disables the checkbox.
-  final ValueChanged<bool>? onChanged;
+  /// Called with the next value. Null disables the checkbox.
+  final ValueChanged<bool?>? onChanged;
 
-  /// Shows a dash: some, not all, of what this box stands for is on.
-  final bool indeterminate;
+  /// Whether a tap cycles through null (false → true → null → false), and
+  /// whether [value] may be null.
+  final bool tristate;
 
   /// Marks the box as invalid (a red-tinted border while unchecked).
   final bool invalid;
@@ -61,7 +67,7 @@ class CoilCheckbox extends StatefulWidget {
   final String? semanticLabel;
 
   /// Replaces the built-in tick and dash. Gets the glyph, its draw-in
-  /// progress (animated with the theme's `drawIn` / `drawOut`), color and
+  /// progress (animated on the theme's `fade` / `fadeExit`), color and
   /// size.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
 
@@ -97,11 +103,17 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
   CoilMotion get _motion =>
       CoilTheme.motionOf(context, override: widget.motion);
 
-  _Glyph get _glyph => widget.indeterminate
-      ? _Glyph.dash
-      : widget.value
-      ? _Glyph.check
-      : _Glyph.none;
+  _Glyph get _glyph => switch (widget.value) {
+    null => _Glyph.dash,
+    true => _Glyph.check,
+    false => _Glyph.none,
+  };
+
+  bool? get _next => switch (widget.value) {
+    false => true,
+    true => widget.tristate ? null : false,
+    null => false,
+  };
 
   /// The glyph being drawn, kept while it retracts.
   late _Glyph _shown = _glyph;
@@ -132,13 +144,13 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
 
     return Semantics(
       container: true,
-      checked: widget.indeterminate ? null : widget.value,
-      mixed: widget.indeterminate,
+      checked: widget.value ?? false,
+      mixed: widget.value == null,
       enabled: enabled,
       label: widget.semanticLabel,
       child: CoilInteraction(
         onPressed: enabled
-            ? () => widget.onChanged!(widget.indeterminate || !widget.value)
+            ? () => widget.onChanged!(_next)
             : null,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,

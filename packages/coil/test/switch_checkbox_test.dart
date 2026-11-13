@@ -247,13 +247,12 @@ void main() {
     testWidgets('overview sheet', (tester) async {
       Widget cb(
         SheetState s, {
-        bool value = false,
-        bool indeterminate = false,
+        bool? value = false,
         bool invalid = false,
         CoilSize? size,
       }) => CoilCheckbox(
         value: value,
-        indeterminate: indeterminate,
+        tristate: true,
         invalid: invalid,
         size: size,
         onChanged: s.isDisabled ? null : (_) {},
@@ -265,7 +264,7 @@ void main() {
           rows: [
             SheetRow('unchecked', cb),
             SheetRow('checked', (s) => cb(s, value: true)),
-            SheetRow('indeterminate', (s) => cb(s, indeterminate: true)),
+            SheetRow('indeterminate', (s) => cb(s, value: null)),
             SheetRow('invalid', (s) => cb(s, invalid: true)),
             SheetRow(
               'compact',
@@ -275,7 +274,7 @@ void main() {
                 children: [
                   cb(s, size: CoilSize.compact),
                   cb(s, value: true, size: CoilSize.compact),
-                  cb(s, indeterminate: true, size: CoilSize.compact),
+                  cb(s, value: null, size: CoilSize.compact),
                 ],
               ),
             ),
@@ -286,21 +285,40 @@ void main() {
       await expectSheetGolden(tester, finder, 'goldens/checkbox.png');
     });
 
-    testWidgets('indeterminate reports true; draws the check in', (
+    testWidgets('a tristate box cycles false → true → null → false', (
       tester,
     ) async {
-      bool? reported;
+      bool? value = false;
+      final reported = <bool?>[];
       await tester.pumpWidget(
         _app(
-          CoilCheckbox(
-            value: false,
-            indeterminate: true,
-            onChanged: (v) => reported = v,
+          StatefulBuilder(
+            builder: (context, setState) => CoilCheckbox(
+              value: value,
+              tristate: true,
+              onChanged: (v) => setState(() => reported.add(value = v)),
+            ),
           ),
         ),
       );
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.byType(CoilCheckbox));
+        await tester.pump();
+      }
+      expect(reported, [true, null, false]);
+    });
+
+    testWidgets('a two-state box never reports null', (tester) async {
+      final reported = <bool?>[];
+      await tester.pumpWidget(
+        _app(CoilCheckbox(value: true, onChanged: reported.add)),
+      );
       await tester.tap(find.byType(CoilCheckbox));
-      expect(reported, isTrue);
+      expect(reported, [false]);
+      expect(
+        () => CoilCheckbox(value: null, onChanged: (_) {}),
+        throwsAssertionError,
+      );
     });
 
     testWidgets('hover darkens the border', (tester) async {
