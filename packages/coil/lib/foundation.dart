@@ -9,5 +9,6 @@ export 'src/foundation/input_modality.dart';
 export 'src/foundation/metrics.dart';
 export 'src/foundation/motion.dart';
 export 'src/foundation/shape.dart';
+export 'src/foundation/style.dart';
 export 'src/foundation/theme.dart';
 export 'src/foundation/typography.dart';

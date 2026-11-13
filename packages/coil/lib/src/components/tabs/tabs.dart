@@ -1,5 +1,6 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/tabs/tabs_style.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -51,6 +52,7 @@ class CoilTabs extends StatefulWidget {
     this.labels = CoilTabLabels.always,
     this.size,
     this.motion,
+    this.style,
     this.debugHoveredIndex,
     this.debugFocusedIndex,
   });
@@ -73,6 +75,10 @@ class CoilTabs extends StatefulWidget {
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for these
   /// tabs.
   final CoilMotion? motion;
+
+  /// Overrides for these tabs' look, on top of the theme's [CoilTabsStyle]
+  /// and the defaults.
+  final CoilTabsStyle? style;
 
   /// Forces a hovered tab (for goldens and docs).
   @visibleForTesting
@@ -148,7 +154,11 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final colors = theme.colors;
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
-    final radius = BorderRadius.circular(theme.shape.item);
+    final style = CoilTabsStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilTabsStyle>(context)).merge(widget.style);
+    final radius = BorderRadius.circular(style.radius!);
     final selected = widget.value;
     final focused = widget.debugFocusedIndex ?? _focusVisible;
 
@@ -167,7 +177,7 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
             final hovered = widget.debugHoveredIndex ?? state.activeIndex;
             final hovering = hovered != null && hovered != selected;
             final fill = ShapeDecoration(
-              color: colors.active,
+              color: style.pill,
               shape: RoundedSuperellipseBorder(borderRadius: radius),
             );
             _selectedPill.update(
@@ -184,7 +194,7 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
               target: hovering ? hovered : null,
               session: state.session,
               from: selected,
-              opacity: 0.4,
+              opacity: style.hoverPillOpacity!,
               motion: motion.quick,
               exitMotion: motion.quickExit,
               exitTravelMotion: motion.standard,
@@ -224,6 +234,7 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
                       index: i,
                       child: _TabButton(
                         motion: motion,
+                        style: style,
                         tab: tab,
                         sizes: sizes,
                         selected: i == selected,
@@ -260,6 +271,7 @@ class _TabButton extends StatelessWidget {
     required this.statesController,
     required this.onPressed,
     required this.motion,
+    required this.style,
   });
 
   final CoilTab tab;
@@ -271,15 +283,13 @@ class _TabButton extends StatelessWidget {
   final WidgetStatesController statesController;
   final VoidCallback? onPressed;
   final CoilMotion motion;
+  final CoilTabsStyle style;
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final colors = theme.colors;
     final showLabel = !collapseLabel || selected;
-    final semibold = theme.typography.style(
-      sizes.body,
-      weight: CoilWeight.semibold,
+    final semibold = style.textStyle!.copyWith(
+      fontVariations: CoilWeight.semibold.variations,
     );
 
     return Semantics(
@@ -291,34 +301,33 @@ class _TabButton extends StatelessWidget {
         focusNode: focusNode,
         statesController: statesController,
         builder: (context, states, _) => ConstrainedBox(
-          constraints: BoxConstraints(minHeight: sizes.controlHeight),
+          constraints: BoxConstraints(minHeight: style.minHeight!),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: sizes.controlPaddingX,
               vertical: sizes.controlPaddingY(sizes.body),
             ),
             child: MotionBuilder<Color>(
-              value: active ? colors.foreground : colors.mutedForeground,
+              value: style.label!.resolve({
+                if (selected) WidgetState.selected,
+                if (active) WidgetState.hovered,
+              })!,
               motion: motion.fade,
               converter: MotionConverter.colorRgb,
               builder: (context, color, _) => SingleMotionBuilder(
                 value: selected ? CoilWeight.semibold.wght : 400,
                 motion: motion.fade,
                 builder: (context, wght, _) {
-                  final style = theme.typography
-                      .style(
-                        sizes.body,
-                        color: color,
-                      )
-                      .copyWith(
-                        fontVariations: [
-                          FontVariation('wght', wght),
-                          FontVariation(
-                            'opsz',
-                            14 + (wght - 400) / 150 * 4,
-                          ),
-                        ],
-                      );
+                  final textStyle = style.textStyle!.copyWith(
+                    color: color,
+                    fontVariations: [
+                      FontVariation('wght', wght),
+                      FontVariation(
+                        'opsz',
+                        14 + (wght - 400) / 150 * 4,
+                      ),
+                    ],
+                  );
                   final label = Stack(
                     children: [
                       // Reserves the semibold width so selecting a tab
@@ -335,7 +344,7 @@ class _TabButton extends StatelessWidget {
                         ),
                       ),
                       DefaultTextStyle(
-                        style: style,
+                        style: textStyle,
                         maxLines: 1,
                         softWrap: false,
                         child: tab.child ?? Text(tab.label),

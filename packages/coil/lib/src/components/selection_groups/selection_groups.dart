@@ -1,6 +1,8 @@
 import 'package:coil/checkbox.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/selection_groups/checkbox_group_style.dart';
+import 'package:coil/src/components/selection_groups/toggle_group_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -19,7 +21,12 @@ class CoilCheckboxGroup extends StatelessWidget {
     super.key,
     this.size,
     this.motion,
+    this.style,
   });
+
+  /// Overrides for this group's look, on top of the theme's
+  /// [CoilCheckboxGroupStyle] and the defaults.
+  final CoilCheckboxGroupStyle? style;
 
   /// The row labels.
   final List<Widget> children;
@@ -46,9 +53,16 @@ class CoilCheckboxGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final sizes = CoilTheme.metricsOf(context, size: size);
+    final look = CoilCheckboxGroupStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilCheckboxGroupStyle>(context)).merge(style);
     return _SelectionRegion(
       selected: values,
       motion: motion,
+      selection: look.selection!,
+      highlight: look.highlight!,
+      radius: look.radius!,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,7 +75,11 @@ class CoilCheckboxGroup extends StatelessWidget {
                 sizes: sizes,
                 onPressed: onChanged == null ? null : () => _toggle(i),
                 label: option,
-                textColor: theme.colors.foreground,
+                textStyle: look.textStyle!.copyWith(
+                  color: look.label!.resolve({
+                    if (values.contains(i)) WidgetState.selected,
+                  }),
+                ),
               ),
             ),
         ],
@@ -76,14 +94,14 @@ class _CheckRow extends StatefulWidget {
     required this.sizes,
     required this.onPressed,
     required this.label,
-    required this.textColor,
+    required this.textStyle,
   });
 
   final bool checked;
   final CoilMetrics sizes;
   final VoidCallback? onPressed;
   final Widget label;
-  final Color textColor;
+  final TextStyle textStyle;
 
   @override
   State<_CheckRow> createState() => _CheckRowState();
@@ -101,7 +119,6 @@ class _CheckRowState extends State<_CheckRow> {
   @override
   Widget build(BuildContext context) {
     final sizes = widget.sizes;
-    final theme = CoilTheme.of(context);
     return Semantics(
       container: true,
       checked: widget.checked,
@@ -137,10 +154,7 @@ class _CheckRowState extends State<_CheckRow> {
                 ),
                 Expanded(
                   child: DefaultTextStyle(
-                    style: theme.typography.style(
-                      sizes.body,
-                      color: widget.textColor,
-                    ),
+                    style: widget.textStyle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     child: widget.label,
@@ -166,7 +180,12 @@ class CoilToggleGroup extends StatelessWidget {
     super.key,
     this.size,
     this.motion,
+    this.style,
   });
+
+  /// Overrides for this group's look, on top of the theme's
+  /// [CoilToggleGroupStyle] and the defaults.
+  final CoilToggleGroupStyle? style;
 
   /// The toggle labels.
   final List<Widget> children;
@@ -192,13 +211,19 @@ class CoilToggleGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final colors = theme.colors;
     final sizes = CoilTheme.metricsOf(context, size: size);
     final tokens = CoilTheme.motionOf(context, override: motion);
+    final look = CoilToggleGroupStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilToggleGroupStyle>(context)).merge(style);
     return _SelectionRegion(
       selected: values,
       axis: Axis.horizontal,
       motion: motion,
+      selection: look.selection!,
+      highlight: look.highlight!,
+      radius: look.radius!,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -224,18 +249,15 @@ class CoilToggleGroup extends StatelessWidget {
                         widthFactor: 1,
                         heightFactor: 1,
                         child: MotionBuilder<Color>(
-                          value:
-                              values.contains(i) ||
-                                  states.contains(WidgetState.hovered)
-                              ? colors.foreground
-                              : colors.mutedForeground,
+                          value: look.label!.resolve({
+                            if (values.contains(i)) WidgetState.selected,
+                            if (states.contains(WidgetState.hovered))
+                              WidgetState.hovered,
+                          })!,
                           motion: tokens.fade,
                           converter: .colorRgb,
                           builder: (context, color, child) => DefaultTextStyle(
-                            style: theme.typography.style(
-                              sizes.body,
-                              color: color,
-                            ),
+                            style: look.textStyle!.copyWith(color: color),
                             maxLines: 1,
                             softWrap: false,
                             child: child!,
@@ -260,12 +282,18 @@ class _SelectionRegion extends StatefulWidget {
   const _SelectionRegion({
     required this.selected,
     required this.motion,
+    required this.selection,
+    required this.highlight,
+    required this.radius,
     required this.child,
     this.axis = Axis.vertical,
   });
 
   final Set<int> selected;
   final CoilMotion? motion;
+  final Color selection;
+  final Color highlight;
+  final double radius;
   final Axis axis;
   final Widget child;
 
@@ -285,17 +313,18 @@ class _SelectionRegionState extends State<_SelectionRegion>
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     _selection.update(
       selected: widget.selected,
       axis: widget.axis,
-      color: theme.colors.active,
-      radius: theme.shape.item,
+      color: widget.selection,
+      radius: widget.radius,
       motion: CoilTheme.motionOf(context, override: widget.motion),
     );
     return CoilHoverRegion(
       axis: widget.axis == Axis.vertical ? CoilHoverAxis.y : CoilHoverAxis.x,
       background: [_selection],
+      highlightColor: widget.highlight,
+      highlightRadius: widget.radius,
       child: widget.child,
     );
   }

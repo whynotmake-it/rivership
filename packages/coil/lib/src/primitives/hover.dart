@@ -85,7 +85,15 @@ class CoilHoverRegion extends StatefulWidget {
     this.onStateChanged,
     this.onActiveIndexChanged,
     this.activeItem,
+    this.highlightColor,
+    this.highlightRadius,
   });
+
+  /// The highlight's color; the theme's `hover` tint when null.
+  final Color? highlightColor;
+
+  /// The highlight's corner radius; the theme's item radius when null.
+  final double? highlightRadius;
 
   /// Shares the lit item with a list's [CoilActiveItemController]: hovering
   /// pointers write into it (via [CoilModality.pointer]) and the highlight
@@ -298,9 +306,11 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
       exitTravelMotion: motion.standard,
       fade: motion.fade,
       decoration: ShapeDecoration(
-        color: theme.colors.hover,
+        color: widget.highlightColor ?? theme.colors.hover,
         shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(theme.shape.item),
+          borderRadius: BorderRadius.circular(
+            widget.highlightRadius ?? theme.shape.item,
+          ),
         ),
       ),
     );

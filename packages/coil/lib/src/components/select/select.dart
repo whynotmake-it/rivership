@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/select/option_list.dart';
+import 'package:coil/src/components/select/select_style.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -45,6 +46,7 @@ class CoilSelect<T> extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.motion,
+    this.style,
   });
 
   /// The choices.
@@ -86,6 +88,10 @@ class CoilSelect<T> extends StatelessWidget {
   /// Motion tokens for this select (trigger, list, popover or sheet).
   final CoilMotion? motion;
 
+  /// Overrides for this select's look, on top of the theme's
+  /// [CoilSelectStyle] and the defaults.
+  final CoilSelectStyle? style;
+
   @override
   Widget build(BuildContext context) => _SelectCore<T>(
     options: options,
@@ -105,6 +111,7 @@ class CoilSelect<T> extends StatelessWidget {
     focusNode: focusNode,
     autofocus: autofocus,
     motion: motion,
+    style: style,
   );
 }
 
@@ -130,6 +137,7 @@ class CoilMultiSelect<T> extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.motion,
+    this.style,
   });
 
   /// The choices.
@@ -171,6 +179,10 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// Motion tokens for this select.
   final CoilMotion? motion;
 
+  /// Overrides for this select's look, on top of the theme's
+  /// [CoilSelectStyle] and the defaults.
+  final CoilSelectStyle? style;
+
   @override
   Widget build(BuildContext context) => _SelectCore<T>(
     options: options,
@@ -190,6 +202,7 @@ class CoilMultiSelect<T> extends StatelessWidget {
     focusNode: focusNode,
     autofocus: autofocus,
     motion: motion,
+    style: style,
   );
 }
 
@@ -209,6 +222,7 @@ class _SelectCore<T> extends StatefulWidget {
     required this.focusNode,
     required this.autofocus,
     required this.motion,
+    required this.style,
   });
 
   final List<CoilOption<T>> options;
@@ -227,6 +241,7 @@ class _SelectCore<T> extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final CoilMotion? motion;
+  final CoilSelectStyle? style;
 
   @override
   State<_SelectCore<T>> createState() => _SelectCoreState<T>();
@@ -274,6 +289,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         ? CoilMetrics.resolve(CoilTier.touch, CoilSize.regular)
         : CoilTheme.metricsOf(context);
     final pointerTier = CoilTheme.tierOf(context) == CoilTier.pointer;
+    final style = _resolveStyle(context, metrics);
     final scaler = MediaQuery.textScalerOf(context);
     final rowExtent =
         metrics.controlHeight -
@@ -305,6 +321,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
           multiple: widget.multiple,
           checkmark: widget.checkmark,
           metrics: metrics,
+          style: style,
           keyboardOpened: keyboard,
           selectedFill: !sheet,
           fullEmphasis: sheet || !pointerTier,
@@ -325,7 +342,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         ),
       ),
       popover: (context, content) =>
-          _PopoverSurface(metrics: metrics, child: content),
+          _PopoverSurface(metrics: metrics, style: style, child: content),
       sheet: (context, content) =>
           CoilSheetPanel(title: widget.sheetTitle, child: content),
     );
@@ -356,10 +373,15 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     );
   }
 
+  CoilSelectStyle _resolveStyle(BuildContext context, CoilMetrics metrics) =>
+      CoilSelectStyle.fallback(
+        CoilTheme.of(context),
+        metrics,
+      ).merge(CoilTheme.styleOf<CoilSelectStyle>(context)).merge(widget.style);
+
   Widget _buildTrigger(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
+    final style = _resolveStyle(context, metrics);
     final picked = [
       for (final option in widget.options)
         if (widget.picked.contains(option.value)) option,
@@ -367,7 +389,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     final label = switch (picked) {
       [] => Text(
         widget.placeholder,
-        style: TextStyle(color: colors.mutedForeground),
+        style: TextStyle(color: style.placeholder),
       ),
       [final only] when !widget.multiple => only.child ?? Text(only.label),
       _ => Text(picked.map((o) => o.label).join(', ')),
@@ -420,6 +442,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
             excludeFromSemantics: true,
             builder: (context, states, _) => CoilSelectTrigger(
               metrics: metrics,
+              style: style,
               states: {
                 ...states,
                 // The list shows where the pointer is while open.
@@ -447,10 +470,14 @@ class CoilSelectTrigger extends StatelessWidget {
     super.key,
     this.icon,
     this.indicator,
+    this.style,
   });
 
   /// The size step.
   final CoilMetrics metrics;
+
+  /// The resolved look; null computes it from the theme.
+  final CoilSelectStyle? style;
 
   /// The label.
   final Widget label;
@@ -468,23 +495,26 @@ class CoilSelectTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final colors = theme.colors;
+    final style =
+        this.style ??
+        CoilSelectStyle.fallback(
+          theme,
+          metrics,
+        ).merge(CoilTheme.styleOf<CoilSelectStyle>(context));
     final motion = CoilTheme.motionOf(context);
     final open = states.contains(WidgetState.selected);
     final hovered = states.contains(WidgetState.hovered) && !open;
     final pressed = states.contains(WidgetState.pressed);
     final focusRing = states.contains(WidgetState.focused) && !open;
     final enabled = !states.contains(WidgetState.disabled);
-    final radius = BorderRadius.circular(theme.shape.item);
+    final radius = BorderRadius.circular(style.radius!);
     return Opacity(
       opacity: enabled ? 1 : 0.5,
       child: CoilFocusRing(
         visible: focusRing,
         borderRadius: radius,
         child: MotionBuilder<Color>(
-          value: pressed
-              ? colors.active
-              : (hovered ? colors.hover : colors.hover.withValues(alpha: 0)),
+          value: style.triggerFill!.resolve(states)!,
           converter: MotionConverter.colorRgb,
           motion: pressed || hovered ? motion.fade : motion.fadeExit,
           debugLabel: 'CoilSelect trigger fill',
@@ -493,7 +523,7 @@ class CoilSelectTrigger extends StatelessWidget {
               color: fill,
               shape: RoundedSuperellipseBorder(
                 borderRadius: radius,
-                side: BorderSide(color: colors.border),
+                side: BorderSide(color: style.triggerBorder!),
               ),
             ),
             child: child,
@@ -514,13 +544,10 @@ class CoilSelectTrigger extends StatelessWidget {
                 data: IconThemeData(
                   size: metrics.iconSize,
                   applyTextScaling: true,
-                  color: hovered ? colors.foreground : colors.mutedForeground,
+                  color: style.indicator!.resolve(states),
                 ),
                 child: DefaultTextStyle(
-                  style: theme.typography.style(
-                    metrics.body,
-                    color: colors.foreground,
-                  ),
+                  style: style.textStyle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   child: Row(
@@ -546,23 +573,25 @@ class CoilSelectTrigger extends StatelessWidget {
 }
 
 class _PopoverSurface extends StatelessWidget {
-  const _PopoverSurface({required this.metrics, required this.child});
+  const _PopoverSurface({
+    required this.metrics,
+    required this.style,
+    required this.child,
+  });
 
   final CoilMetrics metrics;
+  final CoilSelectStyle style;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final colors = theme.colors;
+    final colors = CoilTheme.of(context).colors;
     // Concentric with the rows: item radius + the popup's inset.
-    final radius = BorderRadius.circular(
-      theme.shape.item + metrics.popupInset,
-    );
+    final radius = BorderRadius.circular(style.radius! + metrics.popupInset);
     return IntrinsicWidth(
       child: DecoratedBox(
         decoration: ShapeDecoration(
-          color: colors.surface(3),
+          color: style.surface,
           shadows: colors.shadow(3),
           shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),

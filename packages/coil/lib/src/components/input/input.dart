@@ -1,5 +1,6 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/input/input_style.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -39,6 +40,7 @@ class CoilInput extends StatefulWidget {
     this.size,
     this.statesController,
     this.motion,
+    this.style,
     this.semanticLabel,
   });
 
@@ -100,6 +102,10 @@ class CoilInput extends StatefulWidget {
   /// instance.
   final CoilMotion? motion;
 
+  /// Overrides for this field's look, on top of the theme's
+  /// [CoilInputStyle] and the defaults.
+  final CoilInputStyle? style;
+
   /// A label for assistive technology.
   final String? semanticLabel;
 
@@ -151,21 +157,22 @@ class _CoilInputState extends State<CoilInput> {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
-    final style = theme.typography.style(
-      sizes.field,
-      color: colors.foreground,
-    );
-    final radius = BorderRadius.circular(theme.shape.item);
+    final look = CoilInputStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilInputStyle>(context)).merge(widget.style);
+    final style = look.textStyle!;
+    final radius = BorderRadius.circular(look.radius!);
 
     Widget slot(Widget child) => IconTheme(
       data: IconThemeData(
         size: sizes.iconSize,
         applyTextScaling: true,
-        color: colors.mutedForeground,
+        color: look.placeholder,
         weight: CoilIconWeight.rest,
       ),
       child: DefaultTextStyle(
-        style: style.copyWith(color: colors.mutedForeground),
+        style: style.copyWith(color: look.placeholder),
         child: child,
       ),
     );
@@ -176,14 +183,13 @@ class _CoilInputState extends State<CoilInput> {
         final states = _states.value;
         final focused = states.contains(WidgetState.focused);
         final hovered = states.contains(WidgetState.hovered);
-        final border = focused
-            ? colors.foreground.withValues(alpha: 0.4)
-            : widget.invalid
-            ? colors.destructive.withValues(alpha: 0.5)
-            : colors.border;
-        final fill = hovered && !focused
-            ? colors.hover
-            : colors.hover.withValues(alpha: 0);
+        final resolved = {
+          if (focused) WidgetState.focused,
+          if (hovered) WidgetState.hovered,
+          if (widget.invalid) WidgetState.error,
+        };
+        final border = look.border!.resolve(resolved)!;
+        final fill = look.fill!.resolve(resolved)!;
         return MotionBuilder<Color>(
           value: border,
           motion: _motion.fade,
@@ -195,7 +201,7 @@ class _CoilInputState extends State<CoilInput> {
             // A minimum height plus symmetric padding: the text's line box
             // sits centered and the field grows with the text scale.
             builder: (context, fillColor, child) => Container(
-              constraints: BoxConstraints(minHeight: sizes.controlHeight),
+              constraints: BoxConstraints(minHeight: look.minHeight!),
               decoration: ShapeDecoration(
                 color: fillColor,
                 shape: RoundedSuperellipseBorder(
@@ -241,7 +247,7 @@ class _CoilInputState extends State<CoilInput> {
             controller: widget.controller,
             focusNode: _focusNode,
             placeholder: widget.placeholder,
-            placeholderColor: colors.mutedForeground,
+            placeholderColor: look.placeholder,
             style: style,
             strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
             cursorColor: colors.foreground,

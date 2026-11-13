@@ -3,6 +3,7 @@
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/switch/switch_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -62,6 +63,7 @@ class CoilSwitch extends StatefulWidget {
     this.statesController,
     this.motion,
     this.motions,
+    this.style,
     this.semanticLabel,
   });
 
@@ -95,6 +97,10 @@ class CoilSwitch extends StatefulWidget {
   /// [CoilThemeData.trackMotions] and the tokens; reduced motion still makes
   /// the thumb and squish instant.
   final Map<CoilSwitchTrack<Object>, Motion>? motions;
+
+  /// Overrides for this switch's look, on top of the theme's
+  /// [CoilSwitchStyle] and the defaults.
+  final CoilSwitchStyle? style;
 
   /// A label for assistive technology when [label] is not plain text.
   final String? semanticLabel;
@@ -283,8 +289,11 @@ class _CoilSwitchState extends State<CoilSwitch>
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final colors = theme.colors;
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
+    final style = CoilSwitchStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilSwitchStyle>(context)).merge(widget.style);
     final m = sizes.switchMetrics;
     final travel = m.trackWidth - m.thumbSize - m.thumbInset * 2;
     final sharp = theme.shape == CoilShape.sharp;
@@ -298,7 +307,7 @@ class _CoilSwitchState extends State<CoilSwitch>
       builder: (context, states, _) {
         final track = CoilFocusRing(
           visible: states.contains(WidgetState.focused),
-          borderRadius: BorderRadius.circular(sharp ? 0 : m.trackHeight / 2),
+          borderRadius: BorderRadius.circular(style.radius!),
           offset: 2,
           child: SingleMotionBuilder(
             value: states.contains(WidgetState.hovered) ? 1 : 0,
@@ -308,7 +317,7 @@ class _CoilSwitchState extends State<CoilSwitch>
               listenable: _controller,
               builder: (context, _) => _SwitchTrack(
                 metrics: m,
-                colors: colors,
+                style: style,
                 sharp: sharp,
                 thumb: _controller.value(_thumb),
                 squish: _controller.value(_squish).clamp(0, 1),
@@ -332,14 +341,14 @@ class _CoilSwitchState extends State<CoilSwitch>
               children: [
                 track,
                 MotionBuilder<Color>(
-                  value: widget.value
-                      ? colors.foreground
-                      : colors.mutedForeground,
+                  value: style.label!.resolve({
+                    if (widget.value) WidgetState.selected,
+                  })!,
                   motion: _motion.fade,
                   converter: .colorRgb,
                   debugLabel: 'Label color',
                   builder: (context, color, child) => DefaultTextStyle(
-                    style: theme.typography.style(sizes.body, color: color),
+                    style: style.textStyle!.copyWith(color: color),
                     child: child!,
                   ),
                   child: label,
@@ -386,7 +395,7 @@ class _CoilSwitchState extends State<CoilSwitch>
 class _SwitchTrack extends StatelessWidget {
   const _SwitchTrack({
     required this.metrics,
-    required this.colors,
+    required this.style,
     required this.sharp,
     required this.thumb,
     required this.squish,
@@ -395,7 +404,7 @@ class _SwitchTrack extends StatelessWidget {
   });
 
   final CoilSwitchMetrics metrics;
-  final CoilColors colors;
+  final CoilSwitchStyle style;
   final bool sharp;
 
   /// 0 off, 1 on; a drag may pull it slightly past either end.
@@ -419,14 +428,15 @@ class _SwitchTrack extends StatelessWidget {
     final start = inset + at * (travel - extend);
     final top = (m.trackHeight - height) / 2;
 
+    final track = style.track!;
     final off = Color.lerp(
-      colors.accent,
-      CoilColorMix.oklab(colors.accent, colors.overlay, 0.9),
+      track.resolve({}),
+      track.resolve({WidgetState.hovered}),
       hover,
     )!;
     final on = Color.lerp(
-      colors.brand,
-      CoilColorMix.oklab(colors.brand, const Color(0xFF000000), 0.92),
+      track.resolve({WidgetState.selected}),
+      track.resolve({WidgetState.selected, WidgetState.hovered}),
       hover,
     )!;
 
@@ -434,7 +444,7 @@ class _SwitchTrack extends StatelessWidget {
     // keep its area: about 4% at most, a quieter take on Motor's toggle.
     final over = (thumb - at).clamp(-_overdrag, _overdrag);
     final stretch = 1 + over.abs() * 0.25;
-    final radius = BorderRadius.circular(sharp ? 0 : m.trackHeight / 2);
+    final radius = BorderRadius.circular(style.radius!);
 
     return Transform(
       alignment: over > 0
@@ -457,7 +467,7 @@ class _SwitchTrack extends StatelessWidget {
               height: height,
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  color: const Color(0xFFFFFFFF), // Tailwind `shadow-sm`.
+                  color: style.thumb, // Tailwind `shadow-sm`.
                   shadows: const [
                     BoxShadow(
                       color: Color(0x1A000000),

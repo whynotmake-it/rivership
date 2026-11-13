@@ -80,7 +80,7 @@ Rules:
 | Icon-only content | `icon` | named constructor `.icon(...)` where a widget can be icon-only |
 | Drawn glyph replacement | `<glyph>Builder` or a `Widget?` slot | e.g. `CoilCheckbox.glyphBuilder`, `CoilSelect.checkmark` |
 | Per-instance motion | `motion: CoilMotion?`, plus `motions: Map<Coil<Name>Track<Object>, Motion>?` on multi-track components | see §6 |
-| Per-instance style | `style: Coil<Name>Style?` | see §6 (M1) |
+| Per-instance style | `style: Coil<Name>Style?` | see §6 |
 | Overlay presentation | `presentation: CoilPresentation?` | null lets `CoilAdaptivePopup` decide |
 | Focus | `focusNode`, `autofocus` | as in Flutter |
 | Observable/forceable states | `statesController: WidgetStatesController?` | as in Flutter's buttons |
@@ -146,11 +146,36 @@ previous one when a component builds:
 4. Subtree: `CoilTheme.override(transform: (t) => t.copyWith(...))`. The
    transform runs on the parent's data, so a later change at the root still
    flows through.
-5. Per-component-type: reserved for `style:` classes in the theme (M1).
-6. Per instance: the component's `style:` (M1) and `motion:` parameters.
+5. Per-component-type: the theme's style for the component's style type
+   (`CoilThemeData.components`, set with `withComponentStyle`, which merges
+   onto an existing entry) and its `trackMotions`.
+6. Per instance: the component's `style:`, `motion:` and `motions:`
+   parameters.
 7. High contrast (`MediaQuery.highContrastOf`): applied by `CoilTheme.of`.
 8. Reduced motion (`MediaQuery.disableAnimationsOf`): applied **last** by
    `CoilTheme.motionOf`, on top of whatever 1–7 produced.
+
+### Style classes
+
+Every component has a `Coil<Name>Style extends CoilComponentStyle<…>` in
+`src/components/<name>/<name>_style.dart`, exported from its library:
+
+- every field is nullable; null means "use the default";
+- `factory Coil<Name>Style.fallback(CoilThemeData theme, CoilMetrics
+  metrics, …)` computes every field from tokens, so a token change flows
+  into any field the app didn't set;
+- `merge(other)`: `other`'s non-null fields win (text styles merge);
+- value equality through `props`;
+- state-dependent colors are `WidgetStateProperty<Color?>`, resolved with
+  the states the style's doc lists (`hovered`, `pressed`, `selected`,
+  `focused`, `error`, `disabled`);
+- the component resolves
+  `fallback(...).merge(CoilTheme.styleOf<S>(context)).merge(widget.style)`
+  once per build and reads only that.
+
+Styles hold look only (colors, radii, text styles, sizes). Behavior,
+motion (`motion:`/`motions:`) and adaptive decisions are never style
+fields.
 
 `motion:` takes a whole `CoilMotion` (the token set). Write it as a copy of
 the inherited tokens when only one field changes:

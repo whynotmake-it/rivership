@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/checkbox/checkbox_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -29,6 +30,7 @@ class CoilCheckbox extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.style,
     this.semanticLabel,
     this.glyphBuilder,
     this.tapTargetSize = CoilTapTargetSize.padded,
@@ -63,6 +65,10 @@ class CoilCheckbox extends StatefulWidget {
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for this
   /// instance.
   final CoilMotion? motion;
+
+  /// Overrides for this checkbox's look, on top of the theme's
+  /// [CoilCheckboxStyle] and the defaults.
+  final CoilCheckboxStyle? style;
 
   /// A label for assistive technology.
   final String? semanticLabel;
@@ -139,18 +145,21 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final colors = theme.colors;
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
+    final style = CoilCheckboxStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(widget.style);
     final enabled = widget.onChanged != null;
     final on = _glyph != _Glyph.none;
     // The box and its glyph grow with text, like icons; gaps don't.
     final scaler = MediaQuery.textScalerOf(context);
-    final boxSize = scaler.scale(sizes.checkboxSize);
-    final glyphSize = scaler.scale(sizes.checkboxGlyphSize);
+    final boxSize = scaler.scale(style.size!);
+    final glyphSize = scaler.scale(
+      sizes.checkboxGlyphSize * style.size! / sizes.checkboxSize,
+    );
     final radius = BorderRadius.circular(
-      theme.shape == CoilShape.sharp
-          ? 0
-          : sizes.checkboxRadius * boxSize / sizes.checkboxSize,
+      style.radius! * boxSize / style.size!,
     );
 
     return Semantics(
@@ -168,18 +177,11 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
             ? sizes.minHitTarget
             : 0,
         builder: (context, states, _) {
-          final hovered = states.contains(WidgetState.hovered);
-          final hoverBorder = colors.foreground.withValues(alpha: 0.4);
-          final Color border;
-          if (on) {
-            border = hovered ? hoverBorder : colors.border.withValues(alpha: 0);
-          } else if (hovered) {
-            border = hoverBorder;
-          } else if (widget.invalid) {
-            border = colors.destructive.withValues(alpha: 0.5);
-          } else {
-            border = colors.border;
-          }
+          final border = style.border!.resolve({
+            if (states.contains(WidgetState.hovered)) WidgetState.hovered,
+            if (on) WidgetState.selected,
+            if (widget.invalid) WidgetState.error,
+          })!;
           return Opacity(
             opacity: enabled ? 1 : 0.5,
             child: CoilFocusRing(
@@ -195,7 +197,10 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                   decoration: ShapeDecoration(
                     shape: RoundedSuperellipseBorder(
                       borderRadius: radius,
-                      side: BorderSide(color: borderColor, width: 1.5),
+                      side: BorderSide(
+                        color: borderColor,
+                        width: style.borderWidth!,
+                      ),
                     ),
                   ),
                   child: child,
@@ -218,7 +223,7 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                               ? CoilCheckboxGlyph.dash
                               : CoilCheckboxGlyph.check,
                           progress.clamp(0, 1),
-                          colors.foreground,
+                          style.glyphColor!,
                           glyphSize,
                         );
                       }
@@ -227,7 +232,7 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                         painter: _GlyphPainter(
                           glyph: _shown,
                           progress: progress,
-                          color: colors.foreground,
+                          color: style.glyphColor!,
                         ),
                       );
                     },

@@ -3,6 +3,7 @@ import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/shape.dart';
+import 'package:coil/src/foundation/style.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -23,7 +24,27 @@ class CoilThemeData with Diagnosticable {
     this.typography = const CoilTypography(),
     this.focusRingWidth = 1,
     this.trackMotions = const {},
+    this.components = const {},
   });
+
+  /// Per-component-type style overrides, keyed by style type:
+  /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
+  /// [withComponentStyle], which merges with an existing entry. Components
+  /// read them with [CoilTheme.styleOf].
+  final Map<Type, CoilComponentStyle<dynamic>> components;
+
+  /// The style override for type [S], if any.
+  S? componentStyle<S extends CoilComponentStyle<S>>() => components[S] as S?;
+
+  /// A copy with [style] merged onto the existing entry for its type.
+  CoilThemeData withComponentStyle<S extends CoilComponentStyle<S>>(
+    S style,
+  ) => copyWith(
+    components: {
+      ...components,
+      S: componentStyle<S>()?.merge(style) ?? style,
+    },
+  );
 
   /// Theme-level per-track motions for any component, keyed by the
   /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
@@ -74,6 +95,7 @@ class CoilThemeData with Diagnosticable {
     CoilTypography? typography,
     double? focusRingWidth,
     Map<Track<Object>, Motion>? trackMotions,
+    Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
@@ -82,6 +104,7 @@ class CoilThemeData with Diagnosticable {
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
     trackMotions: trackMotions ?? this.trackMotions,
+    components: components ?? this.components,
   );
 
   /// Interpolates two themes, for animated theme changes. Colors and the
@@ -98,6 +121,7 @@ class CoilThemeData with Diagnosticable {
         focusRingWidth:
             a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
         trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
+        components: t < 0.5 ? a.components : b.components,
       );
 
   @override
@@ -109,7 +133,8 @@ class CoilThemeData with Diagnosticable {
       other.motion == motion &&
       other.typography == typography &&
       other.focusRingWidth == focusRingWidth &&
-      mapEquals(other.trackMotions, trackMotions);
+      mapEquals(other.trackMotions, trackMotions) &&
+      mapEquals(other.components, components);
 
   @override
   int get hashCode => Object.hash(
@@ -121,6 +146,9 @@ class CoilThemeData with Diagnosticable {
     focusRingWidth,
     Object.hashAllUnordered(
       trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+    Object.hashAllUnordered(
+      components.entries.map((e) => Object.hash(e.key, e.value)),
     ),
   );
 
@@ -211,6 +239,13 @@ class CoilTheme extends StatelessWidget {
         ? motion.reduced()
         : motion;
   }
+
+  /// The theme's style override for type [S] at [context], if any. A
+  /// component computes its style as
+  /// `S.fallback(...).merge(CoilTheme.styleOf<S>(context))` and then merges
+  /// its own `style:` on top.
+  static S? styleOf<S extends CoilComponentStyle<S>>(BuildContext context) =>
+      of(context).componentStyle<S>();
 
   /// The motion for one [track] of a component at [context]: the
   /// component's [instance] map entry, else the theme's

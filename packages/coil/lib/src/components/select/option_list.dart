@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/select/select_style.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -52,6 +53,7 @@ class CoilOptionList<T> extends StatefulWidget {
     required this.onPick,
     required this.onDismiss,
     required this.metrics,
+    required this.style,
     super.key,
     this.multiple = false,
     this.keyboardOpened = false,
@@ -74,6 +76,9 @@ class CoilOptionList<T> extends StatefulWidget {
 
   /// The size step.
   final CoilMetrics metrics;
+
+  /// The resolved look.
+  final CoilSelectStyle style;
 
   /// Whether rows toggle independently.
   final bool multiple;
@@ -213,14 +218,15 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     final colors = theme.colors;
     final motion = CoilTheme.motionOf(context);
     final metrics = widget.metrics;
-    final radius = BorderRadius.circular(theme.shape.item);
+    final style = widget.style;
+    final radius = BorderRadius.circular(style.radius!);
     final count = widget.options.length;
 
     if (widget.multiple) {
       _blocks.update(
         selected: _checked,
-        color: colors.active,
-        radius: theme.shape.item,
+        color: style.selectedFill!,
+        radius: style.radius!,
         motion: motion,
       );
     }
@@ -234,7 +240,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
       exitTravelMotion: motion.standard,
       fade: motion.fade,
       decoration: ShapeDecoration(
-        color: colors.active,
+        color: style.selectedFill,
         shape: RoundedSuperellipseBorder(borderRadius: radius),
       ),
     );
@@ -247,6 +253,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
           enabled: option.enabled,
           child: _OptionRow(
             index: i,
+            style: style,
             option: option,
             metrics: metrics,
             checked: _checked.contains(i),
@@ -330,6 +337,8 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
               child: CoilHoverRegion(
                 activeItem: _active,
                 followFocus: false,
+                highlightColor: style.highlight,
+                highlightRadius: style.radius,
                 background: [
                   if (widget.multiple) _blocks else _selectedFill,
                 ],
@@ -357,6 +366,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
 class _OptionRow extends StatefulWidget {
   const _OptionRow({
     required this.index,
+    required this.style,
     required this.option,
     required this.metrics,
     required this.checked,
@@ -366,6 +376,7 @@ class _OptionRow extends StatefulWidget {
   });
 
   final int index;
+  final CoilSelectStyle style;
   final CoilOption<Object?> option;
   final CoilMetrics metrics;
   final bool checked;
@@ -401,9 +412,12 @@ class _OptionRowState extends State<_OptionRow> {
     final colors = theme.colors;
     final motion = CoilTheme.motionOf(context);
     final lit = CoilHoverRegion.maybeOf(context)?.activeIndex;
-    final highlighted =
-        checked || fullEmphasis || (lit != null && lit == index);
-    final color = highlighted ? colors.foreground : colors.mutedForeground;
+    final style = widget.style;
+    final color = style.rowLabel!.resolve({
+      if (checked) WidgetState.selected,
+      if (lit != null && lit == index) WidgetState.hovered,
+      if (fullEmphasis) WidgetState.focused,
+    })!;
     return Semantics(
       selected: checked,
       enabled: option.enabled,
@@ -433,8 +447,8 @@ class _OptionRowState extends State<_OptionRow> {
                 value:
                     states.contains(WidgetState.pressed) &&
                         !states.contains(WidgetState.hovered)
-                    ? colors.active
-                    : colors.active.withValues(alpha: 0),
+                    ? style.selectedFill!
+                    : style.selectedFill!.withValues(alpha: 0),
                 converter: MotionConverter.colorRgb,
                 motion: states.contains(WidgetState.pressed)
                     ? motion.fade
@@ -444,7 +458,7 @@ class _OptionRowState extends State<_OptionRow> {
                   decoration: ShapeDecoration(
                     color: fill,
                     shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(theme.shape.item),
+                      borderRadius: BorderRadius.circular(style.radius!),
                     ),
                   ),
                   child: child,
@@ -472,7 +486,7 @@ class _OptionRowState extends State<_OptionRow> {
                       color: color,
                     ),
                     child: DefaultTextStyle(
-                      style: theme.typography.style(metrics.body, color: color),
+                      style: style.textStyle!.copyWith(color: color),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       child: Row(

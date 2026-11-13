@@ -2,26 +2,10 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/button/button_style.dart';
+import 'package:coil/src/components/button/button_variant.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
-
-/// The visual style of a [CoilButton].
-enum CoilButtonVariant {
-  /// Solid foreground fill: the one main action.
-  primary,
-
-  /// A see-through tint that takes on the surface beneath it.
-  secondary,
-
-  /// Transparent with a hairline border.
-  tertiary,
-
-  /// No fill until hovered; a muted label.
-  ghost,
-
-  /// A red wash under a red label.
-  destructive,
-}
 
 /// A button (`registry/radix/button.tsx`).
 ///
@@ -51,6 +35,7 @@ class CoilButton extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.style,
     this.semanticLabel,
     this.loadingIndicator,
   }) : icon = null;
@@ -71,6 +56,7 @@ class CoilButton extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.style,
   }) : child = null,
        leading = null,
        trailing = null;
@@ -117,6 +103,10 @@ class CoilButton extends StatefulWidget {
   /// instance.
   final CoilMotion? motion;
 
+  /// Overrides for this button's look, on top of the theme's
+  /// [CoilButtonStyle] and the defaults.
+  final CoilButtonStyle? style;
+
   /// Overrides the label for assistive technology.
   final String? semanticLabel;
 
@@ -158,53 +148,20 @@ class _CoilButtonState extends State<CoilButton> {
 
   bool get _enabled => widget.onPressed != null && !widget.loading;
 
-  _ButtonLook _look(CoilColors c, Set<WidgetState> states) {
+  _ButtonLook _look(CoilButtonStyle style, Set<WidgetState> raw) {
     final hovered =
-        !widget.loading && states.contains(WidgetState.hovered) && _enabled;
+        !widget.loading && raw.contains(WidgetState.hovered) && _enabled;
     final pressed =
-        !widget.loading && states.contains(WidgetState.pressed) && _enabled;
-    final held = widget.selected || pressed;
-    final dark = c.brightness == Brightness.dark;
-    final clear = c.hover.withValues(alpha: 0);
-
-    final Color fill;
-    final Color label;
-    switch (widget.variant) {
-      case CoilButtonVariant.primary:
-        fill = held
-            ? CoilColorMix.oklab(c.foreground, c.background, 0.8)
-            : hovered
-            ? CoilColorMix.oklab(c.foreground, c.background, 0.9)
-            : c.foreground;
-        label = c.background;
-      case CoilButtonVariant.secondary:
-        fill = !held && hovered ? c.tintHover : c.tint;
-        label = c.foreground;
-      case CoilButtonVariant.tertiary:
-        fill = held
-            ? c.active
-            : hovered
-            ? c.hover
-            : clear;
-        label = c.foreground;
-      case CoilButtonVariant.ghost:
-        fill = held
-            ? c.active
-            : hovered
-            ? c.hover
-            : clear;
-        label = held || hovered ? c.foreground : c.mutedForeground;
-      case CoilButtonVariant.destructive:
-        final rest = dark ? 0.20 : 0.15;
-        final hover = dark ? 0.30 : 0.25;
-        fill = c.red.withValues(
-          alpha: widget.selected ? hover : (!pressed && hovered ? hover : rest),
-        );
-        label = c.redLabel;
-    }
+        !widget.loading && raw.contains(WidgetState.pressed) && _enabled;
+    final states = {
+      if (hovered) WidgetState.hovered,
+      if (pressed) WidgetState.pressed,
+      if (widget.selected) WidgetState.selected,
+      if (widget.onPressed == null) WidgetState.disabled,
+    };
     return _ButtonLook(
-      fill: fill,
-      label: label,
+      fill: style.fill!.resolve(states)!,
+      label: style.foreground!.resolve(states)!,
       spread: pressed ? 0 : 1,
       iconWeight: hovered ? CoilIconWeight.emphasis : CoilIconWeight.rest,
     );
@@ -215,7 +172,12 @@ class _CoilButtonState extends State<CoilButton> {
     final theme = CoilTheme.of(context);
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
     final iconOnly = widget.icon != null;
-    final iconSize = sizes.iconSize;
+    final style = CoilButtonStyle.fallback(
+      theme,
+      sizes,
+      widget.variant,
+    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context)).merge(widget.style);
+    final iconSize = style.iconSize!;
 
     return Semantics(
       container: true,
@@ -230,7 +192,7 @@ class _CoilButtonState extends State<CoilButton> {
         statesController: widget.statesController,
         minHitTarget: sizes.minHitTarget,
         builder: (context, states, _) {
-          final look = _look(theme.colors, states);
+          final look = _look(style, states);
           final fill = _fill ??= Track(.colorRgb, initial: look.fill);
           final labelTrack = _label ??= Track(.colorRgb, initial: look.label);
           final spread = _spread ??= Track(.single, initial: look.spread);
@@ -239,7 +201,7 @@ class _CoilButtonState extends State<CoilButton> {
             initial: look.iconWeight,
           );
           final pressing = states.contains(WidgetState.pressed);
-          final radius = theme.shape.item;
+          final radius = style.radius!;
           final disabled = widget.onPressed == null && !widget.loading;
 
           return Opacity(
@@ -266,9 +228,7 @@ class _CoilButtonState extends State<CoilButton> {
                       fill: value(fill),
                       spread: value(spread).clamp(0.0, 1.0),
                       radius: radius,
-                      border: widget.variant == CoilButtonVariant.tertiary
-                          ? theme.colors.border
-                          : null,
+                      border: style.border!.a == 0 ? null : style.border,
                     ),
                     child: IconTheme(
                       data: IconThemeData(
@@ -278,15 +238,12 @@ class _CoilButtonState extends State<CoilButton> {
                         weight: value(iconWeight),
                       ),
                       child: DefaultTextStyle(
-                        style: theme.typography.style(
-                          sizes.body,
-                          color: labelColor,
-                        ),
+                        style: style.textStyle!.copyWith(color: labelColor),
                         maxLines: 1,
                         softWrap: false,
                         child: iconOnly
-                            ? _iconContent(sizes)
-                            : _labelContent(sizes),
+                            ? _iconContent(sizes, style)
+                            : _labelContent(sizes, style),
                       ),
                     ),
                   );
@@ -304,14 +261,15 @@ class _CoilButtonState extends State<CoilButton> {
     child: widget.loadingIndicator ?? _CoilSpinner(size: sizes.iconSize),
   );
 
-  Widget _iconContent(CoilMetrics sizes) => SizedBox.square(
-    dimension: sizes.controlHeight,
-    child: Center(
-      child: widget.loading ? _spinner(sizes) : widget.icon,
-    ),
-  );
+  Widget _iconContent(CoilMetrics sizes, CoilButtonStyle style) =>
+      SizedBox.square(
+        dimension: style.minHeight,
+        child: Center(
+          child: widget.loading ? _spinner(sizes) : widget.icon,
+        ),
+      );
 
-  Widget _labelContent(CoilMetrics sizes) {
+  Widget _labelContent(CoilMetrics sizes, CoilButtonStyle style) {
     final leading = widget.leading;
     final trailing = widget.trailing;
     Widget content = Row(
@@ -336,7 +294,7 @@ class _CoilButtonState extends State<CoilButton> {
     // centered, and the button grows with the text scale.
     final padY = sizes.controlPaddingY(sizes.body);
     return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: sizes.controlHeight),
+      constraints: BoxConstraints(minHeight: style.minHeight!),
       child: Padding(
         padding: EdgeInsetsDirectional.only(
           start: leading != null
