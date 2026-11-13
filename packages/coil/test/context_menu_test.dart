@@ -24,9 +24,9 @@ void main() {
   testWidgets('a right-click opens it at the pointer', (tester) async {
     useScreen(tester, TestScreen.desktop);
     final log = <String>[];
-    await tester.pumpWidget(testApp(home: _menu(log)));
+    await tester.pumpWidget(testApp(tier: CoilTier.pointer, home: _menu(log)));
     // Near the right edge, so it opens leftward of the pointer.
-    final at = tester.getCenter(find.text('Target')) + const Offset(30, 10);
+    final at = tester.getTopRight(find.text('Target')) + const Offset(-4, 10);
     await tester.tapAt(at, buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
 
@@ -41,7 +41,7 @@ void main() {
 
   testWidgets('Shift+F10 opens it next to the focused child', (tester) async {
     useScreen(tester, TestScreen.desktop);
-    await tester.pumpWidget(testApp(home: _menu([])));
+    await tester.pumpWidget(testApp(tier: CoilTier.pointer, home: _menu([])));
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shift);
     await tester.sendKeyEvent(LogicalKeyboardKey.f10);
@@ -63,7 +63,9 @@ void main() {
     (tester) async {
       useScreen(tester, TestScreen.desktop);
       final log = <String>[];
-      await tester.pumpWidget(testApp(home: _menu(log)));
+      await tester.pumpWidget(
+        testApp(tier: CoilTier.pointer, home: _menu(log)),
+      );
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       final mouse = await tester.startGesture(
         tester.getCenter(find.text('Target')),

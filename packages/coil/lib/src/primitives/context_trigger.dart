@@ -90,8 +90,9 @@ class CoilContextTrigger extends StatelessWidget {
           TapGestureRecognizer:
               GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
                 () => TapGestureRecognizer(debugOwner: this),
-                (recognizer) => recognizer.onSecondaryTapUp = (details) =>
-                    request(.pointer, details.localPosition),
+                (recognizer) =>
+                    recognizer.onSecondaryTapUp = (details) =>
+                        request(.pointer, details.localPosition),
               ),
           LongPressGestureRecognizer:
               GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
@@ -102,15 +103,17 @@ class CoilContextTrigger extends StatelessWidget {
                     PointerDeviceKind.stylus,
                   },
                 ),
-                (recognizer) => recognizer.onLongPressStart = (details) =>
-                    longPress(details.localPosition),
+                (recognizer) =>
+                    recognizer.onLongPressStart = (details) =>
+                        longPress(details.localPosition),
               ),
           if (defaultTargetPlatform == TargetPlatform.macOS)
             _ControlClickRecognizer:
                 GestureRecognizerFactoryWithHandlers<_ControlClickRecognizer>(
                   () => _ControlClickRecognizer(debugOwner: this),
-                  (recognizer) => recognizer.onClick = (position) =>
-                      request(.pointer, position),
+                  (recognizer) =>
+                      recognizer.onClick = (position) =>
+                          request(.pointer, position),
                 ),
         },
         child: SingleMotionBuilder(

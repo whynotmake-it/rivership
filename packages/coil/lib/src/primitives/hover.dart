@@ -82,6 +82,7 @@ class CoilHoverRegion extends StatefulWidget {
     this.followFocus = true,
     this.activeItem,
     this.onActiveIndexChanged,
+    this.hold,
   });
 
   /// The items, anywhere below.
@@ -104,6 +105,11 @@ class CoilHoverRegion extends StatefulWidget {
 
   /// Called when the lit item changes.
   final ValueChanged<int?>? onActiveIndexChanged;
+
+  /// While this returns true for the pointer's global position, moving or
+  /// leaving doesn't change the lit item: the path from a row to the
+  /// submenu it opened.
+  final bool Function(Offset globalPosition)? hold;
 
   /// The nearest region's state, if any.
   static CoilHoverState? maybeOf(BuildContext context) =>
@@ -205,6 +211,7 @@ class _CoilHoverRegionState extends State<CoilHoverRegion> {
   void _onHover(PointerHoverEvent event) {
     if (!CoilInputModality.canHover(event.kind)) return;
     if (!_pointerInside) _onEnter(PointerEnterEvent.fromMouseEvent(event));
+    if (widget.hold?.call(event.position) ?? false) return;
     // Over empty space the highlight leaves, unless an item holds keyboard
     // focus.
     _setActive(_hitTest(event.localPosition) ?? _focusLitIndex);
@@ -213,6 +220,7 @@ class _CoilHoverRegionState extends State<CoilHoverRegion> {
   void _onExit(PointerExitEvent event) {
     if (!_pointerInside) return;
     setState(() => _pointerInside = false);
+    if (widget.hold?.call(event.position) ?? false) return;
     _setActive(_focusLitIndex);
   }
 

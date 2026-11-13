@@ -107,7 +107,10 @@ void main() {
   testWidgets('shortcuts show for a pointer, not for touch', (tester) async {
     useScreen(tester, TestScreen.desktop);
     await tester.pumpWidget(
-      testApp(tier: CoilTier.pointer, home: const _Menu(log: [])),
+      testApp(
+        tier: CoilTier.pointer,
+        home: const _Menu(log: []),
+      ),
     );
     await open(tester);
     expect(find.text('⌘R'), findsOneWidget);
@@ -116,7 +119,10 @@ void main() {
 
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(
-      testApp(tier: CoilTier.touch, home: const _Menu(log: [])),
+      testApp(
+        tier: CoilTier.touch,
+        home: const _Menu(log: []),
+      ),
     );
     await open(tester);
     expect(find.text('Rename'), findsOneWidget);
@@ -126,7 +132,10 @@ void main() {
   testWidgets('on a phone a short menu stays anchored', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(
-      testApp(tier: CoilTier.touch, home: const _Menu(log: [])),
+      testApp(
+        tier: CoilTier.touch,
+        home: const _Menu(log: []),
+      ),
     );
     await open(tester);
     expect(find.text('Rename'), findsOneWidget);
@@ -136,7 +145,10 @@ void main() {
   testWidgets('on a phone a long menu opens as a sheet', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(
-      testApp(tier: CoilTier.touch, home: const _Menu(log: [], extra: 8)),
+      testApp(
+        tier: CoilTier.touch,
+        home: const _Menu(log: [], extra: 8),
+      ),
     );
     await open(tester);
     expect(find.byType(CoilSheetPanel), findsOneWidget);

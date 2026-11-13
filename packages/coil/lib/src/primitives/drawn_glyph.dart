@@ -20,6 +20,9 @@ enum CoilGlyph {
   /// A chevron pointing to the end: right, or left in RTL.
   chevronEnd,
 
+  /// A chevron pointing to the start: left, or right in RTL.
+  chevronStart,
+
   /// A chevron pointing down.
   chevronDown,
 
@@ -105,6 +108,16 @@ class _GlyphPainter extends CustomPainter {
         ..lineTo(12.01, 16),
     CoilGlyph.chevronEnd =>
       rtl
+          ? (ui.Path()
+              ..moveTo(15, 6)
+              ..lineTo(9, 12)
+              ..lineTo(15, 18))
+          : (ui.Path()
+              ..moveTo(9, 6)
+              ..lineTo(15, 12)
+              ..lineTo(9, 18)),
+    CoilGlyph.chevronStart =>
+      !rtl
           ? (ui.Path()
               ..moveTo(15, 6)
               ..lineTo(9, 12)

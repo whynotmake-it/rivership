@@ -45,9 +45,25 @@ class CoilMenuPopup extends StatelessWidget {
   final Widget child;
 
   CoilDropdownStyle _style(BuildContext context, CoilMetrics metrics) =>
-      CoilDropdownStyle.fallback(CoilTheme.of(context), metrics)
-          .merge(CoilTheme.styleOf<CoilDropdownStyle>(context))
-          .merge(style);
+      CoilDropdownStyle.fallback(
+        CoilTheme.of(context),
+        metrics,
+      ).merge(CoilTheme.styleOf<CoilDropdownStyle>(context)).merge(style);
+
+  /// The popover surface around a menu's list or a submenu's.
+  Widget _surface(BuildContext context, Widget content) {
+    final metrics = CoilTheme.metricsOf(context);
+    final look = _style(context, metrics);
+    return CoilPopoverSurface(
+      color: look.surface,
+      radius: look.radius! + metrics.popupInset,
+      minWidth: look.width!,
+      child: SizedBox(
+        width: metrics.tier == CoilTier.pointer ? look.width : null,
+        child: content,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => CoilAdaptivePopup(
@@ -56,7 +72,10 @@ class CoilMenuPopup extends StatelessWidget {
     motion: motion,
     traits: () => CoilOverlayTraits(
       kind: kind,
-      itemCount: entries.whereType<CoilAction>().length,
+      itemCount: entries
+          .where((entry) => entry is CoilAction || entry is CoilSubmenu)
+          .length,
+      submenuDepth: CoilSubmenu.depthOf(entries),
     ),
     maxHeight: _style(context, CoilTheme.metricsOf(context)).maxHeight!,
     content: (context, popup) {
@@ -84,23 +103,12 @@ class CoilMenuPopup extends StatelessWidget {
           highlight: look.highlight,
           pressFill: look.pressFill,
           radius: look.radius,
+          submenu: _surface,
           motion: motion,
         ),
       );
     },
-    popover: (context, content) {
-      final metrics = CoilTheme.metricsOf(context);
-      final look = _style(context, metrics);
-      return CoilPopoverSurface(
-        color: look.surface,
-        radius: look.radius! + metrics.popupInset,
-        minWidth: look.width!,
-        child: SizedBox(
-          width: metrics.tier == CoilTier.pointer ? look.width : null,
-          child: content,
-        ),
-      );
-    },
+    popover: _surface,
     sheet: (context, content) => CoilSheetPanel(child: content),
     child: child,
   );

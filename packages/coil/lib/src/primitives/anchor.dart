@@ -17,6 +17,12 @@ enum CoilPopoverSide {
   /// Above the anchor, when it doesn't fit below and there's more room
   /// above.
   top,
+
+  /// Left of the anchor, for a horizontal popover.
+  left,
+
+  /// Right of the anchor, for a horizontal popover.
+  right,
 }
 
 /// Shows and hides a [CoilPopover], like [OverlayPortalController] does
@@ -88,6 +94,8 @@ class CoilPopover extends StatefulWidget {
     this.maxHeight = double.infinity,
     this.sideOffset = 6,
     this.edgePadding = 8,
+    this.axis = Axis.vertical,
+    this.crossOffset = 0,
     this.motion,
   });
 
@@ -115,6 +123,15 @@ class CoilPopover extends StatefulWidget {
 
   /// Distance kept from the overlay's edges and the safe area.
   final double edgePadding;
+
+  /// Where it opens: [Axis.vertical] below the anchor, or above it when
+  /// there's more room; [Axis.horizontal] past the anchor's end, or before
+  /// its start when it doesn't fit, like a submenu.
+  final Axis axis;
+
+  /// For [Axis.horizontal], how far above the anchor's top it starts, so
+  /// its first row can line up with the anchor.
+  final double crossOffset;
 
   /// Motion tokens for the enter and exit, instead of the theme's.
   final CoilMotion? motion;
@@ -218,7 +235,10 @@ class _CoilPopoverState extends State<CoilPopover>
       if (_open) widget.onClose(reason);
     }
 
-    return PopScope<Object?>(
+    // A popover opened from inside another, like a submenu, counts as
+    // inside it: taps in it don't close the outer one.
+    final outer = _CoilPopoverGroup.maybeOf(context);
+    final popover = PopScope<Object?>(
       // While open, back closes the popover instead of popping the page.
       canPop: !open,
       onPopInvokedWithResult: (didPop, _) {
@@ -233,6 +253,8 @@ class _CoilPopoverState extends State<CoilPopover>
         presence: _presence,
         grow: !reduce,
         safeArea: media.padding + media.viewInsets,
+        axis: widget.axis,
+        crossOffset: widget.crossOffset,
         sideOffset: _at == null ? widget.sideOffset : 0,
         edgePadding: widget.edgePadding,
         minWidth: widget.minWidth ?? (_at == null ? info.childSize.width : 0),
@@ -246,6 +268,7 @@ class _CoilPopoverState extends State<CoilPopover>
           // BlockSemantics would hide the popover too, whose semantics
           // hang under the anchor's node.
           child: TapRegion(
+            groupId: this,
             consumeOutsideTaps: open,
             onTapOutside: (event) => _downOutside.add(event.pointer),
             onTapUpOutside: (event) {
@@ -268,7 +291,10 @@ class _CoilPopoverState extends State<CoilPopover>
                     // only it knows which side that is.
                     scale: 1,
                     blur: reduce ? 0 : 4,
-                    child: Builder(builder: widget.popover),
+                    child: _CoilPopoverGroup(
+                      group: this,
+                      child: Builder(builder: widget.popover),
+                    ),
                   ),
                 ),
               ),
@@ -277,7 +303,22 @@ class _CoilPopoverState extends State<CoilPopover>
         ),
       ),
     );
+    return outer == null ? popover : TapRegion(groupId: outer, child: popover);
   }
+}
+
+/// The tap group of the popover around its content.
+class _CoilPopoverGroup extends InheritedWidget {
+  const _CoilPopoverGroup({required this.group, required super.child});
+
+  final Object group;
+
+  static Object? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_CoilPopoverGroup>()?.group;
+
+  @override
+  bool updateShouldNotify(_CoilPopoverGroup oldWidget) =>
+      oldWidget.group != group;
 }
 
 /// Lays the popover out next to [anchor] and grows it from that edge as
@@ -289,6 +330,8 @@ class _CoilPopoverState extends State<CoilPopover>
 class _CoilPopoverPlacement extends SingleChildRenderObjectWidget {
   const _CoilPopoverPlacement({
     required this.anchor,
+    required this.axis,
+    required this.crossOffset,
     required this.presence,
     required this.grow,
     required this.safeArea,
@@ -302,6 +345,12 @@ class _CoilPopoverPlacement extends SingleChildRenderObjectWidget {
 
   /// The anchor's rect.
   final Rect anchor;
+
+  /// Whether it opens below or beside the anchor.
+  final Axis axis;
+
+  /// How far above the anchor a horizontal child starts.
+  final double crossOffset;
 
   /// 0 (gone) to 1 (fully present).
   final Animation<double> presence;
@@ -331,6 +380,8 @@ class _CoilPopoverPlacement extends SingleChildRenderObjectWidget {
   _RenderCoilPopoverPlacement createRenderObject(BuildContext context) =>
       _RenderCoilPopoverPlacement(
         anchor: anchor,
+        axis: axis,
+        crossOffset: crossOffset,
         presence: presence,
         grow: grow,
         safeArea: safeArea,
@@ -348,6 +399,8 @@ class _CoilPopoverPlacement extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..anchor = anchor
+      ..axis = axis
+      ..crossOffset = crossOffset
       ..presence = presence
       ..grow = grow
       ..safeArea = safeArea
@@ -363,6 +416,8 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
   /// Creates the render object.
   _RenderCoilPopoverPlacement({
     required this._anchor,
+    required this._axis,
+    required this._crossOffset,
     required this._presence,
     required this._grow,
     required this._safeArea,
@@ -378,6 +433,22 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
   set anchor(Rect value) {
     if (value == _anchor) return;
     _anchor = value;
+    markNeedsLayout();
+  }
+
+  Axis get axis => _axis;
+  Axis _axis;
+  set axis(Axis value) {
+    if (value == _axis) return;
+    _axis = value;
+    markNeedsLayout();
+  }
+
+  double get crossOffset => _crossOffset;
+  double _crossOffset;
+  set crossOffset(double value) {
+    if (value == _crossOffset) return;
+    _crossOffset = value;
     markNeedsLayout();
   }
 
@@ -477,6 +548,7 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
   void performLayout() {
     final child = this.child;
     if (child == null) return;
+    if (_axis == Axis.horizontal) return _layoutBeside(child);
     final below =
         size.height -
         _safeArea.bottom -
@@ -523,6 +595,43 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
     _childOffset = Offset(x.toDouble(), y);
   }
 
+  /// Lays the child out past the anchor's end, or before its start when it
+  /// only fits there, its top [crossOffset] above the anchor's.
+  void _layoutBeside(RenderBox child) {
+    final top = _safeArea.top + _edgePadding;
+    final bottom = size.height - _safeArea.bottom - _edgePadding;
+    final left = _safeArea.left + _edgePadding;
+    final right = size.width - _safeArea.right - _edgePadding;
+    child.layout(
+      BoxConstraints(
+        minWidth: math.min(_minWidth, math.max(0, right - left)),
+        maxWidth: math.max(0, right - left),
+        maxHeight: math.max(0, math.min(_maxHeight, bottom - top)),
+      ),
+      parentUsesSize: true,
+    );
+    final width = child.size.width;
+    final afterRight = _anchor.right + _sideOffset;
+    final beforeLeft = _anchor.left - _sideOffset - width;
+    final rightFits = afterRight + width <= right;
+    final leftFits = beforeLeft >= left;
+    final preferRight = _textDirection == TextDirection.ltr;
+    final onRight = preferRight
+        ? rightFits || !leftFits && right - _anchor.right >= _anchor.left - left
+        : !leftFits &&
+              (rightFits || right - _anchor.right > _anchor.left - left);
+    _side = onRight ? CoilPopoverSide.right : CoilPopoverSide.left;
+    final x = (onRight ? afterRight : beforeLeft).clamp(
+      left,
+      math.max(left, right - width),
+    );
+    final y = (_anchor.top - _crossOffset).clamp(
+      top,
+      math.max(top, bottom - child.size.height),
+    );
+    _childOffset = Offset(x.toDouble(), y.toDouble());
+  }
+
   /// Where the child is drawn: at its offset and, while growing, scaled
   /// 0.96 and slid 4 px toward the anchor at presence 0.
   Matrix4 get _childTransform {
@@ -533,12 +642,22 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
     );
     if (!_grow) return transform;
     final away = 1 - _presence.value;
-    final bottom = _side == CoilPopoverSide.bottom;
     final size = child!.size;
-    final origin = Offset(size.width / 2, bottom ? 0 : size.height);
+    final (origin, slide) = switch (_side) {
+      CoilPopoverSide.bottom => (
+        Offset(size.width / 2, 0),
+        const Offset(0, -4),
+      ),
+      CoilPopoverSide.top => (
+        Offset(size.width / 2, size.height),
+        const Offset(0, 4),
+      ),
+      CoilPopoverSide.right => (Offset.zero, const Offset(-4, 0)),
+      CoilPopoverSide.left => (Offset(size.width, 0), const Offset(4, 0)),
+    };
     final scale = 1 - 0.04 * away;
     return transform
-      ..translateByDouble(0, (bottom ? -4.0 : 4.0) * away, 0, 1)
+      ..translateByDouble(slide.dx * away, slide.dy * away, 0, 1)
       ..translateByDouble(origin.dx, origin.dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1)
       ..translateByDouble(-origin.dx, -origin.dy, 0, 1);

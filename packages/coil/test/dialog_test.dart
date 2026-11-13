@@ -131,7 +131,10 @@ void main() {
     testWidgets('a confirmation stays centered', (tester) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(tier: CoilTier.touch, home: const _Opener(results: [])),
+        testApp(
+          tier: CoilTier.touch,
+          home: const _Opener(results: []),
+        ),
       );
       await open(tester);
       expect(find.byType(CoilSheetPanel), findsNothing);

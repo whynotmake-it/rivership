@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
@@ -6,6 +7,7 @@ import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/active_item.dart';
+import 'package:coil/src/primitives/anchor.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/edge_fade.dart';
 import 'package:coil/src/primitives/hover.dart';
@@ -20,8 +22,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// One entry of a [CoilActionList]: a [CoilAction] row, a [CoilMenuLabel]
-/// heading or a [CoilMenuSeparator].
+/// One entry of a [CoilActionList]: a [CoilAction] row, a [CoilSubmenu]
+/// row, a [CoilMenuLabel] heading or a [CoilMenuSeparator].
 @immutable
 sealed class CoilMenuEntry {
   const CoilMenuEntry();
@@ -88,6 +90,34 @@ class CoilAction extends CoilMenuEntry {
   bool get enabled => onPressed != null;
 }
 
+/// A row that opens more [entries]: beside the menu for a pointer, in its
+/// place on touch.
+class CoilSubmenu extends CoilMenuEntry {
+  /// Creates a submenu row.
+  const CoilSubmenu({required this.label, required this.entries, this.leading});
+
+  /// The row's text, also the back row's in a touch submenu.
+  final String label;
+
+  /// A glyph before the label, styled by [IconTheme].
+  final Widget? leading;
+
+  /// The submenu's rows, headings and separators.
+  final List<CoilMenuEntry> entries;
+
+  /// Whether the row can open: when the submenu has rows.
+  bool get enabled =>
+      entries.any((entry) => entry is CoilAction || entry is CoilSubmenu);
+
+  /// How many submenu levels [entries] nest, counting this one.
+  static int depthOf(List<CoilMenuEntry> entries) => entries.fold(
+    0,
+    (depth, entry) => entry is CoilSubmenu
+        ? math.max(depth, 1 + depthOf(entry.entries))
+        : depth,
+  );
+}
+
 /// A heading over a group of rows.
 class CoilMenuLabel extends CoilMenuEntry {
   /// Creates a heading.
@@ -118,6 +148,12 @@ class CoilMenuSeparator extends CoilMenuEntry {
 ///
 /// The rows scroll when the list is taller than its room, with edges that
 /// fade into [surface].
+///
+/// A [CoilSubmenu] row opens its list beside this one for a pointer: on a
+/// 100 ms hover, a click, Enter, Space or the arrow toward its side. The
+/// pointer can cross other rows on its way there. [submenu] wraps that list
+/// in its surface. On the touch tier the submenu replaces the rows instead,
+/// under a back row.
 class CoilActionList extends StatefulWidget {
   /// Creates an action list.
   const CoilActionList({
@@ -131,11 +167,20 @@ class CoilActionList extends StatefulWidget {
     this.highlight,
     this.pressFill,
     this.radius,
+    this.submenu,
+    this.onBack,
     this.motion,
   });
 
   /// The rows, headings and separators.
   final List<CoilMenuEntry> entries;
+
+  /// Wraps a pointer submenu's list in its popover surface.
+  final Widget Function(BuildContext context, Widget list)? submenu;
+
+  /// Called by the arrow away from a submenu's side: a submenu closes
+  /// itself with it.
+  final VoidCallback? onBack;
 
   /// Called when a pick, Escape or Tab closes the menu.
   final ValueChanged<CoilPopupCloseReason> onClose;
@@ -172,43 +217,113 @@ class CoilActionList extends StatefulWidget {
 class _CoilActionListState extends State<CoilActionList>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
-  late List<GlobalKey> _rowKeys = _keysFor(widget.entries.length);
+  late List<GlobalKey> _rowKeys = _keysFor(_items.length);
   Timer? _acknowledge;
+
+  /// The rows of the touch submenus drilled into, from the top.
+  final _path = <int>[];
+
+  /// The pointer submenu's row, while it is open.
+  int? _sub;
+  Timer? _subTimer;
+  final _subControllers = <int, CoilPopoverController>{};
+  final _subLists = <int, GlobalKey>{};
+
+  /// Where the pointer last was over [_sub]'s row: the safe triangle's tip.
+  Offset? _apex;
 
   static List<GlobalKey> _keysFor(int count) => [
     for (var i = 0; i < count; i++) GlobalKey(debugLabel: 'CoilActionList $i'),
   ];
 
-  int get _count => widget.entries.length;
-  bool _enabled(int i) => switch (widget.entries[i]) {
+  bool get _touch => widget.metrics.tier == CoilTier.touch;
+
+  /// The rows shown: a drilled-into submenu's under a back row (null), or
+  /// the list's own.
+  List<CoilMenuEntry?> get _items {
+    final open = _drilled;
+    return open == null ? widget.entries : [null, ...open.entries];
+  }
+
+  /// The submenu drilled into, if any.
+  CoilSubmenu? get _drilled {
+    CoilSubmenu? sub;
+    for (final row in _path) {
+      sub = (sub?.entries ?? widget.entries)[row] as CoilSubmenu;
+    }
+    return sub;
+  }
+
+  /// Whether [_path] still leads through submenus of the current entries.
+  bool get _pathValid {
+    var entries = widget.entries;
+    for (final row in _path) {
+      if (row >= entries.length) return false;
+      final entry = entries[row];
+      if (entry is! CoilSubmenu) return false;
+      entries = entry.entries;
+    }
+    return true;
+  }
+
+  int get _count => _items.length;
+  bool _enabled(int i) => switch (_items[i]) {
+    null => true,
     final CoilAction action => action.enabled,
+    final CoilSubmenu sub => sub.enabled,
     _ => false,
   };
 
   @override
   void initState() {
     super.initState();
-    if (CoilInputModality.instance.value == CoilModality.keyboard) {
-      _active.first(count: _count, isEnabled: _enabled);
-    }
-    _active.addListener(_reveal);
+    _startKeyboard();
+    _active.addListener(_onActive);
   }
 
   @override
   void didUpdateWidget(CoilActionList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.entries.length != widget.entries.length) {
-      _rowKeys = _keysFor(widget.entries.length);
+    if (!_pathValid) _path.clear();
+    if (_sub case final sub?
+        when sub >= _count || _items[sub] is! CoilSubmenu) {
+      _closeSub();
     }
+    if (_rowKeys.length != _count) _rowKeys = _keysFor(_count);
   }
 
   @override
   void dispose() {
     _acknowledge?.cancel();
+    _subTimer?.cancel();
     _active
-      ..removeListener(_reveal)
+      ..removeListener(_onActive)
       ..dispose();
     super.dispose();
+  }
+
+  /// Opened from the keyboard, a list starts on its first row.
+  void _startKeyboard() {
+    if (CoilInputModality.instance.value == CoilModality.keyboard) {
+      _active.first(count: _count, isEnabled: _enabled);
+    }
+  }
+
+  void _onActive() {
+    _reveal();
+    final i = _active.index;
+    _subTimer?.cancel();
+    if (_sub != null && i != _sub) _closeSub();
+    if (i != null &&
+        i != _sub &&
+        !_touch &&
+        _active.via == CoilModality.pointer &&
+        _items[i] is CoilSubmenu) {
+      _subTimer = Timer(
+        const Duration(milliseconds: 100),
+        () => _openSub(i),
+      );
+    }
   }
 
   /// Scrolls a row the keyboard made active into view.
@@ -228,31 +343,182 @@ class _CoilActionListState extends State<CoilActionList>
   }
 
   /// Closes the menu, then runs the action. A checkable row runs first and
-  /// closes once its mark has landed.
+  /// closes once its mark has landed. A submenu row opens its submenu, and
+  /// the back row leaves one.
   void _pick(int i) {
-    final action = widget.entries[i];
-    if (action is! CoilAction || !action.enabled) return;
-    if (action.mark == CoilActionMark.none) {
-      widget.onClose(CoilPopupCloseReason.selected);
-      action.onPressed?.call();
+    if (!_enabled(i)) return;
+    switch (_items[i]) {
+      case null:
+        _back();
+      case CoilSubmenu():
+        _touch ? _drill(i) : _openSub(i);
+      case final CoilAction action when action.mark == CoilActionMark.none:
+        widget.onClose(CoilPopupCloseReason.selected);
+        action.onPressed?.call();
+      case final CoilAction action:
+        action.onPressed?.call();
+        _acknowledge?.cancel();
+        _acknowledge = Timer(
+          CoilTheme.motionOf(
+            context,
+            override: widget.motion,
+          ).acknowledgeDuration,
+          () => widget.onClose(CoilPopupCloseReason.selected),
+        );
+      case _:
+    }
+  }
+
+  void _drill(int i) {
+    setState(() {
+      // The back row shifts a drilled-into submenu's rows by one.
+      _path.add(_path.isEmpty ? i : i - 1);
+      _rowKeys = _keysFor(_count);
+    });
+    _active.clear();
+    _startKeyboard();
+  }
+
+  /// Leaves a touch submenu for its parent rows, on the row it opened from.
+  void _back() {
+    if (_path.isEmpty) {
+      widget.onBack?.call();
       return;
     }
-    action.onPressed?.call();
-    _acknowledge?.cancel();
-    _acknowledge = Timer(
-      CoilTheme.motionOf(context, override: widget.motion).acknowledgeDuration,
-      () => widget.onClose(CoilPopupCloseReason.selected),
+    final keyboard = _active.keyboardDriven;
+    final row = _path.last + (_path.length > 1 ? 1 : 0);
+    setState(() {
+      _path.removeLast();
+      _rowKeys = _keysFor(_count);
+    });
+    _active.activate(
+      keyboard ? row : null,
+      via: keyboard ? CoilModality.keyboard : CoilModality.pointer,
     );
   }
 
+  void _openSub(int i) {
+    _subTimer?.cancel();
+    if (_sub == i) return;
+    if (_sub != null) _closeSub();
+    if (!_enabled(i)) return;
+    setState(() => _sub = i);
+    _subControllers[i]?.show();
+  }
+
+  void _closeSub() {
+    final i = _sub;
+    if (i == null) return;
+    _subControllers[i]?.hide();
+    _apex = null;
+    setState(() => _sub = null);
+  }
+
+  /// A pick or a dismissal in the submenu closes the whole menu; Escape, a
+  /// tap outside it or the back arrow close only the submenu.
+  void _subClosed(CoilPopupCloseReason reason) {
+    _closeSub();
+    if (reason == CoilPopupCloseReason.selected ||
+        reason == CoilPopupCloseReason.dismissed) {
+      widget.onClose(reason);
+    }
+  }
+
+  /// Whether the pointer at [position] is on its way to the open submenu:
+  /// over it, or inside the triangle from where it left the row to the
+  /// submenu's near edge. Hover doesn't move off the row meanwhile.
+  bool _hold(Offset position) {
+    final i = _sub;
+    if (i == null) return false;
+    final row = _globalRect(_rowKeys[i]);
+    final sub = _subLists[i] == null ? null : _globalRect(_subLists[i]!);
+    if (row == null || sub == null) return false;
+    if (row.contains(position)) {
+      _apex = position;
+      return false;
+    }
+    if (sub.contains(position)) return true;
+    final apex = _apex;
+    if (apex == null) return false;
+    final right = sub.center.dx > row.center.dx;
+    final b = right ? sub.topLeft : sub.topRight;
+    final c = right ? sub.bottomLeft : sub.bottomRight;
+    return _inTriangle(position, apex, b, c);
+  }
+
+  static Rect? _globalRect(GlobalKey key) {
+    final box = key.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return MatrixUtils.transformRect(
+      box.getTransformTo(null),
+      Offset.zero & box.size,
+    );
+  }
+
+  static bool _inTriangle(Offset p, Offset a, Offset b, Offset c) {
+    double side(Offset p1, Offset p2, Offset p3) =>
+        (p1.dx - p3.dx) * (p2.dy - p3.dy) - (p2.dx - p3.dx) * (p1.dy - p3.dy);
+    final d1 = side(p, a, b);
+    final d2 = side(p, b, c);
+    final d3 = side(p, c, a);
+    final negative = d1 < 0 || d2 < 0 || d3 < 0;
+    final positive = d1 > 0 || d2 > 0 || d3 > 0;
+    return !(negative && positive);
+  }
+
+  /// Opens the active submenu row; on any other row does nothing.
+  void _forward() {
+    final i = _active.index;
+    if (i != null && _items[i] is CoilSubmenu) _pick(i);
+  }
+
   /// The typeahead text of [entry]; headings and separators match nothing.
-  static String _labelOf(CoilMenuEntry entry) => switch (entry) {
+  static String _labelOf(CoilMenuEntry? entry) => switch (entry) {
     final CoilAction action => action.label,
+    final CoilSubmenu sub => sub.label,
     _ => '',
   };
 
   void _pickActive() {
     if (_active.index case final i?) _pick(i);
+  }
+
+  Widget _subPopover(int i, CoilSubmenu sub, Widget row) {
+    final metrics = widget.metrics;
+    return CoilPopover(
+      controller: _subControllers.putIfAbsent(
+        i,
+        () => CoilPopoverController(debugLabel: 'CoilActionList.submenu'),
+      ),
+      onClose: _subClosed,
+      axis: Axis.horizontal,
+      sideOffset: metrics.popupInset + 2,
+      crossOffset: metrics.popupInset,
+      minWidth: 0,
+      motion: widget.motion,
+      popover: (context) {
+        final list = CoilActionList(
+          key: _subLists.putIfAbsent(
+            i,
+            () => GlobalKey(debugLabel: 'CoilActionList.submenu $i'),
+          ),
+          entries: sub.entries,
+          onClose: _subClosed,
+          onBack: _closeSub,
+          metrics: metrics,
+          surface: widget.surface,
+          scrollbar: widget.scrollbar,
+          fadeExtent: widget.fadeExtent,
+          highlight: widget.highlight,
+          pressFill: widget.pressFill,
+          radius: widget.radius,
+          submenu: widget.submenu,
+          motion: widget.motion,
+        );
+        return widget.submenu?.call(context, list) ?? list;
+      },
+      child: row,
+    );
   }
 
   @override
@@ -261,12 +527,39 @@ class _CoilActionListState extends State<CoilActionList>
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final metrics = widget.metrics;
     final radius = widget.radius ?? theme.shape.radii(metrics.tier).item;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final items = _items;
+    final pressFill = widget.pressFill ?? theme.colors.active;
+    Widget row(int i, CoilAction action, {Widget? trailing, bool? expanded}) =>
+        CoilHoverItem(
+          key: _rowKeys[i],
+          index: i,
+          enabled: action.enabled,
+          child: _Row(
+            index: i,
+            action: action,
+            trailing: trailing,
+            expanded: expanded,
+            active: _active,
+            metrics: metrics,
+            radius: radius,
+            pressFill: pressFill,
+            motion: motion,
+            onPressed: action.enabled ? () => _pick(i) : null,
+          ),
+        );
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
             _active.move(1, count: _count, isEnabled: _enabled),
         const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
             _active.move(-1, count: _count, isEnabled: _enabled),
+        SingleActivator(
+          rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight,
+        ): _forward,
+        SingleActivator(
+          rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft,
+        ): _back,
         const SingleActivator(LogicalKeyboardKey.home): () =>
             _active.first(count: _count, isEnabled: _enabled),
         const SingleActivator(LogicalKeyboardKey.end): () =>
@@ -288,7 +581,7 @@ class _CoilActionListState extends State<CoilActionList>
         listenable: _active,
         builder: (context, child) {
           return CoilTypeahead(
-            labels: [for (final entry in widget.entries) _labelOf(entry)],
+            labels: [for (final entry in items) _labelOf(entry)],
             current: _active.index,
             isEnabled: _enabled,
             onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
@@ -315,6 +608,7 @@ class _CoilActionListState extends State<CoilActionList>
                   child: CoilHoverRegion(
                     activeItem: _active,
                     followFocus: false,
+                    hold: _hold,
                     child: ListenableBuilder(
                       listenable: _active,
                       builder: (context, rows) {
@@ -351,24 +645,36 @@ class _CoilActionListState extends State<CoilActionList>
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          for (final (i, entry) in widget.entries.indexed)
+                          for (final (i, entry) in items.indexed)
                             switch (entry) {
-                              final CoilAction action => CoilHoverItem(
-                                key: _rowKeys[i],
-                                index: i,
-                                enabled: action.enabled,
-                                child: _Row(
-                                  index: i,
-                                  action: action,
-                                  active: _active,
-                                  metrics: metrics,
-                                  radius: radius,
-                                  pressFill:
-                                      widget.pressFill ?? theme.colors.active,
-                                  motion: motion,
-                                  onPressed: action.enabled
-                                      ? () => _pick(i)
-                                      : null,
+                              null => row(
+                                i,
+                                CoilAction(
+                                  label: _drilled!.label,
+                                  leading: const CoilDrawnGlyph(
+                                    CoilGlyph.chevronStart,
+                                  ),
+                                  onPressed: _back,
+                                ),
+                              ),
+                              final CoilAction action => row(i, action),
+                              final CoilSubmenu sub when _touch => row(
+                                i,
+                                _asAction(sub),
+                                trailing: const CoilDrawnGlyph(
+                                  CoilGlyph.chevronEnd,
+                                ),
+                              ),
+                              final CoilSubmenu sub => _subPopover(
+                                i,
+                                sub,
+                                row(
+                                  i,
+                                  _asAction(sub),
+                                  trailing: const CoilDrawnGlyph(
+                                    CoilGlyph.chevronEnd,
+                                  ),
+                                  expanded: _sub == i,
                                 ),
                               ),
                               final CoilMenuLabel label => _GroupLabel(
@@ -393,6 +699,13 @@ class _CoilActionListState extends State<CoilActionList>
       ),
     );
   }
+
+  /// A submenu's row as an action that does nothing itself.
+  static CoilAction _asAction(CoilSubmenu sub) => CoilAction(
+    label: sub.label,
+    leading: sub.leading,
+    onPressed: sub.enabled ? () {} : null,
+  );
 }
 
 /// One row: leading glyph and label. It paints only its own press fill;
@@ -407,10 +720,18 @@ class _Row extends StatefulWidget {
     required this.pressFill,
     required this.motion,
     required this.onPressed,
+    this.trailing,
+    this.expanded,
   });
 
   final int index;
   final CoilAction action;
+
+  /// Shown at the row's end instead of the shortcut: a submenu's chevron.
+  final Widget? trailing;
+
+  /// Whether the row's submenu is open; null for rows without one.
+  final bool? expanded;
   final CoilActiveItemController active;
   final CoilMetrics metrics;
   final double radius;
@@ -452,6 +773,7 @@ class _RowState extends State<_Row> {
         CoilActionMark.radio => SemanticsRole.menuItemRadio,
       },
       checked: action.mark == CoilActionMark.none ? null : action.selected,
+      expanded: widget.expanded,
       enabled: enabled,
       label: widget.action.label,
       excludeSemantics: true,
@@ -512,6 +834,7 @@ class _RowState extends State<_Row> {
                   debugLabel: 'CoilActionList.label',
                   builder: (context, color, _) => _RowContent(
                     action: widget.action,
+                    trailing: widget.trailing,
                     metrics: metrics,
                     color: color,
                   ),
@@ -532,9 +855,11 @@ class _RowContent extends StatelessWidget {
     required this.action,
     required this.metrics,
     required this.color,
+    this.trailing,
   });
 
   final CoilAction action;
+  final Widget? trailing;
   final CoilMetrics metrics;
   final Color color;
 
@@ -565,6 +890,7 @@ class _RowContent extends StatelessWidget {
       ),
     };
     final shortcut = pointer ? action.shortcut : null;
+    final trailing = this.trailing;
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: metrics.controlHeight),
       child: Padding(
@@ -602,6 +928,7 @@ class _RowContent extends StatelessWidget {
                       child: shortcut,
                     ),
                   ?mark,
+                  ?trailing,
                 ],
               ),
             ),
