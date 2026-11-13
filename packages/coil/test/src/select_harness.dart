@@ -52,24 +52,33 @@ void useScreen(WidgetTester tester, TestScreen screen) {
   addTearDown(tester.view.reset);
 }
 
-/// An app whose first page is [home], with the fluid scope and theme above
-/// the navigator so routes inherit them.
+/// The repaint boundary around the whole test app, for pixel probes.
+const appBoundary = ValueKey('app-boundary');
+
+/// An app whose first page is [home], with the theme above the navigator
+/// so routes inherit it.
 Widget testApp({
   required Widget home,
   CoilColors colors = CoilColors.light,
   CoilMotion motion = const CoilMotion(),
   CoilTier? tier,
   CoilPresentation? presentation,
+  CoilSelectStyle? selectStyle,
 }) {
+  var theme = CoilThemeData(colors: colors, motion: motion);
+  if (selectStyle != null) theme = theme.withComponentStyle(selectStyle);
   return WidgetsApp(
     color: colors.focusRing,
     debugShowCheckedModeBanner: false,
-    builder: (context, navigator) => CoilAdaptiveScope(
-      tier: tier,
-      presentation: presentation,
-      child: CoilTheme(
-        data: CoilThemeData(colors: colors, motion: motion),
-        child: ColoredBox(color: colors.background, child: navigator),
+    builder: (context, navigator) => RepaintBoundary(
+      key: appBoundary,
+      child: CoilAdaptiveScope(
+        tier: tier,
+        presentation: presentation,
+        child: CoilTheme(
+          data: theme,
+          child: ColoredBox(color: colors.background, child: navigator),
+        ),
       ),
     ),
     onGenerateRoute: (settings) => PageRouteBuilder<void>(

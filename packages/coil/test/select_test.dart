@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'src/paint_probe.dart';
 import 'src/select_harness.dart';
 
 final _select = find.byKey(const ValueKey('select'));
@@ -26,42 +27,81 @@ final _list = find.byType(CoilOptionList<String>);
 Finder get _rows =>
     find.descendant(of: _list, matching: find.byType(CoilHoverItem));
 
-RenderCoilMotionLayer _layer(WidgetTester tester) =>
-    tester.renderObject<RenderCoilMotionLayer>(
-      find.descendant(of: _list, matching: find.byType(CoilMotionLayer)),
-    );
+// Probe colors: the select's highlight, selected fill and focus ring each
+// get a pure color, so tests can see which rows show what.
+const _hover = Color(0xFFFF0000);
+const _selected = Color(0xFF00FF00);
+const _ring = Color(0xFF0000FF);
 
-/// The rows whose highlight shows [role]: selected, hover, press or focus.
-List<int> _lit(WidgetTester tester, String role) {
+/// [testApp] with the probe colors.
+Widget _app({
+  required Widget home,
+  CoilTier? tier,
+  CoilPresentation? presentation,
+}) => testApp(
+  home: home,
+  tier: tier,
+  presentation: presentation,
+  colors: CoilColors.light.copyWith(brand: _ring),
+  selectStyle: const CoilSelectStyle(
+    highlight: _hover,
+    selectedFill: _selected,
+  ),
+);
+
+/// The rows that show [role] (hover, selected, press or focus) to the eye.
+Future<List<int>> _lit(WidgetTester tester, String role) async {
   if (_list.evaluate().isEmpty) return const [];
-  switch (role) {
-    case 'hover':
-      final painter = _layer(tester).background.last as CoilHighlightPainter;
-      return [?painter.debugTarget];
-    case 'selected':
-      final painter = _layer(tester).background.first;
-      return painter is CoilHighlightPainter ? [?painter.debugTarget] : [];
-    case 'focus':
-      final painter = _layer(tester).foreground.first as CoilHighlightPainter;
-      return [?painter.debugTarget];
-    case 'press':
-      return [
-        for (final (i, d)
-            in tester
-                .widgetList<CoilInteractionDetector>(
-                  find.descendant(
-                    of: _list,
-                    matching: find.byType(CoilInteractionDetector),
-                  ),
-                )
-                .indexed)
-          if (d.states.value.contains(WidgetState.pressed) &&
-              !d.states.value.contains(WidgetState.hovered))
-            i,
-      ];
+  if (role == 'press') {
+    return [
+      for (final (i, d)
+          in tester
+              .widgetList<CoilInteractionDetector>(
+                find.descendant(
+                  of: _list,
+                  matching: find.byType(CoilInteractionDetector),
+                ),
+              )
+              .indexed)
+        if (d.states.value.contains(WidgetState.pressed) &&
+            !d.states.value.contains(WidgetState.hovered))
+          i,
+    ];
   }
-  throw ArgumentError(role);
+  final rows = tester.widgetList(_rows).length;
+  final boundary = find.byKey(appBoundary);
+  return [
+    for (var i = 0; i < rows; i++)
+      if (await _rowShows(tester, boundary, tester.getRect(_rows.at(i)), role))
+        i,
+  ];
 }
+
+Future<bool> _rowShows(
+  WidgetTester tester,
+  Finder boundary,
+  Rect row,
+  String role,
+) async => switch (role) {
+  // A fill shows in the row's leading padding, clear of label and check.
+  'hover' => isNear(
+    await colorAt(tester, boundary, Offset(row.left + 2, row.center.dy)),
+    _hover,
+    tolerance: 40,
+  ),
+  'selected' => isNear(
+    await colorAt(tester, boundary, Offset(row.left + 2, row.center.dy)),
+    _selected,
+    tolerance: 40,
+  ),
+  // The ring sits 2 px outside the row.
+  'focus' => isNear(
+    await colorAt(tester, boundary, Offset(row.center.dx, row.top - 2)),
+    _ring,
+    tolerance: 60,
+  ),
+  _ => throw ArgumentError(role),
+};
 
 Iterable<String> _checkedRows(WidgetTester tester) => [
   for (final semantics in tester.widgetList<Semantics>(
@@ -78,7 +118,7 @@ void main() {
     testWidgets('pointer opens an anchored popover', (tester) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(),
           tier: CoilTier.pointer,
         ),
@@ -102,7 +142,7 @@ void main() {
     ) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(options: moreFruits),
           tier: CoilTier.touch,
         ),
@@ -123,7 +163,7 @@ void main() {
       useScreen(tester, TestScreen.phone);
       tester.view.physicalSize = const Size(1024, 768) * 2;
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.touch),
+        _app(home: const SelectDemo(), tier: CoilTier.touch),
       );
       await tester.tap(_select);
       await tester.pumpAndSettle();
@@ -135,7 +175,7 @@ void main() {
     testWidgets('the component override wins over the scope', (tester) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(presentation: CoilPresentation.sheet),
           tier: CoilTier.pointer,
           presentation: CoilPresentation.popover,
@@ -152,7 +192,7 @@ void main() {
         tester,
       ) async {
         useScreen(tester, TestScreen.desktop);
-        await tester.pumpWidget(testApp(home: const SelectDemo()));
+        await tester.pumpWidget(_app(home: const SelectDemo()));
         // Desktop platforms start in pointer mode.
         expect(tester.getSize(_select).height, 36);
 
@@ -171,7 +211,7 @@ void main() {
       'phones start in touch mode',
       (tester) async {
         useScreen(tester, TestScreen.phone);
-        await tester.pumpWidget(testApp(home: const SelectDemo()));
+        await tester.pumpWidget(_app(home: const SelectDemo()));
         expect(tester.getSize(_select).height, 44);
       },
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
@@ -183,7 +223,7 @@ void main() {
       final picks = <String>[];
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(autofocus: true, onChanged: picks.add),
           tier: CoilTier.pointer,
         ),
@@ -289,7 +329,7 @@ void main() {
       final picks = <String>[];
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(onChanged: picks.add),
           tier: CoilTier.pointer,
         ),
@@ -317,7 +357,7 @@ void main() {
       final picks = <String>[];
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(onChanged: picks.add),
           tier: CoilTier.pointer,
         ),
@@ -336,7 +376,7 @@ void main() {
       final picks = <String>[];
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(options: moreFruits, onChanged: picks.add),
           tier: CoilTier.touch,
         ),
@@ -354,7 +394,7 @@ void main() {
     testWidgets('tapping the scrim dismisses', (tester) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(options: moreFruits),
           tier: CoilTier.touch,
         ),
@@ -371,7 +411,7 @@ void main() {
     Future<void> openSheet(WidgetTester tester) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(options: moreFruits),
           tier: CoilTier.touch,
         ),
@@ -385,17 +425,17 @@ void main() {
     ) async {
       await openSheet(tester);
       // At rest the picked row has its check and no fill.
-      expect(_lit(tester, 'selected'), isEmpty);
+      expect(await _lit(tester, 'selected'), isEmpty);
       expect(_checkedRows(tester), ['Banana']);
 
       await tester.tap(find.text('Mango'));
       // Still open for the acknowledgment: the check moved, nothing is lit.
       await tester.pump(const Duration(milliseconds: 150));
       expect(find.byType(CoilSheetPanel), findsOneWidget);
-      expect(_lit(tester, 'hover'), isEmpty);
-      expect(_lit(tester, 'press'), isEmpty);
-      expect(_lit(tester, 'selected'), isEmpty);
-      expect(_lit(tester, 'focus'), isEmpty);
+      expect(await _lit(tester, 'hover'), isEmpty);
+      expect(await _lit(tester, 'press'), isEmpty);
+      expect(await _lit(tester, 'selected'), isEmpty);
+      expect(await _lit(tester, 'focus'), isEmpty);
       expect(_checkedRows(tester), ['Mango']);
 
       await tester.pump(const Duration(milliseconds: 400));
@@ -412,13 +452,13 @@ void main() {
         tester.getCenter(find.text('Cherry')),
       );
       await tester.pump(kPressTimeout + const Duration(milliseconds: 20));
-      expect(_lit(tester, 'press'), isNotEmpty);
-      expect(_lit(tester, 'hover'), isEmpty);
+      expect(await _lit(tester, 'press'), isNotEmpty);
+      expect(await _lit(tester, 'hover'), isEmpty);
 
       // Sliding off cancels the tap: feedback clears and nothing is picked.
       await finger.moveBy(const Offset(0, 120));
       await tester.pump();
-      expect(_lit(tester, 'press'), isEmpty);
+      expect(await _lit(tester, 'press'), isEmpty);
       await finger.up();
       await tester.pumpAndSettle();
       expect(_checkedRows(tester), ['Banana']);
@@ -431,17 +471,17 @@ void main() {
       useScreen(tester, TestScreen.phone);
       tester.view.physicalSize = const Size(1024, 768) * 2;
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.touch),
+        _app(home: const SelectDemo(), tier: CoilTier.touch),
       );
       await tester.tap(_select);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cherry'));
       await tester.pump(const Duration(milliseconds: 150));
       expect(find.byType(CoilSheetPanel), findsNothing);
-      expect(_lit(tester, 'hover'), isEmpty);
-      expect(_lit(tester, 'press'), isEmpty);
+      expect(await _lit(tester, 'hover'), isEmpty);
+      expect(await _lit(tester, 'press'), isEmpty);
       // The popover keeps the web's selected fill, now on the picked row.
-      expect(_lit(tester, 'selected'), isNotEmpty);
+      expect(await _lit(tester, 'selected'), isNotEmpty);
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
     });
@@ -451,7 +491,7 @@ void main() {
     ) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.pointer),
+        _app(home: const SelectDemo(), tier: CoilTier.pointer),
       );
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: tester.getCenter(_select));
@@ -460,8 +500,8 @@ void main() {
       await tester.pumpAndSettle();
       await mouse.moveTo(tester.getCenter(find.text('Cherry')));
       await tester.pumpAndSettle();
-      expect(_lit(tester, 'hover'), isNotEmpty);
-      expect(_lit(tester, 'press'), isEmpty);
+      expect(await _lit(tester, 'hover'), isNotEmpty);
+      expect(await _lit(tester, 'press'), isEmpty);
       await mouse.removePointer();
     });
   });
@@ -511,7 +551,7 @@ void main() {
     ) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.touch),
+        _app(home: const SelectDemo(), tier: CoilTier.touch),
       );
       await tester.tap(_select);
       await tester.pumpAndSettle();
@@ -525,7 +565,7 @@ void main() {
     testWidgets('the override still wins on a phone', (tester) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: const SelectDemo(presentation: CoilPresentation.sheet),
           tier: CoilTier.touch,
         ),
@@ -543,7 +583,7 @@ void main() {
       final changes = <Set<String>>[];
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(
             multiple: true,
             options: fruits.take(5).toList(),
@@ -573,10 +613,10 @@ void main() {
       ]);
       expect(find.byType(CoilSheetPanel), findsOneWidget);
       expect(_checkedRows(tester), ['Apple']);
-      // Checks only: no selected fill, nothing lit.
-      expect(_lit(tester, 'selected'), isEmpty);
-      expect(_lit(tester, 'hover'), isEmpty);
-      expect(_lit(tester, 'press'), isEmpty);
+      // Picks show merged blocks behind their checks; nothing is lit.
+      expect(await _lit(tester, 'selected'), [0]);
+      expect(await _lit(tester, 'hover'), isEmpty);
+      expect(await _lit(tester, 'press'), isEmpty);
 
       await tester.tapAt(const Offset(200, 100));
       await tester.pumpAndSettle();
@@ -590,7 +630,7 @@ void main() {
       final changes = <Set<String>>[];
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(
+        _app(
           home: SelectDemo(
             multiple: true,
             autofocus: true,
@@ -651,7 +691,7 @@ void main() {
     ) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.touch),
+        _app(home: const SelectDemo(), tier: CoilTier.touch),
       );
       await tester.tap(_select);
       await tester.pumpAndSettle();
@@ -662,7 +702,7 @@ void main() {
     testWidgets('pointer rows rest muted; disabled at 50%', (tester) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.pointer),
+        _app(home: const SelectDemo(), tier: CoilTier.pointer),
       );
       await tester.tap(_select, kind: PointerDeviceKind.mouse);
       await tester.pumpAndSettle();
@@ -679,7 +719,7 @@ void main() {
       IconThemeData? chevronTheme;
       IconThemeData? checkTheme;
       await tester.pumpWidget(
-        testApp(
+        _app(
           tier: CoilTier.pointer,
           home: Center(
             child: SizedBox(
@@ -724,7 +764,7 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(
-        testApp(home: const SelectDemo(), tier: CoilTier.touch),
+        _app(home: const SelectDemo(), tier: CoilTier.touch),
       );
       expect(tester.getSize(_select).height, greaterThan(44));
       await tester.tap(_select);
@@ -733,14 +773,19 @@ void main() {
       final rows = _rows;
       final banana = tester.getRect(rows.at(1));
       expect(banana.height, greaterThan(44));
-      // The selected fill is painted on the list's layer against the
-      // (taller) Banana row's rect.
-      expect(_lit(tester, 'selected'), [1]);
-      final painter = _layer(tester).background.first as CoilHighlightPainter;
-      final layerOrigin = tester.getTopLeft(
-        find.descendant(of: _list, matching: find.byType(CoilMotionLayer)),
-      );
-      expect(painter.debugLastPaintedRect!.shift(layerOrigin), banana);
+      // The selected fill covers the whole (taller) Banana row.
+      expect(await _lit(tester, 'selected'), [1]);
+      final boundary = find.byKey(appBoundary);
+      for (final y in [banana.top + 8, banana.bottom - 8]) {
+        expect(
+          isNear(
+            await colorAt(tester, boundary, Offset(banana.left + 4, y)),
+            _selected,
+            tolerance: 40,
+          ),
+          isTrue,
+        );
+      }
     });
   });
 }

@@ -58,16 +58,6 @@ class CoilHighlightPainter extends CoilLayerPainter {
   _Pending? _pending;
   Rect? _lastPainted;
 
-  /// The target the highlight shows on, or null while it is hidden or
-  /// leaving.
-  @visibleForTesting
-  int? get debugTarget => _visible ? _anchor : null;
-
-  /// The rect painted in the last frame (before any inflate), in layer
-  /// coordinates.
-  @visibleForTesting
-  Rect? get debugLastPaintedRect => _lastPainted;
-
   Decoration? _decoration;
   BoxPainter? _boxPainter;
   double _inflate = 0;
