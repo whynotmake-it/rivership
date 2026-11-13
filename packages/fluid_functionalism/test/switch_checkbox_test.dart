@@ -89,6 +89,86 @@ void main() {
       expect(value, isTrue);
     });
 
+    testWidgets('a quick flick toggles before the midpoint; a slow short '
+        'drag springs back', (tester) async {
+      var value = false;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, setState) => FluidSwitch(
+              value: value,
+              onChanged: (v) => setState(() => value = v),
+            ),
+          ),
+        ),
+      );
+      final track = tester.getRect(find.byType(FluidSwitch));
+      final start = Offset(track.left + 10, track.center.dy);
+
+      // Slow and short (5 of 14 px of travel, with a mouse): stays off.
+      final slow = await tester.startGesture(
+        start,
+        kind: PointerDeviceKind.mouse,
+      );
+      for (var i = 0; i < 5; i++) {
+        await slow.moveBy(const Offset(1, 0));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pump(const Duration(milliseconds: 200));
+      await slow.up();
+      await settle(tester);
+      expect(value, isFalse);
+
+      // A fast flick of the same small distance: decides by direction.
+      await tester.flingFrom(
+        start,
+        const Offset(5, 0),
+        600,
+        deviceKind: PointerDeviceKind.mouse,
+      );
+      await settle(tester);
+      expect(value, isTrue);
+    });
+
+    testWidgets('dragging squishes the thumb and lets go cleanly', (
+      tester,
+    ) async {
+      final states = WidgetStatesController();
+      addTearDown(states.dispose);
+      var value = false;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, setState) => FluidSwitch(
+              value: value,
+              onChanged: (v) => setState(() => value = v),
+              statesController: states,
+            ),
+          ),
+        ),
+      );
+      final track = tester.getRect(find.byType(FluidSwitch));
+      final gesture = await tester.startGesture(
+        Offset(track.left + 10, track.center.dy),
+        kind: PointerDeviceKind.mouse,
+      );
+      // The first move only wins the gesture arena; later ones drag.
+      await gesture.moveBy(const Offset(2, 0));
+      await gesture.moveBy(const Offset(18, 0));
+      await settle(tester);
+      // Mid-drag: the thumb has been squished (shorter than at rest).
+      final thumb = find.descendant(
+        of: find.byType(FluidSwitch),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(tester.getSize(thumb.last).height, lessThan(16));
+      await gesture.up();
+      await settle(tester);
+      expect(value, isTrue);
+      expect(tester.getSize(thumb.last).height, 16);
+      expect(states.value, isNot(contains(WidgetState.pressed)));
+    });
+
     testWidgets('semantics', (tester) async {
       final handle = tester.ensureSemantics();
       await tester.pumpWidget(

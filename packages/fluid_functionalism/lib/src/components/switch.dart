@@ -1,3 +1,6 @@
+// MotorInspectionScope is part of motor's experimental inspection API.
+// ignore_for_file: experimental_member_use
+
 import 'package:fluid_functionalism/src/foundation/color_mix.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_colors.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
@@ -7,14 +10,23 @@ import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// A switch with an optional label (`registry/radix/switch.tsx`).
 ///
-/// The whole row is the hit target. The thumb becomes a pill on hover,
-/// squashes while pressed, and can be dragged: releasing past the midpoint
-/// toggles. Its geometry rides [FluidMotion.moderate]; colors fade on
-/// [FluidMotion.color].
+/// Built like Motor's toggle example: one [TrackController] animates three
+/// tracks, each 0..1:
+///
+/// * **thumb**: where the thumb is. Dragging [TrackController.set]s it and
+///   may pull it a little past either end, which stretches the switch;
+///   letting go animates from the release velocity, so a flick finishes the
+///   way it was thrown.
+/// * **squish**: the press. The thumb widens and flattens while pressed.
+/// * **tint**: the track color, off to on, on its own spring.
+///
+/// Hover (the thumb turning into a pill, the track darkening) is a plain
+/// [SingleMotionBuilder]. Geometry and colors are Fluid Functionalism's.
 class FluidSwitch extends StatefulWidget {
   /// Creates a switch.
   const FluidSwitch({
@@ -57,61 +69,162 @@ class FluidSwitch extends StatefulWidget {
   State<FluidSwitch> createState() => _FluidSwitchState();
 }
 
-class _FluidSwitchState extends State<FluidSwitch> {
-  /// The thumb's left edge while dragging, or null.
-  double? _dragX;
-  double _dragOrigin = 0;
-  bool _dragged = false;
-  double _dragDx = 0;
+/// How far a drag may pull the thumb past either end, in travels.
+const _overdrag = 0.15;
+
+/// A release faster than this (travels per second) decides by direction.
+const _flingSpeed = 2.0;
+
+class _FluidSwitchState extends State<FluidSwitch>
+    with SingleTickerProviderStateMixin {
+  late final _controller = TrackController(
+    vsync: this,
+    debugLabel: 'FluidSwitch',
+  );
+
+  late final _thumb = Track<double>(
+    .single,
+    initial: widget.value ? 1 : 0,
+    motion: FluidMotion.moderate,
+    debugLabel: 'Thumb',
+  );
+  late final _squish = Track<double>(
+    .single,
+    initial: _states.value.contains(WidgetState.pressed) ? 1 : 0,
+    motion: FluidMotion.moderate,
+    debugLabel: 'Squish',
+  );
+  late final _tint = Track<double>(
+    .single,
+    initial: widget.value ? 1 : 0,
+    motion: FluidMotion.fast,
+    debugLabel: 'Tint',
+  );
+
+  WidgetStatesController? _ownStates;
+  WidgetStatesController get _states =>
+      widget.statesController ?? (_ownStates ??= WidgetStatesController());
+
+  bool _dragging = false;
+
+  /// Whether the last drag decided the value, so a tap the same gesture
+  /// may still report does not toggle it back.
+  bool _dragDecided = false;
 
   bool get _enabled => widget.onChanged != null;
 
-  Rect _thumbRect(
-    FluidSwitchMetrics m, {
-    required bool hovered,
-    required bool pressed,
-  }) {
-    final inset = m.thumbInset;
-    final width =
-        m.thumbSize +
-        (pressed
-            ? m.pressExtend
-            : hovered
-            ? m.pillExtend
-            : 0);
-    final height = pressed ? m.thumbSize - m.pressShrink : m.thumbSize;
-    final top = inset + (pressed ? m.pressShrink / 2 : 0);
-    final travel = m.trackWidth - m.thumbSize - inset * 2;
-    final left = widget.value ? inset + travel - (width - m.thumbSize) : inset;
-    return Rect.fromLTWH(_dragX ?? left, top, width, height);
+  @override
+  void initState() {
+    super.initState();
+    _states.addListener(_onStates);
   }
 
-  (double, double) _dragRange(FluidSwitchMetrics m) => (
-    m.thumbInset,
-    m.trackWidth - m.thumbInset - (m.thumbSize + m.pressExtend),
-  );
+  @override
+  void didUpdateWidget(FluidSwitch oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.statesController != widget.statesController) {
+      (oldWidget.statesController ?? _ownStates)?.removeListener(_onStates);
+      _states.addListener(_onStates);
+    }
+    if (oldWidget.value != widget.value && !_dragging) _settle();
+  }
 
-  void _onDragStart(FluidSwitchMetrics m) {
+  @override
+  void dispose() {
+    _states.removeListener(_onStates);
+    _ownStates?.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onStates() =>
+      _press(_dragging || _states.value.contains(WidgetState.pressed));
+
+  late double _squishTarget = _controller.value(_squish);
+
+  /// Animates the squish only when its target changes: state listeners
+  /// also fire for hover and focus, and during the first build.
+  void _press(bool down) {
+    final target = down ? 1.0 : 0.0;
+    if (target == _squishTarget) return;
+    _squishTarget = target;
+    _controller.animate([
+      _squish([.to(target)]),
+    ]);
+  }
+
+  /// Springs every track to the current value, from wherever and however
+  /// fast it is moving.
+  void _settle() {
+    final to = widget.value ? 1.0 : 0.0;
+    _controller.animate([
+      _thumb([
+        .to(to, motion: FluidMotion.travel(context, FluidMotion.moderate)),
+      ]),
+      _tint([.to(to)]),
+      _squish([.to(_squishTarget = _pressedNow ? 1 : 0)]),
+    ]);
+  }
+
+  bool get _pressedNow => _states.value.contains(WidgetState.pressed);
+
+  void _toggle() {
+    if (_dragDecided) {
+      _dragDecided = false;
+      return;
+    }
+    widget.onChanged?.call(!widget.value);
+  }
+
+  void _dragStart(DragStartDetails _) {
     if (!_enabled) return;
-    final (min, max) = _dragRange(m);
-    _dragOrigin = widget.value ? max : min;
-    setState(() => _dragX = _dragOrigin);
+    _dragging = true;
+    _dragDecided = false;
+    _press(true);
   }
 
-  void _onDragUpdate(FluidSwitchMetrics m, double dx) {
-    if (_dragX == null) return;
-    final (min, max) = _dragRange(m);
-    _dragged = true;
-    setState(() => _dragX = (_dragOrigin + dx).clamp(min, max));
+  void _dragUpdate(DragUpdateDetails details, double travel) {
+    if (!_dragging) return;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final dx = rtl ? -details.delta.dx : details.delta.dx;
+    final thumb = (_controller.value(_thumb) + dx / travel).clamp(
+      -_overdrag,
+      1 + _overdrag,
+    );
+    _controller.set([_thumb.value(thumb)]);
   }
 
-  void _onDragEnd(FluidSwitchMetrics m) {
-    final x = _dragX;
-    if (x == null) return;
-    final (min, max) = _dragRange(m);
-    setState(() => _dragX = null);
-    final on = x > (min + max) / 2;
-    if (on != widget.value) widget.onChanged?.call(on);
+  void _dragEnd(DragEndDetails details, double travel) {
+    if (!_dragging) return;
+    _dragging = false;
+    // Flutter's drag velocity knows when the finger stopped before lifting;
+    // in travels per second, like the thumb track.
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final speed = details.velocity.pixelsPerSecond.dx / travel * (rtl ? -1 : 1);
+    final on = speed.abs() > _flingSpeed
+        ? speed > 0
+        : _controller.value(_thumb) > .5;
+    if (on != widget.value) {
+      _dragDecided = true;
+      widget.onChanged?.call(on);
+    }
+    // Spring to the decided side right away from the release velocity. If
+    // the parent accepts the change, its rebuild keeps this target.
+    final to = on ? 1.0 : 0.0;
+    _controller.animate([
+      _thumb(
+        [.to(to, motion: FluidMotion.travel(context, FluidMotion.moderate))],
+        withVelocity: speed,
+      ),
+      _tint([.to(to)]),
+      _squish([.to(_squishTarget = 0)]),
+    ]);
+  }
+
+  void _dragCancel() {
+    if (!_dragging) return;
+    _dragging = false;
+    _settle();
   }
 
   @override
@@ -120,84 +233,40 @@ class _FluidSwitchState extends State<FluidSwitch> {
     final colors = theme.colors;
     final sizes = FluidTheme.sizesOf(context, density: widget.density);
     final m = sizes.switchMetrics;
+    final travel = m.trackWidth - m.thumbSize - m.thumbInset * 2;
+    final sharp = theme.shape == FluidShape.sharp;
     final label = widget.label;
 
     final pressable = FluidPressable(
-      onPressed: _enabled
-          ? () {
-              if (_dragged) return;
-              widget.onChanged?.call(!widget.value);
-            }
-          : null,
+      onPressed: _enabled ? _toggle : null,
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
-      statesController: widget.statesController,
+      statesController: _states,
       builder: (context, states, _) {
-        final hovered = states.contains(WidgetState.hovered);
-        final pressed = states.contains(WidgetState.pressed) || _dragX != null;
-        final thumb = _thumbRect(m, hovered: hovered, pressed: pressed);
-        final track = _trackColor(colors, hovered: hovered);
-        final radius = BorderRadius.circular(
-          theme.shape == FluidShape.sharp ? 0 : m.trackHeight / 2,
-        );
-
-        final trackWidget = FluidFocusRing(
+        final track = FluidFocusRing(
           visible: states.contains(WidgetState.focused),
-          borderRadius: radius,
+          borderRadius: BorderRadius.circular(sharp ? 0 : m.trackHeight / 2),
           offset: 2,
-          child: MotionBuilder<Color>(
-            value: track,
-            motion: FluidMotion.color,
-            converter: MotionConverter.colorRgb,
-            builder: (context, trackColor, _) => Container(
-              width: m.trackWidth,
-              height: m.trackHeight,
-              decoration: BoxDecoration(
-                color: trackColor,
-                borderRadius: radius,
-              ),
-              child: MotionBuilder<Rect>(
-                value: thumb,
-                // Follow the finger exactly while dragging; spring
-                // from wherever it was let go.
-                active: _dragX == null,
-                motion: FluidMotion.travel(context, FluidMotion.moderate),
-                converter: MotionConverter.rect,
-                builder: (context, rect, _) => Stack(
-                  children: [
-                    Positioned.fromRect(
-                      rect: rect,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
-                          borderRadius: theme.shape == FluidShape.sharp
-                              ? BorderRadius.zero
-                              : BorderRadius.circular(m.thumbSize),
-                          // Tailwind `shadow-sm`.
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1A000000),
-                              offset: Offset(0, 1),
-                              blurRadius: 3,
-                            ),
-                            BoxShadow(
-                              color: Color(0x1A000000),
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                              spreadRadius: -1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          child: SingleMotionBuilder(
+            value: states.contains(WidgetState.hovered) ? 1 : 0,
+            motion: FluidMotion.fast,
+            debugLabel: 'Hover',
+            builder: (context, hover, _) => ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) => _SwitchTrack(
+                metrics: m,
+                colors: colors,
+                sharp: sharp,
+                thumb: _controller.value(_thumb),
+                squish: _controller.value(_squish).clamp(0, 1),
+                tint: _controller.value(_tint).clamp(0, 1),
+                hover: hover.clamp(0, 1),
               ),
             ),
           ),
         );
 
-        Widget content = trackWidget;
+        Widget content = track;
         if (label != null) {
           content = Padding(
             padding: EdgeInsets.symmetric(
@@ -208,13 +277,14 @@ class _FluidSwitchState extends State<FluidSwitch> {
               mainAxisSize: MainAxisSize.min,
               spacing: sizes.gap,
               children: [
-                trackWidget,
+                track,
                 MotionBuilder<Color>(
                   value: widget.value
                       ? colors.foreground
                       : colors.mutedForeground,
-                  motion: FluidMotion.color,
-                  converter: MotionConverter.colorRgb,
+                  motion: FluidMotion.fast,
+                  converter: .colorRgb,
+                  debugLabel: 'Label color',
                   builder: (context, color, child) => DefaultTextStyle(
                     style: FluidTypography.style(sizes.body, color: color),
                     child: child!,
@@ -238,36 +308,126 @@ class _FluidSwitchState extends State<FluidSwitch> {
       },
     );
 
-    return Semantics(
-      container: true,
-      toggled: widget.value,
-      enabled: _enabled,
-      label: widget.semanticLabel,
-      child: GestureDetector(
-        // Dragging is a pointer nicety; it is not a scroll action.
-        excludeFromSemantics: true,
-        onHorizontalDragStart: (_) {
-          _dragDx = 0;
-          _dragged = false;
-          _onDragStart(m);
-        },
-        onHorizontalDragUpdate: (details) {
-          _dragDx += details.delta.dx;
-          _onDragUpdate(m, _dragDx);
-        },
-        onHorizontalDragEnd: (_) => _onDragEnd(m),
-        onHorizontalDragCancel: () => setState(() => _dragX = null),
-        child: pressable,
+    return MotorInspectionScope(
+      group: 'FluidSwitch',
+      child: Semantics(
+        container: true,
+        toggled: widget.value,
+        enabled: _enabled,
+        label: widget.semanticLabel,
+        child: GestureDetector(
+          // Dragging is a pointer nicety; it is not a scroll action.
+          excludeFromSemantics: true,
+          onHorizontalDragStart: _dragStart,
+          onHorizontalDragUpdate: (details) => _dragUpdate(details, travel),
+          onHorizontalDragEnd: (details) => _dragEnd(details, travel),
+          onHorizontalDragCancel: _dragCancel,
+          child: pressable,
+        ),
       ),
     );
   }
+}
 
-  Color _trackColor(FluidColors c, {required bool hovered}) {
-    if (widget.value) {
-      return hovered
-          ? FluidColorMix.oklab(c.fluidAccent, const Color(0xFF000000), 0.92)
-          : c.fluidAccent;
-    }
-    return hovered ? FluidColorMix.oklab(c.accent, c.overlay, 0.9) : c.accent;
+/// Paints the track and thumb from the switch's track values.
+class _SwitchTrack extends StatelessWidget {
+  const _SwitchTrack({
+    required this.metrics,
+    required this.colors,
+    required this.sharp,
+    required this.thumb,
+    required this.squish,
+    required this.tint,
+    required this.hover,
+  });
+
+  final FluidSwitchMetrics metrics;
+  final FluidColors colors;
+  final bool sharp;
+
+  /// 0 off, 1 on; a drag may pull it slightly past either end.
+  final double thumb;
+  final double squish;
+  final double tint;
+  final double hover;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = metrics;
+    final inset = m.thumbInset;
+    final travel = m.trackWidth - m.thumbSize - inset * 2;
+    final at = thumb.clamp(0.0, 1.0);
+
+    // Hover makes the thumb a pill; a press widens and flattens it more.
+    final hoverExtend = m.pillExtend * hover;
+    final extend = hoverExtend + (m.pressExtend - hoverExtend) * squish;
+    final width = m.thumbSize + extend;
+    final height = m.thumbSize - m.pressShrink * squish;
+    final start = inset + at * (travel - extend);
+    final top = (m.trackHeight - height) / 2;
+
+    final off = Color.lerp(
+      colors.accent,
+      FluidColorMix.oklab(colors.accent, colors.overlay, 0.9),
+      hover,
+    )!;
+    final on = Color.lerp(
+      colors.fluidAccent,
+      FluidColorMix.oklab(colors.fluidAccent, const Color(0xFF000000), 0.92),
+      hover,
+    )!;
+
+    // Pulled past an end, the switch stretches toward it and narrows to
+    // keep its area: about 4% at most, a quieter take on Motor's toggle.
+    final over = (thumb - at).clamp(-_overdrag, _overdrag);
+    final stretch = 1 + over.abs() * 0.25;
+    final radius = BorderRadius.circular(sharp ? 0 : m.trackHeight / 2);
+
+    return Transform(
+      alignment: over > 0
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
+      transform: Matrix4.diagonal3Values(stretch, 1 / stretch, 1),
+      child: Container(
+        width: m.trackWidth,
+        height: m.trackHeight,
+        decoration: BoxDecoration(
+          color: Color.lerp(off, on, tint),
+          borderRadius: radius,
+        ),
+        child: Stack(
+          children: [
+            PositionedDirectional(
+              start: start,
+              top: top,
+              width: width,
+              height: height,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(
+                    sharp ? 0 : m.thumbSize,
+                  ),
+                  // Tailwind `shadow-sm`.
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1A000000),
+                      offset: Offset(0, 1),
+                      blurRadius: 3,
+                    ),
+                    BoxShadow(
+                      color: Color(0x1A000000),
+                      offset: Offset(0, 1),
+                      blurRadius: 2,
+                      spreadRadius: -1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
