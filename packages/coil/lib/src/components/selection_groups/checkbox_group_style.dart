@@ -30,7 +30,7 @@ class CoilCheckboxGroupStyle
       highlight: c.hover,
       label: WidgetStatePropertyAll(c.foreground),
       textStyle: theme.typography.style(metrics.body),
-      radius: theme.shape.item,
+      radius: theme.shape.radii(metrics.tier).item,
     );
   }
 

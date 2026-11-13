@@ -296,7 +296,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
                   decoration: ShapeDecoration(
                     shape: RoundedSuperellipseBorder(
                       borderRadius: BorderRadius.circular(
-                        theme.shape.focusRing,
+                        theme.shape.radii(metrics.tier).focusRing,
                       ),
                       side: BorderSide(
                         color: colors.focusRing,

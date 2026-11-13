@@ -46,9 +46,7 @@ class CoilPopupController extends ChangeNotifier {
     final opened = host?.open();
     // The host reports the popup's own future through didOpen; hand out that
     // one, so every open() call while it shows gets the same future.
-    return _closed ??
-        opened ??
-        Future.value(CoilPopupCloseReason.programmatic);
+    return _closed ?? opened ?? Future.value(CoilPopupCloseReason.programmatic);
   }
 
   /// Closes the popup with [CoilPopupCloseReason.programmatic]. Does

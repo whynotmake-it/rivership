@@ -34,7 +34,7 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
             : c.mutedForeground,
       ),
       textStyle: theme.typography.style(metrics.body),
-      radius: theme.shape.item,
+      radius: theme.shape.radii(metrics.tier).item,
     );
   }
 

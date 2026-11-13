@@ -2,9 +2,9 @@
 
 This document is the source of truth for how coil looks, moves and behaves, for people and for agents. It describes the **target** system: every component in scope, including those not built yet. Implementation sessions build against it. Where the Flutter package and this document disagree, one of them is a bug: fix the code, or update this document in the same change.
 
-Values are logical pixels (pt/dp). Token names are the Dart names in `lib/src/foundation/`. The few things that still need the user's call are collected in [§17 Open questions](#17-open-questions) and marked **(open)** where they appear.
+Values are logical pixels (pt/dp). Token names are the Dart names in `lib/src/foundation/`. The user's decisions on former open questions are recorded in [§17 Decisions](#17-decisions).
 
-Contents: [1 Principles](#1-principles) · [2 Color](#2-color) · [3 Type](#3-type) · [4 Spacing and sizing](#4-spacing-and-sizing) · [5 Shape](#5-shape) · [6 Elevation and borders](#6-elevation-and-borders) · [7 Motion](#7-motion) · [8 Interaction](#8-interaction) · [9 Adaptivity](#9-adaptivity) · [10 Accessibility floor](#10-accessibility-floor) · [11 Iconography](#11-iconography) · [12 Writing](#12-writing) · [13 Shared anatomy](#13-shared-anatomy) · [14 Components](#14-components) · [15 Out of scope](#15-out-of-scope) · [16 Review checklist](#16-review-checklist) · [17 Open questions](#17-open-questions)
+Contents: [1 Principles](#1-principles) · [2 Color](#2-color) · [3 Type](#3-type) · [4 Spacing and sizing](#4-spacing-and-sizing) · [5 Shape](#5-shape) · [6 Elevation and borders](#6-elevation-and-borders) · [7 Motion](#7-motion) · [8 Interaction](#8-interaction) · [9 Adaptivity](#9-adaptivity) · [10 Accessibility floor](#10-accessibility-floor) · [11 Iconography](#11-iconography) · [12 Writing](#12-writing) · [13 Shared anatomy](#13-shared-anatomy) · [14 Components](#14-components) · [15 Out of scope](#15-out-of-scope) · [16 Review checklist](#16-review-checklist) · [17 Decisions](#17-decisions)
 
 ---
 
@@ -128,7 +128,7 @@ Never set a static `FontWeight` on top of the variation; the engine would synthe
 | Token | Pointer | Pointer compact | Touch | Touch compact |
 |---|---|---|---|---|
 | `controlHeight` (min) | 36 | 28 | 44 | 36 |
-| `minHitTarget` | 0 | 0 | 44 (Android icon-only and compact: 48) | 44 (Android: 48) |
+| `minHitTarget` | 0 | 0 | 44 | 44 |
 | vertical pad = (h − line) / 2 | 8 | 5 | 11 | 8 |
 | `controlPaddingX` (fields, triggers, tabs) | 12 | 10 | 16 | 12 |
 | `itemPaddingX` (rows in a popup) | 8 | 6 | 10 | 6 |
@@ -165,22 +165,24 @@ Spacing values come from {2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48}. If a value is
 
 **Shape family** (`CoilShape`, theme-wide):
 
-| | item (controls, rows, fills) | container (cards, groups) | focus ring |
+`CoilShape` resolves per tier (`CoilShape.radii(tier)`, `CoilTheme.radiiOf(context)`): touch controls are taller, so their corners grow to keep the same proportions. Pointer values are unchanged.
+
+| | item (controls, rows, fills) | container (popovers, sheets, cards, groups) | focus ring |
 |---|---|---|---|
-| `rounded` (default) | 8 | 12 | 10 |
-| `pill` | height / 2 (rows 20) | 24 | item + 2 |
+| `rounded` (default), pointer | 8 | 12 | 10 |
+| `rounded`, touch | 10 | 16 | 12 |
+| `pill`, pointer | height / 2 (rows 20) | 24 | item + 2 |
+| `pill`, touch | height / 2 (rows 22) | 28 | item + 2 |
 | `sharp` | 1 | 1 | 3 |
 
 Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 
 **Nesting:** outer radius = inner radius + the inset between them (`CoilShape.nested`).
 
-- Popover / sheet = item + `popupInset`: 8 + 4 = **12** pointer, 8 + 6 = **14** touch.
+- Popover / sheet = item + `popupInset` = the container radius: 8 + 4 = **12** pointer, 10 + 6 = **16** touch.
 - The focus ring sits 2 px outside, so it's item + 2.
 - A number-stepper button 4 px inside an input has radius item − 4.
 - Every corner gap is even.
-
-**Touch radius (open):** a touch item radius of 10 (popover and sheet 16, ring 12) keeps the pointer's radius-to-height ratio. It needs `CoilShape` to resolve per tier (§17).
 
 **Merged selection runs** round only their outer corners, at the item radius.
 
@@ -329,7 +331,7 @@ The decision uses window width, not the platform: an iPad in a 320-wide split vi
 | Text selection | system edit menu (`SystemContextMenu`), Cupertino handles | Material handles and toolbar | coil-styled right-click menu | browser menu |
 | Back | edge swipe pops routes | system / predictive back dismisses the top overlay | Esc | Esc / browser back |
 | Modifier glyphs | ⌘ ⌥ ⇧ ⌃ | Ctrl Alt Shift | ⌘ on macOS, Ctrl elsewhere | by OS |
-| Hit target | 44 | 48 for icon-only and compact; 44 visual | — | per tier |
+| Hit target | 44 | 44 (no 48 px Android hit box: Flutter has no hit slop, and a larger hit area without a larger layout needs a custom hit-test override) | — | per tier |
 
 Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
 
@@ -354,7 +356,7 @@ Every component ships with all of these. They're required to call it done.
   - muted text on its surface ≥ 4.5 : 1 for content, 3 : 1 for placeholders;
   - focus ring ≥ 3 : 1;
   - the switch-off track ≥ 3 : 1 against its surface in high contrast.
-- **Hit targets** ≥ 44 on touch (48 on Android for icon-only and compact controls). An invisible box grows outward from a smaller visual. A control inside a row that's already the target shrink-wraps (`CoilTapTargetSize.shrinkWrap`).
+- **Hit targets** ≥ 44 on touch, on every platform, Android included. The box that receives taps is the control's layout box (`minHitTarget` pads it out), never a hit-test override. A control inside a row that's already the target shrink-wraps (`CoilTapTargetSize.shrinkWrap`).
 - **Semantics:** correct roles (button, checkbox, mixed, switch/toggled, radio in a mutually exclusive group, slider/adjustable, menu/menuItem, tab, textField, header, table/row/cell), names and states. Rows merge their parts into one node.
 - **Live regions:** Banner (polite; assertive for destructive), copy results, command and combobox result counts, Field errors.
 - **Keyboard:** everything reachable and operable, with the patterns in §14. Arrow and Enter interception respects IME composition (`value.composing`).
@@ -406,12 +408,13 @@ Every component ships with all of these. They're required to call it done.
 | Trailing slot | check, value (muted), chevron, shortcut caps (pointer only), badge | same | same, no shortcut caps | same |
 
 - Label colors: pointer rows rest at `mutedForeground` and turn `foreground` when lit, selected or checked. Touch rows rest at `foreground`.
+- The trailing check is the text color (`foreground`) in menus, popovers and sheets, never `brand`.
 - **No separators between rows.** A check slot keeps its width when empty.
 - A trailing check means single choice. A leading checkbox means a standalone checklist (CheckboxGroup). A merged fill plus a check means multi-select in a menu.
 
 ### 13.2 Popup surface
 
-- Surface 3 / shadow 3; radius item + `popupInset`; inset `popupInset`.
+- Surface 3 / shadow 3; radius = container (item + `popupInset`: 12 pointer, 16 touch); inset `popupInset`.
 - Width ≥ the trigger's (menus default to 288 pointer, `max(trigger, 220)` touch).
 - Max height `min(480, available)` for menus, 300 for pointer selects; touch popovers are uncapped (≤ 8 rows).
 - 6 px from the anchor; flips to the side with room; 8 px from window edges.
@@ -421,13 +424,13 @@ Every component ships with all of these. They're required to call it done.
 ### 13.3 Sheet
 
 - A floating panel 8 from the screen edges; the bottom is `max(8, safe area)`. The top is capped at the top safe area + 48, so the page always shows behind it. Centered at most 560 wide.
-- Surface 3 / shadow 3, radius item + inset (14).
+- Surface 3 / shadow 3, radius = the touch container radius (16).
 - Grabber 36×5 (foreground 16 %), 6 above and below.
 - Optional title: 17/22 semibold `foreground`, aligned with the row text, 4 above and 6 below, `Semantics(header)`.
 - **Optional pinned header row:**
   - a search field (44, not autofocused on touch, kept above the keyboard);
   - or, for push navigation, a back row ("‹ Parent").
-- A scroll-edge hairline under the header shows only while content scrolls beneath it **(open: §17)**.
+- A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
 - **Optional action bar:** full-width 44 buttons above the safe area, stacked with the primary on top.
 - **Height:** content height up to the cap; long lists scroll inside. Search and command sheets open at the large detent and grow while the keyboard is up.
@@ -455,7 +458,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   | | P | Pc | T | Tc |
   |---|---|---|---|---|
   | Labeled | 36 · 16 (12 next to icon) · 6 | 28 · 12/8 · 4 | 44 · 20/16 · 8 | 36 · 16/12 · 6, 44 hit |
-  | Icon-only | 36 | 28 | 44 | 36 visual, 44 hit (48 on Android) |
+  | Icon-only | 36 | 28 | 44 | 36 visual, 44 hit |
 
   The label is body semibold.
 - **Variants:**
@@ -673,9 +676,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Presentation:**
   - Pointer and tablets: centered.
   - **Phone (touch, < 600):**
-    - `sm` becomes the **sheet** (§13.3): the title becomes the sheet title, and the footer becomes the action bar, stacked full-width with the primary on top and Cancel below.
-    - `lg` / `xl` become a **full-screen page** that slides up on `gentle`. Its top bar has Close at the leading edge, the title, and the primary action at the trailing edge.
-    - Short confirmations (title + 1 sentence + 2 buttons) may stay centered: `presentation: .popover`.
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the action bar, stacked full-width with the primary on top and Cancel below. `lg` / `xl` forms open at the large detent.
+    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form.
+    - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.
 - **Semantics:** a modal route, `scopesRoute`, title as the route name.
@@ -987,10 +990,12 @@ A component is done when:
 6. Shapes are superellipses, and nested radii are concentric.
 7. It follows this document, or this document is updated in the same change.
 
-## 17. Open questions
+## 17. Decisions
 
-1. **Touch item radius 10** (popover and sheet 16, focus ring 12)? It needs `CoilShape` to resolve per tier. Today the touch tier uses 8 / 14.
-2. **Android row height:** keep 44 visual everywhere (current), or go to 48 on Android to match Material's density?
-3. **The check color in sheets and menus:** foreground (current) or `brand`, like iOS's tinted checkmark?
-4. **A scroll-edge hairline under sheet headers** while content scrolls beneath it, or no line at all?
-5. **Dialog → sheet on phones:** should `sm` dialogs always become sheets, or only when they contain a form, with short confirmations staying centered by default?
+The user's decisions on the former open questions (2026-11-13):
+
+1. **Touch radii:** item 10, popover and sheet 16, focus ring 12. `CoilShape` resolves per tier; pointer values are unchanged (§5).
+2. **One row height:** 44 visual everywhere, Android included. There is no 48 px Android hit box: Flutter has no hit slop, and growing the hit area without changing layout would need a custom hit-test override, the kind of workaround coil avoids (§4.2, §9.2, §10).
+3. **The check in sheets and menus** stays the text color (`foreground`) (§13.1).
+4. **Sheet header hairline:** only while content scrolls beneath the header (§13.3).
+5. **Dialogs on phones** become a sheet only when they contain a form; short confirmations stay centered. A dialog shown as a sheet is always drag-to-dismiss, unless it's non-dismissible (§14.3 Dialog).

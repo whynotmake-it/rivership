@@ -92,7 +92,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
       border: variant == CoilButtonVariant.tertiary
           ? c.border
           : const Color(0x00000000),
-      radius: theme.shape.item,
+      radius: theme.shape.radii(metrics.tier).item,
       textStyle: theme.typography.style(metrics.body),
       iconSize: metrics.iconSize,
       minHeight: metrics.controlHeight,

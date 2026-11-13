@@ -622,7 +622,8 @@ class _PopoverSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
-    // Concentric with the rows: item radius + the popup's inset.
+    // Concentric with the rows: item radius + the popup's inset, which is
+    // the shape's container radius at the default style.
     final radius = BorderRadius.circular(style.radius! + metrics.popupInset);
     return IntrinsicWidth(
       child: DecoratedBox(

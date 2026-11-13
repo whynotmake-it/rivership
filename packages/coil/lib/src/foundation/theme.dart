@@ -266,6 +266,10 @@ class CoilTheme extends StatelessWidget {
     return reduced && spatial ? const Motion.instant() : custom;
   }
 
+  /// The corner radii at [context]: the theme's shape at [tierOf].
+  static CoilRadii radiiOf(BuildContext context) =>
+      of(context).shape.radii(tierOf(context));
+
   /// The tier at [context]: the nearest [CoilAdaptiveScope]'s, else the
   /// theme's, else the platform's.
   static CoilTier tierOf(BuildContext context) =>

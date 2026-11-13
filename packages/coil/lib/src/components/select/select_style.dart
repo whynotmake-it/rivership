@@ -44,7 +44,7 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
       ),
       textStyle: theme.typography.style(metrics.body, color: c.foreground),
       placeholder: c.mutedForeground,
-      radius: theme.shape.item,
+      radius: theme.shape.radii(metrics.tier).item,
       surface: c.surface(3),
       selectedFill: c.active,
       highlight: c.hover,

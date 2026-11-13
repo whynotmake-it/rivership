@@ -224,7 +224,9 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
               inflate: 1 + theme.focusRingWidth,
               decoration: ShapeDecoration(
                 shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(theme.shape.focusRing),
+                  borderRadius: BorderRadius.circular(
+                    theme.shape.radii(sizes.tier).focusRing,
+                  ),
                   side: BorderSide(
                     color: colors.focusRing,
                     width: theme.focusRingWidth,

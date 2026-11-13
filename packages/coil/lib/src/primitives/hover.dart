@@ -309,7 +309,8 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
         color: widget.highlightColor ?? theme.colors.hover,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(
-            widget.highlightRadius ?? theme.shape.item,
+            widget.highlightRadius ??
+                theme.shape.radii(CoilTheme.tierOf(context)).item,
           ),
         ),
       ),

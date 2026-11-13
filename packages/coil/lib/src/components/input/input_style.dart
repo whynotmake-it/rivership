@@ -38,7 +38,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
       ),
       textStyle: theme.typography.style(metrics.field, color: c.foreground),
       placeholder: c.mutedForeground,
-      radius: theme.shape.item,
+      radius: theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,
     );
   }
