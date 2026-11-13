@@ -47,13 +47,19 @@ class _Panel extends StatelessWidget {
             child: CoilCheckboxGroup(
               values: selected,
               onChanged: (v) => selection.value = v,
-              children: [for (final r in _rows) Text(r)],
+              options: [
+                for (final (i, r) in _rows.indexed)
+                  CoilOption(value: i, label: r),
+              ],
             ),
           ),
           CoilToggleGroup(
             values: selected,
             onChanged: (v) => selection.value = v,
-            children: [for (final d in _days) Text(d)],
+            options: [
+              for (final (i, d) in _days.indexed)
+                CoilOption(value: i, label: d),
+            ],
           ),
         ],
       ),

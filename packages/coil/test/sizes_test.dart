@@ -69,9 +69,9 @@ void main() {
         'tabs',
         () => CoilTabs(
           tabs: const [
-            CoilTab(label: 'Day'),
-            CoilTab(label: 'Week'),
-            CoilTab(label: 'Month'),
+            CoilTab(value: 0, label: 'Day'),
+            CoilTab(value: 1, label: 'Week'),
+            CoilTab(value: 2, label: 'Month'),
           ],
           value: 1,
           onChanged: (_) {},

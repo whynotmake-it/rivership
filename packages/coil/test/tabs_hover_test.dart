@@ -15,9 +15,10 @@ const _icons = [
   TestGlyph.settings,
 ];
 
-List<CoilTab> _tabs({bool icons = false}) => [
+List<CoilTab<int>> _tabs({bool icons = false}) => [
   for (final (i, label) in _labels.indexed)
     CoilTab(
+      value: i,
       label: label,
       icon: icons ? TestIcon(_icons[i]) : null,
     ),

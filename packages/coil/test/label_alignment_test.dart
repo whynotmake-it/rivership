@@ -60,8 +60,8 @@ void main() {
     },
     'tabs/text': (ink) => CoilTabs(
       tabs: [
-        CoilTab(label: 'HEH', child: _Ink(ink, const Text('HEH'))),
-        CoilTab(label: 'HEH', child: _Ink(ink, const Text('HEH'))),
+        CoilTab(value: 0, label: 'HEH', child: _Ink(ink, const Text('HEH'))),
+        CoilTab(value: 1, label: 'HEH', child: _Ink(ink, const Text('HEH'))),
       ],
       value: 0,
       onChanged: (_) {},
@@ -69,6 +69,7 @@ void main() {
     'tabs/icons': (ink) => CoilTabs(
       tabs: [
         CoilTab(
+          value: 0,
           icon: const TestIcon(TestGlyph.home),
           label: 'HEH',
           child: _Ink(ink, const Text('HEH')),
@@ -92,13 +93,21 @@ void main() {
       child: CoilCheckboxGroup(
         values: const {0},
         onChanged: (_) {},
-        children: [_Ink(ink, const Text('HEH'))],
+        options: [
+          CoilOption(
+            value: 0,
+            label: 'HEH',
+            child: _Ink(ink, const Text('HEH')),
+          ),
+        ],
       ),
     ),
     'toggle-group/item': (ink) => CoilToggleGroup(
       values: const {0},
       onChanged: (_) {},
-      children: [_Ink(ink, const Text('HEH'))],
+      options: [
+        CoilOption(value: 0, label: 'HEH', child: _Ink(ink, const Text('HEH'))),
+      ],
     ),
     'select/trigger': (ink) => SizedBox(
       width: 200,

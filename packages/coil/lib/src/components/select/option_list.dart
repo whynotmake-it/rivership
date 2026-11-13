@@ -9,36 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// One choice in a select.
-@immutable
-class CoilOption<T> {
-  /// Creates a choice.
-  const CoilOption({
-    required this.value,
-    required this.label,
-    this.icon,
-    this.child,
-    this.enabled = true,
-  });
-
-  /// What picking this choice reports.
-  final T value;
-
-  /// The text of the choice: shown unless [child] is set, matched by
-  /// typeahead, and read by screen readers.
-  final String label;
-
-  /// A leading glyph, sized and colored by the row through [IconTheme].
-  final Widget? icon;
-
-  /// Replaces the `Text(label)` in the row.
-  final Widget? child;
-
-  /// Whether the choice can be picked. Disabled rows are skipped by the
-  /// highlight, the arrow keys and typeahead.
-  final bool enabled;
-}
-
 /// The list inside both presentations of a select: rows on a
 /// [CoilMotionLayer] (the fluid highlight on the active item, the selected
 /// fill, merge/split blocks for multi-select, a travelling keyboard ring),

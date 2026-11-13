@@ -77,11 +77,11 @@ class _Board extends StatelessWidget {
               CoilCheckboxGroup(
                 values: const {0, 1, 3},
                 onChanged: (_) {},
-                children: const [
-                  Text('Email'),
-                  Text('Push notifications'),
-                  Text('SMS'),
-                  Text('Weekly digest'),
+                options: const [
+                  CoilOption(value: 0, label: 'Email'),
+                  CoilOption(value: 1, label: 'Push notifications'),
+                  CoilOption(value: 2, label: 'SMS'),
+                  CoilOption(value: 3, label: 'Weekly digest'),
                 ],
               ),
             ),
@@ -90,10 +90,10 @@ class _Board extends StatelessWidget {
               CoilToggleGroup(
                 values: const {0, 1},
                 onChanged: (_) {},
-                children: const [
-                  Text('Bold'),
-                  Text('Italic'),
-                  Text('Underline'),
+                options: const [
+                  CoilOption(value: 0, label: 'Bold'),
+                  CoilOption(value: 1, label: 'Italic'),
+                  CoilOption(value: 2, label: 'Underline'),
                 ],
               ),
             ),
@@ -101,9 +101,18 @@ class _Board extends StatelessWidget {
               'tabs',
               CoilTabs(
                 tabs: const [
-                  CoilTab(label: 'Overview', icon: TestIcon(TestGlyph.home)),
-                  CoilTab(label: 'Activity', icon: TestIcon(TestGlyph.heart)),
                   CoilTab(
+                    value: 0,
+                    label: 'Overview',
+                    icon: TestIcon(TestGlyph.home),
+                  ),
+                  CoilTab(
+                    value: 1,
+                    label: 'Activity',
+                    icon: TestIcon(TestGlyph.heart),
+                  ),
+                  CoilTab(
+                    value: 2,
                     label: 'Settings',
                     icon: TestIcon(TestGlyph.settings),
                   ),

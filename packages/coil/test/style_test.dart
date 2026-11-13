@@ -112,8 +112,8 @@ void main() {
             ),
             CoilTabs(
               tabs: const [
-                CoilTab(label: 'A'),
-                CoilTab(label: 'B'),
+                CoilTab(value: 0, label: 'A'),
+                CoilTab(value: 1, label: 'B'),
               ],
               value: 0,
               onChanged: (_) {},
@@ -127,13 +127,13 @@ void main() {
               values: const {0},
               onChanged: (_) {},
               style: const CoilCheckboxGroupStyle(radius: 2),
-              children: const [Text('A')],
+              options: const [CoilOption(value: 0, label: 'A')],
             ),
             CoilToggleGroup(
               values: const {0},
               onChanged: (_) {},
               style: const CoilToggleGroupStyle(radius: 2),
-              children: const [Text('A')],
+              options: const [CoilOption(value: 0, label: 'A')],
             ),
             CoilSelect<int>(
               options: const [CoilOption(value: 0, label: 'Zero')],

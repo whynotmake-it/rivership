@@ -12,10 +12,10 @@ import 'package:motor/motor.dart';
 /// ([CoilSelectionPainter]); checking the row between two runs merges
 /// them, unchecking a row inside a run splits it. The fluid hover highlight
 /// glides over the rows on top of that.
-class CoilCheckboxGroup extends StatelessWidget {
+class CoilCheckboxGroup<T> extends StatelessWidget {
   /// Creates a checkbox group.
   const CoilCheckboxGroup({
-    required this.children,
+    required this.options,
     required this.values,
     required this.onChanged,
     super.key,
@@ -28,14 +28,14 @@ class CoilCheckboxGroup extends StatelessWidget {
   /// [CoilCheckboxGroupStyle] and the defaults.
   final CoilCheckboxGroupStyle? style;
 
-  /// The row labels.
-  final List<Widget> children;
+  /// The rows: each option's [CoilOption.child] or `Text(label)`.
+  final List<CoilOption<T>> options;
 
-  /// The checked rows.
-  final Set<int> values;
+  /// The values of the checked rows.
+  final Set<T> values;
 
-  /// Called with the new set of checked rows. Null disables the group.
-  final ValueChanged<Set<int>>? onChanged;
+  /// Called with the new set of checked values. Null disables the group.
+  final ValueChanged<Set<T>>? onChanged;
 
   /// Pins the group to one size step.
   final CoilSize? size;
@@ -43,11 +43,17 @@ class CoilCheckboxGroup extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  void _toggle(int i) {
+  void _toggle(T value) {
     final next = {...values};
-    if (!next.remove(i)) next.add(i);
+    if (!next.remove(value)) next.add(value);
     onChanged?.call(next);
   }
+
+  /// The indexes of the selected options, for the merged blocks.
+  Set<int> get _selectedIndexes => {
+    for (final (i, option) in options.indexed)
+      if (values.contains(option.value)) i,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +64,7 @@ class CoilCheckboxGroup extends StatelessWidget {
       sizes,
     ).merge(CoilTheme.styleOf<CoilCheckboxGroupStyle>(context)).merge(style);
     return _SelectionRegion(
-      selected: values,
+      selected: _selectedIndexes,
       motion: motion,
       selection: look.selection!,
       highlight: look.highlight!,
@@ -67,17 +73,22 @@ class CoilCheckboxGroup extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, option) in children.indexed)
+          for (final (i, option) in options.indexed)
             CoilHoverItem(
               index: i,
+              enabled: option.enabled,
               child: _CheckRow(
-                checked: values.contains(i),
+                checked: values.contains(option.value),
                 sizes: sizes,
-                onPressed: onChanged == null ? null : () => _toggle(i),
-                label: option,
+                onPressed: onChanged == null || !option.enabled
+                    ? null
+                    : () => _toggle(option.value),
+                label: option.child ?? Text(option.label),
+                // The Text already names the row; a custom child needs it.
+                semanticLabel: option.child == null ? null : option.label,
                 textStyle: look.textStyle!.copyWith(
                   color: look.label!.resolve({
-                    if (values.contains(i)) WidgetState.selected,
+                    if (values.contains(option.value)) WidgetState.selected,
                   }),
                 ),
               ),
@@ -90,6 +101,7 @@ class CoilCheckboxGroup extends StatelessWidget {
 
 class _CheckRow extends StatefulWidget {
   const _CheckRow({
+    required this.semanticLabel,
     required this.checked,
     required this.sizes,
     required this.onPressed,
@@ -97,6 +109,7 @@ class _CheckRow extends StatefulWidget {
     required this.textStyle,
   });
 
+  final String? semanticLabel;
   final bool checked;
   final CoilMetrics sizes;
   final VoidCallback? onPressed;
@@ -122,6 +135,7 @@ class _CheckRowState extends State<_CheckRow> {
     return Semantics(
       container: true,
       checked: widget.checked,
+      label: widget.semanticLabel,
       child: CoilInteraction(
         onPressed: widget.onPressed,
         statesController: _states,
@@ -171,10 +185,10 @@ class _CheckRowState extends State<_CheckRow> {
 
 /// A horizontal row of toggles whose selected items merge into one shape:
 /// a multi-select segmented control.
-class CoilToggleGroup extends StatelessWidget {
+class CoilToggleGroup<T> extends StatelessWidget {
   /// Creates a toggle group.
   const CoilToggleGroup({
-    required this.children,
+    required this.options,
     required this.values,
     required this.onChanged,
     super.key,
@@ -187,14 +201,14 @@ class CoilToggleGroup extends StatelessWidget {
   /// [CoilToggleGroupStyle] and the defaults.
   final CoilToggleGroupStyle? style;
 
-  /// The toggle labels.
-  final List<Widget> children;
+  /// The toggles: each option's [CoilOption.child] or `Text(label)`.
+  final List<CoilOption<T>> options;
 
-  /// The selected toggles.
-  final Set<int> values;
+  /// The values of the selected toggles.
+  final Set<T> values;
 
-  /// Called with the new selection. Null disables the group.
-  final ValueChanged<Set<int>>? onChanged;
+  /// Called with the new set of selected values. Null disables the group.
+  final ValueChanged<Set<T>>? onChanged;
 
   /// Pins the group to one size step.
   final CoilSize? size;
@@ -202,11 +216,17 @@ class CoilToggleGroup extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  void _toggle(int i) {
+  void _toggle(T value) {
     final next = {...values};
-    if (!next.remove(i)) next.add(i);
+    if (!next.remove(value)) next.add(value);
     onChanged?.call(next);
   }
+
+  /// The indexes of the selected options, for the merged blocks.
+  Set<int> get _selectedIndexes => {
+    for (final (i, option) in options.indexed)
+      if (values.contains(option.value)) i,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +238,7 @@ class CoilToggleGroup extends StatelessWidget {
       sizes,
     ).merge(CoilTheme.styleOf<CoilToggleGroupStyle>(context)).merge(style);
     return _SelectionRegion(
-      selected: values,
+      selected: _selectedIndexes,
       axis: Axis.horizontal,
       motion: motion,
       selection: look.selection!,
@@ -227,14 +247,18 @@ class CoilToggleGroup extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final (i, item) in children.indexed)
+          for (final (i, item) in options.indexed)
             CoilHoverItem(
               index: i,
+              enabled: item.enabled,
               child: Semantics(
                 container: true,
-                toggled: values.contains(i),
+                toggled: values.contains(item.value),
+                label: item.child == null ? null : item.label,
                 child: CoilInteraction(
-                  onPressed: onChanged == null ? null : () => _toggle(i),
+                  onPressed: onChanged == null || !item.enabled
+                      ? null
+                      : () => _toggle(item.value),
                   minHitTarget: sizes.minHitTarget,
                   builder: (context, states, _) => ConstrainedBox(
                     constraints: BoxConstraints(
@@ -250,7 +274,8 @@ class CoilToggleGroup extends StatelessWidget {
                         heightFactor: 1,
                         child: MotionBuilder<Color>(
                           value: look.label!.resolve({
-                            if (values.contains(i)) WidgetState.selected,
+                            if (values.contains(item.value))
+                              WidgetState.selected,
                             if (states.contains(WidgetState.hovered))
                               WidgetState.hovered,
                           })!,
@@ -262,7 +287,7 @@ class CoilToggleGroup extends StatelessWidget {
                             softWrap: false,
                             child: child!,
                           ),
-                          child: item,
+                          child: item.child ?? Text(item.label),
                         ),
                       ),
                     ),

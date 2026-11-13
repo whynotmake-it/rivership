@@ -18,9 +18,17 @@ enum CoilTabLabels {
 
 /// One tab of [CoilTabs].
 @immutable
-class CoilTab {
+class CoilTab<T> {
   /// Creates a tab.
-  const CoilTab({required this.label, this.icon, this.child});
+  const CoilTab({
+    required this.value,
+    required this.label,
+    this.icon,
+    this.child,
+  });
+
+  /// What selecting this tab reports.
+  final T value;
 
   /// The tab's text: shown unless [child] is set, and read by screen
   /// readers.
@@ -42,7 +50,7 @@ class CoilTab {
 /// * Arrow keys, Home and End move focus ([CoilRovingFocus]); Enter or Space
 ///   selects (manual activation). Only the selected tab is in the Tab order.
 ///   A focus ring travels with keyboard focus.
-class CoilTabs extends StatefulWidget {
+class CoilTabs<T> extends StatefulWidget {
   /// Creates tabs.
   const CoilTabs({
     required this.tabs,
@@ -58,13 +66,14 @@ class CoilTabs extends StatefulWidget {
   });
 
   /// The tabs.
-  final List<CoilTab> tabs;
+  final List<CoilTab<T>> tabs;
 
-  /// The index of the selected tab.
-  final int value;
+  /// The value of the selected tab, matched with [CoilTab.value]. A value
+  /// no tab has selects none.
+  final T value;
 
-  /// Called with the index of the tab to select. Null disables the tabs.
-  final ValueChanged<int>? onChanged;
+  /// Called with the value of the tab to select. Null disables the tabs.
+  final ValueChanged<T>? onChanged;
 
   /// Which tabs show their label.
   final CoilTabLabels labels;
@@ -89,10 +98,11 @@ class CoilTabs extends StatefulWidget {
   final int? debugFocusedIndex;
 
   @override
-  State<CoilTabs> createState() => _CoilTabsState();
+  State<CoilTabs<T>> createState() => _CoilTabsState<T>();
 }
 
-class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
+class _CoilTabsState<T> extends State<CoilTabs<T>>
+    with TickerProviderStateMixin {
   late final _selectedPill = CoilHighlightPainter(
     vsync: this,
     debugLabel: 'CoilTabs.selected',
@@ -159,7 +169,8 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
       sizes,
     ).merge(CoilTheme.styleOf<CoilTabsStyle>(context)).merge(widget.style);
     final radius = BorderRadius.circular(style.radius!);
-    final selected = widget.value;
+    final index = widget.tabs.indexWhere((tab) => tab.value == widget.value);
+    final selected = index < 0 ? null : index;
     final focused = widget.debugFocusedIndex ?? _focusVisible;
 
     return Semantics(
@@ -245,7 +256,7 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
                         focusNode: _nodes[i],
                         statesController: _states[i],
                         onPressed: switch (widget.onChanged) {
-                          final onChanged? => () => onChanged(i),
+                          final onChanged? => () => onChanged(tab.value),
                           null => null,
                         },
                       ),
@@ -274,7 +285,7 @@ class _TabButton extends StatelessWidget {
     required this.style,
   });
 
-  final CoilTab tab;
+  final CoilTab<Object?> tab;
   final CoilMetrics sizes;
   final bool selected;
   final bool active;

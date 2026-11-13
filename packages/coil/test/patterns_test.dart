@@ -105,9 +105,9 @@ void main() {
           tester,
           (s) => CoilTabs(
             tabs: const [
-              CoilTab(label: 'Overview'),
-              CoilTab(label: 'Analytics'),
-              CoilTab(label: 'Reports'),
+              CoilTab(value: 0, label: 'Overview'),
+              CoilTab(value: 1, label: 'Analytics'),
+              CoilTab(value: 2, label: 'Reports'),
             ],
             value: s.tab,
             onChanged: (v) => s.update(() => s.tab = v),

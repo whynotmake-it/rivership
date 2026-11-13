@@ -75,9 +75,9 @@ final Map<String, WidgetBuilder> _stories = {
   ),
   'tabs': (context) => CoilTabs(
     tabs: const [
-      CoilTab(label: 'Overview', icon: TestIcon(TestGlyph.home)),
-      CoilTab(label: 'Analytics', icon: TestIcon(TestGlyph.heart)),
-      CoilTab(label: 'Settings', icon: TestIcon(TestGlyph.settings)),
+      CoilTab(value: 0, label: 'Overview', icon: TestIcon(TestGlyph.home)),
+      CoilTab(value: 1, label: 'Analytics', icon: TestIcon(TestGlyph.heart)),
+      CoilTab(value: 2, label: 'Settings', icon: TestIcon(TestGlyph.settings)),
     ],
     value: 1,
     onChanged: (_) {},
@@ -108,14 +108,22 @@ final Map<String, WidgetBuilder> _stories = {
         child: CoilCheckboxGroup(
           values: const {0, 1},
           onChanged: (_) {},
-          children: const [Text('Email'), Text('Push'), Text('SMS')],
+          options: const [
+            CoilOption(value: 0, label: 'Email'),
+            CoilOption(value: 1, label: 'Push'),
+            CoilOption(value: 2, label: 'SMS'),
+          ],
         ),
       ),
       const SizedBox(height: 8),
       CoilToggleGroup(
         values: const {0, 1},
         onChanged: (_) {},
-        children: const [Text('Bold'), Text('Italic'), Text('Underline')],
+        options: const [
+          CoilOption(value: 0, label: 'Bold'),
+          CoilOption(value: 1, label: 'Italic'),
+          CoilOption(value: 2, label: 'Underline'),
+        ],
       ),
     ],
   ),

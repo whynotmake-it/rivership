@@ -12,8 +12,6 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-export 'package:coil/src/components/select/option_list.dart' show CoilOption;
-
 /// Pick one value from a list. One API, two presentations, chosen when the
 /// list opens by [CoilAdaptivePopup.presentationOf]:
 ///
