@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:motor/motor.dart';
 
-/// coil's motion tokens: a small set of Motor springs, as runtime theme data.
+/// coil's motion tokens: Motor springs, plus two durations
+/// ([minPressDuration], [acknowledgeDuration]) that time interactions
+/// rather than animate them. All are runtime theme data.
 ///
 /// Every token is a spring, exits included. An exit is a tighter spring
 /// (shorter, never bouncy) rather than a curve, so a transition reversed

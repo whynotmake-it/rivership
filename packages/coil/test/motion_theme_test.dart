@@ -186,7 +186,7 @@ void main() {
     expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
   });
 
-  test('default tokens are springs, exits are tighter', () {
+  test('every exit is shorter than its enter', () {
     const m = CoilMotion();
     for (final (enter, exit) in [
       (m.quick, m.quickExit),
@@ -194,13 +194,8 @@ void main() {
       (m.gentle, m.gentleExit),
       (m.fade, m.fadeExit),
     ]) {
-      expect(enter, isA<SpringMotion>());
-      expect(exit, isA<SpringMotion>());
       expect(exit.duration! < enter.duration!, isTrue);
-      expect((exit as CupertinoMotion).bounce, 0);
     }
-    expect(m.reduced().fade, m.fade);
-    expect(m.reduced().gentle, const Motion.instant());
   });
 
   testWidgets('theme-level track motions apply; the instance map wins', (

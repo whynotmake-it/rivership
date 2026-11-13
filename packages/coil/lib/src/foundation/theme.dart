@@ -9,6 +9,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
+/// Marks a copyWith argument that wasn't passed.
+const Object _keep = Object();
+
 /// Changes a parent theme for a subtree. See [CoilTheme.override].
 typedef CoilThemeTransform = CoilThemeData Function(CoilThemeData parent);
 
@@ -27,30 +30,6 @@ class CoilThemeData with Diagnosticable {
     this.trackMotions = const {},
     this.components = const {},
   });
-
-  /// Per-component-type style overrides, keyed by style type:
-  /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
-  /// [withComponentStyle], which merges with an existing entry. Components
-  /// read them with [CoilTheme.styleOf].
-  final Map<Type, CoilComponentStyle<dynamic>> components;
-
-  /// The style override for type [S], if any.
-  S? componentStyle<S extends CoilComponentStyle<S>>() => components[S] as S?;
-
-  /// A copy with [style] merged onto the existing entry for its type.
-  CoilThemeData withComponentStyle<S extends CoilComponentStyle<S>>(
-    S style,
-  ) => copyWith(
-    components: {
-      ...components,
-      S: componentStyle<S>()?.merge(style) ?? style,
-    },
-  );
-
-  /// Theme-level per-track motions for any component, keyed by the
-  /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
-  /// `motions:` win over these; these win over the tokens.
-  final Map<Track<Object>, Motion> trackMotions;
 
   /// The light theme.
   static const light = CoilThemeData();
@@ -82,6 +61,30 @@ class CoilThemeData with Diagnosticable {
   /// The focus ring's thickness: 1, or 2 in high contrast.
   final double focusRingWidth;
 
+  /// Theme-level per-track motions for any component, keyed by the
+  /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
+  /// `motions:` win over these; these win over the tokens.
+  final Map<Track<Object>, Motion> trackMotions;
+
+  /// Per-component-type style overrides, keyed by style type:
+  /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
+  /// [withComponentStyle], which merges with an existing entry. Components
+  /// read them with [CoilTheme.styleOf].
+  final Map<Type, CoilComponentStyle<dynamic>> components;
+
+  /// The style override for type [S], if any.
+  S? componentStyle<S extends CoilComponentStyle<S>>() => components[S] as S?;
+
+  /// A copy with [style] merged onto the existing entry for its type.
+  CoilThemeData withComponentStyle<S extends CoilComponentStyle<S>>(
+    S style,
+  ) => copyWith(
+    components: {
+      ...components,
+      S: componentStyle<S>()?.merge(style) ?? style,
+    },
+  );
+
   /// This theme for high contrast ([CoilColors.highContrast] plus a 2 px
   /// focus ring). [CoilTheme.of] applies it when
   /// `MediaQuery.highContrastOf` is true.
@@ -91,12 +94,13 @@ class CoilThemeData with Diagnosticable {
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
-  /// Returns a copy with the given fields replaced.
+  /// Returns a copy with the given fields replaced. Pass `tier: null` to go
+  /// back to the platform's tier.
   CoilThemeData copyWith({
     CoilColors? colors,
     CoilShape? shape,
     CoilMetricsTable? metrics,
-    CoilTier? tier,
+    Object? tier = _keep,
     CoilMotion? motion,
     CoilTypography? typography,
     double? focusRingWidth,
@@ -106,7 +110,7 @@ class CoilThemeData with Diagnosticable {
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
     metrics: metrics ?? this.metrics,
-    tier: tier ?? this.tier,
+    tier: identical(tier, _keep) ? this.tier : tier as CoilTier?,
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
@@ -217,6 +221,9 @@ class CoilTheme extends StatelessWidget {
   /// The subtree.
   final Widget child;
 
+  /// High-contrast versions, made once per theme data.
+  static final _highContrast = Expando<CoilThemeData>('CoilTheme.highContrast');
+
   /// The theme at [context] before high contrast: the nearest theme's data,
   /// else the default for the platform brightness.
   static CoilThemeData _raw(BuildContext context) {
@@ -233,7 +240,7 @@ class CoilTheme extends StatelessWidget {
   static CoilThemeData of(BuildContext context) {
     final data = _raw(context);
     return MediaQuery.maybeHighContrastOf(context) ?? false
-        ? data.highContrast()
+        ? _highContrast[data] ??= data.highContrast()
         : data;
   }
 

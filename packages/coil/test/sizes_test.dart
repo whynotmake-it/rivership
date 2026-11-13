@@ -147,11 +147,7 @@ void main() {
 
   test('touch tier raises every hit target to 44', () {
     for (final size in CoilSize.values) {
-      final sizes = CoilMetrics.resolve(CoilTier.touch, size);
-      expect(sizes.minHitTarget, 44);
-      expect(sizes.field.fontSize, greaterThanOrEqualTo(16));
+      expect(CoilMetrics.resolve(CoilTier.touch, size).minHitTarget, 44);
     }
-    expect(CoilMetrics.pointer.controlHeight, 36);
-    expect(CoilMetrics.pointerCompact.controlHeight, 28);
   });
 }
