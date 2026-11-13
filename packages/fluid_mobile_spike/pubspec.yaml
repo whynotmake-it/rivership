@@ -1,0 +1,27 @@
+name: fluid_mobile_spike
+description: Throwaway spike of the adaptive (popover / sheet) Fluid Functionalism select. Will be folded into fluid_functionalism.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  motor: ^1.1.0
+  stupid_simple_sheet: ^1.0.0-dev.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  snaptest: ^1.0.0-dev.3
+
+flutter:
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: fonts/InterVariable.ttf
