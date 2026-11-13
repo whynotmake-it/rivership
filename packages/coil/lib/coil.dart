@@ -3,6 +3,7 @@
 /// `primitives.dart` or a single component's library to depend on less.
 library;
 
+export 'accordion.dart';
 export 'badge.dart';
 export 'banner.dart';
 export 'breadcrumb.dart';
@@ -23,4 +24,5 @@ export 'slider.dart';
 export 'switch.dart';
 export 'table.dart';
 export 'tabs.dart';
+export 'thinking.dart';
 export 'toggle_group.dart';
