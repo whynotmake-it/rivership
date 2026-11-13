@@ -1,6 +1,7 @@
 // MotorInspectionScope is @experimental; the motor example uses it too.
 // ignore_for_file: experimental_member_use
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/option_list.dart';
@@ -21,15 +22,23 @@ import 'package:motor/motor.dart';
 ///   rows, dismissed by dragging down or tapping the scrim.
 ///
 /// Which one shows is decided per open by
-/// [FluidAdaptiveScope.presentationOf]; pass [presentation] to pin it.
+/// [FluidAdaptiveScope.presentationOf]; pass [presentation] to pin it. On a
+/// phone, [fluidPhonePresentation] keeps a short single select (at most
+/// [fluidShortMenuMaxItems] options) anchored at touch size and sends longer
+/// ones and every multi-select to a sheet.
+///
+/// No icons are bundled: [icon], [indicator], [checkmark] and
+/// [FluidOption.icon] take any widget and are styled through [IconTheme].
 class FluidSelect<T> extends StatefulWidget {
-  /// Creates a select.
+  /// Creates a single-choice select.
   const FluidSelect({
     required this.options,
     required this.value,
     required this.onChanged,
     this.placeholder = 'Select…',
     this.icon,
+    this.indicator,
+    this.checkmark,
     this.sheetTitle,
     this.presentation,
     this.enabled = true,
@@ -37,16 +46,52 @@ class FluidSelect<T> extends StatefulWidget {
     this.autofocus = false,
     this.motion,
     super.key,
-  });
+  }) : values = null,
+       onValuesChanged = null;
+
+  /// Creates a multi-select: rows toggle and the list stays open.
+  const FluidSelect.multiple({
+    required this.options,
+    // Narrows the nullable field: a multi-select always has a set.
+    // ignore: type_init_formals
+    required Set<T> this.values,
+    required this.onValuesChanged,
+    this.placeholder = 'Select…',
+    this.icon,
+    this.indicator,
+    this.checkmark,
+    this.sheetTitle,
+    this.presentation,
+    this.enabled = true,
+    this.focusNode,
+    this.autofocus = false,
+    this.motion,
+    super.key,
+  }) : value = null,
+       onChanged = null;
 
   /// The choices.
   final List<FluidOption<T>> options;
 
-  /// The picked value, or null for none.
+  /// The picked value, or null for none (single-choice).
   final T? value;
 
-  /// Called when the user picks a value.
+  /// Called when the user picks a value (single-choice).
   final ValueChanged<T>? onChanged;
+
+  /// The picked values (multi-select).
+  final Set<T>? values;
+
+  /// Called with the new set after each toggle (multi-select).
+  final ValueChanged<Set<T>>? onValuesChanged;
+
+  /// Replaces the trigger's chevron. Styled through [IconTheme].
+  final Widget? indicator;
+
+  /// Replaces the check in the rows. Styled through [IconTheme].
+  final Widget? checkmark;
+
+  bool get _multiple => values != null;
 
   /// Shown in the trigger when nothing is picked.
   final String placeholder;
@@ -96,7 +141,9 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
     super.dispose();
   }
 
-  bool get _enabled => widget.enabled && widget.onChanged != null;
+  bool get _enabled =>
+      widget.enabled &&
+      (widget.onChanged != null || widget.onValuesChanged != null);
 
   /// A context below this select's own [FluidTheme] (when [FluidSelect.motion]
   /// overrides it), so motion lookups and the theme capture for the overlay
@@ -110,6 +157,11 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
     final presentation = FluidAdaptiveScope.presentationOf(
       context,
       override: widget.presentation,
+      traits: FluidOverlayTraits(
+        kind: FluidOverlayKind.select,
+        itemCount: widget.options.length,
+        multiSelect: widget._multiple,
+      ),
     );
     final motion = FluidTheme.motionOf(context);
     // Carries FluidTheme (an InheritedTheme) and any other themes from the
@@ -118,6 +170,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       from: context,
       to: navigator.context,
     );
+    var picked = <T>{...?widget.values, ?widget.value};
     final metrics = presentation == FluidPresentation.sheet
         ? FluidMetrics.touch
         : FluidAdaptiveScope.metricsOf(context);
@@ -139,11 +192,20 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       group: 'FluidSelect',
       child: FluidOptionList<T>(
         options: widget.options,
-        selected: widget.value,
+        selected: picked,
+        multiple: widget._multiple,
+        checkmark: widget.checkmark,
         metrics: metrics,
         keyboardOpened: keyboard,
         selectedFill: presentation == FluidPresentation.popover,
         onPick: (value) {
+          if (widget._multiple) {
+            picked = picked.contains(value)
+                ? ({...picked}..remove(value))
+                : {...picked, value};
+            widget.onValuesChanged?.call(picked);
+            return;
+          }
           widget.onChanged?.call(value);
           // Hold the list open long enough to see the check draw and the
           // selected fill land on the picked row.
@@ -160,6 +222,13 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
         final anchor =
             box.localToGlobal(Offset.zero, ancestor: overlay) & box.size;
         route = FluidPopoverRoute<T>(
+          // The web caps popups at 300px: 8 rows of 36 plus the inset. The
+          // same eight rows at touch size need more, so the cap follows the
+          // row height instead of clipping a row in half.
+          maxHeight: math.max(
+            300,
+            fluidShortMenuMaxItems * metrics.rowHeight + metrics.popupInset * 2,
+          ),
           anchor: anchor,
           minWidth: box.size.width,
           contentHeight:
@@ -204,16 +273,22 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
   @override
   Widget build(BuildContext context) {
     final colors = FluidTheme.of(context);
-    final selected = widget.options
-        .where((o) => o.value == widget.value)
-        .firstOrNull;
+    final picked = widget.options
+        .where(
+          (o) => widget._multiple
+              ? widget.values!.contains(o.value)
+              : o.value == widget.value,
+        )
+        .toList();
 
-    final label = selected == null
-        ? Text(
-            widget.placeholder,
-            style: TextStyle(color: colors.mutedForeground),
-          )
-        : (selected.child ?? Text(selected.label));
+    final label = switch (picked) {
+      [] => Text(
+        widget.placeholder,
+        style: TextStyle(color: colors.mutedForeground),
+      ),
+      [final only] when !widget._multiple => only.child ?? Text(only.label),
+      _ => Text(picked.map((o) => o.label).join(', ')),
+    };
 
     final override = widget.motion;
     Widget scoped(Widget child) => override == null
@@ -224,7 +299,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       Builder(
         builder: (inner) {
           _inner = inner;
-          return _buildTrigger(inner, label, selected);
+          return _buildTrigger(inner, label, picked);
         },
       ),
     );
@@ -233,7 +308,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
   Widget _buildTrigger(
     BuildContext context,
     Widget label,
-    FluidOption<T>? selected,
+    List<FluidOption<T>> picked,
   ) {
     final metrics = FluidAdaptiveScope.metricsOf(context);
     return MotorInspectionScope(
@@ -242,8 +317,8 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
         button: true,
         enabled: _enabled,
         expanded: _open,
-        value: selected?.label,
-        hint: selected == null ? widget.placeholder : null,
+        value: picked.isEmpty ? null : picked.map((o) => o.label).join(', '),
+        hint: picked.isEmpty ? widget.placeholder : null,
         child: Focus(
           focusNode: _focusNode,
           autofocus: widget.autofocus,
@@ -279,6 +354,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
                   focusRing: _focused && keyboard && !_open,
                   enabled: _enabled,
                   icon: widget.icon,
+                  indicator: widget.indicator,
                   label: label,
                 ),
               ),
@@ -298,6 +374,7 @@ class FluidTriggerBox extends StatelessWidget {
     required this.metrics,
     required this.label,
     this.icon,
+    this.indicator,
     this.hovered = false,
     this.pressed = false,
     this.focusRing = false,
@@ -311,8 +388,11 @@ class FluidTriggerBox extends StatelessWidget {
   /// The label.
   final Widget label;
 
-  /// A leading glyph.
+  /// A leading glyph: any widget, styled through [IconTheme].
   final Widget? icon;
+
+  /// Replaces the chevron: any widget, styled through [IconTheme].
+  final Widget? indicator;
 
   /// Draws the hover fill.
   final bool hovered;
@@ -379,12 +459,7 @@ class FluidTriggerBox extends StatelessWidget {
                     ],
                     if (bounded) Expanded(child: label) else label,
                     SizedBox(width: metrics.gap),
-                    CustomPaint(
-                      size: Size.square(metrics.icon),
-                      painter: _ChevronPainter(
-                        hovered ? colors.foreground : colors.mutedForeground,
-                      ),
-                    ),
+                    indicator ?? const _Chevron(),
                   ],
                 );
               },
@@ -423,6 +498,20 @@ class _PopoverShell extends StatelessWidget {
           child: ClipRRect(borderRadius: radius, child: child),
         ),
       ),
+    );
+  }
+}
+
+/// The default trigger glyph, drawn in the [IconTheme]'s size and color.
+class _Chevron extends StatelessWidget {
+  const _Chevron();
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = IconTheme.of(context);
+    return CustomPaint(
+      size: Size.square(icons.size ?? 16),
+      painter: _ChevronPainter(icons.color ?? const Color(0xFF000000)),
     );
   }
 }

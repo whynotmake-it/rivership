@@ -436,7 +436,10 @@ class FluidMetrics {
     rowHeight: 44,
     minHitTarget: 44,
     controlPaddingX: 14,
-    itemPaddingX: 12,
+    // 6 inset + 10 = 16: within a point of the trigger's 15, as on the web
+    // (4 + 8 = 12 vs 12 + 1 = 13), so a row's label sits under the
+    // trigger's.
+    itemPaddingX: 10,
     gap: 12,
     icon: 20,
     body: FluidTypeRole(15, 20),

@@ -33,6 +33,74 @@ bool fluidCanHover(PointerDeviceKind? kind) => switch (kind) {
   PointerDeviceKind.touch || PointerDeviceKind.unknown || null => false,
 };
 
+/// What kind of overlay is opening, for [fluidPhonePresentation].
+enum FluidOverlayKind {
+  /// A dropdown of actions.
+  actionMenu,
+
+  /// A menu opened by right-click or long-press.
+  contextMenu,
+
+  /// Pick one (or several) of a list of values.
+  select,
+
+  /// A text field with suggestions.
+  combobox,
+
+  /// A date or time picker.
+  dateTime,
+}
+
+/// What [fluidPhonePresentation] needs to know about an overlay.
+@immutable
+class FluidOverlayTraits {
+  /// Describes an overlay.
+  const FluidOverlayTraits({
+    required this.kind,
+    required this.itemCount,
+    this.hasSearch = false,
+    this.multiSelect = false,
+    this.submenuDepth = 0,
+  });
+
+  /// What it is.
+  final FluidOverlayKind kind;
+
+  /// How many rows it lists (top level).
+  final int itemCount;
+
+  /// Whether it has a search or filter field.
+  final bool hasSearch;
+
+  /// Whether rows toggle independently.
+  final bool multiSelect;
+
+  /// How many levels of submenus it nests (0 for none).
+  final int submenuDepth;
+}
+
+/// The most rows a phone shows in an anchored touch popover.
+const int fluidShortMenuMaxItems = 8;
+
+/// How a choice overlay opens on a phone (touch, compact width).
+///
+/// Short, simple lists stay anchored to what opened them, at 44px rows,
+/// like iOS pull-down menus and Android dropdown menus: action menus,
+/// context menus and selects with at most [fluidShortMenuMaxItems] rows, no
+/// search and at most one submenu level. Everything that needs room or a
+/// keyboard is a sheet: longer lists, search, multi-select, comboboxes and
+/// date/time pickers.
+FluidPresentation fluidPhonePresentation(FluidOverlayTraits traits) {
+  final needsRoom =
+      traits.kind == FluidOverlayKind.combobox ||
+      traits.kind == FluidOverlayKind.dateTime ||
+      traits.hasSearch ||
+      traits.multiSelect ||
+      traits.submenuDepth > 1 ||
+      traits.itemCount > fluidShortMenuMaxItems;
+  return needsRoom ? FluidPresentation.sheet : FluidPresentation.popover;
+}
+
 /// Window widths below this are phone-sized (Material's compact window
 /// class, iOS's compact horizontal size class).
 const double fluidCompactWidth = 600;
@@ -46,9 +114,10 @@ const double fluidCompactWidth = 600;
 ///   `matchMedia('(pointer: coarse)')` listener), else the platform default
 ///   (iOS, Android and Fuchsia are touch; desktop is pointer).
 /// * presentation (per component): the component's own `presentation`
-///   argument, else [presentation] here, else [FluidPresentation.sheet] when
-///   the input mode is touch and the window is narrower than
-///   [fluidCompactWidth], else [FluidPresentation.popover].
+///   argument, else [presentation] here, else, when the input mode is touch
+///   and the window is narrower than [fluidCompactWidth],
+///   [fluidPhonePresentation] for the overlay's traits, else
+///   [FluidPresentation.popover].
 ///
 /// Without a scope, components fall back to the platform default and the
 /// window size.
@@ -88,6 +157,7 @@ class FluidAdaptiveScope extends StatefulWidget {
   /// component's own [override].
   static FluidPresentation presentationOf(
     BuildContext context, {
+    required FluidOverlayTraits traits,
     FluidPresentation? override,
   }) {
     if (override != null) return override;
@@ -97,7 +167,7 @@ class FluidAdaptiveScope extends StatefulWidget {
     final touch = inputModeOf(context) == FluidInputMode.touch;
     final compact = MediaQuery.sizeOf(context).width < fluidCompactWidth;
     return touch && compact
-        ? FluidPresentation.sheet
+        ? fluidPhonePresentation(traits)
         : FluidPresentation.popover;
   }
 

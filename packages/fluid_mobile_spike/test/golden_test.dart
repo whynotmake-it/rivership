@@ -81,11 +81,52 @@ void main() {
         );
       });
 
-      testWidgets('mobile sheet open', (tester) async {
+      testWidgets('mobile touch popover (short select)', (tester) async {
         useScreen(tester, TestScreen.phone);
         await tester.pumpWidget(
           testApp(
             home: const SelectDemo(),
+            colors: colors,
+            inputMode: FluidInputMode.touch,
+          ),
+        );
+        await tester.tap(_select);
+        await tester.pumpAndSettle();
+        await expectLater(
+          _app,
+          matchesGoldenFile('goldens/mobile_touch_popover_$theme.png'),
+        );
+      });
+
+      testWidgets('mobile multi-select sheet', (tester) async {
+        useScreen(tester, TestScreen.phone);
+        await tester.pumpWidget(
+          testApp(
+            home: const SelectDemo(multiple: true, options: moreFruits),
+            colors: colors,
+            inputMode: FluidInputMode.touch,
+          ),
+        );
+        await tester.tap(_select);
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find.byType(FluidSheetPanel),
+            matching: find.text('Pear'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await expectLater(
+          _app,
+          matchesGoldenFile('goldens/mobile_multiselect_sheet_$theme.png'),
+        );
+      });
+
+      testWidgets('mobile sheet open', (tester) async {
+        useScreen(tester, TestScreen.phone);
+        await tester.pumpWidget(
+          testApp(
+            home: const SelectDemo(options: moreFruits),
             colors: colors,
             inputMode: FluidInputMode.touch,
           ),
@@ -102,7 +143,7 @@ void main() {
         useScreen(tester, TestScreen.phone);
         await tester.pumpWidget(
           testApp(
-            home: const SelectDemo(),
+            home: const SelectDemo(options: moreFruits),
             colors: colors,
             inputMode: FluidInputMode.touch,
           ),
@@ -159,6 +200,7 @@ class _Comparison extends StatelessWidget {
               title: 'Pointer · 36px · body 13/20',
               metrics: FluidMetrics.pointer,
               iconButton: 28,
+              touch: false,
             ),
           ),
           SizedBox(width: 32),
@@ -167,6 +209,7 @@ class _Comparison extends StatelessWidget {
               title: 'Touch · 44px · body 15/20',
               metrics: FluidMetrics.touch,
               iconButton: 36,
+              touch: true,
             ),
           ),
         ],
@@ -180,6 +223,7 @@ class _Column extends StatelessWidget {
     required this.title,
     required this.metrics,
     required this.iconButton,
+    required this.touch,
   });
 
   final String title;
@@ -187,6 +231,9 @@ class _Column extends StatelessWidget {
 
   /// Visual size of a compact icon button at this step.
   final double iconButton;
+
+  /// Touch rows rest at full strength and show press, not hover.
+  final bool touch;
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +304,11 @@ class _Column extends StatelessWidget {
                 .copyWith(fontSize: metrics.fieldFontSize),
           ),
         ),
-        label('Menu rows (checked, hovered, rest)'),
+        label(
+          touch
+              ? 'Menu rows (checked, pressed, rest)'
+              : 'Menu rows (checked, hovered, rest)',
+        ),
         DecoratedBox(
           decoration: BoxDecoration(
             color: colors.surface(3),
@@ -274,7 +325,7 @@ class _Column extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: switch (i) {
                         0 => colors.active,
-                        1 => colors.hover,
+                        1 => touch ? colors.active : colors.hover,
                         _ => null,
                       },
                       borderRadius: BorderRadius.circular(metrics.itemRadius),
@@ -283,6 +334,7 @@ class _Column extends StatelessWidget {
                       label: Text(text),
                       metrics: metrics,
                       highlighted: i < 2,
+                      fullEmphasis: touch,
                       checked: i == 0,
                     ),
                   ),

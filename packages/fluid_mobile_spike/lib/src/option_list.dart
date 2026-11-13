@@ -47,19 +47,31 @@ class FluidOptionList<T> extends StatefulWidget {
     required this.onPick,
     required this.onDismiss,
     required this.metrics,
+    this.multiple = false,
     this.keyboardOpened = false,
     this.selectedFill = true,
+    this.checkmark,
     super.key,
   });
 
   /// The choices.
   final List<FluidOption<T>> options;
 
-  /// The value currently picked, if any.
-  final T? selected;
+  /// The values currently picked: at most one unless [multiple].
+  final Set<T> selected;
 
-  /// Called once with the picked value. The list then ignores input.
+  /// Called with the picked value. A single-choice list then ignores input
+  /// (it is about to close); a [multiple] list reports each toggle and stays
+  /// interactive.
   final ValueChanged<T> onPick;
+
+  /// Whether rows toggle independently (a multi-select) instead of picking
+  /// one value and closing.
+  final bool multiple;
+
+  /// Replaces the check glyph in every row. Sized and colored through
+  /// [IconTheme]; it fades in and out instead of drawing.
+  final Widget? checkmark;
 
   /// Escape or Tab.
   final VoidCallback onDismiss;
@@ -100,8 +112,8 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   /// next press starts a fresh one in place (presses never glide).
   int _pressSession = 0;
 
-  /// The row showing as picked.
-  int? _checked;
+  /// The rows showing as picked.
+  final Set<int> _checked = {};
 
   /// Steps each time the pointer enters the list, so the hover fill fades
   /// in where it lands instead of sliding over from its last row.
@@ -115,13 +127,15 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   @override
   void initState() {
     super.initState();
-    final i = widget.options.indexWhere((o) => o.value == widget.selected);
-    _checked = i == -1 ? null : i;
+    for (final (i, option) in widget.options.indexed) {
+      if (widget.selected.contains(option.value)) _checked.add(i);
+    }
+    final first = _checked.isEmpty ? null : _checked.reduce(math.min);
     if (widget.keyboardOpened) {
-      _active = _checked ?? _step(-1, 1);
+      _active = first ?? _step(-1, 1);
       _ring = _active != null;
       WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
-    } else if (_checked != null) {
+    } else if (first != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
     }
   }
@@ -163,7 +177,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
 
   /// Scrolls the active (or checked) row into view.
   void _reveal() {
-    final i = _active ?? _checked;
+    final i = _active ?? (_checked.isEmpty ? null : _checked.reduce(math.min));
     if (i == null || !_scroll.hasClients) return;
     final inset = widget.metrics.popupInset;
     final top = inset + i * _rowHeight;
@@ -184,8 +198,14 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   void _pick(int index, {required bool lightRow}) {
     if (_picked || !widget.options[index].enabled) return;
     setState(() {
-      _picked = true;
-      _checked = index;
+      if (widget.multiple) {
+        _checked.contains(index) ? _checked.remove(index) : _checked.add(index);
+      } else {
+        _picked = true;
+        _checked
+          ..clear()
+          ..add(index);
+      }
       _pressed = null;
       if (lightRow) {
         _active = index;
@@ -276,6 +296,10 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
     final metrics = widget.metrics;
     final colors = FluidTheme.of(context);
     final motion = FluidTheme.motionOf(context);
+    // Touch rows rest at full strength: the muted → foreground fade says
+    // "the pointer is here", which a finger can't say.
+    final touch =
+        FluidAdaptiveScope.inputModeOf(context) == FluidInputMode.touch;
     final highlighted = _pressed ?? _active;
 
     final rows = <Widget>[
@@ -307,7 +331,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
             onTapUp: (details) =>
                 _pick(i, lightRow: fluidCanHover(details.kind)),
             child: Semantics(
-              selected: _checked == i,
+              selected: _checked.contains(i),
               enabled: option.enabled,
               button: true,
               label: option.label,
@@ -317,8 +341,10 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
                 label: option.child ?? Text(option.label),
                 icon: option.icon,
                 metrics: metrics,
-                highlighted: highlighted == i || _checked == i,
-                checked: _checked == i,
+                highlighted: highlighted == i || _checked.contains(i),
+                checked: _checked.contains(i),
+                fullEmphasis: touch,
+                checkmark: widget.checkmark,
                 enabled: option.enabled,
               ),
             ),
@@ -349,7 +375,14 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
                 // Selected fill: no fade in, springs to a newly picked row.
                 FluidFill(
                   key: const ValueKey('fill-selected'),
-                  rect: widget.selectedFill ? _rowRect(_checked) : null,
+                  // TODO(fluid): multi-select fills. The core spike is building
+                  // merge/split selection (adjacent selected rows merge into one
+                  // rounded shape); it plugs in here, drawing one fill per run
+                  // of checked rows. Until then a multi-select shows checks
+                  // only, which is also what the sheet wants at rest.
+                  rect: widget.selectedFill && !widget.multiple
+                      ? _rowRect(_checked.firstOrNull)
+                      : null,
                   color: colors.active,
                   radius: metrics.itemRadius,
                   motion: motion.indicator,
@@ -516,6 +549,8 @@ class _FluidFillState extends State<FluidFill> {
 /// One row of a select or menu: leading glyph, label, trailing check slot.
 ///
 /// The row draws no background; the list's fills slide underneath it.
+/// Glyphs (the [icon] slot, the check) are styled by the row's [IconTheme]:
+/// [FluidMetrics.icon] in size, in the row's text color.
 class FluidOptionRow extends StatelessWidget {
   /// Creates a row.
   const FluidOptionRow({
@@ -525,13 +560,15 @@ class FluidOptionRow extends StatelessWidget {
     this.highlighted = false,
     this.checked = false,
     this.enabled = true,
+    this.fullEmphasis = false,
+    this.checkmark,
     super.key,
   });
 
   /// The label.
   final Widget label;
 
-  /// A leading glyph.
+  /// A leading glyph: any widget, styled through [IconTheme].
   final Widget? icon;
 
   /// The size step.
@@ -543,15 +580,25 @@ class FluidOptionRow extends StatelessWidget {
   /// Shows the check.
   final bool checked;
 
-  /// Disabled rows draw at half opacity.
+  /// Disabled rows draw at half opacity (40% on touch).
   final bool enabled;
+
+  /// Rests at full strength whatever [highlighted] says: touch rows. The
+  /// muted → foreground fade is a pointer affordance.
+  final bool fullEmphasis;
+
+  /// Replaces the check glyph.
+  final Widget? checkmark;
 
   @override
   Widget build(BuildContext context) {
     final colors = FluidTheme.of(context);
-    final color = highlighted ? colors.foreground : colors.mutedForeground;
+    final color = highlighted || fullEmphasis
+        ? colors.foreground
+        : colors.mutedForeground;
+    final disabledOpacity = fullEmphasis ? 0.4 : 0.5;
     return Opacity(
-      opacity: enabled ? 1 : 0.5,
+      opacity: enabled ? 1 : disabledOpacity,
       child: MotionBuilder<Color>(
         value: color,
         converter: MotionConverter.colorRgb,
@@ -575,10 +622,9 @@ class FluidOptionRow extends StatelessWidget {
                     ],
                     Expanded(child: label),
                     SizedBox(width: metrics.gap),
-                    FluidCheck(
-                      checked: checked,
-                      size: metrics.icon,
-                      color: colors.foreground,
+                    IconTheme.merge(
+                      data: IconThemeData(color: colors.foreground),
+                      child: FluidCheck(checked: checked, glyph: checkmark),
                     ),
                   ],
                 ),
@@ -591,37 +637,44 @@ class FluidOptionRow extends StatelessWidget {
   }
 }
 
-/// The select's check: a fixed slot whose stroke draws in (0.08s ease-out)
-/// and out (0.04s ease-in). A check present at mount shows finished.
+/// The select's check: a fixed slot, [IconTheme]-sized, so a check
+/// appearing never changes the row's width.
+///
+/// The default glyph is a stroke that draws in (`strokeIn`) and erases
+/// (`strokeOut`). A custom [glyph] fades in and out on the same tokens
+/// instead. A check present at mount shows finished.
 class FluidCheck extends StatelessWidget {
   /// Creates a check.
-  const FluidCheck({
-    required this.checked,
-    required this.size,
-    required this.color,
-    super.key,
-  });
+  const FluidCheck({required this.checked, this.glyph, super.key});
 
   /// Whether it shows.
   final bool checked;
 
-  /// The slot size.
-  final double size;
-
-  /// Stroke color.
-  final Color color;
+  /// Replaces the drawn check. Styled through [IconTheme].
+  final Widget? glyph;
 
   @override
   Widget build(BuildContext context) {
-    return SingleMotionBuilder(
-      value: checked ? 1 : 0,
-      debugLabel: 'Check stroke',
-      motion: checked
-          ? FluidTheme.motionOf(context).strokeIn
-          : FluidTheme.motionOf(context).strokeOut,
-      builder: (context, progress, _) => CustomPaint(
-        size: Size.square(size),
-        painter: _CheckPainter(progress.clamp(0, 1), color),
+    final icons = IconTheme.of(context);
+    final size = icons.size ?? 16;
+    final motion = FluidTheme.motionOf(context);
+    return SizedBox.square(
+      dimension: size,
+      child: SingleMotionBuilder(
+        value: checked ? 1 : 0,
+        debugLabel: 'Check',
+        motion: checked ? motion.strokeIn : motion.strokeOut,
+        child: glyph,
+        builder: (context, progress, glyph) {
+          final t = progress.clamp(0.0, 1.0);
+          if (glyph != null) return Opacity(opacity: t, child: glyph);
+          return CustomPaint(
+            painter: _CheckPainter(
+              t,
+              icons.color ?? const Color(0xFF000000),
+            ),
+          );
+        },
       ),
     );
   }

@@ -12,6 +12,16 @@ const fruits = [
   FluidOption(value: 'orange', label: 'Orange'),
 ];
 
+/// More than `fluidShortMenuMaxItems`, so a phone opens it in a sheet.
+const moreFruits = [
+  ...fruits,
+  FluidOption(value: 'peach', label: 'Peach'),
+  FluidOption(value: 'pear', label: 'Pear'),
+  FluidOption(value: 'plum', label: 'Plum'),
+  FluidOption(value: 'raspberry', label: 'Raspberry'),
+  FluidOption(value: 'strawberry', label: 'Strawberry'),
+];
+
 /// A desktop window (pointer) or a phone (touch, with a notch and a home
 /// indicator), at 2x.
 enum TestScreen {
@@ -81,9 +91,19 @@ class SelectDemo extends StatefulWidget {
     this.presentation,
     this.autofocus = false,
     this.motion,
+    this.options = fruits,
+    this.multiple = false,
+    this.initialValues = const {'banana', 'mango'},
+    this.onValuesChanged,
     super.key,
   });
 
+  /// The options. [fruits] (7) stays anchored on a phone, [moreFruits] (12)
+  /// opens a sheet.
+  final List<FluidOption<String>> options;
+  final bool multiple;
+  final Set<String> initialValues;
+  final ValueChanged<Set<String>>? onValuesChanged;
   final FluidMotionThemeData? motion;
   final String? initial;
   final ValueChanged<String>? onChanged;
@@ -96,6 +116,7 @@ class SelectDemo extends StatefulWidget {
 
 class SelectDemoState extends State<SelectDemo> {
   late String? value = widget.initial;
+  late Set<String> values = widget.initialValues;
 
   @override
   Widget build(BuildContext context) {
@@ -117,19 +138,33 @@ class SelectDemoState extends State<SelectDemo> {
             const SizedBox(height: 6),
             SizedBox(
               width: 220,
-              child: FluidSelect<String>(
-                key: const ValueKey('select'),
-                autofocus: widget.autofocus,
-                options: fruits,
-                value: value,
-                presentation: widget.presentation,
-                motion: widget.motion,
-                sheetTitle: const Text('Fruit'),
-                onChanged: (next) {
-                  setState(() => value = next);
-                  widget.onChanged?.call(next);
-                },
-              ),
+              child: widget.multiple
+                  ? FluidSelect<String>.multiple(
+                      key: const ValueKey('select'),
+                      autofocus: widget.autofocus,
+                      options: widget.options,
+                      values: values,
+                      presentation: widget.presentation,
+                      motion: widget.motion,
+                      sheetTitle: const Text('Fruit'),
+                      onValuesChanged: (next) {
+                        setState(() => values = next);
+                        widget.onValuesChanged?.call(next);
+                      },
+                    )
+                  : FluidSelect<String>(
+                      key: const ValueKey('select'),
+                      autofocus: widget.autofocus,
+                      options: widget.options,
+                      value: value,
+                      presentation: widget.presentation,
+                      motion: widget.motion,
+                      sheetTitle: const Text('Fruit'),
+                      onChanged: (next) {
+                        setState(() => value = next);
+                        widget.onChanged?.call(next);
+                      },
+                    ),
             ),
           ],
         ),

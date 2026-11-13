@@ -383,10 +383,11 @@ class FluidSheetPanel extends StatelessWidget {
                 ),
                 if (title case final title?)
                   Padding(
+                    // Lined up with the rows' labels: 2 + 6 + 10 = 18.
                     padding: const EdgeInsets.fromLTRB(
-                      margin + 12,
+                      margin + 10,
                       4,
-                      margin + 12,
+                      margin + 10,
                       4,
                     ),
                     child: DefaultTextStyle(
