@@ -1,8 +1,10 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/paint_probe.dart';
 
 const _rows = [
   'Inbox',
@@ -81,13 +83,72 @@ Widget _sheet(ValueNotifier<Set<int>> selection) => Row(
   ],
 );
 
-/// The selection blocks the first group's painter holds.
-int _blocks(WidgetTester tester) => tester
-    .renderObject<RenderCoilMotionLayer>(find.byType(CoilMotionLayer).first)
-    .background
-    .whereType<CoilSelectionPainter>()
-    .single
-    .debugBlockCount;
+const _red = Color(0xFFFF0000);
+final _boundary = find.byKey(const ValueKey('boundary'));
+
+/// Five 36 px rows with a red selection painter (square corners), bound to
+/// [selection], with [motion] as the theme's tokens.
+class _Rows extends StatefulWidget {
+  const _Rows({required this.selection, required this.motion});
+
+  final Set<int> selection;
+  final CoilMotion motion;
+
+  @override
+  State<_Rows> createState() => _RowsState();
+}
+
+class _RowsState extends State<_Rows> with TickerProviderStateMixin {
+  late final _painter = CoilSelectionPainter(vsync: this);
+
+  @override
+  void dispose() {
+    _painter.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _painter.update(
+      selected: widget.selection,
+      color: _red,
+      radius: 0,
+      motion: widget.motion,
+    );
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: RepaintBoundary(
+        key: const ValueKey('boundary'),
+        child: ColoredBox(
+          color: const Color(0xFFFFFFFF),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 100,
+              child: CoilMotionLayer(
+                background: [_painter],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < 5; i++)
+                      CoilMotionTarget(
+                        index: i,
+                        child: const SizedBox(height: 36),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Whether the pixel at height [y] (in the rows' column) is selection-red.
+Future<bool> _redAt(WidgetTester tester, double y) async =>
+    isNear(await colorAt(tester, _boundary, Offset(50, y)), _red);
 
 void main() {
   group('CoilSelectionRuns', () {
@@ -109,35 +170,49 @@ void main() {
   });
 
   group('CoilSelectionBackground', () {
-    testWidgets('merge converges two blocks, then commits to one', (
+    testWidgets('a merge follows a slower standard spring set at runtime', (
       tester,
     ) async {
-      final selection = ValueNotifier<Set<int>>({0, 1, 3, 4});
-      addTearDown(selection.dispose);
-      await pumpSheet(tester, _sheet(selection));
-      expect(_blocks(tester), 2);
+      final slow = const CoilMotion().copyWith(
+        standard: const Motion.linear(Duration(seconds: 1)),
+      );
+      await tester.pumpWidget(
+        _Rows(selection: const {0, 1, 3, 4}, motion: slow),
+      );
+      expect(await _redAt(tester, 80), isFalse, reason: 'row 2 is the gap');
 
-      selection.value = {0, 1, 2, 3, 4};
+      await tester.pumpWidget(
+        _Rows(selection: const {0, 1, 2, 3, 4}, motion: slow),
+      );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(_blocks(tester), 2, reason: 'both halves converge on the seam');
-      await settle(tester);
-      expect(_blocks(tester), 1, reason: 'committed to one block');
+      await tester.pump(const Duration(milliseconds: 400));
+      // The upper half's edge glides from 72 to 90 over a second: at 400 ms
+      // it hasn't reached 88, so the merge isn't done yet.
+      expect(await _redAt(tester, 88), isFalse);
+      await tester.pumpAndSettle();
+      expect(await _redAt(tester, 80), isTrue);
+      expect(await _redAt(tester, 100), isTrue);
     });
 
-    testWidgets('split starts at the seam and diverges into two', (
-      tester,
-    ) async {
-      final selection = ValueNotifier<Set<int>>({0, 1, 2, 3, 4});
-      addTearDown(selection.dispose);
-      await pumpSheet(tester, _sheet(selection));
-      expect(_blocks(tester), 1);
-
-      selection.value = {0, 1, 3, 4};
+    testWidgets('reduced motion merges and splits at once', (tester) async {
+      final reduced = const CoilMotion().reduced();
+      await tester.pumpWidget(
+        _Rows(selection: const {0, 1, 3, 4}, motion: reduced),
+      );
+      await tester.pumpWidget(
+        _Rows(selection: const {0, 1, 2, 3, 4}, motion: reduced),
+      );
       await tester.pump();
-      expect(_blocks(tester), 2);
-      await settle(tester);
-      expect(_blocks(tester), 2);
+      await tester.pump();
+      expect(await _redAt(tester, 80), isTrue);
+
+      await tester.pumpWidget(
+        _Rows(selection: const {0, 1, 3, 4}, motion: reduced),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(await _redAt(tester, 80), isFalse);
+      expect(await _redAt(tester, 60), isTrue);
     });
 
     testWidgets('goldens: rest runs of 1, 2, 3; mid-merge; mid-split', (

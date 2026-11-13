@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/motion.dart';
@@ -37,8 +36,8 @@ class CoilSelectionRun {
   String toString() => 'Run($start..$end #$id)';
 }
 
-/// Groups a selection into runs with stable ids (`assignRunIds` in
-/// `use-merge-split.tsx`). After a split the upper run keeps the id and the
+/// Groups a selection into runs with stable ids.
+/// After a split the upper run keeps the id and the
 /// lower one gets a new id; after a merge the run keeps the upper id.
 class CoilSelectionRuns {
   Map<int, int> _byItem = const {};
@@ -114,7 +113,9 @@ class _Boundary {
 
   /// The whole merged (or formerly merged) run, first..last item.
   final (int, int) span;
-  Timer? timer;
+
+  /// Whether a merge's commit is scheduled.
+  bool committing = false;
 
   /// Whether a split's halves have been pinned at the seam already.
   bool pinned = false;
@@ -187,27 +188,26 @@ class _BlockSpec {
   final _Corners? fromCorners;
   final bool instant;
 
-  /// Whether the corners change only after the web's seam delay, which
-  /// depends on where the seam is, so it starts at paint.
+  /// Whether the corners change only once the block has glided to the
+  /// seam.
   final bool seamCorners;
   final bool visible;
 }
 
-/// Paints one background block per contiguous run of selected items and
-/// animates runs merging and splitting (`use-merge-split.tsx`), as a layer
-/// painter of a [CoilMotionLayer] whose targets are the items.
+/// Paints one block behind each run of adjacent selected items, and
+/// animates runs merging and splitting. A painter for a [CoilMotionLayer]
+/// whose targets are the items.
 ///
-/// Adjacent selected items share one rounded shape whose outer corners are
-/// round and whose inner edges are flush. Toggling the single item between
-/// two runs **merges** them: their inner edges glide to the middle of that
-/// item and meet, and only then do the corners there straighten. Clearing
-/// an item inside a run **splits** it at that item's middle, and the two
-/// halves glide apart while their new corners round. Everything rides the
-/// `moderate` motion; with reduced motion it snaps.
+/// Adjacent selected items share one shape: outer corners round, inner
+/// edges flush. Selecting the single item between two runs **merges**
+/// them: their inner edges glide to that item's middle, then the corners
+/// there straighten. Clearing an item inside a run **splits** it there:
+/// the halves glide apart while their new corners round. Everything rides
+/// the `standard` spring, so it follows runtime motion changes and snaps
+/// under reduced motion.
 ///
-/// Blocks are described in terms of items and resolved to rects while
-/// painting, so they follow items that resize, reflow or scroll in the same
-/// frame; motion is a delta relative to that geometry.
+/// Blocks are resolved to item rects while painting, so they stay on items
+/// that resize or reflow.
 class CoilSelectionPainter extends CoilLayerPainter {
   /// Creates a selection painter ticking on [_vsync].
   CoilSelectionPainter({required this._vsync});
@@ -251,7 +251,7 @@ class CoilSelectionPainter extends CoilLayerPainter {
     notifyListeners();
   }
 
-  /// Merge/split detection (the layout effect in `useMergeSplitBlocks`).
+  /// Finds runs that merged or split since the last selection.
   void _detect(List<CoilSelectionRun> before, List<CoilSelectionRun> after) {
     final selected = _selected!;
     // Drop boundaries the new selection invalidated.
@@ -265,7 +265,6 @@ class CoilSelectionPainter extends CoilLayerPainter {
               after.any((r) => r.id == b.other) &&
               !selected.contains(b.gap),
       };
-      if (!stillValid) b.timer?.cancel();
       return !stillValid;
     });
 
@@ -274,7 +273,7 @@ class CoilSelectionPainter extends CoilLayerPainter {
       if (pair == null) continue;
       final (up, lo, gap) = pair;
       if (up.id != run.id && lo.id != run.id) continue;
-      _start(
+      _boundaries.add(
         _Boundary(
           survivor: run.id,
           other: up.id == run.id ? lo.id : up.id,
@@ -282,14 +281,13 @@ class CoilSelectionPainter extends CoilLayerPainter {
           phase: _Phase.converge,
           span: (run.start, run.end),
         ),
-        const Duration(milliseconds: 310),
       );
     }
     for (final run in before) {
       final pair = _bridgePair(run, after);
       if (pair == null) continue;
       final (up, lo, gap) = pair;
-      _start(
+      _boundaries.add(
         _Boundary(
           survivor: up.id,
           other: lo.id,
@@ -297,24 +295,39 @@ class CoilSelectionPainter extends CoilLayerPainter {
           phase: _Phase.split,
           span: (run.start, run.end),
         ),
-        const Duration(milliseconds: 240),
       );
     }
   }
 
-  void _start(_Boundary boundary, Duration resolveAfter) {
-    _boundaries.add(boundary);
-    boundary.timer = Timer(resolveAfter, () {
-      _boundaries.remove(boundary);
-      // A merge commits: the survivor becomes the whole run at once and the
-      // absorbed half goes; they already meet, so nothing visibly moves.
-      final merge = boundary.phase == _Phase.converge;
-      _apply(
-        instant: merge ? {boundary.survivor} : {},
-        drop: merge ? {boundary.other} : {},
-      );
-      notifyListeners();
-    });
+  /// Commits a merge once its halves meet: the survivor becomes the whole
+  /// run at once and the absorbed half goes. They already touch, so nothing
+  /// visibly moves. Called at the end of paint.
+  void _commit(_Boundary boundary) {
+    if (!_boundaries.remove(boundary)) return;
+    _apply(instant: {boundary.survivor}, drop: {boundary.other});
+  }
+
+  /// Advances merges while painting: when both halves have glided to the
+  /// seam, their inner corners straighten; when the corners arrive, the
+  /// merge commits. Every step rides the motion tokens, so a slower
+  /// `standard` spring is never cut short and reduced motion commits at
+  /// once.
+  void _advanceMerges() {
+    for (final b in [..._boundaries]) {
+      if (b.phase != _Phase.converge || b.committing) continue;
+      final survivor = _blocks[b.survivor];
+      final other = _blocks[b.other];
+      if (survivor == null || other == null) continue;
+      if (!survivor.glided || !other.glided) continue;
+      survivor.straightenSeam(_motion);
+      other.straightenSeam(_motion);
+      if (survivor.cornersArrived && other.cornersArrived) {
+        b.committing = true;
+        // The halves already meet, so this frame looks the same; the merged
+        // block paints from the next one.
+        _commit(b);
+      }
+    }
   }
 
   /// The corners with the inner side (toward the seam) square.
@@ -369,6 +382,9 @@ class CoilSelectionPainter extends CoilLayerPainter {
     Set<int> drop = const {},
   }) {
     final specs = _specs(instant: instant);
+    // A split's halves are pinned at the seam once; from then on they are
+    // ordinary runs gliding apart.
+    _boundaries.removeWhere((b) => b.phase == _Phase.split && b.pinned);
     final m = _motion;
     for (final MapEntry(key: id, value: spec) in specs.entries) {
       (_blocks[id] ??= _BlockAnimation(
@@ -440,35 +456,11 @@ class CoilSelectionPainter extends CoilLayerPainter {
     }
   }
 
-  /// How many blocks are painted (including ones fading out).
-  @visibleForTesting
-  int get debugBlockCount => _blocks.length;
-
   @override
   void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
     for (final block in _blocks.values) {
       final target = _resolve(block.spec.geometry, geometry, block.lastPainted);
       if (target == null) continue;
-      if (block.spec.geometry case _HalfGeometry(
-        :final gap,
-      ) when block.pendingSeamCorners != null) {
-        // The web's merge corner delay: 0.07 s plus a hair per seam
-        // position, at most 0.10 s.
-        final gapRect = geometry.rectOf(gap);
-        if (gapRect != null) {
-          final vertical = _axis == Axis.vertical;
-          final mid = vertical ? gapRect.center.dy : gapRect.center.dx;
-          final along = vertical ? gapRect.height : gapRect.width;
-          final seconds = math.min(
-            0.10,
-            math.max(0.07, 0.07 + (mid / along) * 0.002),
-          );
-          block.startSeamCorners(
-            Duration(microseconds: (seconds * 1e6).round()),
-            _motion,
-          );
-        }
-      }
       final from = block.pendingFrom;
       final rect = block.resolve(
         target,
@@ -498,13 +490,11 @@ class CoilSelectionPainter extends CoilLayerPainter {
           );
       if (opacity < 1) canvas.restore();
     }
+    _advanceMerges();
   }
 
   @override
   void dispose() {
-    for (final b in _boundaries) {
-      b.timer?.cancel();
-    }
     for (final block in _blocks.values) {
       block.dispose();
     }
@@ -609,13 +599,24 @@ class _BlockAnimation {
         );
   }
 
-  /// Starts the corner change held for the seam delay.
-  void startSeamCorners(Duration delay, CoilMotion m) {
+  /// Whether the block's glide toward its geometry is done.
+  bool get glided =>
+      !_retarget &&
+      pendingFrom == null &&
+      _controller.value(_delta) == Rect.zero;
+
+  /// Whether the corners reached the spec's corners.
+  bool get cornersArrived =>
+      pendingSeamCorners == null && corners == spec.corners;
+
+  /// Starts the inner corners straightening, held until the glide reached
+  /// the seam. Does nothing once started.
+  void straightenSeam(CoilMotion m) {
     final corners = pendingSeamCorners;
     if (corners == null) return;
     pendingSeamCorners = null;
     _controller.animate([
-      _cornersTrack([.to(corners, motion: m.standard)], delay: delay),
+      _cornersTrack([.to(corners, motion: m.standard)]),
     ]);
   }
 
