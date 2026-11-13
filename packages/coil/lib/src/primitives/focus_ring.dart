@@ -1,14 +1,14 @@
 import 'package:coil/src/foundation/colors.dart' show CoilColors;
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
-/// Paints the system's focus indicator around [child] without affecting
-/// layout: a 1 px ring in [CoilColors.focusRing].
+/// The focus ring around [child]: a 1 px line in [CoilColors.focusRing]
+/// (2 px in high contrast), [offset] outside it. It fades in and out and
+/// never changes layout.
 ///
-/// Matches Tailwind's `focus-visible:ring-1` (a ring hugging the border box)
-/// and, with [offset], `ring-offset-*` (a gap between control and ring).
-/// Show it only for keyboard focus (`CoilInteraction` reports it as
-/// [WidgetState.focused]).
+/// Show it only for keyboard focus, which `CoilInteraction` reports as
+/// [WidgetState.focused].
 class CoilFocusRing extends StatelessWidget {
   /// Creates a focus ring.
   const CoilFocusRing({
@@ -43,16 +43,27 @@ class CoilFocusRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      foregroundPainter: visible
-          ? _RingPainter(
-              color: color ?? CoilTheme.of(context).colors.focusRing,
-              borderRadius: borderRadius,
-              offset: offset,
-              width: width ?? CoilTheme.of(context).focusRingWidth,
-            )
-          : null,
+    final theme = CoilTheme.of(context);
+    final motion = CoilTheme.motionOf(context);
+    final ring = color ?? theme.colors.focusRing;
+    return SingleMotionBuilder(
+      value: visible ? 1 : 0,
+      motion: visible ? motion.fade : motion.fadeExit,
+      debugLabel: 'CoilFocusRing',
       child: child,
+      builder: (context, opacity, child) => CustomPaint(
+        foregroundPainter: opacity <= 0
+            ? null
+            : _RingPainter(
+                color: ring.withValues(
+                  alpha: ring.a * opacity.clamp(0.0, 1.0),
+                ),
+                borderRadius: borderRadius,
+                offset: offset,
+                width: width ?? theme.focusRingWidth,
+              ),
+        child: child,
+      ),
     );
   }
 }

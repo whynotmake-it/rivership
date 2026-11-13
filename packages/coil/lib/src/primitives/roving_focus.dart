@@ -64,6 +64,18 @@ class CoilRovingFocus extends StatefulWidget {
 }
 
 class _CoilRovingFocusState extends State<CoilRovingFocus> {
+  @override
+  void initState() {
+    super.initState();
+    _syncTraversal();
+  }
+
+  @override
+  void didUpdateWidget(CoilRovingFocus oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTraversal();
+  }
+
   void _syncTraversal() {
     final nodes = widget.nodes;
     if (widget.tabStops == CoilRovingTabStops.each) return;
@@ -132,7 +144,6 @@ class _CoilRovingFocusState extends State<CoilRovingFocus> {
 
   @override
   Widget build(BuildContext context) {
-    _syncTraversal();
     return Focus(
       canRequestFocus: false,
       skipTraversal: true,
