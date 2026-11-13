@@ -160,10 +160,6 @@ class _CoilSwitchState extends State<CoilSwitch>
   WidgetStatesController get _states =>
       widget.statesController ?? (_ownStates ??= WidgetStatesController());
 
-  /// Whether the hover and label tracks have played once, so the first
-  /// build starts at rest instead of animating in.
-  bool _started = false;
-
   bool _dragging = false;
 
   /// Whether the last drag decided the value, so a tap the same gesture
@@ -316,58 +312,58 @@ class _CoilSwitchState extends State<CoilSwitch>
         final labelColor = style.label!.resolve({
           if (widget.value) WidgetState.selected,
         })!;
-        final first = !_started;
-        _started = true;
         return Opacity(
           opacity: _enabled ? 1 : sizes.disabledOpacity,
-          child: TrackBuilder(
-            animations: [
-              CoilSwitchTrack.hover([
-                .to(hovered ? 1 : 0, motion: _hoverMotion),
-              ], from: first ? (hovered ? 1 : 0) : null),
-              CoilSwitchTrack.label([
-                .to(labelColor, motion: _labelMotion),
-              ], from: first ? labelColor : null),
-            ],
-            builder: (context, value, _) {
-              final track = CoilFocusRing(
-                visible: states.contains(WidgetState.focused),
-                borderRadius: BorderRadius.circular(style.radius!),
-                offset: 2,
-                child: ListenableBuilder(
-                  listenable: _controller,
-                  builder: (context, _) => _SwitchTrack(
-                    metrics: m,
-                    style: style,
-                    sharp: sharp,
-                    thumb: _controller.value(_thumb),
-                    squish: _controller.value(_squish).clamp(0, 1),
-                    tint: _controller.value(_tint).clamp(0, 1),
-                    hover: value(CoilSwitchTrack.hover).clamp(0, 1),
-                  ),
-                ),
-              );
-              if (label == null) return track;
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: sizes.controlPaddingX,
-                  vertical: sizes.switchRowPaddingY,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: sizes.gap,
-                  children: [
-                    track,
-                    DefaultTextStyle(
-                      style: style.textStyle!.copyWith(
-                        color: value(CoilSwitchTrack.label),
-                      ),
-                      child: label,
+          child: CoilFirstBuild(
+            builder: (_, {required first}) => TrackBuilder(
+              animations: [
+                CoilSwitchTrack.hover([
+                  .to(hovered ? 1 : 0, motion: _hoverMotion),
+                ], from: first ? (hovered ? 1 : 0) : null),
+                CoilSwitchTrack.label([
+                  .to(labelColor, motion: _labelMotion),
+                ], from: first ? labelColor : null),
+              ],
+              builder: (context, value, _) {
+                final track = CoilFocusRing(
+                  visible: states.contains(WidgetState.focused),
+                  borderRadius: BorderRadius.circular(style.radius!),
+                  offset: 2,
+                  child: ListenableBuilder(
+                    listenable: _controller,
+                    builder: (context, _) => _SwitchTrack(
+                      metrics: m,
+                      style: style,
+                      sharp: sharp,
+                      thumb: _controller.value(_thumb),
+                      squish: _controller.value(_squish).clamp(0, 1),
+                      tint: _controller.value(_tint).clamp(0, 1),
+                      hover: value(CoilSwitchTrack.hover).clamp(0, 1),
                     ),
-                  ],
-                ),
-              );
-            },
+                  ),
+                );
+                if (label == null) return track;
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: sizes.controlPaddingX,
+                    vertical: sizes.switchRowPaddingY,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: sizes.gap,
+                    children: [
+                      track,
+                      DefaultTextStyle(
+                        style: style.textStyle!.copyWith(
+                          color: value(CoilSwitchTrack.label),
+                        ),
+                        child: label,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         );
       },

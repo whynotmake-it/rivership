@@ -212,7 +212,6 @@ class _CoilInputState extends State<CoilInput> {
   WidgetStatesController? _ownStates;
 
   /// The first build starts the tracks at rest instead of animating in.
-  bool _started = false;
 
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownFocusNode ??= FocusNode());
@@ -311,31 +310,31 @@ class _CoilInputState extends State<CoilInput> {
         };
         final border = look.border!.resolve(resolved)!;
         final fill = look.fill!.resolve(resolved)!;
-        final first = !_started;
-        _started = true;
-        return TrackBuilder(
-          animations: [
-            CoilInputTrack.border([
-              .to(border, motion: _colorMotion(CoilInputTrack.border)),
-            ], from: first ? border : null),
-            CoilInputTrack.fill([
-              .to(fill, motion: _colorMotion(CoilInputTrack.fill)),
-            ], from: first ? fill : null),
-          ],
-          // A minimum height plus symmetric padding: the line box sits
-          // centered and the field grows with the text scale.
-          builder: (context, value, child) => Container(
-            constraints: BoxConstraints(minHeight: look.minHeight!),
-            decoration: ShapeDecoration(
-              color: value(CoilInputTrack.fill),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: radius,
-                side: BorderSide(color: value(CoilInputTrack.border)),
+        return CoilFirstBuild(
+          builder: (_, {required first}) => TrackBuilder(
+            animations: [
+              CoilInputTrack.border([
+                .to(border, motion: _colorMotion(CoilInputTrack.border)),
+              ], from: first ? border : null),
+              CoilInputTrack.fill([
+                .to(fill, motion: _colorMotion(CoilInputTrack.fill)),
+              ], from: first ? fill : null),
+            ],
+            // A minimum height plus symmetric padding: the line box sits
+            // centered and the field grows with the text scale.
+            builder: (context, value, child) => Container(
+              constraints: BoxConstraints(minHeight: look.minHeight!),
+              decoration: ShapeDecoration(
+                color: value(CoilInputTrack.fill),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: value(CoilInputTrack.border)),
+                ),
               ),
+              child: child,
             ),
             child: child,
           ),
-          child: child,
         );
       },
       child: Padding(

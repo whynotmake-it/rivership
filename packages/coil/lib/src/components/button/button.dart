@@ -185,10 +185,6 @@ class _CoilButtonState extends State<CoilButton> {
   CoilMotion get _motion =>
       CoilTheme.motionOf(context, override: widget.motion);
 
-  /// Whether the tracks have played once: the first build starts them at
-  /// the resting look instead of animating in from nothing.
-  bool _started = false;
-
   Motion _motionFor(
     CoilButtonTrack<Object> track,
     Motion token, {
@@ -246,8 +242,6 @@ class _CoilButtonState extends State<CoilButton> {
         minHitTarget: sizes.minHitTarget,
         builder: (context, states, _) {
           final look = _look(style, states);
-          final first = !_started;
-          _started = true;
           final pressing = states.contains(WidgetState.pressed);
           final radius = style.radius!;
           final disabled = widget.onPressed == null && !widget.loading;
@@ -257,75 +251,77 @@ class _CoilButtonState extends State<CoilButton> {
             child: CoilFocusRing(
               visible: states.contains(WidgetState.focused),
               borderRadius: BorderRadius.circular(radius),
-              child: TrackBuilder(
-                animations: [
-                  CoilButtonTrack.fill([
-                    .to(
-                      look.fill,
-                      motion: _motionFor(
-                        CoilButtonTrack.fill,
-                        _motion.fade,
-                        spatial: false,
+              child: CoilFirstBuild(
+                builder: (_, {required first}) => TrackBuilder(
+                  animations: [
+                    CoilButtonTrack.fill([
+                      .to(
+                        look.fill,
+                        motion: _motionFor(
+                          CoilButtonTrack.fill,
+                          _motion.fade,
+                          spatial: false,
+                        ),
                       ),
-                    ),
-                  ], from: first ? look.fill : null),
-                  CoilButtonTrack.label([
-                    .to(
-                      look.label,
-                      motion: _motionFor(
-                        CoilButtonTrack.label,
-                        _motion.fade,
-                        spatial: false,
+                    ], from: first ? look.fill : null),
+                    CoilButtonTrack.label([
+                      .to(
+                        look.label,
+                        motion: _motionFor(
+                          CoilButtonTrack.label,
+                          _motion.fade,
+                          spatial: false,
+                        ),
                       ),
-                    ),
-                  ], from: first ? look.label : null),
-                  CoilButtonTrack.collapse([
-                    .to(
-                      look.spread,
-                      motion: _motionFor(
-                        CoilButtonTrack.collapse,
-                        pressing ? _motion.quick : _motion.standard,
+                    ], from: first ? look.label : null),
+                    CoilButtonTrack.collapse([
+                      .to(
+                        look.spread,
+                        motion: _motionFor(
+                          CoilButtonTrack.collapse,
+                          pressing ? _motion.quick : _motion.standard,
+                        ),
                       ),
-                    ),
-                  ], from: first ? look.spread : null),
-                  CoilButtonTrack.weight([
-                    .to(
-                      look.iconWeight,
-                      motion: _motionFor(
-                        CoilButtonTrack.weight,
-                        _motion.fade,
-                        spatial: false,
+                    ], from: first ? look.spread : null),
+                    CoilButtonTrack.weight([
+                      .to(
+                        look.iconWeight,
+                        motion: _motionFor(
+                          CoilButtonTrack.weight,
+                          _motion.fade,
+                          spatial: false,
+                        ),
                       ),
-                    ),
-                  ], from: first ? look.iconWeight : null),
-                ],
-                builder: (context, value, _) {
-                  final labelColor = value(CoilButtonTrack.label);
-                  return CustomPaint(
-                    painter: _ButtonSurfacePainter(
-                      fill: value(CoilButtonTrack.fill),
-                      spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
-                      radius: radius,
-                      border: style.border!.a == 0 ? null : style.border,
-                    ),
-                    child: IconTheme(
-                      data: IconThemeData(
-                        size: iconSize,
-                        applyTextScaling: true,
-                        color: labelColor,
-                        weight: value(CoilButtonTrack.weight),
+                    ], from: first ? look.iconWeight : null),
+                  ],
+                  builder: (context, value, _) {
+                    final labelColor = value(CoilButtonTrack.label);
+                    return CustomPaint(
+                      painter: _ButtonSurfacePainter(
+                        fill: value(CoilButtonTrack.fill),
+                        spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
+                        radius: radius,
+                        border: style.border!.a == 0 ? null : style.border,
                       ),
-                      child: DefaultTextStyle(
-                        style: style.textStyle!.copyWith(color: labelColor),
-                        maxLines: 1,
-                        softWrap: false,
-                        child: iconOnly
-                            ? _iconContent(sizes, style)
-                            : _labelContent(sizes, style),
+                      child: IconTheme(
+                        data: IconThemeData(
+                          size: iconSize,
+                          applyTextScaling: true,
+                          color: labelColor,
+                          weight: value(CoilButtonTrack.weight),
+                        ),
+                        child: DefaultTextStyle(
+                          style: style.textStyle!.copyWith(color: labelColor),
+                          maxLines: 1,
+                          softWrap: false,
+                          child: iconOnly
+                              ? _iconContent(sizes, style)
+                              : _labelContent(sizes, style),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           );

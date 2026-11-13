@@ -208,7 +208,6 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
   Timer? _reset;
 
   /// The first build starts the tracks at rest instead of animating in.
-  bool _started = false;
 
   @override
   void dispose() {
@@ -310,8 +309,6 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
             final weight = hovered
                 ? CoilIconWeight.emphasis
                 : CoilIconWeight.rest;
-            final first = !_started;
-            _started = true;
             Motion fade(CoilInputCopyTrack<Object> track) =>
                 _motionFor(track, motion.fade, spatial: false);
 
@@ -322,49 +319,51 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                 borderRadius: radius,
                 child: MotorInspectionScope(
                   group: 'CoilInputCopy',
-                  child: TrackBuilder(
-                    animations: [
-                      CoilInputCopyTrack.fill([
-                        .to(fill, motion: fade(CoilInputCopyTrack.fill)),
-                      ], from: first ? fill : null),
-                      CoilInputCopyTrack.mark([
-                        .to(mark, motion: fade(CoilInputCopyTrack.mark)),
-                      ], from: first ? mark : null),
-                      CoilInputCopyTrack.action([
-                        .to(action, motion: fade(CoilInputCopyTrack.action)),
-                      ], from: first ? action : null),
-                      CoilInputCopyTrack.weight([
-                        .to(weight, motion: fade(CoilInputCopyTrack.weight)),
-                      ], from: first ? weight : null),
-                    ],
-                    builder: (context, value, _) => _Row(
-                      style: style,
-                      sizes: sizes,
-                      fill: value(CoilInputCopyTrack.fill),
-                      align: widget.align,
-                      value: _Value(
-                        text: widget.value,
+                  child: CoilFirstBuild(
+                    builder: (_, {required first}) => TrackBuilder(
+                      animations: [
+                        CoilInputCopyTrack.fill([
+                          .to(fill, motion: fade(CoilInputCopyTrack.fill)),
+                        ], from: first ? fill : null),
+                        CoilInputCopyTrack.mark([
+                          .to(mark, motion: fade(CoilInputCopyTrack.mark)),
+                        ], from: first ? mark : null),
+                        CoilInputCopyTrack.action([
+                          .to(action, motion: fade(CoilInputCopyTrack.action)),
+                        ], from: first ? action : null),
+                        CoilInputCopyTrack.weight([
+                          .to(weight, motion: fade(CoilInputCopyTrack.weight)),
+                        ], from: first ? weight : null),
+                      ],
+                      builder: (context, value, _) => _Row(
                         style: style,
-                        mark: value(CoilInputCopyTrack.mark),
-                      ),
-                      action: _Action(
-                        status: _status,
-                        generation: _generation,
-                        variant: widget.variant,
-                        icon: widget.icon,
-                        labels: widget.labels,
-                        style: style,
-                        color: value(CoilInputCopyTrack.action),
-                        weight: value(CoilInputCopyTrack.weight),
-                        swapIn: _motionFor(
-                          CoilInputCopyTrack.swap,
-                          motion.quick,
+                        sizes: sizes,
+                        fill: value(CoilInputCopyTrack.fill),
+                        align: widget.align,
+                        value: _Value(
+                          text: widget.value,
+                          style: style,
+                          mark: value(CoilInputCopyTrack.mark),
                         ),
-                        swapOut: _motionFor(
-                          CoilInputCopyTrack.swap,
-                          motion.quickExit,
+                        action: _Action(
+                          status: _status,
+                          generation: _generation,
+                          variant: widget.variant,
+                          icon: widget.icon,
+                          labels: widget.labels,
+                          style: style,
+                          color: value(CoilInputCopyTrack.action),
+                          weight: value(CoilInputCopyTrack.weight),
+                          swapIn: _motionFor(
+                            CoilInputCopyTrack.swap,
+                            motion.quick,
+                          ),
+                          swapOut: _motionFor(
+                            CoilInputCopyTrack.swap,
+                            motion.quickExit,
+                          ),
+                          draw: fade(CoilInputCopyTrack.draw),
                         ),
-                        draw: fade(CoilInputCopyTrack.draw),
                       ),
                     ),
                   ),
