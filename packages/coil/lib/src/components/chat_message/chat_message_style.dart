@@ -14,6 +14,11 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     this.padding,
     this.radius,
     this.maxWidthFactor,
+    this.gap,
+    this.metaPaddingX,
+    this.metaGap,
+    this.actionGap,
+    this.menuMinWidth,
   });
 
   /// The defaults from the theme's tokens.
@@ -40,6 +45,11 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       radius: theme.shape.radii(metrics.tier).container,
       maxWidthFactor: 0.8,
+      gap: 6,
+      metaPaddingX: 4,
+      metaGap: 8,
+      actionGap: 2,
+      menuMinWidth: 220,
     );
   }
 
@@ -70,6 +80,22 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
   /// How much of the available width a user message may take, from 0 to 1.
   final double? maxWidthFactor;
 
+  /// The space between the attachments, the body and the meta row, and
+  /// between attachments.
+  final double? gap;
+
+  /// The meta row's horizontal inset.
+  final double? metaPaddingX;
+
+  /// The space between the time and the actions.
+  final double? metaGap;
+
+  /// The space between action buttons.
+  final double? actionGap;
+
+  /// The narrowest the long-press menu gets as a popover.
+  final double? menuMinWidth;
+
   @override
   CoilChatMessageStyle merge(CoilChatMessageStyle? other) => other == null
       ? this
@@ -80,6 +106,11 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
           padding: other.padding ?? padding,
           radius: other.radius ?? radius,
           maxWidthFactor: other.maxWidthFactor ?? maxWidthFactor,
+          gap: other.gap ?? gap,
+          metaPaddingX: other.metaPaddingX ?? metaPaddingX,
+          metaGap: other.metaGap ?? metaGap,
+          actionGap: other.actionGap ?? actionGap,
+          menuMinWidth: other.menuMinWidth ?? menuMinWidth,
         );
 
   @override
@@ -90,5 +121,10 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     padding,
     radius,
     maxWidthFactor,
+    gap,
+    metaPaddingX,
+    metaGap,
+    actionGap,
+    menuMinWidth,
   ];
 }

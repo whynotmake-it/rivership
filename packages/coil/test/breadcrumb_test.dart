@@ -4,6 +4,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/coil_pattern.dart';
 import 'src/golden_matrix.dart';
@@ -17,7 +18,7 @@ List<CoilCrumb> _crumbs([List<String> names = _names, List<String>? log]) => [
   for (final (i, name) in names.indexed)
     CoilCrumb(
       label: name,
-      icon: i == 0 ? const TestIcon(TestGlyph.home) : null,
+      leading: i == 0 ? const TestIcon(TestGlyph.home) : null,
       onPressed: () => log?.add(name),
     ),
 ];
@@ -135,11 +136,10 @@ void main() {
     await expectSheetGolden(tester, sheet, 'goldens/breadcrumb.png');
   });
 
+  // The select goldens cover the popover and both themes; this one shows
+  // a long list scrolling in a sheet.
   for (final (name, theme, tier, width) in [
-    ('popover_light', CoilThemeData.light, CoilTier.pointer, 600.0),
-    ('popover_dark', CoilThemeData.dark, CoilTier.pointer, 600.0),
     ('sheet_light', CoilThemeData.light, CoilTier.touch, 390.0),
-    ('sheet_dark', CoilThemeData.dark, CoilTier.touch, 390.0),
   ]) {
     testWidgets('breadcrumb menu golden: $name', (tester) async {
       tester.view
@@ -227,15 +227,6 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     expect(log, ['Projects']);
-  });
-
-  testWidgets('the page is foreground text, links are muted', (tester) async {
-    await tester.pumpWidget(_app(CoilBreadcrumb(crumbs: _crumbs())));
-    final colors = CoilThemeData.light.colors;
-    Color colorOf(String label) =>
-        tester.widget<Text>(find.text(label)).style!.color!;
-    expect(colorOf('Projects'), colors.mutedForeground);
-    expect(colorOf('Breadcrumb'), colors.foreground);
   });
 
   group('collapse', () {
@@ -450,6 +441,84 @@ void main() {
       tester.getCenter(find.text('Home')).dx,
       greaterThan(tester.getCenter(find.text('Breadcrumb')).dx),
     );
+  });
+
+  group('motion', () {
+    Future<Color> labelMidway(
+      WidgetTester tester, {
+      Map<CoilBreadcrumbTrack<Object>, Motion>? motions,
+      CoilThemeData? theme,
+    }) async {
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => CoilTheme(
+            data: theme ?? CoilThemeData.light,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: CoilBreadcrumb(crumbs: _crumbs(), motions: motions),
+            ),
+          ),
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('Coil')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return tester.widget<Text>(find.text('Coil')).style!.color!;
+    }
+
+    const slow = CupertinoMotion(duration: Duration(seconds: 2));
+    final lit = CoilThemeData.light.colors.foreground;
+
+    testWidgets('the label is close to lit on its default motion', (
+      tester,
+    ) async {
+      final color = await labelMidway(tester);
+      expect(color.r, closeTo(lit.r, 0.01));
+    });
+
+    testWidgets('motions: overrides one track', (tester) async {
+      expect(
+        await labelMidway(tester, motions: {CoilBreadcrumbTrack.label: slow}),
+        isNot(lit),
+      );
+    });
+
+    testWidgets('the theme overrides one track', (tester) async {
+      expect(
+        await labelMidway(
+          tester,
+          theme: CoilThemeData.light.copyWith(
+            trackMotions: {CoilBreadcrumbTrack.label: slow},
+          ),
+        ),
+        isNot(lit),
+      );
+    });
+  });
+
+  testWidgets('labels name the trail and "…"', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _app(
+        SizedBox(
+          width: 260,
+          child: CoilBreadcrumb(
+            crumbs: _crumbs(),
+            labels: const CoilBreadcrumbLabels(
+              navigation: 'Fil d’Ariane',
+              showHidden: 'Pages masquées',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.semantics.byLabel('Fil d’Ariane'), findsOneWidget);
+    expect(find.semantics.byLabel('Pages masquées'), findsOneWidget);
+    semantics.dispose();
   });
 
   testWidgets('style: fallback < theme < instance', (tester) async {

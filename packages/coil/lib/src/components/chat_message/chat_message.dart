@@ -1,18 +1,72 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
-import 'dart:async';
-import 'dart:math' as math;
-
-import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
-import 'package:coil/src/components/chat_message/chat_message_menu.dart';
+import 'package:coil/src/components/chat_message/chat_message_action.dart';
+import 'package:coil/src/components/chat_message/chat_message_body.dart';
 import 'package:coil/src/components/chat_message/chat_message_style.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+
+/// The animated parts of a [CoilChatMessage]. Use them as keys of
+/// [CoilChatMessage.motions] or [CoilThemeData.trackMotions].
+final class CoilChatMessageTrack<T extends Object> extends Track<T> {
+  CoilChatMessageTrack._(super.converter, {required String super.debugLabel});
+
+  /// The entrance opacity. Default motion: `fade`.
+  static final opacity = CoilChatMessageTrack<double>._(
+    .single,
+    debugLabel: 'CoilChatMessage.opacity',
+  );
+
+  /// The entrance rise and scale. Default motion: `standard`.
+  static final travel = CoilChatMessageTrack<double>._(
+    .single,
+    debugLabel: 'CoilChatMessage.travel',
+  );
+
+  /// The entrance height, which makes room in the transcript. Default
+  /// motion: `standard`.
+  static final height = CoilChatMessageTrack<double>._(
+    .single,
+    debugLabel: 'CoilChatMessage.height',
+  );
+
+  /// The meta row's opacity as it shows and hides. Default motion: `fade`
+  /// in, `fadeExit` out; an override applies to both.
+  static final meta = CoilChatMessageTrack<double>._(
+    .single,
+    debugLabel: 'CoilChatMessage.meta',
+  );
+}
+
+/// The words a [CoilChatMessage] gives screen readers. The defaults are
+/// English.
+@immutable
+class CoilChatMessageLabels {
+  /// Creates the labels.
+  const CoilChatMessageLabels({
+    this.user = 'You',
+    this.assistant = 'Assistant',
+  });
+
+  /// The sender name of a [CoilChatSender.user] message.
+  final String user;
+
+  /// The sender name of a [CoilChatSender.assistant] message.
+  final String assistant;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilChatMessageLabels &&
+      other.user == user &&
+      other.assistant == assistant;
+
+  @override
+  int get hashCode => Object.hash(user, assistant);
+}
 
 /// Who wrote a [CoilChatMessage].
 enum CoilChatSender {
@@ -33,29 +87,6 @@ enum CoilChatMessageEntrance {
   /// Shows at once. Use it for messages that were already in the transcript
   /// when it opened, and for messages a lazy list builds again on scroll.
   none,
-}
-
-/// An action on a [CoilChatMessage], such as Copy or Retry.
-///
-/// Each action shows as an icon-only ghost button in the meta row. On
-/// touch, long-pressing the message lists the same actions in a menu.
-@immutable
-class CoilChatMessageAction {
-  /// Creates an action.
-  const CoilChatMessageAction({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  /// The name: the button's semantic label and the menu row's text.
-  final String label;
-
-  /// The button's icon, styled through [IconTheme].
-  final Widget icon;
-
-  /// Called when the action runs. Null disables it.
-  final VoidCallback? onPressed;
 }
 
 /// One message in a chat transcript.
@@ -84,8 +115,10 @@ class CoilChatMessage extends StatelessWidget {
     this.actions = const [],
     this.entrance = CoilChatMessageEntrance.animated,
     this.semanticLabel,
+    this.labels = const CoilChatMessageLabels(),
     this.size,
     this.motion,
+    this.motions,
     this.style,
   });
 
@@ -109,9 +142,12 @@ class CoilChatMessage extends StatelessWidget {
   /// Whether the message animates in when it first builds.
   final CoilChatMessageEntrance entrance;
 
-  /// Replaces the container's label, which is the sender ("You" or
-  /// "Assistant") and the [time].
+  /// Replaces the container's label, which is the sender's name from
+  /// [labels] and the [time].
   final String? semanticLabel;
+
+  /// The sender names screen readers hear.
+  final CoilChatMessageLabels labels;
 
   /// Pins the message to one size step. Null follows [CoilAdaptiveScope].
   final CoilSize? size;
@@ -119,6 +155,10 @@ class CoilChatMessage extends StatelessWidget {
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for this
   /// message.
   final CoilMotion? motion;
+
+  /// Per-track motions for this message, keyed by [CoilChatMessageTrack]s.
+  /// They win over the theme's [CoilThemeData.trackMotions] and [motion].
+  final Map<CoilChatMessageTrack<Object>, Motion>? motions;
 
   /// Overrides for this message's look, on top of the theme's
   /// [CoilChatMessageStyle] and the defaults.
@@ -128,47 +168,66 @@ class CoilChatMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: size);
-    final motion = CoilTheme.motionOf(context, override: this.motion);
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    Motion motionOf(CoilChatMessageTrack<Object> track, Motion token) =>
+        CoilTheme.trackMotionOf(
+          context,
+          track,
+          instance: motions,
+          token: token,
+          spatial:
+              track != CoilChatMessageTrack.opacity &&
+              track != CoilChatMessageTrack.meta,
+        );
     final style = CoilChatMessageStyle.fallback(
       theme,
       metrics,
     ).merge(CoilTheme.styleOf<CoilChatMessageStyle>(context)).merge(this.style);
     final user = sender == CoilChatSender.user;
-    final name = user ? 'You' : 'Assistant';
+    final name = user ? labels.user : labels.assistant;
+
+    Widget message = Align(
+      alignment: user
+          ? AlignmentDirectional.topEnd
+          : AlignmentDirectional.topStart,
+      heightFactor: 1,
+      child: _MaxWidth(
+        factor: user ? style.maxWidthFactor! : 1,
+        child: ChatMessageBody(
+          user: user,
+          attachments: attachments,
+          time: time,
+          actions: actions,
+          metrics: metrics,
+          metaIn: motionOf(CoilChatMessageTrack.meta, tokens.fade),
+          metaOut: motionOf(CoilChatMessageTrack.meta, tokens.fadeExit),
+          style: style,
+          child: child,
+        ),
+      ),
+    );
+    if (entrance == CoilChatMessageEntrance.animated) {
+      message = CoilCollapsible(
+        expanded: true,
+        appear: true,
+        heightMotion: motionOf(CoilChatMessageTrack.height, tokens.standard),
+        opacityMotion: motionOf(CoilChatMessageTrack.opacity, tokens.fade),
+        debugLabel: 'CoilChatMessage.enter',
+        child: _Travel(
+          motion: motionOf(CoilChatMessageTrack.travel, tokens.standard),
+          origin: user
+              ? AlignmentDirectional.bottomEnd
+              : AlignmentDirectional.bottomStart,
+          child: message,
+        ),
+      );
+    }
 
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: semanticLabel ?? [name, ?time].join(', '),
-      child: MotorInspectionScope(
-        group: 'CoilChatMessage',
-        child: _Entrance(
-          entrance: entrance,
-          motion: motion,
-          origin: user
-              ? AlignmentDirectional.bottomEnd
-              : AlignmentDirectional.bottomStart,
-          child: Align(
-            alignment: user
-                ? AlignmentDirectional.topEnd
-                : AlignmentDirectional.topStart,
-            heightFactor: 1,
-            child: _MaxWidth(
-              factor: user ? style.maxWidthFactor! : 1,
-              child: _Message(
-                user: user,
-                attachments: attachments,
-                time: time,
-                actions: actions,
-                metrics: metrics,
-                motion: motion,
-                style: style,
-                child: child,
-              ),
-            ),
-          ),
-        ),
-      ),
+      child: MotorInspectionScope(group: 'CoilChatMessage', child: message),
     );
   }
 }
@@ -196,211 +255,15 @@ class _MaxWidth extends StatelessWidget {
   }
 }
 
-/// The message column. Tracks hover and focus within, which reveal the meta
-/// row on the pointer tier, and opens the action menu on a touch long press.
-class _Message extends StatefulWidget {
-  const _Message({
-    required this.user,
-    required this.attachments,
-    required this.time,
-    required this.actions,
-    required this.metrics,
-    required this.motion,
-    required this.style,
-    required this.child,
-  });
-
-  final bool user;
-  final List<Widget> attachments;
-  final String? time;
-  final List<CoilChatMessageAction> actions;
-  final CoilMetrics metrics;
-  final CoilMotion motion;
-  final CoilChatMessageStyle style;
-  final Widget? child;
-
-  @override
-  State<_Message> createState() => _MessageState();
-}
-
-class _MessageState extends State<_Message> {
-  final _states = WidgetStatesController();
-  final _menu = CoilPopupController();
-  bool _focusWithin = false;
-
-  @override
-  void dispose() {
-    _states.dispose();
-    _menu.dispose();
-    super.dispose();
-  }
-
-  void _openMenu() => unawaited(_menu.open());
-
-  @override
-  Widget build(BuildContext context) {
-    final style = widget.style;
-    final align = widget.user
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final hasMeta = widget.time != null || widget.actions.isNotEmpty;
-    // Touch can't hover, and a screen reader can't act on hidden buttons.
-    final alwaysMeta =
-        widget.metrics.tier == CoilTier.touch ||
-        MediaQuery.accessibleNavigationOf(context);
-
-    Widget? body;
-    if (widget.child case final child?) {
-      body = DefaultTextStyle(
-        style: style.textStyle!,
-        // A bubble hugs its longest line instead of the full width.
-        textWidthBasis: TextWidthBasis.longestLine,
-        child: widget.user
-            ? DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: style.bubble,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(style.radius!),
-                  ),
-                ),
-                child: Padding(padding: style.padding!, child: child),
-              )
-            : Padding(
-                padding: EdgeInsets.symmetric(vertical: style.padding!.top),
-                child: child,
-              ),
-      );
-    }
-
-    final column = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: align,
-      spacing: 6,
-      children: [
-        if (widget.attachments.isNotEmpty)
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: widget.user ? WrapAlignment.end : WrapAlignment.start,
-            children: widget.attachments,
-          ),
-        if (body != null)
-          ChatMessageMenu(
-            controller: _menu,
-            actions: widget.actions,
-            child: body,
-          ),
-        if (hasMeta)
-          ListenableBuilder(
-            listenable: _states,
-            builder: (context, _) => _MetaRow(
-              visible:
-                  alwaysMeta ||
-                  _focusWithin ||
-                  _states.value.contains(WidgetState.hovered),
-              time: widget.time,
-              actions: widget.actions,
-              motion: widget.motion,
-              style: style,
-            ),
-          ),
-      ],
-    );
-
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      includeSemantics: false,
-      onFocusChange: (focused) => setState(() => _focusWithin = focused),
-      child: CoilInteractionDetector(
-        states: _states,
-        trackPress: false,
-        child: GestureDetector(
-          supportedDevices: const {PointerDeviceKind.touch},
-          onLongPress: widget.actions.isEmpty ? null : _openMenu,
-          child: column,
-        ),
-      ),
-    );
-  }
-}
-
-/// The time and the action buttons. It keeps its height while hidden, so
-/// revealing it never moves the transcript.
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({
-    required this.visible,
-    required this.time,
-    required this.actions,
-    required this.motion,
-    required this.style,
-  });
-
-  final bool visible;
-  final String? time;
-  final List<CoilChatMessageAction> actions;
-  final CoilMotion motion;
-  final CoilChatMessageStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        children: [
-          if (time case final time?)
-            // The container's label already says the time.
-            ExcludeSemantics(child: Text(time, style: style.metaStyle)),
-          if (actions.isNotEmpty)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 2,
-              children: [
-                for (final action in actions)
-                  CoilButton.icon(
-                    onPressed: action.onPressed,
-                    icon: action.icon,
-                    semanticLabel: action.label,
-                    variant: CoilButtonVariant.ghost,
-                    size: CoilSize.compact,
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-    return IgnorePointer(
-      ignoring: !visible,
-      child: SingleMotionBuilder(
-        value: visible ? 1 : 0,
-        motion: visible ? motion.fade : motion.fadeExit,
-        debugLabel: 'CoilChatMessage.meta',
-        child: row,
-        // Hidden only from sight: Tab still reaches the buttons.
-        builder: (context, opacity, row) => Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          alwaysIncludeSemantics: true,
-          child: row,
-        ),
-      ),
-    );
-  }
-}
-
-/// The entrance: opacity on `fade`; height, rise and scale on `standard`.
-/// Under reduced motion only the fade remains.
-class _Entrance extends StatelessWidget {
-  const _Entrance({
-    required this.entrance,
+/// The entrance rise and scale, out of the sender's bottom corner.
+class _Travel extends StatelessWidget {
+  const _Travel({
     required this.motion,
     required this.origin,
     required this.child,
   });
 
-  final CoilChatMessageEntrance entrance;
-  final CoilMotion motion;
+  final Motion motion;
   final AlignmentDirectional origin;
   final Widget child;
 
@@ -408,36 +271,19 @@ class _Entrance extends StatelessWidget {
   static const _scale = 0.96;
 
   @override
-  Widget build(BuildContext context) {
-    if (entrance == CoilChatMessageEntrance.none) return child;
-    return SingleMotionBuilder(
-      from: 0,
-      value: 1,
-      motion: motion.fade,
-      debugLabel: 'CoilChatMessage.enter.opacity',
-      child: SingleMotionBuilder(
-        from: 0,
-        value: 1,
-        motion: motion.standard,
-        debugLabel: 'CoilChatMessage.enter.travel',
+  Widget build(BuildContext context) => SingleMotionBuilder(
+    from: 0,
+    value: 1,
+    motion: motion,
+    debugLabel: 'CoilChatMessage.travel',
+    child: child,
+    builder: (context, p, child) => Transform.translate(
+      offset: Offset(0, _rise * (1 - p)),
+      child: Transform.scale(
+        scale: _scale + (1 - _scale) * p,
+        alignment: origin.resolve(Directionality.of(context)),
         child: child,
-        builder: (context, p, child) => Align(
-          // Opens downward, so the overflow while it grows never covers the
-          // message above.
-          alignment: Alignment.topCenter,
-          heightFactor: math.max(p, 0),
-          child: Transform.translate(
-            offset: Offset(0, _rise * (1 - p)),
-            child: Transform.scale(
-              scale: _scale + (1 - _scale) * p,
-              alignment: origin.resolve(Directionality.of(context)),
-              child: child,
-            ),
-          ),
-        ),
       ),
-      builder: (context, opacity, child) =>
-          Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
-    );
-  }
+    ),
+  );
 }

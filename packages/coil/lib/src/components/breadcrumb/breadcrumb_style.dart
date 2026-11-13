@@ -5,9 +5,9 @@ import 'package:flutter/widgets.dart';
 /// come from [CoilBreadcrumbStyle.fallback], which derives them from the
 /// theme's tokens.
 ///
-/// [label] resolves with [WidgetState.hovered] (lit by a hovering pointer,
-/// keyboard focus or a press), [WidgetState.selected] (the current page)
-/// and [WidgetState.disabled].
+/// [label] resolves with [WidgetState.hovered], [WidgetState.focused]
+/// (keyboard focus), [WidgetState.pressed], [WidgetState.selected] (the
+/// current page) and [WidgetState.disabled].
 class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// Creates a breadcrumb style.
   const CoilBreadcrumbStyle({
@@ -21,6 +21,9 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
     this.textStyle,
     this.minHeight,
     this.paddingX,
+    this.separatorGap,
+    this.focusRingOffset,
+    this.menuMaxHeight,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -30,12 +33,14 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   ) {
     final c = theme.colors;
     return CoilBreadcrumbStyle(
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      label: WidgetStateProperty.fromMap({
+        WidgetState.selected |
+                WidgetState.hovered |
+                WidgetState.focused |
+                WidgetState.pressed:
+            c.foreground,
+        WidgetState.any: c.mutedForeground,
+      }),
       separatorColor: c.mutedForeground,
       separatorSize: 14,
       highlight: c.hover,
@@ -45,10 +50,13 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
       textStyle: theme.typography.style(metrics.body),
       minHeight: metrics.controlHeight,
       paddingX: 6,
+      separatorGap: 2,
+      focusRingOffset: 1,
+      menuMaxHeight: metrics.tier == CoilTier.pointer ? 480 : double.infinity,
     );
   }
 
-  /// The crumb label and icon color, by state.
+  /// The crumb label and leading color, by state.
   final WidgetStateProperty<Color?>? label;
 
   /// The separator's color.
@@ -78,6 +86,16 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// The horizontal padding inside a crumb.
   final double? paddingX;
 
+  /// The space on each side of the separator, which has its own side
+  /// bearing.
+  final double? separatorGap;
+
+  /// How far the focus ring sits outside a crumb.
+  final double? focusRingOffset;
+
+  /// The tallest the "…" popover gets before it scrolls.
+  final double? menuMaxHeight;
+
   @override
   CoilBreadcrumbStyle merge(CoilBreadcrumbStyle? other) => other == null
       ? this
@@ -92,6 +110,9 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           minHeight: other.minHeight ?? minHeight,
           paddingX: other.paddingX ?? paddingX,
+          separatorGap: other.separatorGap ?? separatorGap,
+          focusRingOffset: other.focusRingOffset ?? focusRingOffset,
+          menuMaxHeight: other.menuMaxHeight ?? menuMaxHeight,
         );
 
   @override
@@ -106,5 +127,8 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
     textStyle,
     minHeight,
     paddingX,
+    separatorGap,
+    focusRingOffset,
+    menuMaxHeight,
   ];
 }

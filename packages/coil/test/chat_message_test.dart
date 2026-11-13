@@ -352,6 +352,52 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('labels name the sender', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _app(
+        const CoilChatMessage(
+          sender: CoilChatSender.assistant,
+          entrance: .none,
+          time: '10:43',
+          labels: CoilChatMessageLabels(assistant: 'Assistant IA'),
+          child: Text('Bonjour'),
+        ),
+      ),
+    );
+    expect(find.bySemanticsLabel('Assistant IA, 10:43'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('the long-press menu works from the keyboard', (tester) async {
+    final calls = _Calls();
+    await tester.pumpWidget(
+      _app(
+        CoilChatMessage(
+          sender: CoilChatSender.user,
+          entrance: .none,
+          actions: _actions(calls),
+          child: const Text('Hello'),
+        ),
+        tier: CoilTier.touch,
+      ),
+    );
+    await tester.longPress(find.text('Hello'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(calls.retried, [1]);
+    expect(find.text('Retry'), findsNothing, reason: 'picking closes it');
+
+    await tester.longPress(find.text('Hello'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Retry'), findsNothing, reason: 'Escape closes it');
+  });
+
   group('entrance', () {
     Widget message({CoilChatMessageEntrance entrance = .animated}) =>
         CoilChatMessage(
@@ -388,6 +434,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getSize(box).height, rest, reason: 'no height spring');
       expect(opacity(tester), 1);
+    });
+
+    testWidgets('motions: overrides one track', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          CoilChatMessage(
+            sender: CoilChatSender.user,
+            motions: {
+              CoilChatMessageTrack.opacity: CoilThemeData.light.motion.gentle,
+            },
+            child: const Text('Hi'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(opacity(tester), lessThan(1), reason: 'opacity is now gentle');
     });
 
     testWidgets('a motion override applies', (tester) async {
