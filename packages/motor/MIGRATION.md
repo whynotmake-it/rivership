@@ -428,7 +428,7 @@ work as before:
 ```yaml
 dependencies:
   motor: ^2.0.0
-  motor_widgets: ^0.1.0
+  motor_widgets: ^0.1.0-dev.0
 ```
 
 ```dart

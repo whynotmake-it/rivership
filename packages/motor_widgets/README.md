@@ -28,11 +28,29 @@ There is no `AnimationController`, `Tween` or curve in this package.
 | `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder`, fed by a presence spring per child. |
 | rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. |
 
-Every widget takes the parameters of the Flutter widget it replaces, except
-that `duration` and `curve` become `motion` (and `reverseDuration` and
-`switchOutCurve` become `exitMotion` on the switchers). Every widget also
-takes `tickerRate` and `debugLabel`, like Motor's builders, so it shows up by
-name in `motor_devtools`.
+Each widget takes `motion` where the Flutter widget takes `duration` and
+`curve`. Every widget also takes `tickerRate` and `debugLabel`, like Motor's
+builders, so it shows up by name in `motor_devtools`.
+
+## Differences from Flutter
+
+- **No reverse timing.** `MotionSize` has no `reverseDuration`, because a
+  spring has no reverse leg. The switchers have no `reverseDuration`,
+  `switchInCurve` or `switchOutCurve`; `exitMotion` sets the motion of a
+  leaving child and defaults to `motion`.
+- **`MotionSizeSwitcher` has no `layoutBuilder`.** It lays its children out
+  in a `Stack` itself.
+- **Some `MotionContainer` properties change at once:** the border, shadows,
+  gradient and image of a `BoxDecoration`, any other kind of `Decoration`,
+  and unbounded (infinite) constraints. A `transform` loses perspective and
+  skew while it animates, as it does in `AnimatedContainer`.
+- **Directional values are resolved first.** `MotionAlign`, `MotionContainer`
+  and `MotionPadding` resolve `AlignmentDirectional` and
+  `EdgeInsetsDirectional` against the ambient `Directionality`, then animate.
+  A change of text direction jumps.
+- **Not ported:** `AnimatedPositionedDirectional`, `AnimatedCrossFade` (use
+  `MotionSwitcher`), `AnimatedPhysicalModel`, `AnimatedDefaultTextStyle` and
+  `AnimatedFractionallySizedBox`.
 
 ## One motion per property: `motions`
 
@@ -55,14 +73,10 @@ MotionContainer(
 )
 ```
 
-The keys are typed per widget (`Map<MotionContainerTrack<Object>, Motion>`),
-so a track of another widget doesn't compile. Because the tracks are static
-fields of that class, dot shorthand finds them: `.color` means
-`MotionContainerTrack.color`. Motions compare by value, so a map literal
-rebuilt in every `build` redirects nothing; only a track whose motion
-actually changes is redirected. The tracks are real `Track`s with a
-`debugLabel` (`MotionContainer.color`), so `motor_devtools` shows them by
-name.
+Keys are typed per widget, so another widget's track doesn't compile, and
+dot shorthand finds them: `.color` is `MotionContainerTrack.color`. Motions
+compare by value, so rebuilding the map in `build` changes nothing unless a
+motion changed.
 
 Widgets with a single value (`MotionOpacity`, `MotionScale`, `MotionSlide`,
 …) just take `motion`.
@@ -92,18 +106,12 @@ MotionContainer(
 )
 ```
 
-Tap fast and the container never stutters: each property heads for its new
-value with the velocity it has. Changing the color doesn't touch a width that
-is still moving, because every property is its own track
-(`MotionContainerTrack.color`, `.minWidth`, …).
-
-`MotionContainer` animates `alignment`, `padding`, `margin`, `color`,
-`width`, `height`, `constraints`, `transform` and `transformAlignment`, and
-the `color` and `borderRadius` of a `BoxDecoration` in `decoration` or
-`foregroundDecoration`. A decoration's border, shadows, gradient and image,
-other kinds of `Decoration`, and unbounded (infinite) constraints change at
-once. As in `AnimatedContainer`, a property that goes from null to a value
-starts there.
+Every property is its own track, so changing the color doesn't touch a
+width that is still moving. `MotionContainer` animates `alignment`,
+`padding`, `margin`, `color`, `width`, `height`, `constraints`, `transform`
+and `transformAlignment`, and the `color` and `borderRadius` of a
+`BoxDecoration` in `decoration` or `foregroundDecoration`. As in
+`AnimatedContainer`, a property that goes from null to a value starts there.
 
 ### Size
 
@@ -139,18 +147,15 @@ The `Animation<double>` each child gets is its presence spring (a Motor
 back while it is still leaving turns around from where it is, with its
 velocity, and keeps its state.
 
-The animation is the spring's raw value, so a bouncy spring overshoots past
-1 (or below 0 on the way out). Flutter's transitions handle that:
-`FadeTransition` clamps the opacity it paints, and `ScaleTransition` or
-`SlideTransition` overshoot, which is the bounce. Only code that passes
-`animation.value` to a widget that asserts its range, such as `Opacity`,
-needs to clamp it.
+The animation is the raw spring value and can overshoot 0..1; see
+`MotionSwitcher`.
 
 `MotionSizeSwitcher` adds a `MotionSize` around it, so the size springs to
 the new child too:
 
 ```dart
 MotionSizeSwitcher(
+  motion: const .smoothSpring(),
   child: loading ? const Spinner() : Text(result),
 )
 ```
