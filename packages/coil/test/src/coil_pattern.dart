@@ -24,6 +24,10 @@ enum CoilPattern {
   /// A switch: a toggled state that Space flips.
   switchControl,
 
+  /// A slider: an adjustable node with a value; arrows, page keys, Home and
+  /// End change it.
+  slider,
+
   /// A tab list: one tab stop, arrows move between tabs, Enter selects.
   tabs,
 
@@ -92,6 +96,8 @@ Future<void> expectCoilPattern(
           (f) => f.isToggled == Tristate.isTrue,
           'toggled',
         );
+      case CoilPattern.slider:
+        await _slider(tester, finder);
       case CoilPattern.tabs:
         await _tabs(tester, finder);
       case CoilPattern.radioGroup:
@@ -456,4 +462,37 @@ Future<void> _select(WidgetTester tester, Finder finder) async {
     isTrue,
     reason: 'select: the returned focus shows its ring after keyboard use',
   );
+}
+
+Future<void> _slider(WidgetTester tester, Finder finder) async {
+  SemanticsData data() => tester.getSemantics(finder).getSemanticsData();
+  double value() => double.parse(data().value);
+  Future<void> press(LogicalKeyboardKey key) async {
+    await tester.sendKeyEvent(key);
+    await tester.pump();
+  }
+
+  expect(data().flagsCollection.isSlider, isTrue, reason: 'slider semantics');
+  expect(data().hasAction(SemanticsAction.increase), isTrue);
+  expect(data().hasAction(SemanticsAction.decrease), isTrue);
+
+  await press(LogicalKeyboardKey.home);
+  final min = value();
+  await press(LogicalKeyboardKey.end);
+  final max = value();
+  expect(max, greaterThan(min), reason: 'Home is the minimum, End the maximum');
+
+  await press(LogicalKeyboardKey.home);
+  await press(LogicalKeyboardKey.arrowUp);
+  final arrow = value() - min;
+  expect(arrow, greaterThan(0), reason: 'arrow up raises the value');
+  await press(LogicalKeyboardKey.home);
+  await press(LogicalKeyboardKey.pageUp);
+  expect(
+    value() - min,
+    greaterThan(arrow),
+    reason: 'Page Up moves further than an arrow',
+  );
+  await press(LogicalKeyboardKey.arrowDown);
+  expect(value(), greaterThanOrEqualTo(min));
 }

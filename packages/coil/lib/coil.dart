@@ -15,6 +15,7 @@ export 'primitives.dart';
 export 'radio_group.dart';
 export 'select.dart';
 export 'skeleton.dart';
+export 'slider.dart';
 export 'switch.dart';
 export 'tabs.dart';
 export 'toggle_group.dart';

@@ -178,6 +178,47 @@ final Map<String, WidgetBuilder> _stories = {
     value: 1,
     onChanged: (_) {},
   ),
+  'slider': (context) => SizedBox(
+    width: 260,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 12,
+      children: [
+        CoilSlider(
+          value: .42,
+          onChanged: (_) {},
+          label: const Text('Volume'),
+          valueFormatter: (v) => '${(v * 100).round()}%',
+        ),
+        CoilSlider(
+          value: .5,
+          divisions: 4,
+          variant: CoilSliderVariant.pips,
+          onChanged: (_) {},
+          label: const Text('Quality'),
+          valueFormatter: (v) => '${(v * 4).round()}',
+        ),
+        CoilSlider(
+          value: .65,
+          variant: CoilSliderVariant.pill,
+          onChanged: (_) {},
+          label: const Text('Zoom'),
+          valueFormatter: (v) => '${(v * 100).round()}%',
+        ),
+        const CoilSlider(value: .3, onChanged: null),
+      ],
+    ),
+  ),
+  'tabs_overflow': (context) => SizedBox(
+    width: 260,
+    child: CoilTabs(
+      tabs: [
+        for (var i = 0; i < 8; i++) CoilTab(value: i, label: 'Section $i'),
+      ],
+      value: 3,
+      onChanged: (_) {},
+    ),
+  ),
   'input': (context) => SizedBox(
     width: 240,
     child: Column(

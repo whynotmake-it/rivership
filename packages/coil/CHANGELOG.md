@@ -33,5 +33,9 @@ Milestone M0, unreleased.
 - Breaking: `package:coil/selection_groups.dart` is now
   `checkbox_group.dart` and `toggle_group.dart`. `CoilTapTargetSize` is
   removed.
+- `CoilSlider`: one value, as a scrubber or pips row or a pill. Keyboard and
+  screen-reader support. Range, step lists and click-to-edit come later.
+- `CoilTabs` scrolls when the tabs don't fit. Edges fade, and the selected
+  or focused tab scrolls into view.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

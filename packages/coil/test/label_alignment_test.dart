@@ -162,6 +162,15 @@ void main() {
         onChanged: (_) {},
       ),
     ),
+    'slider/label': (ink) => SizedBox(
+      width: 240,
+      child: CoilSlider(
+        value: .4,
+        onChanged: (_) {},
+        label: _Ink(ink, const Text('HEH')),
+        valueFormatter: (_) => 'HEH',
+      ),
+    ),
     'switch/label': (ink) => CoilSwitch(
       value: true,
       onChanged: (_) {},
