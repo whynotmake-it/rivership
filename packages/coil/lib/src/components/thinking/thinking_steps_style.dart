@@ -39,7 +39,7 @@ class CoilThinkingStepsStyle
         ? c.foreground
         : c.mutedForeground;
     // Badges don't grow on touch (DESIGN.md §14.1 Badge).
-    final badge = CoilMetrics.resolve(CoilTier.pointer, metrics.size);
+    final badge = theme.metrics.resolve(CoilTier.pointer, metrics.size);
     return CoilThinkingStepsStyle(
       triggerFill: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.pressed)

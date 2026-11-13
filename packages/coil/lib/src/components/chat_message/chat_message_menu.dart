@@ -10,38 +10,52 @@ import 'package:motor/motor.dart';
 // This is the smallest menu the long press needs: touch rows in a popover
 // or a sheet, picked by CoilAdaptivePopup's phone rule.
 
-/// Opens [actions] as a menu anchored to [anchor]. A finger opened it, so
-/// the rows are touch rows on every tier.
-void showChatMessageMenu(
-  BuildContext anchor,
-  List<CoilChatMessageAction> actions,
-) {
-  final metrics = CoilMetrics.resolve(CoilTier.touch, CoilSize.regular);
-  final presentation = CoilAdaptivePopup.presentationOf(
-    anchor,
-    traits: CoilOverlayTraits(
-      kind: CoilOverlayKind.contextMenu,
-      itemCount: actions.length,
-    ),
-  );
-  CoilAdaptivePopup.show(
-    anchor,
-    presentation: presentation,
-    estimatedHeight:
-        actions.length * metrics.controlHeight + metrics.popupInset * 2,
-    content: (context, popup) => _Menu(
-      actions: actions,
-      metrics: metrics,
-      onPick: (action) {
-        popup.close(CoilPopupCloseReason.selected);
-        action.onPressed?.call();
-      },
-      onEscape: () => popup.close(CoilPopupCloseReason.escape),
-    ),
-    popover: (context, content) =>
-        _PopoverSurface(metrics: metrics, child: content),
-    sheet: (context, content) => CoilSheetPanel(child: content),
-  );
+/// Opens [actions] as a menu anchored to [child] when [controller] opens.
+/// A finger opens it, so the rows are touch rows on every tier.
+class ChatMessageMenu extends StatelessWidget {
+  /// Creates the menu around [child].
+  const ChatMessageMenu({
+    required this.controller,
+    required this.actions,
+    required this.child,
+    super.key,
+  });
+
+  /// Opens the menu.
+  final CoilPopupController controller;
+
+  /// The rows.
+  final List<CoilChatMessageAction> actions;
+
+  /// The anchor: the message bubble.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = CoilTheme.of(
+      context,
+    ).metrics.resolve(CoilTier.touch, CoilSize.regular);
+    return CoilAdaptivePopup(
+      controller: controller,
+      traits: () => CoilOverlayTraits(
+        kind: CoilOverlayKind.contextMenu,
+        itemCount: actions.length,
+      ),
+      content: (context, popup) => _Menu(
+        actions: actions,
+        metrics: metrics,
+        onPick: (action) {
+          popup.close(CoilPopupCloseReason.selected);
+          action.onPressed?.call();
+        },
+        onEscape: () => popup.close(CoilPopupCloseReason.escape),
+      ),
+      popover: (context, content) =>
+          _PopoverSurface(metrics: metrics, child: content),
+      sheet: (context, content) => CoilSheetPanel(child: content),
+      child: child,
+    );
+  }
 }
 
 class _Menu extends StatelessWidget {

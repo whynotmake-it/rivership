@@ -163,23 +163,25 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
       group: 'CoilCarouselDots',
       child: CoilHoverRegion(
         axis: CoilHoverAxis.x,
-        highlightColor: style.highlight,
-        highlightRadius: style.radius,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < widget.count; i++)
-              CoilHoverItem(
-                index: i,
-                enabled: enabled,
-                child: _Dot(
-                  current: i == widget.value,
-                  progress: widget.progress ?? 1,
-                  style: style,
-                  motion: motion,
+        child: CoilHoverHighlight(
+          color: style.highlight,
+          radius: style.radius,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < widget.count; i++)
+                CoilHoverItem(
+                  index: i,
+                  enabled: enabled,
+                  child: _Dot(
+                    current: i == widget.value,
+                    progress: widget.progress ?? 1,
+                    style: style,
+                    motion: motion,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

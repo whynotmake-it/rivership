@@ -497,7 +497,10 @@ class _BannerContent extends StatelessWidget {
 
     // The ✕ is a compact ghost button. Its box is centered on the title
     // line and its glyph lines up with the padding edge.
-    final buttonMetrics = CoilMetrics.resolve(metrics.tier, CoilSize.compact);
+    final buttonMetrics = const CoilMetricsTable().resolve(
+      metrics.tier,
+      CoilSize.compact,
+    );
     final box = buttonMetrics.controlHeight > buttonMetrics.minHitTarget
         ? buttonMetrics.controlHeight
         : buttonMetrics.minHitTarget;

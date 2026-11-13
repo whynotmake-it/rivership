@@ -83,9 +83,8 @@ class CoilBreadcrumb extends StatefulWidget {
 class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
   final _handle = CrumbTrailHandle();
   final _ellipsisFocus = FocusNode(debugLabel: 'CoilBreadcrumb.more');
-  final _ellipsisAnchor = GlobalKey(debugLabel: 'CoilBreadcrumb.more');
+  final _menu = CoilPopupController();
   List<FocusNode> _gates = [];
-  CoilPopupHandle? _popup;
 
   void _syncGates() {
     final count = widget.crumbs.length + 1;
@@ -105,7 +104,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
 
   @override
   void dispose() {
-    _popup?.close(CoilPopupCloseReason.programmatic);
+    _menu.dispose();
     for (final gate in _gates) {
       gate.dispose();
     }
@@ -118,67 +117,66 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
           .merge(CoilTheme.styleOf<CoilBreadcrumbStyle>(context))
           .merge(widget.style);
 
-  Future<void> _openMenu() async {
-    final anchor = _ellipsisAnchor.currentContext;
-    final hidden = _handle.hidden;
-    if (_popup != null || anchor == null || hidden == 0) return;
-    final crumbs = widget.crumbs.sublist(1, 1 + hidden);
-    final presentation = CoilAdaptivePopup.presentationOf(
-      anchor,
-      override: widget.presentation,
-      traits: CoilOverlayTraits(
-        kind: CoilOverlayKind.actionMenu,
-        itemCount: crumbs.length,
-      ),
-    );
-    final sheet = presentation == CoilPresentation.sheet;
-    final pointer = CoilTheme.tierOf(anchor) == CoilTier.pointer;
-    // A sheet is a touch surface whatever the tier.
-    final metrics = sheet
-        ? CoilMetrics.resolve(CoilTier.touch, CoilSize.regular)
-        : CoilTheme.metricsOf(anchor);
-    final style = _style(anchor, metrics);
-    final line = MediaQuery.textScalerOf(anchor).scale(metrics.body.lineHeight);
-    final rowExtent = metrics.controlHeight - metrics.body.lineHeight + line;
-    final keyboard = CoilInputModality.instance.value == CoilModality.keyboard;
+  void _openMenu() {
+    if (_handle.hidden > 0) unawaited(_menu.open());
+  }
 
-    final popup = _popup = CoilAdaptivePopup.show(
-      anchor,
-      presentation: presentation,
-      estimatedHeight: crumbs.length * rowExtent + metrics.popupInset * 2,
-      maxHeight: pointer && !sheet ? 480 : double.infinity,
-      content: (context, popup) => MotorInspectionScope(
-        group: 'CoilBreadcrumb',
-        child: HiddenCrumbList(
-          crumbs: [
-            for (final crumb in crumbs)
-              HiddenCrumb(
-                label: crumb.label,
-                icon: crumb.icon,
-                onPressed: crumb.onPressed,
-              ),
-          ],
-          metrics: metrics,
-          style: style,
-          fullEmphasis: sheet || !pointer,
-          keyboardOpened: keyboard,
-          // An action closes the menu at once, then runs.
-          onPick: (i) {
-            popup.close(CoilPopupCloseReason.selected);
-            crumbs[i].onPressed?.call();
-          },
-          onDismiss: popup.close,
-        ),
+  /// Wraps "…" in the menu of the crumbs it hides.
+  Widget _withMenu(Widget ellipsis) {
+    final pointer = CoilTheme.tierOf(context) == CoilTier.pointer;
+    return CoilAdaptivePopup(
+      controller: _menu,
+      presentation: widget.presentation,
+      traits: () => CoilOverlayTraits(
+        kind: CoilOverlayKind.actionMenu,
+        itemCount: _handle.hidden,
       ),
-      popover: (context, content) =>
-          _MenuSurface(metrics: metrics, style: style, child: content),
+      maxHeight: pointer ? 480 : double.infinity,
+      content: (context, popup) {
+        final crumbs = widget.crumbs.sublist(1, 1 + _handle.hidden);
+        final sheet = popup.presentation == CoilPresentation.sheet;
+        // A sheet is a touch surface whatever the tier.
+        final metrics = sheet
+            ? CoilTheme.of(
+                context,
+              ).metrics.resolve(CoilTier.touch, CoilSize.regular)
+            : CoilTheme.metricsOf(context);
+        return MotorInspectionScope(
+          group: 'CoilBreadcrumb',
+          child: HiddenCrumbList(
+            crumbs: [
+              for (final crumb in crumbs)
+                HiddenCrumb(
+                  label: crumb.label,
+                  icon: crumb.icon,
+                  onPressed: crumb.onPressed,
+                ),
+            ],
+            metrics: metrics,
+            style: _style(context, metrics),
+            fullEmphasis: sheet || !pointer,
+            keyboardOpened:
+                CoilInputModality.instance.value == CoilModality.keyboard,
+            // An action closes the menu at once, then runs.
+            onPick: (i) {
+              popup.close(CoilPopupCloseReason.selected);
+              crumbs[i].onPressed?.call();
+            },
+            onDismiss: popup.close,
+          ),
+        );
+      },
+      popover: (context, content) {
+        final metrics = CoilTheme.metricsOf(context);
+        return _MenuSurface(
+          metrics: metrics,
+          style: _style(context, metrics),
+          child: content,
+        );
+      },
       sheet: (context, content) => CoilSheetPanel(child: content),
+      child: ellipsis,
     );
-    final reason = await popup.closed;
-    _popup = null;
-    if (mounted && reason != CoilPopupCloseReason.selected) {
-      _ellipsisFocus.requestFocus();
-    }
   }
 
   @override
@@ -223,48 +221,51 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
         child: CoilHoverRegion(
           axis: CoilHoverAxis.x,
           followFocus: false,
-          highlightColor: style.highlight,
-          highlightRadius: style.radius,
-          child: CrumbTrail(
-            collapse: phone ? CrumbCollapse.always : CrumbCollapse.overflow,
-            handle: _handle,
-            gates: _gates,
-            children: [
-              slot(
-                0,
-                _Crumb(
-                  index: widget.crumbs.length,
-                  label: '…',
-                  semanticLabel: 'Show hidden pages',
-                  link: false,
-                  anchorKey: _ellipsisAnchor,
-                  focusNode: _ellipsisFocus,
-                  onPressed: () => unawaited(_openMenu()),
-                  separator: separator,
-                  metrics: metrics,
-                  style: style,
-                ),
-              ),
-              for (final (i, crumb) in widget.crumbs.indexed)
+          child: CoilHoverHighlight(
+            color: style.highlight,
+            radius: style.radius,
+            child: CrumbTrail(
+              collapse: phone ? CrumbCollapse.always : CrumbCollapse.overflow,
+              handle: _handle,
+              gates: _gates,
+              children: [
                 slot(
-                  i + 1,
-                  i == last
-                      ? _CurrentPage(
-                          crumb: crumb,
-                          metrics: metrics,
-                          style: style,
-                        )
-                      : _Crumb(
-                          index: i,
-                          label: crumb.label,
-                          icon: crumb.icon,
-                          onPressed: crumb.onPressed,
-                          separator: separator,
-                          metrics: metrics,
-                          style: style,
-                        ),
+                  0,
+                  _withMenu(
+                    _Crumb(
+                      index: widget.crumbs.length,
+                      label: '…',
+                      semanticLabel: 'Show hidden pages',
+                      link: false,
+                      focusNode: _ellipsisFocus,
+                      onPressed: _openMenu,
+                      separator: separator,
+                      metrics: metrics,
+                      style: style,
+                    ),
+                  ),
                 ),
-            ],
+                for (final (i, crumb) in widget.crumbs.indexed)
+                  slot(
+                    i + 1,
+                    i == last
+                        ? _CurrentPage(
+                            crumb: crumb,
+                            metrics: metrics,
+                            style: style,
+                          )
+                        : _Crumb(
+                            index: i,
+                            label: crumb.label,
+                            icon: crumb.icon,
+                            onPressed: crumb.onPressed,
+                            separator: separator,
+                            metrics: metrics,
+                            style: style,
+                          ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -286,7 +287,6 @@ class _Crumb extends StatefulWidget {
     this.semanticLabel,
     this.link = true,
     this.focusNode,
-    this.anchorKey,
   });
 
   final int index;
@@ -299,7 +299,6 @@ class _Crumb extends StatefulWidget {
   final CoilBreadcrumbStyle style;
   final bool link;
   final FocusNode? focusNode;
-  final Key? anchorKey;
 
   @override
   State<_Crumb> createState() => _CrumbState();
@@ -340,7 +339,6 @@ class _CrumbState extends State<_Crumb> {
           return Opacity(
             opacity: enabled ? 1 : 0.5,
             child: CoilHoverItem(
-              key: widget.anchorKey,
               index: widget.index,
               enabled: enabled,
               child: CoilFocusRing(

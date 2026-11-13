@@ -305,10 +305,12 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
         ),
       );
       list = CoilHoverRegion(
-        highlightColor: style.highlight,
-        highlightRadius: style.radius,
-        foreground: [_focusRing],
-        child: list,
+        child: CoilHoverHighlight(
+          color: style.highlight,
+          radius: style.radius,
+          foreground: [_focusRing],
+          child: list,
+        ),
       );
       // DESIGN.md §14.4: 288 wide by default; a tight parent still wins.
       list = ConstrainedBox(

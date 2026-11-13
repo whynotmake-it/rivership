@@ -347,39 +347,41 @@ class _CoilTableState<T> extends State<CoilTable<T>>
               child: CoilHoverRegion(
                 activeItem: _active,
                 followFocus: false,
-                highlightColor: style.highlight,
-                highlightRadius: style.radius,
-                background: [_selection],
-                foreground: [_ring],
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final (i, row) in rows.indexed)
-                      CoilHoverItem(
-                        index: i,
-                        child: _BodyRow<T>(
+                child: CoilHoverHighlight(
+                  color: style.highlight,
+                  radius: style.radius,
+                  background: [_selection],
+                  foreground: [_ring],
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, row) in rows.indexed)
+                        CoilHoverItem(
                           index: i,
-                          row: row,
-                          columns: widget.columns,
-                          widths: widths,
-                          selected: widget.values.contains(row),
-                          nextSelected:
-                              i + 1 < rows.length &&
-                              widget.values.contains(rows[i + 1]),
-                          last: i == rows.length - 1,
-                          emphasis: emphasis,
-                          metrics: metrics,
-                          style: style,
-                          motion: motion,
-                          onPressed:
-                              widget.onRowActivated == null &&
-                                  widget.onChanged == null
-                              ? null
-                              : () => _tap(row),
+                          child: _BodyRow<T>(
+                            index: i,
+                            row: row,
+                            columns: widget.columns,
+                            widths: widths,
+                            selected: widget.values.contains(row),
+                            nextSelected:
+                                i + 1 < rows.length &&
+                                widget.values.contains(rows[i + 1]),
+                            last: i == rows.length - 1,
+                            emphasis: emphasis,
+                            metrics: metrics,
+                            style: style,
+                            motion: motion,
+                            onPressed:
+                                widget.onRowActivated == null &&
+                                    widget.onChanged == null
+                                ? null
+                                : () => _tap(row),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );

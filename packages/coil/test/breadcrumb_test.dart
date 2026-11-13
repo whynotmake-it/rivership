@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,6 +60,14 @@ bool _shown(WidgetTester tester, String label) {
   semantics.dispose();
   return found;
 }
+
+/// [text] in the open "…" menu.
+Finder _inMenu(String text) => find.descendant(
+  of: find.byWidgetPredicate(
+    (w) => w is Semantics && w.properties.role == SemanticsRole.menu,
+  ),
+  matching: find.text(text),
+);
 
 void main() {
   matrixGoldenTest(
@@ -323,7 +332,7 @@ void main() {
       // The hidden crumbs stay built in the trail; the menu adds its rows.
       expect(find.text('Projects'), findsNWidgets(2));
       expect(find.text('Coil'), findsNWidgets(2));
-      await tester.tap(find.text('Coil').last);
+      await tester.tap(_inMenu('Coil'));
       await tester.pumpAndSettle();
       expect(log, ['Coil']);
       expect(find.text('Coil'), findsOneWidget, reason: 'the menu closed');

@@ -1,6 +1,7 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/button.dart';
@@ -224,19 +225,17 @@ class _Message extends StatefulWidget {
 
 class _MessageState extends State<_Message> {
   final _states = WidgetStatesController();
-  final _bubbleKey = GlobalKey();
+  final _menu = CoilPopupController();
   bool _focusWithin = false;
 
   @override
   void dispose() {
     _states.dispose();
+    _menu.dispose();
     super.dispose();
   }
 
-  void _openMenu() {
-    final anchor = _bubbleKey.currentContext ?? context;
-    showChatMessageMenu(anchor, widget.actions);
-  }
+  void _openMenu() => unawaited(_menu.open());
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +284,12 @@ class _MessageState extends State<_Message> {
             alignment: widget.user ? WrapAlignment.end : WrapAlignment.start,
             children: widget.attachments,
           ),
-        if (body != null) KeyedSubtree(key: _bubbleKey, child: body),
+        if (body != null)
+          ChatMessageMenu(
+            controller: _menu,
+            actions: widget.actions,
+            child: body,
+          ),
         if (hasMeta)
           ListenableBuilder(
             listenable: _states,

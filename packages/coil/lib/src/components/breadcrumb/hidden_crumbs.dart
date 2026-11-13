@@ -164,31 +164,33 @@ class _HiddenCrumbListState extends State<HiddenCrumbList>
             child: CoilHoverRegion(
               activeItem: _active,
               followFocus: false,
-              highlightColor: widget.style.highlight,
-              highlightRadius: widget.style.radius,
-              foreground: [_ring],
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(metrics.popupInset),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final (i, crumb) in widget.crumbs.indexed)
-                      CoilHoverItem(
-                        index: i,
-                        enabled: crumb.onPressed != null,
-                        child: _Row(
+              child: CoilHoverHighlight(
+                color: widget.style.highlight,
+                radius: widget.style.radius,
+                foreground: [_ring],
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(metrics.popupInset),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, crumb) in widget.crumbs.indexed)
+                        CoilHoverItem(
                           index: i,
-                          crumb: crumb,
-                          metrics: metrics,
-                          style: widget.style,
-                          fullEmphasis: widget.fullEmphasis,
-                          onPressed: crumb.onPressed == null
-                              ? null
-                              : () => widget.onPick(i),
+                          enabled: crumb.onPressed != null,
+                          child: _Row(
+                            index: i,
+                            crumb: crumb,
+                            metrics: metrics,
+                            style: widget.style,
+                            fullEmphasis: widget.fullEmphasis,
+                            onPressed: crumb.onPressed == null
+                                ? null
+                                : () => widget.onPick(i),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

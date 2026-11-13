@@ -299,13 +299,17 @@ class _CoilCardState extends State<CoilCard> {
 }
 
 /// The dismiss button's visual size.
-double _dismissExtent(CoilMetrics metrics) =>
-    CoilMetrics.resolve(metrics.tier, CoilSize.compact).controlHeight;
+double _dismissExtent(CoilMetrics metrics) => const CoilMetricsTable()
+    .resolve(metrics.tier, CoilSize.compact)
+    .controlHeight;
 
 /// Where the dismiss button's layout box sits, so its visual is 8 from the
 /// corner while its hit box can be larger.
 double _dismissInset(CoilMetrics metrics) {
-  final compact = CoilMetrics.resolve(metrics.tier, CoilSize.compact);
+  final compact = const CoilMetricsTable().resolve(
+    metrics.tier,
+    CoilSize.compact,
+  );
   final grow = compact.minHitTarget > compact.controlHeight
       ? (compact.minHitTarget - compact.controlHeight) / 2
       : 0.0;
@@ -414,7 +418,7 @@ class _CardBody extends StatelessWidget {
   }
 
   CoilMetrics get _compact =>
-      CoilMetrics.resolve(metrics.tier, CoilSize.compact);
+      const CoilMetricsTable().resolve(metrics.tier, CoilSize.compact);
 
   Widget? _header() {
     if (card.title == null && card.description == null) return null;
@@ -746,10 +750,12 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
 
     grid = CoilHoverRegion(
       axis: CoilHoverAxis.xy,
-      highlightColor: style.highlight,
-      highlightRadius: style.radius,
-      background: [_surfaces],
-      child: grid,
+      child: CoilHoverHighlight(
+        color: style.highlight,
+        radius: style.radius,
+        background: [_surfaces],
+        child: grid,
+      ),
     );
 
     if (!separated) {
