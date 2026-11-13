@@ -80,6 +80,7 @@ class CoilAdaptivePopup extends StatefulWidget {
     super.key,
     this.presentation,
     this.maxHeight = double.infinity,
+    this.takeFocus = true,
     this.motion,
   });
 
@@ -107,6 +108,10 @@ class CoilAdaptivePopup extends StatefulWidget {
 
   /// Maximum popover height.
   final double maxHeight;
+
+  /// Whether the popover takes focus; see [CoilPopover.takeFocus]. A sheet
+  /// always does.
+  final bool takeFocus;
 
   /// Motion tokens for the popup's enter and exit, instead of the theme's.
   final CoilMotion? motion;
@@ -257,6 +262,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       controller: _popover,
       onClose: (reason) => _open?.close(reason),
       maxHeight: widget.maxHeight,
+      takeFocus: widget.takeFocus,
       motion: widget.motion,
       popover: (context) => widget.popover(
         context,

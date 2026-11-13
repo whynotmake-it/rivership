@@ -96,6 +96,7 @@ class CoilPopover extends StatefulWidget {
     this.edgePadding = 8,
     this.axis = Axis.vertical,
     this.crossOffset = 0,
+    this.takeFocus = true,
     this.motion,
   });
 
@@ -132,6 +133,11 @@ class CoilPopover extends StatefulWidget {
   /// For [Axis.horizontal], how far above the anchor's top it starts, so
   /// its first row can line up with the anchor.
   final double crossOffset;
+
+  /// Whether it takes focus when it opens. False leaves focus in the
+  /// anchor, which then drives the popover, like a combobox's field; taps
+  /// on the anchor then count as inside the popover.
+  final bool takeFocus;
 
   /// Motion tokens for the enter and exit, instead of the theme's.
   final CoilMotion? motion;
@@ -185,7 +191,7 @@ class _CoilPopoverState extends State<CoilPopover>
 
   void _show(Offset? at) {
     if (_open) return;
-    _returnFocus = FocusManager.instance.primaryFocus;
+    if (widget.takeFocus) _returnFocus = FocusManager.instance.primaryFocus;
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     _portal.show();
     setState(() {
@@ -224,7 +230,9 @@ class _CoilPopoverState extends State<CoilPopover>
   Widget build(BuildContext context) => OverlayPortal.overlayChildLayoutBuilder(
     controller: _portal,
     overlayChildBuilder: _buildPopover,
-    child: widget.child,
+    child: widget.takeFocus
+        ? widget.child
+        : TapRegion(groupId: this, child: widget.child),
   );
 
   Widget _buildPopover(BuildContext context, OverlayChildLayoutInfo info) {
@@ -276,7 +284,7 @@ class _CoilPopoverState extends State<CoilPopover>
             },
             child: FocusScope(
               node: _scope,
-              autofocus: true,
+              autofocus: widget.takeFocus,
               child: CallbackShortcuts(
                 bindings: {
                   const SingleActivator(LogicalKeyboardKey.escape): () =>

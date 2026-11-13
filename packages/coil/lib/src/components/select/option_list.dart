@@ -31,6 +31,7 @@ class CoilOptionList<T> extends StatefulWidget {
     this.selectedFill = true,
     this.fullEmphasis = false,
     this.checkmark,
+    this.activeItem,
   });
 
   /// The choices.
@@ -70,13 +71,19 @@ class CoilOptionList<T> extends StatefulWidget {
   /// Replaces the check glyph.
   final Widget? checkmark;
 
+  /// Drives the active row from outside. The owner handles the keys, like a
+  /// combobox's field, so the list takes no focus and no keys.
+  final CoilActiveItemController? activeItem;
+
   @override
   State<CoilOptionList<T>> createState() => _CoilOptionListState<T>();
 }
 
 class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     with TickerProviderStateMixin {
-  final _active = CoilActiveItemController();
+  CoilActiveItemController? _own;
+  CoilActiveItemController get _active =>
+      widget.activeItem ?? (_own ??= CoilActiveItemController());
   late List<GlobalKey> _rowKeys = _keysFor(widget.options.length);
 
   static List<GlobalKey> _keysFor(int count) => [
@@ -132,9 +139,8 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
 
   @override
   void dispose() {
-    _active
-      ..removeListener(_onActive)
-      ..dispose();
+    _active.removeListener(_onActive);
+    _own?.dispose();
     super.dispose();
   }
 
@@ -253,6 +259,65 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
         ),
     ];
 
+    final list = Semantics(
+      role: SemanticsRole.menu,
+      child: ListenableBuilder(
+        listenable: _active,
+        builder: (context, child) {
+          return child!;
+        },
+        child: CoilHoverRegion(
+          activeItem: _active,
+          followFocus: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(metrics.popupInset),
+            // The layer scrolls with the rows, so the highlight, the
+            // selection and the ring stay on their rows.
+            child: ListenableBuilder(
+              listenable: _active,
+              builder: (context, rows) {
+                final ring = CoilHighlight(
+                  debugLabel: 'CoilSelect.ring',
+                  target: _active.keyboardDriven ? _active.index : null,
+                  fadeIn: false,
+                  motion: motion.quick,
+                  exitMotion: motion.fadeExit,
+                  exitTravelMotion: motion.quick,
+                  fade: motion.fade,
+                  inflate: 1 + theme.focusRingWidth,
+                  decoration: ShapeDecoration(
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        theme.shape.radii(metrics.tier).focusRing,
+                      ),
+                      side: BorderSide(
+                        color: colors.focusRing,
+                        width: theme.focusRingWidth,
+                      ),
+                    ),
+                  ),
+                );
+                return CoilHoverHighlight(
+                  color: style.highlight,
+                  radius: style.radius,
+                  background: [
+                    if (widget.multiple) blocks else selectedFill,
+                  ],
+                  foreground: [ring],
+                  child: rows!,
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rows,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (widget.activeItem != null) return list;
     return CoilTypeahead(
       labels: [for (final o in widget.options) o.label],
       current: _active.index,
@@ -290,64 +355,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
         child: Focus(
           autofocus: true,
           debugLabel: 'CoilSelect list',
-          child: Semantics(
-            role: SemanticsRole.menu,
-            child: ListenableBuilder(
-              listenable: _active,
-              builder: (context, child) {
-                return child!;
-              },
-              child: CoilHoverRegion(
-                activeItem: _active,
-                followFocus: false,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(metrics.popupInset),
-                  // The layer scrolls with the rows, so the highlight, the
-                  // selection and the ring stay on their rows.
-                  child: ListenableBuilder(
-                    listenable: _active,
-                    builder: (context, rows) {
-                      final ring = CoilHighlight(
-                        debugLabel: 'CoilSelect.ring',
-                        target: _active.keyboardDriven ? _active.index : null,
-                        fadeIn: false,
-                        motion: motion.quick,
-                        exitMotion: motion.fadeExit,
-                        exitTravelMotion: motion.quick,
-                        fade: motion.fade,
-                        inflate: 1 + theme.focusRingWidth,
-                        decoration: ShapeDecoration(
-                          shape: RoundedSuperellipseBorder(
-                            borderRadius: BorderRadius.circular(
-                              theme.shape.radii(metrics.tier).focusRing,
-                            ),
-                            side: BorderSide(
-                              color: colors.focusRing,
-                              width: theme.focusRingWidth,
-                            ),
-                          ),
-                        ),
-                      );
-                      return CoilHoverHighlight(
-                        color: style.highlight,
-                        radius: style.radius,
-                        background: [
-                          if (widget.multiple) blocks else selectedFill,
-                        ],
-                        foreground: [ring],
-                        child: rows!,
-                      );
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: rows,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          child: list,
         ),
       ),
     );

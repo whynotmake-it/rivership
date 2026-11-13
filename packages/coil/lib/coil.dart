@@ -13,6 +13,7 @@ export 'carousel_dots.dart';
 export 'chat_message.dart';
 export 'checkbox.dart';
 export 'checkbox_group.dart';
+export 'combobox.dart';
 export 'context_menu.dart';
 export 'dialog.dart';
 export 'dropdown.dart';

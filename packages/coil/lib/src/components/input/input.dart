@@ -57,6 +57,7 @@ class CoilInput extends StatefulWidget {
     this.autofillHints,
     this.onChanged,
     this.onSubmitted,
+    this.shortcuts = const {},
     this.size,
     this.statesController,
     this.motion,
@@ -92,6 +93,7 @@ class CoilInput extends StatefulWidget {
     this.inputFormatters,
     this.autofillHints,
     this.onChanged,
+    this.shortcuts = const {},
     this.size,
     this.statesController,
     this.motion,
@@ -173,6 +175,11 @@ class CoilInput extends StatefulWidget {
   /// Called when the keyboard's action button submits a single-line input.
   /// Never called for a Return that only commits an IME composition.
   final ValueChanged<String>? onSubmitted;
+
+  /// Keys mapped to intents for the field's owner, such as arrows that move
+  /// a list's active row. They are off while an IME composes, so Enter
+  /// commits the composition first.
+  final Map<ShortcutActivator, Intent> shortcuts;
 
   /// Pins the field to one size step. Null follows [CoilAdaptiveScope].
   final CoilSize? size;
@@ -402,6 +409,7 @@ class _CoilInputState extends State<CoilInput> {
               maxLines: widget.maxLines,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
+              shortcuts: widget.shortcuts,
               decorationBuilder: decorate,
             ),
           ),
