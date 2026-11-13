@@ -80,9 +80,11 @@ class SelectDemo extends StatefulWidget {
     this.onChanged,
     this.presentation,
     this.autofocus = false,
+    this.motion,
     super.key,
   });
 
+  final FluidMotionThemeData? motion;
   final String? initial;
   final ValueChanged<String>? onChanged;
   final FluidPresentation? presentation;
@@ -121,6 +123,7 @@ class SelectDemoState extends State<SelectDemo> {
                 options: fruits,
                 value: value,
                 presentation: widget.presentation,
+                motion: widget.motion,
                 sheetTitle: const Text('Fruit'),
                 onChanged: (next) {
                   setState(() => value = next);

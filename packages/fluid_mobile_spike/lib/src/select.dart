@@ -35,6 +35,7 @@ class FluidSelect<T> extends StatefulWidget {
     this.enabled = true,
     this.focusNode,
     this.autofocus = false,
+    this.motion,
     super.key,
   });
 
@@ -69,6 +70,11 @@ class FluidSelect<T> extends StatefulWidget {
   /// Whether the trigger takes focus when first built.
   final bool autofocus;
 
+  /// Motion tokens for this select only (trigger, list, popover or sheet).
+  /// Null uses the surrounding [FluidTheme]'s. Reduced motion still applies
+  /// on top.
+  final FluidMotionThemeData? motion;
+
   @override
   State<FluidSelect<T>> createState() => _FluidSelectState<T>();
 }
@@ -92,8 +98,14 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
 
   bool get _enabled => widget.enabled && widget.onChanged != null;
 
+  /// A context below this select's own [FluidTheme] (when [FluidSelect.motion]
+  /// overrides it), so motion lookups and the theme capture for the overlay
+  /// see the override.
+  BuildContext? _inner;
+
   Future<void> _show({required bool keyboard}) async {
     if (_open || !_enabled) return;
+    final context = _inner ?? this.context;
     final navigator = Navigator.of(context);
     final presentation = FluidAdaptiveScope.presentationOf(
       context,
@@ -192,7 +204,6 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
   @override
   Widget build(BuildContext context) {
     final colors = FluidTheme.of(context);
-    final metrics = FluidAdaptiveScope.metricsOf(context);
     final selected = widget.options
         .where((o) => o.value == widget.value)
         .firstOrNull;
@@ -204,6 +215,27 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
           )
         : (selected.child ?? Text(selected.label));
 
+    final override = widget.motion;
+    Widget scoped(Widget child) => override == null
+        ? child
+        : FluidTheme(colors: colors, motion: override, child: child);
+
+    return scoped(
+      Builder(
+        builder: (inner) {
+          _inner = inner;
+          return _buildTrigger(inner, label, selected);
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrigger(
+    BuildContext context,
+    Widget label,
+    FluidOption<T>? selected,
+  ) {
+    final metrics = FluidAdaptiveScope.metricsOf(context);
     return MotorInspectionScope(
       group: 'FluidSelect',
       child: Semantics(

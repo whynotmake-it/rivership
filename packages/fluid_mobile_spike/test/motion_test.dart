@@ -26,11 +26,12 @@ double _popoverOpacity(WidgetTester tester) => tester
 Future<TestGesture> _openPopover(
   WidgetTester tester, {
   FluidMotionThemeData motion = FluidMotionThemeData.standard,
+  FluidMotionThemeData? selectMotion,
 }) async {
   useScreen(tester, TestScreen.desktop);
   await tester.pumpWidget(
     testApp(
-      home: const SelectDemo(),
+      home: SelectDemo(motion: selectMotion),
       motion: motion,
       inputMode: FluidInputMode.pointer,
     ),
@@ -175,5 +176,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(top(), lessThan(midway));
     await mouse.removePointer();
+  });
+
+  group('runtime motion customization', () {
+    const instantFast = FluidMotionThemeData(fast: Motion.instant());
+
+    testWidgets('the motion argument on the select overrides the theme', (
+      tester,
+    ) async {
+      await _openPopover(tester, selectMotion: instantFast);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(_popoverOpacity(tester), 1);
+    });
+
+    testWidgets('a theme change applies to the next animation', (
+      tester,
+    ) async {
+      double hoverOpacity() => tester
+          .widget<Opacity>(
+            find
+                .descendant(
+                  of: find.byWidgetPredicate(
+                    (w) =>
+                        w is FluidFill &&
+                        (w.key! as ValueKey<String>).value.startsWith(
+                          'fill-hover',
+                        ),
+                  ),
+                  matching: find.byType(Opacity),
+                )
+                .first,
+          )
+          .opacity;
+
+      final mouse = await _openPopover(tester);
+      await tester.pumpAndSettle();
+      // Standard tokens: the hover fill fades in over a few frames.
+      await mouse.moveTo(tester.getCenter(find.text('Apple')));
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 8));
+      expect(hoverOpacity(), lessThan(1));
+      await mouse.moveTo(const Offset(400, 420)); // leave the list
+      await tester.pumpAndSettle();
+
+      // Retune while the popover stays open: same tree, new tokens.
+      await tester.pumpWidget(
+        testApp(
+          home: const SelectDemo(),
+          motion: instantFast,
+          inputMode: FluidInputMode.pointer,
+        ),
+      );
+      await mouse.moveTo(tester.getCenter(find.text('Cherry')));
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 8));
+      expect(find.byType(FluidOptionList<String>), findsOneWidget);
+      expect(hoverOpacity(), 1);
+      await mouse.removePointer();
+    });
   });
 }
