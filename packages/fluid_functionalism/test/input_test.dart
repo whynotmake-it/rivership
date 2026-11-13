@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/test_icons.dart';
 
 Widget _app(Widget child) => WidgetsApp(
   color: const Color(0xFF000000),
@@ -34,8 +35,8 @@ void main() {
           invalid: invalid,
           density: density,
           statesController: s.controller(),
-          leading: slots ? const FluidIcon(FluidIcons.search) : null,
-          trailing: slots ? const FluidIcon(FluidIcons.x) : null,
+          leading: slots ? const TestIcon(TestGlyph.search) : null,
+          trailing: slots ? const TestIcon(TestGlyph.x) : null,
         ),
       );
       const columns = [

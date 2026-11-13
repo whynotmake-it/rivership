@@ -16,9 +16,6 @@ export 'src/foundation/fluid_sizes.dart';
 export 'src/foundation/fluid_theme.dart';
 export 'src/foundation/fluid_typography.dart';
 
-// icons
-export 'src/icons/fluid_icon.dart';
-
 // primitives
 export 'src/primitives/fluid_focus_ring.dart';
 export 'src/primitives/fluid_highlight.dart';

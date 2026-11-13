@@ -5,20 +5,21 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/test_icons.dart';
 
 const _labels = ['Overview', 'Analytics', 'Reports', 'Settings'];
 const _icons = [
-  FluidIcons.home,
-  FluidIcons.search,
-  FluidIcons.heart,
-  FluidIcons.settings,
+  TestGlyph.home,
+  TestGlyph.search,
+  TestGlyph.heart,
+  TestGlyph.settings,
 ];
 
 List<FluidTab> _tabs({bool icons = false}) => [
   for (final (i, label) in _labels.indexed)
     FluidTab(
       label: Text(label),
-      icon: icons ? FluidIcon(_icons[i]) : null,
+      icon: icons ? TestIcon(_icons[i]) : null,
     ),
 ];
 
@@ -54,7 +55,10 @@ class _Menu extends StatelessWidget {
                         child: Row(
                           spacing: sizes.gap,
                           children: [
-                            FluidIcon(_icons[i], color: color),
+                            IconTheme(
+                              data: IconThemeData(color: color, size: 16),
+                              child: TestIcon(_icons[i]),
+                            ),
                             Text(
                               label,
                               style: FluidTypography.style(

@@ -8,8 +8,8 @@ published package.
 
 | Layer | Files |
 | --- | --- |
-| Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotionThemeData` on `FluidThemeData.motion` (Motor `Motion` tokens from `springs.ts`, runtime-customizable, per-instance `motion:` override, reduced motion applied by `FluidTheme.motionOf`), `FluidTypography` (bundled Inter variable, wght/opsz pairs) |
-| Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlight` (the gliding highlight), `FluidIcon` (small stroke icon set) |
+| Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotionThemeData` on `FluidThemeData.motion` (Motor `Motion` tokens from `springs.ts`, runtime-customizable, per-instance `motion:` override, reduced motion applied by `FluidTheme.motionOf`), `FluidTypographyThemeData` (bundled Inter variable, wght/opsz pairs, `capHeight` token) |
+| Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlight` (the gliding highlight), `FluidLabel` (cap-height text-box trim) |
 | Components | `FluidButton`, `FluidSwitch`, `FluidCheckbox`, `FluidTabs`, `FluidInput` |
 
 Components import only `src/foundation`, `src/primitives` and `src/icons`,
@@ -31,6 +31,15 @@ components keep them:
   last input was a non-modifier key). Taps and clicks hide it.
 - The **fluid highlight** follows hover-capable pointers, and focus only
   while the keyboard drives it. Selection (tabs) is separate and stays.
+
+## Icons
+
+The package bundles no icons. Slots take any widget and are styled through
+Flutter's `IconTheme` (size, color, and `weight`, which rises from
+`FluidIconWeight.rest` to `.emphasis` on hover, the web's 1.5 → 2 stroke).
+Glyphs a component draws itself are replaceable: `FluidCheckbox.glyphBuilder`,
+`FluidButton.loadingIndicator`. Tests use painted fixtures in
+`test/src/test_icons.dart`.
 
 ## Sizes
 

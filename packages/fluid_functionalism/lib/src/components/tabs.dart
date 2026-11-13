@@ -2,7 +2,6 @@ import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
-import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_highlight.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_hover.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
@@ -334,10 +333,12 @@ class _TabButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (tab.icon case final icon?)
-                        FluidIconTheme(
-                          data: FluidIconThemeData(
+                        IconTheme(
+                          data: IconThemeData(
                             size: sizes.iconSize,
-                            strokeWidth: active ? 2 : 1.5,
+                            weight: active
+                                ? FluidIconWeight.emphasis
+                                : FluidIconWeight.rest,
                             color: color,
                           ),
                           child: icon,

@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/test_icons.dart';
 
 void main() {
   group('FluidButton', () {
@@ -24,7 +25,7 @@ void main() {
             density: density,
             statesController: state.controller(),
             semanticLabel: 'Add',
-            icon: const FluidIcon(FluidIcons.plus),
+            icon: const TestIcon(TestGlyph.plus),
           );
         }
         return FluidButton(
@@ -33,8 +34,8 @@ void main() {
           density: density,
           loading: loading,
           statesController: state.controller(),
-          leading: icons ? const FluidIcon(FluidIcons.plus) : null,
-          trailing: icons ? const FluidIcon(FluidIcons.arrowRight) : null,
+          leading: icons ? const TestIcon(TestGlyph.plus) : null,
+          trailing: icons ? const TestIcon(TestGlyph.arrowRight) : null,
           child: Text(
             variant.name[0].toUpperCase() + variant.name.substring(1),
           ),
@@ -155,7 +156,7 @@ void main() {
             child: FluidButton.icon(
               onPressed: () {},
               semanticLabel: 'Add item',
-              icon: const FluidIcon(FluidIcons.plus),
+              icon: const TestIcon(TestGlyph.plus),
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter/widgets.dart' show IconTheme, IconThemeData;
 
 /// The three Inter weights the system uses.
 ///
@@ -145,4 +146,18 @@ abstract final class FluidTypography {
     weight: weight,
     color: color,
   );
+}
+
+/// The [IconThemeData.weight]s controls give their icon slots.
+///
+/// The web draws stroke icons at 1.5 and thickens them to 2 on hover. In
+/// Flutter, slot icons are any widget styled by [IconTheme]: variable icon
+/// fonts (Material Symbols, ...) read `weight` directly, and stroke icons
+/// can scale their stroke with it (`1.5 * weight / 400` reproduces the web).
+abstract final class FluidIconWeight {
+  /// At rest: a 1.5 stroke.
+  static const double rest = 400;
+
+  /// Hovered or active: a 2 stroke (400 × 2 / 1.5).
+  static const double emphasis = 1600 / 3;
 }

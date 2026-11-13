@@ -1,7 +1,8 @@
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
-import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
+import 'package:fluid_functionalism/src/foundation/fluid_typography.dart'
+    show FluidIconWeight;
 import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:flutter/rendering.dart';
@@ -248,20 +249,15 @@ class _FluidInputState extends State<FluidInput>
       ],
     );
 
-    Widget slot(Widget child) => FluidIconTheme(
-      data: FluidIconThemeData(
+    Widget slot(Widget child) => IconTheme(
+      data: IconThemeData(
         size: sizes.iconSize,
         color: colors.mutedForeground,
+        weight: FluidIconWeight.rest,
       ),
-      child: IconTheme(
-        data: IconThemeData(
-          size: sizes.iconSize,
-          color: colors.mutedForeground,
-        ),
-        child: DefaultTextStyle(
-          style: style.copyWith(color: colors.mutedForeground),
-          child: child,
-        ),
+      child: DefaultTextStyle(
+        style: style.copyWith(color: colors.mutedForeground),
+        child: child,
       ),
     );
 

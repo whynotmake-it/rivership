@@ -28,6 +28,7 @@ class FluidCheckbox extends StatefulWidget {
     this.statesController,
     this.motion,
     this.semanticLabel,
+    this.glyphBuilder,
   });
 
   /// Whether the box is checked.
@@ -62,9 +63,34 @@ class FluidCheckbox extends StatefulWidget {
   /// A label for assistive technology.
   final String? semanticLabel;
 
+  /// Replaces the built-in tick and dash. Gets the glyph, its draw-in
+  /// progress (animated with the theme's `drawIn` / `drawOut`), color and
+  /// size.
+  final FluidCheckboxGlyphBuilder? glyphBuilder;
+
   @override
   State<FluidCheckbox> createState() => _FluidCheckboxState();
 }
+
+/// The glyph a [FluidCheckbox] shows.
+enum FluidCheckboxGlyph {
+  /// Checked.
+  check,
+
+  /// Indeterminate.
+  dash,
+}
+
+/// Draws a checkbox glyph [progress] of the way in (0 hidden, 1 complete),
+/// at [size] in [color]. Replaces the built-in drawn tick.
+typedef FluidCheckboxGlyphBuilder =
+    Widget Function(
+      BuildContext context,
+      FluidCheckboxGlyph glyph,
+      double progress,
+      Color color,
+      double size,
+    );
 
 enum _Glyph { none, check, dash }
 
@@ -161,14 +187,28 @@ class _FluidCheckboxState extends State<FluidCheckbox> {
                     // A new glyph shape draws itself in from nothing.
                     from: _generation == 0 ? null : 0,
                     motion: on ? _motion.drawIn : _motion.drawOut,
-                    builder: (context, progress, _) => CustomPaint(
-                      size: Size.square(sizes.checkboxGlyphSize),
-                      painter: _GlyphPainter(
-                        glyph: _shown,
-                        progress: progress,
-                        color: colors.foreground,
-                      ),
-                    ),
+                    builder: (context, progress, _) {
+                      final builder = widget.glyphBuilder;
+                      if (builder != null && _shown != _Glyph.none) {
+                        return builder(
+                          context,
+                          _shown == _Glyph.dash
+                              ? FluidCheckboxGlyph.dash
+                              : FluidCheckboxGlyph.check,
+                          progress.clamp(0, 1),
+                          colors.foreground,
+                          sizes.checkboxGlyphSize,
+                        );
+                      }
+                      return CustomPaint(
+                        size: Size.square(sizes.checkboxGlyphSize),
+                        painter: _GlyphPainter(
+                          glyph: _shown,
+                          progress: progress,
+                          color: colors.foreground,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

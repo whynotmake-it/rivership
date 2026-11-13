@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/test_icons.dart';
 
 /// The four size sets, as columns.
 const _tiers = [
@@ -39,7 +40,7 @@ void main() {
         () => FluidButton(
           onPressed: () {},
           variant: FluidButtonVariant.secondary,
-          leading: const FluidIcon(FluidIcons.plus),
+          leading: const TestIcon(TestGlyph.plus),
           child: const Text('New file'),
         ),
       ),
@@ -49,7 +50,7 @@ void main() {
           onPressed: () {},
           variant: FluidButtonVariant.tertiary,
           semanticLabel: 'Search',
-          icon: const FluidIcon(FluidIcons.search),
+          icon: const TestIcon(TestGlyph.search),
         ),
       ),
       (

@@ -5,7 +5,8 @@ import 'package:fluid_functionalism/src/foundation/fluid_colors.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
-import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
+import 'package:fluid_functionalism/src/foundation/fluid_typography.dart'
+    show FluidIconWeight;
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
@@ -32,10 +33,13 @@ enum FluidButtonVariant {
 
 /// A button (`registry/radix/button.tsx`).
 ///
-/// [child] is the label; [leading] and [trailing] are icon slots that take
-/// any widget. They get a [FluidIconTheme] (and [IconTheme]) with the size
-/// for the current density and a stroke that thickens from 1.5 to 2 on
-/// hover, which [FluidIcon]s follow.
+/// [child] is the label, centered on its cap height ([FluidLabel]).
+/// [leading] and [trailing] are icon slots that take any widget, styled
+/// through [IconTheme]: the size for the current density, the label color,
+/// and a `weight` that rises from [FluidIconWeight.rest] to
+/// [FluidIconWeight.emphasis] on hover (the web's 1.5 → 2 stroke). The
+/// package bundles no icons. [loadingIndicator] replaces the built-in
+/// spinner.
 ///
 /// Pressing collapses the fill by exactly 1 px per side at any width (the
 /// web's shrinking box-shadow spread), rather than scaling.
@@ -56,6 +60,7 @@ class FluidButton extends StatefulWidget {
     this.statesController,
     this.motion,
     this.semanticLabel,
+    this.loadingIndicator,
   }) : icon = null;
 
   /// Creates a square, icon-only button. [semanticLabel] names it for
@@ -64,6 +69,7 @@ class FluidButton extends StatefulWidget {
     required this.onPressed,
     required Widget this.icon,
     required String this.semanticLabel,
+    this.loadingIndicator,
     super.key,
     this.variant = FluidButtonVariant.primary,
     this.density,
@@ -122,6 +128,11 @@ class FluidButton extends StatefulWidget {
   /// Overrides the label for assistive technology.
   final String? semanticLabel;
 
+  /// Replaces the built-in spinner shown while [loading]. It is laid out in
+  /// an icon-sized box and inherits the label color through [IconTheme] and
+  /// [DefaultTextStyle].
+  final Widget? loadingIndicator;
+
   @override
   State<FluidButton> createState() => _FluidButtonState();
 }
@@ -133,13 +144,13 @@ class _ButtonLook {
     required this.fill,
     required this.label,
     required this.spread,
-    required this.stroke,
+    required this.iconWeight,
   });
 
   final Color fill;
   final Color label;
   final double spread;
-  final double stroke;
+  final double iconWeight;
 }
 
 class _FluidButtonState extends State<FluidButton> {
@@ -151,7 +162,7 @@ class _FluidButtonState extends State<FluidButton> {
   Track<Color>? _fill;
   Track<Color>? _label;
   Track<double>? _spread;
-  Track<double>? _stroke;
+  Track<double>? _iconWeight;
 
   bool get _enabled => widget.onPressed != null && !widget.loading;
 
@@ -203,7 +214,7 @@ class _FluidButtonState extends State<FluidButton> {
       fill: fill,
       label: label,
       spread: pressed ? 0 : 1,
-      stroke: hovered ? 2 : 1.5,
+      iconWeight: hovered ? FluidIconWeight.emphasis : FluidIconWeight.rest,
     );
   }
 
@@ -231,7 +242,10 @@ class _FluidButtonState extends State<FluidButton> {
           final fill = _fill ??= Track(.colorRgb, initial: look.fill);
           final labelTrack = _label ??= Track(.colorRgb, initial: look.label);
           final spread = _spread ??= Track(.single, initial: look.spread);
-          final stroke = _stroke ??= Track(.single, initial: look.stroke);
+          final iconWeight = _iconWeight ??= Track(
+            .single,
+            initial: look.iconWeight,
+          );
           final pressing = states.contains(WidgetState.pressed);
           final radius = theme.shape.item;
           final disabled = widget.onPressed == null && !widget.loading;
@@ -251,15 +265,10 @@ class _FluidButtonState extends State<FluidButton> {
                       motion: pressing ? _motion.press : _motion.release,
                     ),
                   ]),
-                  stroke([.to(look.stroke, motion: _motion.color)]),
+                  iconWeight([.to(look.iconWeight, motion: _motion.color)]),
                 ],
                 builder: (context, value, _) {
                   final labelColor = value(labelTrack);
-                  final iconTheme = FluidIconThemeData(
-                    size: iconSize,
-                    strokeWidth: value(stroke),
-                    color: labelColor,
-                  );
                   return CustomPaint(
                     painter: _ButtonSurfacePainter(
                       fill: value(fill),
@@ -269,21 +278,22 @@ class _FluidButtonState extends State<FluidButton> {
                           ? theme.colors.border
                           : null,
                     ),
-                    child: FluidIconTheme(
-                      data: iconTheme,
-                      child: IconTheme(
-                        data: IconThemeData(size: iconSize, color: labelColor),
-                        child: DefaultTextStyle(
-                          style: theme.typography.style(
-                            sizes.body,
-                            color: labelColor,
-                          ),
-                          maxLines: 1,
-                          softWrap: false,
-                          child: iconOnly
-                              ? _iconContent(sizes)
-                              : _labelContent(sizes),
+                    child: IconTheme(
+                      data: IconThemeData(
+                        size: iconSize,
+                        color: labelColor,
+                        weight: value(iconWeight),
+                      ),
+                      child: DefaultTextStyle(
+                        style: theme.typography.style(
+                          sizes.body,
+                          color: labelColor,
                         ),
+                        maxLines: 1,
+                        softWrap: false,
+                        child: iconOnly
+                            ? _iconContent(sizes)
+                            : _labelContent(sizes),
                       ),
                     ),
                   );
@@ -296,10 +306,15 @@ class _FluidButtonState extends State<FluidButton> {
     );
   }
 
+  Widget _spinner(FluidSizes sizes) => SizedBox.square(
+    dimension: sizes.iconSize,
+    child: widget.loadingIndicator ?? _FluidSpinner(size: sizes.iconSize),
+  );
+
   Widget _iconContent(FluidSizes sizes) => SizedBox.square(
     dimension: sizes.controlHeight,
     child: Center(
-      child: widget.loading ? _FluidSpinner(size: sizes.iconSize) : widget.icon,
+      child: widget.loading ? _spinner(sizes) : widget.icon,
     ),
   );
 
@@ -321,7 +336,7 @@ class _FluidButtonState extends State<FluidButton> {
         alignment: Alignment.center,
         children: [
           Opacity(opacity: 0, child: content),
-          _FluidSpinner(size: sizes.iconSize),
+          _spinner(sizes),
         ],
       );
     }
