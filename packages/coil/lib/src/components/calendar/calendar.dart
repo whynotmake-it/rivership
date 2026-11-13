@@ -38,6 +38,10 @@ class CoilCalendarLabels {
   String monthTitle(DateTime month) =>
       '${months[month.month - 1]} ${month.year}';
 
+  /// A date as a picker shows it, like "November 14, 2026".
+  String date(DateTime day) =>
+      '${months[day.month - 1]} ${day.day}, ${day.year}';
+
   /// A day's name for screen readers, like "Saturday, November 14, 2026".
   String dayLabel(DateTime day) =>
       '${weekdays[day.weekday - 1]}, ${months[day.month - 1]} ${day.day}, '
