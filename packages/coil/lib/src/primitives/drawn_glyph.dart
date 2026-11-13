@@ -16,12 +16,23 @@ enum CoilGlyph {
 
   /// A circled exclamation mark: a field error.
   alert,
+
+  /// A chevron pointing to the end: right, or left in RTL.
+  chevronEnd,
+
+  /// A chevron pointing down.
+  chevronDown,
+
+  /// A chevron pointing up.
+  chevronUp,
 }
 
-/// Draws a [CoilGlyph] on the 24-unit grid with a 2-unit round stroke.
+/// Draws a [CoilGlyph] on the 24-unit grid with a round stroke.
 ///
-/// It sizes and colors itself like an `Icon`: from the ambient [IconTheme],
-/// scaled with text. [progress] draws the strokes in from 0 (nothing) to 1
+/// It sizes, colors and weighs itself like an `Icon`, from the ambient
+/// [IconTheme] and scaled with text: the stroke is 1.5 at
+/// [CoilIconWeight.rest], 2 at [CoilIconWeight.emphasis] or with no
+/// weight. [progress] draws the strokes in from 0 (nothing) to 1
 /// (complete), for a glyph that animates in.
 class CoilDrawnGlyph extends StatelessWidget {
   /// Creates a drawn glyph.
@@ -44,17 +55,30 @@ class CoilDrawnGlyph extends StatelessWidget {
         glyph,
         progress.clamp(0, 1),
         color ?? IconTheme.of(context).color ?? const Color(0xFF000000),
+        stroke:
+            1.5 *
+            (IconTheme.of(context).weight ?? CoilIconWeight.emphasis) /
+            CoilIconWeight.rest,
+        rtl: Directionality.maybeOf(context) == TextDirection.rtl,
       ),
     ),
   );
 }
 
 class _GlyphPainter extends CustomPainter {
-  _GlyphPainter(this.glyph, this.progress, this.color);
+  _GlyphPainter(
+    this.glyph,
+    this.progress,
+    this.color, {
+    required this.stroke,
+    required this.rtl,
+  });
 
   final CoilGlyph glyph;
   final double progress;
   final Color color;
+  final double stroke;
+  final bool rtl;
 
   ui.Path _path() => switch (glyph) {
     CoilGlyph.check =>
@@ -79,6 +103,26 @@ class _GlyphPainter extends CustomPainter {
         ..lineTo(12, 12)
         ..moveTo(12, 16)
         ..lineTo(12.01, 16),
+    CoilGlyph.chevronEnd =>
+      rtl
+          ? (ui.Path()
+              ..moveTo(15, 6)
+              ..lineTo(9, 12)
+              ..lineTo(15, 18))
+          : (ui.Path()
+              ..moveTo(9, 6)
+              ..lineTo(15, 12)
+              ..lineTo(9, 18)),
+    CoilGlyph.chevronDown =>
+      ui.Path()
+        ..moveTo(6, 9)
+        ..lineTo(12, 15)
+        ..lineTo(18, 9),
+    CoilGlyph.chevronUp =>
+      ui.Path()
+        ..moveTo(6, 15)
+        ..lineTo(12, 9)
+        ..lineTo(18, 15),
   };
 
   @override
@@ -100,7 +144,7 @@ class _GlyphPainter extends CustomPainter {
         Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
+          ..strokeWidth = stroke
           ..strokeCap = StrokeCap.round
           ..strokeJoin = StrokeJoin.round,
       )
@@ -109,5 +153,9 @@ class _GlyphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GlyphPainter old) =>
-      old.glyph != glyph || old.progress != progress || old.color != color;
+      old.glyph != glyph ||
+      old.progress != progress ||
+      old.color != color ||
+      old.stroke != stroke ||
+      old.rtl != rtl;
 }
