@@ -190,8 +190,10 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 
 - **Hairline:** 1 px `border` (`foreground` @ 12 %, 40 % in high contrast). The checkbox and radio use 1.5 px.
 - **Surface N pairs with shadow N** (`CoilColors.shadow(n)`):
-  - Light: a 1 px `shadowColor` ring plus stacked drops (1, 3, 6, 12, 24, 48 px; blur = offset; spread = −offset / 2) at black 6 %. Surfaces are white from level 3.
-  - Dark: an outer black ring from level 3 (12 % + 2 % per level), drops at black 18 %, plus an **inset ring** (`insetRing(n)`) in white at 2 % (levels 1–3), 4 % (4–5) or 6 % (6–8). Don't skip the inset ring; it's what separates dark surfaces.
+  - Light: a 1 px `shadowColor` ring plus stacked drops (1, 3, 6, 12, 24, 48, 96 px; spread = −offset / 2) at black 6 %. Surfaces are white from level 3.
+  - Dark: an outer black ring from level 3 (12 % + 2 % per level) and drops at black 18 %. Inside the shape, `insetRing(n)` draws a white ring at 2 % (levels 1–3), 4 % (4–5) or 6 % (6–8), and `topHighlight(n)` a 1 px white line along the top edge at 1 % (level 2), 2 % (3–4), 4 % (5–6) or 6 % (7–8). Don't skip them; they separate dark surfaces.
+  - **Blur:** the recipes use CSS blur. A CSS blur of `B` has sigma `B / 2`, so `shadow()` converts it for Flutter's `BoxShadow` (the 1 px drop becomes a hard edge).
+- **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level.
 - **Uses:** popover and sheet surface 3 / shadow 3; submenu 4 / 4; dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
 - **Scrim** behind sheets, dialogs and drawers: black 40 % (light) / 50 % (dark).
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.

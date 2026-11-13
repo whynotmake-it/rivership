@@ -55,5 +55,9 @@ Milestone M0, unreleased.
   screen-reader support. Range, step lists and click-to-edit come later.
 - `CoilTabs` scrolls when the tabs don't fit. Edges fade, and the selected
   or focused tab scrolls into view.
+- `CoilSurface`: a raised surface that reads the level it sits on, paints
+  the fill, shadow and edge for its own level, and passes that level down.
+  Shadow blur now matches the CSS recipes, and dark surfaces get the 1 px
+  top highlight.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

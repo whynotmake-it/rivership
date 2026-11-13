@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:coil/src/foundation/color_mix.dart';
@@ -287,39 +288,43 @@ class CoilColors with Diagnosticable {
   /// or two levels above what opened them.
   Color surface(int level) => surfaces[level.clamp(1, 8) - 1];
 
-  /// `--shadow-N`, as box shadows. The dark recipe's inset hairline is not
-  /// expressible as a [BoxShadow]; [insetRing] returns it as a border side to
-  /// paint inside the box.
+  /// `--shadow-N`, as box shadows. The dark recipe's inset ring and top
+  /// highlight can't be box shadows; [insetRing] and [topHighlight] return
+  /// them to paint inside the shape (see `CoilSurface`).
+  ///
+  /// Blur is converted from CSS: a CSS blur of `B` has a Gaussian sigma of
+  /// `B / 2`, while a [BoxShadow]'s is `0.57735 × blurRadius + 0.5`.
   List<BoxShadow> shadow(int level) {
     final n = level.clamp(1, 8);
+    BoxShadow drop(int i, Color color) => BoxShadow(
+      color: color,
+      offset: Offset(0, _drop(i)),
+      blurRadius: _blurRadius(_drop(i)),
+      spreadRadius: -_drop(i) / 2,
+    );
     if (brightness == Brightness.light) {
       return [
         BoxShadow(color: shadowColor, spreadRadius: 1),
-        for (var i = 1; i < n; i++)
-          BoxShadow(
-            color: shadowColor,
-            offset: Offset(0, _drop(i)),
-            blurRadius: _drop(i),
-            spreadRadius: -_drop(i) / 2,
-          ),
+        for (var i = 1; i < n; i++) drop(i, shadowColor),
       ];
     }
-    const drop = Color(0x2E000000); // --dm-drop, rgba(0,0,0,0.18)
+    const dropColor = Color(0x2E000000); // --dm-drop, rgba(0,0,0,0.18)
     return [
       if (n >= 3)
         BoxShadow(
           color: Color.fromRGBO(0, 0, 0, 0.12 + 0.02 * (n - 3)),
           spreadRadius: 1,
         ),
-      for (var i = 1; i < n; i++)
-        BoxShadow(
-          color: drop,
-          offset: Offset(0, _drop(i)),
-          blurRadius: _drop(i),
-          spreadRadius: -_drop(i) / 2,
-        ),
+      for (var i = 1; i < n; i++) drop(i, dropColor),
     ];
   }
+
+  /// The [BoxShadow.blurRadius] whose sigma equals that of a CSS blur of
+  /// [cssBlur]: `(B / 2 - 0.5) / 0.57735`, never below 0. The 1 px drop
+  /// (sigma 0.5) comes out as a hard edge, since a [BoxShadow] with no blur
+  /// radius has no sigma.
+  static double _blurRadius(double cssBlur) =>
+      math.max(0, (cssBlur / 2 - 0.5) / 0.57735);
 
   /// The inner hairline of `--shadow-N`, as the side of a shape border:
   /// light draws it outside (in [shadow]) and returns [BorderSide.none],
@@ -329,6 +334,15 @@ class CoilColors with Diagnosticable {
     final n = level.clamp(1, 8);
     final alpha = n <= 3 ? 0.02 : (n <= 5 ? 0.04 : 0.06);
     return BorderSide(color: Color.fromRGBO(255, 255, 255, alpha));
+  }
+
+  /// The dark recipe's `inset 0 1px 0 0` highlight along the top edge, or
+  /// null in light mode and on the page (level 1).
+  Color? topHighlight(int level) {
+    final n = level.clamp(1, 8);
+    if (brightness == Brightness.light || n == 1) return null;
+    final alpha = n == 2 ? 0.01 : (n <= 4 ? 0.02 : (n <= 6 ? 0.04 : 0.06));
+    return Color.fromRGBO(255, 255, 255, alpha);
   }
 
   static double _drop(int i) =>

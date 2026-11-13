@@ -102,6 +102,7 @@ Rules:
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
 | editable text | `CoilTextFieldCore` |
+| a raised surface (fill, shadow, edge) and its level scope | `CoilSurface` |
 | enter/exit of a popover | `CoilBlurFade` (via `CoilAdaptivePopup`) |
 | haptic feedback | `CoilHaptics.play(context, event)` |
 | cross-fades and size changes in place | `motor_widgets`' `MotionSwitcher`, `MotionSizeSwitcher`, `MotionSize`, with `CoilBlurFade` as the `transitionBuilder` |

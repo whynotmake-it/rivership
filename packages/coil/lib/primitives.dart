@@ -21,5 +21,6 @@ export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';
 export 'src/primitives/selection_blocks.dart';
 export 'src/primitives/sheet.dart';
+export 'src/primitives/surface.dart';
 export 'src/primitives/text_field_core.dart';
 export 'src/primitives/typeahead.dart';
