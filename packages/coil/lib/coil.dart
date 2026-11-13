@@ -14,6 +14,7 @@ export 'chat_message.dart';
 export 'checkbox.dart';
 export 'checkbox_group.dart';
 export 'dialog.dart';
+export 'dropdown.dart';
 export 'field.dart';
 export 'foundation.dart';
 export 'input.dart';

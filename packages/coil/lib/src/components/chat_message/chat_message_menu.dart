@@ -47,7 +47,7 @@ class ChatMessageMenu extends StatelessWidget {
         itemCount: actions.length,
       ),
       content: (context, popup) => CoilActionList(
-        actions: actions,
+        entries: actions,
         onClose: popup.close,
         metrics: metrics,
         surface: surface,

@@ -223,7 +223,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
           return MotorInspectionScope(
             group: 'CoilBreadcrumb',
             child: CoilActionList(
-              actions: [
+              entries: [
                 for (final crumb in widget.crumbs.sublist(
                   1,
                   1 + _handle.hidden,
