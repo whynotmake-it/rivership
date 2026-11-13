@@ -190,7 +190,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     widget.controller.detach();
     final open = _open;
     _open = null;
-    open?.close(.programmatic);
+    open?._ownerGone();
     super.dispose();
   }
 
@@ -285,6 +285,19 @@ class _Handle implements CoilPopupHandle {
     if (_done.isCompleted) return;
     _done.complete(reason);
     _onClosed(this);
+  }
+
+  /// The owner left the tree while open: resolve now and take the sheet's
+  /// route down once the tree is unlocked again.
+  void _ownerGone() {
+    if (_done.isCompleted) return;
+    _finish(.programmatic);
+    final route = _route;
+    if (route == null) return;
+    scheduleMicrotask(() {
+      if (!route.isActive) return;
+      route.navigator?.removeRoute(route, CoilPopupCloseReason.programmatic);
+    });
   }
 
   @override

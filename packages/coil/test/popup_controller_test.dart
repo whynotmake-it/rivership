@@ -23,6 +23,9 @@ class _HostState extends State<_Host> {
 
   void select(String next) => setState(() => value = next);
 
+  bool shown = true;
+  void remove() => setState(() => shown = false);
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(24),
@@ -30,14 +33,16 @@ class _HostState extends State<_Host> {
       alignment: Alignment.topLeft,
       child: SizedBox(
         width: 220,
-        child: CoilSelect<String>(
-          key: const ValueKey('select'),
-          options: fruits,
-          value: value,
-          presentation: widget.presentation,
-          controller: widget.controller,
-          onChanged: (v) => setState(() => value = v),
-        ),
+        child: !shown
+            ? null
+            : CoilSelect<String>(
+                key: const ValueKey('select'),
+                options: fruits,
+                value: value,
+                presentation: widget.presentation,
+                controller: widget.controller,
+                onChanged: (v) => setState(() => value = v),
+              ),
       ),
     ),
   );
@@ -172,5 +177,23 @@ void main() {
       isSemantics(isSelected: true),
     );
     semantics.dispose();
+  });
+
+  testWidgets('removing the owner while its sheet is open closes the sheet', (
+    tester,
+  ) async {
+    final controller = await _pump(
+      tester,
+      presentation: CoilPresentation.sheet,
+      tier: CoilTier.touch,
+    );
+    final closed = controller.open();
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsOneWidget);
+    tester.state<_HostState>(find.byType(_Host)).remove();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(await closed, CoilPopupCloseReason.programmatic);
+    expect(find.byType(CoilSheetPanel), findsNothing);
   });
 }
