@@ -104,9 +104,9 @@ final Map<String, WidgetBuilder> _stories = {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const CoilTextarea(placeholder: Text('Tell us more')),
+        const CoilInput.multiline(placeholder: Text('Tell us more')),
         const SizedBox(height: 8),
-        CoilTextarea(
+        CoilInput.multiline(
           minLines: 1,
           controller: TextEditingController(
             text: 'Two lines of text that wrap',
@@ -152,10 +152,12 @@ final Map<String, WidgetBuilder> _stories = {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CoilInputCopy(
-          value: 'sk-live-0123456789',
-          label: 'API key',
-          icon: TestIcon(TestGlyph.plus),
+        CoilField(
+          label: Text('API key'),
+          child: CoilInputCopy(
+            value: 'sk-live-0123456789',
+            icon: TestIcon(TestGlyph.plus),
+          ),
         ),
         CoilInputCopy(
           value: 'npm i coil',

@@ -127,10 +127,10 @@ void main() {
         );
       });
 
-      testWidgets('CoilTextarea is a text field', (tester) async {
+      testWidgets('CoilInput.multiline is a text field', (tester) async {
         await check(
           tester,
-          (_) => const SizedBox(width: 240, child: CoilTextarea()),
+          (_) => const SizedBox(width: 240, child: CoilInput.multiline()),
           CoilPattern.textField,
         );
       });

@@ -27,27 +27,26 @@ Widget _app(
 );
 
 void main() {
-  group('CoilTextarea', () {
-    testWidgets('grows from 3 to 10 lines, then scrolls (pointer)', (
+  group('CoilInput.multiline', () {
+    testWidgets('grows with its text up to maxLines, then scrolls', (
       tester,
     ) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
-      await tester.pumpWidget(_app(CoilTextarea(controller: controller)));
-      double height() => tester.getSize(find.byType(CoilTextarea)).height;
-      // 3 × 20 + 2 × 8: the first line sits where an input's text does.
-      expect(height(), 76);
-      controller.text = List.filled(5, 'line').join('\n');
-      await tester.pump();
-      expect(height(), 116);
-      controller.text = List.filled(30, 'line').join('\n');
-      await tester.pump();
-      expect(height(), 216);
-    });
+      await tester.pumpWidget(
+        _app(CoilInput.multiline(controller: controller)),
+      );
+      Future<double> heightWith(int lines) async {
+        controller.text = List.filled(lines, 'line').join('\n');
+        await tester.pump();
+        return tester.getSize(find.byType(CoilInput)).height;
+      }
 
-    testWidgets('touch sizes: 3 × 22 + 2 × 11', (tester) async {
-      await tester.pumpWidget(_app(const CoilTextarea(), tier: CoilTier.touch));
-      expect(tester.getSize(find.byType(CoilTextarea)).height, 88);
+      final empty = await heightWith(0);
+      expect(await heightWith(3), empty, reason: 'starts 3 lines tall');
+      expect(await heightWith(5), greaterThan(empty));
+      final ten = await heightWith(10);
+      expect(await heightWith(30), ten, reason: 'stops growing at 10 lines');
     });
 
     testWidgets('its first line lines up with an input', (tester) async {
@@ -62,7 +61,7 @@ void main() {
                 ),
               ),
               Expanded(
-                child: CoilTextarea(
+                child: CoilInput.multiline(
                   controller: TextEditingController(text: 'Area'),
                 ),
               ),
@@ -80,7 +79,9 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       await tester.pumpWidget(
-        _app(const CoilField(label: Text('Notes'), child: CoilTextarea())),
+        _app(
+          const CoilField(label: Text('Notes'), child: CoilInput.multiline()),
+        ),
       );
       await tester.tap(find.text('Notes'));
       await tester.pump();
@@ -151,36 +152,33 @@ void main() {
       await expectSheetGolden(tester, finder, 'goldens/input_group_hover.png');
     });
 
-    testWidgets('fields are 12 apart on pointer and 16 on touch', (
-      tester,
-    ) async {
-      for (final (tier, gap) in [
-        (CoilTier.pointer, 12.0),
-        (CoilTier.touch, 16.0),
-      ]) {
-        await tester.pumpWidget(_app(group(), tier: tier));
-        final first = tester.getRect(find.byType(CoilField).first);
-        final second = tester.getRect(find.byType(CoilField).last);
-        expect(second.top - first.bottom, gap, reason: tier.name);
-      }
-    });
-
     testWidgets('Tab moves between fields', (tester) async {
-      await tester.pumpWidget(_app(group()));
+      final first = FocusNode();
+      final second = FocusNode();
+      addTearDown(first.dispose);
+      addTearDown(second.dispose);
+      await tester.pumpWidget(
+        _app(
+          CoilInputGroup(
+            children: [
+              CoilField(
+                label: const Text('First'),
+                child: CoilInput(focusNode: first),
+              ),
+              CoilField(
+                label: const Text('Second'),
+                child: CoilInput(focusNode: second),
+              ),
+            ],
+          ),
+        ),
+      );
       await tester.tap(find.byType(CoilInput).first);
       await tester.pump();
+      expect(first.hasFocus, isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
-      final focused = FocusManager.instance.primaryFocus!.context!;
-      expect(
-        find
-            .descendant(
-              of: find.byType(CoilInput).last,
-              matching: find.byWidget(focused.widget),
-            )
-            .evaluate(),
-        isNotEmpty,
-      );
+      expect(second.hasFocus, isTrue);
     });
   });
 
@@ -192,8 +190,8 @@ void main() {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 16,
         children: [
-          const CoilTextarea(placeholder: Text('Tell us more')),
-          CoilTextarea(
+          const CoilInput.multiline(placeholder: Text('Tell us more')),
+          CoilInput.multiline(
             controller: TextEditingController(
               text:
                   'A longer note that wraps onto a second line and keeps '

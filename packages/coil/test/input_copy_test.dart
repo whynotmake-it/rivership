@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,14 +31,19 @@ Widget _app(
 void main() {
   late List<String> clipboard;
   late List<String> announcements;
+  late List<String> haptics;
   var failClipboard = false;
 
   setUp(() {
     clipboard = [];
     announcements = [];
+    haptics = [];
     failClipboard = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       ..setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments as String);
+        }
         if (call.method == 'Clipboard.setData') {
           if (failClipboard) {
             throw PlatformException(code: 'denied');
@@ -75,7 +81,7 @@ void main() {
       _app(
         CoilInputCopy(
           value: 'sk-1234',
-          label: 'API key',
+          semanticLabel: 'Copy API key',
           icon: const TestIcon(TestGlyph.plus),
           variant: CoilInputCopyVariant.button,
           onCopied: () => copied++,
@@ -103,38 +109,38 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('the icon variant swaps to a check, labelled "Copied"', (
+  testWidgets('in a field: the label is read with it and a label tap copies', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(
       _app(
-        const CoilInputCopy(
-          value: 'invite.example/abc',
-          label: 'Invite link',
-          icon: TestIcon(TestGlyph.plus),
+        const CoilField(
+          label: Text('Invite link'),
+          child: CoilInputCopy(
+            value: 'invite.example/abc',
+            icon: TestIcon(TestGlyph.plus),
+          ),
         ),
       ),
     );
     final row = find.byType(CoilInteraction);
-    expect(
-      tester.getSemantics(row),
-      isSemantics(
-        label: 'Copy Invite link',
-        value: 'invite.example/abc',
-        isButton: true,
-        hasTapAction: true,
-        hasEnabledState: true,
-        isEnabled: true,
-        isFocusable: true,
-      ),
-    );
+    final node = tester.getSemantics(row).getSemanticsData();
+    expect(node.label, contains('Invite link'));
+    expect(node.label, contains('Copy'));
+    expect(node.value, 'invite.example/abc');
+    expect(node.flagsCollection.isButton, isTrue);
     expect(find.byType(TestIcon), findsOneWidget);
-    await tester.tap(row);
+
+    await tester.tap(find.text('Invite link'));
     await tester.pumpAndSettle();
     expect(clipboard, ['invite.example/abc']);
+    // The icon became the check.
     expect(find.byType(TestIcon), findsNothing);
-    expect(tester.getSemantics(row).label, 'Copied');
+    expect(
+      tester.getSemantics(row).getSemanticsData().label,
+      contains('Copied'),
+    );
     semantics.dispose();
   });
 
@@ -186,7 +192,7 @@ void main() {
     expect(clipboard, isEmpty);
   });
 
-  testWidgets('reduced motion makes the swap instant; color still fades', (
+  testWidgets('reduced motion makes the swap instant', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -238,6 +244,77 @@ void main() {
     );
   });
 
+  testWidgets(
+    'a copy plays a selection click on phones and nothing on desktop',
+    (tester) async {
+      await tester.pumpWidget(_app(const CoilInputCopy(value: 'abc')));
+      await tester.tap(find.byType(CoilInputCopy));
+      await tester.pumpAndSettle();
+      final phone = {
+        TargetPlatform.iOS,
+        TargetPlatform.android,
+      }.contains(debugDefaultTargetPlatformOverride);
+      expect(
+        haptics,
+        phone ? ['HapticFeedbackType.selectionClick'] : isEmpty,
+      );
+      await tester.pump(CoilInputCopy.resetDelay);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.android,
+      TargetPlatform.macOS,
+    }),
+  );
+
+  testWidgets('a theme motion change applies to the next swap', (
+    tester,
+  ) async {
+    final slow = CoilThemeData.light.motion.copyWith(
+      quickExit: const CupertinoMotion(duration: Duration(seconds: 1)),
+    );
+    final theme = ValueNotifier(CoilThemeData.light);
+    addTearDown(theme.dispose);
+    await tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        builder: (context, _) => withOverlay(
+          ValueListenableBuilder(
+            valueListenable: theme,
+            builder: (context, data, _) => CoilTheme(
+              data: data,
+              child: const Center(
+                child: SizedBox(
+                  width: 300,
+                  child: CoilInputCopy(
+                    value: 'abc',
+                    icon: TestIcon(TestGlyph.plus),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Future<bool> iconAfter300ms() async {
+      await tester.tap(find.byType(CoilInputCopy));
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 15));
+      }
+      final shown = find.byType(TestIcon).evaluate().isNotEmpty;
+      await tester.pump(CoilInputCopy.resetDelay);
+      await tester.pumpAndSettle();
+      return shown;
+    }
+
+    expect(await iconAfter300ms(), isFalse);
+    theme.value = CoilThemeData.light.copyWith(motion: slow);
+    await tester.pump();
+    expect(await iconAfter300ms(), isTrue);
+  });
+
   testWidgets('input copy sheet', (tester) async {
     Widget rows(BuildContext context) => const SizedBox(
       width: 300,
@@ -246,10 +323,12 @@ void main() {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 12,
         children: [
-          CoilInputCopy(
-            value: 'sk-live-0123456789abcdef0123456789',
-            label: 'API key',
-            icon: TestIcon(TestGlyph.plus),
+          CoilField(
+            label: Text('API key'),
+            child: CoilInputCopy(
+              value: 'sk-live-0123456789abcdef0123456789',
+              icon: TestIcon(TestGlyph.plus),
+            ),
           ),
           CoilInputCopy(
             value: 'https://coil.dev/invite/7f3a',
@@ -258,7 +337,6 @@ void main() {
           ),
           CoilInputCopy(
             value: 'npm i coil',
-            label: 'Install',
             align: CoilInputCopyAlign.start,
             icon: TestIcon(TestGlyph.plus),
           ),

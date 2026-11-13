@@ -3,14 +3,13 @@ import 'dart:math' as math;
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Overrides for how a `CoilInput` or `CoilTextarea` looks (they share one
-/// chrome). Unset fields come from
-/// [CoilInputStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a `CoilInput` looks, single-line or multi-line. Unset
+/// fields come from [CoilInputStyle.fallback]. Set a style app-wide or for a
+/// subtree with `CoilThemeData.withComponentStyle`, or per instance with
+/// `style:`.
 ///
-/// [fill] and [border] are resolved with [WidgetState.hovered],
-/// [WidgetState.focused] and [WidgetState.error] (`invalid`).
+/// [fill] and [border] resolve [WidgetState.hovered], [WidgetState.focused]
+/// and [WidgetState.error].
 class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// Creates a style.
   const CoilInputStyle({
@@ -18,19 +17,18 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     this.border,
     this.textStyle,
     this.placeholder,
+    this.cursorColor,
+    this.cursorWidth,
+    this.selectionColor,
     this.radius,
+    this.multilineRadius,
     this.minHeight,
   });
 
-  /// The defaults from the theme's tokens. A [multiline] field (textarea)
-  /// caps its radius at the `rounded` container radius, so a `pill` shape
-  /// doesn't make a capsule.
-  factory CoilInputStyle.fallback(
-    CoilThemeData theme,
-    CoilMetrics metrics, {
-    bool multiline = false,
-  }) {
+  /// The defaults from the theme's tokens.
+  factory CoilInputStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
+    final radii = theme.shape.radii(metrics.tier);
     return CoilInputStyle(
       fill: WidgetStateProperty.resolveWith(
         (s) =>
@@ -47,12 +45,15 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
       ),
       textStyle: theme.typography.style(metrics.field, color: c.foreground),
       placeholder: c.mutedForeground,
-      radius: multiline
-          ? math.min(
-              theme.shape.radii(metrics.tier).item,
-              CoilShape.rounded.radii(metrics.tier).container,
-            )
-          : theme.shape.radii(metrics.tier).item,
+      cursorColor: c.foreground,
+      cursorWidth: 1,
+      selectionColor: c.brand.withValues(alpha: 0.3),
+      radius: radii.item,
+      // A tall box at a pill radius would be a capsule.
+      multilineRadius: math.min(
+        radii.item,
+        CoilShape.rounded.radii(metrics.tier).container,
+      ),
       minHeight: metrics.controlHeight,
     );
   }
@@ -69,10 +70,22 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// The placeholder and slot color.
   final Color? placeholder;
 
-  /// The corner radius.
+  /// The caret color.
+  final Color? cursorColor;
+
+  /// The caret width.
+  final double? cursorWidth;
+
+  /// The text selection highlight.
+  final Color? selectionColor;
+
+  /// The corner radius of a single-line field.
   final double? radius;
 
-  /// The minimum height (the field grows with text).
+  /// The corner radius of a multi-line field.
+  final double? multilineRadius;
+
+  /// The minimum height. The field grows with its text.
   final double? minHeight;
 
   @override
@@ -83,7 +96,11 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
           border: other.border ?? border,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           placeholder: other.placeholder ?? placeholder,
+          cursorColor: other.cursorColor ?? cursorColor,
+          cursorWidth: other.cursorWidth ?? cursorWidth,
+          selectionColor: other.selectionColor ?? selectionColor,
           radius: other.radius ?? radius,
+          multilineRadius: other.multilineRadius ?? multilineRadius,
           minHeight: other.minHeight ?? minHeight,
         );
 
@@ -93,7 +110,11 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     border,
     textStyle,
     placeholder,
+    cursorColor,
+    cursorWidth,
+    selectionColor,
     radius,
+    multilineRadius,
     minHeight,
   ];
 }

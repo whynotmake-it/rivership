@@ -33,9 +33,9 @@ typedef CoilTextFieldDecorationBuilder =
 /// The one text-editing primitive in coil: an [EditableText] with the
 /// platform's gestures, selection handles, magnifier and context menu.
 ///
-/// Components (`CoilInput`, and later the textarea, combobox and search
-/// fields) draw their look around it with [decorationBuilder] and never
-/// build an [EditableText] themselves.
+/// Components (`CoilInput`, and later the combobox and search fields) draw
+/// their look around it with [decorationBuilder] and never build an
+/// [EditableText] themselves.
 ///
 /// Platform behavior, chosen like Flutter's `TextField`:
 ///
@@ -48,39 +48,27 @@ typedef CoilTextFieldDecorationBuilder =
 /// * Context menu, native first: the iOS system edit menu
 ///   ([SystemContextMenu]) where the field supports it, the browser's own
 ///   menu on web (while [BrowserContextMenu.enabled]), and the platform's
-///   Flutter-drawn toolbar otherwise. The toolbar works under a plain
-///   [WidgetsApp]: English labels are supplied around it when the app has
-///   not configured Material or Cupertino localizations.
+///   Flutter-drawn toolbar otherwise. Under a plain [WidgetsApp] without
+///   Material or Cupertino localizations, the toolbar's labels are English.
 ///
-/// ## Composing-aware shortcuts
+/// ## Shortcuts
 ///
-/// [shortcuts] map keys to intents for the field's owner (Enter to commit
-/// a combobox option, arrows to move its active item). Each intent is
-/// handled by the action of its type in [actions], or else by the nearest
-/// ancestor [Actions] above this widget. While an IME composition is in
-/// progress (`controller.value.composing.isValid`), every one of these
-/// actions reports itself disabled ([Action.isEnabled]), so [Shortcuts]
-/// leaves the key event unhandled and it reaches the IME: Enter commits
-/// the composition and arrows move within the candidate list, instead of
-/// triggering the shortcut.
+/// [shortcuts] map keys to intents for the field's owner, such as Enter to
+/// pick a combobox option or arrows to move its active item. Each intent
+/// goes to its action in [actions], or else to the nearest ancestor
+/// [Actions]. During an IME composition these shortcuts are off; see below.
 ///
-/// [onSubmitted] is only ever called by the platform's text input action
-/// (the IME's Done/Go/Enter), never by a hardware key event in the
-/// framework, so it can't fire for an Enter that the IME consumed.
+/// ## Enter and IME composition
 ///
-/// ## Enter, single- and multi-line
-///
-/// * Single-line ([maxLines] 1): Return is the text input action
+/// * Single-line ([maxLines] 1): Return is the keyboard's action
 ///   ([textInputAction], `done` by default) and calls [onSubmitted].
-/// * Multi-line: Return inserts a newline through the IME
-///   ([TextInputAction.newline]); [onSubmitted] isn't called. A composer
-///   that sends on Enter maps Enter in [shortcuts] (and Shift+Enter to
-///   nothing), which stays IME-safe: while composing, the shortcut is
-///   disabled and the IME commits instead.
-///
-/// In both, an Enter that commits an IME composition neither submits nor
-/// inserts a newline: the platform delivers it to the IME, which only
-/// commits the composing text.
+/// * Multi-line: Return inserts a newline. [onSubmitted] isn't called. A
+///   composer that sends on Enter maps Enter in [shortcuts].
+/// * While an IME composition is in progress, every shortcut reports
+///   itself disabled, so Enter and the arrows reach the IME: Enter commits
+///   the composition and nothing else, and arrows move in the candidate
+///   list. [onSubmitted] only ever comes from the platform's text input
+///   action, so it can't fire for an Enter the IME consumed.
 class CoilTextFieldCore extends StatefulWidget {
   /// Creates a text field core.
   const CoilTextFieldCore({

@@ -125,7 +125,7 @@ void main() {
             ),
             const SizedBox(
               width: 200,
-              child: CoilTextarea(style: CoilInputStyle(radius: 2)),
+              child: CoilInput.multiline(style: CoilInputStyle(radius: 2)),
             ),
             const SizedBox(
               width: 200,

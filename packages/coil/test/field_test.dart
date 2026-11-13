@@ -181,27 +181,56 @@ void main() {
       expect(labelWide.center.dy, closeTo(inputWide.center.dy, 0.5));
     });
 
-    testWidgets('spacing follows the tier', (tester) async {
-      for (final (tier, labelGap, messageGap) in [
-        (CoilTier.pointer, 6.0, 4.0),
-        (CoilTier.touch, 6.0, 6.0),
-      ]) {
-        await tester.pumpWidget(
-          _app(
-            const CoilField(
-              label: Text('Name'),
-              description: Text('As on your ID.'),
-              child: CoilInput(),
-            ),
-            tier: tier,
-          ),
+    testWidgets('an error gives the input its invalid look', (tester) async {
+      // The input in a field with an error looks exactly like an input
+      // marked invalid by hand.
+      Future<List<int>> render(Widget input) async {
+        await tester.pumpWidget(_app(RepaintBoundary(child: input)));
+        await tester.pumpAndSettle();
+        final box = tester.renderObject<RenderRepaintBoundary>(
+          find
+              .ancestor(
+                of: find.byType(CoilInput),
+                matching: find.byType(RepaintBoundary),
+              )
+              .first,
         );
-        final label = tester.getRect(find.text('Name'));
-        final input = tester.getRect(find.byType(CoilInput));
-        final description = tester.getRect(find.text('As on your ID.'));
-        expect(input.top - label.bottom, labelGap, reason: tier.name);
-        expect(description.top - input.bottom, messageGap, reason: tier.name);
+        final bytes = await tester.runAsync(() async {
+          final image = await box.toImage();
+          final data = await image.toByteData();
+          image.dispose();
+          return data!.buffer.asUint8List();
+        });
+        return bytes!;
       }
+
+      final byField = await render(
+        const CoilField(
+          error: Text('Enter an email address'),
+          child: RepaintBoundary(child: CoilInput()),
+        ),
+      );
+      final byHand = await render(const CoilInput(invalid: true));
+      final valid = await render(const CoilInput());
+      expect(byField, byHand);
+      expect(byField, isNot(valid));
+    });
+
+    testWidgets('the label reaches a control that replaced the first one', (
+      tester,
+    ) async {
+      final focus = FocusNode();
+      addTearDown(focus.dispose);
+      Widget field(Widget control) =>
+          _FieldHost(control: control, key: const ValueKey('host'));
+      await tester.pumpWidget(_app(field(const CoilInput(key: ValueKey(1)))));
+      tester
+          .state<_FieldHostState>(find.byType(_FieldHost))
+          .swap(CoilInput(key: const ValueKey(2), focusNode: focus));
+      await tester.pump();
+      await tester.tap(find.text('Email'));
+      await tester.pump();
+      expect(focus.hasFocus, isTrue);
     });
   });
 
@@ -252,4 +281,24 @@ void main() {
     );
     await expectSheetGolden(tester, finder, 'goldens/field.png');
   });
+}
+
+/// Keeps one field mounted while its control is swapped.
+class _FieldHost extends StatefulWidget {
+  const _FieldHost({required this.control, super.key});
+
+  final Widget control;
+
+  @override
+  State<_FieldHost> createState() => _FieldHostState();
+}
+
+class _FieldHostState extends State<_FieldHost> {
+  late Widget _control = widget.control;
+
+  void swap(Widget control) => setState(() => _control = control);
+
+  @override
+  Widget build(BuildContext context) =>
+      CoilField(label: const Text('Email'), child: _control);
 }

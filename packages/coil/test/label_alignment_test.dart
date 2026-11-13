@@ -90,7 +90,7 @@ void main() {
     ),
     'textarea/one-line': (ink) => SizedBox(
       width: 200,
-      child: CoilTextarea(
+      child: CoilInput.multiline(
         minLines: 1,
         controller: TextEditingController(text: ink ? 'HEH' : ''),
       ),

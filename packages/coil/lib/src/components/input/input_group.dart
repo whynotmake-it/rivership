@@ -1,6 +1,6 @@
+import 'package:coil/field.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
-import 'package:coil/src/components/input/text_field_chrome.dart';
 import 'package:flutter/widgets.dart';
 
 /// A stack of labeled fields that share one hover.
@@ -34,7 +34,7 @@ class CoilInputGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = CoilTheme.metricsOf(context, size: size);
+    final gap = CoilFieldStyle.resolve(context, size: size).fieldGap!;
     Widget group = CoilHoverRegion(
       nearest: true,
       highlight: false,
@@ -43,7 +43,7 @@ class CoilInputGroup extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: metrics.tier == CoilTier.touch ? 16 : 12,
+        spacing: gap,
         children: [
           for (final (index, child) in children.indexed)
             CoilHoverItem(
@@ -58,4 +58,21 @@ class CoilInputGroup extends StatelessWidget {
     }
     return group;
   }
+}
+
+/// Marks one field of a [CoilInputGroup], so its input takes hover from the
+/// group (the field nearest the pointer) instead of from its own box.
+class InputGroupSlot extends InheritedWidget {
+  /// Creates a slot for the group item at [index].
+  const InputGroupSlot({required this.index, required super.child, super.key});
+
+  /// The field's index in the group's hover region.
+  final int index;
+
+  /// The slot above [context], if the field is in an input group.
+  static InputGroupSlot? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<InputGroupSlot>();
+
+  @override
+  bool updateShouldNotify(InputGroupSlot oldWidget) => oldWidget.index != index;
 }

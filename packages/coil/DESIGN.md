@@ -305,6 +305,7 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 | Pick in a sheet | `selectionClick` | none | none |
 | Long-press menu opens | `mediumImpact` | `Feedback.forLongPress` | — |
 | Sheet snaps to a detent | `lightImpact` | none | — |
+| Copy succeeds (InputCopy) | `selectionClick` | `selectionClick` | none |
 
 ## 9. Adaptivity
 
@@ -548,7 +549,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Textarea
 
-- **Same chrome as Input** (and the same `CoilInputStyle`). It grows from 3 lines to 10, then scrolls. Leading and trailing slots sit on the first line.
+- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Leading and trailing slots sit on the first line.
 - **Radius:** the item radius, capped at the `rounded` container radius (12 / 16), so a `pill` shape doesn't make a capsule.
 - **Sizes:** min 3 lines and max 10, each plus the vertical pad. The first line aligns with Input text.
 - **Motion:** growth is instant; colors on `fade`.
@@ -577,7 +578,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
 - **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.
-- **Semantics:** label, control, description and error merge into the control's one node (`MergeSemantics`), so they're announced with the control's role and value. Flutter has no `aria-describedby`/hint-from-widget, so the description and error join the node's label after the label text rather than its hint. The node carries `isRequired` and `validationResult: invalid`, and is a live region while an error shows (the new error is announced). One control per Field; a group of controls goes in a FieldSet (a container with a header legend). A tap on the label runs the control's label action (`CoilFieldScope`/`CoilFieldControl`): text fields focus, toggles toggle.
+- **Semantics:** one node per field. Label, description and error join the control's label, in that order, so they're read with its role and value. The node carries `isRequired` and `validationResult`, and is a live region while an error shows.
+- **Label tap:** runs the control's label action (`CoilFieldControl`): text fields focus, toggles toggle.
+- **One control per Field.** A group of controls goes in a FieldSet, a container with a header legend.
 - **Invalid:** the label turns `destructive`, and the control gets its invalid look.
 
 #### CheckboxGroup (built)
@@ -655,7 +658,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputCopy
 
-- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. An optional label above.
+- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. Label it with a Field: a tap on the label copies.
 - **Sizes:** row = `controlHeight`, padding `controlPaddingX`.
 - **States:**
   - idle;
@@ -663,10 +666,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s, then idle.
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap with the blur-fade on `quick` / `quickExit` (scale 0.8); the exit is the tighter spring, so the old glyph is mostly gone before the new one lands (`MotionSwitcher` has no sequential mode, so they overlap briefly); check and × draw on `fade`.
+- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
 - **Value font:** coil bundles no monospace font; the value is Inter with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
-- **Label** aligns with the row's content (`controlPaddingX` in).
-- **Semantics:** button labeled "Copy {label}", announces "Copied" or "Copy failed".
+- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed".
 - **Keyboard:** Enter or Space copies.
 
 ### 14.3 Menus and overlays

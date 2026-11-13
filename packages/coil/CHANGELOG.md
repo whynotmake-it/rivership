@@ -14,5 +14,10 @@ Milestone M0, unreleased.
 - Components on those layers: `CoilButton`, `CoilCheckbox`, `CoilSwitch`,
   `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`,
   `CoilSelect`, `CoilMultiSelect`.
+- Text inputs: `CoilInput.multiline` (3 to 10 lines, then scrolls),
+  `CoilInputGroup` (fields share one hover), `CoilInputCopy` (copy with
+  inline "Copied" on every platform), and `CoilField` with `CoilFieldSet`,
+  `CoilFieldGroup` and `CoilFieldSeparator` (label, description, error and
+  required marker, read with the control by screen readers).
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

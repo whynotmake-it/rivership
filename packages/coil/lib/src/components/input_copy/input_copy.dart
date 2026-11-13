@@ -2,7 +2,6 @@
 // ignore_for_file: experimental_member_use
 
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -14,30 +13,72 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
+/// The animated parts of a [CoilInputCopy], as Motor tracks. Use them as
+/// keys of [CoilInputCopy.motions] or [CoilThemeData.trackMotions].
+final class CoilInputCopyTrack<T extends Object> extends Track<T> {
+  CoilInputCopyTrack._(super.converter, {required String super.debugLabel});
+
+  /// The row's press fill. Default motion: `fade`.
+  static final fill = CoilInputCopyTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilInputCopy.fill',
+  );
+
+  /// The highlight behind the value. Default motion: `fade`.
+  static final mark = CoilInputCopyTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilInputCopy.mark',
+  );
+
+  /// The action's icon and text color. Default motion: `fade`.
+  static final action = CoilInputCopyTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilInputCopy.action',
+  );
+
+  /// The action icon's weight. Default motion: `fade`.
+  static final weight = CoilInputCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilInputCopy.weight',
+  );
+
+  /// The swap between the copy icon and the result. Default motion: `quick`
+  /// in, `quickExit` out; an override applies to both.
+  static final swap = CoilInputCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilInputCopy.swap',
+  );
+
+  /// The check or × drawing itself in. Default motion: `fade`.
+  static final draw = CoilInputCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilInputCopy.draw',
+  );
+}
+
 /// How a [CoilInputCopy] shows its copy action.
 enum CoilInputCopyVariant {
-  /// The copy icon alone.
+  /// The icon alone.
   icon,
 
-  /// The copy icon with a "Copy" label.
+  /// The icon with a "Copy" label.
   button,
 }
 
 /// Which side of the value a [CoilInputCopy]'s action sits on.
 enum CoilInputCopyAlign {
-  /// After the value (the trailing side).
+  /// After the value.
   end,
 
-  /// Before the value (the leading side).
+  /// Before the value.
   start,
 }
 
-enum _Status { idle, copied, failed }
-
-/// The texts a [CoilInputCopy] shows and announces, for localization.
+/// The texts a [CoilInputCopy] shows and announces. The defaults are
+/// English.
 @immutable
 class CoilInputCopyLabels {
-  /// Creates the labels; the defaults are English.
+  /// Creates the labels.
   const CoilInputCopyLabels({
     this.copy = 'Copy',
     this.copied = 'Copied',
@@ -46,20 +87,19 @@ class CoilInputCopyLabels {
     this.copyToClipboard = 'Copy to clipboard',
   });
 
-  /// The button variant's idle label, and the start of the semantic label
-  /// ("Copy API key").
+  /// The button label, and the spoken name inside a `CoilField`.
   final String copy;
 
   /// Shown and announced after a copy.
   final String copied;
 
-  /// The button variant's label after a failed copy.
+  /// The button label after a failed copy.
   final String failed;
 
   /// Announced after a failed copy.
   final String copyFailed;
 
-  /// The semantic label without a [CoilInputCopy.label].
+  /// The spoken name outside a `CoilField`.
   final String copyToClipboard;
 
   @override
@@ -78,11 +118,12 @@ class CoilInputCopyLabels {
 
 /// A read-only value with a copy button: an API key, an invite link.
 ///
-/// The whole row copies [value] on a tap, click, Enter or Space. The result
-/// shows inline for 2 s on every platform, so touch users see it too: the
-/// icon becomes a check (or a red × if the clipboard refused), and the
-/// [CoilInputCopyVariant.button] label reads "Copied". Screen readers hear
-/// the result, and iOS and Android give a light haptic.
+/// The whole row copies [value] on a tap, click, Enter or Space, and so does
+/// a tap on its `CoilField` label. The result shows inline for 2 s on every
+/// platform, so touch users see it too: the icon becomes a check (or a red ×
+/// if the clipboard refused), and the [CoilInputCopyVariant.button] label
+/// reads "Copied". Screen readers hear the result, and iOS and Android give
+/// a light haptic.
 ///
 /// A hovering mouse highlights the value. The value stays on one line and
 /// truncates; the full text is what gets copied and announced.
@@ -92,31 +133,27 @@ class CoilInputCopy extends StatefulWidget {
     required this.value,
     super.key,
     this.icon,
-    this.label,
     this.variant = CoilInputCopyVariant.icon,
     this.align = CoilInputCopyAlign.end,
     this.enabled = true,
     this.onCopied,
     this.labels = const CoilInputCopyLabels(),
+    this.semanticLabel,
     this.focusNode,
     this.autofocus = false,
     this.size,
     this.motion,
+    this.motions,
     this.style,
   });
 
   /// The text shown and copied.
   final String value;
 
-  /// The copy glyph, styled by [IconTheme] (coil bundles no icons). The
-  /// copied check and the failed × are drawn by the component.
+  /// The copy icon. coil bundles no icons; the check and × are drawn.
   final Widget? icon;
 
-  /// A label shown above the row, also used in the semantic label
-  /// ("Copy API key").
-  final String? label;
-
-  /// Icon only, or icon plus a "Copy" label.
+  /// Icon only, or icon and a "Copy" label.
   final CoilInputCopyVariant variant;
 
   /// Which side of the value the action sits on.
@@ -131,6 +168,10 @@ class CoilInputCopy extends StatefulWidget {
   /// The texts shown and announced.
   final CoilInputCopyLabels labels;
 
+  /// The spoken name at rest, such as "Copy API key". Inside a `CoilField`
+  /// the field's label is read with it.
+  final String? semanticLabel;
+
   /// The focus node; one is created if null.
   final FocusNode? focusNode;
 
@@ -140,18 +181,28 @@ class CoilInputCopy extends StatefulWidget {
   /// Pins the row to one size step. Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
-  /// Overrides the theme's motion tokens for this instance.
+  /// Overrides the theme's motion tokens for this row.
   final CoilMotion? motion;
+
+  /// Per-track motions for this row, keyed by [CoilInputCopyTrack]s. They
+  /// win over [CoilThemeData.trackMotions] and [motion].
+  final Map<CoilInputCopyTrack<Object>, Motion>? motions;
 
   /// Overrides for this row's look.
   final CoilInputCopyStyle? style;
 
-  /// How long a copy result shows before the row goes back to idle.
+  /// How long a copy result shows, as DESIGN.md names it. Not configurable.
   static const resetDelay = Duration(seconds: 2);
 
   @override
   State<CoilInputCopy> createState() => _CoilInputCopyState();
 }
+
+enum _Status { idle, copied, failed }
+
+// The one place InputCopy asks for a haptic, so moving to the theme's
+// haptics is a one-line change.
+void _playCopyHaptic() => unawaited(CoilHaptics.play(CoilHapticEvent.copy));
 
 class _CoilInputCopyState extends State<CoilInputCopy> {
   var _status = _Status.idle;
@@ -160,14 +211,26 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
   var _generation = 0;
   Timer? _reset;
 
-  CoilMotion get _motion =>
-      CoilTheme.motionOf(context, override: widget.motion);
+  /// The first build starts the tracks at rest instead of animating in.
+  bool _started = false;
 
   @override
   void dispose() {
     _reset?.cancel();
     super.dispose();
   }
+
+  Motion _motionFor(
+    CoilInputCopyTrack<Object> track,
+    Motion token, {
+    bool spatial = true,
+  }) => CoilTheme.trackMotionOf(
+    context,
+    track,
+    instance: widget.motions,
+    token: token,
+    spatial: spatial,
+  );
 
   Future<void> _copy() async {
     var status = _Status.copied;
@@ -194,20 +257,19 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
       ),
     );
     if (status == _Status.copied) {
-      unawaited(CoilHaptics.play(CoilHapticEvent.copy));
+      _playCopyHaptic();
       widget.onCopied?.call();
     }
   }
 
-  String _semanticLabel() {
+  String _semanticLabel(bool inField) {
     final labels = widget.labels;
     return switch (_status) {
       _Status.copied => labels.copied,
       _Status.failed => labels.copyFailed,
-      _Status.idle => switch (widget.label) {
-        final label? => '${labels.copy} $label',
-        null => labels.copyToClipboard,
-      },
+      _Status.idle =>
+        widget.semanticLabel ??
+            (inField ? labels.copy : labels.copyToClipboard),
     };
   }
 
@@ -219,152 +281,179 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
       theme,
       sizes,
     ).merge(CoilTheme.styleOf<CoilInputCopyStyle>(context)).merge(widget.style);
-    final radius = style.radius!;
-    final start = widget.align == CoilInputCopyAlign.start;
+    final motion = CoilTheme.motionOf(context, override: widget.motion);
+    final radius = BorderRadius.circular(style.radius!);
+    final inField = CoilFieldScope.maybeOf(context) != null;
+    final onCopy = widget.enabled ? _copy : null;
 
-    Widget row = Semantics(
-      container: true,
-      button: true,
-      enabled: widget.enabled,
-      label: _semanticLabel(),
-      value: widget.value,
-      child: CoilInteraction(
-        onPressed: widget.enabled ? _copy : null,
-        focusNode: widget.focusNode,
-        autofocus: widget.autofocus,
-        minHitTarget: sizes.minHitTarget,
-        builder: (context, states, _) {
-          final hovered = states.contains(WidgetState.hovered);
-          final showing = _status != _Status.idle;
-          final actionStates = {
-            if (hovered || showing) WidgetState.hovered,
-            if (_status == _Status.failed) WidgetState.error,
-          };
-          final value = _Value(
-            text: widget.value,
-            style: style.valueStyle!,
-            mark: style.mark!.resolve({if (hovered) WidgetState.hovered})!,
-            motion: _motion,
-          );
-          final action = _Action(
-            status: _status,
-            generation: _generation,
-            variant: widget.variant,
-            icon: widget.icon,
-            labels: widget.labels,
-            color: style.actionColor!.resolve(actionStates)!,
-            weight: hovered ? CoilIconWeight.emphasis : CoilIconWeight.rest,
-            textStyle: style.actionStyle!,
-            iconSize: sizes.iconSize,
-            gap: 6,
-            motion: _motion,
-          );
-          final padY = sizes.controlPaddingY(sizes.body);
-          return CoilFocusRing(
-            visible: states.contains(WidgetState.focused),
-            borderRadius: BorderRadius.circular(radius),
-            child: MotionBuilder<Color>(
-              value: style.fill!.resolve({
-                if (states.contains(WidgetState.pressed)) WidgetState.pressed,
-              })!,
-              motion: _motion.fade,
-              converter: MotionConverter.colorRgb,
-              builder: (context, fill, child) => DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: fill,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(radius),
-                  ),
-                ),
-                child: child,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: style.minHeight!),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: sizes.controlPaddingX,
-                    vertical: padY,
-                  ),
-                  child: Row(
-                    spacing: sizes.gap,
-                    children: [
-                      if (start) action,
-                      Expanded(child: value),
-                      if (!start) action,
+    return CoilFieldControl(
+      onLabelTap: onCopy,
+      child: Semantics(
+        container: true,
+        button: true,
+        enabled: widget.enabled,
+        label: _semanticLabel(inField),
+        value: widget.value,
+        child: CoilInteraction(
+          onPressed: onCopy,
+          focusNode: widget.focusNode,
+          autofocus: widget.autofocus,
+          minHitTarget: sizes.minHitTarget,
+          builder: (context, states, _) {
+            final hovered = states.contains(WidgetState.hovered);
+            final hover = {if (hovered) WidgetState.hovered};
+            final fill = style.fill!.resolve({
+              if (states.contains(WidgetState.pressed)) WidgetState.pressed,
+            })!;
+            final mark = style.mark!.resolve(hover)!;
+            final action = switch (_status) {
+              _Status.copied => style.copiedColor!,
+              _Status.failed => style.failedColor!,
+              _Status.idle => style.actionColor!.resolve(hover)!,
+            };
+            final weight = hovered
+                ? CoilIconWeight.emphasis
+                : CoilIconWeight.rest;
+            final first = !_started;
+            _started = true;
+            Motion fade(CoilInputCopyTrack<Object> track) =>
+                _motionFor(track, motion.fade, spatial: false);
+
+            return Opacity(
+              opacity: widget.enabled ? 1 : 0.5,
+              child: CoilFocusRing(
+                visible: states.contains(WidgetState.focused),
+                borderRadius: radius,
+                child: MotorInspectionScope(
+                  group: 'CoilInputCopy',
+                  child: TrackBuilder(
+                    animations: [
+                      CoilInputCopyTrack.fill([
+                        .to(fill, motion: fade(CoilInputCopyTrack.fill)),
+                      ], from: first ? fill : null),
+                      CoilInputCopyTrack.mark([
+                        .to(mark, motion: fade(CoilInputCopyTrack.mark)),
+                      ], from: first ? mark : null),
+                      CoilInputCopyTrack.action([
+                        .to(action, motion: fade(CoilInputCopyTrack.action)),
+                      ], from: first ? action : null),
+                      CoilInputCopyTrack.weight([
+                        .to(weight, motion: fade(CoilInputCopyTrack.weight)),
+                      ], from: first ? weight : null),
                     ],
+                    builder: (context, value, _) => _Row(
+                      style: style,
+                      sizes: sizes,
+                      fill: value(CoilInputCopyTrack.fill),
+                      align: widget.align,
+                      value: _Value(
+                        text: widget.value,
+                        style: style,
+                        mark: value(CoilInputCopyTrack.mark),
+                      ),
+                      action: _Action(
+                        status: _status,
+                        generation: _generation,
+                        variant: widget.variant,
+                        icon: widget.icon,
+                        labels: widget.labels,
+                        style: style,
+                        color: value(CoilInputCopyTrack.action),
+                        weight: value(CoilInputCopyTrack.weight),
+                        swapIn: _motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quick,
+                        ),
+                        swapOut: _motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quickExit,
+                        ),
+                        draw: fade(CoilInputCopyTrack.draw),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
-
-    if (widget.label case final label?) {
-      row = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        spacing: 2,
-        children: [
-          // The button's semantic label already says it.
-          ExcludeSemantics(
-            child: Padding(
-              // Aligned with the row's content.
-              padding: EdgeInsetsDirectional.only(
-                start: sizes.controlPaddingX,
-              ),
-              child: Text(
-                label,
-                style: style.labelStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          row,
-        ],
-      );
-    }
-    return Opacity(opacity: widget.enabled ? 1 : 0.5, child: row);
   }
 }
 
-/// The value, one line, with the hover mark behind its text.
-class _Value extends StatelessWidget {
-  const _Value({
-    required this.text,
+/// The row: its fill, padding and the value beside the action.
+class _Row extends StatelessWidget {
+  const _Row({
     required this.style,
-    required this.mark,
-    required this.motion,
+    required this.sizes,
+    required this.fill,
+    required this.align,
+    required this.value,
+    required this.action,
   });
 
+  final CoilInputCopyStyle style;
+  final CoilMetrics sizes;
+  final Color fill;
+  final CoilInputCopyAlign align;
+  final Widget value;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = align == CoilInputCopyAlign.start;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: fill,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(style.radius!),
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: style.minHeight!),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: sizes.controlPaddingX,
+            vertical: sizes.controlPaddingY(sizes.body),
+          ),
+          child: Row(
+            spacing: sizes.gap,
+            children: [
+              if (start) action,
+              Expanded(child: value),
+              if (!start) action,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The value, one line, on its highlight.
+class _Value extends StatelessWidget {
+  const _Value({required this.text, required this.style, required this.mark});
+
   final String text;
-  final TextStyle style;
+  final CoilInputCopyStyle style;
   final Color mark;
-  final CoilMotion motion;
 
   @override
   Widget build(BuildContext context) => Align(
     alignment: AlignmentDirectional.centerStart,
-    child: MotionBuilder<Color>(
-      value: mark,
-      motion: motion.fade,
-      converter: MotionConverter.colorRgb,
-      builder: (context, mark, child) => DecoratedBox(
-        decoration: ShapeDecoration(
-          color: mark,
-          shape: const RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.all(Radius.circular(2)),
-          ),
+    child: DecoratedBox(
+      decoration: ShapeDecoration(
+        color: mark,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(style.markRadius!),
         ),
-        child: child,
       ),
       // The full value is the row's semantic value.
       child: ExcludeSemantics(
         child: Text(
           text,
-          style: style,
+          style: style.valueStyle,
           maxLines: 1,
           softWrap: false,
           overflow: TextOverflow.ellipsis,
@@ -382,12 +471,12 @@ class _Action extends StatelessWidget {
     required this.variant,
     required this.icon,
     required this.labels,
+    required this.style,
     required this.color,
     required this.weight,
-    required this.textStyle,
-    required this.iconSize,
-    required this.gap,
-    required this.motion,
+    required this.swapIn,
+    required this.swapOut,
+    required this.draw,
   });
 
   final _Status status;
@@ -395,23 +484,17 @@ class _Action extends StatelessWidget {
   final CoilInputCopyVariant variant;
   final Widget? icon;
   final CoilInputCopyLabels labels;
+  final CoilInputCopyStyle style;
   final Color color;
   final double weight;
-  final TextStyle textStyle;
-  final double iconSize;
-  final double gap;
-  final CoilMotion motion;
+  final Motion swapIn;
+  final Motion swapOut;
+  final Motion draw;
 
   Widget _glyph(_Status status) => switch (status) {
     _Status.idle => icon ?? const SizedBox.shrink(),
-    _Status.copied => _ResultGlyph(
-      glyph: _Glyph.check,
-      motion: motion,
-    ),
-    _Status.failed => _ResultGlyph(
-      glyph: _Glyph.cross,
-      motion: motion,
-    ),
+    _Status.copied => _DrawIn(glyph: CoilGlyph.check, motion: draw),
+    _Status.failed => _DrawIn(glyph: CoilGlyph.cross, motion: draw),
   };
 
   String _text(_Status status) => switch (status) {
@@ -420,144 +503,74 @@ class _Action extends StatelessWidget {
     _Status.failed => labels.failed,
   };
 
-  Widget _content(_Status status, {required bool ghost}) {
-    final glyph = ghost ? SizedBox.square(dimension: iconSize) : _glyph(status);
+  Widget _content(_Status status, {bool ghost = false}) {
+    final glyph = ghost
+        ? SizedBox.square(dimension: style.iconSize)
+        : _glyph(status);
     if (variant == CoilInputCopyVariant.icon) return glyph;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      spacing: gap,
+      spacing: style.actionGap!,
       children: [glyph, Text(_text(status), maxLines: 1, softWrap: false)],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final key = ValueKey((status, status == .idle ? 0 : generation));
     final swap = MotionSwitcher(
-      motion: motion.quick,
-      exitMotion: motion.quickExit,
+      motion: swapIn,
+      exitMotion: swapOut,
       transitionBuilder: CoilBlurFade.transition(scale: 0.8),
-      debugLabel: 'CoilInputCopy.action',
+      debugLabel: 'CoilInputCopy.swap',
       child: KeyedSubtree(
-        key: key,
-        child: _content(status, ghost: false),
+        key: ValueKey((status, status == _Status.idle ? 0 : generation)),
+        child: _content(status),
       ),
     );
-    return MotorInspectionScope(
-      group: 'CoilInputCopy',
-      child: ExcludeSemantics(
-        child: IconTheme(
-          data: IconThemeData(
-            size: iconSize,
-            applyTextScaling: true,
-            color: color,
-            weight: weight,
-          ),
-          child: MotionBuilder<Color>(
-            value: color,
-            motion: motion.fade,
-            converter: MotionConverter.colorRgb,
-            builder: (context, color, child) => DefaultTextStyle(
-              style: textStyle.copyWith(color: color),
-              child: IconTheme.merge(
-                data: IconThemeData(color: color),
-                child: child!,
-              ),
-            ),
-            child: variant == CoilInputCopyVariant.icon
-                ? swap
-                // Every label's width is reserved, so the row never shifts
-                // as "Copy" becomes "Copied".
-                : Stack(
-                    alignment: AlignmentDirectional.centerStart,
-                    children: [
-                      for (final ghost in _Status.values)
-                        Visibility.maintain(
-                          visible: false,
-                          child: _content(ghost, ghost: true),
-                        ),
-                      swap,
-                    ],
-                  ),
-          ),
+    return ExcludeSemantics(
+      child: IconTheme(
+        data: IconThemeData(
+          size: style.iconSize,
+          applyTextScaling: true,
+          color: color,
+          weight: weight,
+        ),
+        child: DefaultTextStyle(
+          style: style.actionStyle!.copyWith(color: color),
+          child: variant == CoilInputCopyVariant.icon
+              ? swap
+              // Every label's width is reserved, so the row never shifts
+              // as "Copy" becomes "Copied".
+              : Stack(
+                  alignment: AlignmentDirectional.centerStart,
+                  children: [
+                    for (final ghost in _Status.values)
+                      Visibility.maintain(
+                        visible: false,
+                        child: _content(ghost, ghost: true),
+                      ),
+                    swap,
+                  ],
+                ),
         ),
       ),
     );
   }
 }
 
-enum _Glyph { check, cross }
+/// A result glyph that draws itself in when it appears.
+class _DrawIn extends StatelessWidget {
+  const _DrawIn({required this.glyph, required this.motion});
 
-/// A result glyph that draws itself in on `fade` when it appears.
-class _ResultGlyph extends StatelessWidget {
-  const _ResultGlyph({required this.glyph, required this.motion});
-
-  final _Glyph glyph;
-  final CoilMotion motion;
+  final CoilGlyph glyph;
+  final Motion motion;
 
   @override
-  Widget build(BuildContext context) {
-    final size = CoilIconSize.of(context);
-    final color = IconTheme.of(context).color!;
-    return SingleMotionBuilder(
-      value: 1,
-      from: 0,
-      motion: motion.fade,
-      builder: (context, progress, _) => CustomPaint(
-        size: Size.square(size),
-        painter: _ResultPainter(glyph, progress.clamp(0, 1), color),
-      ),
-    );
-  }
-}
-
-class _ResultPainter extends CustomPainter {
-  _ResultPainter(this.glyph, this.progress, this.color);
-
-  final _Glyph glyph;
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0) return;
-    final path = ui.Path();
-    switch (glyph) {
-      case _Glyph.check:
-        path
-          ..moveTo(5, 12.5)
-          ..lineTo(9.5, 17)
-          ..lineTo(19, 7.5);
-      case _Glyph.cross:
-        path
-          ..moveTo(7, 7)
-          ..lineTo(17, 17)
-          ..moveTo(17, 7)
-          ..lineTo(7, 17);
-    }
-    final drawn = ui.Path();
-    for (final metric in path.computeMetrics()) {
-      drawn.addPath(
-        metric.extractPath(0, metric.length * progress),
-        Offset.zero,
-      );
-    }
-    canvas
-      ..save()
-      ..scale(size.width / 24)
-      ..drawPath(
-        drawn,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      )
-      ..restore();
-  }
-
-  @override
-  bool shouldRepaint(_ResultPainter old) =>
-      old.glyph != glyph || old.progress != progress || old.color != color;
+  Widget build(BuildContext context) => SingleMotionBuilder(
+    value: 1,
+    from: 0,
+    motion: motion,
+    builder: (context, progress, _) =>
+        CoilDrawnGlyph(glyph, progress: progress),
+  );
 }

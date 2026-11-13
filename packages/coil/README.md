@@ -41,8 +41,8 @@ Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 | Layer | Library | Holds |
 |---|---|---|
 | Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilInputModality`, `CoilAdaptiveScope` |
-| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilSpringRoute` + `CoilBlurFade`, `CoilPopoverRoute`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore` |
-| Components | one library each | `CoilButton`, `CoilCheckbox`, `CoilSwitch`, `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
+| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilSpringRoute` + `CoilBlurFade`, `CoilPopoverRoute`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilHaptics` |
+| Components | one library each | `CoilButton`, `CoilCheckbox`, `CoilSwitch`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
 
 Components reach pointers, overlays, haptics and travelling motion only
 through primitives. `test/architecture/import_rules_test.dart` enforces it,
@@ -115,3 +115,9 @@ Run with Flutter 3.47: `flutter test` in this package.
   drag's fling velocity on dismiss, so sheets exit on `gentle`, not
   `gentleExit`. An `exitMotion` hook upstream would fix it.
 - `style:` classes per component type and instance are planned for M1.
+- Without Material or Cupertino localizations in the app, the text
+  selection toolbar's labels are English in every locale.
+- Desktop text fields show Flutter's own right-click toolbar, not a
+  coil-styled menu; that needs the ContextMenu component.
+- `CoilHaptics` is a fixed platform table until haptics become a theme
+  field.
