@@ -5,8 +5,10 @@ library;
 
 export 'button.dart';
 export 'checkbox.dart';
+export 'field.dart';
 export 'foundation.dart';
 export 'input.dart';
+export 'input_copy.dart';
 export 'primitives.dart';
 export 'select.dart';
 export 'selection_groups.dart';

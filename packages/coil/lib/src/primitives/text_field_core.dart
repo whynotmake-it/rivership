@@ -67,6 +67,20 @@ typedef CoilTextFieldDecorationBuilder =
 /// [onSubmitted] is only ever called by the platform's text input action
 /// (the IME's Done/Go/Enter), never by a hardware key event in the
 /// framework, so it can't fire for an Enter that the IME consumed.
+///
+/// ## Enter, single- and multi-line
+///
+/// * Single-line ([maxLines] 1): Return is the text input action
+///   ([textInputAction], `done` by default) and calls [onSubmitted].
+/// * Multi-line: Return inserts a newline through the IME
+///   ([TextInputAction.newline]); [onSubmitted] isn't called. A composer
+///   that sends on Enter maps Enter in [shortcuts] (and Shift+Enter to
+///   nothing), which stays IME-safe: while composing, the shortcut is
+///   disabled and the IME commits instead.
+///
+/// In both, an Enter that commits an IME composition neither submits nor
+/// inserts a newline: the platform delivers it to the IME, which only
+/// commits the composing text.
 class CoilTextFieldCore extends StatefulWidget {
   /// Creates a text field core.
   const CoilTextFieldCore({
@@ -87,6 +101,12 @@ class CoilTextFieldCore extends StatefulWidget {
     this.keyboardType,
     this.textInputAction,
     this.keyboardAppearance,
+    this.textCapitalization = TextCapitalization.none,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
+    this.obscuringCharacter = '•',
+    this.scrollPadding = const EdgeInsets.all(20),
+    this.scrollController,
     this.inputFormatters,
     this.autofillHints,
     this.obscureText = false,
@@ -155,6 +175,26 @@ class CoilTextFieldCore extends StatefulWidget {
   /// The software keyboard's brightness. Defaults to the theme's.
   final Brightness? keyboardAppearance;
 
+  /// How the software keyboard capitalizes.
+  final TextCapitalization textCapitalization;
+
+  /// Whether the platform autocorrects. Off for obscured fields regardless.
+  final bool autocorrect;
+
+  /// Whether the keyboard offers suggestions. Off for obscured fields
+  /// regardless.
+  final bool enableSuggestions;
+
+  /// The character shown for each obscured character.
+  final String obscuringCharacter;
+
+  /// The space kept between the field and the screen edges (and the
+  /// software keyboard) when the field scrolls itself into view.
+  final EdgeInsets scrollPadding;
+
+  /// Scrolls a multi-line field's text. One is created if null.
+  final ScrollController? scrollController;
+
   /// Input formatters.
   final List<TextInputFormatter>? inputFormatters;
 
@@ -177,6 +217,10 @@ class CoilTextFieldCore extends StatefulWidget {
   final int? minLines;
 
   /// The maximum number of lines; null for unlimited. 1 is single-line.
+  ///
+  /// A multi-line field grows from [minLines] to [maxLines] with its text
+  /// and then scrolls. It defaults to the multi-line keyboard, and the
+  /// keyboard's Return key inserts a newline ([TextInputAction.newline]).
   final int? maxLines;
 
   /// Called when the text changes, including during an IME composition.
@@ -408,6 +452,12 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       style: style,
       strutStyle: widget.strutStyle,
       textAlign: widget.textAlign,
+      textCapitalization: widget.textCapitalization,
+      autocorrect: widget.autocorrect && !widget.obscureText,
+      enableSuggestions: widget.enableSuggestions && !widget.obscureText,
+      obscuringCharacter: widget.obscuringCharacter,
+      scrollPadding: widget.scrollPadding,
+      scrollController: widget.scrollController,
       minLines: widget.minLines,
       maxLines: widget.maxLines,
       cursorColor: cursorColor,

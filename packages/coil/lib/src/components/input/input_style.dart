@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Overrides for how a `CoilInput` looks. Unset fields come from
+/// Overrides for how a `CoilInput` or `CoilTextarea` looks (they share one
+/// chrome). Unset fields come from
 /// [CoilInputStyle.fallback], derived from the theme's tokens. Set a
 /// style app-wide or for a subtree with
 /// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
@@ -19,8 +22,14 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     this.minHeight,
   });
 
-  /// The defaults from the theme's tokens.
-  factory CoilInputStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
+  /// The defaults from the theme's tokens. A [multiline] field (textarea)
+  /// caps its radius at the `rounded` container radius, so a `pill` shape
+  /// doesn't make a capsule.
+  factory CoilInputStyle.fallback(
+    CoilThemeData theme,
+    CoilMetrics metrics, {
+    bool multiline = false,
+  }) {
     final c = theme.colors;
     return CoilInputStyle(
       fill: WidgetStateProperty.resolveWith(
@@ -38,7 +47,12 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
       ),
       textStyle: theme.typography.style(metrics.field, color: c.foreground),
       placeholder: c.mutedForeground,
-      radius: theme.shape.radii(metrics.tier).item,
+      radius: multiline
+          ? math.min(
+              theme.shape.radii(metrics.tier).item,
+              CoilShape.rounded.radii(metrics.tier).container,
+            )
+          : theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,
     );
   }
