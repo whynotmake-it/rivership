@@ -10,6 +10,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'patterns/adjustable.dart';
+import 'patterns/card.dart';
+import 'patterns/disclosure.dart';
+import 'patterns/live_region.dart';
+import 'patterns/navigation.dart';
+import 'patterns/table.dart';
+
 /// The interaction patterns coil components implement. Each one is a
 /// contract for semantics, keyboard and focus that [expectCoilPattern]
 /// checks in one line.
@@ -49,6 +56,29 @@ enum CoilPattern {
   /// A button that opens a list: expanded state, Enter or Down opens, Escape
   /// closes and returns focus.
   select,
+
+  /// A disclosure (accordion trigger): a button with an expanded state that
+  /// Enter or Space toggles.
+  disclosure,
+
+  /// A table: table/row/cell roles with column headers; arrows move the
+  /// active row.
+  table,
+
+  /// A navigation trail (breadcrumb): links in Tab order, the current page
+  /// selected.
+  navigation,
+
+  /// An adjustable control (carousel dots on touch): increase and decrease
+  /// actions and a value.
+  adjustable,
+
+  /// A live region (banner, thinking indicator): announced politely when it
+  /// changes. Not a tab stop, so the focus checks are skipped.
+  liveRegion,
+
+  /// A card with an action: one focusable target for the whole card.
+  card,
 }
 
 /// Checks that the widget at [finder] implements [pattern]:
@@ -71,12 +101,14 @@ Future<void> expectCoilPattern(
   final semantics = tester.ensureSemantics();
   try {
     expect(finder, findsOneWidget, reason: 'the pattern target');
-    await _focusWithTab(tester, finder, pattern);
-    expect(
-      _focusVisible(tester, finder),
-      isTrue,
-      reason: '$pattern: keyboard focus shows the focus ring',
-    );
+    if (pattern != CoilPattern.liveRegion) {
+      await _focusWithTab(tester, finder, pattern);
+      expect(
+        _focusVisible(tester, finder),
+        isTrue,
+        reason: '$pattern: keyboard focus shows the focus ring',
+      );
+    }
     switch (pattern) {
       case CoilPattern.button:
         await _button(tester, finder);
@@ -110,10 +142,24 @@ Future<void> expectCoilPattern(
         await _textField(tester, finder);
       case CoilPattern.select:
         await _select(tester, finder);
+      case CoilPattern.disclosure:
+        await expectDisclosurePattern(tester, finder);
+      case CoilPattern.table:
+        await expectTablePattern(tester, finder);
+      case CoilPattern.navigation:
+        await expectNavigationPattern(tester, finder);
+      case CoilPattern.adjustable:
+        await expectAdjustablePattern(tester, finder);
+      case CoilPattern.liveRegion:
+        await expectLiveRegionPattern(tester, finder);
+      case CoilPattern.card:
+        await expectCardPattern(tester, finder);
     }
     // A text field keeps its focus border while editing, however it was
     // focused (as `:focus-visible` does for inputs); a select opens.
-    if (pattern != CoilPattern.select && pattern != CoilPattern.textField) {
+    if (pattern != CoilPattern.select &&
+        pattern != CoilPattern.textField &&
+        pattern != CoilPattern.liveRegion) {
       await _pointerHidesRing(tester, finder, pattern);
     }
   } finally {

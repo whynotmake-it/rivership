@@ -8,6 +8,7 @@ export 'src/primitives/anchor.dart';
 export 'src/primitives/choice_group.dart';
 export 'src/primitives/choice_item.dart';
 export 'src/primitives/choice_row.dart';
+export 'src/primitives/collapsible.dart';
 export 'src/primitives/drawn_glyph.dart';
 export 'src/primitives/field_scope.dart';
 export 'src/primitives/focus_ring.dart';
