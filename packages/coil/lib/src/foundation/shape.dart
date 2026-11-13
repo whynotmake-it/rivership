@@ -32,29 +32,34 @@ class CoilRadii {
   int get hashCode => Object.hash(item, container, focusRing);
 }
 
-/// The corner shape family. Radii resolve per tier ([radii]): touch
-/// controls are taller, so their corners grow to keep the same proportions.
-enum CoilShape {
+/// The corner shape family: radii per tier. Touch controls are taller, so
+/// their corners grow to keep the same proportions.
+///
+/// Use one of [rounded] (the default), [pill] or [sharp], or define your
+/// own with two [CoilRadii].
+@immutable
+class CoilShape {
+  /// Creates a shape family with radii for each tier.
+  const CoilShape({required this.pointer, required this.touch});
+
   /// Fully rounded controls.
-  pill(
+  static const pill = CoilShape(
     pointer: CoilRadii(item: 20, container: 24, focusRing: 22),
     touch: CoilRadii(item: 22, container: 28, focusRing: 24),
-  ),
+  );
 
   /// The default: 8 px controls inside 12 px containers on the pointer
   /// tier, 10 inside 16 on touch.
-  rounded(
+  static const rounded = CoilShape(
     pointer: CoilRadii(item: 8, container: 12, focusRing: 10),
     touch: CoilRadii(item: 10, container: 16, focusRing: 12),
-  ),
+  );
 
   /// Near-square corners.
-  sharp(
+  static const sharp = CoilShape(
     pointer: CoilRadii(item: 1, container: 1, focusRing: 3),
     touch: CoilRadii(item: 1, container: 1, focusRing: 3),
   );
-
-  const CoilShape({required this.pointer, required this.touch});
 
   /// The radii on the pointer tier.
   final CoilRadii pointer;
@@ -72,4 +77,11 @@ enum CoilShape {
   /// The radius of a surface inset by [inset] inside one of [outer] radius.
   static double nested(double outer, double inset, [double borderWidth = 0]) =>
       (outer - inset - borderWidth).clamp(0, double.infinity);
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilShape && other.pointer == pointer && other.touch == touch;
+
+  @override
+  int get hashCode => Object.hash(pointer, touch);
 }

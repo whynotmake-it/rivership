@@ -19,6 +19,7 @@ class CoilThemeData with Diagnosticable {
   const CoilThemeData({
     this.colors = CoilColors.light,
     this.shape = CoilShape.rounded,
+    this.metrics = const CoilMetricsTable(),
     this.tier,
     this.motion = const CoilMotion(),
     this.typography = const CoilTypography(),
@@ -63,6 +64,10 @@ class CoilThemeData with Diagnosticable {
   /// The corner shape family.
   final CoilShape shape;
 
+  /// The size tokens for every tier and size step. Components read the
+  /// entry for theirs with [CoilTheme.metricsOf].
+  final CoilMetricsTable metrics;
+
   /// The size tier, or null to latch it from the platform
   /// ([CoilTier.forPlatform]). A [CoilAdaptiveScope] overrides it.
   final CoilTier? tier;
@@ -90,6 +95,7 @@ class CoilThemeData with Diagnosticable {
   CoilThemeData copyWith({
     CoilColors? colors,
     CoilShape? shape,
+    CoilMetricsTable? metrics,
     CoilTier? tier,
     CoilMotion? motion,
     CoilTypography? typography,
@@ -99,6 +105,7 @@ class CoilThemeData with Diagnosticable {
   }) => CoilThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
+    metrics: metrics ?? this.metrics,
     tier: tier ?? this.tier,
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
@@ -115,6 +122,7 @@ class CoilThemeData with Diagnosticable {
       CoilThemeData(
         colors: CoilColors.lerp(a.colors, b.colors, t),
         shape: t < 0.5 ? a.shape : b.shape,
+        metrics: t < 0.5 ? a.metrics : b.metrics,
         tier: t < 0.5 ? a.tier : b.tier,
         motion: CoilMotion.lerp(a.motion, b.motion, t),
         typography: t < 0.5 ? a.typography : b.typography,
@@ -129,6 +137,7 @@ class CoilThemeData with Diagnosticable {
       other is CoilThemeData &&
       other.colors == colors &&
       other.shape == shape &&
+      other.metrics == metrics &&
       other.tier == tier &&
       other.motion == motion &&
       other.typography == typography &&
@@ -140,6 +149,7 @@ class CoilThemeData with Diagnosticable {
   int get hashCode => Object.hash(
     colors,
     shape,
+    metrics,
     tier,
     motion,
     typography,
@@ -157,7 +167,7 @@ class CoilThemeData with Diagnosticable {
     super.debugFillProperties(properties);
     properties
       ..add(DiagnosticsProperty('colors', colors))
-      ..add(EnumProperty('shape', shape))
+      ..add(DiagnosticsProperty('shape', shape))
       ..add(EnumProperty('tier', tier, defaultValue: null))
       ..add(DiagnosticsProperty('motion', motion));
   }
@@ -280,7 +290,7 @@ class CoilTheme extends StatelessWidget {
   /// The metrics at [context]: for [tierOf] and [size] if given, else the
   /// nearest [CoilAdaptiveScope]'s size, else [CoilSize.regular].
   static CoilMetrics metricsOf(BuildContext context, {CoilSize? size}) =>
-      CoilMetrics.resolve(
+      of(context).metrics.resolve(
         tierOf(context),
         size ?? CoilAdaptiveScope.maybeSizeOf(context) ?? CoilSize.regular,
       );

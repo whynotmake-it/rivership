@@ -1,5 +1,5 @@
 import 'package:coil/src/foundation/typography.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 /// The input a size set is designed for.
 ///
@@ -101,7 +101,7 @@ class CoilSwitchMetrics {
 /// Heights are minimums: controls grow with the text scale.
 @immutable
 class CoilMetrics {
-  /// Creates metrics. Prefer [CoilMetrics.resolve].
+  /// Creates metrics. Prefer a copy of a default (`CoilMetrics.touch`).
   const CoilMetrics({
     required this.tier,
     required this.size,
@@ -262,7 +262,8 @@ class CoilMetrics {
     popupInset: 6,
   );
 
-  /// The metrics for [tier] and [size].
+  /// coil's default metrics for [tier] and [size]. Components read the
+  /// theme's instead (`CoilTheme.metricsOf`), which an app can change.
   static CoilMetrics resolve(CoilTier tier, CoilSize size) =>
       switch ((tier, size)) {
         (CoilTier.pointer, CoilSize.regular) => pointer,
@@ -354,10 +355,149 @@ class CoilMetrics {
   /// The narrowest a select trigger gets.
   final double triggerMinWidth;
 
-  @override
-  bool operator ==(Object other) =>
-      other is CoilMetrics && other.tier == tier && other.size == size;
+  /// A copy with the given values replaced.
+  CoilMetrics copyWith({
+    CoilTier? tier,
+    CoilSize? size,
+    double? controlHeight,
+    double? minHitTarget,
+    double? controlPaddingX,
+    double? itemPaddingX,
+    double? gap,
+    double? iconSize,
+    CoilTypeStep? body,
+    CoilTypeStep? field,
+    CoilTypeStep? caption,
+    double? buttonPaddingX,
+    double? buttonIconPaddingX,
+    double? buttonGap,
+    CoilSwitchMetrics? switchMetrics,
+    double? switchRowPaddingY,
+    double? checkboxSize,
+    double? checkboxRadius,
+    double? checkboxGlyphSize,
+    double? segmentPadding,
+    double? popupInset,
+    double? triggerMinWidth,
+  }) => CoilMetrics(
+    tier: tier ?? this.tier,
+    size: size ?? this.size,
+    controlHeight: controlHeight ?? this.controlHeight,
+    minHitTarget: minHitTarget ?? this.minHitTarget,
+    controlPaddingX: controlPaddingX ?? this.controlPaddingX,
+    itemPaddingX: itemPaddingX ?? this.itemPaddingX,
+    gap: gap ?? this.gap,
+    iconSize: iconSize ?? this.iconSize,
+    body: body ?? this.body,
+    field: field ?? this.field,
+    caption: caption ?? this.caption,
+    buttonPaddingX: buttonPaddingX ?? this.buttonPaddingX,
+    buttonIconPaddingX: buttonIconPaddingX ?? this.buttonIconPaddingX,
+    buttonGap: buttonGap ?? this.buttonGap,
+    switchMetrics: switchMetrics ?? this.switchMetrics,
+    switchRowPaddingY: switchRowPaddingY ?? this.switchRowPaddingY,
+    checkboxSize: checkboxSize ?? this.checkboxSize,
+    checkboxRadius: checkboxRadius ?? this.checkboxRadius,
+    checkboxGlyphSize: checkboxGlyphSize ?? this.checkboxGlyphSize,
+    segmentPadding: segmentPadding ?? this.segmentPadding,
+    popupInset: popupInset ?? this.popupInset,
+    triggerMinWidth: triggerMinWidth ?? this.triggerMinWidth,
+  );
+
+  List<Object> get _props => [
+    tier,
+    size,
+    controlHeight,
+    minHitTarget,
+    controlPaddingX,
+    itemPaddingX,
+    gap,
+    iconSize,
+    body,
+    field,
+    caption,
+    buttonPaddingX,
+    buttonIconPaddingX,
+    buttonGap,
+    switchMetrics,
+    switchRowPaddingY,
+    checkboxSize,
+    checkboxRadius,
+    checkboxGlyphSize,
+    segmentPadding,
+    popupInset,
+    triggerMinWidth,
+  ];
 
   @override
-  int get hashCode => Object.hash(tier, size);
+  bool operator ==(Object other) =>
+      other is CoilMetrics && listEquals(other._props, _props);
+
+  @override
+  int get hashCode => Object.hashAll(_props);
+}
+
+/// The four metric sets coil resolves from, one per tier and size step:
+/// a theme field, so apps can change sizes at runtime.
+///
+/// ```dart
+/// CoilThemeData(
+///   metrics: const CoilMetricsTable().copyWith(
+///     touch: CoilMetrics.touch.copyWith(controlHeight: 48),
+///   ),
+/// )
+/// ```
+@immutable
+class CoilMetricsTable {
+  /// Creates a table; unset entries keep coil's defaults.
+  const CoilMetricsTable({
+    this.pointer = CoilMetrics.pointer,
+    this.pointerCompact = CoilMetrics.pointerCompact,
+    this.touch = CoilMetrics.touch,
+    this.touchCompact = CoilMetrics.touchCompact,
+  });
+
+  /// Pointer tier, regular size.
+  final CoilMetrics pointer;
+
+  /// Pointer tier, compact size.
+  final CoilMetrics pointerCompact;
+
+  /// Touch tier, regular size.
+  final CoilMetrics touch;
+
+  /// Touch tier, compact size.
+  final CoilMetrics touchCompact;
+
+  /// The metrics for [tier] and [size].
+  CoilMetrics resolve(CoilTier tier, CoilSize size) => switch ((tier, size)) {
+    (CoilTier.pointer, CoilSize.regular) => pointer,
+    (CoilTier.pointer, CoilSize.compact) => pointerCompact,
+    (CoilTier.touch, CoilSize.regular) => touch,
+    (CoilTier.touch, CoilSize.compact) => touchCompact,
+  };
+
+  /// A copy with the given entries replaced.
+  CoilMetricsTable copyWith({
+    CoilMetrics? pointer,
+    CoilMetrics? pointerCompact,
+    CoilMetrics? touch,
+    CoilMetrics? touchCompact,
+  }) => CoilMetricsTable(
+    pointer: pointer ?? this.pointer,
+    pointerCompact: pointerCompact ?? this.pointerCompact,
+    touch: touch ?? this.touch,
+    touchCompact: touchCompact ?? this.touchCompact,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilMetricsTable &&
+      other.pointer == pointer &&
+      other.pointerCompact == pointerCompact &&
+      other.touch == touch &&
+      other.touchCompact == touchCompact;
+
+  @override
+  int get hashCode => Object.hash(pointer, pointerCompact, touch, touchCompact);
 }

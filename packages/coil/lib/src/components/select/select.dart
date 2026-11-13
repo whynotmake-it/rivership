@@ -320,7 +320,9 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     var picked = {...widget.picked};
     // The sheet is a touch surface whatever the tier: touch-sized rows.
     final metrics = sheet
-        ? CoilMetrics.resolve(CoilTier.touch, CoilSize.regular)
+        ? CoilTheme.of(
+            context,
+          ).metrics.resolve(CoilTier.touch, CoilSize.regular)
         : CoilTheme.metricsOf(context);
     final pointerTier = CoilTheme.tierOf(context) == CoilTier.pointer;
     final style = _resolveStyle(context, metrics);

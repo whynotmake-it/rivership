@@ -83,7 +83,7 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     // A sheet is a touch surface whatever the tier, like its rows.
-    final metrics = CoilMetrics.resolve(CoilTier.touch, CoilSize.regular);
+    final metrics = theme.metrics.resolve(CoilTier.touch, CoilSize.regular);
     final media = MediaQuery.of(context);
     const margin = 8.0;
     // The container radius: concentric with the rows, which sit
