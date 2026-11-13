@@ -28,6 +28,12 @@ enum CoilGlyph {
 
   /// A chevron pointing up.
   chevronUp,
+
+  /// An arrow pointing up: send.
+  arrowUp,
+
+  /// A rounded square: stop.
+  stop,
 }
 
 /// Draws a [CoilGlyph] on the 24-unit grid with a round stroke.
@@ -93,6 +99,20 @@ class _GlyphPainter extends CustomPainter {
       ui.Path()
         ..moveTo(7, 12)
         ..lineTo(17, 12),
+    CoilGlyph.arrowUp =>
+      ui.Path()
+        ..moveTo(12, 19)
+        ..lineTo(12, 5)
+        ..moveTo(6, 11)
+        ..lineTo(12, 5)
+        ..lineTo(18, 11),
+    CoilGlyph.stop =>
+      ui.Path()..addRSuperellipse(
+        RSuperellipse.fromRectAndRadius(
+          const Rect.fromLTRB(7, 7, 17, 17),
+          const Radius.circular(2),
+        ),
+      ),
     CoilGlyph.cross =>
       ui.Path()
         ..moveTo(7, 7)
