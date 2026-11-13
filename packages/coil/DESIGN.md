@@ -308,6 +308,8 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 | Sheet snaps to a detent | `lightImpact` | none | — |
 | Copy succeeds (InputCopy) | `selectionClick` | `selectionClick` | none |
 
+The table is `CoilHaptics.platform`. Set `CoilThemeData.haptics` to remap events, or to `CoilHaptics.none` to turn them off. Components play them with `CoilHaptics.play(context, event)`.
+
 ## 9. Adaptivity
 
 ### 9.1 Presentation: popover vs sheet

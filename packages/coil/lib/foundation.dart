@@ -5,6 +5,7 @@ library;
 export 'src/foundation/adaptive.dart';
 export 'src/foundation/color_mix.dart';
 export 'src/foundation/colors.dart';
+export 'src/foundation/haptics.dart';
 export 'src/foundation/input_modality.dart';
 export 'src/foundation/metrics.dart';
 export 'src/foundation/motion.dart';

@@ -1,5 +1,6 @@
 import 'package:coil/src/foundation/adaptive.dart';
 import 'package:coil/src/foundation/colors.dart';
+import 'package:coil/src/foundation/haptics.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/shape.dart';
@@ -27,6 +28,7 @@ class CoilThemeData with Diagnosticable {
     this.motion = const CoilMotion(),
     this.typography = const CoilTypography(),
     this.focusRingWidth = 1,
+    this.haptics,
     this.trackMotions = const {},
     this.components = const {},
   });
@@ -61,6 +63,10 @@ class CoilThemeData with Diagnosticable {
   /// The focus ring's thickness: 1, or 2 in high contrast.
   final double focusRingWidth;
 
+  /// Which haptic each event plays, or null for the platform's conventions
+  /// ([CoilHaptics.platform]). [CoilHaptics.none] turns them off.
+  final CoilHaptics? haptics;
+
   /// Theme-level per-track motions for any component, keyed by the
   /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
   /// `motions:` win over these; these win over the tokens.
@@ -94,8 +100,8 @@ class CoilThemeData with Diagnosticable {
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
-  /// Returns a copy with the given fields replaced. Pass `tier: null` to go
-  /// back to the platform's tier.
+  /// Returns a copy with the given fields replaced. Pass `tier: null` or
+  /// `haptics: null` to go back to the platform's.
   CoilThemeData copyWith({
     CoilColors? colors,
     CoilShape? shape,
@@ -104,6 +110,7 @@ class CoilThemeData with Diagnosticable {
     CoilMotion? motion,
     CoilTypography? typography,
     double? focusRingWidth,
+    Object? haptics = _keep,
     Map<Track<Object>, Motion>? trackMotions,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
@@ -114,6 +121,7 @@ class CoilThemeData with Diagnosticable {
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
+    haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     trackMotions: trackMotions ?? this.trackMotions,
     components: components ?? this.components,
   );
@@ -132,6 +140,7 @@ class CoilThemeData with Diagnosticable {
         typography: t < 0.5 ? a.typography : b.typography,
         focusRingWidth:
             a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
+        haptics: t < 0.5 ? a.haptics : b.haptics,
         trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
         components: t < 0.5 ? a.components : b.components,
       );
@@ -146,6 +155,7 @@ class CoilThemeData with Diagnosticable {
       other.motion == motion &&
       other.typography == typography &&
       other.focusRingWidth == focusRingWidth &&
+      other.haptics == haptics &&
       mapEquals(other.trackMotions, trackMotions) &&
       mapEquals(other.components, components);
 
@@ -158,6 +168,7 @@ class CoilThemeData with Diagnosticable {
     motion,
     typography,
     focusRingWidth,
+    haptics,
     Object.hashAllUnordered(
       trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
     ),
@@ -173,7 +184,8 @@ class CoilThemeData with Diagnosticable {
       ..add(DiagnosticsProperty('colors', colors))
       ..add(DiagnosticsProperty('shape', shape))
       ..add(EnumProperty('tier', tier, defaultValue: null))
-      ..add(DiagnosticsProperty('motion', motion));
+      ..add(DiagnosticsProperty('motion', motion))
+      ..add(DiagnosticsProperty('haptics', haptics, defaultValue: null));
   }
 }
 
