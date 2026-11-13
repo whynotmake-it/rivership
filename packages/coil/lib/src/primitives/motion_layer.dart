@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-/// Where the targets of a [CoilMotionLayer] are, read at paint time.
+/// Where the targets of a `CoilMotionLayer` are, read at paint time.
 abstract interface class CoilLayerGeometry {
   /// The rect of target [index] in the layer's coordinates, or null if no
   /// such target is laid out.
   Rect? rectOf(int index);
 }
 
-/// Paints a decoration behind or in front of a [CoilMotionLayer]'s child:
+/// Paints a decoration behind or in front of a `CoilMotionLayer`'s child:
 /// a travelling highlight, a selection block, a focus ring.
 ///
 /// Painters notify their listeners when they need a repaint (their Motor
@@ -64,9 +64,12 @@ class CoilMotionLayerHandle implements CoilLayerGeometry {
 /// decoration follows a target that resizes or reflows in the same frame,
 /// with no measuring pass and no rebuild. Put the layer inside a scroll
 /// view's content so it moves with the items.
-class CoilMotionLayer extends SingleChildRenderObjectWidget {
-  /// Creates a motion layer.
-  const CoilMotionLayer({
+///
+/// Components use `CoilMotionLayer`, which takes immutable layer items;
+/// this widget takes the painters it owns.
+class CoilPainterLayer extends SingleChildRenderObjectWidget {
+  /// Creates a painter layer.
+  const CoilPainterLayer({
     required super.child,
     super.key,
     this.background = const [],
@@ -103,7 +106,7 @@ class CoilMotionLayer extends SingleChildRenderObjectWidget {
   }
 }
 
-/// The render object of [CoilMotionLayer].
+/// The render object of [CoilPainterLayer].
 class RenderCoilMotionLayer extends RenderProxyBox
     implements CoilLayerGeometry {
   /// Creates the render object.
@@ -204,7 +207,7 @@ class RenderCoilMotionLayer extends RenderProxyBox
   }
 }
 
-/// Marks [child] as target [index] of the nearest [CoilMotionLayer].
+/// Marks [child] as target [index] of the nearest `CoilMotionLayer`.
 ///
 /// The render object registers itself with the layer when attached and
 /// asks it to repaint whenever it is laid out, so the layer paints against

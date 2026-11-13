@@ -59,14 +59,6 @@ class CoilCardGroup extends StatefulWidget {
 }
 
 class _CoilCardGroupState extends State<CoilCardGroup> {
-  final _surfaces = _SurfacePainter();
-
-  @override
-  void dispose() {
-    _surfaces.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -89,7 +81,7 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
         side: style.border!,
       ),
     );
-    _surfaces.update(
+    final surfaces = _Surfaces(
       separated ? surface : null,
       count,
       Directionality.of(context),
@@ -149,7 +141,7 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
           instance: widget.motions,
           token: CoilTheme.motionOf(context, override: widget.motion).quick,
         ),
-        background: [_surfaces],
+        background: [surfaces],
         child: grid,
       ),
     );
@@ -199,47 +191,36 @@ class _Divider extends StatelessWidget {
 
 /// Paints the surface of every card of a separated group under the group's
 /// highlight, so the highlight shows on the card it lights.
-class _SurfacePainter extends CoilLayerPainter {
-  Decoration? _decoration;
-  BoxPainter? _painter;
-  int _count = 0;
-  TextDirection _direction = TextDirection.ltr;
+void _noRepaint() {}
 
-  void update(Decoration? decoration, int count, TextDirection direction) {
-    if (decoration == _decoration &&
-        count == _count &&
-        direction == _direction) {
-      return;
-    }
-    if (decoration != _decoration) {
-      _painter?.dispose();
-      _painter = null;
-      _decoration = decoration;
-    }
-    _count = count;
-    _direction = direction;
-    notifyListeners();
-  }
+class _Surfaces extends CoilLayerPaint {
+  const _Surfaces(this.decoration, this.count, this.direction);
+
+  final Decoration? decoration;
+  final int count;
+  final TextDirection direction;
+
+  @override
+  bool shouldRepaint(_Surfaces oldItem) =>
+      oldItem.decoration != decoration ||
+      oldItem.count != count ||
+      oldItem.direction != direction;
 
   @override
   void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
-    final decoration = _decoration;
+    final decoration = this.decoration;
     if (decoration == null) return;
-    final painter = _painter ??= decoration.createBoxPainter(notifyListeners);
-    for (var i = 0; i < _count; i++) {
+    // Card surfaces have no images, so nothing ever asks to repaint.
+    final painter = decoration.createBoxPainter(_noRepaint);
+    for (var i = 0; i < count; i++) {
       final rect = geometry.rectOf(i);
       if (rect == null || rect.isEmpty) continue;
       painter.paint(
         canvas,
         rect.topLeft + offset,
-        ImageConfiguration(size: rect.size, textDirection: _direction),
+        ImageConfiguration(size: rect.size, textDirection: direction),
       );
     }
-  }
-
-  @override
-  void dispose() {
-    _painter?.dispose();
-    super.dispose();
+    painter.dispose();
   }
 }

@@ -77,15 +77,6 @@ class CoilOptionList<T> extends StatefulWidget {
 class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
-  late final _selectedFill = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilSelect.selected',
-  );
-  late final _blocks = CoilSelectionPainter(vsync: this);
-  late final _ring = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilSelect.ring',
-  );
   late List<GlobalKey> _rowKeys = _keysFor(widget.options.length);
 
   static List<GlobalKey> _keysFor(int count) => [
@@ -144,9 +135,6 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     _active
       ..removeListener(_onActive)
       ..dispose();
-    _selectedFill.dispose();
-    _blocks.dispose();
-    _ring.dispose();
     super.dispose();
   }
 
@@ -216,15 +204,14 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     final radius = BorderRadius.circular(style.radius!);
     final count = widget.options.length;
 
-    if (widget.multiple) {
-      _blocks.update(
-        selected: _checked,
-        color: style.selectedFill!,
-        radius: style.radius!,
-        motion: motion,
-      );
-    }
-    _selectedFill.update(
+    final blocks = CoilSelectionBlocks(
+      selected: _checked,
+      color: style.selectedFill!,
+      radius: style.radius!,
+      motion: motion,
+    );
+    final selectedFill = CoilHighlight(
+      debugLabel: 'CoilSelect.selected',
       target: widget.selectedFill && !widget.multiple && _checked.isNotEmpty
           ? _checked.first
           : null,
@@ -308,26 +295,6 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
             child: ListenableBuilder(
               listenable: _active,
               builder: (context, child) {
-                _ring.update(
-                  target: _active.keyboardDriven ? _active.index : null,
-                  fadeIn: false,
-                  motion: motion.quick,
-                  exitMotion: motion.fadeExit,
-                  exitTravelMotion: motion.quick,
-                  fade: motion.fade,
-                  inflate: 1 + theme.focusRingWidth,
-                  decoration: ShapeDecoration(
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(
-                        theme.shape.radii(metrics.tier).focusRing,
-                      ),
-                      side: BorderSide(
-                        color: colors.focusRing,
-                        width: theme.focusRingWidth,
-                      ),
-                    ),
-                  ),
-                );
                 return child!;
               },
               child: CoilHoverRegion(
@@ -337,13 +304,40 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
                   padding: EdgeInsets.all(metrics.popupInset),
                   // The layer scrolls with the rows, so the highlight, the
                   // selection and the ring stay on their rows.
-                  child: CoilHoverHighlight(
-                    color: style.highlight,
-                    radius: style.radius,
-                    background: [
-                      if (widget.multiple) _blocks else _selectedFill,
-                    ],
-                    foreground: [_ring],
+                  child: ListenableBuilder(
+                    listenable: _active,
+                    builder: (context, rows) {
+                      final ring = CoilHighlight(
+                        debugLabel: 'CoilSelect.ring',
+                        target: _active.keyboardDriven ? _active.index : null,
+                        fadeIn: false,
+                        motion: motion.quick,
+                        exitMotion: motion.fadeExit,
+                        exitTravelMotion: motion.quick,
+                        fade: motion.fade,
+                        inflate: 1 + theme.focusRingWidth,
+                        decoration: ShapeDecoration(
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.circular(
+                              theme.shape.radii(metrics.tier).focusRing,
+                            ),
+                            side: BorderSide(
+                              color: colors.focusRing,
+                              width: theme.focusRingWidth,
+                            ),
+                          ),
+                        ),
+                      );
+                      return CoilHoverHighlight(
+                        color: style.highlight,
+                        radius: style.radius,
+                        background: [
+                          if (widget.multiple) blocks else selectedFill,
+                        ],
+                        foreground: [ring],
+                        child: rows!,
+                      );
+                    },
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,

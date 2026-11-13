@@ -186,14 +186,8 @@ class _CoilSliderState extends State<CoilSlider>
     debugLabel: 'CoilSlider',
   );
 
-  late final _rowPainter = SliderRowPainter(
-    thumb: _controller,
-    fraction: () => _controller.value(CoilSliderTrack.thumb),
-  );
-  late final _pillPainter = SliderPillPainter(
-    thumb: _controller,
-    fraction: () => _controller.value(CoilSliderTrack.thumb),
-  );
+  /// The thumb's fraction, read by the track paint while painting.
+  double _thumbFraction() => _controller.value(CoilSliderTrack.thumb);
 
   /// The fraction under a hovering pointer, null when there is none.
   final _hover = ValueNotifier<double?>(null);
@@ -298,8 +292,6 @@ class _CoilSliderState extends State<CoilSlider>
     _states.removeListener(_forgetHover);
     _ownStates?.dispose();
     _ownFocus.dispose();
-    _rowPainter.dispose();
-    _pillPainter.dispose();
     _hover.dispose();
     _controller.dispose();
     super.dispose();
@@ -499,30 +491,35 @@ class _CoilSliderState extends State<CoilSlider>
               _format(value),
             };
             final pill = _compactTrack;
-            if (pill) {
-              _pillPainter.update(
-                state: paint,
-                fill: style.pillFill!,
-                border: style.border!,
-                height: style.pillHeight!,
-              );
-            } else {
-              _rowPainter.update(
-                state: paint,
-                fill: style.fill!,
-                handle: v(CoilSliderTrack.handle),
-                emphasis: e,
-                handleWidth: style.handleWidth!,
-                handleInset: style.handleInset!,
-                pipDivisions: widget.variant == CoilSliderVariant.pips
-                    ? widget.divisions
-                    : null,
-                pipSize: style.pipSize!,
-                pipGrowth: style.pipGrowth!,
-                pip: style.pip!,
-                activePip: style.activePip!,
-              );
-            }
+            final pillPaint = !pill
+                ? null
+                : SliderPillPaint(
+                    thumb: _controller,
+                    fraction: _thumbFraction,
+                    state: paint,
+                    fill: style.pillFill!,
+                    border: style.border!,
+                    height: style.pillHeight!,
+                  );
+            final rowPaint = pill
+                ? null
+                : SliderRowPaint(
+                    thumb: _controller,
+                    fraction: _thumbFraction,
+                    state: paint,
+                    fill: style.fill!,
+                    handle: v(CoilSliderTrack.handle),
+                    emphasis: e,
+                    handleWidth: style.handleWidth!,
+                    handleInset: style.handleInset!,
+                    divisions: widget.variant == CoilSliderVariant.pips
+                        ? widget.divisions
+                        : null,
+                    pipSize: style.pipSize!,
+                    pipGrowth: style.pipGrowth!,
+                    pip: style.pip!,
+                    activePip: style.activePip!,
+                  );
 
             final bubbleText = _format(
               pressed ? value : scale.valueAt(hovering ?? thumbAt),
@@ -533,7 +530,7 @@ class _CoilSliderState extends State<CoilSlider>
                 : BorderRadius.circular(style.radius!);
             final Widget body = pill
                 ? SliderPill(
-                    painter: _pillPainter,
+                    painter: pillPaint!,
                     style: style,
                     metrics: metrics,
                     label: widget.label,
@@ -565,7 +562,7 @@ class _CoilSliderState extends State<CoilSlider>
                           ),
                         ),
                         child: SliderRow(
-                          painter: _rowPainter,
+                          painter: rowPaint!,
                           style: style,
                           metrics: metrics,
                           label: widget.label,

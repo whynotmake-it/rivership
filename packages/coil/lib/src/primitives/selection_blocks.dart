@@ -195,7 +195,7 @@ class _BlockSpec {
 }
 
 /// Paints one block behind each run of adjacent selected items, and
-/// animates runs merging and splitting. A painter for a [CoilMotionLayer]
+/// animates runs merging and splitting. A painter for a `CoilMotionLayer`
 /// whose targets are the items.
 ///
 /// Adjacent selected items share one shape: outer corners round, inner

@@ -30,7 +30,7 @@ class SliderRow extends StatelessWidget {
     super.key,
   });
 
-  final SliderRowPainter painter;
+  final SliderRowPaint painter;
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;
@@ -111,7 +111,7 @@ class SliderPill extends StatelessWidget {
     super.key,
   });
 
-  final SliderPillPainter painter;
+  final SliderPillPaint painter;
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;

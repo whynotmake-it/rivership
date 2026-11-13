@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/golden_sheet.dart';
 import 'src/paint_probe.dart';
@@ -127,5 +128,60 @@ void main() {
       isNear(await colorAt(tester, _boundary, row + const Offset(0, 22)), _red),
       isFalse,
     );
+  });
+
+  testWidgets('a rebuild with an equal item keeps a glide going', (
+    tester,
+  ) async {
+    const linear = Motion.linear(Duration(milliseconds: 200));
+    Widget strip(int target) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: RepaintBoundary(
+          key: const ValueKey('boundary'),
+          child: CoilMotionLayer(
+            background: [
+              CoilHighlight(
+                target: target,
+                decoration: const BoxDecoration(color: _red),
+                motion: linear,
+                exitMotion: linear,
+                exitTravelMotion: linear,
+                fade: linear,
+              ),
+            ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < 3; i++)
+                  CoilMotionTarget(
+                    index: i,
+                    child: const SizedBox(width: 100, height: 20),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    Future<bool> redAt(double x) async =>
+        isNear(await colorAt(tester, _boundary, Offset(x, 10)), _red);
+
+    await tester.pumpWidget(strip(0));
+    await tester.pumpWidget(strip(2));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Halfway: the box covers the middle target.
+    expect(await redAt(150), isTrue);
+
+    // An equal rebuild mid-glide doesn't restart or jump it.
+    await tester.pumpWidget(strip(2));
+    await tester.pump();
+    expect(await redAt(150), isTrue);
+    expect(await redAt(50), isFalse);
+    expect(await redAt(250), isFalse);
+
+    await tester.pumpAndSettle();
+    expect(await redAt(250), isTrue);
   });
 }

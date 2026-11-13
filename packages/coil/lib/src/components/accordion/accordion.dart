@@ -127,10 +127,6 @@ class CoilAccordion<T> extends StatefulWidget {
 
 class _CoilAccordionState<T> extends State<CoilAccordion<T>>
     with TickerProviderStateMixin {
-  late final _focusRing = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilAccordion.focus',
-  );
   final _nodes = <T, FocusNode>{};
   final _states = <T, WidgetStatesController>{};
 
@@ -187,7 +183,6 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
 
   @override
   void dispose() {
-    _focusRing.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
@@ -242,7 +237,8 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
           ? -1
           : items.indexWhere((item) => identical(_states[item.value], focused));
       // The ring follows keyboard focus, which this state tracks itself.
-      _focusRing.update(
+      final focusRing = CoilHighlight(
+        debugLabel: 'CoilAccordion.focus',
         target: target < 0 ? null : target,
         fadeIn: false,
         motion: motion.quick,
@@ -269,7 +265,7 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
             color: style.highlight,
             radius: style.radius,
             motion: widget.motion,
-            foreground: [_focusRing],
+            foreground: [focusRing],
             child: list,
           ),
         ),

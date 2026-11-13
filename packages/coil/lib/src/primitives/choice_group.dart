@@ -1,9 +1,8 @@
 import 'package:coil/src/foundation/option.dart';
 import 'package:coil/src/foundation/theme.dart';
-import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/primitives/hover.dart';
+import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/roving_focus.dart';
-import 'package:coil/src/primitives/selection_blocks.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -104,16 +103,6 @@ class CoilChoiceGroup<T> extends StatefulWidget {
 
 class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
     with TickerProviderStateMixin {
-  late final _blocks = CoilSelectionPainter(vsync: this);
-  late final _fill = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilChoiceGroup.selected',
-  );
-  late final _ring = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilChoiceGroup.focus',
-  );
-
   final _nodes = <FocusNode>[];
   final _states = <WidgetStatesController>[];
   int? _focusVisible;
@@ -155,9 +144,6 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
 
   @override
   void dispose() {
-    _blocks.dispose();
-    _fill.dispose();
-    _ring.dispose();
     for (final node in _nodes) {
       node.dispose();
     }
@@ -182,33 +168,33 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
         : selected.reduce((a, b) => a < b ? a : b);
     final tabStop = first != null && _isEnabled(first) ? first : null;
 
-    switch (widget.selection) {
-      case CoilChoiceSelection.merged:
-        _blocks.update(
-          selected: selected,
-          axis: widget.axis,
+    final selection = switch (widget.selection) {
+      CoilChoiceSelection.merged => CoilSelectionBlocks(
+        selected: selected,
+        axis: widget.axis,
+        color: widget.selectionColor,
+        radius: widget.radius,
+        motion: CoilTheme.motionOf(
+          context,
+        ).copyWith(standard: widget.selectionMotion),
+      ),
+      CoilChoiceSelection.gliding => CoilHighlight(
+        debugLabel: 'CoilChoiceGroup.selection',
+        target: first,
+        motion: widget.selectionMotion,
+        exitMotion: widget.selectionMotion,
+        exitTravelMotion: widget.selectionMotion,
+        fade: widget.fadeMotion,
+        decoration: ShapeDecoration(
           color: widget.selectionColor,
-          radius: widget.radius,
-          motion: CoilTheme.motionOf(
-            context,
-          ).copyWith(standard: widget.selectionMotion),
-        );
-      case CoilChoiceSelection.gliding:
-        _fill.update(
-          target: first,
-          motion: widget.selectionMotion,
-          exitMotion: widget.selectionMotion,
-          exitTravelMotion: widget.selectionMotion,
-          fade: widget.fadeMotion,
-          decoration: ShapeDecoration(
-            color: widget.selectionColor,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(widget.radius),
-            ),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(widget.radius),
           ),
-        );
-    }
-    _ring.update(
+        ),
+      ),
+    };
+    final ring = CoilHighlight(
+      debugLabel: 'CoilChoiceGroup.focus',
       target: _focusVisible,
       fadeIn: false,
       motion: widget.ringMotion,
@@ -253,13 +239,8 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
       child: CoilHoverRegion(
         axis: horizontal ? CoilHoverAxis.x : CoilHoverAxis.y,
         child: CoilHoverHighlight(
-          background: [
-            if (widget.selection == CoilChoiceSelection.merged)
-              _blocks
-            else
-              _fill,
-          ],
-          foreground: [_ring],
+          background: [selection],
+          foreground: [ring],
           color: widget.highlightColor,
           radius: widget.radius,
           child: horizontal

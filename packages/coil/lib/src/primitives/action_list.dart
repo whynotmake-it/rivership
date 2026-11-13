@@ -4,9 +4,9 @@ import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/active_item.dart';
 import 'package:coil/src/primitives/edge_fade.dart';
-import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/primitives/hover.dart';
 import 'package:coil/src/primitives/interaction.dart';
+import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/scrollbar.dart';
 import 'package:coil/src/primitives/typeahead.dart';
@@ -101,10 +101,6 @@ class CoilActionList extends StatefulWidget {
 class _CoilActionListState extends State<CoilActionList>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
-  late final _ring = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilActionList.ring',
-  );
   late List<GlobalKey> _rowKeys = _keysFor(widget.actions.length);
 
   static List<GlobalKey> _keysFor(int count) => [
@@ -136,7 +132,6 @@ class _CoilActionListState extends State<CoilActionList>
     _active
       ..removeListener(_reveal)
       ..dispose();
-    _ring.dispose();
     super.dispose();
   }
 
@@ -200,26 +195,6 @@ class _CoilActionListState extends State<CoilActionList>
       child: ListenableBuilder(
         listenable: _active,
         builder: (context, child) {
-          _ring.update(
-            target: _active.keyboardDriven ? _active.index : null,
-            fadeIn: false,
-            motion: motion.quick,
-            exitMotion: motion.fadeExit,
-            exitTravelMotion: motion.quick,
-            fade: motion.fade,
-            inflate: 1 + theme.focusRingWidth,
-            decoration: ShapeDecoration(
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(
-                  theme.shape.radii(metrics.tier).focusRing,
-                ),
-                side: BorderSide(
-                  color: theme.colors.focusRing,
-                  width: theme.focusRingWidth,
-                ),
-              ),
-            ),
-          );
           return CoilTypeahead(
             labels: [for (final a in widget.actions) a.label],
             current: _active.index,
@@ -248,11 +223,38 @@ class _CoilActionListState extends State<CoilActionList>
                   child: CoilHoverRegion(
                     activeItem: _active,
                     followFocus: false,
-                    child: CoilHoverHighlight(
-                      color: widget.highlight,
-                      radius: radius,
-                      motion: widget.motion,
-                      foreground: [_ring],
+                    child: ListenableBuilder(
+                      listenable: _active,
+                      builder: (context, rows) {
+                        final ring = CoilHighlight(
+                          debugLabel: 'CoilActionList.ring',
+                          target: _active.keyboardDriven ? _active.index : null,
+                          fadeIn: false,
+                          motion: motion.quick,
+                          exitMotion: motion.fadeExit,
+                          exitTravelMotion: motion.quick,
+                          fade: motion.fade,
+                          inflate: 1 + theme.focusRingWidth,
+                          decoration: ShapeDecoration(
+                            shape: RoundedSuperellipseBorder(
+                              borderRadius: BorderRadius.circular(
+                                theme.shape.radii(metrics.tier).focusRing,
+                              ),
+                              side: BorderSide(
+                                color: theme.colors.focusRing,
+                                width: theme.focusRingWidth,
+                              ),
+                            ),
+                          ),
+                        );
+                        return CoilHoverHighlight(
+                          color: widget.highlight,
+                          radius: radius,
+                          motion: widget.motion,
+                          foreground: [ring],
+                          child: rows!,
+                        );
+                      },
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,

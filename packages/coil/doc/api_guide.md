@@ -97,7 +97,7 @@ Rules:
 | type-to-jump | `CoilTypeahead` |
 | the item Enter acts on | `CoilActiveItemController` |
 | which item is lit (pointer, keyboard focus) | `CoilHoverRegion`, read with `CoilHoverRegion.maybeOf` |
-| travelling highlight, pills, merge/split selection | `CoilHoverHighlight`, or your own `CoilMotionLayer` with `CoilHighlightPainter` and `CoilSelectionPainter`; inside a scroll view, put it in the scrolled content |
+| travelling highlight, pills, merge/split selection | `CoilHoverHighlight`, or your own `CoilMotionLayer` with `CoilHighlight` and `CoilSelectionBlocks` items (`CoilLayerPaint` for custom drawing). Items are immutable and built in `build`; the layer owns the animation. Inside a scroll view, put it in the scrolled content |
 | anchored popover | `CoilPopover` via `CoilAdaptivePopup` |
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
@@ -325,3 +325,4 @@ Look:
 | 2026-11-13 | `CoilCarouselDots.value` is an index | dots stand for slides, which the carousel indexes |
 | 2026-11-13 | `CoilTable.onRowActivated` opens a row; `onChanged` selects | Enter and a tap open when a row has a destination, else they select |
 | 2026-11-13 | User-visible strings are parameters with English defaults until coil has a localization hook | no hardcoded English in semantics |
+| 2026-11-13 | Motion-layer decorations are immutable items (`CoilHighlight`, `CoilSelectionBlocks`, `CoilLayerPaint`); `CoilMotionLayer` owns the animation and diffs items in `didUpdateWidget`. Painters are internal | components describe what they want in `build` with no side effects, like `AnimatedContainer`; a rebuild never re-runs an animation |

@@ -2,7 +2,7 @@ import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A box that glides between the targets of a [CoilMotionLayer] and fades
+/// A box that glides between the targets of a `CoilMotionLayer` and fades
 /// in and out: the moving fill behind a hovered row, a selected tab's pill,
 /// a focus ring that travels between items.
 ///

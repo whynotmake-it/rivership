@@ -33,71 +33,75 @@ class SliderPaintState {
   final double previewFraction;
   final double previewOpacity;
   final Color previewColor;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SliderPaintState &&
+      other.reach == reach &&
+      other.rtl == rtl &&
+      other.previewFraction == previewFraction &&
+      other.previewOpacity == previewOpacity &&
+      other.previewColor == previewColor;
+
+  @override
+  int get hashCode =>
+      Object.hash(reach, rtl, previewFraction, previewOpacity, previewColor);
 }
 
 /// Paints the regular row's pips, fill, hover preview and handle line.
 ///
 /// Pips that would sit under the label or the value are left out, so the
 /// text never has dots behind it, on any surface.
-class SliderRowPainter extends CoilLayerPainter {
-  SliderRowPainter({required Listenable thumb, required this.fraction})
-    : _thumb = thumb {
-    thumb.addListener(notifyListeners);
-  }
+class SliderRowPaint extends CoilLayerPaint {
+  const SliderRowPaint({
+    required Listenable thumb,
+    required this.fraction,
+    required this.state,
+    required this.fill,
+    required this.handle,
+    required this.emphasis,
+    required this.handleWidth,
+    required this.handleInset,
+    required this.divisions,
+    required this.pipSize,
+    required this.pipGrowth,
+    required this.pip,
+    required this.activePip,
+  }) : super(repaint: thumb);
 
-  final Listenable _thumb;
+  /// The thumb's current fraction, read while painting.
   final ValueGetter<double> fraction;
-
-  SliderPaintState? _state;
-  Color _fill = const Color(0x00000000);
-  Color _handle = const Color(0x00000000);
-  double _emphasis = 0;
-  double _handleWidth = 2;
-  double _handleInset = 8;
-  int? _divisions;
-  double _pipSize = 5;
-  double _pipGrowth = 0.4;
-  Color _pip = const Color(0x00000000);
-  Color _activePip = const Color(0x00000000);
-
-  void update({
-    required SliderPaintState state,
-    required Color fill,
-    required Color handle,
-    required double emphasis,
-    required double handleWidth,
-    required double handleInset,
-    required int? pipDivisions,
-    required double pipSize,
-    required double pipGrowth,
-    required Color pip,
-    required Color activePip,
-  }) {
-    _state = state;
-    _fill = fill;
-    _handle = handle;
-    _emphasis = emphasis;
-    _handleWidth = handleWidth;
-    _handleInset = handleInset;
-    _divisions = pipDivisions;
-    _pipSize = pipSize;
-    _pipGrowth = pipGrowth;
-    _pip = pip;
-    _activePip = activePip;
-    notifyListeners();
-  }
+  final SliderPaintState state;
+  final Color fill;
+  final Color handle;
+  final double emphasis;
+  final double handleWidth;
+  final double handleInset;
+  final int? divisions;
+  final double pipSize;
+  final double pipGrowth;
+  final Color pip;
+  final Color activePip;
 
   @override
-  void dispose() {
-    _thumb.removeListener(notifyListeners);
-    super.dispose();
-  }
+  bool shouldRepaint(SliderRowPaint oldItem) =>
+      oldItem.state != state ||
+      oldItem.fill != fill ||
+      oldItem.handle != handle ||
+      oldItem.emphasis != emphasis ||
+      oldItem.handleWidth != handleWidth ||
+      oldItem.handleInset != handleInset ||
+      oldItem.divisions != divisions ||
+      oldItem.pipSize != pipSize ||
+      oldItem.pipGrowth != pipGrowth ||
+      oldItem.pip != pip ||
+      oldItem.activePip != activePip;
 
   @override
   void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
-    final state = _state;
+    final state = this.state;
     final row = geometry.rectOf(SliderTarget.track);
-    if (state == null || row == null) return;
+    if (row == null) return;
     final at = fraction().clamp(0.0, 1.0);
     final w = row.width;
     double x(double f) => state.reach.xAt(f, w, rtl: state.rtl);
@@ -108,11 +112,11 @@ class SliderRowPainter extends CoilLayerPainter {
       offset.dy + row.height,
     );
 
-    final divisions = _divisions;
+    final divisions = this.divisions;
     if (divisions != null) {
       final label = geometry.rectOf(SliderTarget.label);
       final value = geometry.rectOf(SliderTarget.value);
-      final clear = _pipSize * 2;
+      final clear = pipSize * 2;
       for (var i = 0; i <= divisions; i++) {
         final f = i / divisions;
         final cx = x(f);
@@ -121,7 +125,7 @@ class SliderRowPainter extends CoilLayerPainter {
             r != null && r.inflate(clear).contains(Offset(cx, cy));
         if (under(label) || under(value)) continue;
         final near = (1 - (at - f).abs() * divisions).clamp(0.0, 1.0);
-        final d = _pipSize * (1 + _pipGrowth * near);
+        final d = pipSize * (1 + pipGrowth * near);
         canvas.drawRSuperellipse(
           RSuperellipse.fromLTRBR(
             offset.dx + cx - d / 2,
@@ -130,13 +134,13 @@ class SliderRowPainter extends CoilLayerPainter {
             offset.dy + cy + d / 2,
             Radius.circular(d / 2),
           ),
-          Paint()..color = Color.lerp(_pip, _activePip, near)!,
+          Paint()..color = Color.lerp(pip, activePip, near)!,
         );
       }
     }
 
     final edge = x(at);
-    canvas.drawRect(span(state.rtl ? w : 0, edge), Paint()..color = _fill);
+    canvas.drawRect(span(state.rtl ? w : 0, edge), Paint()..color = fill);
     if (state.previewOpacity > 0) {
       final p = x(state.previewFraction.clamp(0.0, 1.0));
       canvas.drawRect(
@@ -148,8 +152,8 @@ class SliderRowPainter extends CoilLayerPainter {
       );
     }
 
-    final inset = _handleInset - _emphasis;
-    final half = _handleWidth / 2;
+    final inset = handleInset - emphasis;
+    final half = handleWidth / 2;
     final line = edge.clamp(half + 3, w - half - 3);
     canvas.drawRSuperellipse(
       RSuperellipse.fromLTRBR(
@@ -159,70 +163,61 @@ class SliderRowPainter extends CoilLayerPainter {
         offset.dy + row.height - inset,
         Radius.circular(half),
       ),
-      Paint()..color = _handle,
+      Paint()..color = handle,
     );
   }
 }
 
 /// Paints the pill track's outline, fill and hover preview.
-class SliderPillPainter extends CoilLayerPainter {
-  SliderPillPainter({required Listenable thumb, required this.fraction})
-    : _thumb = thumb {
-    thumb.addListener(notifyListeners);
-  }
+class SliderPillPaint extends CoilLayerPaint {
+  const SliderPillPaint({
+    required Listenable thumb,
+    required this.fraction,
+    required this.state,
+    required this.fill,
+    required this.border,
+    required this.height,
+  }) : super(repaint: thumb);
 
-  final Listenable _thumb;
+  /// The thumb's current fraction, read while painting.
   final ValueGetter<double> fraction;
-
-  SliderPaintState? _state;
-  Color _fill = const Color(0x00000000);
-  Color _border = const Color(0x00000000);
-  double _height = 18;
-
-  void update({
-    required SliderPaintState state,
-    required Color fill,
-    required Color border,
-    required double height,
-  }) {
-    _state = state;
-    _fill = fill;
-    _border = border;
-    _height = height;
-    notifyListeners();
-  }
+  final SliderPaintState state;
+  final Color fill;
+  final Color border;
+  final double height;
 
   @override
-  void dispose() {
-    _thumb.removeListener(notifyListeners);
-    super.dispose();
-  }
+  bool shouldRepaint(SliderPillPaint oldItem) =>
+      oldItem.state != state ||
+      oldItem.fill != fill ||
+      oldItem.border != border ||
+      oldItem.height != height;
 
   @override
   void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
-    final state = _state;
+    final state = this.state;
     final box = geometry.rectOf(SliderTarget.track);
-    if (state == null || box == null) return;
-    final top = offset.dy + (box.height - _height) / 2;
+    if (box == null) return;
+    final top = offset.dy + (box.height - height) / 2;
     final shape = RSuperellipse.fromLTRBR(
       offset.dx,
       top,
       offset.dx + box.width,
-      top + _height,
-      Radius.circular(_height / 2),
+      top + height,
+      Radius.circular(height / 2),
     );
     double x(double f) => state.reach.xAt(f, box.width, rtl: state.rtl);
     Rect span(double a, double b) => Rect.fromLTRB(
       offset.dx + (a < b ? a : b),
       top,
       offset.dx + (a < b ? b : a),
-      top + _height,
+      top + height,
     );
     final edge = x(fraction().clamp(0.0, 1.0));
     canvas
       ..save()
       ..clipRSuperellipse(shape)
-      ..drawRect(span(state.rtl ? box.width : 0, edge), Paint()..color = _fill);
+      ..drawRect(span(state.rtl ? box.width : 0, edge), Paint()..color = fill);
     if (state.previewOpacity > 0) {
       final p = x(state.previewFraction.clamp(0.0, 1.0));
       canvas.drawRect(
@@ -240,7 +235,7 @@ class SliderPillPainter extends CoilLayerPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1
-          ..color = _border,
+          ..color = border,
       );
   }
 }

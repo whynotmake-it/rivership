@@ -154,19 +154,6 @@ class CoilTabs<T> extends StatefulWidget {
 
 class _CoilTabsState<T> extends State<CoilTabs<T>>
     with TickerProviderStateMixin {
-  late final _selectedPill = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilTabs.selected',
-  );
-  late final _hoverPill = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilTabs.hover',
-  );
-  late final _focusRing = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilTabs.focus',
-  );
-
   /// The enter and exit motions of [track]: the instance's or the theme's
   /// override for both, else the tokens.
   ({Motion enter, Motion exit}) _motionFor(
@@ -314,9 +301,6 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   void dispose() {
     _scroll.dispose();
     _overflow.dispose();
-    _selectedPill.dispose();
-    _hoverPill.dispose();
-    _focusRing.dispose();
     for (final node in _nodes) {
       node.dispose();
     }
@@ -405,7 +389,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   color: style.pill,
                   shape: RoundedSuperellipseBorder(borderRadius: radius),
                 );
-                _selectedPill.update(
+                final selectedPill = CoilHighlight(
+                  debugLabel: 'CoilTabs.selected',
                   target: selected,
                   motion: selectedMotion.enter,
                   exitMotion: selectedMotion.exit,
@@ -415,7 +400,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   fadeIn: false,
                   decoration: fill,
                 );
-                _hoverPill.update(
+                final hoverPill = CoilHighlight(
+                  debugLabel: 'CoilTabs.hover',
                   target: hovering ? hovered : null,
                   session: state.session,
                   from: selected,
@@ -428,7 +414,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   exitTo: state.pointerInside ? null : selected,
                   decoration: fill,
                 );
-                _focusRing.update(
+                final focusRing = CoilHighlight(
+                  debugLabel: 'CoilTabs.focus',
                   target: focused,
                   fadeIn: false,
                   motion: focusMotion.enter,
@@ -449,8 +436,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   ),
                 );
                 return CoilMotionLayer(
-                  background: [_selectedPill, _hoverPill],
-                  foreground: [_focusRing],
+                  background: [selectedPill, hoverPill],
+                  foreground: [focusRing],
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

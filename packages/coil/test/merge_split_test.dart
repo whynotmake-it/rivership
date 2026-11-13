@@ -98,18 +98,10 @@ class _Rows extends StatefulWidget {
   State<_Rows> createState() => _RowsState();
 }
 
-class _RowsState extends State<_Rows> with TickerProviderStateMixin {
-  late final _painter = CoilSelectionPainter(vsync: this);
-
-  @override
-  void dispose() {
-    _painter.dispose();
-    super.dispose();
-  }
-
+class _RowsState extends State<_Rows> {
   @override
   Widget build(BuildContext context) {
-    _painter.update(
+    final blocks = CoilSelectionBlocks(
       selected: widget.selection,
       color: _red,
       radius: 0,
@@ -126,7 +118,7 @@ class _RowsState extends State<_Rows> with TickerProviderStateMixin {
             child: SizedBox(
               width: 100,
               child: CoilMotionLayer(
-                background: [_painter],
+                background: [blocks],
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

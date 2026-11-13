@@ -108,12 +108,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     with TickerProviderStateMixin {
   final _states = WidgetStatesController();
   final _active = CoilActiveItemController();
-  late final _selection = CoilSelectionPainter(vsync: this);
-  late final _ring = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilTable ring',
-  );
-
   FocusNode? _ownFocusNode;
   FocusNode get _focusNode =>
       widget.focusNode ??
@@ -146,8 +140,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
   void dispose() {
     _states.dispose();
     _active.dispose();
-    _selection.dispose();
-    _ring.dispose();
     _ownFocusNode?.dispose();
     _ownController?.dispose();
     super.dispose();
@@ -270,7 +262,7 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     );
     final rows = widget.rows;
 
-    _selection.update(
+    final selection = CoilSelectionBlocks(
       selected: {
         for (final (i, row) in rows.indexed)
           if (widget.values.contains(row)) i,
@@ -301,8 +293,7 @@ class _CoilTableState<T> extends State<CoilTable<T>>
               style: style,
               active: _active,
               focusNode: _focusNode,
-              selection: _selection,
-              ring: _ring,
+              selection: selection,
               motion: motion,
               highlightMotion: _track(CoilTableTrack.highlight, motion.quick),
               ringMotion: _track(CoilTableTrack.ring, motion.quick),

@@ -21,7 +21,6 @@ class TableBody<T> extends StatelessWidget {
     required this.active,
     required this.focusNode,
     required this.selection,
-    required this.ring,
     required this.motion,
     required this.highlightMotion,
     required this.ringMotion,
@@ -55,10 +54,7 @@ class TableBody<T> extends StatelessWidget {
   final FocusNode focusNode;
 
   /// Paints the selected rows' blocks.
-  final CoilSelectionPainter selection;
-
-  /// Paints the keyboard's focus ring.
-  final CoilHighlightPainter ring;
+  final CoilSelectionBlocks selection;
 
   /// The table's motion tokens, for the ring's fades.
   final CoilMotion motion;
@@ -85,42 +81,53 @@ class TableBody<T> extends StatelessWidget {
         CoilInputModality.instance,
       ]),
       builder: (context, child) {
-        ring.update(
-          target:
-              focusNode.hasPrimaryFocus &&
-                  active.keyboardDriven &&
-                  CoilInputModality.instance.value == CoilModality.keyboard
-              ? active.index
-              : null,
-          fadeIn: false,
-          motion: ringMotion,
-          exitMotion: motion.fadeExit,
-          exitTravelMotion: ringMotion,
-          fade: motion.fade,
-          inflate: -style.ringInset!,
-          decoration: ShapeDecoration(
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(
-                style.radius! - style.ringInset!,
-              ),
-              side: BorderSide(
-                color: theme.colors.focusRing,
-                width: theme.focusRingWidth,
-              ),
-            ),
-          ),
-        );
         return child!;
       },
       child: CoilHoverRegion(
         activeItem: active,
         followFocus: false,
-        child: CoilHoverHighlight(
-          color: style.highlight,
-          radius: style.radius,
-          glideMotion: highlightMotion,
-          background: [selection],
-          foreground: [ring],
+        child: ListenableBuilder(
+          listenable: Listenable.merge([
+            active,
+            focusNode,
+            CoilInputModality.instance,
+          ]),
+          builder: (context, rows) {
+            final ring = CoilHighlight(
+              debugLabel: 'CoilTable.ring',
+              target:
+                  focusNode.hasPrimaryFocus &&
+                      active.keyboardDriven &&
+                      CoilInputModality.instance.value == CoilModality.keyboard
+                  ? active.index
+                  : null,
+              fadeIn: false,
+              motion: ringMotion,
+              exitMotion: motion.fadeExit,
+              exitTravelMotion: ringMotion,
+              fade: motion.fade,
+              inflate: -style.ringInset!,
+              decoration: ShapeDecoration(
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(
+                    style.radius! - style.ringInset!,
+                  ),
+                  side: BorderSide(
+                    color: theme.colors.focusRing,
+                    width: theme.focusRingWidth,
+                  ),
+                ),
+              ),
+            );
+            return CoilHoverHighlight(
+              color: style.highlight,
+              radius: style.radius,
+              glideMotion: highlightMotion,
+              background: [selection],
+              foreground: [ring],
+              child: rows!,
+            );
+          },
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

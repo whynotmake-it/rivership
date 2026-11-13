@@ -2,7 +2,7 @@ import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/active_item.dart';
-import 'package:coil/src/primitives/highlight.dart';
+import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -287,7 +287,7 @@ class _CoilHoverRegionState extends State<CoilHoverRegion> {
 /// (selection blocks, a focus ring) as [background] and [foreground].
 /// Inside a scroll view, put it in the scrolled content so the highlight
 /// moves with the rows.
-class CoilHoverHighlight extends StatefulWidget {
+class CoilHoverHighlight extends StatelessWidget {
   /// Creates the highlight.
   const CoilHoverHighlight({
     required this.child,
@@ -309,11 +309,11 @@ class CoilHoverHighlight extends StatefulWidget {
   /// The corner radius; the theme's item radius when null.
   final double? radius;
 
-  /// Painters behind the items, under the highlight.
-  final List<CoilLayerPainter> background;
+  /// Layer items behind the items, under the highlight.
+  final List<CoilLayerItem> background;
 
-  /// Painters in front of the items.
-  final List<CoilLayerPainter> foreground;
+  /// Layer items in front of the items.
+  final List<CoilLayerItem> foreground;
 
   /// Overrides the theme's motion tokens for the highlight.
   final CoilMotion? motion;
@@ -323,47 +323,34 @@ class CoilHoverHighlight extends StatefulWidget {
   final Motion? glideMotion;
 
   @override
-  State<CoilHoverHighlight> createState() => _CoilHoverHighlightState();
-}
-
-class _CoilHoverHighlightState extends State<CoilHoverHighlight>
-    with TickerProviderStateMixin {
-  late final _highlight = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilHoverHighlight',
-  );
-
-  @override
-  void dispose() {
-    _highlight.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = CoilHoverRegion.maybeOf(context);
     final theme = CoilTheme.of(context);
-    final motion = CoilTheme.motionOf(context, override: widget.motion);
-    _highlight.update(
-      target: state?.activeIndex,
-      session: state?.session ?? 0,
-      motion: widget.glideMotion ?? motion.quick,
-      exitMotion: motion.quickExit,
-      exitTravelMotion: motion.standard,
-      fade: motion.fade,
-      decoration: ShapeDecoration(
-        color: widget.color ?? theme.colors.hover,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(
-            widget.radius ?? CoilTheme.radiiOf(context).item,
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    return CoilMotionLayer(
+      background: [
+        ...background,
+        CoilHighlight(
+          key: const ValueKey('CoilHoverHighlight'),
+          debugLabel: 'CoilHoverHighlight',
+          target: state?.activeIndex,
+          session: state?.session ?? 0,
+          motion: glideMotion ?? tokens.quick,
+          exitMotion: tokens.quickExit,
+          exitTravelMotion: tokens.standard,
+          fade: tokens.fade,
+          decoration: ShapeDecoration(
+            color: color ?? theme.colors.hover,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(
+                radius ?? CoilTheme.radiiOf(context).item,
+              ),
+            ),
           ),
         ),
-      ),
-    );
-    return CoilMotionLayer(
-      background: [...widget.background, _highlight],
-      foreground: widget.foreground,
-      child: widget.child,
+      ],
+      foreground: foreground,
+      child: child,
     );
   }
 }
