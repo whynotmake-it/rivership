@@ -128,6 +128,9 @@ class _CheckRowState extends State<_CheckRow> {
                         value: widget.checked,
                         onChanged: widget.onPressed == null ? null : (_) {},
                         statesController: _states,
+                        // The row is the target, so the box doesn't pad
+                        // itself to 44 (that made touch rows 68 tall).
+                        tapTargetSize: CoilTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ),

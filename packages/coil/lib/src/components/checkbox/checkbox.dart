@@ -31,6 +31,7 @@ class CoilCheckbox extends StatefulWidget {
     this.motion,
     this.semanticLabel,
     this.glyphBuilder,
+    this.tapTargetSize = CoilTapTargetSize.padded,
   }) : assert(tristate || value != null, 'Only a tristate checkbox is null');
 
   /// Whether the box is checked; null (only with [tristate]) shows a dash:
@@ -70,6 +71,10 @@ class CoilCheckbox extends StatefulWidget {
   /// progress (animated on the theme's `fade` / `fadeExit`), color and
   /// size.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
+
+  /// Whether the hit area is padded to the tier's minimum. Rows that are
+  /// themselves the target pass [CoilTapTargetSize.shrinkWrap].
+  final CoilTapTargetSize tapTargetSize;
 
   @override
   State<CoilCheckbox> createState() => _CoilCheckboxState();
@@ -159,7 +164,9 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         statesController: widget.statesController,
-        minHitTarget: sizes.minHitTarget,
+        minHitTarget: widget.tapTargetSize == CoilTapTargetSize.padded
+            ? sizes.minHitTarget
+            : 0,
         builder: (context, states, _) {
           final hovered = states.contains(WidgetState.hovered);
           final hoverBorder = colors.foreground.withValues(alpha: 0.4);

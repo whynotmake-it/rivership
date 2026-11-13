@@ -35,6 +35,19 @@ enum CoilSize {
   compact,
 }
 
+/// Whether a control pads its hit area out to [CoilMetrics.minHitTarget].
+///
+/// Like Flutter's `MaterialTapTargetSize`: a control inside a larger
+/// tappable row (a checkbox in a checkbox-group row) shrink-wraps, because
+/// the row is the target.
+enum CoilTapTargetSize {
+  /// Pads the hit area to the tier's minimum, centered on the visual.
+  padded,
+
+  /// The hit area is the visual.
+  shrinkWrap,
+}
+
 /// Switch geometry for one size step.
 @immutable
 class CoilSwitchMetrics {
