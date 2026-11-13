@@ -24,6 +24,7 @@ class CoilCollapsible extends StatefulWidget {
     this.heightMotion,
     this.opacityMotion,
     this.opacityDelay = Duration.zero,
+    this.fade = true,
     this.motion,
     this.debugLabel,
   });
@@ -38,7 +39,8 @@ class CoilCollapsible extends StatefulWidget {
   /// instead of showing at once: a new step or message arriving.
   final bool appear;
 
-  /// Called when the height settles after a change of [expanded].
+  /// Called when the height settles open or closed after [expanded]
+  /// changed to that state.
   final VoidCallback? onEnd;
 
   /// The height's motion. Defaults to `standard` opening and
@@ -52,6 +54,10 @@ class CoilCollapsible extends StatefulWidget {
   /// How long the fade in waits after the height starts to open.
   final Duration opacityDelay;
 
+  /// Whether the content fades with the height. Turn it off when the
+  /// content brings its own exit, such as a blur-fade.
+  final bool fade;
+
   /// Overrides the theme's motion tokens for the default motions.
   final CoilMotion? motion;
 
@@ -63,18 +69,43 @@ class CoilCollapsible extends StatefulWidget {
 }
 
 class _CoilCollapsibleState extends State<CoilCollapsible> {
-  static final _height = Track<double>(
-    MotionConverter.single,
-    debugLabel: 'CoilCollapsible.height',
-  );
-  static final _opacity = Track<double>(
-    MotionConverter.single,
-    debugLabel: 'CoilCollapsible.opacity',
-  );
+  // Per region, so each starts where its own first build says.
+  late final Track<double> _height;
+  late final Track<double> _opacity;
 
-  /// Whether the first build is done: only it may start somewhere other
-  /// than where the tracks are.
-  bool _built = false;
+  @override
+  void initState() {
+    super.initState();
+    final start = widget.appear || !widget.expanded ? 0.0 : 1.0;
+    _height = Track<double>(
+      MotionConverter.single,
+      initial: start,
+      debugLabel: 'CoilCollapsible.height',
+    );
+    _opacity = Track<double>(
+      MotionConverter.single,
+      initial: start,
+      debugLabel: 'CoilCollapsible.opacity',
+    );
+  }
+
+  /// Whether [CoilCollapsible.expanded] changed and the height hasn't
+  /// settled since.
+  bool _changed = false;
+
+  @override
+  void didUpdateWidget(CoilCollapsible oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expanded != widget.expanded) _changed = true;
+  }
+
+  void _onStatus(AnimationStatus status) {
+    // The tracks' combined status: the first settle after a change is the
+    // end of that change, whichever way the last track moved.
+    if (!_changed || status.isAnimating) return;
+    _changed = false;
+    widget.onEnd?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,23 +113,17 @@ class _CoilCollapsibleState extends State<CoilCollapsible> {
     final tokens = CoilTheme.motionOf(context, override: widget.motion);
     final expanded = widget.expanded;
     final target = expanded ? 1.0 : 0.0;
-    final from = _built ? null : (widget.appear ? 0.0 : target);
-    _built = true;
-    final onEnd = widget.onEnd;
     return TrackBuilder(
       debugLabel: widget.debugLabel ?? 'CoilCollapsible',
       animations: [
-        _height(
-          [
-            .to(
-              target,
-              motion:
-                  widget.heightMotion ??
-                  (expanded ? tokens.standard : tokens.standardExit),
-            ),
-          ],
-          from: from,
-        ),
+        _height([
+          .to(
+            target,
+            motion:
+                widget.heightMotion ??
+                (expanded ? tokens.standard : tokens.standardExit),
+          ),
+        ]),
         _opacity(
           [
             .to(
@@ -108,23 +133,20 @@ class _CoilCollapsibleState extends State<CoilCollapsible> {
                   (expanded ? tokens.fade : tokens.fadeExit),
             ),
           ],
-          from: from,
           delay: expanded ? widget.opacityDelay : Duration.zero,
         ),
       ],
-      onAnimationStatusChanged: onEnd == null
-          ? null
-          : (status) {
-              if (status.isCompleted || status.isDismissed) onEnd();
-            },
+      onAnimationStatusChanged: widget.onEnd == null ? null : _onStatus,
       builder: (context, value, child) => ClipRect(
         child: Align(
           alignment: AlignmentDirectional.topStart,
           heightFactor: math.max(0, value(_height)),
-          child: Opacity(
-            opacity: value(_opacity).clamp(0.0, 1.0),
-            child: child,
-          ),
+          child: widget.fade
+              ? Opacity(
+                  opacity: value(_opacity).clamp(0.0, 1.0),
+                  child: child,
+                )
+              : child,
         ),
       ),
       child: ExcludeFocus(

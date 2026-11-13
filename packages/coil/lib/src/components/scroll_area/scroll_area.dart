@@ -228,13 +228,25 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
             child: widget.child,
           );
 
-    Widget area = ScrollConfiguration(
-      behavior: behavior,
-      child: CoilEdgeFade(
+    Widget fade(Widget child) => switch ((widget.edgeFades, style.fadeColor)) {
+      (CoilEdgeFades.none, _) => child,
+      (_, final Color color) => CoilScrollEdgeFade.solid(
         axis: widget.axis,
         extent: style.fadeExtent!,
-        enabled: widget.edgeFades == CoilEdgeFades.auto,
-        child: NotificationListener<ScrollMetricsNotification>(
+        color: color,
+        child: child,
+      ),
+      _ => CoilScrollEdgeFade(
+        axis: widget.axis,
+        extent: style.fadeExtent!,
+        child: child,
+      ),
+    };
+
+    Widget area = ScrollConfiguration(
+      behavior: behavior,
+      child: fade(
+        NotificationListener<ScrollMetricsNotification>(
           onNotification: (n) => _onMetrics(n.metrics, n.depth),
           child: NotificationListener<ScrollNotification>(
             onNotification: (n) => _onMetrics(n.metrics, n.depth),

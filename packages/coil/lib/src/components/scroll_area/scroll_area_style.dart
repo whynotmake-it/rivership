@@ -18,6 +18,7 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.crossAxisMargin,
     this.mainAxisMargin,
     this.fadeExtent,
+    this.fadeColor,
     this.lineStep,
   });
 
@@ -70,6 +71,11 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// How far the edge fades reach.
   final double? fadeExtent;
 
+  /// The solid background the edges fade into. Set it when the area sits
+  /// on a known solid color: the fades are painted on top, which is cheaper
+  /// than masking. Null masks the content, which works over anything.
+  final Color? fadeColor;
+
   /// How far an arrow key scrolls: about three lines of body text.
   final double? lineStep;
 
@@ -98,6 +104,7 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
           crossAxisMargin: other.crossAxisMargin ?? crossAxisMargin,
           mainAxisMargin: other.mainAxisMargin ?? mainAxisMargin,
           fadeExtent: other.fadeExtent ?? fadeExtent,
+          fadeColor: other.fadeColor ?? fadeColor,
           lineStep: other.lineStep ?? lineStep,
         );
 
@@ -112,6 +119,7 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     crossAxisMargin,
     mainAxisMargin,
     fadeExtent,
+    fadeColor,
     lineStep,
   ];
 }
