@@ -108,12 +108,10 @@ class RenderCoilMotionLayer extends RenderProxyBox
     implements CoilLayerGeometry {
   /// Creates the render object.
   RenderCoilMotionLayer({
-    List<CoilLayerPainter> background = const [],
-    List<CoilLayerPainter> foreground = const [],
-    CoilMotionLayerHandle? handle,
-  }) : _background = background,
-       _foreground = foreground,
-       _handle = handle {
+    this._background = const [],
+    this._foreground = const [],
+    this._handle,
+  }) {
     _handle?._layer = this;
   }
 

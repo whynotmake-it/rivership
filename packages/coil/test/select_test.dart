@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:coil/src/components/select/option_list.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -27,8 +26,8 @@ final _list = find.byType(CoilOptionList<String>);
 Finder get _rows =>
     find.descendant(of: _list, matching: find.byType(CoilHoverItem));
 
-RenderCoilMotionLayer _layer(WidgetTester tester) => tester
-    .renderObject<RenderCoilMotionLayer>(
+RenderCoilMotionLayer _layer(WidgetTester tester) =>
+    tester.renderObject<RenderCoilMotionLayer>(
       find.descendant(of: _list, matching: find.byType(CoilMotionLayer)),
     );
 

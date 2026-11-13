@@ -118,8 +118,7 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
   }
 
   void _setHovered(PointerEvent event, bool value) {
-    if (value &&
-        (!widget.enabled || !CoilInputModality.canHover(event.kind))) {
+    if (value && (!widget.enabled || !CoilInputModality.canHover(event.kind))) {
       return;
     }
     widget.states.update(WidgetState.hovered, value);
@@ -172,7 +171,6 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     );
   }
 }
-
 
 /// The interaction core of every pressable coil control.
 ///

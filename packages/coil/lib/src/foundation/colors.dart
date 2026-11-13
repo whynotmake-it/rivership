@@ -4,10 +4,10 @@ import 'package:coil/src/foundation/color_mix.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-/// The color tokens of Fluid Functionalism.
+/// coil's color tokens.
 ///
-/// Defaults start from Fluid Functionalism's `globals.css`, where every token is
-/// written once as `light-dark(light, dark)`. [CoilColors.light] and
+/// Defaults start from Fluid Functionalism's `globals.css`, where every
+/// token is written once as `light-dark(light, dark)`. [CoilColors.light] and
 /// [CoilColors.dark] are the two resolved sides.
 @immutable
 class CoilColors with Diagnosticable {

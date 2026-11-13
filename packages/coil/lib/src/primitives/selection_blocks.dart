@@ -209,8 +209,8 @@ class _BlockSpec {
 /// painting, so they follow items that resize, reflow or scroll in the same
 /// frame; motion is a delta relative to that geometry.
 class CoilSelectionPainter extends CoilLayerPainter {
-  /// Creates a selection painter ticking on [vsync].
-  CoilSelectionPainter({required TickerProvider vsync}) : _vsync = vsync;
+  /// Creates a selection painter ticking on [_vsync].
+  CoilSelectionPainter({required this._vsync});
 
   final TickerProvider _vsync;
   final _runs = CoilSelectionRuns();

@@ -90,15 +90,30 @@ void main() {
     'checkbox-group/row': (ink) => SizedBox(
       width: 200,
       child: CoilCheckboxGroup(
-        children: [_Ink(ink, const Text('HEH'))],
         values: const {0},
         onChanged: (_) {},
+        children: [_Ink(ink, const Text('HEH'))],
       ),
     ),
     'toggle-group/item': (ink) => CoilToggleGroup(
-      children: [_Ink(ink, const Text('HEH'))],
       values: const {0},
       onChanged: (_) {},
+      children: [_Ink(ink, const Text('HEH'))],
+    ),
+    'select/trigger': (ink) => SizedBox(
+      width: 200,
+      child: CoilSelect<int>(
+        options: [
+          CoilOption(
+            value: 0,
+            label: 'HEH',
+            child: _Ink(ink, const Text('HEH')),
+          ),
+        ],
+        value: 0,
+        indicator: const SizedBox.square(dimension: 16),
+        onChanged: (_) {},
+      ),
     ),
     'switch/label': (ink) => CoilSwitch(
       value: true,
@@ -108,8 +123,7 @@ void main() {
   };
 
   for (final MapEntry(key: name, value: build) in cases.entries) {
-    for (final MapEntry(key: tierName, value: (tier, size))
-        in tiers.entries) {
+    for (final MapEntry(key: tierName, value: (tier, size)) in tiers.entries) {
       for (final scale in scales) {
         final label = '$name @ $tierName x$scale';
         testWidgets(label, (tester) async {

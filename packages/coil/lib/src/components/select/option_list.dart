@@ -219,7 +219,6 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     if (widget.multiple) {
       _blocks.update(
         selected: _checked,
-        axis: Axis.vertical,
         color: colors.active,
         radius: theme.shape.item,
         motion: motion,

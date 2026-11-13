@@ -128,8 +128,11 @@ class CoilThemeData with Diagnosticable {
 /// ([motionOf]).
 class CoilTheme extends StatelessWidget {
   /// Provides [data] to [child].
-  const CoilTheme({required CoilThemeData this.data, required this.child, super.key})
-    : transform = null;
+  const CoilTheme({
+    required CoilThemeData this.data,
+    required this.child,
+    super.key,
+  }) : transform = null;
 
   /// Changes the inherited theme for [child]: [transform] receives the
   /// parent's data on every build, so changes at the root still flow

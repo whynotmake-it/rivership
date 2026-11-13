@@ -127,4 +127,83 @@ void main() {
       isNot(CoilThemeData.light),
     );
   });
+
+  testWidgets('a subtree override changes motion at runtime, root changes '
+      'still flow through', (tester) async {
+    Widget host({required CoilMotion root, required bool value}) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: CoilThemeData.light.copyWith(
+          tier: CoilTier.pointer,
+          motion: root,
+        ),
+        child: CoilTheme.override(
+          // Only the press token changes in the subtree.
+          transform: (t) => t.copyWith(
+            motion: t.motion.copyWith(quick: const Motion.instant()),
+          ),
+          child: Center(
+            child: CoilSwitch(value: value, onChanged: (_) {}),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(host(root: _linear(1000), value: false));
+    await tester.pumpWidget(host(root: _linear(1000), value: true));
+    await tester.pump(const Duration(milliseconds: 500));
+    // The root's 1 s linear standard still drives the thumb.
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+
+    // Retune the root while the same switch is mounted.
+    await tester.pumpWidget(host(root: _linear(100), value: true));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(host(root: _linear(100), value: false));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+  });
+
+  testWidgets('per-track motions override one track only', (tester) async {
+    Widget host({required bool value}) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: CoilThemeData.light.copyWith(
+          tier: CoilTier.pointer,
+          motion: _linear(1000),
+        ),
+        child: Center(
+          child: CoilSwitch(
+            value: value,
+            onChanged: (_) {},
+            motions: {
+              CoilSwitch.thumb: const Motion.linear(
+                Duration(milliseconds: 200),
+              ),
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(host(value: false));
+    await tester.pumpWidget(host(value: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+  });
+
+  test('default tokens are springs, exits are tighter', () {
+    const m = CoilMotion();
+    for (final (enter, exit) in [
+      (m.quick, m.quickExit),
+      (m.standard, m.standardExit),
+      (m.gentle, m.gentleExit),
+      (m.fade, m.fadeExit),
+    ]) {
+      expect(enter, isA<SpringMotion>());
+      expect(exit, isA<SpringMotion>());
+      expect(exit.duration! < enter.duration!, isTrue);
+      expect((exit as CupertinoMotion).bounce, 0);
+    }
+    expect(m.reduced().fade, m.fade);
+    expect(m.reduced().gentle, const Motion.instant());
+  });
 }

@@ -1,7 +1,7 @@
-import 'package:coil/src/foundation/theme.dart';
-import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/foundation/input_modality.dart';
+import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/active_item.dart';
+import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';

@@ -1,7 +1,6 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 

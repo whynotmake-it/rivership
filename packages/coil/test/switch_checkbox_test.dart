@@ -17,14 +17,13 @@ Widget _app(Widget child) => WidgetsApp(
 void main() {
   group('CoilSwitch', () {
     testWidgets('overview sheet', (tester) async {
-      Widget sw(SheetState s, {required bool on, CoilSize? size}) =>
-          CoilSwitch(
-            value: on,
-            onChanged: s.isDisabled ? null : (_) {},
-            size: size,
-            statesController: s.controller(),
-            label: Text(on ? 'Notifications on' : 'Notifications off'),
-          );
+      Widget sw(SheetState s, {required bool on, CoilSize? size}) => CoilSwitch(
+        value: on,
+        onChanged: s.isDisabled ? null : (_) {},
+        size: size,
+        statesController: s.controller(),
+        label: Text(on ? 'Notifications on' : 'Notifications off'),
+      );
       final sheet = ThemedPair(
         title: 'Switch',
         builder: (context) => StateTable(

@@ -12,7 +12,8 @@ const fruits = [
   CoilOption(value: 'orange', label: 'Orange'),
 ];
 
-/// More than `CoilAdaptivePopup.shortMenuMaxItems`, so a phone opens it in a sheet.
+/// More than `CoilAdaptivePopup.shortMenuMaxItems`, so a phone opens it in
+/// a sheet.
 const moreFruits = [
   ...fruits,
   CoilOption(value: 'peach', label: 'Peach'),
@@ -68,7 +69,7 @@ Widget testApp({
       presentation: presentation,
       child: CoilTheme(
         data: CoilThemeData(colors: colors, motion: motion),
-        child: ColoredBox(color: colors.background, child: navigator!),
+        child: ColoredBox(color: colors.background, child: navigator),
       ),
     ),
     onGenerateRoute: (settings) => PageRouteBuilder<void>(

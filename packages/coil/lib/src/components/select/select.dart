@@ -377,7 +377,9 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       group: 'CoilSelect',
       child: Semantics(
         button: true,
+        enabled: _enabled,
         expanded: _open,
+        onTap: _enabled ? () => unawaited(_show(keyboard: false)) : null,
         value: value,
         hint: value == null ? widget.placeholder : null,
         child: CallbackShortcuts(

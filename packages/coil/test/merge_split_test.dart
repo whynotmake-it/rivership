@@ -45,15 +45,15 @@ class _Panel extends StatelessWidget {
           SizedBox(
             width: 220,
             child: CoilCheckboxGroup(
-              children: [for (final r in _rows) Text(r)],
               values: selected,
               onChanged: (v) => selection.value = v,
+              children: [for (final r in _rows) Text(r)],
             ),
           ),
           CoilToggleGroup(
-            children: [for (final d in _days) Text(d)],
             values: selected,
             onChanged: (v) => selection.value = v,
+            children: [for (final d in _days) Text(d)],
           ),
         ],
       ),

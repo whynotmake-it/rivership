@@ -39,9 +39,12 @@ class CoilSheetPanel extends StatelessWidget {
   /// The contents, usually a list.
   final Widget child;
 
-  /// The scrim behind sheets at [context].
+  /// The scrim behind sheets at [context]: black at 40% in both modes (a
+  /// light scrim over a dark UI would read as a flash, not a dimming).
   static Color barrierColorOf(BuildContext context) =>
-      CoilTheme.of(context).colors.overlay.withValues(alpha: 0.4);
+      CoilTheme.of(context).brightness == Brightness.dark
+      ? const Color(0x80000000)
+      : const Color(0x66000000);
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +69,6 @@ class CoilSheetPanel extends StatelessWidget {
           borderRadius: radius,
           boxShadow: colors.shadow(3),
         ),
-        position: DecorationPosition.background,
         child: DecoratedBox(
           position: DecorationPosition.foreground,
           decoration: BoxDecoration(

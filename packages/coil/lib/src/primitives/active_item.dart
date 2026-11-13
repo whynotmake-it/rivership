@@ -11,9 +11,7 @@ import 'package:flutter/foundation.dart';
 /// keyboard. The fluid highlight paints the active item.
 class CoilActiveItemController extends ChangeNotifier {
   /// Creates a controller with no active item.
-  CoilActiveItemController({int? index, CoilModality via = .pointer})
-    : _index = index,
-      _via = via;
+  CoilActiveItemController({this._index, this._via = .pointer});
 
   /// The active item, or null.
   int? get index => _index;

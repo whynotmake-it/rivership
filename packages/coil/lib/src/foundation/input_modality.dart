@@ -30,8 +30,7 @@ class CoilInputModality extends ValueNotifier<CoilModality> {
   /// The app-wide tracker, created on first use.
   // A lazily created singleton, not a factory.
   // ignore: prefer_constructors_over_static_methods
-  static CoilInputModality get instance =>
-      _instance ??= CoilInputModality._();
+  static CoilInputModality get instance => _instance ??= CoilInputModality._();
 
   /// Whether a pointer of [kind] can hover, i.e. can produce a hover state
   /// without touching the screen: mice, trackpads and hovering styluses.

@@ -1,5 +1,4 @@
-import 'package:coil/coil.dart'
-    show CoilColors, CoilInteraction;
+import 'package:coil/src/foundation/colors.dart' show CoilColors;
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
 
@@ -8,7 +7,8 @@ import 'package:flutter/widgets.dart';
 ///
 /// Matches Tailwind's `focus-visible:ring-1` (a ring hugging the border box)
 /// and, with [offset], `ring-offset-*` (a gap between control and ring).
-/// Show it only for keyboard focus; see [CoilInteraction].
+/// Show it only for keyboard focus (`CoilInteraction` reports it as
+/// [WidgetState.focused]).
 class CoilFocusRing extends StatelessWidget {
   /// Creates a focus ring.
   const CoilFocusRing({
