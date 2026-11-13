@@ -40,8 +40,8 @@ Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 
 | Layer | Library | Holds |
 |---|---|---|
-| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilInputModality`, `CoilAdaptiveScope` |
-| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilSpringRoute` + `CoilBlurFade`, `CoilPopoverRoute`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilHaptics`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow` |
+| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
+| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow` |
 | Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
 
 Components reach pointers, overlays, haptics and travelling motion only
@@ -119,5 +119,5 @@ Run with Flutter 3.47: `flutter test` in this package.
   selection toolbar's labels are English in every locale.
 - Desktop text fields show Flutter's own right-click toolbar, not a
   coil-styled menu; that needs the ContextMenu component.
-- `CoilHaptics` is a fixed platform table until haptics become a theme
-  field.
+- An open sheet is a route: it doesn't rebuild with the widget that
+  opened it. An open popover does.

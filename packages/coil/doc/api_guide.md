@@ -102,7 +102,8 @@ Rules:
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
 | editable text | `CoilTextFieldCore` |
-| enter/exit of a route (popover, sheet) | `CoilSpringRoute` + `CoilBlurFade` (via `CoilAdaptivePopup`) |
+| enter/exit of a popover | `CoilBlurFade` (via `CoilAdaptivePopup`) |
+| haptic feedback | `CoilHaptics.play(context, event)` |
 | cross-fades and size changes in place | `motor_widgets`' `MotionSwitcher`, `MotionSizeSwitcher`, `MotionSize`, with `CoilBlurFade` as the `transitionBuilder` |
 
 ## 4. Enums over booleans

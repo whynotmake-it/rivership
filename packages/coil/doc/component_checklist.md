@@ -82,6 +82,7 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
 - Lists use `CoilActiveItemController`, `CoilRovingFocus`, `CoilTypeahead`
   and the motion layer (`CoilHoverRegion` + `CoilHoverHighlight`, highlight and selection
   painters).
+- Haptics go through `CoilHaptics.play(context, event)`.
 - No `MouseRegion`, `onTapDown`, `HapticFeedback`, `highlightMode`,
   `OverlayPortal`, `PopupRoute` or raw Motor controllers for travel in the
   component file.

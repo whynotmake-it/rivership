@@ -2,6 +2,24 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `CoilHoverRegion` only tracks which item is lit. Paint the
+  default highlight with `CoilHoverHighlight`, or read
+  `CoilHoverRegion.maybeOf` and drive your own painters. `background`,
+  `foreground`, `highlight`, `highlightColor`, `highlightRadius` and
+  `onStateChanged` are removed.
+- Breaking: metrics and corner radii are theme data:
+  `CoilThemeData.metrics` (a `CoilMetricsTable`) and `CoilShape`, now a
+  class. The static `CoilMetrics.resolve` is removed; read sizes with
+  `CoilTheme.metricsOf(context, tier:, size:)`.
+- Breaking: haptics are theme data: `CoilThemeData.haptics`, played with
+  `CoilHaptics.play(context, event)`. `CoilHaptics` moved to
+  `foundation.dart`.
+- Breaking: popovers are `CoilPopover`, an `OverlayPortal` descendant of
+  its owner, instead of `CoilPopoverRoute`. `CoilAdaptivePopup` is a widget
+  around the anchor, driven by a `CoilPopupController`; its `traits` is a
+  getter read when it opens. `CoilSpringRoute` is removed.
+- Breaking: `CoilThemeData.copyWith(tier: null)` now clears the tier.
+
 - Foundation: `CoilThemeData`/`CoilTheme` with subtree overrides, high
   contrast and reduced motion applied last; `CoilColors`; spring-only
   `CoilMotion`; `CoilTier` × `CoilSize` → `CoilMetrics`; `CoilTypography`
