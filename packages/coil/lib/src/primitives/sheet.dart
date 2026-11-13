@@ -21,6 +21,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
     required Color barrierColor,
     CapturedThemes? capturedThemes,
     super.barrierLabel = 'Dismiss',
+    super.barrierDismissible,
     super.settings,
   }) : super(
          child: capturedThemes?.wrap(child) ?? child,

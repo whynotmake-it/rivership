@@ -40,6 +40,7 @@ class CoilPopoverRoute<T> extends PopupRoute<T> with CoilSpringRoute<T> {
     this.edgePadding = 8,
     this.capturedThemes,
     this.barrierLabel = 'Dismiss',
+    this.barrierDismissible = true,
     super.settings,
   });
 
@@ -76,8 +77,10 @@ class CoilPopoverRoute<T> extends PopupRoute<T> with CoilSpringRoute<T> {
   @override
   Color? get barrierColor => null;
 
+  /// Whether tapping the (invisible) barrier pops the route. Off when the
+  /// content closes itself on an outside tap.
   @override
-  bool get barrierDismissible => true;
+  final bool barrierDismissible;
 
   @override
   final String? barrierLabel;

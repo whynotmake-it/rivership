@@ -10,6 +10,7 @@ export 'src/primitives/highlight.dart';
 export 'src/primitives/hover.dart';
 export 'src/primitives/interaction.dart';
 export 'src/primitives/motion_layer.dart';
+export 'src/primitives/popup_controller.dart';
 export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';
 export 'src/primitives/selection_blocks.dart';

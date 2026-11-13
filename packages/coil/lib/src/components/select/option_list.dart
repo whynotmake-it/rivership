@@ -41,8 +41,9 @@ class CoilOptionList<T> extends StatefulWidget {
   /// Called with each picked (or toggled) value.
   final ValueChanged<T> onPick;
 
-  /// Escape or Tab.
-  final VoidCallback onDismiss;
+  /// Escape ([CoilPopupCloseReason.escape]) or Tab
+  /// ([CoilPopupCloseReason.dismissed]).
+  final ValueChanged<CoilPopupCloseReason> onDismiss;
 
   /// The size step.
   final CoilMetrics metrics;
@@ -271,8 +272,10 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
             LogicalKeyboardKey.space,
             includeRepeats: false,
           ): _pickActive,
-          const SingleActivator(LogicalKeyboardKey.escape): widget.onDismiss,
-          const SingleActivator(LogicalKeyboardKey.tab): widget.onDismiss,
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              widget.onDismiss(CoilPopupCloseReason.escape),
+          const SingleActivator(LogicalKeyboardKey.tab): () =>
+              widget.onDismiss(CoilPopupCloseReason.dismissed),
         },
         child: Focus(
           autofocus: true,

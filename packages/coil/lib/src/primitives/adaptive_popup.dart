@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:coil/src/foundation/adaptive.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/anchor.dart';
+import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:flutter/widgets.dart';
 
@@ -101,16 +104,19 @@ abstract final class CoilAdaptivePopup {
   }
 
   /// Opens [content] anchored to [anchorContext]'s box, or in a sheet, as
-  /// [presentation] says. Themes and adaptive pins at [anchorContext] are
-  /// carried into the overlay. Completes with the route's result when it
-  /// closes.
+  /// [presentation] says, and returns its [CoilPopupHandle]. Themes and
+  /// adaptive pins at [anchorContext] are carried into the overlay.
   ///
   /// [popover] wraps the content in the popover's surface; [sheet] in the
-  /// sheet's. Both receive the same [content].
-  static Future<T?> show<T>(
+  /// sheet's. Both receive the same [content], which gets the handle so it
+  /// can close with a reason. A tap outside the popup closes it with
+  /// [CoilPopupCloseReason.outsideTap] on tap-up; a route popped any other
+  /// way (sheet drag, system back) reports [CoilPopupCloseReason.dismissed].
+  static CoilPopupHandle show(
     BuildContext anchorContext, {
     required CoilPresentation presentation,
-    required WidgetBuilder content,
+    required Widget Function(BuildContext context, CoilPopupHandle popup)
+    content,
     required Widget Function(BuildContext context, Widget content) popover,
     required Widget Function(BuildContext context, Widget content) sheet,
     double estimatedHeight = 0,
@@ -122,14 +128,20 @@ abstract final class CoilAdaptivePopup {
       to: navigator.context,
     );
     final motion = CoilTheme.motionOf(anchorContext);
-    final Route<T> route;
+    final handle = _Handle();
+    Widget body(BuildContext context, Widget Function(Widget) chrome) =>
+        TapRegion(
+          onTapUpOutside: (_) => handle.close(.outsideTap),
+          child: chrome(content(context, handle)),
+        );
+    final Route<CoilPopupCloseReason> route;
     switch (presentation) {
       case CoilPresentation.popover:
         final box = anchorContext.findRenderObject()! as RenderBox;
         final overlay = navigator.context.findRenderObject()! as RenderBox;
         final anchor =
             box.localToGlobal(Offset.zero, ancestor: overlay) & box.size;
-        route = CoilPopoverRoute<T>(
+        route = CoilPopoverRoute<CoilPopupCloseReason>(
           anchor: anchor,
           minWidth: box.size.width,
           estimatedHeight: estimatedHeight,
@@ -137,18 +149,58 @@ abstract final class CoilAdaptivePopup {
           enterMotion: motion.standard,
           exitMotion: motion.standardExit,
           capturedThemes: themes,
-          builder: (context) => popover(context, content(context)),
+          // The TapRegion closes on tap-up outside, with its reason.
+          barrierDismissible: false,
+          builder: (context) =>
+              body(context, (content) => popover(context, content)),
         );
       case CoilPresentation.sheet:
-        route = CoilSheetRoute<T>(
+        route = CoilSheetRoute<CoilPopupCloseReason>(
           motion: motion.gentle,
           barrierColor: CoilSheetPanel.barrierColorOf(anchorContext),
+          barrierDismissible: false,
           capturedThemes: themes,
           child: Builder(
-            builder: (context) => sheet(context, content(context)),
+            builder: (context) =>
+                body(context, (content) => sheet(context, content)),
           ),
         );
     }
-    return navigator.push(route);
+    handle._route = route;
+    unawaited(
+      navigator
+          .push(route)
+          .then(
+            (result) =>
+                handle._finish(result ?? CoilPopupCloseReason.dismissed),
+          ),
+    );
+    return handle;
+  }
+}
+
+class _Handle implements CoilPopupHandle {
+  final _done = Completer<CoilPopupCloseReason>();
+  Route<CoilPopupCloseReason>? _route;
+
+  @override
+  Future<CoilPopupCloseReason> get closed => _done.future;
+
+  void _finish(CoilPopupCloseReason reason) {
+    if (!_done.isCompleted) _done.complete(reason);
+  }
+
+  @override
+  void close(CoilPopupCloseReason reason) {
+    final route = _route;
+    if (_done.isCompleted || route == null || !route.isActive) return;
+    // Resolve now: the route keeps animating out, but the popup is closed.
+    _finish(reason);
+    final navigator = route.navigator!;
+    if (route.isCurrent) {
+      navigator.pop(reason);
+    } else {
+      navigator.removeRoute(route, reason);
+    }
   }
 }

@@ -45,6 +45,7 @@ class CoilSelect<T> extends StatelessWidget {
     this.autofocus = false,
     this.motion,
     this.style,
+    this.controller,
   });
 
   /// The choices.
@@ -90,6 +91,10 @@ class CoilSelect<T> extends StatelessWidget {
   /// [CoilSelectStyle] and the defaults.
   final CoilSelectStyle? style;
 
+  /// Opens and closes the list from code; its `open()` resolves with why
+  /// the list closed.
+  final CoilPopupController? controller;
+
   @override
   Widget build(BuildContext context) => _SelectCore<T>(
     options: options,
@@ -110,6 +115,7 @@ class CoilSelect<T> extends StatelessWidget {
     autofocus: autofocus,
     motion: motion,
     style: style,
+    controller: controller,
   );
 }
 
@@ -136,6 +142,7 @@ class CoilMultiSelect<T> extends StatelessWidget {
     this.autofocus = false,
     this.motion,
     this.style,
+    this.controller,
   });
 
   /// The choices.
@@ -181,6 +188,10 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// [CoilSelectStyle] and the defaults.
   final CoilSelectStyle? style;
 
+  /// Opens and closes the list from code; its `open()` resolves with why
+  /// the list closed.
+  final CoilPopupController? controller;
+
   @override
   Widget build(BuildContext context) => _SelectCore<T>(
     options: options,
@@ -201,6 +212,7 @@ class CoilMultiSelect<T> extends StatelessWidget {
     autofocus: autofocus,
     motion: motion,
     style: style,
+    controller: controller,
   );
 }
 
@@ -221,6 +233,7 @@ class _SelectCore<T> extends StatefulWidget {
     required this.autofocus,
     required this.motion,
     required this.style,
+    required this.controller,
   });
 
   final List<CoilOption<T>> options;
@@ -240,6 +253,7 @@ class _SelectCore<T> extends StatefulWidget {
   final bool autofocus;
   final CoilMotion? motion;
   final CoilSelectStyle? style;
+  final CoilPopupController? controller;
 
   @override
   State<_SelectCore<T>> createState() => _SelectCoreState<T>();
@@ -254,6 +268,29 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   final _states = WidgetStatesController();
   bool _open = false;
 
+  /// The open list, if any.
+  CoilPopupHandle? _popup;
+
+  void _attach(CoilPopupController? controller) => controller?.attach(
+    open: () => _show(keyboard: false),
+    close: (reason) => _popup?.close(reason),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _attach(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(_SelectCore<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.detach();
+      _attach(widget.controller);
+    }
+  }
+
   /// A context below the per-instance motion override, so the overlay
   /// captures it.
   BuildContext? _inner;
@@ -262,13 +299,15 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
 
   @override
   void dispose() {
+    widget.controller?.detach();
     _ownFocusNode?.dispose();
     _states.dispose();
     super.dispose();
   }
 
-  Future<void> _show({required bool keyboard}) async {
-    if (_open || !_enabled) return;
+  Future<CoilPopupCloseReason> _show({required bool keyboard}) async {
+    if (_popup case final popup?) return popup.closed;
+    if (!_enabled) return CoilPopupCloseReason.programmatic;
     final context = _inner ?? this.context;
     final presentation = CoilAdaptivePopup.presentationOf(
       context,
@@ -295,15 +334,8 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         scaler.scale(metrics.body.lineHeight);
 
     Timer? acknowledge;
-    var closed = false;
-    void close() {
-      if (closed || !mounted) return;
-      closed = true;
-      Navigator.of(context).pop();
-    }
-
     setState(() => _open = true);
-    await CoilAdaptivePopup.show<void>(
+    final popup = _popup = CoilAdaptivePopup.show(
       context,
       presentation: presentation,
       estimatedHeight:
@@ -311,7 +343,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       // Pointer: a 300 px cap. Touch popovers list at most eight rows, so
       // only the room on screen bounds them.
       maxHeight: pointerTier && !sheet ? 300 : double.infinity,
-      content: (context) => MotorInspectionScope(
+      content: (context, popup) => MotorInspectionScope(
         group: 'CoilSelect',
         child: CoilOptionList<T>(
           options: widget.options,
@@ -334,9 +366,12 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
             widget.onPick?.call(value, {value});
             // Hold the list open long enough to see the check draw and the
             // selected fill land on the picked row.
-            acknowledge = Timer(motion.acknowledgeDuration, close);
+            acknowledge = Timer(
+              motion.acknowledgeDuration,
+              () => popup.close(.selected),
+            );
           },
-          onDismiss: close,
+          onDismiss: popup.close,
         ),
       ),
       popover: (context, content) =>
@@ -344,12 +379,15 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       sheet: (context, content) =>
           CoilSheetPanel(title: widget.sheetTitle, child: content),
     );
-    closed = true;
+    widget.controller?.didOpen(popup.closed);
+    final reason = await popup.closed;
     acknowledge?.cancel();
-    if (!mounted) return;
+    _popup = null;
+    if (!mounted) return reason;
     setState(() => _open = false);
     // Focus goes back to the trigger however the list closed.
     _focusNode.requestFocus();
+    return reason;
   }
 
   @override
