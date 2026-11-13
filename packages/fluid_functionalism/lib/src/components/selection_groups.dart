@@ -121,10 +121,13 @@ class _CheckRowState extends State<_CheckRow> {
         onPressed: widget.onPressed,
         statesController: _states,
         minHitTarget: sizes.minHitTarget,
-        builder: (context, states, _) => SizedBox(
-          height: sizes.controlHeight,
+        builder: (context, states, _) => ConstrainedBox(
+          constraints: BoxConstraints(minHeight: sizes.controlHeight),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: sizes.itemPaddingX),
+            padding: EdgeInsets.symmetric(
+              horizontal: sizes.itemPaddingX,
+              vertical: sizes.controlPaddingY(sizes.body),
+            ),
             child: Row(
               spacing: sizes.gap,
               children: [
@@ -226,14 +229,18 @@ class FluidToggleGroup extends StatelessWidget {
                 child: FluidPressable(
                   onPressed: onChanged == null ? null : () => _toggle(i),
                   minHitTarget: sizes.minHitTarget,
-                  builder: (context, states, _) => SizedBox(
-                    height: sizes.controlHeight,
+                  builder: (context, states, _) => ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: sizes.controlHeight,
+                    ),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: sizes.controlPaddingX,
+                        vertical: sizes.controlPaddingY(sizes.body),
                       ),
                       child: Center(
                         widthFactor: 1,
+                        heightFactor: 1,
                         child: MotionBuilder<Color>(
                           value:
                               selected.contains(i) ||

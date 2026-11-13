@@ -338,8 +338,11 @@ class _FluidButtonState extends State<FluidButton> {
         ],
       );
     }
-    return SizedBox(
-      height: sizes.controlHeight,
+    // A minimum height plus symmetric padding: the label's line box sits
+    // centered, and the button grows with the text scale.
+    final padY = sizes.controlPaddingY(sizes.body);
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: sizes.controlHeight),
       child: Padding(
         padding: EdgeInsetsDirectional.only(
           start: leading != null
@@ -348,8 +351,10 @@ class _FluidButtonState extends State<FluidButton> {
           end: trailing != null
               ? sizes.buttonIconPaddingX
               : sizes.buttonPaddingX,
+          top: padY,
+          bottom: padY,
         ),
-        child: Center(widthFactor: 1, child: content),
+        child: Center(widthFactor: 1, heightFactor: 1, child: content),
       ),
     );
   }

@@ -282,10 +282,13 @@ class _TabButton extends StatelessWidget {
         onPressed: onPressed,
         focusNode: focusNode,
         statesController: statesController,
-        builder: (context, states, _) => SizedBox(
-          height: sizes.controlHeight,
+        builder: (context, states, _) => ConstrainedBox(
+          constraints: BoxConstraints(minHeight: sizes.controlHeight),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: sizes.controlPaddingX),
+            padding: EdgeInsets.symmetric(
+              horizontal: sizes.controlPaddingX,
+              vertical: sizes.controlPaddingY(sizes.body),
+            ),
             child: MotionBuilder<Color>(
               value: active ? colors.foreground : colors.mutedForeground,
               motion: motion.color,
@@ -352,6 +355,7 @@ class _TabButton extends StatelessWidget {
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
                             widthFactor: reveal.clamp(0, 1),
+                            heightFactor: 1,
                             child: Opacity(
                               opacity: reveal.clamp(0, 1),
                               child: child,

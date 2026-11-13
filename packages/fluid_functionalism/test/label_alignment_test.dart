@@ -12,14 +12,18 @@ import 'src/test_icons.dart';
 /// Measures where a cap-only label ("HEH": flat cap tops, flat baseline,
 /// no overshoot) actually inks inside each control, at every tier and text
 /// scale, and asserts the cap band is vertically centered (CSS
-/// `text-box: trim-both cap alphabetic`).
+/// `text-box: trim-both cap alphabetic`) to within the engine's baseline
+/// pixel rounding.
 ///
 /// Each case is rendered twice, label visible and label at opacity 0, and
 /// the two rasters are diffed, so the measured ink is exactly the label's,
 /// whatever the fill behind it.
 void main() {
-  const pixelRatio = 4.0;
-  const tolerance = 0.5;
+  const pixelRatio = 8.0;
+  // The text engine rounds the first baseline to a whole logical pixel
+  // (relative to the paragraph). That rounding is accepted, not
+  // compensated: up to 0.5 px of offset, i.e. 1 px of top/bottom imbalance.
+  const tolerance = 1.0;
   final results = <String>[];
 
   tearDownAll(() {
@@ -81,6 +85,19 @@ void main() {
     'input/placeholder': (ink) => SizedBox(
       width: 200,
       child: FluidInput(placeholder: _Ink(ink, const Text('HEH'))),
+    ),
+    'checkbox-group/row': (ink) => SizedBox(
+      width: 200,
+      child: FluidCheckboxGroup(
+        options: [_Ink(ink, const Text('HEH'))],
+        values: const {0},
+        onChanged: (_) {},
+      ),
+    ),
+    'toggle-group/item': (ink) => FluidToggleGroup(
+      items: [_Ink(ink, const Text('HEH'))],
+      selected: const {0},
+      onChanged: (_) {},
     ),
     'switch/label': (ink) => FluidSwitch(
       value: true,

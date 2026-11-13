@@ -271,6 +271,13 @@ class FluidSizes {
   /// Bounded control height: buttons, inputs, tabs, and list rows.
   final double controlHeight;
 
+  /// The vertical padding that puts a [text] line box in a [controlHeight]
+  /// control: `(controlHeight − lineHeight) / 2`, e.g. 8 + 20 + 8 = 36. The
+  /// control uses [controlHeight] as a minimum, so it grows with the text
+  /// scale instead of clipping or shifting the label.
+  double controlPaddingY(FluidTypeStep text) =>
+      (controlHeight - text.lineHeight) / 2;
+
   /// The smallest a tappable area may be. Controls whose visual is smaller
   /// (a checkbox, a compact button on touch) pad their hit area out to this.
   /// 0 on desktop.

@@ -233,18 +233,7 @@ class _FluidInputState extends State<FluidInput>
               ),
             ),
           ),
-        _selectionGestures.buildGestureDetector(
-          behavior: HitTestBehavior.translucent,
-          // Fills the field's height so a click anywhere in it lands, while
-          // the text itself sits centered on its cap height.
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: DefaultTextStyle(
-              style: style,
-              child: editable,
-            ),
-          ),
-        ),
+        editable,
       ],
     );
 
@@ -269,58 +258,70 @@ class _FluidInputState extends State<FluidInput>
         enabled: widget.enabled,
         trackPress: false,
         cursor: widget.enabled ? SystemMouseCursors.text : MouseCursor.defer,
-        child: IgnorePointer(
-          ignoring: !widget.enabled,
-          child: Opacity(
-            opacity: widget.enabled ? 1 : 0.5,
-            child: ListenableBuilder(
-              listenable: _states,
-              builder: (context, child) {
-                final states = _states.value;
-                final focused = states.contains(WidgetState.focused);
-                final hovered = states.contains(WidgetState.hovered);
-                final border = focused
-                    ? colors.foreground.withValues(alpha: 0.4)
-                    : widget.invalid
-                    ? colors.destructive.withValues(alpha: 0.5)
-                    : colors.border;
-                final fill = hovered && !focused
-                    ? colors.hover
-                    : colors.hover.withValues(alpha: 0);
-                return MotionBuilder<Color>(
-                  value: border,
-                  motion: _motion.color,
-                  converter: MotionConverter.colorRgb,
-                  builder: (context, borderColor, child) =>
-                      MotionBuilder<Color>(
-                        value: fill,
-                        motion: _motion.color,
-                        converter: MotionConverter.colorRgb,
-                        builder: (context, fillColor, child) => Container(
-                          height: sizes.controlHeight,
-                          decoration: BoxDecoration(
-                            color: fillColor,
-                            borderRadius: radius,
-                            border: Border.all(color: borderColor),
+        // Like TextField: the selection gestures cover the whole field box,
+        // so a click in its padding lands too.
+        child: _selectionGestures.buildGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          child: IgnorePointer(
+            ignoring: !widget.enabled,
+            child: Opacity(
+              opacity: widget.enabled ? 1 : 0.5,
+              child: ListenableBuilder(
+                listenable: _states,
+                builder: (context, child) {
+                  final states = _states.value;
+                  final focused = states.contains(WidgetState.focused);
+                  final hovered = states.contains(WidgetState.hovered);
+                  final border = focused
+                      ? colors.foreground.withValues(alpha: 0.4)
+                      : widget.invalid
+                      ? colors.destructive.withValues(alpha: 0.5)
+                      : colors.border;
+                  final fill = hovered && !focused
+                      ? colors.hover
+                      : colors.hover.withValues(alpha: 0);
+                  return MotionBuilder<Color>(
+                    value: border,
+                    motion: _motion.color,
+                    converter: MotionConverter.colorRgb,
+                    builder: (context, borderColor, child) =>
+                        MotionBuilder<Color>(
+                          value: fill,
+                          motion: _motion.color,
+                          converter: MotionConverter.colorRgb,
+                          // A minimum height plus symmetric padding: the text's
+                          // line box sits centered and the field grows with
+                          // the text scale.
+                          builder: (context, fillColor, child) => Container(
+                            constraints: BoxConstraints(
+                              minHeight: sizes.controlHeight,
+                            ),
+                            decoration: BoxDecoration(
+                              color: fillColor,
+                              borderRadius: radius,
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: child,
                           ),
                           child: child,
                         ),
-                        child: child,
-                      ),
-                  child: child,
-                );
-              },
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: sizes.controlPaddingX - 1,
-                ),
-                child: Row(
-                  spacing: sizes.gap,
-                  children: [
-                    if (widget.leading case final leading?) slot(leading),
-                    Expanded(child: field),
-                    if (widget.trailing case final trailing?) slot(trailing),
-                  ],
+                    child: child,
+                  );
+                },
+                child: Padding(
+                  // 1 px of each side is the border.
+                  padding: EdgeInsets.symmetric(
+                    horizontal: sizes.controlPaddingX - 1,
+                    vertical: sizes.controlPaddingY(sizes.field) - 1,
+                  ),
+                  child: Row(
+                    spacing: sizes.gap,
+                    children: [
+                      if (widget.leading case final leading?) slot(leading),
+                      Expanded(child: field),
+                      if (widget.trailing case final trailing?) slot(trailing),
+                    ],
+                  ),
                 ),
               ),
             ),
