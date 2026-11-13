@@ -73,12 +73,13 @@ class _RingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final grow = offset + width / 2;
-    final rrect = borderRadius
+    final outline = borderRadius
         .resolve(TextDirection.ltr)
-        .toRRect(Offset.zero & size)
+        .toRSuperellipse(Offset.zero & size)
         .inflate(grow);
-    canvas.drawRRect(
-      rrect,
+    // The ring follows the control's superellipse at its offset.
+    canvas.drawRSuperellipse(
+      outline,
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke

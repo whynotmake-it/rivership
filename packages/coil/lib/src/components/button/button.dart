@@ -376,26 +376,30 @@ class _ButtonSurfacePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    RRect box(double inset, double r) => RRect.fromRectAndRadius(
-      bounds.deflate(inset),
-      Radius.circular(math.max(0, r)),
-    );
+    RSuperellipse box(double inset, double r) =>
+        RSuperellipse.fromRectAndRadius(
+          bounds.deflate(inset),
+          Radius.circular(math.max(0, r)),
+        );
 
     final border = this.border;
     if (border == null) {
-      canvas.drawRRect(
+      canvas.drawRSuperellipse(
         box(1 - spread, radius + spread),
         Paint()..color = fill,
       );
       return;
     }
     // Tertiary: the fill only reaches the surface box (1 px in); the ring
-    // sits outside it at rest and inside it when pressed.
+    // sits outside it at rest and inside it when pressed. The ring is the
+    // even-odd difference of two concentric superellipses.
     canvas
-      ..drawRRect(box(1, radius), Paint()..color = fill)
-      ..drawDRRect(
-        box(1 - spread, radius + spread),
-        box(2 - spread, radius + spread - 1),
+      ..drawRSuperellipse(box(1, radius), Paint()..color = fill)
+      ..drawPath(
+        Path()
+          ..fillType = PathFillType.evenOdd
+          ..addRSuperellipse(box(1 - spread, radius + spread))
+          ..addRSuperellipse(box(2 - spread, radius + spread - 1)),
         Paint()..color = border,
       );
   }

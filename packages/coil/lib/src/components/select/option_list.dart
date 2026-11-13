@@ -233,7 +233,10 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
       exitMotion: motion.fadeExit,
       exitTravelMotion: motion.standard,
       fade: motion.fade,
-      decoration: BoxDecoration(color: colors.active, borderRadius: radius),
+      decoration: ShapeDecoration(
+        color: colors.active,
+        shape: RoundedSuperellipseBorder(borderRadius: radius),
+      ),
     );
 
     final rows = <Widget>[
@@ -310,11 +313,15 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
                   exitTravelMotion: motion.quick,
                   fade: motion.fade,
                   inflate: 1 + theme.focusRingWidth,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(theme.shape.focusRing),
-                    border: Border.all(
-                      color: colors.focusRing,
-                      width: theme.focusRingWidth,
+                  decoration: ShapeDecoration(
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        theme.shape.focusRing,
+                      ),
+                      side: BorderSide(
+                        color: colors.focusRing,
+                        width: theme.focusRingWidth,
+                      ),
                     ),
                   ),
                 );
@@ -434,9 +441,11 @@ class _OptionRowState extends State<_OptionRow> {
                     : motion.fadeExit,
                 debugLabel: 'CoilSelect row press',
                 builder: (context, fill, child) => DecoratedBox(
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     color: fill,
-                    borderRadius: BorderRadius.circular(theme.shape.item),
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(theme.shape.item),
+                    ),
                   ),
                   child: child,
                 ),

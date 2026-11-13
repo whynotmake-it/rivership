@@ -444,9 +444,9 @@ class _SwitchTrack extends StatelessWidget {
       child: Container(
         width: m.trackWidth,
         height: m.trackHeight,
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: Color.lerp(off, on, tint),
-          borderRadius: radius,
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),
         child: Stack(
           children: [
@@ -456,13 +456,9 @@ class _SwitchTrack extends StatelessWidget {
               width: width,
               height: height,
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(
-                    sharp ? 0 : m.thumbSize,
-                  ),
-                  // Tailwind `shadow-sm`.
-                  boxShadow: const [
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFFFFFFF), // Tailwind `shadow-sm`.
+                  shadows: const [
                     BoxShadow(
                       color: Color(0x1A000000),
                       offset: Offset(0, 1),
@@ -475,6 +471,9 @@ class _SwitchTrack extends StatelessWidget {
                       spreadRadius: -1,
                     ),
                   ],
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(sharp ? 0 : height / 2),
+                  ),
                 ),
               ),
             ),

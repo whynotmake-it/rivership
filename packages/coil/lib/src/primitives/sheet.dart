@@ -64,18 +64,20 @@ class CoilSheetPanel extends StatelessWidget {
         math.max(margin, media.padding.bottom),
       ),
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: colors.surface(3),
-          borderRadius: radius,
-          boxShadow: colors.shadow(3),
+          shadows: colors.shadow(3),
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),
         child: DecoratedBox(
           position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: colors.insetRing(3),
+          decoration: ShapeDecoration(
+            shape: RoundedSuperellipseBorder(
+              borderRadius: radius,
+              side: colors.insetRing(3),
+            ),
           ),
-          child: ClipRRect(
+          child: ClipRSuperellipse(
             borderRadius: radius,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -88,9 +90,11 @@ class CoilSheetPanel extends StatelessWidget {
                       width: 36,
                       height: 5,
                       child: DecoratedBox(
-                        decoration: BoxDecoration(
+                        decoration: ShapeDecoration(
                           color: colors.foreground.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(3),
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.circular(3),
+                          ),
                         ),
                       ),
                     ),

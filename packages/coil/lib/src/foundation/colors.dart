@@ -289,7 +289,7 @@ class CoilColors with Diagnosticable {
   Color surface(int level) => surfaces[level.clamp(1, 8) - 1];
 
   /// `--shadow-N`, as box shadows. The dark recipe's inset hairline is not
-  /// expressible as a [BoxShadow]; [insetRing] returns it as a border to
+  /// expressible as a [BoxShadow]; [insetRing] returns it as a border side to
   /// paint inside the box.
   List<BoxShadow> shadow(int level) {
     final n = level.clamp(1, 8);
@@ -322,13 +322,14 @@ class CoilColors with Diagnosticable {
     ];
   }
 
-  /// The inner hairline of `--shadow-N`: light draws it outside (in
-  /// [shadow]), dark draws an inset white ring.
-  Border? insetRing(int level) {
-    if (brightness == Brightness.light) return null;
+  /// The inner hairline of `--shadow-N`, as the side of a shape border:
+  /// light draws it outside (in [shadow]) and returns [BorderSide.none],
+  /// dark draws an inset white ring.
+  BorderSide insetRing(int level) {
+    if (brightness == Brightness.light) return BorderSide.none;
     final n = level.clamp(1, 8);
     final alpha = n <= 3 ? 0.02 : (n <= 5 ? 0.04 : 0.06);
-    return Border.all(color: Color.fromRGBO(255, 255, 255, alpha));
+    return BorderSide(color: Color.fromRGBO(255, 255, 255, alpha));
   }
 
   static double _drop(int i) =>

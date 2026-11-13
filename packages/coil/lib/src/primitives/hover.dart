@@ -297,9 +297,11 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
       exitMotion: motion.quickExit,
       exitTravelMotion: motion.standard,
       fade: motion.fade,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: theme.colors.hover,
-        borderRadius: BorderRadius.circular(theme.shape.item),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(theme.shape.item),
+        ),
       ),
     );
     return _CoilHoverScope(

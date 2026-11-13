@@ -170,4 +170,46 @@ void main() {
     ];
     expect(violations, isEmpty);
   });
+
+  test('every rounded shape is a superellipse', () {
+    // Superellipse APIs (RoundedSuperellipseBorder, RSuperellipse,
+    // ClipRSuperellipse, drawRSuperellipse) are fine, and so is a
+    // BorderRadius handed to them.
+    final banned = {
+      'ClipRRect': RegExp(r'\bClipRRect\b'),
+      'RRect': RegExp(r'\bRRect\b'),
+      'drawRRect/drawDRRect': RegExp(r'\bdraw(D)?RRect\b'),
+      'RoundedRectangleBorder': RegExp(r'\bRoundedRectangleBorder\b'),
+      'StadiumBorder': RegExp(r'\bStadiumBorder\b'),
+    };
+    final violations = <String>[];
+    for (final file in Directory('lib').listSync(recursive: true)) {
+      if (file is! File || !file.path.endsWith('.dart')) continue;
+      final source = file.readAsStringSync();
+      for (final (n, line) in source.split('\n').indexed) {
+        if (line.trimLeft().startsWith('//')) continue;
+        for (final MapEntry(key: name, value: pattern) in banned.entries) {
+          if (pattern.hasMatch(line)) {
+            violations.add('${file.path}:${n + 1} uses $name');
+          }
+        }
+      }
+      // A BorderRadius inside a BoxDecoration(...) call.
+      for (final match in RegExp(r'\bBoxDecoration\(').allMatches(source)) {
+        var depth = 0;
+        var end = match.end - 1;
+        for (; end < source.length; end++) {
+          if (source[end] == '(') depth++;
+          if (source[end] == ')' && --depth == 0) break;
+        }
+        if (source.substring(match.start, end).contains('borderRadius')) {
+          final line = '\n'.allMatches(source.substring(0, match.start));
+          violations.add(
+            '${file.path}:${line.length + 1} rounds a BoxDecoration',
+          );
+        }
+      }
+    }
+    expect(violations, isEmpty);
+  });
 }

@@ -196,10 +196,12 @@ class _CoilInputState extends State<CoilInput> {
             // sits centered and the field grows with the text scale.
             builder: (context, fillColor, child) => Container(
               constraints: BoxConstraints(minHeight: sizes.controlHeight),
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: fillColor,
-                borderRadius: radius,
-                border: Border.all(color: borderColor),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: borderColor),
+                ),
               ),
               child: child,
             ),

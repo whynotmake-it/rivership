@@ -166,9 +166,9 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
           onStateChanged: (state) {
             final hovered = widget.debugHoveredIndex ?? state.activeIndex;
             final hovering = hovered != null && hovered != selected;
-            final fill = BoxDecoration(
+            final fill = ShapeDecoration(
               color: colors.active,
-              borderRadius: radius,
+              shape: RoundedSuperellipseBorder(borderRadius: radius),
             );
             _selectedPill.update(
               target: selected,
@@ -201,11 +201,13 @@ class _CoilTabsState extends State<CoilTabs> with TickerProviderStateMixin {
               exitTravelMotion: motion.standard,
               fade: motion.fade,
               inflate: 1 + theme.focusRingWidth,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(theme.shape.focusRing),
-                border: Border.all(
-                  color: colors.focusRing,
-                  width: theme.focusRingWidth,
+              decoration: ShapeDecoration(
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(theme.shape.focusRing),
+                  side: BorderSide(
+                    color: colors.focusRing,
+                    width: theme.focusRingWidth,
+                  ),
                 ),
               ),
             );

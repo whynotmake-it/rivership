@@ -185,9 +185,11 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                 builder: (context, borderColor, child) => Container(
                   width: boxSize,
                   height: boxSize,
-                  decoration: BoxDecoration(
-                    borderRadius: radius,
-                    border: Border.all(color: borderColor, width: 1.5),
+                  decoration: ShapeDecoration(
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: radius,
+                      side: BorderSide(color: borderColor, width: 1.5),
+                    ),
                   ),
                   child: child,
                 ),

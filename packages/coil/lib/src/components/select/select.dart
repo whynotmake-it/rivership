@@ -489,10 +489,12 @@ class CoilSelectTrigger extends StatelessWidget {
           motion: pressed || hovered ? motion.fade : motion.fadeExit,
           debugLabel: 'CoilSelect trigger fill',
           builder: (context, fill, child) => DecoratedBox(
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: fill,
-              border: Border.all(color: colors.border),
-              borderRadius: radius,
+              shape: RoundedSuperellipseBorder(
+                borderRadius: radius,
+                side: BorderSide(color: colors.border),
+              ),
             ),
             child: child,
           ),
@@ -559,18 +561,20 @@ class _PopoverSurface extends StatelessWidget {
     );
     return IntrinsicWidth(
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: colors.surface(3),
-          borderRadius: radius,
-          boxShadow: colors.shadow(3),
+          shadows: colors.shadow(3),
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),
         child: DecoratedBox(
           position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: colors.insetRing(3),
+          decoration: ShapeDecoration(
+            shape: RoundedSuperellipseBorder(
+              borderRadius: radius,
+              side: colors.insetRing(3),
+            ),
           ),
-          child: ClipRRect(borderRadius: radius, child: child),
+          child: ClipRSuperellipse(borderRadius: radius, child: child),
         ),
       ),
     );

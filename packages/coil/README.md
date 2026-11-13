@@ -81,10 +81,15 @@ instant, fades stay.
 | `gentle` / `gentleExit` | 340 ms bounce 0.1 / 260 ms | sheets, dialogs |
 | `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity, color, check drawing |
 
+## Shapes
+
+Every rounded shape is a superellipse (`RoundedSuperellipseBorder`,
+`RSuperellipse`), pills included; an architecture test keeps it that way.
+
 ## Icons
 
 coil bundles no icons. Slots take any widget and are styled through
-Flutter's `IconTheme`. Glyphs a component draws itself (check, chevron,
+Flutter's `IconTheme`, with `applyTextScaling` on so icons grow with text. Glyphs a component draws itself (check, chevron,
 spinner) can be replaced through a slot or builder.
 
 ## Tests
