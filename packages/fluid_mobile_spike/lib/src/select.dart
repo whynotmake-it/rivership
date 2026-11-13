@@ -1,3 +1,5 @@
+// MotorInspectionScope is @experimental; the motor example uses it too.
+// ignore_for_file: experimental_member_use
 import 'dart:async';
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
@@ -6,6 +8,7 @@ import 'package:fluid_mobile_spike/src/routes.dart';
 import 'package:fluid_mobile_spike/src/tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// Pick one of a few values. One API, two presentations:
@@ -92,10 +95,16 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
   Future<void> _show({required bool keyboard}) async {
     if (_open || !_enabled) return;
     final navigator = Navigator.of(context);
-    final colors = FluidTheme.of(context);
     final presentation = FluidAdaptiveScope.presentationOf(
       context,
       override: widget.presentation,
+    );
+    final motion = FluidTheme.motionOf(context);
+    // Carries FluidTheme (an InheritedTheme) and any other themes from the
+    // trigger into the overlay, whichever navigator it is pushed on.
+    final themes = InheritedTheme.capture(
+      from: context,
+      to: navigator.context,
     );
     final metrics = presentation == FluidPresentation.sheet
         ? FluidMetrics.touch
@@ -112,19 +121,24 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       }
     }
 
-    Widget list() => FluidOptionList<T>(
-      options: widget.options,
-      selected: widget.value,
-      metrics: metrics,
-      keyboardOpened: keyboard,
-      selectedFill: presentation == FluidPresentation.popover,
-      onPick: (value) {
-        widget.onChanged?.call(value);
-        // Hold the list open long enough to see the check draw and the
-        // selected fill land on the picked row.
-        ack = Timer(FluidMotion.selectionAck, () => close(route));
-      },
-      onDismiss: () => close(route),
+    // Everything the select animates shows up as one group in
+    // motor_devtools.
+    Widget list() => MotorInspectionScope(
+      group: 'FluidSelect',
+      child: FluidOptionList<T>(
+        options: widget.options,
+        selected: widget.value,
+        metrics: metrics,
+        keyboardOpened: keyboard,
+        selectedFill: presentation == FluidPresentation.popover,
+        onPick: (value) {
+          widget.onChanged?.call(value);
+          // Hold the list open long enough to see the check draw and the
+          // selected fill land on the picked row.
+          ack = Timer(motion.selectionAck, () => close(route));
+        },
+        onDismiss: () => close(route),
+      ),
     );
 
     switch (presentation) {
@@ -139,17 +153,16 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
           contentHeight:
               widget.options.length * metrics.rowHeight +
               metrics.popupInset * 2,
-          builder: (context) => FluidTheme(
-            colors: colors,
-            child: _PopoverShell(metrics: metrics, child: list()),
-          ),
+          capturedThemes: themes,
+          exitDuration: motion.popoverExit.duration ?? Duration.zero,
+          builder: (context) => _PopoverShell(metrics: metrics, child: list()),
         );
       case FluidPresentation.sheet:
         route = FluidSheetRoute<T>(
-          child: FluidTheme(
-            colors: colors,
-            child: FluidSheetPanel(title: widget.sheetTitle, child: list()),
-          ),
+          motion: motion.sheet,
+          exitMotion: motion.sheetExit,
+          capturedThemes: themes,
+          child: FluidSheetPanel(title: widget.sheetTitle, child: list()),
         );
     }
 
@@ -191,48 +204,51 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
           )
         : (selected.child ?? Text(selected.label));
 
-    return Semantics(
-      button: true,
-      enabled: _enabled,
-      expanded: _open,
-      value: selected?.label,
-      hint: selected == null ? widget.placeholder : null,
-      child: Focus(
-        focusNode: _focusNode,
-        autofocus: widget.autofocus,
-        canRequestFocus: _enabled,
-        onKeyEvent: _onKey,
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        child: MouseRegion(
-          cursor: _enabled
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          onEnter: (event) {
-            if (fluidCanHover(event.kind)) setState(() => _hovered = true);
-          },
-          onExit: (_) => setState(() => _hovered = false),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            // Touch gets press feedback that ends with the press, never a
-            // hover state that outlives it.
-            onTapDown: (details) {
-              if (_enabled && !fluidCanHover(details.kind)) {
-                setState(() => _pressed = true);
-              }
+    return MotorInspectionScope(
+      group: 'FluidSelect',
+      child: Semantics(
+        button: true,
+        enabled: _enabled,
+        expanded: _open,
+        value: selected?.label,
+        hint: selected == null ? widget.placeholder : null,
+        child: Focus(
+          focusNode: _focusNode,
+          autofocus: widget.autofocus,
+          canRequestFocus: _enabled,
+          onKeyEvent: _onKey,
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          child: MouseRegion(
+            cursor: _enabled
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            onEnter: (event) {
+              if (fluidCanHover(event.kind)) setState(() => _hovered = true);
             },
-            onTapCancel: () => setState(() => _pressed = false),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTap: () => _show(keyboard: false),
-            child: ValueListenableBuilder(
-              valueListenable: FluidKeyboardModality.instance,
-              builder: (context, keyboard, _) => FluidTriggerBox(
-                metrics: metrics,
-                hovered: _hovered && !_open,
-                pressed: _pressed,
-                focusRing: _focused && keyboard && !_open,
-                enabled: _enabled,
-                icon: widget.icon,
-                label: label,
+            onExit: (_) => setState(() => _hovered = false),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // Touch gets press feedback that ends with the press, never a
+              // hover state that outlives it.
+              onTapDown: (details) {
+                if (_enabled && !fluidCanHover(details.kind)) {
+                  setState(() => _pressed = true);
+                }
+              },
+              onTapCancel: () => setState(() => _pressed = false),
+              onTapUp: (_) => setState(() => _pressed = false),
+              onTap: () => _show(keyboard: false),
+              child: ValueListenableBuilder(
+                valueListenable: FluidKeyboardModality.instance,
+                builder: (context, keyboard, _) => FluidTriggerBox(
+                  metrics: metrics,
+                  hovered: _hovered && !_open,
+                  pressed: _pressed,
+                  focusRing: _focused && keyboard && !_open,
+                  enabled: _enabled,
+                  icon: widget.icon,
+                  label: label,
+                ),
               ),
             ),
           ),
@@ -288,7 +304,8 @@ class FluidTriggerBox extends StatelessWidget {
             ? colors.active
             : (hovered ? colors.hover : colors.hover.withValues(alpha: 0)),
         converter: MotionConverter.colorRgb,
-        motion: const Motion.curved(Duration(milliseconds: 80)),
+        motion: FluidTheme.motionOf(context).color,
+        debugLabel: 'Trigger fill',
         builder: (context, fill, child) => Container(
           constraints: BoxConstraints(
             minWidth: metrics.triggerMinWidth,

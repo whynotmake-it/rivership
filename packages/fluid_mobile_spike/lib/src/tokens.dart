@@ -1,51 +1,205 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Motion tokens, mirroring `registry/default/lib/springs.ts`.
+/// Motion tokens, mirroring `registry/default/lib/springs.ts`, as theme
+/// data: components read them with `FluidTheme.motionOf(context)`, never
+/// from a constant, so an app (or a subtree) can retune them at runtime and
+/// the next animation picks the change up.
 ///
 /// Each tier enters on a spring and exits on a plain tween one tier quicker,
 /// so a dismissal reads as crisp and final instead of replaying the entrance.
-// ignore: use_enums, a namespace of constants, not a set of cases.
-abstract final class FluidMotion {
-  /// Hover, focus rings, fades, tooltips, selection indicators. 0.08s, no
-  /// bounce.
-  static const fast = CupertinoMotion(
-    duration: Duration(milliseconds: 80),
-  );
+///
+/// The default springs are the *same physical springs* as the web's, not the
+/// same numbers. motion.dev reads `{duration, bounce}` as a settle time: it
+/// picks the stiffness at which the spring's envelope has decayed to 0.001
+/// after `duration` (`findSpring`). Flutter's
+/// `SpringDescription.withDurationAndBounce` (behind [CupertinoMotion])
+/// reads `duration` as the period: stiffness = (2π / duration)². Solving
+/// motion.dev's envelope for each tier and converting gives the durations
+/// below. Same stiffness, same damping ratio (1 − bounce), mass 1:
+///
+/// | web token | ω (rad/s) | CupertinoMotion duration |
+/// |---|---|---|
+/// | fast 0.08s, bounce 0 | 115.4 | 54ms |
+/// | moderate 0.16s, bounce 0 | 57.7 | 109ms |
+/// | slow 0.24s, bounce 0.12 | 35.6 | 176ms |
+///
+/// Taking the web numbers literally (80/160/240ms) would make every Flutter
+/// spring about 1.5× slower than the web.
+@immutable
+class FluidMotionThemeData {
+  /// Creates motion tokens. Every argument defaults to the web's value.
+  const FluidMotionThemeData({
+    this.fast = const CupertinoMotion(duration: Duration(milliseconds: 54)),
+    this.fastExit = const CurvedMotion(
+      Duration(milliseconds: 60),
+      Curves.easeOut,
+    ),
+    this.moderate = const CupertinoMotion(
+      duration: Duration(milliseconds: 109),
+    ),
+    this.moderateExit = const CurvedMotion(
+      Duration(milliseconds: 120),
+      Curves.easeOut,
+    ),
+    this.slow = const CupertinoMotion(
+      duration: Duration(milliseconds: 176),
+      bounce: 0.12,
+    ),
+    this.slowExit = const CurvedMotion(
+      Duration(milliseconds: 160),
+      Curves.easeOut,
+    ),
+    this.color = const CurvedMotion(Duration(milliseconds: 80)),
+    this.strokeIn = const CurvedMotion(
+      Duration(milliseconds: 80),
+      Curves.easeOut,
+    ),
+    this.strokeOut = const CurvedMotion(
+      Duration(milliseconds: 40),
+      Curves.easeIn,
+    ),
+    this.selectionAck = const Duration(milliseconds: 300),
+  });
+
+  /// The web's tokens.
+  static const standard = FluidMotionThemeData();
+
+  /// Hover, focus rings, fades, tooltips, selection indicators. Web
+  /// `spring.fast` (0.08s, bounce 0).
+  final Motion fast;
 
   /// The exit of [fast]: a 0.06s tween.
-  static const fastExit = CurvedMotion(
-    Duration(milliseconds: 60),
-    Curves.easeOut,
-  );
+  final Motion fastExit;
 
   /// Short travel and panels or sheets that must land exactly: dropdown and
-  /// tab indicators, the switch thumb, the mobile drawer. 0.16s, no bounce.
-  static const moderate = CupertinoMotion(
-    duration: Duration(milliseconds: 160),
-  );
+  /// tab indicators, the switch thumb, the mobile drawer. Web
+  /// `spring.moderate` (0.16s, bounce 0).
+  final Motion moderate;
 
   /// The exit of [moderate]: a 0.12s tween.
-  static const moderateExit = CurvedMotion(
-    Duration(milliseconds: 120),
-    Curves.easeOut,
-  );
+  final Motion moderateExit;
 
-  /// Large surfaces: dialogs, side panels, stepped flows. 0.24s, bounce 0.12.
-  static const slow = CupertinoMotion(
-    duration: Duration(milliseconds: 240),
-    bounce: 0.12,
-  );
+  /// Large surfaces: dialogs, side panels, stepped flows. Web `spring.slow`
+  /// (0.24s, bounce 0.12).
+  final Motion slow;
 
   /// The exit of [slow]: a 0.16s tween.
-  static const slowExit = CurvedMotion(
-    Duration(milliseconds: 160),
-    Curves.easeOut,
-  );
+  final Motion slowExit;
+
+  /// A CSS `transition-colors duration-80`: text and fill colors.
+  final Motion color;
+
+  /// A stroke drawing in (the select's check, 0.08s ease-out). A tween on
+  /// purpose: the appear must outlast the disappear (motion-guidelines.md,
+  /// "Icon swaps"), which a critically damped spring would invert.
+  final Motion strokeIn;
+
+  /// A stroke erasing (0.04s ease-in).
+  final Motion strokeOut;
 
   /// How long a pick holds a select open so the check can draw and the
   /// selected fill can spring to the picked row (`selectionAckMs`).
-  static const selectionAck = Duration(milliseconds: 300);
+  final Duration selectionAck;
+
+  // Semantic aliases, so components say what moves rather than which tier.
+
+  /// The fluid hover highlight and the focus ring travelling between rows.
+  Motion get highlight => fast;
+
+  /// The selected fill moving to a newly picked row.
+  Motion get indicator => moderate;
+
+  /// The exit of [indicator].
+  Motion get indicatorExit => moderateExit;
+
+  /// An anchored popover opening.
+  Motion get popover => fast;
+
+  /// An anchored popover closing.
+  Motion get popoverExit => fastExit;
+
+  /// A sheet or drawer opening.
+  Motion get sheet => moderate;
+
+  /// A sheet or drawer closing.
+  Motion get sheetExit => moderateExit;
+
+  /// Every motion swapped for [Motion.instant], for reduced motion. The web
+  /// keeps a short opacity fade there; at these durations, instant is the
+  /// honest equivalent.
+  FluidMotionThemeData get reduced => const FluidMotionThemeData(
+    fast: Motion.instant(),
+    fastExit: Motion.instant(),
+    moderate: Motion.instant(),
+    moderateExit: Motion.instant(),
+    slow: Motion.instant(),
+    slowExit: Motion.instant(),
+    color: Motion.instant(),
+    strokeIn: Motion.instant(),
+    strokeOut: Motion.instant(),
+  ).copyWith(selectionAck: selectionAck);
+
+  /// A copy with the given tokens replaced.
+  FluidMotionThemeData copyWith({
+    Motion? fast,
+    Motion? fastExit,
+    Motion? moderate,
+    Motion? moderateExit,
+    Motion? slow,
+    Motion? slowExit,
+    Motion? color,
+    Motion? strokeIn,
+    Motion? strokeOut,
+    Duration? selectionAck,
+  }) => FluidMotionThemeData(
+    fast: fast ?? this.fast,
+    fastExit: fastExit ?? this.fastExit,
+    moderate: moderate ?? this.moderate,
+    moderateExit: moderateExit ?? this.moderateExit,
+    slow: slow ?? this.slow,
+    slowExit: slowExit ?? this.slowExit,
+    color: color ?? this.color,
+    strokeIn: strokeIn ?? this.strokeIn,
+    strokeOut: strokeOut ?? this.strokeOut,
+    selectionAck: selectionAck ?? this.selectionAck,
+  );
+
+  /// Motions don't interpolate: switches at the midpoint, like
+  /// `ThemeData.lerp` does for non-numeric fields.
+  static FluidMotionThemeData lerp(
+    FluidMotionThemeData a,
+    FluidMotionThemeData b,
+    double t,
+  ) => t < 0.5 ? a : b;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FluidMotionThemeData &&
+      other.fast == fast &&
+      other.fastExit == fastExit &&
+      other.moderate == moderate &&
+      other.moderateExit == moderateExit &&
+      other.slow == slow &&
+      other.slowExit == slowExit &&
+      other.color == color &&
+      other.strokeIn == strokeIn &&
+      other.strokeOut == strokeOut &&
+      other.selectionAck == selectionAck;
+
+  @override
+  int get hashCode => Object.hash(
+    fast,
+    fastExit,
+    moderate,
+    moderateExit,
+    slow,
+    slowExit,
+    color,
+    strokeIn,
+    strokeOut,
+    selectionAck,
+  );
 }
 
 /// Colors from `app/globals.css`, resolved for one brightness.

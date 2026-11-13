@@ -171,15 +171,26 @@ class _FluidAdaptiveData extends InheritedWidget {
       presentation != oldWidget.presentation;
 }
 
-/// The colors for everything below it. Defaults to the platform brightness.
-class FluidTheme extends InheritedWidget {
-  /// Pins [colors] for this subtree.
-  const FluidTheme({required this.colors, required super.child, super.key});
+/// Colors and motion tokens for everything below it.
+///
+/// An [InheritedTheme], so overlays (popovers, sheets) carry the theme of the
+/// widget that opened them even when they're pushed on a navigator above it.
+class FluidTheme extends InheritedTheme {
+  /// Pins [colors] and [motion] for this subtree.
+  const FluidTheme({
+    required this.colors,
+    required super.child,
+    this.motion = FluidMotionThemeData.standard,
+    super.key,
+  });
 
   /// The pinned colors.
   final FluidColors colors;
 
-  /// The colors at [context].
+  /// The pinned motion tokens, before reduced motion is applied.
+  final FluidMotionThemeData motion;
+
+  /// The colors at [context]. Defaults to the platform brightness.
   static FluidColors of(BuildContext context) {
     final theme = context.dependOnInheritedWidgetOfExactType<FluidTheme>();
     if (theme != null) return theme.colors;
@@ -188,8 +199,28 @@ class FluidTheme extends InheritedWidget {
         : FluidColors.light;
   }
 
+  /// The motion tokens to animate with at [context]: the configured ones, or
+  /// their [FluidMotionThemeData.reduced] form when the platform asks for
+  /// reduced motion. Read this on every build and pass the motions to each
+  /// `.to(...)`, so a retune applies to the next animation.
+  static FluidMotionThemeData motionOf(BuildContext context) {
+    final theme = context.dependOnInheritedWidgetOfExactType<FluidTheme>();
+    final motion = theme?.motion ?? FluidMotionThemeData.standard;
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return reduce ? motion.reduced : motion;
+  }
+
   @override
-  bool updateShouldNotify(FluidTheme oldWidget) => colors != oldWidget.colors;
+  Widget wrap(BuildContext context, Widget child) {
+    final outer = context.findAncestorWidgetOfExactType<FluidTheme>();
+    return identical(outer, this)
+        ? child
+        : FluidTheme(colors: colors, motion: motion, child: child);
+  }
+
+  @override
+  bool updateShouldNotify(FluidTheme oldWidget) =>
+      colors != oldWidget.colors || motion != oldWidget.motion;
 }
 
 /// Whether the last thing the user did was press a key (the web's

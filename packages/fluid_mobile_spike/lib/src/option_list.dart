@@ -96,6 +96,10 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   /// may stay lit where a finger was.
   int? _pressed;
 
+  /// Steps with each press, so a release fades its own fill out and the
+  /// next press starts a fresh one in place (presses never glide).
+  int _pressSession = 0;
+
   /// The row showing as picked.
   int? _checked;
 
@@ -271,6 +275,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   Widget build(BuildContext context) {
     final metrics = widget.metrics;
     final colors = FluidTheme.of(context);
+    final motion = FluidTheme.motionOf(context);
     final highlighted = _pressed ?? _active;
 
     final rows = <Widget>[
@@ -293,7 +298,10 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
               // Hovering pointers already show where they are.
               if (_picked || !option.enabled) return;
               if (fluidCanHover(details.kind)) return;
-              setState(() => _pressed = i);
+              setState(() {
+                _pressSession++;
+                _pressed = i;
+              });
             },
             onTapCancel: _release,
             onTapUp: (details) =>
@@ -344,8 +352,8 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
                   rect: widget.selectedFill ? _rowRect(_checked) : null,
                   color: colors.active,
                   radius: metrics.itemRadius,
-                  motion: FluidMotion.moderate,
-                  exitMotion: FluidMotion.moderateExit,
+                  motion: motion.indicator,
+                  exitMotion: motion.indicatorExit,
                   fadeIn: false,
                 ),
                 // Hover fill (hovering pointers and the keyboard): fades in
@@ -355,18 +363,18 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
                   rect: _rowRect(_active),
                   color: colors.hover,
                   radius: metrics.itemRadius,
-                  motion: FluidMotion.fast,
-                  exitMotion: FluidMotion.fastExit,
+                  motion: motion.highlight,
+                  exitMotion: motion.fastExit,
                 ),
                 // Press fill (touch only): under the finger while it is down,
                 // gone on release. Never glides: each press is its own.
                 FluidFill(
-                  key: ValueKey('fill-press-$_pressed'),
+                  key: ValueKey('fill-press-$_pressSession'),
                   rect: _rowRect(_pressed),
                   color: colors.active,
                   radius: metrics.itemRadius,
-                  motion: FluidMotion.fast,
-                  exitMotion: FluidMotion.fastExit,
+                  motion: motion.highlight,
+                  exitMotion: motion.fastExit,
                 ),
                 Column(mainAxisSize: MainAxisSize.min, children: rows),
                 // Focus ring: only for keyboard navigation.
@@ -376,8 +384,8 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
                   ring: colors.focusRing,
                   outset: metrics.focusRingOutset,
                   radius: metrics.itemRadius + metrics.focusRingOutset,
-                  motion: FluidMotion.fast,
-                  exitMotion: FluidMotion.fastExit,
+                  motion: motion.highlight,
+                  exitMotion: motion.fastExit,
                   fadeIn: false,
                 ),
               ],
@@ -434,44 +442,73 @@ class FluidFill extends StatefulWidget {
 }
 
 class _FluidFillState extends State<FluidFill> {
+  // Tracks are identity: created once, on the first build that has a rect,
+  // so they start where the fill first appears (no slide in from nowhere).
+  Track<Rect>? _rect;
+  Track<double>? _opacity;
   Rect? _last;
 
   @override
   Widget build(BuildContext context) {
     final target = widget.rect ?? _last;
     if (target == null) return const SizedBox.shrink();
-    final first = _last == null;
     _last = target;
+    final label = switch (widget.key) {
+      ValueKey<String>(:final value) => value,
+      _ => 'fill',
+    };
+    final rect = _rect ??= Track<Rect>(
+      MotionConverter.rect,
+      initial: target,
+      debugLabel: '$label rect',
+    );
+    final opacity = _opacity ??= Track<double>(
+      MotionConverter.single,
+      initial: widget.fadeIn ? 0 : 1,
+      debugLabel: '$label opacity',
+    );
     final visible = widget.rect != null;
-    return SingleMotionBuilder(
-      value: visible ? 1 : 0,
-      from: first && widget.fadeIn ? 0 : null,
-      motion: visible ? FluidMotion.fast : widget.exitMotion,
-      builder: (context, opacity, _) => MotionBuilder<Rect>(
-        value: target,
-        converter: MotionConverter.rect,
-        motion: widget.motion,
-        builder: (context, rect, _) => Positioned(
-          left: -widget.outset,
-          right: -widget.outset,
-          top: rect.top - widget.outset,
-          height: rect.height + widget.outset * 2,
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: opacity.clamp(0, 1),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: widget.color,
-                  border: widget.ring == null
-                      ? null
-                      : Border.all(color: widget.ring!),
-                  borderRadius: BorderRadius.circular(widget.radius),
-                ),
-              ),
-            ),
+    final fadeIn = FluidTheme.motionOf(context).fast;
+    // The rect is a retargetable spring: a new target mid-flight keeps the
+    // fill's velocity and bends toward the new row (motor example
+    // `retarget.dart`). Opacity springs in and tweens out.
+    return TrackBuilder(
+      debugLabel: label,
+      animations: [
+        rect([
+          TrackStep.to(target, motion: widget.motion),
+        ]),
+        opacity([
+          TrackStep.to(
+            visible ? 1.0 : 0.0,
+            motion: visible ? fadeIn : widget.exitMotion,
+          ),
+        ]),
+      ],
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: widget.color,
+            border: widget.ring == null
+                ? null
+                : Border.all(color: widget.ring!),
+            borderRadius: BorderRadius.circular(widget.radius),
           ),
         ),
       ),
+      builder: (context, value, child) {
+        final box = value(rect);
+        return Positioned(
+          left: -widget.outset,
+          right: -widget.outset,
+          top: box.top - widget.outset,
+          height: box.height + widget.outset * 2,
+          child: Opacity(
+            opacity: value(opacity).clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
@@ -518,7 +555,8 @@ class FluidOptionRow extends StatelessWidget {
       child: MotionBuilder<Color>(
         value: color,
         converter: MotionConverter.colorRgb,
-        motion: const Motion.curved(Duration(milliseconds: 80)),
+        motion: FluidTheme.motionOf(context).color,
+        debugLabel: 'Row text color',
         builder: (context, color, _) => SizedBox(
           height: metrics.rowHeight,
           child: Padding(
@@ -577,9 +615,10 @@ class FluidCheck extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleMotionBuilder(
       value: checked ? 1 : 0,
+      debugLabel: 'Check stroke',
       motion: checked
-          ? const Motion.curved(Duration(milliseconds: 80), Curves.easeOut)
-          : const Motion.curved(Duration(milliseconds: 40), Curves.easeIn),
+          ? FluidTheme.motionOf(context).strokeIn
+          : FluidTheme.motionOf(context).strokeOut,
       builder: (context, progress, _) => CustomPaint(
         size: Size.square(size),
         painter: _CheckPainter(progress.clamp(0, 1), color),

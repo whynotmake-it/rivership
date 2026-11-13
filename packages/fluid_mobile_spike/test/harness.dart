@@ -46,6 +46,7 @@ void useScreen(WidgetTester tester, TestScreen screen) {
 Widget testApp({
   required Widget home,
   FluidColors colors = FluidColors.light,
+  FluidMotionThemeData motion = FluidMotionThemeData.standard,
   FluidInputMode? inputMode,
   FluidPresentation? presentation,
 }) {
@@ -57,6 +58,7 @@ Widget testApp({
       presentation: presentation,
       child: FluidTheme(
         colors: colors,
+        motion: motion,
         child: DefaultTextStyle(
           style: FluidMetrics.pointer.body.style(color: colors.foreground),
           child: ColoredBox(color: colors.background, child: navigator),

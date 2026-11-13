@@ -1,8 +1,12 @@
+// MotorInspectionScope is @experimental; the motor example uses it too.
+// ignore_for_file: experimental_member_use
 import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/tokens.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/inspection.dart';
+import 'package:motor/motor.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// Which side of its anchor a popover landed on after collision handling.
@@ -14,12 +18,15 @@ enum FluidPopoverSide {
   top,
 }
 
-/// An anchored popover: enters on [FluidMotion.fast] (opacity, a 4px slide
-/// away from the anchor and scaleY 0.96 → 1 from the anchored edge) and
-/// exits on [FluidMotion.fastExit].
+/// An anchored popover: enters on the theme's popover spring (opacity, a
+/// 4px slide away from the anchor and scaleY 0.96 → 1 from the anchored
+/// edge) and exits on its tween (`FluidMotionThemeData.popover` /
+/// `popoverExit`).
 ///
-/// The route's animation itself is driven by Motor: [createSimulation]
-/// returns the spring going in and the tween going out.
+/// The route only keeps the popover mounted (and for exactly as long as the
+/// exit tween). What you see is a [PhaseTrackBuilder] with two phases,
+/// `closed` and `open`, driven by the route's status: every track springs
+/// in and tweens out. No [AnimationController] or [Tween] of our own.
 class FluidPopoverRoute<T> extends PopupRoute<T> {
   /// Creates a popover anchored to [anchor] (in the navigator's coordinates).
   FluidPopoverRoute({
@@ -31,8 +38,13 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
     this.sideOffset = 6,
     this.edgePadding = 8,
     this.capturedThemes,
+    this.exitDuration = const Duration(milliseconds: 60),
     super.settings,
   });
+
+  /// How long the route stays mounted after it is popped: the theme's
+  /// popover exit duration, read when the popover was opened.
+  final Duration exitDuration;
 
   /// The trigger's rect.
   final Rect anchor;
@@ -67,19 +79,13 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
   @override
   String? get barrierLabel => 'Dismiss';
 
+  // In: the phase builder springs on its own; the route is "open" at once.
   @override
-  Duration get transitionDuration => FluidMotion.fast.duration;
+  Duration get transitionDuration => Duration.zero;
 
+  // Out: the route stays mounted while the exit tween plays.
   @override
-  Duration get reverseTransitionDuration => FluidMotion.fastExit.duration;
-
-  @override
-  Simulation? createSimulation({required bool forward}) {
-    final start = controller?.value ?? (forward ? 0 : 1);
-    return forward
-        ? FluidMotion.fast.createSimulation(start: start)
-        : FluidMotion.fastExit.createSimulation(start: start, end: 0);
-  }
+  Duration get reverseTransitionDuration => exitDuration;
 
   @override
   Widget buildPage(
@@ -100,8 +106,9 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
     final available = side == FluidPopoverSide.bottom ? spaceBelow : spaceAbove;
     final height = math.max(0, math.min(maxHeight, available)).toDouble();
 
-    Widget child = Builder(builder: builder);
-    child = capturedThemes?.wrap(child) ?? child;
+    // The opener's themes wrap the motion too, so it reads the opener's
+    // motion tokens.
+    Widget wrap(Widget child) => capturedThemes?.wrap(child) ?? child;
 
     return CustomSingleChildLayout(
       delegate: _PopoverLayout(
@@ -112,26 +119,118 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
         minWidth: minWidth,
         maxHeight: height,
       ),
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, child) {
-          final t = animation.value.clamp(0.0, 1.0);
-          final direction = side == FluidPopoverSide.bottom ? -1.0 : 1.0;
-          return Opacity(
-            opacity: t,
-            child: Transform.translate(
-              offset: Offset(0, direction * 4 * (1 - t)),
-              child: Transform(
-                alignment: side == FluidPopoverSide.bottom
-                    ? Alignment.topCenter
-                    : Alignment.bottomCenter,
-                transform: Matrix4.diagonal3Values(1, 0.96 + 0.04 * t, 1),
-                child: child,
-              ),
+      child: wrap(
+        _PopoverMotion(
+          animation: animation,
+          side: side,
+          child: Builder(builder: builder),
+        ),
+      ),
+    );
+  }
+}
+
+enum _PopoverPhase { closed, open }
+
+/// The popover's enter and exit, as named phases. `popupMotionClass` and the
+/// select's `initial`/`animate`/`exit` on the web: opacity 0 → 1, a 4px
+/// slide away from the anchor, scaleY 0.96 → 1 from the anchored edge.
+class _PopoverMotion extends StatefulWidget {
+  const _PopoverMotion({
+    required this.animation,
+    required this.side,
+    required this.child,
+  });
+
+  /// The route's animation, read for its status only: reverse means closing.
+  final Animation<double> animation;
+  final FluidPopoverSide side;
+  final Widget child;
+
+  @override
+  State<_PopoverMotion> createState() => _PopoverMotionState();
+}
+
+class _PopoverMotionState extends State<_PopoverMotion> {
+  final _opacity = Track<double>(
+    MotionConverter.single,
+    initial: 0,
+    debugLabel: 'Popover opacity',
+  );
+  final _slide = Track<double>(
+    MotionConverter.single,
+    initial: 1,
+    debugLabel: 'Popover slide',
+  );
+  final _scaleY = Track<double>(
+    MotionConverter.single,
+    initial: 0.96,
+    debugLabel: 'Popover scaleY',
+  );
+
+  var _phase = _PopoverPhase.closed;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.animation.addStatusListener(_onStatus);
+    // Mounted closed, then opened on the next frame so the tracks spring
+    // from their closed values.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onStatus(null));
+  }
+
+  @override
+  void dispose() {
+    widget.animation.removeStatusListener(_onStatus);
+    super.dispose();
+  }
+
+  void _onStatus(AnimationStatus? _) {
+    if (!mounted) return;
+    final closing = switch (widget.animation.status) {
+      AnimationStatus.reverse || AnimationStatus.dismissed => true,
+      AnimationStatus.forward || AnimationStatus.completed => false,
+    };
+    final phase = closing ? _PopoverPhase.closed : _PopoverPhase.open;
+    if (phase != _phase) setState(() => _phase = phase);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = FluidTheme.motionOf(context);
+    final enter = motion.popover;
+    final exit = motion.popoverExit;
+    final bottom = widget.side == FluidPopoverSide.bottom;
+    return MotorInspectionScope(
+      group: 'FluidPopover',
+      child: PhaseTrackBuilder<_PopoverPhase>(
+        debugLabel: 'Popover',
+        currentPhase: _phase,
+        timeline: TrackPhaseTimeline({
+          _PopoverPhase.closed: [
+            _opacity([TrackStep.to(0, motion: exit)]),
+            _slide([TrackStep.to(1, motion: exit)]),
+            _scaleY([TrackStep.to(0.96, motion: exit)]),
+          ],
+          _PopoverPhase.open: [
+            _opacity([TrackStep.to(1, motion: enter)]),
+            _slide([TrackStep.to(0, motion: enter)]),
+            _scaleY([TrackStep.to(1, motion: enter)]),
+          ],
+        }),
+        child: widget.child,
+        builder: (context, value, phase, child) => Opacity(
+          opacity: value(_opacity).clamp(0.0, 1.0),
+          child: Transform.translate(
+            // --popup-enter-y: -4px below the anchor, +4px above it.
+            offset: Offset(0, (bottom ? -4.0 : 4.0) * value(_slide)),
+            child: Transform(
+              alignment: bottom ? Alignment.topCenter : Alignment.bottomCenter,
+              transform: Matrix4.diagonal3Values(1, value(_scaleY), 1),
+              child: child,
             ),
-          );
-        },
-        child: child,
+          ),
+        ),
       ),
     );
   }
@@ -187,26 +286,36 @@ class _PopoverLayout extends SingleChildLayoutDelegate {
       maxHeight != old.maxHeight;
 }
 
-/// The touch presentation: a `stupid_simple_sheet` route that enters on
-/// [FluidMotion.moderate] (the web's mobile-drawer tier) and exits on its
-/// tween, [FluidMotion.moderateExit].
+/// The touch presentation: a `stupid_simple_sheet` route (itself driven by
+/// Motor) that enters on [motion] and exits on [exitMotion]. The select
+/// passes the theme's `sheet` / `sheetExit` tokens (the web's mobile-drawer
+/// tier).
 class FluidSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// Creates a sheet route.
-  FluidSheetRoute({required super.child, super.settings})
-    : super(
-        motion: FluidMotion.moderate,
-        barrierColor: const Color(0x66000000), // bg-black/40
-      );
+  FluidSheetRoute({
+    required Widget child,
+    required super.motion,
+    required this.exitMotion,
+    CapturedThemes? capturedThemes,
+    super.settings,
+  }) : super(
+         child: capturedThemes?.wrap(child) ?? child,
+         barrierColor: const Color(0x66000000), // bg-black/40
+       );
+
+  /// The closing tween.
+  final Motion exitMotion;
 
   @override
-  Duration get reverseTransitionDuration => FluidMotion.moderateExit.duration;
+  Duration get reverseTransitionDuration =>
+      exitMotion.duration ?? const Duration(milliseconds: 120);
 
   @override
   Simulation? createSimulation({required bool forward}) {
     // Opening (and snapping back after a drag) stays on the spring.
     final spring = super.createSimulation(forward: forward);
     if (forward) return spring;
-    return FluidMotion.moderateExit.createSimulation(
+    return exitMotion.createSimulation(
       start: controller?.value ?? 1,
       end: 0,
     );
