@@ -327,19 +327,12 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         : CoilTheme.metricsOf(context);
     final pointerTier = CoilTheme.tierOf(context) == CoilTier.pointer;
     final style = _resolveStyle(context, metrics);
-    final scaler = MediaQuery.textScalerOf(context);
-    final rowExtent =
-        metrics.controlHeight -
-        metrics.body.lineHeight +
-        scaler.scale(metrics.body.lineHeight);
 
     Timer? acknowledge;
     setState(() => _open = true);
     final popup = _popup = CoilAdaptivePopup.show(
       context,
       presentation: presentation,
-      estimatedHeight:
-          widget.options.length * rowExtent + metrics.popupInset * 2,
       // Pointer: a 300 px cap. Touch popovers list at most eight rows, so
       // only the room on screen bounds them.
       maxHeight: pointerTier && !sheet ? 300 : double.infinity,

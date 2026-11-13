@@ -119,7 +119,6 @@ abstract final class CoilAdaptivePopup {
     content,
     required Widget Function(BuildContext context, Widget content) popover,
     required Widget Function(BuildContext context, Widget content) sheet,
-    double estimatedHeight = 0,
     double maxHeight = double.infinity,
   }) {
     final navigator = Navigator.of(anchorContext);
@@ -138,16 +137,17 @@ abstract final class CoilAdaptivePopup {
     switch (presentation) {
       case CoilPresentation.popover:
         final box = anchorContext.findRenderObject()! as RenderBox;
-        final overlay = navigator.context.findRenderObject()! as RenderBox;
-        final anchor =
-            box.localToGlobal(Offset.zero, ancestor: overlay) & box.size;
+        // Reduced motion: no grow, so the popover fades on the fade tokens
+        // (the spatial tokens are instant).
+        final reduce =
+            MediaQuery.maybeDisableAnimationsOf(anchorContext) ?? false;
         route = CoilPopoverRoute<CoilPopupCloseReason>(
-          anchor: anchor,
+          anchorContext: anchorContext,
           minWidth: box.size.width,
-          estimatedHeight: estimatedHeight,
           maxHeight: maxHeight,
-          enterMotion: motion.standard,
-          exitMotion: motion.standardExit,
+          enterMotion: reduce ? motion.fade : motion.standard,
+          exitMotion: reduce ? motion.fadeExit : motion.standardExit,
+          reduceMotion: reduce,
           capturedThemes: themes,
           // The TapRegion closes on tap-up outside, with its reason.
           barrierDismissible: false,

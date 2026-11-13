@@ -105,6 +105,11 @@ class CoilBlurFade extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Reduced motion: overlays only fade.
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final blur = reduce ? 0.0 : this.blur;
+    final scale = reduce ? 1.0 : this.scale;
+    final offset = reduce ? Offset.zero : this.offset;
     final alignment = this.alignment.resolve(Directionality.maybeOf(context));
     return ListenableBuilder(
       listenable: presence,
