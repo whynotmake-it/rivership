@@ -245,9 +245,15 @@ spatial token.
   `TextField` pattern). Flutter's controllers are reused where they exist:
   `TextEditingController`, `UndoHistoryController`, `WidgetStatesController`,
   `ScrollController`.
-- `CoilActiveItemController` is the only coil controller in M0.
+- coil's controllers: `CoilActiveItemController` (a list's active item)
+  and `CoilPopupController` (open/close a popup; `open()` resolves with a
+  `CoilPopupCloseReason`). Both are `ChangeNotifier`s passed as
+  `controller:`; a component without one manages its own state.
 - `items`/`options` are used only for collections whose entries are data
-  (`CoilSelect.options`, `CoilTabs.tabs`). Composition (`children`) is used
+  (`CoilSelect.options`, `CoilCheckboxGroup.options`, `CoilTabs.tabs`).
+  Entries carry their `value: T`; the component is generic in `T` and
+  reports values, never indexes. `CoilOption<T>` (foundation) is the shared
+  entry for choices. Composition (`children`) is used
   when entries are arbitrary widgets.
 
 ## 8. Platform behavior
@@ -273,11 +279,16 @@ spatial token.
 | 2026-11-13 | One adaptive scope `CoilAdaptiveScope` for tier, size and presentation pins | the spikes had `FluidSizeScope` and `FluidAdaptiveScope` doing overlapping jobs |
 | 2026-11-13 | Value controls are controlled; `onChanged` reports the new value; null `onChanged` disables | Flutter idiom; removes the mobile spike's `enabled` + callback duplication |
 | 2026-11-13 | `CoilSelect<T>` and `CoilMultiSelect<T>` are two widgets | one `onChanged` name with one type per widget, instead of `onValuesChanged` |
-| 2026-11-13 | Tabs: `value` (index) + `onChanged`, `labels: CoilTabLabels` | same idea, same name; enums over booleans |
+| 2026-11-13 | Tabs: `value` + `onChanged`, `labels: CoilTabLabels` | same idea, same name; enums over booleans |
 | 2026-11-13 | `CoilCheckbox(value: bool?, tristate:, onChanged: ValueChanged<bool?>?)`: null is indeterminate (dash) and needs `tristate`; only a tristate box cycles false → true → null → false. The `indeterminate` flag is gone. `CoilCheckboxGroup` has no select-all yet; when it gets one it uses the same shape | user review of M0; Flutter's `Checkbox` shape, no contradicting booleans |
 | 2026-11-13 | Icons scale with text: every `IconThemeData` coil provides sets `applyTextScaling: true` (Flutter's `Icon` then scales itself); drawn glyphs (check, chevron, spinner) size through `CoilIconSize.of(context)`, which applies the ambient `TextScaler` the same way; the checkbox box and its radius scale too. Gaps and paddings don't | user review of M0; Flutter's own mechanism, no custom scaling factor |
 | 2026-11-13 | No rounded rectangles: every rounded shape is a superellipse (`ShapeDecoration` + `RoundedSuperellipseBorder`, `ClipRSuperellipse`, `drawRSuperellipse`; pills use radius = height / 2). Merged selection runs use per-corner `BorderRadius` on the border; focus rings follow the superellipse at their offset. `test/architecture` fails on `ClipRRect`, `RRect`, `drawRRect`, `RoundedRectangleBorder`, `StadiumBorder` and a rounded `BoxDecoration` under `lib/` | user review of M0 |
 | 2026-11-13 | `expectCoilPattern` stays internal to coil's tests; no export and no `coil_test` package yet (`TODO(coil-eject)`) | user, 2026-11-13 |
+| 2026-11-13 | Style classes for every component, landed together: `Coil<Name>Style extends CoilComponentStyle`, nullable fields, `fallback(theme, metrics, …)` from tokens, `merge`, value equality; type-keyed theme overrides (`CoilThemeData.components`, `withComponentStyle`) and per-instance `style:` (open question 2) | user decision before the component waves |
+| 2026-11-13 | Generic values: `CoilTabs<T>` + `CoilTab<T>.value`; `CoilCheckboxGroup<T>` / `CoilToggleGroup<T>` take `options: List<CoilOption<T>>` and `values: Set<T>`; `CoilOption` moves to the foundation (open question 3) | values match `CoilSelect<T>`; indexes leak layout into app state |
+| 2026-11-13 | Theme-level track motions stay one flat `trackMotions` map (open question 4) | tracks are unique objects; revisit only if per-type styles need it |
+| 2026-11-13 | No per-kind presentation pin (open question 5) | YAGNI; a component's `presentation:` covers the exceptions |
+| 2026-11-13 | `CoilPopupController` like `MenuController` (`isOpen`, `open()`, `close()`), listenable; `open()` resolves once with `CoilPopupCloseReason` {selected, dismissed, escape, outsideTap, programmatic}; outside taps close on tap-up via `TapRegion`, so popover/sheet barriers don't dismiss on their own (open question 6) | research 07 overlay acceptance tests |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
@@ -290,22 +301,17 @@ spatial token.
 ## 10. Open questions
 
 1. ~~Checkbox value shape~~: settled (nullable `bool` + `tristate`, see the log).
-2. `style:` classes (per type and per instance): the shape (nullable fields
-   + `merge`, `fallback(resolvedTokens)`) is agreed in research 03 §5.2 but
-   not built. Do they land in M1 for all components at once, or per
-   component?
-3. Should tabs and segmented groups take generic values (`CoilTabs<T>`)
-   instead of an index? The index matches Flutter's `TabController`, a
-   generic matches `CoilSelect<T>`.
-4. Theme-level track motions are one flat `trackMotions` map (tracks are
-   unique objects, so one map serves every component). Should they instead
-   live in each component's theme style once `style:` classes exist
-   (question 2)?
-5. `CoilAdaptiveScope.presentation` pins every overlay below it. Is a
-   per-kind pin (menus vs selects) needed?
-6. `CoilSelect` / `CoilMultiSelect` are controlled and have no controller.
-   M3's overlay acceptance tests ask for `open()` resolving with a reason;
-   that implies a `CoilPopupController`. Shape it like `MenuController`?
+2. ~~When do `style:` classes land?~~ Settled: all at once, in the
+   cross-cutting pass before the component waves (see §6 "Style classes").
+3. ~~Generic tabs and segmented groups?~~ Settled: `CoilTabs<T>`,
+   `CoilCheckboxGroup<T>` and `CoilToggleGroup<T>` take values.
+4. ~~Where do theme-level track motions live?~~ Settled: one flat
+   `CoilThemeData.trackMotions` map for now.
+5. ~~A per-kind presentation pin?~~ Settled: no;
+   `CoilAdaptiveScope.presentation` pins every overlay below it.
+6. ~~A popup controller?~~ Settled: `CoilPopupController`, shaped like
+   `MenuController`, with `open()` resolving once with a
+   `CoilPopupCloseReason`.
 7. ~~Ship `expectCoilPattern`?~~ Settled: it stays internal to coil's
    tests (`test/src/coil_pattern.dart`); a `TODO(coil-eject)` there tracks
    exposing it later (e.g. a `coil_test` package) for ejected components.
