@@ -23,12 +23,21 @@ bool _triggerHasFocus(WidgetTester tester) {
   return focus.focusNode?.hasPrimaryFocus ?? false;
 }
 
-/// The list's fill whose key starts with `fill-[role]`.
-FluidFill _fill(WidgetTester tester, String role) => tester
-    .widgetList<FluidFill>(find.byType(FluidFill))
-    .singleWhere(
-      (fill) => (fill.key! as ValueKey<String>).value.startsWith('fill-$role'),
-    );
+/// The rows whose highlight shows [role]: selected, hover, press or focus.
+List<int> _lit(WidgetTester tester, String role) => [
+  for (final (i, row)
+      in tester
+          .widgetList<FluidRowHighlight>(find.byType(FluidRowHighlight))
+          .indexed)
+    if (switch (role) {
+      'selected' => row.selected,
+      'hover' => row.hovered,
+      'press' => row.pressed,
+      'focus' => row.focused,
+      _ => throw ArgumentError(role),
+    })
+      i,
+];
 
 Iterable<String> _checkedRows(WidgetTester tester) => tester
     .widgetList<FluidOptionRow>(find.byType(FluidOptionRow))
@@ -347,17 +356,17 @@ void main() {
     ) async {
       await openSheet(tester);
       // At rest the picked row has its check and no fill.
-      expect(_fill(tester, 'selected').rect, isNull);
+      expect(_lit(tester, 'selected'), isEmpty);
       expect(_checkedRows(tester), ['Banana']);
 
       await tester.tap(find.text('Mango'));
       // Still open for the acknowledgment: the check moved, nothing is lit.
       await tester.pump(const Duration(milliseconds: 150));
       expect(find.byType(FluidSheetPanel), findsOneWidget);
-      expect(_fill(tester, 'hover').rect, isNull);
-      expect(_fill(tester, 'press').rect, isNull);
-      expect(_fill(tester, 'selected').rect, isNull);
-      expect(_fill(tester, 'focus').rect, isNull);
+      expect(_lit(tester, 'hover'), isEmpty);
+      expect(_lit(tester, 'press'), isEmpty);
+      expect(_lit(tester, 'selected'), isEmpty);
+      expect(_lit(tester, 'focus'), isEmpty);
       expect(_checkedRows(tester), ['Mango']);
 
       await tester.pump(const Duration(milliseconds: 400));
@@ -377,13 +386,13 @@ void main() {
         tester.getCenter(find.text('Cherry')),
       );
       await tester.pump(kPressTimeout + const Duration(milliseconds: 20));
-      expect(_fill(tester, 'press').rect, isNotNull);
-      expect(_fill(tester, 'hover').rect, isNull);
+      expect(_lit(tester, 'press'), isNotEmpty);
+      expect(_lit(tester, 'hover'), isEmpty);
 
       // Sliding off cancels the tap: feedback clears and nothing is picked.
       await finger.moveBy(const Offset(0, 120));
       await tester.pump();
-      expect(_fill(tester, 'press').rect, isNull);
+      expect(_lit(tester, 'press'), isEmpty);
       await finger.up();
       await tester.pumpAndSettle();
       expect(_checkedRows(tester), ['Banana']);
@@ -403,10 +412,10 @@ void main() {
       await tester.tap(find.text('Cherry'));
       await tester.pump(const Duration(milliseconds: 150));
       expect(find.byType(FluidSheetPanel), findsNothing);
-      expect(_fill(tester, 'hover').rect, isNull);
-      expect(_fill(tester, 'press').rect, isNull);
+      expect(_lit(tester, 'hover'), isEmpty);
+      expect(_lit(tester, 'press'), isEmpty);
       // The popover keeps the web's selected fill, now on the picked row.
-      expect(_fill(tester, 'selected').rect, isNotNull);
+      expect(_lit(tester, 'selected'), isNotEmpty);
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
     });
@@ -425,8 +434,8 @@ void main() {
       await tester.pumpAndSettle();
       await mouse.moveTo(tester.getCenter(find.text('Cherry')));
       await tester.pumpAndSettle();
-      expect(_fill(tester, 'hover').rect, isNotNull);
-      expect(_fill(tester, 'press').rect, isNull);
+      expect(_lit(tester, 'hover'), isNotEmpty);
+      expect(_lit(tester, 'press'), isEmpty);
       await mouse.removePointer();
     });
   });
@@ -539,9 +548,9 @@ void main() {
       expect(find.byType(FluidSheetPanel), findsOneWidget);
       expect(_checkedRows(tester), ['Apple']);
       // Checks only: no selected fill, nothing lit.
-      expect(_fill(tester, 'selected').rect, isNull);
-      expect(_fill(tester, 'hover').rect, isNull);
-      expect(_fill(tester, 'press').rect, isNull);
+      expect(_lit(tester, 'selected'), isEmpty);
+      expect(_lit(tester, 'hover'), isEmpty);
+      expect(_lit(tester, 'press'), isEmpty);
 
       await tester.tapAt(const Offset(200, 100));
       await tester.pumpAndSettle();
@@ -682,7 +691,7 @@ void main() {
   });
 
   group('text scale', () {
-    testWidgets('rows and trigger grow; fills follow the measured rows', (
+    testWidgets('rows and trigger grow; fills grow with their rows', (
       tester,
     ) async {
       tester.platformDispatcher.textScaleFactorTestValue = 1.5;
@@ -698,21 +707,11 @@ void main() {
       final rows = find.byType(FluidOptionRow);
       final banana = tester.getRect(rows.at(1));
       expect(banana.height, greaterThan(44));
-      // The selected fill sits exactly on the (taller) Banana row.
-      final fill = tester.getRect(
-        find
-            .descendant(
-              of: find.byWidgetPredicate(
-                (w) =>
-                    w is FluidFill &&
-                    (w.key! as ValueKey<String>).value == 'fill-selected',
-              ),
-              matching: find.byType(DecoratedBox),
-            )
-            .first,
-      );
-      expect(fill.top, moreOrLessEquals(banana.top));
-      expect(fill.height, moreOrLessEquals(banana.height));
+      // Each row carries its own fills, so the selected fill is the
+      // (taller) Banana row's own background.
+      expect(_lit(tester, 'selected'), [1]);
+      final fill = tester.getRect(find.byType(FluidRowHighlight).at(1));
+      expect(fill, banana);
     });
   });
 }

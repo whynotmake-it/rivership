@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/tokens.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -109,16 +108,8 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   /// may stay lit where a finger was.
   int? _pressed;
 
-  /// Steps with each press, so a release fades its own fill out and the
-  /// next press starts a fresh one in place (presses never glide).
-  int _pressSession = 0;
-
   /// The rows showing as picked.
   final Set<int> _checked = {};
-
-  /// Steps each time the pointer enters the list, so the hover fill fades
-  /// in where it lands instead of sliding over from its last row.
-  int _session = 0;
 
   bool _picked = false;
 
@@ -136,6 +127,10 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
       _active = first ?? _step(-1, 1);
       _ring = _active != null;
     }
+    // Bring the active (or picked) row into view once the list is laid out.
+    if (_active != null || first != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+    }
   }
 
   @override
@@ -147,34 +142,11 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   }
 
   // Rows size to their content (min height plus padding), so they grow
-  // with the text scale. The fills read the rows' measured rects, taken
-  // after layout, the way the web's useFluidHover measures after a double
-  // rAF. Until the first measurement no fill shows (the web does the same:
-  // "overlays read rects only once the item set is fully measured").
-  final _stackKey = GlobalKey(debugLabel: 'FluidOptionList stack');
+  // with the text scale. A key per row lets [_reveal] scroll one into view.
   late final _rowKeys = [
     for (var i = 0; i < widget.options.length; i++)
       GlobalKey(debugLabel: 'FluidOptionList row $i'),
   ];
-  List<Rect>? _rects;
-
-  Rect? _rowRect(int? i) => i == null ? null : _rects?[i];
-
-  void _measure() {
-    if (!mounted) return;
-    final stack = _stackKey.currentContext?.findRenderObject();
-    if (stack is! RenderBox || !stack.hasSize) return;
-    final rects = <Rect>[];
-    for (final key in _rowKeys) {
-      final row = key.currentContext?.findRenderObject();
-      if (row is! RenderBox || !row.hasSize) return;
-      rects.add(row.localToGlobal(Offset.zero, ancestor: stack) & row.size);
-    }
-    if (listEquals(rects, _rects)) return;
-    final first = _rects == null;
-    setState(() => _rects = rects);
-    if (first) _reveal();
-  }
 
   /// The next enabled row from [from] in [direction], or null.
   int? _step(int from, int direction) {
@@ -191,7 +163,6 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   void _activateFromKeyboard(int? index) {
     if (index == null) return;
     setState(() {
-      if (_active == null) _session++;
       _active = index;
       _ring = true;
     });
@@ -201,20 +172,16 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   /// Scrolls the active (or checked) row into view.
   void _reveal() {
     final i = _active ?? (_checked.isEmpty ? null : _checked.reduce(math.min));
-    if (i == null || !_scroll.hasClients) return;
-    final rect = _rowRect(i);
-    if (rect == null) return;
-    final inset = widget.metrics.popupInset;
-    final top = inset + rect.top;
-    final bottom = inset + rect.bottom + inset;
-    final position = _scroll.position;
-    final offset = position.pixels;
-    final viewport = position.viewportDimension;
-    if (top - inset < offset) {
-      _scroll.jumpTo(math.max(0, top - inset));
-    } else if (bottom > offset + viewport) {
-      _scroll.jumpTo(math.min(position.maxScrollExtent, bottom - viewport));
-    }
+    final row = i == null ? null : _rowKeys[i].currentContext;
+    if (row == null || !mounted) return;
+    Scrollable.ensureVisible(
+      row,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+    Scrollable.ensureVisible(
+      row,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    );
   }
 
   /// Picks [index]. [lightRow] keeps the highlight on it through the
@@ -310,7 +277,6 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
     final index = row != null && widget.options[row].enabled ? row : null;
     if (index == _active && !_ring) return;
     setState(() {
-      if (_active == null && index != null) _session++;
       _active = index;
       _ring = false;
     });
@@ -319,15 +285,11 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   @override
   Widget build(BuildContext context) {
     final metrics = widget.metrics;
-    final colors = FluidTheme.of(context);
-    final motion = FluidTheme.motionOf(context);
     // Touch rows rest at full strength: the muted → foreground fade says
     // "the pointer is here", which a finger can't say.
     final touch =
         FluidAdaptiveScope.inputModeOf(context) == FluidInputMode.touch;
     final highlighted = _pressed ?? _active;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
 
     final rows = <Widget>[
       for (final (i, option) in widget.options.indexed)
@@ -350,10 +312,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
               // Hovering pointers already show where they are.
               if (_picked || !option.enabled) return;
               if (fluidCanHover(details.kind)) return;
-              setState(() {
-                _pressSession++;
-                _pressed = i;
-              });
+              setState(() => _pressed = i);
             },
             onTapCancel: _release,
             onTapUp: (details) =>
@@ -364,16 +323,33 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
               button: true,
               label: option.label,
               excludeSemantics: true,
-              child: FluidOptionRow(
-                key: ValueKey(i),
-                label: option.child ?? Text(option.label),
-                icon: option.icon,
+              // TODO(fluid-highlight-layer): the core spike's highlight layer
+              // (a render object that reads row geometry during layout,
+              // research 03 §4.4 B) replaces these per-row fills. It brings
+              // back the fluid glide between rows and, for multi-select, the
+              // merge/split selection (adjacent picked rows as one rounded
+              // shape). Until then each row paints its own fills: they fade
+              // in place, with no travel.
+              child: FluidRowHighlight(
                 metrics: metrics,
-                highlighted: highlighted == i || _checked.contains(i),
-                checked: _checked.contains(i),
-                fullEmphasis: touch,
-                checkmark: widget.checkmark,
-                enabled: option.enabled,
+                selected:
+                    widget.selectedFill &&
+                    !widget.multiple &&
+                    _checked.contains(i),
+                hovered: _active == i,
+                pressed: _pressed == i,
+                focused: _ring && _active == i,
+                child: FluidOptionRow(
+                  key: ValueKey(i),
+                  label: option.child ?? Text(option.label),
+                  icon: option.icon,
+                  metrics: metrics,
+                  highlighted: highlighted == i || _checked.contains(i),
+                  checked: _checked.contains(i),
+                  fullEmphasis: touch,
+                  checkmark: widget.checkmark,
+                  enabled: option.enabled,
+                ),
               ),
             ),
           ),
@@ -397,61 +373,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
           child: SingleChildScrollView(
             controller: _scroll,
             padding: EdgeInsets.all(metrics.popupInset),
-            child: Stack(
-              key: _stackKey,
-              clipBehavior: Clip.none,
-              children: [
-                // Selected fill: no fade in, springs to a newly picked row.
-                FluidFill(
-                  key: const ValueKey('fill-selected'),
-                  // TODO(fluid): multi-select fills. The core spike is building
-                  // merge/split selection (adjacent selected rows merge into one
-                  // rounded shape); it plugs in here, drawing one fill per run
-                  // of checked rows. Until then a multi-select shows checks
-                  // only, which is also what the sheet wants at rest.
-                  rect: widget.selectedFill && !widget.multiple
-                      ? _rowRect(_checked.firstOrNull)
-                      : null,
-                  color: colors.active,
-                  radius: metrics.itemRadius,
-                  motion: motion.indicator,
-                  exitMotion: motion.indicatorExit,
-                  fadeIn: false,
-                ),
-                // Hover fill (hovering pointers and the keyboard): fades in
-                // where the pointer lands, then glides between rows.
-                FluidFill(
-                  key: ValueKey('fill-hover-$_session'),
-                  rect: _rowRect(_active),
-                  color: colors.hover,
-                  radius: metrics.itemRadius,
-                  motion: motion.highlight,
-                  exitMotion: motion.fastExit,
-                ),
-                // Press fill (touch only): under the finger while it is down,
-                // gone on release. Never glides: each press is its own.
-                FluidFill(
-                  key: ValueKey('fill-press-$_pressSession'),
-                  rect: _rowRect(_pressed),
-                  color: colors.active,
-                  radius: metrics.itemRadius,
-                  motion: motion.highlight,
-                  exitMotion: motion.fastExit,
-                ),
-                Column(mainAxisSize: MainAxisSize.min, children: rows),
-                // Focus ring: only for keyboard navigation.
-                FluidFill(
-                  key: const ValueKey('fill-focus'),
-                  rect: _ring ? _rowRect(_active) : null,
-                  ring: colors.focusRing,
-                  outset: metrics.focusRingOutset,
-                  radius: metrics.itemRadius + metrics.focusRingOutset,
-                  motion: motion.highlight,
-                  exitMotion: motion.fastExit,
-                  fadeIn: false,
-                ),
-              ],
-            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: rows),
           ),
         ),
       ),
@@ -459,118 +381,148 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   }
 }
 
-/// A full-width fill (or ring) that springs between row rects and fades
-/// when it has none. Only the vertical extent of [rect] is used.
-class FluidFill extends StatefulWidget {
-  /// Creates a fill.
-  const FluidFill({
-    required this.rect,
-    required this.radius,
-    required this.motion,
-    required this.exitMotion,
-    this.color,
-    this.ring,
-    this.outset = 0,
-    this.fadeIn = true,
+/// The fills behind one row and its focus ring, each fading in place:
+/// selected (`--active`, on the indicator spring), hover (`--hover`), press
+/// (`--active`, touch only) and the keyboard focus ring.
+///
+/// Every fill springs in and tweens out on the theme's tokens. None of them
+/// travels between rows; see the `fluid-highlight-layer` TODO in
+/// [FluidOptionList].
+class FluidRowHighlight extends StatelessWidget {
+  /// Creates the fills for one row.
+  const FluidRowHighlight({
+    required this.metrics,
+    required this.child,
+    this.selected = false,
+    this.hovered = false,
+    this.pressed = false,
+    this.focused = false,
     super.key,
   });
 
-  /// Where to sit, or null to fade out.
-  final Rect? rect;
+  /// The size step (radii, ring outset).
+  final FluidMetrics metrics;
 
-  /// The fill color.
-  final Color? color;
+  /// Shows the selected fill.
+  final bool selected;
 
-  /// A 1px ring color instead of a fill.
-  final Color? ring;
+  /// Shows the hover fill (a hovering pointer or the keyboard is here).
+  final bool hovered;
 
-  /// How far outside [rect] to draw.
-  final double outset;
+  /// Shows the press fill (a finger is down here).
+  final bool pressed;
 
-  /// Corner radius.
-  final double radius;
+  /// Shows the keyboard focus ring.
+  final bool focused;
 
-  /// The travel and fade-in motion.
-  final Motion motion;
-
-  /// The fade-out motion.
-  final Motion exitMotion;
-
-  /// Whether a fill that appears fades in (true) or shows at once.
-  final bool fadeIn;
-
-  @override
-  State<FluidFill> createState() => _FluidFillState();
-}
-
-class _FluidFillState extends State<FluidFill> {
-  // Tracks are identity: created once, on the first build that has a rect,
-  // so they start where the fill first appears (no slide in from nowhere).
-  Track<Rect>? _rect;
-  Track<double>? _opacity;
-  Rect? _last;
+  /// The row.
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final target = widget.rect ?? _last;
-    if (target == null) return const SizedBox.shrink();
-    _last = target;
-    final label = switch (widget.key) {
-      ValueKey<String>(:final value) => value,
-      _ => 'fill',
-    };
-    final rect = _rect ??= Track<Rect>(
-      MotionConverter.rect,
-      initial: target,
-      debugLabel: '$label rect',
-    );
-    final opacity = _opacity ??= Track<double>(
-      MotionConverter.single,
-      initial: widget.fadeIn ? 0 : 1,
-      debugLabel: '$label opacity',
-    );
-    final visible = widget.rect != null;
-    final fadeIn = FluidTheme.motionOf(context).fast;
-    // The rect is a retargetable spring: a new target mid-flight keeps the
-    // fill's velocity and bends toward the new row (motor example
-    // `retarget.dart`). Opacity springs in and tweens out.
-    return TrackBuilder(
-      debugLabel: label,
-      animations: [
-        rect([
-          TrackStep.to(target, motion: widget.motion),
-        ]),
-        opacity([
-          TrackStep.to(
-            visible ? 1.0 : 0.0,
-            motion: visible ? fadeIn : widget.exitMotion,
-          ),
-        ]),
-      ],
-      child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: widget.color,
-            border: widget.ring == null
-                ? null
-                : Border.all(color: widget.ring!),
-            borderRadius: BorderRadius.circular(widget.radius),
+    final colors = FluidTheme.of(context);
+    final motion = FluidTheme.motionOf(context);
+    final radius = BorderRadius.circular(metrics.itemRadius);
+    final outset = metrics.focusRingOutset;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: _Fade(
+            visible: selected,
+            enter: motion.indicator,
+            exit: motion.indicatorExit,
+            debugLabel: 'Row selected fill',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.active,
+                borderRadius: radius,
+              ),
+            ),
           ),
         ),
-      ),
-      builder: (context, value, child) {
-        final box = value(rect);
-        return Positioned(
-          left: -widget.outset,
-          right: -widget.outset,
-          top: box.top - widget.outset,
-          height: box.height + widget.outset * 2,
-          child: Opacity(
-            opacity: value(opacity).clamp(0.0, 1.0),
-            child: child,
+        Positioned.fill(
+          child: _Fade(
+            visible: hovered,
+            enter: motion.highlight,
+            exit: motion.fastExit,
+            debugLabel: 'Row hover fill',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.hover,
+                borderRadius: radius,
+              ),
+            ),
           ),
-        );
-      },
+        ),
+        Positioned.fill(
+          child: _Fade(
+            visible: pressed,
+            enter: motion.highlight,
+            exit: motion.fastExit,
+            debugLabel: 'Row press fill',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.active,
+                borderRadius: radius,
+              ),
+            ),
+          ),
+        ),
+        child,
+        Positioned(
+          left: -outset,
+          right: -outset,
+          top: -outset,
+          bottom: -outset,
+          child: _Fade(
+            visible: focused,
+            enter: motion.highlight,
+            exit: motion.fastExit,
+            debugLabel: 'Row focus ring',
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: colors.focusRing),
+                borderRadius: BorderRadius.circular(
+                  metrics.itemRadius + outset,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One fill's opacity: springs to 1 when [visible], tweens to 0 when not.
+/// A fill already visible at mount shows at once.
+class _Fade extends StatelessWidget {
+  const _Fade({
+    required this.visible,
+    required this.enter,
+    required this.exit,
+    required this.debugLabel,
+    required this.child,
+  });
+
+  final bool visible;
+  final Motion enter;
+  final Motion exit;
+  final String debugLabel;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SingleMotionBuilder(
+        value: visible ? 1 : 0,
+        motion: visible ? enter : exit,
+        debugLabel: debugLabel,
+        child: child,
+        builder: (context, opacity, child) =>
+            Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
+      ),
     );
   }
 }

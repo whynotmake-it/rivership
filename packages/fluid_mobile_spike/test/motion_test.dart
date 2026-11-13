@@ -138,43 +138,26 @@ void main() {
     });
   });
 
-  testWidgets('the hover fill retargets mid-flight without jumping', (
+  testWidgets('the hover fill fades in place on the row under the pointer', (
     tester,
   ) async {
+    // TODO(fluid-highlight-layer): with the shared highlight layer the fill
+    // glides between rows again; test the retarget keeps velocity there.
     final mouse = await _openPopover(tester);
     await tester.pumpAndSettle();
+    List<int> hovered() => [
+      for (final (i, row)
+          in tester
+              .widgetList<FluidRowHighlight>(find.byType(FluidRowHighlight))
+              .indexed)
+        if (row.hovered) i,
+    ];
     await mouse.moveTo(tester.getCenter(find.text('Apple')));
     await tester.pumpAndSettle();
-    double top() => tester
-        .widget<Positioned>(
-          find
-              .ancestor(
-                of: find.byWidgetPredicate(
-                  (w) =>
-                      w is DecoratedBox &&
-                      w.decoration is BoxDecoration &&
-                      (w.decoration as BoxDecoration).color ==
-                          FluidColors.light.hover,
-                ),
-                matching: find.byType(Positioned),
-              )
-              .first,
-        )
-        .top!;
-    final start = top();
+    expect(hovered(), [0]);
     await mouse.moveTo(tester.getCenter(find.text('Orange')));
-    await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 16));
-    final midway = top();
-    expect(midway, greaterThan(start));
-    // Retarget back up while it's still moving down: the next frame starts
-    // from where it is (no jump), and it carries on downward a little
-    // before turning: the spring keeps its velocity.
-    await mouse.moveTo(tester.getCenter(find.text('Blueberry')));
-    await tester.pump(const Duration(milliseconds: 4));
-    expect(top(), greaterThanOrEqualTo(midway));
     await tester.pumpAndSettle();
-    expect(top(), lessThan(midway));
+    expect(hovered(), [6]);
     await mouse.removePointer();
   });
 
@@ -192,21 +175,18 @@ void main() {
     testWidgets('a theme change applies to the next animation', (
       tester,
     ) async {
+      // The hover fill's opacity on the hovered row: the second fade in
+      // its FluidRowHighlight (selected, hover, press, row, ring).
       double hoverOpacity() => tester
-          .widget<Opacity>(
-            find
-                .descendant(
-                  of: find.byWidgetPredicate(
-                    (w) =>
-                        w is FluidFill &&
-                        (w.key! as ValueKey<String>).value.startsWith(
-                          'fill-hover',
-                        ),
-                  ),
-                  matching: find.byType(Opacity),
-                )
-                .first,
+          .widgetList<Opacity>(
+            find.descendant(
+              of: find.byWidgetPredicate(
+                (w) => w is FluidRowHighlight && w.hovered,
+              ),
+              matching: find.byType(Opacity),
+            ),
           )
+          .elementAt(1)
           .opacity;
 
       final mouse = await _openPopover(tester);
