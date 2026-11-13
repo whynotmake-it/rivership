@@ -14,7 +14,6 @@ workspace:
   - packages/heroine/example
   - packages/motor
   - packages/motor_devtools
-  - packages/motor_widgets
   - packages/motor/benchmark
   - packages/motor/example
   - packages/rivership
@@ -25,6 +24,7 @@ workspace:
   - packages/fixed_ticker
   - packages/fixed_ticker/example
   - packages/snaptest
+  - packages/fluid_functionalism
   
 dev_dependencies:
   lintervention: ^0.3.1
