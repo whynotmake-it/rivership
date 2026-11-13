@@ -140,4 +140,63 @@ void main() {
     expect(find.byType(CoilSheetPanel), findsNothing);
     expect(_fieldText(tester), 'Banana');
   });
+
+  multiTests();
+}
+
+class _MultiDemo extends StatefulWidget {
+  const _MultiDemo();
+
+  @override
+  State<_MultiDemo> createState() => _MultiDemoState();
+}
+
+class _MultiDemoState extends State<_MultiDemo> {
+  Set<String> values = {};
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: const Alignment(0, -0.7),
+    child: SizedBox(
+      width: 240,
+      child: CoilMultiCombobox<String>(
+        options: _fruit,
+        values: values,
+        onChanged: (v) => setState(() => values = v),
+      ),
+    ),
+  );
+}
+
+Set<String> _values(WidgetTester tester) =>
+    tester.state<_MultiDemoState>(find.byType(_MultiDemo)).values;
+
+void multiTests() {
+  testWidgets('multi: picks toggle, the list stays open, chips show', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _MultiDemo()),
+    );
+    await tester.tap(find.byType(EditableText));
+    await tester.enterText(find.byType(EditableText), 'ap');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(_values(tester), {'apple'});
+    expect(_fieldText(tester), isEmpty);
+    await tester.tap(find.text('Banana'));
+    await tester.pumpAndSettle();
+    expect(_values(tester), {'apple', 'banana'});
+    expect(find.bySemanticsLabel('Remove Apple'), findsOneWidget);
+
+    // Backspace in the empty field removes the last chip.
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pumpAndSettle();
+    expect(_values(tester), {'apple'});
+
+    await tester.tap(find.bySemanticsLabel('Remove Apple'));
+    await tester.pumpAndSettle();
+    expect(_values(tester), isEmpty);
+  });
 }
