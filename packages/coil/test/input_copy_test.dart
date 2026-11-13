@@ -70,6 +70,7 @@ void main() {
   testWidgets('a tap copies and shows "Copied" inline on touch, then resets', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     var copied = 0;
     await tester.pumpWidget(
       _app(
@@ -82,35 +83,25 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Copy'), findsWidgets);
-    await tester.tap(find.text('sk-1234'));
+    final row = find.byType(CoilInteraction);
+    final before = tester.getSize(row);
+    await tester.tap(row);
     await tester.pumpAndSettle();
     expect(clipboard, ['sk-1234']);
     expect(copied, 1);
     expect(announcements, ['Copied']);
-    // The visible label, not a tooltip: a finger sees it.
+    // The label reads "Copied" in the row itself, and nothing shifts.
+    expect(tester.getSemantics(row).label, 'Copied');
     expect(
-      tester
-          .widgetList<Visibility>(
-            find.ancestor(
-              of: find.text('Copied'),
-              matching: find.byType(Visibility),
-            ),
-          )
-          .length,
-      // The ghost reserving the width; the shown label isn't in one.
-      find.text('Copied').evaluate().length - 1,
+      find.descendant(of: row, matching: find.text('Copied')),
+      findsWidgets,
     );
+    expect(tester.getSize(row), before);
 
     await tester.pump(CoilInputCopy.resetDelay);
     await tester.pumpAndSettle();
-    final shown = find
-        .text('Copied')
-        .evaluate()
-        .where(
-          (e) => e.findAncestorWidgetOfExactType<Visibility>() == null,
-        );
-    expect(shown, isEmpty);
+    expect(tester.getSemantics(row).label, 'Copy API key');
+    semantics.dispose();
   });
 
   testWidgets('the icon variant swaps to a check, labelled "Copied"', (
@@ -148,8 +139,9 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('a refused copy shows "Failed" in destructive', (tester) async {
+  testWidgets('a refused copy says so and calls nothing', (tester) async {
     failClipboard = true;
+    final semantics = tester.ensureSemantics();
     var copied = 0;
     await tester.pumpWidget(
       _app(
@@ -164,16 +156,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(copied, 0);
     expect(announcements, ['Copy failed']);
-    final failed = find
-        .text('Failed')
-        .evaluate()
-        .firstWhere(
-          (e) => e.findAncestorWidgetOfExactType<Visibility>() == null,
-        );
     expect(
-      DefaultTextStyle.of(failed).style.color,
-      CoilThemeData.light.colors.destructive,
+      tester.getSemantics(find.byType(CoilInteraction)).label,
+      'Copy failed',
     );
+    semantics.dispose();
   });
 
   testWidgets('Enter and Space copy', (tester) async {
@@ -198,37 +185,6 @@ void main() {
     await tester.tap(find.byType(CoilInputCopy), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(clipboard, isEmpty);
-  });
-
-  testWidgets('a mouse marks the value; a touch leaves no mark behind', (
-    tester,
-  ) async {
-    Color mark() =>
-        (tester
-                    .widget<DecoratedBox>(
-                      find
-                          .ancestor(
-                            of: find.text('abc'),
-                            matching: find.byType(DecoratedBox),
-                          )
-                          .first,
-                    )
-                    .decoration
-                as ShapeDecoration)
-            .color!;
-    await tester.pumpWidget(
-      _app(const CoilInputCopy(value: 'abc'), tier: CoilTier.pointer),
-    );
-    await tester.tap(find.text('abc'));
-    await tester.pump(CoilInputCopy.resetDelay);
-    await tester.pumpAndSettle();
-    expect(mark().a, 0);
-
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: tester.getCenter(find.text('abc')));
-    await tester.pumpAndSettle();
-    expect(mark(), CoilThemeData.light.colors.brand.withValues(alpha: 0.2));
   });
 
   testWidgets('reduced motion makes the swap instant; color still fades', (

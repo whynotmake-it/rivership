@@ -8,20 +8,13 @@ import 'package:flutter/widgets.dart';
 
 /// A single-line text field.
 ///
-/// Built on [CoilTextFieldCore], so it gets the platform's text editing:
-/// IME composition (CJK, dead keys, emoji pickers), tap / double-tap /
-/// long-press / drag selection, the platform's selection handles,
-/// magnifier and context menu (the iOS system edit menu, the browser's on
-/// web), and the shortcuts from [DefaultTextEditingShortcuts].
+/// It uses the platform's own text editing: IME composition, selection
+/// gestures and handles, the magnifier and the native edit menu.
 ///
-/// Focus is shown by the border turning `foreground` @ 40 % however the
-/// field was focused (not the brand ring other controls show after keyboard
-/// use), and a hovering pointer lays a faint wash that focus removes. A
-/// touch never hovers.
-///
-/// Inside a `CoilField` it takes the field's invalid state, and a tap on
-/// the field's label focuses it. Pair it with a `CoilField` label: the
-/// placeholder is an example, not a label.
+/// Focus darkens the border, whether it came from a tap or the keyboard. A
+/// hovering mouse adds a faint fill; touch never does. Inside a `CoilField`,
+/// it takes the field's invalid state and focuses when the label is tapped.
+/// Give it a field label: the placeholder is an example, not a label.
 class CoilInput extends StatefulWidget {
   /// Creates an input.
   const CoilInput({

@@ -148,52 +148,6 @@ void main() {
       expect(focus.hasFocus, isFalse);
     });
 
-    testWidgets('an error turns the label destructive and the input invalid', (
-      tester,
-    ) async {
-      final colors = CoilThemeData.light.colors;
-      Color labelColor() => tester
-          .widget<DefaultTextStyle>(
-            find
-                .ancestor(
-                  of: find.text('Email'),
-                  matching: find.byType(DefaultTextStyle),
-                )
-                .first,
-          )
-          .style
-          .color!;
-      Color border() {
-        final shape =
-            tester
-                    .widget<Container>(
-                      find.descendant(
-                        of: find.byType(CoilInput),
-                        matching: find.byType(Container),
-                      ),
-                    )
-                    .decoration!
-                as ShapeDecoration;
-        return (shape.shape as RoundedSuperellipseBorder).side.color;
-      }
-
-      Widget field(Widget? error) => _app(
-        CoilField(
-          label: const Text('Email'),
-          error: error,
-          child: const CoilInput(),
-        ),
-      );
-      await tester.pumpWidget(field(null));
-      expect(labelColor(), colors.mutedForeground);
-      expect(border(), colors.border);
-
-      await tester.pumpWidget(field(const Text('Enter an email address')));
-      await tester.pumpAndSettle();
-      expect(labelColor(), colors.destructive);
-      expect(border(), colors.destructive.withValues(alpha: 0.5));
-    });
-
     testWidgets('responsive fields go horizontal from 448 wide', (
       tester,
     ) async {

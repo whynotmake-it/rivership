@@ -4,19 +4,12 @@ import 'package:coil/src/components/input/text_field_chrome.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// A multi-line text field with the same chrome as `CoilInput`.
+/// A multi-line text field that looks like `CoilInput`.
 ///
-/// It grows with its text from [minLines] (3) to [maxLines] (10) lines, then
-/// scrolls. Growth is instant: an animated height jitters while typing. The
-/// first line sits where a `CoilInput`'s text does.
-///
-/// Return inserts a newline, from the software keyboard and from a hardware
-/// keyboard; an Enter that commits an IME composition only commits it. A
-/// composer that sends on Enter is its own component (InputMessage).
-///
-/// Leading and trailing slots sit on the first line. Inside a `CoilField`
-/// it takes the field's invalid state, and a tap on the field's label
-/// focuses it.
+/// It starts [minLines] tall and grows with its text up to [maxLines], then
+/// scrolls. Return inserts a newline. A Return that only commits an IME
+/// composition doesn't. Inside a `CoilField`, it takes the field's invalid
+/// state and focuses when the label is tapped.
 class CoilTextarea extends StatelessWidget {
   /// Creates a textarea.
   const CoilTextarea({

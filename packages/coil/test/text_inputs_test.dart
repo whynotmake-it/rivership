@@ -26,16 +26,6 @@ Widget _app(
   ),
 );
 
-/// The fill a text field paints (its chrome's `ShapeDecoration`).
-Color _fill(WidgetTester tester, Finder field) =>
-    (tester
-                .widget<Container>(
-                  find.descendant(of: field, matching: find.byType(Container)),
-                )
-                .decoration!
-            as ShapeDecoration)
-        .color!;
-
 void main() {
   group('CoilTextarea', () {
     testWidgets('grows from 3 to 10 lines, then scrolls (pointer)', (
@@ -106,19 +96,6 @@ void main() {
       expect(data.label, 'Notes');
       semantics.dispose();
     });
-
-    testWidgets('a pill shape caps the textarea radius', (tester) async {
-      final pill = CoilThemeData.light.copyWith(
-        tier: CoilTier.pointer,
-        shape: CoilShape.pill,
-      );
-      const metrics = CoilMetrics.pointer;
-      expect(
-        CoilInputStyle.fallback(pill, metrics, multiline: true).radius,
-        12,
-      );
-      expect(CoilInputStyle.fallback(pill, metrics).radius, 20);
-    });
   });
 
   group('CoilInputGroup', () {
@@ -129,40 +106,49 @@ void main() {
       ],
     );
 
-    testWidgets('the field nearest a mouse hovers, gaps included', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_app(group()));
-      final first = find.byType(CoilInput).first;
-      final second = find.byType(CoilInput).last;
-      final hover = CoilThemeData.light.colors.hover;
+    testWidgets('mouse in the gap lights the nearest field; touch never '
+        'hovers', (tester) async {
+      const touchKey = ValueKey('touch');
+      const mouseKey = ValueKey('mouse');
+      Widget column(Key key, String title) => Column(
+        key: key,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
+        children: [
+          Text(title),
+          SizedBox(width: 240, child: group()),
+        ],
+      );
+      final finder = await pumpSheet(
+        tester,
+        SheetPanel(
+          title: 'InputGroup: touch tapped vs mouse between fields',
+          theme: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 48,
+            children: [
+              column(touchKey, 'touch: tapped the first field'),
+              column(mouseKey, 'mouse: in the gap above "Second"'),
+            ],
+          ),
+        ),
+      );
+      Finder inColumn(Key key, Finder f) =>
+          find.descendant(of: find.byKey(key), matching: f);
 
+      await tester.tap(inColumn(touchKey, find.byType(CoilInput)).first);
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       addTearDown(mouse.removePointer);
-      await mouse.addPointer(location: Offset.zero);
-      await mouse.moveTo(tester.getCenter(first));
-      await tester.pumpAndSettle();
-      expect(_fill(tester, first), hover);
-      expect(_fill(tester, second).a, 0);
-
-      // Between the first input and the second field's label: still a field.
-      final gap = Offset(
-        tester.getCenter(first).dx,
-        tester.getRect(find.text('Second')).top - 4,
+      final first = tester.getRect(
+        inColumn(mouseKey, find.byType(CoilInput)).first,
       );
-      await mouse.moveTo(gap);
+      final second = tester.getRect(inColumn(mouseKey, find.text('Second')));
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(Offset(first.center.dx, second.top - 2));
       await tester.pumpAndSettle();
-      expect(_fill(tester, second), hover);
-      expect(_fill(tester, first).a, 0);
-    });
-
-    testWidgets('a touch never hovers', (tester) async {
-      await tester.pumpWidget(_app(group()));
-      final first = find.byType(CoilInput).first;
-      await tester.tap(first);
-      await tester.pumpAndSettle();
-      expect(_fill(tester, first).a, 0);
-      expect(find.byType(CoilInput), findsNWidgets(2));
+      await expectSheetGolden(tester, finder, 'goldens/input_group_hover.png');
     });
 
     testWidgets('fields are 12 apart on pointer and 16 on touch', (

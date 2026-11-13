@@ -1,14 +1,11 @@
 import 'package:flutter/widgets.dart';
 
-/// What a `CoilField` tells the control inside it.
+/// What a `CoilField` tells its control: whether the field is invalid or
+/// required, and where its label sends taps.
 ///
-/// `CoilField` puts one above its control slot. Controls read it with
-/// [CoilFieldScope.maybeOf] to pick up the field's invalid state, and
-/// register what a tap on the field's label does with [CoilFieldControl],
-/// the way an HTML `<label for>` focuses its input or toggles its checkbox.
-///
-/// The field merges its label and description into the control's semantics
-/// node itself, so a control doesn't wire its own name from here.
+/// A control shows its invalid look when [invalid] is true, and wraps
+/// itself in [CoilFieldControl] so a tap on the label reaches it. The field
+/// handles semantics itself, so controls don't read their label from here.
 class CoilFieldScope extends InheritedWidget {
   /// Creates a field scope.
   const CoilFieldScope({
@@ -39,20 +36,17 @@ class CoilFieldScope extends InheritedWidget {
       oldWidget.labelTarget != labelTarget;
 }
 
-/// Holds the action a field's label performs, registered by the control
-/// through [CoilFieldControl]. The last control registered wins.
+/// The action a field's label runs, set by its control through
+/// [CoilFieldControl]. If several controls register, the last one wins.
 class CoilFieldLabelTarget {
   VoidCallback? _onLabelTap;
-
-  /// Whether a control has registered a label action.
-  bool get hasTarget => _onLabelTap != null;
 
   /// Runs the control's label action, if any.
   void activate() => _onLabelTap?.call();
 }
 
-/// Registers [onLabelTap] with the nearest [CoilFieldScope], so a tap on
-/// the field's label runs it: a text field focuses, a checkbox toggles.
+/// Makes a tap on the enclosing field's label run [onLabelTap], like an
+/// HTML `<label for>`. A text field focuses itself; a checkbox toggles.
 class CoilFieldControl extends StatefulWidget {
   /// Creates a field control registration.
   const CoilFieldControl({

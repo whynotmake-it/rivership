@@ -3,17 +3,12 @@ import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input/text_field_chrome.dart';
 import 'package:flutter/widgets.dart';
 
-/// A column of labeled fields that share one hover scope.
+/// A stack of labeled fields that share one hover.
 ///
-/// The field nearest a hovering pointer shows the `hover` fill, gaps
-/// included, so the hover hands over from field to field without flicker.
-/// Nothing glides: each field paints its own fill. A touch never hovers;
-/// fields show only their focus states.
-///
-/// Each child is usually a `CoilField` around a `CoilInput` (or
-/// `CoilTextarea`), which puts the label above and the error below each
-/// field. Fields sit 12 apart (16 on touch), Tab moves between them, and a
-/// tap anywhere in a field's box focuses its text.
+/// The field nearest the mouse shows the hover fill, even when the pointer
+/// is in the gap between fields, so the hover never flickers off. Touch
+/// shows focus only. Each child is usually a `CoilField` around a
+/// `CoilInput`.
 ///
 /// ```dart
 /// CoilInputGroup(

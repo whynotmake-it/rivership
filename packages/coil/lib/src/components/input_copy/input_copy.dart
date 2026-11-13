@@ -32,17 +32,7 @@ enum CoilInputCopyAlign {
   start,
 }
 
-/// Where a [CoilInputCopy] is in its copy cycle.
-enum CoilInputCopyStatus {
-  /// Ready to copy.
-  idle,
-
-  /// The value was copied; shown for 2 s.
-  copied,
-
-  /// The clipboard refused the value; shown for 2 s.
-  failed,
-}
+enum _Status { idle, copied, failed }
 
 /// The texts a [CoilInputCopy] shows and announces, for localization.
 @immutable
@@ -86,22 +76,16 @@ class CoilInputCopyLabels {
       Object.hash(copy, copied, failed, copyFailed, copyToClipboard);
 }
 
-/// A read-only value with a copy action: an API key, an invite link.
+/// A read-only value with a copy button: an API key, an invite link.
 ///
-/// The whole row is the button: a tap, a click, Enter or Space copies
-/// [value] to the clipboard. The result shows **inline, on every
-/// platform**: the icon swaps to a drawn check (or a `destructive` × when
-/// the clipboard refuses), and the button variant's label reads "Copied"
-/// (or "Failed"), for 2 s. Nothing depends on a hover tooltip, so a finger
-/// sees the feedback too. iOS and Android also give a selection click, and
-/// screen readers hear "Copied" or "Copy failed".
+/// The whole row copies [value] on a tap, click, Enter or Space. The result
+/// shows inline for 2 s on every platform, so touch users see it too: the
+/// icon becomes a check (or a red × if the clipboard refused), and the
+/// [CoilInputCopyVariant.button] label reads "Copied". Screen readers hear
+/// the result, and iOS and Android give a light haptic.
 ///
-/// A hovering pointer marks the value in `brand` 20 % and turns the action
-/// foreground. A touch shows the press fill while down. Keyboard focus
-/// rings the row.
-///
-/// The value is one line, truncated with an ellipsis; the full value is the
-/// node's semantic value and what gets copied.
+/// A hovering mouse highlights the value. The value stays on one line and
+/// truncates; the full text is what gets copied and announced.
 class CoilInputCopy extends StatefulWidget {
   /// Creates a copy row.
   const CoilInputCopy({
@@ -170,7 +154,7 @@ class CoilInputCopy extends StatefulWidget {
 }
 
 class _CoilInputCopyState extends State<CoilInputCopy> {
-  var _status = CoilInputCopyStatus.idle;
+  var _status = _Status.idle;
 
   /// Steps on every copy, so a repeated copy replays the swap.
   var _generation = 0;
@@ -186,11 +170,11 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
   }
 
   Future<void> _copy() async {
-    var status = CoilInputCopyStatus.copied;
+    var status = _Status.copied;
     try {
       await Clipboard.setData(ClipboardData(text: widget.value));
     } on PlatformException {
-      status = CoilInputCopyStatus.failed;
+      status = _Status.failed;
     }
     if (!mounted) return;
     setState(() {
@@ -199,19 +183,17 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
     });
     _reset?.cancel();
     _reset = Timer(CoilInputCopy.resetDelay, () {
-      if (mounted) setState(() => _status = CoilInputCopyStatus.idle);
+      if (mounted) setState(() => _status = _Status.idle);
     });
     final labels = widget.labels;
     unawaited(
       SemanticsService.sendAnnouncement(
         View.of(context),
-        status == CoilInputCopyStatus.copied
-            ? labels.copied
-            : labels.copyFailed,
+        status == _Status.copied ? labels.copied : labels.copyFailed,
         Directionality.of(context),
       ),
     );
-    if (status == CoilInputCopyStatus.copied) {
+    if (status == _Status.copied) {
       unawaited(CoilHaptics.play(CoilHapticEvent.copy));
       widget.onCopied?.call();
     }
@@ -220,9 +202,9 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
   String _semanticLabel() {
     final labels = widget.labels;
     return switch (_status) {
-      CoilInputCopyStatus.copied => labels.copied,
-      CoilInputCopyStatus.failed => labels.copyFailed,
-      CoilInputCopyStatus.idle => switch (widget.label) {
+      _Status.copied => labels.copied,
+      _Status.failed => labels.copyFailed,
+      _Status.idle => switch (widget.label) {
         final label? => '${labels.copy} $label',
         null => labels.copyToClipboard,
       },
@@ -253,10 +235,10 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
         minHitTarget: sizes.minHitTarget,
         builder: (context, states, _) {
           final hovered = states.contains(WidgetState.hovered);
-          final showing = _status != CoilInputCopyStatus.idle;
+          final showing = _status != _Status.idle;
           final actionStates = {
             if (hovered || showing) WidgetState.hovered,
-            if (_status == CoilInputCopyStatus.failed) WidgetState.error,
+            if (_status == _Status.failed) WidgetState.error,
           };
           final value = _Value(
             text: widget.value,
@@ -408,7 +390,7 @@ class _Action extends StatelessWidget {
     required this.motion,
   });
 
-  final CoilInputCopyStatus status;
+  final _Status status;
   final int generation;
   final CoilInputCopyVariant variant;
   final Widget? icon;
@@ -420,25 +402,25 @@ class _Action extends StatelessWidget {
   final double gap;
   final CoilMotion motion;
 
-  Widget _glyph(CoilInputCopyStatus status) => switch (status) {
-    CoilInputCopyStatus.idle => icon ?? const SizedBox.shrink(),
-    CoilInputCopyStatus.copied => _ResultGlyph(
+  Widget _glyph(_Status status) => switch (status) {
+    _Status.idle => icon ?? const SizedBox.shrink(),
+    _Status.copied => _ResultGlyph(
       glyph: _Glyph.check,
       motion: motion,
     ),
-    CoilInputCopyStatus.failed => _ResultGlyph(
+    _Status.failed => _ResultGlyph(
       glyph: _Glyph.cross,
       motion: motion,
     ),
   };
 
-  String _text(CoilInputCopyStatus status) => switch (status) {
-    CoilInputCopyStatus.idle => labels.copy,
-    CoilInputCopyStatus.copied => labels.copied,
-    CoilInputCopyStatus.failed => labels.failed,
+  String _text(_Status status) => switch (status) {
+    _Status.idle => labels.copy,
+    _Status.copied => labels.copied,
+    _Status.failed => labels.failed,
   };
 
-  Widget _content(CoilInputCopyStatus status, {required bool ghost}) {
+  Widget _content(_Status status, {required bool ghost}) {
     final glyph = ghost ? SizedBox.square(dimension: iconSize) : _glyph(status);
     if (variant == CoilInputCopyVariant.icon) return glyph;
     return Row(
@@ -489,7 +471,7 @@ class _Action extends StatelessWidget {
                 : Stack(
                     alignment: AlignmentDirectional.centerStart,
                     children: [
-                      for (final ghost in CoilInputCopyStatus.values)
+                      for (final ghost in _Status.values)
                         Visibility.maintain(
                           visible: false,
                           child: _content(ghost, ghost: true),

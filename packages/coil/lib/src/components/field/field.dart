@@ -21,30 +21,18 @@ enum CoilFieldOrientation {
 
 /// A form field: a label, one control, a description and an error.
 ///
-/// The parts are widget slots. The field lays them out, styles them, and
-/// wires them to the control:
+/// Screen readers hear all four together when they reach the control, along
+/// with "required" ([isRequired]) and "invalid" (while there is an [error]).
+/// A new error is announced. A tap on the label focuses or toggles the
+/// control. An error also turns the label red and gives the control its
+/// invalid look.
 ///
-/// * **Semantics:** the label, the control, the description and the error
-///   merge into the control's one semantics node, so a screen reader
-///   announces them together with the control's role and value. The node is
-///   marked required ([isRequired]) and invalid (while there is an [error]),
-///   and becomes a live region while an error shows, so a new error is
-///   announced. Put one control in a field; a group of controls belongs in a
-///   [CoilFieldSet].
-/// * **Label taps** run the control's label action (a text field focuses,
-///   a checkbox toggles), the way an HTML `<label for>` does, through
-///   [CoilFieldScope].
-/// * **Invalid:** an [error] (or [invalid]) turns the label `destructive`
-///   and gives the control its invalid look (through [CoilFieldScope]).
-///
-/// The label wraps; it's muted above the control and foreground beside it.
-/// The description is a muted caption, the error a `destructive` caption
-/// with an alert glyph.
+/// Put one control in a field. For a group of controls, use [CoilFieldSet].
 ///
 /// ```dart
 /// CoilField(
 ///   label: Text('Email'),
-///   description: Text("We'll only use it for receipts."),
+///   description: Text('We only use it for receipts.'),
 ///   error: emailError == null ? null : Text(emailError),
 ///   isRequired: true,
 ///   child: CoilInput(keyboardType: TextInputType.emailAddress),
@@ -388,12 +376,8 @@ class _AlertPainter extends CustomPainter {
   bool shouldRepaint(_AlertPainter old) => old.color != color;
 }
 
-/// A group of related controls with an optional legend: a group of
-/// checkboxes, an address block.
-///
-/// The legend (subtitle, semibold) sits 4 above the fields, which are 12
-/// apart (16 on touch). In semantics the set is one container whose legend
-/// is read before its fields.
+/// Related fields under one heading (the [legend]), such as an address
+/// block or a group of checkboxes. Screen readers read the legend first.
 class CoilFieldSet extends StatelessWidget {
   /// Creates a field set.
   const CoilFieldSet({
