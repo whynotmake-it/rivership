@@ -245,7 +245,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - spatial tokens become `Motion.instant()`;
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
-- loops (Skeleton pulse, ThinkingIndicator word cycle, CarouselDots autoplay) stop;
+- loops (Skeleton pulse, CarouselDots autoplay) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
 ## 8. Interaction
