@@ -47,7 +47,7 @@ abstract class CoilLayerPainter extends ChangeNotifier {
 /// Lets a widget that owns a layer ask it where its targets are (for
 /// pointer hit tests between frames). Set by the layer's render object.
 class CoilMotionLayerHandle implements CoilLayerGeometry {
-  RenderFluidMotionLayer? _layer;
+  RenderCoilMotionLayer? _layer;
 
   /// The index of every target, in registration order.
   Iterable<int> get indices => _layer?._targets.keys ?? const [];
@@ -84,8 +84,8 @@ class CoilMotionLayer extends SingleChildRenderObjectWidget {
   final CoilMotionLayerHandle? handle;
 
   @override
-  RenderFluidMotionLayer createRenderObject(BuildContext context) =>
-      RenderFluidMotionLayer(
+  RenderCoilMotionLayer createRenderObject(BuildContext context) =>
+      RenderCoilMotionLayer(
         background: background,
         foreground: foreground,
         handle: handle,
@@ -94,7 +94,7 @@ class CoilMotionLayer extends SingleChildRenderObjectWidget {
   @override
   void updateRenderObject(
     BuildContext context,
-    RenderFluidMotionLayer renderObject,
+    RenderCoilMotionLayer renderObject,
   ) {
     renderObject
       ..background = background
@@ -104,10 +104,10 @@ class CoilMotionLayer extends SingleChildRenderObjectWidget {
 }
 
 /// The render object of [CoilMotionLayer].
-class RenderFluidMotionLayer extends RenderProxyBox
+class RenderCoilMotionLayer extends RenderProxyBox
     implements CoilLayerGeometry {
   /// Creates the render object.
-  RenderFluidMotionLayer({
+  RenderCoilMotionLayer({
     List<CoilLayerPainter> background = const [],
     List<CoilLayerPainter> foreground = const [],
     CoilMotionLayerHandle? handle,
@@ -220,17 +220,17 @@ class CoilMotionTarget extends SingleChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _RenderFluidMotionTarget(index);
+      _RenderCoilMotionTarget(index);
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) =>
-      (renderObject as _RenderFluidMotionTarget).index = index;
+      (renderObject as _RenderCoilMotionTarget).index = index;
 }
 
-class _RenderFluidMotionTarget extends RenderProxyBox {
-  _RenderFluidMotionTarget(this._index);
+class _RenderCoilMotionTarget extends RenderProxyBox {
+  _RenderCoilMotionTarget(this._index);
 
-  RenderFluidMotionLayer? _layer;
+  RenderCoilMotionLayer? _layer;
 
   int get index => _index;
   int _index;
@@ -245,10 +245,10 @@ class _RenderFluidMotionTarget extends RenderProxyBox {
   void attach(PipelineOwner owner) {
     super.attach(owner);
     var node = parent;
-    while (node != null && node is! RenderFluidMotionLayer) {
+    while (node != null && node is! RenderCoilMotionLayer) {
       node = node.parent;
     }
-    _layer = node as RenderFluidMotionLayer?;
+    _layer = node as RenderCoilMotionLayer?;
     _layer?._register(_index, this);
   }
 

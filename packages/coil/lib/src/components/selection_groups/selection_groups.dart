@@ -13,7 +13,7 @@ import 'package:motor/motor.dart';
 class CoilCheckboxGroup extends StatelessWidget {
   /// Creates a checkbox group.
   const CoilCheckboxGroup({
-    required this.options,
+    required this.children,
     required this.values,
     required this.onChanged,
     super.key,
@@ -22,7 +22,7 @@ class CoilCheckboxGroup extends StatelessWidget {
   });
 
   /// The row labels.
-  final List<Widget> options;
+  final List<Widget> children;
 
   /// The checked rows.
   final Set<int> values;
@@ -53,7 +53,7 @@ class CoilCheckboxGroup extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, option) in options.indexed)
+          for (final (i, option) in children.indexed)
             CoilHoverItem(
               index: i,
               child: _CheckRow(
@@ -157,8 +157,8 @@ class _CheckRowState extends State<_CheckRow> {
 class CoilToggleGroup extends StatelessWidget {
   /// Creates a toggle group.
   const CoilToggleGroup({
-    required this.items,
-    required this.selected,
+    required this.children,
+    required this.values,
     required this.onChanged,
     super.key,
     this.size,
@@ -166,10 +166,10 @@ class CoilToggleGroup extends StatelessWidget {
   });
 
   /// The toggle labels.
-  final List<Widget> items;
+  final List<Widget> children;
 
   /// The selected toggles.
-  final Set<int> selected;
+  final Set<int> values;
 
   /// Called with the new selection. Null disables the group.
   final ValueChanged<Set<int>>? onChanged;
@@ -181,7 +181,7 @@ class CoilToggleGroup extends StatelessWidget {
   final CoilMotion? motion;
 
   void _toggle(int i) {
-    final next = {...selected};
+    final next = {...values};
     if (!next.remove(i)) next.add(i);
     onChanged?.call(next);
   }
@@ -193,18 +193,18 @@ class CoilToggleGroup extends StatelessWidget {
     final sizes = CoilTheme.metricsOf(context, size: size);
     final tokens = CoilTheme.motionOf(context, override: motion);
     return _SelectionRegion(
-      selected: selected,
+      selected: values,
       axis: Axis.horizontal,
       motion: motion,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final (i, item) in items.indexed)
+          for (final (i, item) in children.indexed)
             CoilHoverItem(
               index: i,
               child: Semantics(
                 container: true,
-                toggled: selected.contains(i),
+                toggled: values.contains(i),
                 child: CoilInteraction(
                   onPressed: onChanged == null ? null : () => _toggle(i),
                   minHitTarget: sizes.minHitTarget,
@@ -222,7 +222,7 @@ class CoilToggleGroup extends StatelessWidget {
                         heightFactor: 1,
                         child: MotionBuilder<Color>(
                           value:
-                              selected.contains(i) ||
+                              values.contains(i) ||
                                   states.contains(WidgetState.hovered)
                               ? colors.foreground
                               : colors.mutedForeground,

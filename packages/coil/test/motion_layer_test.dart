@@ -54,7 +54,7 @@ void main() {
     await mouse.moveTo(tester.getCenter(find.text('Row 1')));
     await settle(tester);
 
-    RenderFluidMotionLayer layer() =>
+    RenderCoilMotionLayer layer() =>
         tester.renderObject(find.byType(CoilMotionLayer));
     CoilHighlightPainter highlight() =>
         layer().background.whereType<CoilHighlightPainter>().single;

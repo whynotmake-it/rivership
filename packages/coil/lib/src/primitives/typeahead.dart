@@ -51,6 +51,10 @@ class _CoilTypeaheadState extends State<CoilTypeahead> {
   String _query = '';
   Timer? _reset;
 
+  /// The last match while a query runs: keys can arrive faster than the
+  /// list rebuilds with its new [CoilTypeahead.current].
+  int? _lastMatch;
+
   @override
   void dispose() {
     _reset?.cancel();
@@ -80,19 +84,25 @@ class _CoilTypeaheadState extends State<CoilTypeahead> {
 
   void _type(String character) {
     _reset?.cancel();
-    _reset = Timer(widget.timeout, () => _query = '');
+    _reset = Timer(widget.timeout, () {
+      _query = '';
+      _lastMatch = null;
+    });
+    if (_query.isEmpty) _lastMatch = null;
     _query += character.toLowerCase();
     final repeated = _query.split('').every((c) => c == _query[0]);
     final query = repeated ? _query[0] : _query;
     final count = widget.labels.length;
     if (count == 0) return;
-    final start = widget.current ?? -1;
-    // A fresh multi-letter query may still match the current item.
+    final start = _lastMatch ?? widget.current ?? -1;
+    // A repeated letter moves on; a longer query may still match the item
+    // it is on.
     final offset = repeated ? 1 : 0;
     for (var n = 0; n < count; n++) {
       final i = (start + offset + n + count) % count;
       if (!(widget.isEnabled?.call(i) ?? true)) continue;
       if (widget.labels[i].toLowerCase().startsWith(query)) {
+        _lastMatch = i;
         widget.onMatch(i);
         return;
       }

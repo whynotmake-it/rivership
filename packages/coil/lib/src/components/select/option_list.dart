@@ -154,6 +154,8 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
   bool _enabled(int i) => widget.options[i].enabled;
 
   void _onActive() {
+    // Typeahead searches from the active item, so it rebuilds with it.
+    setState(() {});
     if (_active.keyboardDriven) _reveal();
   }
 

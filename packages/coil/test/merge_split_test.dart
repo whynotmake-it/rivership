@@ -45,14 +45,14 @@ class _Panel extends StatelessWidget {
           SizedBox(
             width: 220,
             child: CoilCheckboxGroup(
-              options: [for (final r in _rows) Text(r)],
+              children: [for (final r in _rows) Text(r)],
               values: selected,
               onChanged: (v) => selection.value = v,
             ),
           ),
           CoilToggleGroup(
-            items: [for (final d in _days) Text(d)],
-            selected: selected,
+            children: [for (final d in _days) Text(d)],
+            values: selected,
             onChanged: (v) => selection.value = v,
           ),
         ],
@@ -77,7 +77,7 @@ Widget _sheet(ValueNotifier<Set<int>> selection) => Row(
 
 /// The selection blocks the first group's painter holds.
 int _blocks(WidgetTester tester) => tester
-    .renderObject<RenderFluidMotionLayer>(find.byType(CoilMotionLayer).first)
+    .renderObject<RenderCoilMotionLayer>(find.byType(CoilMotionLayer).first)
     .background
     .whereType<CoilSelectionPainter>()
     .single

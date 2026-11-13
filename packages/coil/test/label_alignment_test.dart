@@ -90,14 +90,14 @@ void main() {
     'checkbox-group/row': (ink) => SizedBox(
       width: 200,
       child: CoilCheckboxGroup(
-        options: [_Ink(ink, const Text('HEH'))],
+        children: [_Ink(ink, const Text('HEH'))],
         values: const {0},
         onChanged: (_) {},
       ),
     ),
     'toggle-group/item': (ink) => CoilToggleGroup(
-      items: [_Ink(ink, const Text('HEH'))],
-      selected: const {0},
+      children: [_Ink(ink, const Text('HEH'))],
+      values: const {0},
       onChanged: (_) {},
     ),
     'switch/label': (ink) => CoilSwitch(
