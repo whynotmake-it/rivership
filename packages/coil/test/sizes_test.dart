@@ -28,6 +28,9 @@ class _HitArea extends StatelessWidget {
   );
 }
 
+/// coil's built-in sizes.
+const _table = CoilMetricsTable();
+
 void main() {
   testWidgets('desktop vs touch size comparison', (tester) async {
     final rows = <(String, Widget Function())>[
@@ -110,8 +113,7 @@ void main() {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: Text(
                     '$label · '
-                    '${CoilMetrics.resolve(tier, size).controlHeight.round()}'
-                    ' px',
+                    '${_table.resolve(tier, size).controlHeight.round()} px',
                     style: caption,
                   ),
                 ),
@@ -147,7 +149,10 @@ void main() {
 
   test('touch tier raises every hit target to 44', () {
     for (final size in CoilSize.values) {
-      expect(CoilMetrics.resolve(CoilTier.touch, size).minHitTarget, 44);
+      expect(
+        _table.resolve(CoilTier.touch, size).minHitTarget,
+        44,
+      );
     }
   });
 }

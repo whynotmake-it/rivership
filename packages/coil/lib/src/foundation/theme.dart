@@ -306,13 +306,18 @@ class CoilTheme extends StatelessWidget {
       of(context).tier ??
       CoilTier.forPlatform(defaultTargetPlatform);
 
-  /// The metrics at [context]: for [tierOf] and [size] if given, else the
-  /// nearest [CoilAdaptiveScope]'s size, else [CoilSize.regular].
-  static CoilMetrics metricsOf(BuildContext context, {CoilSize? size}) =>
-      of(context).metrics.resolve(
-        tierOf(context),
-        size ?? CoilAdaptiveScope.maybeSizeOf(context) ?? CoilSize.regular,
-      );
+  /// The theme's metrics at [context]: for [tier] if given, else [tierOf];
+  /// for [size] if given, else the nearest [CoilAdaptiveScope]'s size, else
+  /// [CoilSize.regular]. Read every size through this, so an app's metrics
+  /// reach every component.
+  static CoilMetrics metricsOf(
+    BuildContext context, {
+    CoilSize? size,
+    CoilTier? tier,
+  }) => of(context).metrics.resolve(
+    tier ?? tierOf(context),
+    size ?? CoilAdaptiveScope.maybeSizeOf(context) ?? CoilSize.regular,
+  );
 
   @override
   Widget build(BuildContext context) {

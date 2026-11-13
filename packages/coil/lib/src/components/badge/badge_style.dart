@@ -112,7 +112,7 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
       _ => color._hue,
     };
     // A badge never grows a touch bump: its type is the pointer tier's.
-    final step = CoilMetrics.resolve(CoilTier.pointer, metrics.size).caption;
+    final step = theme.metrics.resolve(CoilTier.pointer, metrics.size).caption;
     return CoilBadgeStyle(
       fill: switch (variant) {
         CoilBadgeVariant.solid =>

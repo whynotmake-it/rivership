@@ -320,9 +320,11 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     final sheet = popup.presentation == CoilPresentation.sheet;
     // The sheet is a touch surface whatever the tier: touch-sized rows.
     final metrics = sheet
-        ? CoilTheme.of(
+        ? CoilTheme.metricsOf(
             context,
-          ).metrics.resolve(CoilTier.touch, CoilSize.regular)
+            tier: CoilTier.touch,
+            size: CoilSize.regular,
+          )
         : CoilTheme.metricsOf(context);
     return _withMotion(
       MotorInspectionScope(

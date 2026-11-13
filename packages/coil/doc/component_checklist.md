@@ -41,6 +41,7 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
 
 ## 3. Style class
 
+- Read sizes with `CoilTheme.metricsOf`, never from built-in constants.
 - `Coil<Name>Style extends CoilComponentStyle<Coil<Name>Style>`:
   - nullable fields;
   - `factory .fallback(CoilThemeData theme, CoilMetrics metrics, …)` that

@@ -260,16 +260,6 @@ class CoilMetrics {
     popupInset: 6,
   );
 
-  /// coil's default metrics for [tier] and [size]. Components read the
-  /// theme's instead (`CoilTheme.metricsOf`), which an app can change.
-  static CoilMetrics resolve(CoilTier tier, CoilSize size) =>
-      switch ((tier, size)) {
-        (CoilTier.pointer, CoilSize.regular) => pointer,
-        (CoilTier.pointer, CoilSize.compact) => pointerCompact,
-        (CoilTier.touch, CoilSize.regular) => touch,
-        (CoilTier.touch, CoilSize.compact) => touchCompact,
-      };
-
   /// The opacity of a disabled control.
   double get disabledOpacity => 0.5;
 
