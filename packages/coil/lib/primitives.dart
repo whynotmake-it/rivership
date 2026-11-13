@@ -19,6 +19,7 @@ export 'src/primitives/motion_layer.dart';
 export 'src/primitives/popup_controller.dart';
 export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';
+export 'src/primitives/scroll_area.dart';
 export 'src/primitives/selection_blocks.dart';
 export 'src/primitives/sheet.dart';
 export 'src/primitives/surface.dart';

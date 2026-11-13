@@ -13,6 +13,7 @@ export 'input.dart';
 export 'input_copy.dart';
 export 'primitives.dart';
 export 'radio_group.dart';
+export 'scroll_area.dart';
 export 'select.dart';
 export 'skeleton.dart';
 export 'slider.dart';
