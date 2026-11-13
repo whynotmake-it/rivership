@@ -2,7 +2,12 @@ import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget _app(bool expanded, {bool reduce = false}) => MediaQuery(
+Widget _app(
+  bool expanded, {
+  bool reduce = false,
+  double childHeight = 80,
+  bool appear = false,
+}) => MediaQuery(
   data: MediaQueryData(disableAnimations: reduce),
   child: Directionality(
     textDirection: TextDirection.ltr,
@@ -12,7 +17,8 @@ Widget _app(bool expanded, {bool reduce = false}) => MediaQuery(
         alignment: Alignment.topLeft,
         child: CoilCollapsible(
           expanded: expanded,
-          child: const SizedBox(width: 100, height: 80),
+          appear: appear,
+          child: SizedBox(width: 100, height: childHeight),
         ),
       ),
     ),
@@ -62,6 +68,22 @@ void main() {
     await tester.pumpWidget(_app(true, reduce: true));
     await tester.pump();
     await tester.pump();
+    expect(_height(tester), 80);
+  });
+
+  testWidgets('a child resizing inside an open region resizes at once', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(true));
+    expect(_height(tester), 80);
+    await tester.pumpWidget(_app(true, childHeight: 120));
+    expect(_height(tester), 120);
+  });
+
+  testWidgets('appear opens a region that starts open', (tester) async {
+    await tester.pumpWidget(_app(true, appear: true));
+    expect(_height(tester), 0);
+    await tester.pumpAndSettle();
     expect(_height(tester), 80);
   });
 }
