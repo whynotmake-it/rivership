@@ -1,0 +1,32 @@
+name: coil_example
+description: The coil catalog. Every component and foundation, live, with
+  theme, tier, text scale, RTL, contrast and motion controls.
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.47.0"
+
+dependencies:
+  auto_route: ^10.0.1
+  coil:
+    path: ../
+  flutter:
+    sdk: flutter
+  lucide_icons_flutter: 4.0.1
+  motor:
+    path: ../../motor
+  motor_devtools:
+    path: ../../motor_devtools
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  snaptest:
+    path: ../../snaptest
+
+flutter:
+  uses-material-design: false
