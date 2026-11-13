@@ -35,10 +35,11 @@ class CoilPopoverController {
   /// it still springs out.
   bool get isOpen => _state?._open ?? false;
 
-  /// Opens the popover.
-  void show() {
+  /// Opens the popover next to the anchor, or at [at], a point in the
+  /// anchor's local coordinates.
+  void show({Offset? at}) {
     assert(_state != null, '$this is not attached to a CoilPopover');
-    _state?._show();
+    _state?._show(at);
   }
 
   /// Closes the popover: it springs out, then leaves the overlay.
@@ -102,7 +103,8 @@ class CoilPopover extends StatefulWidget {
   /// The anchor.
   final Widget child;
 
-  /// Minimum popover width. Defaults to the anchor's width.
+  /// Minimum popover width. Defaults to the anchor's width, or none when it
+  /// opens at a point.
   final double? minWidth;
 
   /// Maximum popover height.
@@ -134,6 +136,9 @@ class _CoilPopoverState extends State<CoilPopover>
 
   bool _open = false;
 
+  /// The point it opened at, in the anchor's coordinates, if any.
+  Offset? _at;
+
   /// What had focus when the popover opened.
   FocusNode? _returnFocus;
 
@@ -161,12 +166,15 @@ class _CoilPopoverState extends State<CoilPopover>
     }
   }
 
-  void _show() {
+  void _show(Offset? at) {
     if (_open) return;
     _returnFocus = FocusManager.instance.primaryFocus;
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     _portal.show();
-    setState(() => _open = true);
+    setState(() {
+      _open = true;
+      _at = at;
+    });
     _presence
       ..motion = _reduceMotion ? motion.fade : motion.standard
       ..animateTo(1);
@@ -217,16 +225,17 @@ class _CoilPopoverState extends State<CoilPopover>
         if (!didPop) close(.dismissed);
       },
       child: _CoilPopoverPlacement(
+        // A point opens it right there; the anchor's rect, next to it.
         anchor: MatrixUtils.transformRect(
           info.childPaintTransform,
-          Offset.zero & info.childSize,
+          _at == null ? Offset.zero & info.childSize : _at! & Size.zero,
         ),
         presence: _presence,
         grow: !reduce,
         safeArea: media.padding + media.viewInsets,
-        sideOffset: widget.sideOffset,
+        sideOffset: _at == null ? widget.sideOffset : 0,
         edgePadding: widget.edgePadding,
-        minWidth: widget.minWidth ?? info.childSize.width,
+        minWidth: widget.minWidth ?? (_at == null ? info.childSize.width : 0),
         maxHeight: widget.maxHeight,
         textDirection: Directionality.of(context),
         // Closing: it can't be used while it springs out.
@@ -494,12 +503,19 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
       _side = CoilPopoverSide.top;
     }
 
-    final start = _textDirection == TextDirection.ltr
-        ? _anchor.left
-        : _anchor.right - child.size.width;
-    final x = start.clamp(
+    // Align with the anchor's start edge; if that runs off the window and
+    // its end edge doesn't, align with the end, as menus at a pointer open
+    // away from the edge. Else keep it on screen.
+    final width = child.size.width;
+    final ltr = _textDirection == TextDirection.ltr;
+    final start = ltr ? _anchor.left : _anchor.right - width;
+    final end = ltr ? _anchor.right - width : _anchor.left;
+    bool fits(double x) =>
+        x >= _edgePadding && x + width <= size.width - _edgePadding;
+    final aligned = !fits(start) && fits(end) ? end : start;
+    final x = aligned.clamp(
       _edgePadding,
-      math.max(_edgePadding, size.width - _edgePadding - child.size.width),
+      math.max(_edgePadding, size.width - _edgePadding - width),
     );
     final y = _side == CoilPopoverSide.bottom
         ? _anchor.bottom + _sideOffset

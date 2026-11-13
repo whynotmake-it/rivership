@@ -1,12 +1,8 @@
-// MotorInspectionScope is part of motor's experimental inspection API.
-// ignore_for_file: experimental_member_use
-
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
-import 'package:coil/scroll_area.dart';
 import 'package:coil/src/components/dropdown/dropdown_style.dart';
+import 'package:coil/src/components/dropdown/menu_popup.dart';
 import 'package:flutter/widgets.dart';
-import 'package:motor/inspection.dart';
 
 /// Builds a dropdown's trigger. Call `controller.open()` to show the menu.
 typedef CoilDropdownTriggerBuilder =
@@ -88,73 +84,20 @@ class _CoilDropdownState extends State<CoilDropdown> {
     super.dispose();
   }
 
-  CoilDropdownStyle _style(BuildContext context, CoilMetrics metrics) =>
-      CoilDropdownStyle.fallback(CoilTheme.of(context), metrics)
-          .merge(CoilTheme.styleOf<CoilDropdownStyle>(context))
-          .merge(widget.style);
-
   @override
-  Widget build(BuildContext context) {
-    final rows = widget.entries.whereType<CoilAction>().length;
-    return CoilAdaptivePopup(
-      controller: _controller,
-      presentation: widget.presentation,
-      motion: widget.motion,
-      traits: () => CoilOverlayTraits(
-        kind: CoilOverlayKind.actionMenu,
-        itemCount: rows,
+  Widget build(BuildContext context) => CoilMenuPopup(
+    controller: _controller,
+    entries: widget.entries,
+    kind: CoilOverlayKind.actionMenu,
+    presentation: widget.presentation,
+    style: widget.style,
+    motion: widget.motion,
+    child: ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) => Semantics(
+        expanded: _controller.isOpen,
+        child: widget.builder(context, _controller),
       ),
-      maxHeight: _style(context, CoilTheme.metricsOf(context)).maxHeight!,
-      content: (context, popup) {
-        final theme = CoilTheme.of(context);
-        // A sheet is a touch surface whatever the tier.
-        final metrics = popup.presentation == CoilPresentation.sheet
-            ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
-            : CoilTheme.metricsOf(context);
-        final style = _style(context, metrics);
-        final scroll = CoilScrollAreaStyle.fallback(
-          theme,
-          metrics,
-        ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
-        return MotorInspectionScope(
-          group: 'CoilDropdown',
-          child: CoilActionList(
-            entries: widget.entries,
-            onClose: popup.close,
-            metrics: metrics,
-            surface: popup.presentation == CoilPresentation.sheet
-                ? theme.colors.surface(3)
-                : style.surface!,
-            scrollbar: scroll.scrollbarLook,
-            fadeExtent: scroll.fadeExtent!,
-            highlight: style.highlight,
-            pressFill: style.pressFill,
-            radius: style.radius,
-            motion: widget.motion,
-          ),
-        );
-      },
-      popover: (context, content) {
-        final metrics = CoilTheme.metricsOf(context);
-        final style = _style(context, metrics);
-        return CoilPopoverSurface(
-          color: style.surface,
-          radius: style.radius! + metrics.popupInset,
-          minWidth: style.width!,
-          child: SizedBox(
-            width: metrics.tier == CoilTier.pointer ? style.width : null,
-            child: content,
-          ),
-        );
-      },
-      sheet: (context, content) => CoilSheetPanel(child: content),
-      child: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, _) => Semantics(
-          expanded: _controller.isOpen,
-          child: widget.builder(context, _controller),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }

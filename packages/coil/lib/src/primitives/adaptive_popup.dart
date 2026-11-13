@@ -199,7 +199,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     close: (reason) => _open?.close(reason),
   );
 
-  Future<CoilPopupCloseReason> _show() {
+  Future<CoilPopupCloseReason> _show(Offset? position) {
     if (_open case final open?) return open.closed;
     final presentation = CoilAdaptivePopup.presentationOf(
       context,
@@ -210,7 +210,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     setState(() => _open = _shown = handle);
     switch (presentation) {
       case CoilPresentation.popover:
-        _popover.show();
+        _popover.show(at: position);
       case CoilPresentation.sheet:
         _pushSheet(handle);
     }

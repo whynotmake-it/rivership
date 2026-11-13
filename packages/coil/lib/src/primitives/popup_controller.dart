@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:coil/src/foundation/adaptive.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 
 /// Why a popup closed. A [CoilPopupController.open] future resolves with
 /// one of these, exactly once.
@@ -40,11 +41,15 @@ class CoilPopupController extends ChangeNotifier {
 
   /// Opens the popup, or returns the pending future if it is open. The
   /// future resolves once, when it closes.
-  Future<CoilPopupCloseReason> open() {
+  ///
+  /// [position], in the anchor's local coordinates, opens a popover at that
+  /// point instead of next to the anchor, like a context menu at the
+  /// pointer. A sheet ignores it.
+  Future<CoilPopupCloseReason> open({Offset? position}) {
     if (_closed case final closed?) return closed;
     final host = _host;
     assert(host != null, 'CoilPopupController is not attached to a popup');
-    final opened = host?.open();
+    final opened = host?.open(position);
     // The host reports the popup's own future through didOpen; hand out that
     // one, so every open() call while it shows gets the same future.
     return _closed ?? opened ?? Future.value(CoilPopupCloseReason.programmatic);
@@ -58,7 +63,7 @@ class CoilPopupController extends ChangeNotifier {
 
   /// Connects the popup. `CoilAdaptivePopup` calls this; apps don't.
   void attach({
-    required Future<CoilPopupCloseReason> Function() open,
+    required Future<CoilPopupCloseReason> Function(Offset? position) open,
     required void Function(CoilPopupCloseReason reason) close,
   }) {
     _host = _CoilPopupHost(open, close);
@@ -89,7 +94,7 @@ class CoilPopupController extends ChangeNotifier {
 class _CoilPopupHost {
   _CoilPopupHost(this.open, this.close);
 
-  final Future<CoilPopupCloseReason> Function() open;
+  final Future<CoilPopupCloseReason> Function(Offset? position) open;
   final void Function(CoilPopupCloseReason reason) close;
 }
 
