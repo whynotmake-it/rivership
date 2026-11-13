@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/widgets.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
@@ -46,16 +48,27 @@ class CoilSheetPanel extends StatelessWidget {
       ? const Color(0x80000000)
       : const Color(0x66000000);
 
+  /// The heading's type step: one step above touch body (16/22), the size
+  /// of an iOS headline, at semibold.
+  static const titleStep = CoilTypeStep(17, 22);
+
+  /// The widest a sheet gets; wider windows center it.
+  static const maxWidth = 560.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
-    final metrics = CoilTheme.metricsOf(context);
+    // A sheet is a touch surface whatever the tier, like its rows.
+    final metrics = CoilMetrics.resolve(CoilTier.touch, CoilSize.regular);
     final media = MediaQuery.of(context);
     const margin = 8.0;
+    // Concentric with the rows, which sit popupInset in.
     final radius = BorderRadius.circular(
-      theme.shape.container + metrics.popupInset,
+      theme.shape.item + metrics.popupInset,
     );
+    // Title text starts where row text starts.
+    final textInset = metrics.popupInset + metrics.itemPaddingX;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         margin + media.padding.left,
@@ -63,65 +76,73 @@ class CoilSheetPanel extends StatelessWidget {
         margin + media.padding.right,
         math.max(margin, media.padding.bottom),
       ),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: colors.surface(3),
-          shadows: colors.shadow(3),
-          shape: RoundedSuperellipseBorder(borderRadius: radius),
-        ),
-        child: DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: ShapeDecoration(
-            shape: RoundedSuperellipseBorder(
-              borderRadius: radius,
-              side: colors.insetRing(3),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: maxWidth),
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: colors.surface(3),
+              shadows: colors.shadow(3),
+              shape: RoundedSuperellipseBorder(borderRadius: radius),
             ),
-          ),
-          child: ClipRSuperellipse(
-            borderRadius: radius,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: SizedBox(
-                      width: 36,
-                      height: 5,
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          color: colors.foreground.withValues(alpha: 0.16),
-                          shape: RoundedSuperellipseBorder(
-                            borderRadius: BorderRadius.circular(3),
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: ShapeDecoration(
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: colors.insetRing(3),
+                ),
+              ),
+              child: ClipRSuperellipse(
+                borderRadius: radius,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 6),
+                        child: SizedBox(
+                          width: 36,
+                          height: 5,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: colors.foreground.withValues(alpha: 0.16),
+                              shape: RoundedSuperellipseBorder(
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                if (title case final title?)
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      metrics.popupInset + metrics.itemPaddingX,
-                      4,
-                      metrics.popupInset + metrics.itemPaddingX,
-                      4,
-                    ),
-                    child: Semantics(
-                      header: true,
-                      child: DefaultTextStyle(
-                        style: theme.typography.style(
-                          metrics.caption,
-                          weight: .semibold,
-                          color: colors.mutedForeground,
+                    if (title case final title?)
+                      Padding(
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          textInset,
+                          4,
+                          textInset,
+                          6,
                         ),
-                        child: title,
+                        child: Semantics(
+                          header: true,
+                          child: DefaultTextStyle(
+                            style: theme.typography.style(
+                              titleStep,
+                              weight: .semibold,
+                              color: colors.foreground,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            child: title,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                Flexible(child: child),
-              ],
+                    Flexible(child: child),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

@@ -206,18 +206,21 @@ class CoilMetrics {
 
   /// Touch, regular: 44 px controls.
   ///
-  /// Text goes to 15/20 (fields to 16/22, which also keeps iOS from zooming
-  /// into a focused field).
+  /// Body and field text go to 16/22: the pointer tier's text-to-height
+  /// ratio (13 in 36) at 44, and 16 keeps iOS from zooming into a focused
+  /// field. Control padding (16) equals popup inset + row padding (6 + 10),
+  /// so a popover's row text lines up with its trigger's. See
+  /// research/08-touch-tier.md.
   static const touch = CoilMetrics(
     tier: CoilTier.touch,
     size: CoilSize.regular,
     controlHeight: 44,
     minHitTarget: 44,
-    controlPaddingX: 14,
+    controlPaddingX: 16,
     itemPaddingX: 10,
-    gap: 10,
-    iconSize: 18,
-    body: CoilTypeStep(15, 20),
+    gap: 12,
+    iconSize: 20,
+    body: CoilTypeStep(16, 22),
     field: CoilTypeStep(16, 22),
     caption: CoilTypeStep(13, 18),
     buttonPaddingX: 20,
@@ -247,7 +250,7 @@ class CoilMetrics {
     controlHeight: 36,
     minHitTarget: 44,
     controlPaddingX: 12,
-    itemPaddingX: 8,
+    itemPaddingX: 6,
     gap: 8,
     iconSize: 16,
     body: CoilTypeStep(14, 20),

@@ -218,7 +218,7 @@ void main() {
       final sheet = await pumpSheet(
         tester,
         _Matrix(story),
-        surface: const Size(2600, 1800),
+        surface: const Size(2800, 1800),
       );
       await expectSheetGolden(tester, sheet, 'goldens/matrix/$name.png');
     });
