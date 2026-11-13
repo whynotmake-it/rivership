@@ -5,6 +5,7 @@ library fluid_functionalism;
 export 'src/components/button.dart';
 export 'src/components/checkbox.dart';
 export 'src/components/input.dart';
+export 'src/components/selection_groups.dart';
 export 'src/components/switch.dart';
 export 'src/components/tabs.dart';
 
@@ -23,3 +24,4 @@ export 'src/primitives/fluid_hover.dart';
 export 'src/primitives/fluid_interaction.dart';
 export 'src/primitives/fluid_label.dart';
 export 'src/primitives/fluid_pressable.dart';
+export 'src/primitives/fluid_selection.dart';
