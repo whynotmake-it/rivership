@@ -77,4 +77,54 @@ void main() {
     expect(find.byType(CoilSheetPanel), findsOneWidget);
     expect(find.byType(CoilCalendar), findsOneWidget);
   });
+
+  timeTests();
+}
+
+class _TimeDemo extends StatefulWidget {
+  const _TimeDemo();
+
+  @override
+  State<_TimeDemo> createState() => _TimeDemoState();
+}
+
+class _TimeDemoState extends State<_TimeDemo> {
+  DateTime? value = DateTime(2026, 11, 14, 9, 30);
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: const Alignment(0, -0.95),
+    child: SizedBox(
+      width: 240,
+      child: CoilDatePicker(
+        value: value,
+        withTime: true,
+        onChanged: (v) => setState(() => value = v),
+      ),
+    ),
+  );
+}
+
+void timeTests() {
+  testWidgets('with time, a picked day keeps the time and the popup', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    tester.view.physicalSize = const Size(1200, 1600);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _TimeDemo()),
+    );
+    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+    await tester.tap(find.text('November 14, 2026, 09:30'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('20').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilCalendar), findsOneWidget);
+    expect(find.text('November 20, 2026, 09:30'), findsOneWidget);
+
+    // A screen reader steps the hour column.
+    tester.semantics.increase(find.semantics.byLabel('Hour'));
+    await tester.pumpAndSettle();
+    expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
+  });
 }

@@ -13,6 +13,9 @@ import 'package:flutter/widgets.dart';
 /// [CoilCalendarLabels.date], or [placeholder] when there is none. The
 /// arrow keys on the field open the calendar with the keyboard on the
 /// picked day.
+///
+/// With [withTime], two columns under the calendar pick the time of day,
+/// and the popup stays open until dismissed.
 class CoilDatePicker extends StatefulWidget {
   /// Creates a date picker.
   const CoilDatePicker({
@@ -25,6 +28,8 @@ class CoilDatePicker extends StatefulWidget {
     this.lastDate,
     this.isDisabled,
     this.firstDayOfWeek = DateTime.monday,
+    this.withTime = false,
+    this.minuteInterval = 5,
     this.labels = const CoilCalendarLabels(),
     this.sheetTitle,
     this.presentation,
@@ -59,6 +64,13 @@ class CoilDatePicker extends StatefulWidget {
 
   /// The weekday the calendar's rows start on.
   final int firstDayOfWeek;
+
+  /// Whether a time of day is picked too, in two columns under the
+  /// calendar. Picking a day then keeps the popup open.
+  final bool withTime;
+
+  /// The minute step of the time columns.
+  final int minuteInterval;
 
   /// Month and weekday names, and how the field shows a date.
   final CoilCalendarLabels labels;
@@ -122,7 +134,13 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
     final style = _style(context, metrics);
     final value = widget.value;
-    final text = value == null ? null : widget.labels.date(value);
+    final text = value == null
+        ? null
+        : widget.withTime
+        ? '${widget.labels.date(value)}, '
+              '${value.hour.toString().padLeft(2, '0')}:'
+              '${value.minute.toString().padLeft(2, '0')}'
+        : widget.labels.date(value);
     return CoilAdaptivePopup(
       controller: _popup,
       presentation: widget.presentation,
@@ -136,18 +154,21 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
         child: Center(
           widthFactor: 1,
           heightFactor: 1,
-          child: CoilCalendar(
-            selected: value,
-            autofocus: true,
+          child: _DateTimePanel(
+            initial: value,
+            withTime: widget.withTime,
+            minuteInterval: widget.minuteInterval,
             firstDate: widget.firstDate,
             lastDate: widget.lastDate,
             isDisabled: widget.isDisabled,
             firstDayOfWeek: widget.firstDayOfWeek,
             labels: widget.labels,
             motion: widget.motion,
-            onSelected: (day) {
-              widget.onChanged?.call(day);
-              popup.close(CoilPopupCloseReason.selected);
+            onChanged: (date, {required bool day}) {
+              widget.onChanged?.call(date);
+              if (day && !widget.withTime) {
+                popup.close(CoilPopupCloseReason.selected);
+              }
             },
           ),
         ),
@@ -199,6 +220,92 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The popup's content: the calendar and, with [withTime], the time
+/// columns. It keeps its own copy of the value, because a sheet doesn't
+/// rebuild with the picker.
+class _DateTimePanel extends StatefulWidget {
+  const _DateTimePanel({
+    required this.initial,
+    required this.withTime,
+    required this.minuteInterval,
+    required this.firstDate,
+    required this.lastDate,
+    required this.isDisabled,
+    required this.firstDayOfWeek,
+    required this.labels,
+    required this.motion,
+    required this.onChanged,
+  });
+
+  final DateTime? initial;
+  final bool withTime;
+  final int minuteInterval;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  final bool Function(DateTime day)? isDisabled;
+  final int firstDayOfWeek;
+  final CoilCalendarLabels labels;
+  final CoilMotion? motion;
+
+  /// Called with each change, and whether it was a day that was picked.
+  final void Function(DateTime value, {required bool day}) onChanged;
+
+  @override
+  State<_DateTimePanel> createState() => _DateTimePanelState();
+}
+
+class _DateTimePanelState extends State<_DateTimePanel> {
+  late DateTime? _value = widget.initial;
+
+  void _set(DateTime value, {required bool day}) {
+    setState(() => _value = value);
+    widget.onChanged(value, day: day);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _value;
+    final calendar = CoilCalendar(
+      selected: value,
+      autofocus: true,
+      firstDate: widget.firstDate,
+      lastDate: widget.lastDate,
+      isDisabled: widget.isDisabled,
+      firstDayOfWeek: widget.firstDayOfWeek,
+      labels: widget.labels,
+      motion: widget.motion,
+      onSelected: (day) => _set(
+        DateTime(
+          day.year,
+          day.month,
+          day.day,
+          value?.hour ?? 0,
+          value?.minute ?? 0,
+        ),
+        day: true,
+      ),
+    );
+    if (!widget.withTime) return calendar;
+    final now = value ?? DateTime.now();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: CoilTheme.metricsOf(context).gap * 2,
+      children: [
+        calendar,
+        CoilTimeColumns(
+          value: (hour: now.hour, minute: now.minute),
+          minuteInterval: widget.minuteInterval,
+          onChanged: (time) => _set(
+            DateTime(now.year, now.month, now.day, time.hour, time.minute),
+            day: false,
+          ),
+        ),
+      ],
     );
   }
 }
