@@ -1,0 +1,353 @@
+import 'package:coil/src/foundation/typography.dart';
+import 'package:flutter/widgets.dart';
+
+/// The input a size set is designed for.
+///
+/// The tier latches by platform (desktop OS → [pointer], phone/tablet →
+/// [touch]) unless a `CoilAdaptiveScope` or the theme pins it. It only picks
+/// sizes: whether something hovers or presses is decided by the kind of each
+/// pointer event, so a mouse on an iPad still hovers.
+enum CoilTier {
+  /// Designed for a mouse, trackpad and keyboard: 36 px controls.
+  pointer,
+
+  /// Touch screens. Raises every hit target to 44 px while keeping the
+  /// proportions of the desktop look.
+  touch;
+
+  /// The tier conventionally used on [platform].
+  static CoilTier forPlatform(TargetPlatform platform) => switch (platform) {
+    TargetPlatform.iOS ||
+    TargetPlatform.android ||
+    TargetPlatform.fuchsia => CoilTier.touch,
+    TargetPlatform.macOS ||
+    TargetPlatform.windows ||
+    TargetPlatform.linux => CoilTier.pointer,
+  };
+}
+
+/// The two steps of the size ladder shared by every control.
+enum CoilSize {
+  /// The default step.
+  regular,
+
+  /// One step down for dense surfaces: filter bars, toolbars, sidebars.
+  compact,
+}
+
+/// Switch geometry for one size step.
+@immutable
+class CoilSwitchMetrics {
+  /// Creates switch metrics.
+  const CoilSwitchMetrics({
+    required this.trackWidth,
+    required this.trackHeight,
+    required this.thumbSize,
+    required this.pillExtend,
+    required this.pressExtend,
+    required this.pressShrink,
+    this.thumbInset = 2,
+  });
+
+  /// Track width.
+  final double trackWidth;
+
+  /// Track height.
+  final double trackHeight;
+
+  /// Thumb diameter at rest.
+  final double thumbSize;
+
+  /// How much wider the thumb gets on hover (it becomes a pill).
+  final double pillExtend;
+
+  /// How much wider the thumb gets while pressed.
+  final double pressExtend;
+
+  /// How much shorter the thumb gets while pressed.
+  final double pressShrink;
+
+  /// Gap between the thumb and the track edge.
+  final double thumbInset;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilSwitchMetrics &&
+      other.trackWidth == trackWidth &&
+      other.trackHeight == trackHeight &&
+      other.thumbSize == thumbSize &&
+      other.pillExtend == pillExtend &&
+      other.pressExtend == pressExtend &&
+      other.pressShrink == pressShrink &&
+      other.thumbInset == thumbInset;
+
+  @override
+  int get hashCode => Object.hash(
+    trackWidth,
+    trackHeight,
+    thumbSize,
+    pillExtend,
+    pressExtend,
+    pressShrink,
+    thumbInset,
+  );
+}
+
+/// Every size token for one tier and size step.
+///
+/// Pointer values start from Fluid Functionalism's `sizeMap`. Touch raises
+/// the control height to 44 (regular) and every hit target to at least 44,
+/// with type and glyphs a step larger so the proportions read the same.
+/// Heights are minimums: controls grow with the text scale.
+@immutable
+class CoilMetrics {
+  /// Creates metrics. Prefer [CoilMetrics.resolve].
+  const CoilMetrics({
+    required this.tier,
+    required this.size,
+    required this.controlHeight,
+    required this.minHitTarget,
+    required this.controlPaddingX,
+    required this.itemPaddingX,
+    required this.gap,
+    required this.iconSize,
+    required this.body,
+    required this.field,
+    required this.caption,
+    required this.buttonPaddingX,
+    required this.buttonIconPaddingX,
+    required this.buttonGap,
+    required this.switchMetrics,
+    required this.switchRowPaddingY,
+    required this.checkboxSize,
+    required this.checkboxRadius,
+    required this.checkboxGlyphSize,
+    required this.segmentPadding,
+    required this.popupInset,
+    this.triggerMinWidth = 160,
+  });
+
+  /// Pointer, regular: 36 px controls.
+  static const pointer = CoilMetrics(
+    tier: CoilTier.pointer,
+    size: CoilSize.regular,
+    controlHeight: 36,
+    minHitTarget: 0,
+    controlPaddingX: 12,
+    itemPaddingX: 8,
+    gap: 8,
+    iconSize: 16,
+    body: CoilTypeStep(13, 20),
+    field: CoilTypeStep(13, 20),
+    caption: CoilTypeStep(12, 16),
+    buttonPaddingX: 16,
+    buttonIconPaddingX: 12,
+    buttonGap: 6,
+    switchMetrics: CoilSwitchMetrics(
+      trackWidth: 34,
+      trackHeight: 20,
+      thumbSize: 16,
+      pillExtend: 2,
+      pressExtend: 4,
+      pressShrink: 4,
+    ),
+    switchRowPaddingY: 8,
+    checkboxSize: 16,
+    checkboxRadius: 5,
+    checkboxGlyphSize: 18,
+    segmentPadding: 4,
+    popupInset: 4,
+  );
+
+  /// Pointer, compact: 28 px controls.
+  static const pointerCompact = CoilMetrics(
+    tier: CoilTier.pointer,
+    size: CoilSize.compact,
+    controlHeight: 28,
+    minHitTarget: 0,
+    controlPaddingX: 10,
+    itemPaddingX: 6,
+    gap: 4,
+    iconSize: 14,
+    body: CoilTypeStep(12, 18),
+    field: CoilTypeStep(12, 18),
+    caption: CoilTypeStep(11, 14),
+    buttonPaddingX: 12,
+    buttonIconPaddingX: 8,
+    buttonGap: 4,
+    switchMetrics: CoilSwitchMetrics(
+      trackWidth: 28,
+      trackHeight: 16,
+      thumbSize: 12,
+      pillExtend: 2,
+      pressExtend: 3,
+      pressShrink: 3,
+    ),
+    switchRowPaddingY: 4,
+    checkboxSize: 14,
+    checkboxRadius: 4,
+    checkboxGlyphSize: 16,
+    segmentPadding: 2,
+    popupInset: 4,
+  );
+
+  /// Touch, regular: 44 px controls.
+  ///
+  /// Text goes to 15/20 (fields to 16/22, which also keeps iOS from zooming
+  /// into a focused field).
+  static const touch = CoilMetrics(
+    tier: CoilTier.touch,
+    size: CoilSize.regular,
+    controlHeight: 44,
+    minHitTarget: 44,
+    controlPaddingX: 14,
+    itemPaddingX: 10,
+    gap: 10,
+    iconSize: 18,
+    body: CoilTypeStep(15, 20),
+    field: CoilTypeStep(16, 22),
+    caption: CoilTypeStep(13, 18),
+    buttonPaddingX: 20,
+    buttonIconPaddingX: 16,
+    buttonGap: 8,
+    switchMetrics: CoilSwitchMetrics(
+      trackWidth: 44,
+      trackHeight: 26,
+      thumbSize: 22,
+      pillExtend: 3,
+      pressExtend: 5,
+      pressShrink: 5,
+    ),
+    switchRowPaddingY: 9,
+    checkboxSize: 20,
+    checkboxRadius: 6,
+    checkboxGlyphSize: 22,
+    segmentPadding: 4,
+    popupInset: 6,
+  );
+
+  /// Touch, compact: the desktop regular look (36 px) inside a 44 px hit
+  /// target.
+  static const touchCompact = CoilMetrics(
+    tier: CoilTier.touch,
+    size: CoilSize.compact,
+    controlHeight: 36,
+    minHitTarget: 44,
+    controlPaddingX: 12,
+    itemPaddingX: 8,
+    gap: 8,
+    iconSize: 16,
+    body: CoilTypeStep(14, 20),
+    field: CoilTypeStep(16, 20),
+    caption: CoilTypeStep(12, 16),
+    buttonPaddingX: 16,
+    buttonIconPaddingX: 12,
+    buttonGap: 6,
+    switchMetrics: CoilSwitchMetrics(
+      trackWidth: 36,
+      trackHeight: 22,
+      thumbSize: 18,
+      pillExtend: 2,
+      pressExtend: 4,
+      pressShrink: 4,
+    ),
+    switchRowPaddingY: 4,
+    checkboxSize: 18,
+    checkboxRadius: 5,
+    checkboxGlyphSize: 20,
+    segmentPadding: 2,
+    popupInset: 6,
+  );
+
+  /// The metrics for [tier] and [size].
+  static CoilMetrics resolve(CoilTier tier, CoilSize size) =>
+      switch ((tier, size)) {
+        (CoilTier.pointer, CoilSize.regular) => pointer,
+        (CoilTier.pointer, CoilSize.compact) => pointerCompact,
+        (CoilTier.touch, CoilSize.regular) => touch,
+        (CoilTier.touch, CoilSize.compact) => touchCompact,
+      };
+
+  /// The tier these sizes are for.
+  final CoilTier tier;
+
+  /// The size step these metrics are for.
+  final CoilSize size;
+
+  /// Bounded control height: buttons, inputs, tabs, and list rows.
+  final double controlHeight;
+
+  /// The vertical padding that puts a [text] line box in a [controlHeight]
+  /// control: `(controlHeight − lineHeight) / 2`, e.g. 8 + 20 + 8 = 36. The
+  /// control uses [controlHeight] as a minimum, so it grows with the text
+  /// scale instead of clipping or shifting the label.
+  double controlPaddingY(CoilTypeStep text) =>
+      (controlHeight - text.lineHeight) / 2;
+
+  /// The smallest a tappable area may be. Controls whose visual is smaller
+  /// (a checkbox, a compact button on touch) pad their hit area out to this.
+  /// 0 on the pointer tier.
+  final double minHitTarget;
+
+  /// Horizontal padding of bounded controls (inputs, tabs, switch rows).
+  final double controlPaddingX;
+
+  /// Horizontal padding of list and menu rows.
+  final double itemPaddingX;
+
+  /// Gap between a glyph and its label, and between neighboring controls.
+  final double gap;
+
+  /// Leading and trailing icon size inside controls.
+  final double iconSize;
+
+  /// Body text inside controls.
+  final CoilTypeStep body;
+
+  /// Text inside editable fields.
+  final CoilTypeStep field;
+
+  /// Caption text.
+  final CoilTypeStep caption;
+
+  /// Button horizontal padding next to a label.
+  final double buttonPaddingX;
+
+  /// Button horizontal padding next to an icon (4 px closer to the edge).
+  final double buttonIconPaddingX;
+
+  /// Gap between a button's icon and label.
+  final double buttonGap;
+
+  /// Switch geometry.
+  final CoilSwitchMetrics switchMetrics;
+
+  /// Vertical padding of a labeled switch row.
+  final double switchRowPaddingY;
+
+  /// Checkbox square size.
+  final double checkboxSize;
+
+  /// Checkbox corner radius.
+  final double checkboxRadius;
+
+  /// Size of the check glyph, which overhangs the box slightly.
+  final double checkboxGlyphSize;
+
+  /// Padding of a segmented list around its items.
+  final double segmentPadding;
+
+  /// Padding of a popup (popover or sheet list) around its rows. A popup's
+  /// radius is the item radius plus this, so the corners stay concentric.
+  final double popupInset;
+
+  /// The narrowest a select trigger gets.
+  final double triggerMinWidth;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilMetrics && other.tier == tier && other.size == size;
+
+  @override
+  int get hashCode => Object.hash(tier, size);
+}

@@ -24,8 +24,7 @@ workspace:
   - packages/fixed_ticker
   - packages/fixed_ticker/example
   - packages/snaptest
-  - packages/fluid_functionalism
-  - packages/fluid_mobile_spike
+  - packages/coil
   
 dev_dependencies:
   lintervention: ^0.3.1
