@@ -20,19 +20,19 @@ List<CoilAccordionItem<String>> _items({bool disableLast = false}) => [
   const CoilAccordionItem(
     value: 'shipping',
     label: 'Shipping',
-    icon: TestIcon(TestGlyph.home),
-    child: Text(_panelText),
+    leading: TestIcon(TestGlyph.home),
+    panel: Text(_panelText),
   ),
   const CoilAccordionItem(
     value: 'returns',
     label: 'Returns',
-    child: Text('Return anything within 30 days.'),
+    panel: Text('Return anything within 30 days.'),
   ),
   CoilAccordionItem(
     value: 'support',
     label: 'Support',
     enabled: !disableLast,
-    child: const Text('Write to us any time.'),
+    panel: const Text('Write to us any time.'),
   ),
 ];
 
@@ -188,7 +188,7 @@ void main() {
       width: 200,
       child: CoilAccordion<int>.single(
         items: const [
-          CoilAccordionItem(value: 0, label: 'HEH', child: Text('')),
+          CoilAccordionItem(value: 0, label: 'HEH', panel: Text('')),
         ],
         value: null,
         onChanged: (_) {},
@@ -322,6 +322,44 @@ void main() {
       expect(ignored, ['returns']);
       expect(_isOpen(tester, 'Shipping'), isTrue);
       expect(_isOpen(tester, 'Returns'), isFalse);
+    });
+
+    testWidgets('a reorder keeps an open item open, without replaying it', (
+      tester,
+    ) async {
+      var items = _items();
+      late StateSetter setItems;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, setState) {
+              setItems = setState;
+              return CoilAccordion<String>.single(
+                items: items,
+                value: 'shipping',
+                onChanged: (_) {},
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final panel = find.ancestor(
+        of: find.text(_panelText),
+        matching: find.byType(CoilCollapsible),
+      );
+      final open = tester.getSize(panel).height;
+
+      setItems(() => items = items.reversed.toList());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(_isOpen(tester, 'Shipping'), isTrue);
+      expect(tester.getSize(panel).height, open);
+      expect(
+        tester.getTopLeft(_trigger('Shipping')).dy,
+        greaterThan(tester.getTopLeft(_trigger('Support')).dy),
+        reason: 'the item moved',
+      );
     });
 
     testWidgets('a null onChanged disables every trigger', (tester) async {

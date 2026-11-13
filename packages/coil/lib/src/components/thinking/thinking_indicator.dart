@@ -10,7 +10,8 @@ import 'package:motor/inspection.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
 /// A status line for work in progress: an optional glyph and a word that
-/// changes every 4 seconds.
+/// changes every 4 seconds. The cycle pauses while tickers are muted, for
+/// example in a route that is covered.
 ///
 /// The incoming word rises into place and the outgoing one rises out. The
 /// row is as wide as the longest word, so it never shifts what follows.
@@ -23,7 +24,7 @@ class CoilThinkingIndicator extends StatefulWidget {
   const CoilThinkingIndicator({
     required this.words,
     super.key,
-    this.glyph,
+    this.leading,
     this.size,
     this.motion,
     this.style,
@@ -35,7 +36,7 @@ class CoilThinkingIndicator extends StatefulWidget {
 
   /// An optional glyph before the words, styled by [IconTheme] in the
   /// muted color.
-  final Widget? glyph;
+  final Widget? leading;
 
   /// Pins the indicator to one size step. Null follows
   /// [CoilAdaptiveScope].
@@ -66,7 +67,20 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
   void initState() {
     super.initState();
     assert(widget.words.isNotEmpty, 'words needs at least one word');
-    _timer = Timer.periodic(CoilThinkingIndicator.interval, (_) => _next());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The cycle runs only while tickers do, so a hidden tab or a covered
+    // route doesn't keep rebuilding.
+    final enabled = TickerMode.valuesOf(context).enabled;
+    if (enabled && _timer == null) {
+      _timer = Timer.periodic(CoilThinkingIndicator.interval, (_) => _next());
+    } else if (!enabled) {
+      _timer?.cancel();
+      _timer = null;
+    }
   }
 
   // The word only changes on the timer, even when [words] changes, which
@@ -137,14 +151,14 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
               mainAxisSize: MainAxisSize.min,
               spacing: metrics.gap,
               children: [
-                if (widget.glyph case final glyph?)
+                if (widget.leading case final leading?)
                   IconTheme(
                     data: IconThemeData(
                       size: style.glyphSize,
                       color: style.glyphColor,
                       applyTextScaling: true,
                     ),
-                    child: glyph,
+                    child: leading,
                   ),
                 words,
               ],

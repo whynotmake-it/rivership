@@ -15,7 +15,7 @@ import 'src/test_icons.dart';
 const _steps = [
   CoilThinkingStep(
     title: 'Searched the docs',
-    icon: TestIcon(TestGlyph.search),
+    leading: TestIcon(TestGlyph.search),
     sources: [Text('flutter.dev'), Text('api.flutter.dev')],
   ),
   CoilThinkingStep(
@@ -316,7 +316,7 @@ void main() {
       'thinking_indicator',
       (context) => const CoilThinkingIndicator(
         words: _words,
-        glyph: TestIcon(TestGlyph.settings),
+        leading: TestIcon(TestGlyph.settings),
       ),
       surface: const Size(1800, 900),
     );
@@ -339,6 +339,26 @@ void main() {
       expect(announced(tester), 'Planning');
       await tester.pump(const Duration(seconds: 4));
       expect(announced(tester), 'Thinking', reason: 'the cycle wraps');
+    });
+
+    testWidgets('the cycle pauses while tickers are muted', (tester) async {
+      final content = await _pumpLive(
+        tester,
+        const TickerMode(
+          enabled: false,
+          child: CoilThinkingIndicator(words: _words),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 8));
+      expect(announced(tester), 'Thinking');
+
+      content.value = const TickerMode(
+        enabled: true,
+        child: CoilThinkingIndicator(words: _words),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(announced(tester), 'Moonwalking');
     });
 
     testWidgets('new words never announce sooner than every 4 s', (
