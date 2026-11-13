@@ -5,7 +5,10 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/carousel_dots/carousel_dots_labels.dart';
 import 'package:coil/src/components/carousel_dots/carousel_dots_style.dart';
+import 'package:coil/src/components/carousel_dots/carousel_dots_track.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -14,15 +17,15 @@ import 'package:motor/motor.dart';
 /// A row of dots, one per slide, where the current dot is a wider pill.
 ///
 /// The dots are one adjustable control on every tier: one tab stop, arrow
-/// keys and Home/End step through slides, and screen readers hear
-/// "Slide 2 of 5" with increase and decrease actions.
+/// keys and Home/End step through slides, and screen readers hear the
+/// position ("Slide 2 of 5") with increase and decrease actions.
 ///
-/// * **Pointer:** each dot sits in an 18 px round click target, and one
-///   hover highlight glides between the targets.
-/// * **Touch:** the whole row is one 44 px high strip. Tap or drag along it
-///   to scrub; single dots get no 44 px boxes of their own.
+/// * **Pointer:** each dot has its own click target, and one hover
+///   highlight glides between them.
+/// * **Touch:** the whole row is one touch strip. Tap or drag along it to
+///   scrub.
 ///
-/// The dots don't advance on their own. A carousel that autoplays drives
+/// The dots never advance on their own. A carousel that autoplays drives
 /// [value] and [progress] from its own clock, and stops that clock under
 /// reduced motion (`MediaQuery.disableAnimationsOf`).
 class CoilCarouselDots extends StatefulWidget {
@@ -33,9 +36,10 @@ class CoilCarouselDots extends StatefulWidget {
     required this.onChanged,
     super.key,
     this.progress,
-    this.semanticLabel = 'Slides',
+    this.labels = const CoilCarouselDotsLabels(),
     this.size,
     this.motion,
+    this.motions,
     this.style,
     this.focusNode,
     this.autofocus = false,
@@ -58,8 +62,8 @@ class CoilCarouselDots extends StatefulWidget {
   /// fills by this much. Null shows a solid pill.
   final double? progress;
 
-  /// The name screen readers announce before the slide position.
-  final String semanticLabel;
+  /// The words screen readers hear. Pass translations for other locales.
+  final CoilCarouselDotsLabels labels;
 
   /// Pins the dots to one size step. Null follows [CoilAdaptiveScope].
   final CoilSize? size;
@@ -67,6 +71,10 @@ class CoilCarouselDots extends StatefulWidget {
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for these
   /// dots.
   final CoilMotion? motion;
+
+  /// Per-track motions for these dots, keyed by [CoilCarouselDotsTrack]s.
+  /// They win over the theme's [CoilThemeData.trackMotions] and the tokens.
+  final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
 
   /// Overrides for these dots' look, on top of the theme's
   /// [CoilCarouselDotsStyle] and the defaults.
@@ -84,6 +92,7 @@ class CoilCarouselDots extends StatefulWidget {
 
 class _CoilCarouselDotsState extends State<CoilCarouselDots> {
   final _states = WidgetStatesController();
+  final _row = GlobalKey(debugLabel: 'CoilCarouselDots.row');
   FocusNode? _ownFocusNode;
 
   FocusNode get _focusNode =>
@@ -129,6 +138,31 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
     if (clamped != widget.value) widget.onChanged?.call(clamped);
   }
 
+  /// Selects the dot under a finger anywhere in the touch strip: hit-tests
+  /// the row of dots at the finger's horizontal position, through the
+  /// row's middle.
+  void _scrub(Offset global) {
+    final row = _row.currentContext?.findRenderObject();
+    if (row is! RenderBox || !row.hasSize) return;
+    final local = row.globalToLocal(global);
+    final result = BoxHitTestResult();
+    row.hitTest(result, position: Offset(local.dx, row.size.height / 2));
+    for (final entry in result.path) {
+      if (entry.target case RenderMetaData(metaData: final int index)) {
+        _select(index);
+        return;
+      }
+    }
+  }
+
+  Motion _motionFor(CoilCarouselDotsTrack<Object> track, Motion token) =>
+      CoilTheme.trackMotionOf(
+        context,
+        track,
+        instance: widget.motions,
+        token: token,
+      );
+
   @override
   void dispose() {
     _states.dispose();
@@ -138,24 +172,13 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
 
   @override
   Widget build(BuildContext context) {
-    final override = widget.motion;
-    if (override == null) return _build(context);
-    // The hover highlight reads the theme's motion, so an instance override
-    // goes in as a theme override.
-    return CoilTheme.override(
-      transform: (theme) => theme.copyWith(motion: override),
-      child: Builder(builder: _build),
-    );
-  }
-
-  Widget _build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
-    final motion = CoilTheme.motionOf(context);
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
     final style = CoilCarouselDotsStyle.fallback(theme, metrics)
         .merge(CoilTheme.styleOf<CoilCarouselDotsStyle>(context))
         .merge(widget.style);
-    final geometry = _Geometry(style, widget.count, widget.value);
+    final pill = _motionFor(CoilCarouselDotsTrack.pill, tokens.standard);
     final enabled = _enabled;
     final touch = metrics.tier == CoilTier.touch;
 
@@ -166,18 +189,33 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
         child: CoilHoverHighlight(
           color: style.highlight,
           radius: style.radius,
+          motion: widget.motion,
+          glideMotion: _motionFor(
+            CoilCarouselDotsTrack.highlight,
+            tokens.quick,
+          ),
           child: Row(
+            key: _row,
             mainAxisSize: MainAxisSize.min,
             children: [
               for (var i = 0; i < widget.count; i++)
                 CoilHoverItem(
                   index: i,
                   enabled: enabled,
-                  child: _Dot(
-                    current: i == widget.value,
-                    progress: widget.progress ?? 1,
-                    style: style,
-                    motion: motion,
+                  // Tags the dot for the touch strip's hit test.
+                  child: MetaData(
+                    metaData: i,
+                    behavior: HitTestBehavior.opaque,
+                    child: _DotTarget(
+                      // On touch the strip takes every tap.
+                      onPressed: enabled && !touch ? () => _select(i) : null,
+                      child: _Dot(
+                        current: i == widget.value,
+                        progress: widget.progress ?? 1,
+                        style: style,
+                        motion: pill,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -192,34 +230,41 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
       builder: (context, dots) => CoilFocusRing(
         visible: _states.value.contains(WidgetState.focused),
         borderRadius: BorderRadius.circular(style.radius!),
-        offset: 2,
+        offset: style.ringOffset!,
         child: dots!,
       ),
     );
 
-    void scrub(Offset local) {
-      final rtl = Directionality.of(context) == TextDirection.rtl;
-      final x = rtl ? geometry.width - local.dx : local.dx;
-      _select(geometry.indexAt(x));
+    // As tall as the tier's minimum hit target, as wide as the dots.
+    Widget strip = SizedBox(
+      height: math.max(style.targetSize!, metrics.minHitTarget),
+      child: Center(widthFactor: 1, child: ring),
+    );
+    if (touch && enabled) {
+      // The scrub needs the finger's position and a horizontal drag, which
+      // the interaction primitives don't report.
+      strip = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (details) => _scrub(details.globalPosition),
+        onHorizontalDragStart: (details) => _scrub(details.globalPosition),
+        onHorizontalDragUpdate: (details) => _scrub(details.globalPosition),
+        child: strip,
+      );
     }
 
-    // Touch: one strip at least 44 high. Pointer: the 18 px targets alone.
-    final strip = SizedBox(
-      width: geometry.width,
-      height: math.max(style.targetSize!, metrics.minHitTarget),
-      child: Center(child: ring),
-    );
+    final labels = widget.labels;
+    String position(int index) => labels.position(index + 1, widget.count);
 
     return Semantics(
       container: true,
       slider: true,
       enabled: enabled,
-      label: widget.semanticLabel,
-      value: _position(widget.value),
+      label: labels.slides,
+      value: position(widget.value),
       increasedValue: widget.value < widget.count - 1
-          ? _position(widget.value + 1)
+          ? position(widget.value + 1)
           : null,
-      decreasedValue: widget.value > 0 ? _position(widget.value - 1) : null,
+      decreasedValue: widget.value > 0 ? position(widget.value - 1) : null,
       onIncrease: enabled && widget.value < widget.count - 1
           ? () => _select(widget.value + 1)
           : null,
@@ -237,62 +282,57 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
           enabled: enabled,
           focusNode: _focusNode,
           trackPress: false,
-          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
           child: ExcludeSemantics(
             child: Opacity(
-              opacity: enabled ? 1 : 0.5,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: enabled
-                    ? (details) => scrub(details.localPosition)
-                    : null,
-                onHorizontalDragStart: enabled && touch
-                    ? (details) => scrub(details.localPosition)
-                    : null,
-                onHorizontalDragUpdate: enabled && touch
-                    ? (details) => scrub(details.localPosition)
-                    : null,
-                child: strip,
-              ),
+              opacity: enabled ? 1 : theme.disabledOpacity,
+              child: strip,
             ),
           ),
         ),
       ),
     );
   }
-
-  String _position(int index) => 'Slide ${index + 1} of ${widget.count}';
 }
 
-/// Where the dots sit once the current pill has settled.
-class _Geometry {
-  _Geometry(this.style, this.count, this.current);
+/// One dot's own click target on the pointer tier. The dots share one
+/// focus node, so this is a [CoilInteractionDetector] rather than a
+/// focusable [CoilInteraction].
+class _DotTarget extends StatefulWidget {
+  const _DotTarget({required this.onPressed, required this.child});
 
-  final CoilCarouselDotsStyle style;
-  final int count;
-  final int current;
+  final VoidCallback? onPressed;
+  final Widget child;
 
-  double get _pad => style.targetSize! - style.dotSize!;
+  @override
+  State<_DotTarget> createState() => _DotTargetState();
+}
 
-  double _widthOf(int index) =>
-      (index == current ? style.pillWidth! : style.dotSize!) + _pad;
+class _DotTargetState extends State<_DotTarget> {
+  final _states = WidgetStatesController();
 
-  double get width =>
-      style.pillWidth! + style.dotSize! * (count - 1) + _pad * count;
+  @override
+  void dispose() {
+    _states.dispose();
+    super.dispose();
+  }
 
-  /// The dot whose target holds [x], measured from the start edge.
-  int indexAt(double x) {
-    var end = 0.0;
-    for (var i = 0; i < count; i++) {
-      end += _widthOf(i);
-      if (x < end) return i;
-    }
-    return count - 1;
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null;
+    return CoilInteractionDetector(
+      states: _states,
+      enabled: enabled,
+      trackPress: enabled,
+      onTap: widget.onPressed,
+      excludeFromSemantics: true,
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: widget.child,
+    );
   }
 }
 
 /// One dot in its round target: a resting dot, or the current pill with its
-/// fill. The pill's width springs on `standard`.
+/// fill. The pill's width springs on [motion].
 class _Dot extends StatelessWidget {
   const _Dot({
     required this.current,
@@ -304,7 +344,7 @@ class _Dot extends StatelessWidget {
   final bool current;
   final double progress;
   final CoilCarouselDotsStyle style;
-  final CoilMotion motion;
+  final Motion motion;
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +355,7 @@ class _Dot extends StatelessWidget {
       padding: EdgeInsets.all((style.targetSize! - dot) / 2),
       child: SingleMotionBuilder(
         value: current ? style.pillWidth! : dot,
-        motion: motion.standard,
+        motion: motion,
         debugLabel: 'CoilCarouselDots.pill',
         builder: (context, width, _) {
           // The fill is a full-width pill slid in from the start edge, never

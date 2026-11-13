@@ -18,6 +18,7 @@ class _Host extends StatefulWidget {
     this.enabled = true,
     this.theme = CoilThemeData.light,
     this.motion,
+    this.motions,
     this.style,
     this.reducedMotion = false,
   });
@@ -27,6 +28,7 @@ class _Host extends StatefulWidget {
   final bool enabled;
   final CoilThemeData theme;
   final CoilMotion? motion;
+  final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
   final CoilCarouselDotsStyle? style;
   final bool reducedMotion;
 
@@ -65,6 +67,7 @@ class _HostState extends State<_Host> {
                 count: 5,
                 value: value,
                 motion: widget.motion,
+                motions: widget.motions,
                 style: widget.style,
                 onChanged: widget.enabled
                     ? (v) => setState(() {
@@ -323,6 +326,50 @@ void main() {
     );
   });
 
+  testWidgets('touch: a tap lands on the dot drawn under it mid-glide', (
+    tester,
+  ) async {
+    final slow = CoilThemeData.light.motion.copyWith(
+      standard: const CupertinoMotion(duration: Duration(seconds: 2)),
+    );
+    await tester.pumpWidget(_Host(tier: CoilTier.touch, motion: slow));
+    final strip = tester.getRect(_dots);
+    await tester.tapAt(Offset(_dotRects(tester)[4].center.dx, strip.top + 2));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // The pills are still moving; aim at where dot 3 is drawn now.
+    final drawn = _dotRects(tester)[3];
+    await tester.tapAt(Offset(drawn.center.dx, strip.bottom - 2));
+    await tester.pump();
+    expect(_host(tester).value, 3);
+  });
+
+  testWidgets('screen readers hear the labels passed in', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: CoilTheme(
+          data: CoilThemeData.light,
+          child: CoilCarouselDots(
+            count: 5,
+            value: 1,
+            onChanged: (_) {},
+            labels: CoilCarouselDotsLabels(
+              slides: 'Folien',
+              position: (number, count) => 'Folie $number von $count',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSemantics(_dots),
+      isSemantics(label: 'Folien', value: 'Folie 2 von 5'),
+    );
+    semantics.dispose();
+  });
+
   testWidgets('disabled: no tab stop and no taps', (tester) async {
     await tester.pumpWidget(const _Host(enabled: false));
     await tester.tap(find.byType(ClipRSuperellipse).at(3));
@@ -364,6 +411,22 @@ void main() {
         standard: const CupertinoMotion(duration: Duration(seconds: 2)),
       );
       await tester.pumpWidget(_Host(motion: slow));
+      await tester.tap(find.byType(ClipRSuperellipse).at(3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_dotRects(tester)[3].width, lessThan(20));
+    });
+
+    testWidgets('a track motion retunes the pill', (tester) async {
+      await tester.pumpWidget(
+        _Host(
+          motions: {
+            CoilCarouselDotsTrack.pill: const CupertinoMotion(
+              duration: Duration(seconds: 2),
+            ),
+          },
+        ),
+      );
       await tester.tap(find.byType(ClipRSuperellipse).at(3));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));

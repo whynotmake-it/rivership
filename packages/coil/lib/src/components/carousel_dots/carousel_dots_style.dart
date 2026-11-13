@@ -15,6 +15,7 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
     this.pillWidth,
     this.targetSize,
     this.radius,
+    this.ringOffset,
   });
 
   /// The defaults from the theme's tokens.
@@ -35,6 +36,7 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
       radius: theme.shape == CoilShape.sharp
           ? theme.shape.radii(metrics.tier).item
           : target / 2,
+      ringOffset: 2,
     );
   }
 
@@ -53,13 +55,16 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
   /// The width of the current dot's pill.
   final double? pillWidth;
 
-  /// The height of each dot's round click target. The dot sits centered in
-  /// it, so dots are `targetSize - dotSize` apart.
+  /// The size of each dot's own click target. The dot sits centered in it,
+  /// so dots are `targetSize - dotSize` apart.
   final double? targetSize;
 
   /// The corner radius of the targets and the highlight. Dots and the pill
   /// are fully rounded unless this is smaller than half their height.
   final double? radius;
+
+  /// The gap between the targets and the keyboard focus ring.
+  final double? ringOffset;
 
   @override
   CoilCarouselDotsStyle merge(CoilCarouselDotsStyle? other) => other == null
@@ -72,6 +77,7 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
           pillWidth: other.pillWidth ?? pillWidth,
           targetSize: other.targetSize ?? targetSize,
           radius: other.radius ?? radius,
+          ringOffset: other.ringOffset ?? ringOffset,
         );
 
   @override
@@ -83,5 +89,6 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
     pillWidth,
     targetSize,
     radius,
+    ringOffset,
   ];
 }
