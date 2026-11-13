@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/tokens.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
@@ -23,10 +24,16 @@ enum FluidPopoverSide {
 /// edge) and exits on its tween (`FluidMotionThemeData.popover` /
 /// `popoverExit`).
 ///
-/// The route only keeps the popover mounted (and for exactly as long as the
-/// exit tween). What you see is a [PhaseTrackBuilder] with two phases,
-/// `closed` and `open`, driven by the route's status: every track springs
-/// in and tweens out. No [AnimationController] or [Tween] of our own.
+/// What you see is a [PhaseTrackBuilder] with two phases, `closed` and
+/// `open`. It mounts in `open`, starting from the closed values, and goes to
+/// `closed` when the route is popped. Every track springs in and tweens out.
+///
+/// The route stays a [PopupRoute] for what routes give for free (a focus
+/// scope, the dismissible barrier, Escape/back handling, `Navigator.pop`
+/// returning the result). Its own animation is only its lifetime: a
+/// [TransitionRoute] is removed once its internal controller finishes, so
+/// [reverseTransitionDuration] is set to the exit tween's duration. Motor
+/// has no hook to tell a route "the exit has settled".
 class FluidPopoverRoute<T> extends PopupRoute<T> {
   /// Creates a popover anchored to [anchor] (in the navigator's coordinates).
   FluidPopoverRoute({
@@ -79,6 +86,20 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
   @override
   String? get barrierLabel => 'Dismiss';
 
+  final _popped = ValueNotifier(false);
+
+  @override
+  bool didPop(T? result) {
+    _popped.value = true;
+    return super.didPop(result);
+  }
+
+  @override
+  void dispose() {
+    _popped.dispose();
+    super.dispose();
+  }
+
   // In: the phase builder springs on its own; the route is "open" at once.
   @override
   Duration get transitionDuration => Duration.zero;
@@ -121,7 +142,7 @@ class FluidPopoverRoute<T> extends PopupRoute<T> {
       ),
       child: wrap(
         _PopoverMotion(
-          animation: animation,
+          popped: _popped,
           side: side,
           child: Builder(builder: builder),
         ),
@@ -137,13 +158,14 @@ enum _PopoverPhase { closed, open }
 /// slide away from the anchor, scaleY 0.96 → 1 from the anchored edge.
 class _PopoverMotion extends StatefulWidget {
   const _PopoverMotion({
-    required this.animation,
+    required this.popped,
     required this.side,
     required this.child,
   });
 
-  /// The route's animation, read for its status only: reverse means closing.
-  final Animation<double> animation;
+  /// Flips to true when the route is popped: the one lifecycle event the
+  /// popover needs from its route.
+  final ValueListenable<bool> popped;
   final FluidPopoverSide side;
   final Widget child;
 
@@ -154,46 +176,16 @@ class _PopoverMotion extends StatefulWidget {
 class _PopoverMotionState extends State<_PopoverMotion> {
   final _opacity = Track<double>(
     MotionConverter.single,
-    initial: 0,
     debugLabel: 'Popover opacity',
   );
   final _slide = Track<double>(
     MotionConverter.single,
-    initial: 1,
     debugLabel: 'Popover slide',
   );
   final _scaleY = Track<double>(
     MotionConverter.single,
-    initial: 0.96,
     debugLabel: 'Popover scaleY',
   );
-
-  var _phase = _PopoverPhase.closed;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.animation.addStatusListener(_onStatus);
-    // Mounted closed, then opened on the next frame so the tracks spring
-    // from their closed values.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onStatus(null));
-  }
-
-  @override
-  void dispose() {
-    widget.animation.removeStatusListener(_onStatus);
-    super.dispose();
-  }
-
-  void _onStatus(AnimationStatus? _) {
-    if (!mounted) return;
-    final closing = switch (widget.animation.status) {
-      AnimationStatus.reverse || AnimationStatus.dismissed => true,
-      AnimationStatus.forward || AnimationStatus.completed => false,
-    };
-    final phase = closing ? _PopoverPhase.closed : _PopoverPhase.open;
-    if (phase != _phase) setState(() => _phase = phase);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,31 +195,46 @@ class _PopoverMotionState extends State<_PopoverMotion> {
     final bottom = widget.side == FluidPopoverSide.bottom;
     return MotorInspectionScope(
       group: 'FluidPopover',
-      child: PhaseTrackBuilder<_PopoverPhase>(
-        debugLabel: 'Popover',
-        currentPhase: _phase,
-        timeline: TrackPhaseTimeline({
-          _PopoverPhase.closed: [
-            _opacity([TrackStep.to(0, motion: exit)]),
-            _slide([TrackStep.to(1, motion: exit)]),
-            _scaleY([TrackStep.to(0.96, motion: exit)]),
-          ],
-          _PopoverPhase.open: [
-            _opacity([TrackStep.to(1, motion: enter)]),
-            _slide([TrackStep.to(0, motion: enter)]),
-            _scaleY([TrackStep.to(1, motion: enter)]),
-          ],
-        }),
+      child: ValueListenableBuilder(
+        valueListenable: widget.popped,
         child: widget.child,
-        builder: (context, value, phase, child) => Opacity(
-          opacity: value(_opacity).clamp(0.0, 1.0),
-          child: Transform.translate(
-            // --popup-enter-y: -4px below the anchor, +4px above it.
-            offset: Offset(0, (bottom ? -4.0 : 4.0) * value(_slide)),
-            child: Transform(
-              alignment: bottom ? Alignment.topCenter : Alignment.bottomCenter,
-              transform: Matrix4.diagonal3Values(1, value(_scaleY), 1),
-              child: child,
+        builder: (context, popped, child) => PhaseTrackBuilder<_PopoverPhase>(
+          debugLabel: 'Popover',
+          // Mounts in the open phase, starting from the closed values, so it
+          // springs open on its first frame.
+          currentPhase: popped ? _PopoverPhase.closed : _PopoverPhase.open,
+          timeline: TrackPhaseTimeline(
+            {
+              _PopoverPhase.closed: [
+                _opacity([TrackStep.to(0, motion: exit)]),
+                _slide([TrackStep.to(1, motion: exit)]),
+                _scaleY([TrackStep.to(0.96, motion: exit)]),
+              ],
+              _PopoverPhase.open: [
+                _opacity([TrackStep.to(1, motion: enter)]),
+                _slide([TrackStep.to(0, motion: enter)]),
+                _scaleY([TrackStep.to(1, motion: enter)]),
+              ],
+            },
+            initialValues: [
+              _opacity.value(0),
+              _slide.value(1),
+              _scaleY.value(0.96),
+            ],
+          ),
+          child: child,
+          builder: (context, value, phase, child) => Opacity(
+            opacity: value(_opacity).clamp(0.0, 1.0),
+            child: Transform.translate(
+              // --popup-enter-y: -4px below the anchor, +4px above it.
+              offset: Offset(0, (bottom ? -4.0 : 4.0) * value(_slide)),
+              child: Transform(
+                alignment: bottom
+                    ? Alignment.topCenter
+                    : Alignment.bottomCenter,
+                transform: Matrix4.diagonal3Values(1, value(_scaleY), 1),
+                child: child,
+              ),
             ),
           ),
         ),

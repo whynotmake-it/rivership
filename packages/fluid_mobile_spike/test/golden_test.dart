@@ -98,6 +98,25 @@ void main() {
         );
       });
 
+      testWidgets('mobile touch popover at 1.5x text', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        useScreen(tester, TestScreen.phone);
+        await tester.pumpWidget(
+          testApp(
+            home: const SelectDemo(),
+            colors: colors,
+            inputMode: FluidInputMode.touch,
+          ),
+        );
+        await tester.tap(_select);
+        await tester.pumpAndSettle();
+        await expectLater(
+          _app,
+          matchesGoldenFile('goldens/mobile_touch_popover_text150_$theme.png'),
+        );
+      });
+
       testWidgets('mobile multi-select sheet', (tester) async {
         useScreen(tester, TestScreen.phone);
         await tester.pumpWidget(

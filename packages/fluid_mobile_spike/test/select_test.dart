@@ -680,4 +680,39 @@ void main() {
       expect(checkTheme!.color, FluidColors.light.foreground);
     });
   });
+
+  group('text scale', () {
+    testWidgets('rows and trigger grow; fills follow the measured rows', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(home: const SelectDemo(), inputMode: FluidInputMode.touch),
+      );
+      expect(tester.getSize(_select).height, greaterThan(44));
+      await tester.tap(_select);
+      await tester.pumpAndSettle();
+
+      final rows = find.byType(FluidOptionRow);
+      final banana = tester.getRect(rows.at(1));
+      expect(banana.height, greaterThan(44));
+      // The selected fill sits exactly on the (taller) Banana row.
+      final fill = tester.getRect(
+        find
+            .descendant(
+              of: find.byWidgetPredicate(
+                (w) =>
+                    w is FluidFill &&
+                    (w.key! as ValueKey<String>).value == 'fill-selected',
+              ),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(fill.top, moreOrLessEquals(banana.top));
+      expect(fill.height, moreOrLessEquals(banana.height));
+    });
+  });
 }

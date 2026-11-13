@@ -1,7 +1,6 @@
 // MotorInspectionScope is @experimental; the motor example uses it too.
 // ignore_for_file: experimental_member_use
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/option_list.dart';
@@ -221,19 +220,26 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
         final overlay = navigator.context.findRenderObject()! as RenderBox;
         final anchor =
             box.localToGlobal(Offset.zero, ancestor: overlay) & box.size;
+        // The row height at the current text scale: the rows' padding plus
+        // their scaled line box. Only used to choose a side before layout;
+        // the rows themselves size to their content.
+        final scaler = MediaQuery.textScalerOf(context);
+        final rowExtent =
+            metrics.rowHeight -
+            metrics.body.leading +
+            scaler.scale(metrics.body.leading);
         route = FluidPopoverRoute<T>(
-          // The web caps popups at 300px: 8 rows of 36 plus the inset. The
-          // same eight rows at touch size need more, so the cap follows the
-          // row height instead of clipping a row in half.
-          maxHeight: math.max(
-            300,
-            fluidShortMenuMaxItems * metrics.rowHeight + metrics.popupInset * 2,
-          ),
+          // Pointer: the web's 300px cap. Touch: no cap of our own; at most
+          // eight rows open anchored (fluidShortMenuMaxItems), so the
+          // available space is the only bound and no row is clipped in half.
+          maxHeight:
+              FluidAdaptiveScope.inputModeOf(context) == FluidInputMode.touch
+              ? double.infinity
+              : 300,
           anchor: anchor,
           minWidth: box.size.width,
           contentHeight:
-              widget.options.length * metrics.rowHeight +
-              metrics.popupInset * 2,
+              widget.options.length * rowExtent + metrics.popupInset * 2,
           capturedThemes: themes,
           exitDuration: motion.popoverExit.duration ?? Duration.zero,
           builder: (context) => _PopoverShell(metrics: metrics, child: list()),
@@ -419,12 +425,18 @@ class FluidTriggerBox extends StatelessWidget {
         motion: FluidTheme.motionOf(context).color,
         debugLabel: 'Trigger fill',
         builder: (context, fill, child) => Container(
+          // A minimum height and symmetric padding, never a fixed height,
+          // like the rows: 1 + 11 + 20 + 11 + 1 = 44 at the default text
+          // scale (the 1px border is inside the box), and the trigger grows
+          // with larger text.
           constraints: BoxConstraints(
             minWidth: metrics.triggerMinWidth,
             minHeight: metrics.controlHeight,
-            maxHeight: metrics.controlHeight,
           ),
-          padding: EdgeInsets.symmetric(horizontal: metrics.controlPaddingX),
+          padding: EdgeInsets.symmetric(
+            horizontal: metrics.controlPaddingX,
+            vertical: (metrics.controlHeight - metrics.body.leading) / 2 - 1,
+          ),
           decoration: BoxDecoration(
             color: fill,
             border: Border.all(color: colors.border),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:fluid_mobile_spike/src/adaptive.dart';
 import 'package:fluid_mobile_spike/src/tokens.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -134,9 +135,6 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
     if (widget.keyboardOpened) {
       _active = first ?? _step(-1, 1);
       _ring = _active != null;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
-    } else if (first != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
     }
   }
 
@@ -148,10 +146,35 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
     super.dispose();
   }
 
-  double get _rowHeight => widget.metrics.rowHeight;
+  // Rows size to their content (min height plus padding), so they grow
+  // with the text scale. The fills read the rows' measured rects, taken
+  // after layout, the way the web's useFluidHover measures after a double
+  // rAF. Until the first measurement no fill shows (the web does the same:
+  // "overlays read rects only once the item set is fully measured").
+  final _stackKey = GlobalKey(debugLabel: 'FluidOptionList stack');
+  late final _rowKeys = [
+    for (var i = 0; i < widget.options.length; i++)
+      GlobalKey(debugLabel: 'FluidOptionList row $i'),
+  ];
+  List<Rect>? _rects;
 
-  Rect? _rowRect(int? i) =>
-      i == null ? null : Rect.fromLTWH(0, i * _rowHeight, 0, _rowHeight);
+  Rect? _rowRect(int? i) => i == null ? null : _rects?[i];
+
+  void _measure() {
+    if (!mounted) return;
+    final stack = _stackKey.currentContext?.findRenderObject();
+    if (stack is! RenderBox || !stack.hasSize) return;
+    final rects = <Rect>[];
+    for (final key in _rowKeys) {
+      final row = key.currentContext?.findRenderObject();
+      if (row is! RenderBox || !row.hasSize) return;
+      rects.add(row.localToGlobal(Offset.zero, ancestor: stack) & row.size);
+    }
+    if (listEquals(rects, _rects)) return;
+    final first = _rects == null;
+    setState(() => _rects = rects);
+    if (first) _reveal();
+  }
 
   /// The next enabled row from [from] in [direction], or null.
   int? _step(int from, int direction) {
@@ -179,9 +202,11 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
   void _reveal() {
     final i = _active ?? (_checked.isEmpty ? null : _checked.reduce(math.min));
     if (i == null || !_scroll.hasClients) return;
+    final rect = _rowRect(i);
+    if (rect == null) return;
     final inset = widget.metrics.popupInset;
-    final top = inset + i * _rowHeight;
-    final bottom = top + _rowHeight + inset;
+    final top = inset + rect.top;
+    final bottom = inset + rect.bottom + inset;
     final position = _scroll.position;
     final offset = position.pixels;
     final viewport = position.viewportDimension;
@@ -302,9 +327,12 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
         FluidAdaptiveScope.inputModeOf(context) == FluidInputMode.touch;
     final highlighted = _pressed ?? _active;
 
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+
     final rows = <Widget>[
       for (final (i, option) in widget.options.indexed)
         MouseRegion(
+          key: _rowKeys[i],
           cursor: option.enabled
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
@@ -370,6 +398,7 @@ class _FluidOptionListState<T> extends State<FluidOptionList<T>> {
             controller: _scroll,
             padding: EdgeInsets.all(metrics.popupInset),
             child: Stack(
+              key: _stackKey,
               clipBehavior: Clip.none,
               children: [
                 // Selected fill: no fade in, springs to a newly picked row.
@@ -604,10 +633,16 @@ class FluidOptionRow extends StatelessWidget {
         converter: MotionConverter.colorRgb,
         motion: FluidTheme.motionOf(context).color,
         debugLabel: 'Row text color',
-        builder: (context, color, _) => SizedBox(
-          height: metrics.rowHeight,
+        // A minimum height and symmetric padding, never a fixed height: at
+        // the default text scale, 12 + 20 + 12 = 44 (8 + 20 + 8 = 36 on
+        // pointer), and the row grows with larger text.
+        builder: (context, color, _) => ConstrainedBox(
+          constraints: BoxConstraints(minHeight: metrics.rowHeight),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: metrics.itemPaddingX),
+            padding: EdgeInsets.symmetric(
+              horizontal: metrics.itemPaddingX,
+              vertical: (metrics.rowHeight - metrics.body.leading) / 2,
+            ),
             child: IconTheme(
               data: IconThemeData(size: metrics.icon, color: color),
               child: DefaultTextStyle(
