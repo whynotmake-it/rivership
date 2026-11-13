@@ -390,90 +390,94 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
           container: true,
           child: CoilHoverRegion(
             axis: CoilHoverAxis.x,
-            highlight: false,
-            background: [_selectedPill, _hoverPill],
-            foreground: [_focusRing],
-            onStateChanged: (state) {
-              final hovered = state.activeIndex;
-              final hovering = hovered != null && hovered != selected;
-              final fill = ShapeDecoration(
-                color: style.pill,
-                shape: RoundedSuperellipseBorder(borderRadius: radius),
-              );
-              _selectedPill.update(
-                target: selected,
-                motion: selectedMotion.enter,
-                exitMotion: selectedMotion.exit,
-                exitTravelMotion: travel(selectedMotion, motion.standard),
-                fade: fadeMotion,
-                opacity: hovering ? 0.8 : 1,
-                fadeIn: false,
-                decoration: fill,
-              );
-              _hoverPill.update(
-                target: hovering ? hovered : null,
-                session: state.session,
-                from: selected,
-                opacity: style.hoverPillOpacity!,
-                motion: hoverMotion.enter,
-                exitMotion: hoverMotion.exit,
-                exitTravelMotion: travel(hoverMotion, motion.quick),
-                fade: fadeMotion,
-                // Leaving the strip: glide back into the selected pill.
-                exitTo: state.pointerInside ? null : selected,
-                decoration: fill,
-              );
-              _focusRing.update(
-                target: focused,
-                fadeIn: false,
-                motion: focusMotion.enter,
-                exitMotion: focusMotion.exit,
-                exitTravelMotion: travel(focusMotion, motion.quick),
-                fade: fadeMotion,
-                inflate: 1 + theme.focusRingWidth,
-                decoration: ShapeDecoration(
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(
-                      theme.shape.radii(sizes.tier).focusRing,
-                    ),
-                    side: BorderSide(
-                      color: colors.focusRing,
-                      width: theme.focusRingWidth,
-                    ),
-                  ),
-                ),
-              );
-            },
             child: Builder(
               builder: (context) {
-                final region = CoilHoverRegion.maybeOf(context);
-                final hovered = region?.activeIndex;
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final (i, tab) in widget.tabs.indexed)
-                      CoilHoverItem(
-                        index: i,
-                        child: _TabButton(
-                          emphasisMotion: emphasisMotion,
-                          labelMotion: labelMotion,
-                          style: style,
-                          tab: tab,
-                          sizes: sizes,
-                          selected: i == selected,
-                          active: i == selected || i == hovered,
-                          collapseLabel:
-                              widget.labels == CoilTabLabels.selected &&
-                              tab.icon != null,
-                          focusNode: _nodes[i],
-                          statesController: _states[i],
-                          onPressed: switch (widget.onChanged) {
-                            final onChanged? => () => onChanged(tab.value),
-                            null => null,
-                          },
-                        ),
+                final state =
+                    CoilHoverRegion.maybeOf(context) ??
+                    const CoilHoverState(
+                      activeIndex: null,
+                      session: 0,
+                      pointerInside: false,
+                    );
+                final hovered = state.activeIndex;
+                final hovering = hovered != null && hovered != selected;
+                final fill = ShapeDecoration(
+                  color: style.pill,
+                  shape: RoundedSuperellipseBorder(borderRadius: radius),
+                );
+                _selectedPill.update(
+                  target: selected,
+                  motion: selectedMotion.enter,
+                  exitMotion: selectedMotion.exit,
+                  exitTravelMotion: travel(selectedMotion, motion.standard),
+                  fade: fadeMotion,
+                  opacity: hovering ? 0.8 : 1,
+                  fadeIn: false,
+                  decoration: fill,
+                );
+                _hoverPill.update(
+                  target: hovering ? hovered : null,
+                  session: state.session,
+                  from: selected,
+                  opacity: style.hoverPillOpacity!,
+                  motion: hoverMotion.enter,
+                  exitMotion: hoverMotion.exit,
+                  exitTravelMotion: travel(hoverMotion, motion.quick),
+                  fade: fadeMotion,
+                  // Leaving the strip: glide back into the selected pill.
+                  exitTo: state.pointerInside ? null : selected,
+                  decoration: fill,
+                );
+                _focusRing.update(
+                  target: focused,
+                  fadeIn: false,
+                  motion: focusMotion.enter,
+                  exitMotion: focusMotion.exit,
+                  exitTravelMotion: travel(focusMotion, motion.quick),
+                  fade: fadeMotion,
+                  inflate: 1 + theme.focusRingWidth,
+                  decoration: ShapeDecoration(
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        theme.shape.radii(sizes.tier).focusRing,
                       ),
-                  ],
+                      side: BorderSide(
+                        color: colors.focusRing,
+                        width: theme.focusRingWidth,
+                      ),
+                    ),
+                  ),
+                );
+                return CoilMotionLayer(
+                  background: [_selectedPill, _hoverPill],
+                  foreground: [_focusRing],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final (i, tab) in widget.tabs.indexed)
+                        CoilHoverItem(
+                          index: i,
+                          child: _TabButton(
+                            emphasisMotion: emphasisMotion,
+                            labelMotion: labelMotion,
+                            style: style,
+                            tab: tab,
+                            sizes: sizes,
+                            selected: i == selected,
+                            active: i == selected || i == hovered,
+                            collapseLabel:
+                                widget.labels == CoilTabLabels.selected &&
+                                tab.icon != null,
+                            focusNode: _nodes[i],
+                            statesController: _states[i],
+                            onPressed: switch (widget.onChanged) {
+                              final onChanged? => () => onChanged(tab.value),
+                              null => null,
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
