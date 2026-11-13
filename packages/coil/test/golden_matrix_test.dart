@@ -53,6 +53,102 @@ final Map<String, WidgetBuilder> _stories = {
       ),
     ],
   ),
+  'button_states': (context) => MediaQuery(
+    // The spinner is a loop, which would never settle.
+    data: MediaQuery.of(context).copyWith(disableAnimations: true),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        CoilButton(
+          onPressed: () {},
+          loading: true,
+          leading: const TestIcon(TestGlyph.plus),
+          child: const Text('Saving'),
+        ),
+        CoilButton(
+          onPressed: () {},
+          loading: true,
+          variant: CoilButtonVariant.secondary,
+          child: const Text('Loading'),
+        ),
+        CoilButton(
+          onPressed: () {},
+          selected: true,
+          variant: CoilButtonVariant.ghost,
+          child: const Text('Open'),
+        ),
+        CoilButton.icon(
+          onPressed: () {},
+          variant: CoilButtonVariant.destructive,
+          semanticLabel: 'Delete',
+          icon: const TestIcon(TestGlyph.plus),
+        ),
+        CoilButton.icon(
+          onPressed: () {},
+          loading: true,
+          variant: CoilButtonVariant.tertiary,
+          semanticLabel: 'Add',
+          icon: const TestIcon(TestGlyph.plus),
+        ),
+      ],
+    ),
+  ),
+  'badge': (context) => SizedBox(
+    width: 300,
+    // A ghost badge inherits the surrounding text color.
+    child: DefaultTextStyle.merge(
+      style: TextStyle(color: CoilTheme.of(context).colors.foreground),
+      child: const Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          CoilBadge(child: Text('Draft')),
+          CoilBadge(color: CoilBadgeColor.brand, child: Text('New')),
+          CoilBadge(color: CoilBadgeColor.green, child: Text('Paid')),
+          CoilBadge(color: CoilBadgeColor.rose, child: Text('Failed')),
+          CoilBadge(
+            variant: CoilBadgeVariant.dot,
+            color: CoilBadgeColor.amber,
+            child: Text('Pending'),
+          ),
+          CoilBadge(variant: CoilBadgeVariant.dot, child: Text('Archived')),
+          CoilBadge(
+            variant: CoilBadgeVariant.ghost,
+            color: CoilBadgeColor.blue,
+            child: Text('Syncing'),
+          ),
+          CoilBadge(
+            size: CoilSize.compact,
+            color: CoilBadgeColor.violet,
+            child: Text('Beta'),
+          ),
+          CoilBadge(
+            size: CoilSize.compact,
+            variant: CoilBadgeVariant.dot,
+            color: CoilBadgeColor.teal,
+            child: Text('Live'),
+          ),
+        ],
+      ),
+    ),
+  ),
+  'skeleton': (context) => MediaQuery(
+    // The pulse is a loop, which would never settle.
+    data: MediaQuery.of(context).copyWith(disableAnimations: true),
+    child: const SizedBox(
+      width: 240,
+      child: Row(
+        spacing: 12,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CoilSkeleton(width: 40, height: 40),
+          Expanded(child: CoilSkeletonText()),
+        ],
+      ),
+    ),
+  ),
   'checkbox': (context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -116,6 +212,7 @@ final Map<String, WidgetBuilder> _stories = {
         ),
       ),
       const SizedBox(height: 8),
+      const SizedBox(height: 8),
       CoilToggleGroup(
         values: const {0, 1},
         onChanged: (_) {},
@@ -124,6 +221,24 @@ final Map<String, WidgetBuilder> _stories = {
           CoilOption(value: 1, label: 'Italic'),
           CoilOption(value: 2, label: 'Underline'),
         ],
+      ),
+    ],
+  ),
+  'radio_group': (context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        width: 220,
+        child: CoilRadioGroup(
+          value: 1,
+          onChanged: (_) {},
+          options: const [
+            CoilOption(value: 0, label: 'Free'),
+            CoilOption(value: 1, label: 'Team'),
+            CoilOption(value: 2, label: 'Enterprise', enabled: false),
+          ],
+        ),
       ),
     ],
   ),

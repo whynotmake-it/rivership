@@ -27,6 +27,10 @@ enum CoilPattern {
   /// A tab list: one tab stop, arrows move between tabs, Enter selects.
   tabs,
 
+  /// A radio group: one tab stop (the selected radio), arrows move focus
+  /// and select with wrapping.
+  radioGroup,
+
   /// A single-line text field.
   textField,
 
@@ -82,6 +86,8 @@ Future<void> expectCoilPattern(
         );
       case CoilPattern.tabs:
         await _tabs(tester, finder);
+      case CoilPattern.radioGroup:
+        await _radioGroup(tester, finder);
       case CoilPattern.textField:
         await _textField(tester, finder);
       case CoilPattern.select:
@@ -261,6 +267,56 @@ Future<void> _tabs(WidgetTester tester, Finder finder) async {
     LogicalKeyboardKey.tab,
   );
   await _focusWithTab(tester, finder, CoilPattern.tabs);
+}
+
+Future<void> _radioGroup(WidgetTester tester, Finder finder) async {
+  List<SemanticsData> radios() => _nodes(tester, finder)
+      .where((n) => n.flagsCollection.isInMutuallyExclusiveGroup)
+      .toList();
+  int checked() => radios().indexWhere(
+    (n) => n.flagsCollection.isChecked == CheckedState.isTrue,
+  );
+  expect(
+    _nodes(tester, finder).any((n) => n.role == SemanticsRole.radioGroup),
+    isTrue,
+    reason: 'radioGroup: a radio group node',
+  );
+  final count = radios().length;
+  expect(count, greaterThan(2), reason: 'radioGroup: radio nodes');
+  final start = checked();
+  expect(start, isNonNegative, reason: 'radioGroup: one radio is checked');
+  expect(
+    radios().where(
+      (n) => n.flagsCollection.isChecked == CheckedState.isTrue,
+    ),
+    hasLength(1),
+    reason: 'radioGroup: exactly one checked radio',
+  );
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+  await tester.pumpAndSettle();
+  expect(
+    checked(),
+    (start + 1) % count,
+    reason: 'radioGroup: Down moves focus and selects the next radio',
+  );
+  expect(_focusInside(finder), isTrue);
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+  await tester.pumpAndSettle();
+  expect(checked(), start, reason: 'radioGroup: Up selects the previous');
+  await tester.sendKeyEvent(LogicalKeyboardKey.end);
+  await tester.pumpAndSettle();
+  expect(checked(), count - 1, reason: 'radioGroup: End selects the last');
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+  await tester.pumpAndSettle();
+  expect(checked(), 0, reason: 'radioGroup: Down wraps to the first');
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  await tester.pumpAndSettle();
+  expect(
+    _focusInside(finder),
+    isFalse,
+    reason: 'radioGroup: the group is one tab stop',
+  );
+  await _focusWithTab(tester, finder, CoilPattern.radioGroup);
 }
 
 Future<void> _textField(WidgetTester tester, Finder finder) async {

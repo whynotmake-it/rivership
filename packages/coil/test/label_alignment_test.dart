@@ -102,6 +102,25 @@ void main() {
         ],
       ),
     ),
+    'radio-group/row': (ink) => SizedBox(
+      width: 200,
+      child: CoilRadioGroup(
+        value: 0,
+        onChanged: (_) {},
+        options: [
+          CoilOption(
+            value: 0,
+            label: 'HEH',
+            child: _Ink(ink, const Text('HEH')),
+          ),
+        ],
+      ),
+    ),
+    'badge/solid': (ink) => CoilBadge(child: _Ink(ink, const Text('HEH'))),
+    'badge/dot': (ink) => CoilBadge(
+      variant: CoilBadgeVariant.dot,
+      child: _Ink(ink, const Text('HEH')),
+    ),
     'toggle-group/item': (ink) => CoilToggleGroup(
       values: const {0},
       onChanged: (_) {},

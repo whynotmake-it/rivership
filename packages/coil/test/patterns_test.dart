@@ -21,6 +21,7 @@ class _HostState extends State<_Host> {
   bool checked = false;
   bool on = false;
   int tab = 0;
+  int plan = 1;
   String? fruit = 'banana';
 
   void update(VoidCallback change) => setState(change);
@@ -113,6 +114,23 @@ void main() {
             onChanged: (v) => s.update(() => s.tab = v),
           ),
           CoilPattern.tabs,
+        );
+      });
+
+      testWidgets('CoilRadioGroup is a radio group', (tester) async {
+        await check(
+          tester,
+          (s) => CoilRadioGroup<int>(
+            semanticLabel: 'Plan',
+            value: s.plan,
+            onChanged: (v) => s.update(() => s.plan = v),
+            options: const [
+              CoilOption(value: 0, label: 'Free'),
+              CoilOption(value: 1, label: 'Team'),
+              CoilOption(value: 2, label: 'Enterprise'),
+            ],
+          ),
+          CoilPattern.radioGroup,
         );
       });
 

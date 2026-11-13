@@ -7,7 +7,8 @@ import 'package:flutter/widgets.dart';
 /// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
 ///
 /// [label] is resolved with [WidgetState.selected] and
-/// [WidgetState.hovered].
+/// [WidgetState.hovered] (a hovered or keyboard-focused row; touch rows
+/// always resolve as selected, so they rest at full strength).
 class CoilCheckboxGroupStyle
     extends CoilComponentStyle<CoilCheckboxGroupStyle> {
   /// Creates a style.
@@ -28,7 +29,12 @@ class CoilCheckboxGroupStyle
     return CoilCheckboxGroupStyle(
       selection: c.active,
       highlight: c.hover,
-      label: WidgetStatePropertyAll(c.foreground),
+      label: WidgetStateProperty.resolveWith(
+        (s) =>
+            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
+            ? c.foreground
+            : c.mutedForeground,
+      ),
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
     );
