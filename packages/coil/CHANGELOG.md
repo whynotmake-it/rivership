@@ -14,5 +14,10 @@ Milestone M0, unreleased.
 - Components on those layers: `CoilButton`, `CoilCheckbox`, `CoilSwitch`,
   `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`,
   `CoilSelect`, `CoilMultiSelect`.
+- Wave A controls: `CoilBadge`, `CoilSkeleton` (with `CoilSkeletonText`
+  and `CoilSkeletonRegion`) and `CoilRadioGroup`. `CoilButton` swaps its
+  spinner in with the blur-fade and takes `motions:`. The checkbox and
+  toggle groups gain arrow-key focus, a travelling focus ring, muted to
+  foreground labels and a touch press fill.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

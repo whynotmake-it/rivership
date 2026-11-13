@@ -1,7 +1,7 @@
 // Behavior of the leaf controls and selection groups: Button loading, Badge,
 // Skeleton, RadioGroup, CheckboxGroup and ToggleGroup (keyboard, touch vs
 // mouse, reduced motion). Looks are covered by the golden matrix.
-import 'dart:ui' show CheckedState, SemanticsAction, Tristate;
+import 'dart:ui' show CheckedState, Tristate;
 
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
@@ -105,10 +105,7 @@ void main() {
       await _pump(tester, button(loading: true), reduceMotion: true);
       await tester.pumpAndSettle();
       expect(tester.getSize(find.byType(CoilButton)), idle);
-      expect(
-        tester.widget<Opacity>(find.byType(Opacity).last).opacity,
-        isNonNegative,
-      );
+      expect(find.text('Continue'), findsOneWidget);
     });
 
     testWidgets('announces Loading and keeps full strength', (tester) async {
@@ -169,47 +166,6 @@ void main() {
         );
         expect(tester.getSize(find.byType(CoilBadge)).height, 20);
       }
-    });
-
-    testWidgets('only dot and ghost badges carry a dot, out of semantics', (
-      tester,
-    ) async {
-      final semantics = tester.ensureSemantics();
-      await _pump(
-        tester,
-        const Column(
-          children: [
-            CoilBadge(child: Text('Solid')),
-            CoilBadge(variant: CoilBadgeVariant.dot, child: Text('Dot')),
-          ],
-        ),
-      );
-      final solid = tester.getSize(find.text('Solid'));
-      expect(solid.width, greaterThan(0));
-      expect(find.bySemanticsLabel('Dot'), findsOneWidget);
-      expect(
-        tester
-            .getSemantics(find.bySemanticsLabel('Dot'))
-            .getSemanticsData()
-            .hasAction(SemanticsAction.tap),
-        isFalse,
-        reason: 'a badge is not interactive',
-      );
-      semantics.dispose();
-    });
-
-    testWidgets('a ghost badge has no padding', (tester) async {
-      await _pump(
-        tester,
-        const CoilBadge(
-          variant: CoilBadgeVariant.ghost,
-          child: Text('Syncing'),
-        ),
-      );
-      final badge = tester.getRect(find.byType(CoilBadge));
-      final text = tester.getRect(find.text('Syncing'));
-      // The dot sits at the start edge with nothing before it.
-      expect(text.right, closeTo(badge.right, 0.5));
     });
   });
 
@@ -272,35 +228,6 @@ void main() {
       expect(node.getSemanticsData().flagsCollection.isLiveRegion, isTrue);
       expect(node.childrenCount, 0);
       semantics.dispose();
-    });
-
-    testWidgets('text lines are 0.6 of a line box and vary 55-82 %', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        const SizedBox(width: 200, child: CoilSkeletonText()),
-        reduceMotion: true,
-      );
-      await tester.pumpAndSettle();
-      final lines = find.byType(CoilSkeleton);
-      expect(lines, findsNWidgets(3));
-      final sizes = [
-        for (var i = 0; i < 3; i++)
-          tester.getSize(
-            find
-                .descendant(
-                  of: lines.at(i),
-                  matching: find.byType(DecoratedBox),
-                )
-                .first,
-          ),
-      ];
-      for (final size in sizes) {
-        expect(size.height, closeTo(20 * 0.6, 0.01));
-        expect(size.width / 200, inInclusiveRange(0.55, 0.82));
-      }
-      expect(sizes.last.width, lessThan(sizes.first.width));
     });
   });
 

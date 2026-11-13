@@ -270,9 +270,10 @@ Future<void> _tabs(WidgetTester tester, Finder finder) async {
 }
 
 Future<void> _radioGroup(WidgetTester tester, Finder finder) async {
-  List<SemanticsData> radios() => _nodes(tester, finder)
-      .where((n) => n.flagsCollection.isInMutuallyExclusiveGroup)
-      .toList();
+  List<SemanticsData> radios() => _nodes(
+    tester,
+    finder,
+  ).where((n) => n.flagsCollection.isInMutuallyExclusiveGroup).toList();
   int checked() => radios().indexWhere(
     (n) => n.flagsCollection.isChecked == CheckedState.isTrue,
   );
