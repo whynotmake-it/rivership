@@ -8,6 +8,7 @@ export 'badge.dart';
 export 'banner.dart';
 export 'breadcrumb.dart';
 export 'button.dart';
+export 'calendar.dart';
 export 'card.dart';
 export 'carousel_dots.dart';
 export 'chat_message.dart';
