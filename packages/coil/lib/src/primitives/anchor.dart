@@ -55,7 +55,7 @@ class CoilPopoverController {
 /// this widget, so it inherits its themes and rebuilds with its owner. It
 /// follows [child] in the same frame when [child] moves.
 ///
-/// While open, it is modal like a popup route:
+/// While open:
 ///
 /// * A tap outside closes it on tap-up, with
 ///   [CoilPopupCloseReason.outsideTap], and doesn't reach what's below.
@@ -67,6 +67,10 @@ class CoilPopoverController {
 ///
 /// Those ask [onClose] to close; the owner decides and calls
 /// [CoilPopoverController.hide].
+///
+/// Like `MenuAnchor`, it blocks pointer input only. Screen readers reach
+/// its content right after the anchor, and the rest of the page stays
+/// reachable.
 ///
 /// It springs in on the theme's `standard` tokens, growing from the edge
 /// next to the anchor while it blur-fades. Under reduced motion it only

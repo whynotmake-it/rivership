@@ -13,6 +13,7 @@ Widget _app({
   double contentHeight = 200,
   bool reduceMotion = false,
   bool openOnLongPress = false,
+  String? anchorLabel,
 }) => MediaQuery(
   data: MediaQueryData(
     size: const Size(400, 600),
@@ -35,19 +36,27 @@ Widget _app({
                 kind: CoilOverlayKind.actionMenu,
                 itemCount: 1,
               ),
-              content: (context, popup) => SizedBox(
-                key: const ValueKey('content'),
-                width: 160,
-                height: contentHeight,
+              content: (context, popup) => Semantics(
+                label: 'Content',
+                container: true,
+                child: SizedBox(
+                  key: const ValueKey('content'),
+                  width: 160,
+                  height: contentHeight,
+                ),
               ),
               popover: (context, content) => content,
               sheet: (context, content) => content,
-              child: GestureDetector(
-                key: const ValueKey('anchor'),
-                behavior: HitTestBehavior.opaque,
-                onTap: openOnLongPress ? null : _controller.open,
-                onLongPress: openOnLongPress ? _controller.open : null,
-                child: const SizedBox(width: 120, height: 36),
+              child: Semantics(
+                label: anchorLabel,
+                container: anchorLabel != null,
+                child: GestureDetector(
+                  key: const ValueKey('anchor'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: openOnLongPress ? null : _controller.open,
+                  onLongPress: openOnLongPress ? _controller.open : null,
+                  child: const SizedBox(width: 120, height: 36),
+                ),
               ),
             ),
           ),
@@ -125,5 +134,20 @@ void main() {
     await tester.tapAt(const Offset(390, 590));
     await tester.pumpAndSettle();
     expect(_content, findsNothing, reason: 'a later tap outside closes it');
+  });
+
+  testWidgets('screen readers reach the content right after its anchor', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_app(anchorTop: 40, anchorLabel: 'Anchor'));
+    await _open(tester);
+    final order = tester.semantics
+        .simulatedAccessibilityTraversal()
+        .map((node) => node.label)
+        .where((label) => label.isNotEmpty)
+        .toList();
+    expect(order.indexOf('Content'), order.indexOf('Anchor') + 1);
+    semantics.dispose();
   });
 }
