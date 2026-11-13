@@ -6,28 +6,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_sheet.dart';
+import 'src/golden_matrix.dart';
 import 'src/select_harness.dart';
 import 'src/test_icons.dart';
-
-/// One column of the matrix.
-enum _Variant {
-  scale1('1×'),
-  scale15('1.5×'),
-  scale2('2×'),
-  rtl('RTL'),
-  highContrast('high contrast');
-
-  const _Variant(this.label);
-
-  final String label;
-
-  double get scale => switch (this) {
-    scale15 => 1.5,
-    scale2 => 2,
-    _ => 1,
-  };
-}
 
 /// The component stories. Each builds the component at rest.
 final Map<String, WidgetBuilder> _stories = {
@@ -363,96 +344,9 @@ final Map<String, WidgetBuilder> _stories = {
   ),
 };
 
-class _Matrix extends StatelessWidget {
-  const _Matrix(this.story);
-
-  final WidgetBuilder story;
-
-  @override
-  Widget build(BuildContext context) {
-    final caption = const CoilTypography().style(
-      CoilMetrics.pointer.caption,
-      color: const Color(0xFF737373),
-    );
-    Widget cell(CoilThemeData theme, CoilTier tier, _Variant variant) =>
-        Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(variant.label, style: caption),
-              const SizedBox(height: 4),
-              MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(variant.scale),
-                  highContrast: variant == _Variant.highContrast,
-                ),
-                child: Directionality(
-                  textDirection: variant == _Variant.rtl
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
-                  child: CoilTheme(
-                    data: theme.copyWith(tier: tier),
-                    child: Builder(
-                      builder: (context) => ColoredBox(
-                        color: CoilTheme.of(context).colors.background,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Builder(builder: story),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-
-    return ColoredBox(
-      color: const Color(0xFFFFFFFF),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final (name, theme) in [
-              ('light', CoilThemeData.light),
-              ('dark', CoilThemeData.dark),
-            ])
-              for (final tier in CoilTier.values) ...[
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 6),
-                  child: Text('$name · ${tier.name}', style: caption),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final variant in _Variant.values)
-                      cell(theme, tier, variant),
-                  ],
-                ),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 void main() {
   for (final MapEntry(key: name, value: story) in _stories.entries) {
-    testWidgets('$name matrix', (tester) async {
-      final sheet = await pumpSheet(
-        tester,
-        _Matrix(story),
-        surface: const Size(2800, 2800),
-      );
-      await expectSheetGolden(tester, sheet, 'goldens/matrix/$name.png');
-    });
+    matrixGoldenTest(name, story);
   }
 
   // The open select in both presentations, light and dark.
