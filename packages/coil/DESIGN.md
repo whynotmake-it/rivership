@@ -232,7 +232,7 @@ Named holds that aren't tokens:
   - sliders don't fling: the value never coasts.
 - **Snap on reflow.** A highlight, selected pill or active background springs when its *target* changes, and snaps when the target only moved because of layout.
 - **Height collapses** (Accordion, groups, ThinkingSteps, Banner rows) animate a 0..1 height factor on `standard`. Opacity leads on `fade`, so content dissolves instead of being sliced. A child resizing inside an open region is instant.
-- **No idle tickers.** Nothing animates at rest. Spinners and the Skeleton pulse are the only loops, and reduced motion stops them.
+- **No idle tickers.** Nothing animates at rest. The loops are spinners, the Skeleton pulse and the ThinkingIndicator's word cycle. Reduced motion stops the first two and turns the word cycle into a crossfade.
 
 ### 7.3 Customizing
 
@@ -247,7 +247,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - spatial tokens become `Motion.instant()`;
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
-- loops (Skeleton pulse, CarouselDots autoplay) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
+- loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
 ## 8. Interaction
@@ -773,7 +773,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 ### 14.4 Layout and display
 
-#### Accordion
+#### Accordion (built)
 
 - **Anatomy:** items, each a trigger row (label + chevron, trailing) and a collapsible panel (body muted, padding `controlPaddingX` sideways, 12 below). In `group` mode the items share one hover highlight and expanded items get a `hover` tint behind trigger and panel.
 - **Sizes:** trigger = §13.1 one-line row; default width 288 (`group`) or full.
@@ -784,7 +784,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Semantics:** button with `expanded`, and the panel is labelled by its trigger.
 - **Touch:** press fill only.
 
-#### Card
+#### Card (built)
 
 - **Anatomy:** a container (surface 3 in light, 2 + hairline in dark; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
 - **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
@@ -797,18 +797,19 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Do:** one primary action per card.
 - **Don't:** nest cards.
 
-#### Table
+#### Table (built)
 
 - **Anatomy:** a header row (semibold, caption muted on pointer); body rows (cells muted, foreground when the row is lit or selected); hairline cell rules (`border`); an optional empty state that holds N rows of height.
 - **Sizes:** cell padding `controlPaddingX` × vertical pad: rows 36 / 28 / 44 / 36.
 - **States:** the row highlight glides (pointer); selected rows merge (§8.4); press fill on touch. A header cell that sorts is pressable.
-- **Overflow:** scrolls horizontally with an edge shadow once scrolled; the first column can be pinned.
+- **Overflow:** scrolls horizontally inside a ScrollArea, with its edge fades where columns are hidden. A fade, not a shadow: it is the same signal every coil scroll region uses.
+- **Pinned first column:** not built yet. It needs a two-dimensional viewport; the plan is `two_dimensional_scrollables`' `TableView` with `pinnedColumnCount: 1`, shared with the DataTable.
 - **Motion:** highlight `quick`; selection `standard`.
 - **Keyboard:** Tab to the table; arrows move the active row (and cell in interactive tables); Space selects; Enter opens.
 - **Semantics:** table / row / cell roles with column headers.
 - **Don't:** zebra stripes.
 
-#### Banner
+#### Banner (built)
 
 - **Anatomy:** [status icon, one title line tall] title (body semibold) + description (body muted) → actions (Buttons, compact) → [dismiss ✕]. An optional tinted variant (status hue 8 % background).
 - **Sizes:** padding 16 (compact 12; touch 16 with a 44 ✕ hit); icon 20 / 16 / 20; gap 12.
@@ -821,19 +822,19 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Semantics:** a live region (polite; assertive for destructive); the ✕ is labeled "Dismiss".
 - **Don't:** stack more than 2; use it for transient confirmations (use inline feedback).
 
-#### Breadcrumb
+#### Breadcrumb (built)
 
-- **Anatomy:** a single row of crumbs (body, muted; the current page foreground, not a link). Each crumb ends in a chevron separator (14, muted). Crumbs can open a Dropdown (sibling picker or "…").
+- **Anatomy:** a single row of crumbs (body, muted; the current page foreground, not a link). Each crumb ends in a chevron separator (14, muted). "…" opens a menu of the hidden crumbs. A sibling picker on a crumb waits for the Dropdown component.
 - **Sizes:** crumb height `controlHeight` (28 on pointer compact by default; 44 hit on touch), padding 6.
 - **Collapse:** when the row overflows, the middle crumbs collapse into "…". On phones only the first, "…" and the last two show. The full names of truncated crumbs are reachable in the "…" menu, not only in a tooltip.
 - **Motion:** the highlight glides across crumbs on `quick` (pointer).
 - **Keyboard:** native Tab order; Enter follows or opens.
 - **Semantics:** navigation, labeled "Breadcrumb"; the current page has `selected`.
 
-#### ThinkingSteps / ThinkingIndicator
+#### ThinkingSteps / ThinkingIndicator (built)
 
 - **ThinkingSteps:**
-  - Anatomy: a collapsible trigger ("Thought for 12s", body semibold when open, chevron) → a list of steps. A step is [icon or a 6 dot] title (body) → detail (caption muted) → sources (solid badges, gap 6) → an image (max 200 wide).
+  - Anatomy: a collapsible trigger ("Thought for 12s", body semibold when open, chevron) → a list of steps. A step is [icon or a 6 dot] title (body) → detail (caption muted) → sources (small solid badges, gap 6; a private badge until the Badge component lands) → an image (max 200 wide).
   - Width 320, max full.
   - Motion: collapse on `standard`; each new step grows its height on `gentle` and fades in after 80 ms; source badges scale 0.85 → 1 on `standard` with a 4 → 0 blur.
 - **ThinkingIndicator:**
@@ -841,15 +842,15 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Motion: the word cycles every 4 s; the incoming word rises 80 % → 0 and fades on `standard`, the outgoing word rises out on `standardExit`. The words are a parameter. Reduced motion: crossfade only, every 4 s.
   - Semantics: a live region (polite), announced once per change at most every 4 s.
 
-#### CarouselDots
+#### CarouselDots (built)
 
 - **Anatomy:** a row of 6 dots 12 apart. The current dot is a 24 pill, either solid or filling with progress. Track `foreground` 15 %, fill 40 %.
-- **Pointer:** each dot is a button with an 18 round target; the highlight glides across dots.
+- **Pointer:** each dot has its own 18 round click target; the highlight glides across dots. For screen readers the row is still one adjustable control.
 - **Touch:** the group is **one adjustable control**, 44 high. Tap or drag along it to scrub; swipe the carousel itself to page. Single dots don't get 44 boxes.
-- **Motion:** pill width 6 ↔ 24 on `standard`; fill driven by progress. Autoplay stops under reduced motion.
+- **Motion:** pill width 6 ↔ 24 on `standard`; fill driven by progress. The dots never advance by themselves: autoplay belongs to the carousel that owns them, which stops it under reduced motion.
 - **Semantics:** adjustable, "Slide 2 of 5".
 
-#### ChatMessage
+#### ChatMessage (built)
 
 - **Anatomy:** attachments (FileThumbnails 80, gap 6, aligned to the sender's side) → bubble → meta row (time caption muted and actions as icon-only ghost buttons, gap 2).
 - **Sizes:** max width 80 %; text is subtitle role; bubble padding 14×8 (compact 12×6; touch 16×10).
@@ -860,12 +861,12 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.
 
-#### ScrollArea
+#### ScrollArea (built)
 
 - **Physics:** platform physics (§9.2).
-- **Edge fades:** 32 at whichever edges have more content, driven by the scroll extent.
-- **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later, fading on `fade` / `fadeExit`.
-- **Touch:** the OS overlay scrollbar.
+- **Edge fades (`CoilScrollEdgeFade`):** each edge fades in as content scrolls away from it, up to 32, following the scroll direction (RTL, reversed lists). The amount springs on `fade`. The ramp is eased, not linear, so it has no visible start or end. Over a known solid background the fade is painted in that color on top; elsewhere it masks the content, which costs an offscreen layer.
+- **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
+- **Touch:** a thin overlay bar in coil's colors (3 wide) that shows only while scrolling and can't be grabbed. Flutter draws no OS scrollbar, so this stands in for it.
 - **Keyboard:** the viewport is focusable when it scrolls; arrows, Page and Home/End scroll; the focus ring is inset 1.
 - **Don't:** nest scroll areas on the same axis.
 

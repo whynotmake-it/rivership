@@ -318,3 +318,10 @@ Look:
 | 2026-11-13 | `CoilHoverRegion` only tracks state; `CoilHoverHighlight` paints the default highlight | one job per widget; callers update their own painters in build |
 | 2026-11-13 | Metrics and radii live in the theme (`CoilMetricsTable`, `CoilShape` class) | runtime-customizable, like every other token |
 | 2026-11-13 | The popover picks its side by laying out its content | no size estimates |
+| 2026-11-13 | Popovers are `OverlayPortal` descendants of their owner; sheets stay routes | same-frame anchoring and live values; a sheet doesn't anchor |
+| 2026-11-13 | Haptics are theme data (`CoilThemeData.haptics`, null for the platform's) | apps can remap or silence them |
+| 2026-11-13 | `onDismissed` reports a finished dismissal (`CoilCard`, like `Dismissible`); `onDismissRequested` asks the owner to hide a controlled widget (`CoilBanner`) | one name, one contract |
+| 2026-11-13 | `CoilAccordion.single` / `.multiple` are one widget with two constructors | the value type differs, the widget doesn't; `CoilSelect`/`CoilMultiSelect` stay two widgets because their triggers differ |
+| 2026-11-13 | `CoilCarouselDots.value` is an index | dots stand for slides, which the carousel indexes |
+| 2026-11-13 | `CoilTable.onRowActivated` opens a row; `onChanged` selects | Enter and a tap open when a row has a destination, else they select |
+| 2026-11-13 | User-visible strings are parameters with English defaults until coil has a localization hook | no hardcoded English in semantics |

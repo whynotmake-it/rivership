@@ -41,8 +41,8 @@ Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 | Layer | Library | Holds |
 |---|---|---|
 | Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
-| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow` |
-| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
+| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow`, `CoilPopoverSurface`, `CoilActionList`, `CoilCollapsible`, `CoilDisclosureTrigger`, `CoilScrollbar`, `CoilScrollEdgeFade`, `CoilScrollSpring` |
+| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect`, `CoilScrollArea`, `CoilAccordion`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilCard` (with `CoilCardGroup`), `CoilTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilChatMessage`, `CoilCarouselDots` |
 
 Components reach pointers, overlays, haptics and travelling motion only
 through primitives. `test/architecture/import_rules_test.dart` enforces it,
@@ -96,13 +96,19 @@ spinner) can be replaced through a slot or builder.
 
 Run with Flutter 3.47: `flutter test` in this package.
 
-- `test/goldens/matrix/`: every component across light/dark ×
+Each component's file runs the shared checks from `test/src/`:
+
+- `matrixGoldenTest` (goldens in `test/goldens/matrix/`): light/dark ×
   pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
-  with real Inter at 2x; the open select as popover and sheet.
-- `test/patterns_test.dart`: `expectCoilPattern` (semantics, keyboard,
-  focus-visible) for every component in LTR and RTL.
-- `test/label_alignment_test.dart`: label ink centered within 1 px for every
-  component, tier, size and text scale.
+  with real Inter at 2x; overlays open as popover and sheet.
+- `expectCoilPattern`: semantics, keyboard and focus-visible, in LTR and
+  RTL.
+- `inkCenteringTests`: label ink centered within 1 px at every tier, size
+  and text scale.
+
+The M0 components still run these from the shared
+`golden_matrix_test.dart`, `patterns_test.dart` and
+`label_alignment_test.dart`.
 - `test/text_field_core_ime_test.dart`: IME composition guards, the iOS
   system menu, toolbars under a bare `WidgetsApp`.
 - `test/motion_theme_test.dart`: motion tokens changed at runtime.

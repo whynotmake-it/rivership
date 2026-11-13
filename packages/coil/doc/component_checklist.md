@@ -105,25 +105,26 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
 
 ## 7. Tests (all required)
 
-- **Goldens across the matrix:** add a story to `_stories` in
-  `test/golden_matrix_test.dart`. That covers light/dark × pointer/touch ×
+Each component's tests live in its own `test/<name>_test.dart`, which
+calls the shared helpers in `test/src/`. Shared test files stay untouched,
+so wave branches don't conflict.
+
+- **Goldens across the matrix:** call `matrixGoldenTest(name, story)`
+  (`test/src/golden_matrix.dart`). That covers light/dark × pointer/touch ×
   text scale 1/1.5/2, RTL and high contrast. Overlays also get open-state
   goldens for popover and sheet, light and dark. Look at every golden
   before committing it.
-- **Ink centering:** add each label-bearing variant to the `cases` map in
-  `test/label_alignment_test.dart` (±1 px at every tier, size and text
+- **Ink centering:** call `inkCenteringTests` (`test/src/ink_centering.dart`)
+  with each label-bearing variant (±1 px at every tier, size and text
   scale).
-- **Pattern:** add the component to `test/patterns_test.dart` with
-  `expectCoilPattern`, in LTR and RTL. Add a `CoilPattern` value in
-  `test/src/coil_pattern.dart` if no existing one fits.
-- **No sticky states:** a touch leaves no hover and a click shows no ring
-  (extend `test/touch_vs_mouse_test.dart`).
+- **Pattern:** call `expectCoilPattern` (`test/src/coil_pattern.dart`) in
+  LTR and RTL. Add a `CoilPattern` value if no existing one fits.
+- **No sticky states:** a touch leaves no hover and a click shows no ring.
 - **IME:** components hosting text get composing-guard tests (see
   `test/text_field_core_ime_test.dart`).
 - **Motion:** reduced motion makes travel instant; a runtime theme change
   applies to the next animation.
-- **Style:** fallback < theme override < instance, as in
-  `test/style_test.dart`.
+- **Style:** fallback < theme override < instance.
 - Run with Flutter 3.47:
   - `dart analyze --fatal-infos` clean;
   - `flutter test` green.

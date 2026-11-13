@@ -59,5 +59,10 @@ Milestone M0, unreleased.
   the fill, shadow and edge for its own level, and passes that level down.
   Shadow blur now matches the CSS recipes, and dark surfaces get the 1 px
   top highlight.
+- Layout and display: `CoilScrollArea` (coil's scrollbar, edge fades,
+  keyboard scrolling), `CoilAccordion`, `CoilThinkingSteps` and
+  `CoilThinkingIndicator`, `CoilCard` and `CoilCardGroup`, `CoilTable`,
+  `CoilBanner`, `CoilBreadcrumb` (collapses into a "…" menu),
+  `CoilChatMessage`, `CoilCarouselDots`.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.
