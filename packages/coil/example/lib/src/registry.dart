@@ -1,6 +1,12 @@
+import 'package:coil_example/src/pages/components/accordion_page.dart';
 import 'package:coil_example/src/pages/components/badge_page.dart';
+import 'package:coil_example/src/pages/components/banner_page.dart';
+import 'package:coil_example/src/pages/components/breadcrumb_page.dart';
 import 'package:coil_example/src/pages/components/button_page.dart';
 import 'package:coil_example/src/pages/components/calendar_page.dart';
+import 'package:coil_example/src/pages/components/card_page.dart';
+import 'package:coil_example/src/pages/components/carousel_dots_page.dart';
+import 'package:coil_example/src/pages/components/chat_message_page.dart';
 import 'package:coil_example/src/pages/components/checkbox_group_page.dart';
 import 'package:coil_example/src/pages/components/checkbox_page.dart';
 import 'package:coil_example/src/pages/components/combobox_page.dart';
@@ -17,6 +23,7 @@ import 'package:coil_example/src/pages/components/input_group_page.dart';
 import 'package:coil_example/src/pages/components/input_message_page.dart';
 import 'package:coil_example/src/pages/components/input_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
+import 'package:coil_example/src/pages/components/scroll_area_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
 import 'package:coil_example/src/pages/components/sidebar_page.dart';
 import 'package:coil_example/src/pages/components/skeleton_page.dart';
@@ -24,6 +31,7 @@ import 'package:coil_example/src/pages/components/slider_page.dart';
 import 'package:coil_example/src/pages/components/switch_page.dart';
 import 'package:coil_example/src/pages/components/tabs_page.dart';
 import 'package:coil_example/src/pages/components/textarea_page.dart';
+import 'package:coil_example/src/pages/components/thinking_steps_page.dart';
 import 'package:coil_example/src/pages/components/toggle_group_page.dart';
 import 'package:coil_example/src/pages/components/tooltip_page.dart';
 import 'package:coil_example/src/pages/foundations/colors_page.dart';
@@ -124,6 +132,14 @@ const catalogEntries = <CatalogEntry>[
   inputMessageEntry,
   fileThumbnailEntry,
   dataTableEntry,
+  accordionEntry,
+  cardEntry,
+  bannerEntry,
+  breadcrumbEntry,
+  thinkingStepsEntry,
+  carouselDotsEntry,
+  chatMessageEntry,
+  scrollAreaEntry,
 ];
 
 /// Every component DESIGN.md §14 specifies, by group. The home screen lists
