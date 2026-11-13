@@ -22,5 +22,6 @@ export 'src/primitives/fluid_focus_ring.dart';
 export 'src/primitives/fluid_highlight.dart';
 export 'src/primitives/fluid_hover.dart';
 export 'src/primitives/fluid_interaction.dart';
+export 'src/primitives/fluid_motion_layer.dart';
 export 'src/primitives/fluid_pressable.dart';
 export 'src/primitives/fluid_selection.dart';

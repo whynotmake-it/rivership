@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
-import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_motion_layer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -96,7 +96,7 @@ class FluidSelectionRuns {
   return lo.start == up.end + 2 ? (up, lo, up.end + 1) : null;
 }
 
-enum _Phase { converge, splitIn, diverge }
+enum _Phase { converge, split }
 
 class _Boundary {
   _Boundary({
@@ -110,15 +110,92 @@ class _Boundary {
   final int survivor;
   final int other;
   final int gap;
-  _Phase phase;
+  final _Phase phase;
 
   /// The whole merged (or formerly merged) run, first..last item.
   final (int, int) span;
   Timer? timer;
+
+  /// Whether a split's halves have been pinned at the seam already.
+  bool pinned = false;
 }
 
-/// Paints one background block per contiguous run of [selected] items and
-/// animates runs merging and splitting (`use-merge-split.tsx`).
+/// Where a block is, in terms of items: resolved to a rect at paint time.
+@immutable
+sealed class _Geometry {
+  const _Geometry();
+}
+
+/// The union of items [start]..[end].
+class _RunGeometry extends _Geometry {
+  const _RunGeometry(this.start, this.end);
+  final int start;
+  final int end;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _RunGeometry && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+}
+
+/// The [first] or second half of items [start]..[end], split at the middle
+/// of item [gap].
+class _HalfGeometry extends _Geometry {
+  const _HalfGeometry(this.start, this.end, this.gap, {required this.first});
+  final int start;
+  final int end;
+  final int gap;
+  final bool first;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _HalfGeometry &&
+      other.start == start &&
+      other.end == end &&
+      other.gap == gap &&
+      other.first == first;
+
+  @override
+  int get hashCode => Object.hash(start, end, gap, first);
+}
+
+/// Wherever the block was last painted (a run that is fading out).
+class _FrozenGeometry extends _Geometry {
+  const _FrozenGeometry();
+}
+
+/// What one block should look like now.
+@immutable
+class _BlockSpec {
+  const _BlockSpec({
+    required this.geometry,
+    required this.corners,
+    this.from,
+    this.fromCorners,
+    this.instant = false,
+    this.seamCorners = false,
+    this.visible = true,
+  });
+
+  final _Geometry geometry;
+  final _Corners corners;
+
+  /// Where the block starts this change (a split half pinned at the seam).
+  final _Geometry? from;
+  final _Corners? fromCorners;
+  final bool instant;
+
+  /// Whether the corners change only after the web's seam delay, which
+  /// depends on where the seam is, so it starts at paint.
+  final bool seamCorners;
+  final bool visible;
+}
+
+/// Paints one background block per contiguous run of selected items and
+/// animates runs merging and splitting (`use-merge-split.tsx`), as a layer
+/// painter of a [FluidMotionLayer] whose targets are the items.
 ///
 /// Adjacent selected items share one rounded shape whose outer corners are
 /// round and whose inner edges are flush. Toggling the single item between
@@ -126,63 +203,457 @@ class _Boundary {
 /// item and meet, and only then do the corners there straighten. Clearing
 /// an item inside a run **splits** it at that item's middle, and the two
 /// halves glide apart while their new corners round. Everything rides the
-/// theme's `moderate` spring; reduced motion makes it snap.
+/// `moderate` motion; with reduced motion it snaps.
 ///
-/// Place it in a [Stack] in the coordinate space of [rects] (a
-/// `FluidHoverRegion`'s `backgroundBuilder` passes item rects).
-class FluidSelectionBackground extends StatefulWidget {
-  /// Creates a selection background.
-  const FluidSelectionBackground({
-    required this.selected,
-    required this.rects,
-    super.key,
-    this.axis = Axis.vertical,
-    this.color,
-    this.radius,
-    this.motion,
-  });
+/// Blocks are described in terms of items and resolved to rects while
+/// painting, so they follow items that resize, reflow or scroll in the same
+/// frame; motion is a delta relative to that geometry.
+class FluidSelectionPainter extends FluidLayerPainter {
+  /// Creates a selection painter ticking on [vsync].
+  FluidSelectionPainter({required TickerProvider vsync}) : _vsync = vsync;
 
-  /// The selected item indices.
-  final Set<int> selected;
+  final TickerProvider _vsync;
+  final _runs = FluidSelectionRuns();
+  List<FluidSelectionRun> _previous = const [];
+  final _boundaries = <_Boundary>[];
+  final _blocks = <int, _BlockAnimation>{};
+  Set<int>? _selected;
+  Axis _axis = Axis.vertical;
+  double _radius = 8;
+  Color _color = const Color(0x12000000);
+  FluidMotionThemeData _motion = const FluidMotionThemeData();
 
-  /// Every item's rect, by index.
-  final Map<int, Rect> rects;
+  /// Sets the selection and style. Call on every build; an unchanged
+  /// selection only restyles.
+  void update({
+    required Set<int> selected,
+    required Color color,
+    required double radius,
+    required FluidMotionThemeData motion,
+    Axis axis = Axis.vertical,
+  }) {
+    _axis = axis;
+    _color = color;
+    _radius = radius;
+    _motion = motion;
+    final previousSelection = _selected;
+    _selected = {...selected};
+    if (previousSelection == null) {
+      _previous = _runs.update(selected);
+      _apply(initial: true);
+    } else if (!setEquals(previousSelection, selected)) {
+      final before = _previous;
+      final after = _runs.update(selected);
+      _previous = after;
+      _detect(before, after);
+      _apply();
+    }
+    notifyListeners();
+  }
 
-  /// Whether items run top to bottom or start to end.
-  final Axis axis;
+  /// Merge/split detection (the layout effect in `useMergeSplitBlocks`).
+  void _detect(List<FluidSelectionRun> before, List<FluidSelectionRun> after) {
+    final selected = _selected!;
+    // Drop boundaries the new selection invalidated.
+    _boundaries.removeWhere((b) {
+      final stillValid = switch (b.phase) {
+        _Phase.converge => after.any(
+          (r) => r.id == b.survivor && r.start <= b.gap && r.end >= b.gap,
+        ),
+        _Phase.split =>
+          after.any((r) => r.id == b.survivor) &&
+              after.any((r) => r.id == b.other) &&
+              !selected.contains(b.gap),
+      };
+      if (!stillValid) b.timer?.cancel();
+      return !stillValid;
+    });
 
-  /// The block color. Defaults to the theme's `active` wash.
-  final Color? color;
+    for (final run in after) {
+      final pair = _bridgePair(run, before);
+      if (pair == null) continue;
+      final (up, lo, gap) = pair;
+      if (up.id != run.id && lo.id != run.id) continue;
+      _start(
+        _Boundary(
+          survivor: run.id,
+          other: up.id == run.id ? lo.id : up.id,
+          gap: gap,
+          phase: _Phase.converge,
+          span: (run.start, run.end),
+        ),
+        const Duration(milliseconds: 310),
+      );
+    }
+    for (final run in before) {
+      final pair = _bridgePair(run, after);
+      if (pair == null) continue;
+      final (up, lo, gap) = pair;
+      _start(
+        _Boundary(
+          survivor: up.id,
+          other: lo.id,
+          gap: gap,
+          phase: _Phase.split,
+          span: (run.start, run.end),
+        ),
+        const Duration(milliseconds: 240),
+      );
+    }
+  }
 
-  /// The outer corner radius. Defaults to the theme shape's item radius.
-  final double? radius;
+  void _start(_Boundary boundary, Duration resolveAfter) {
+    _boundaries.add(boundary);
+    boundary.timer = Timer(resolveAfter, () {
+      _boundaries.remove(boundary);
+      // A merge commits: the survivor becomes the whole run at once and the
+      // absorbed half goes; they already meet, so nothing visibly moves.
+      final merge = boundary.phase == _Phase.converge;
+      _apply(
+        instant: merge ? {boundary.survivor} : {},
+        drop: merge ? {boundary.other} : {},
+      );
+      notifyListeners();
+    });
+  }
 
-  /// Overrides the theme's motion tokens.
-  final FluidMotionThemeData? motion;
+  /// The corners with the inner side (toward the seam) square.
+  (_Corners, _Corners) _innerSquare(double r) => _axis == Axis.vertical
+      ? (_Corners(r, r, 0, 0), _Corners(0, 0, r, r))
+      : (_Corners(r, 0, 0, r), _Corners(0, r, r, 0));
+
+  Map<int, _BlockSpec> _specs({Set<int> instant = const {}}) {
+    final r = _radius;
+    final specs = <int, _BlockSpec>{
+      for (final run in _runs.runs)
+        run.id: _BlockSpec(
+          geometry: _RunGeometry(run.start, run.end),
+          corners: _Corners.all(r),
+          instant: instant.contains(run.id),
+        ),
+    };
+    for (final b in _boundaries) {
+      final (start, end) = b.span;
+      final first = _HalfGeometry(start, end, b.gap, first: true);
+      final second = _HalfGeometry(start, end, b.gap, first: false);
+      final (firstCorners, secondCorners) = _innerSquare(r);
+      switch (b.phase) {
+        case _Phase.converge:
+          // The two old blocks' inner edges glide to the seam; the corners
+          // there straighten only as the edges are about to meet.
+          specs[b.survivor] = _BlockSpec(
+            geometry: first,
+            corners: firstCorners,
+            seamCorners: true,
+          );
+          specs[b.other] = _BlockSpec(
+            geometry: second,
+            corners: secondCorners,
+            seamCorners: true,
+          );
+        case _Phase.split:
+          // Both halves start pinned at the seam, exactly the block they
+          // were, then glide to their runs while the new corners round.
+          if (b.pinned) break;
+          b.pinned = true;
+          specs[b.survivor] = specs[b.survivor]!.withFrom(first, firstCorners);
+          specs[b.other] = specs[b.other]!.withFrom(second, secondCorners);
+      }
+    }
+    return specs;
+  }
+
+  void _apply({
+    bool initial = false,
+    Set<int> instant = const {},
+    Set<int> drop = const {},
+  }) {
+    final specs = _specs(instant: instant);
+    final m = _motion;
+    for (final MapEntry(key: id, value: spec) in specs.entries) {
+      (_blocks[id] ??= _BlockAnimation(
+        vsync: _vsync,
+        corners: spec.fromCorners ?? spec.corners,
+        // New runs fade in where they are; split halves appear at once.
+        opacity: initial || spec.from != null ? 1 : 0,
+        onTick: notifyListeners,
+      )).setSpec(spec, m);
+    }
+    // Runs that disappeared: an absorbed merge half goes at once, anything
+    // else fades out where it was.
+    for (final id in _blocks.keys.toList()) {
+      if (specs.containsKey(id)) continue;
+      final block = _blocks[id]!;
+      if (drop.contains(id) || !block.spec.visible && block.gone) {
+        _blocks.remove(id)!.dispose();
+        continue;
+      }
+      if (block.spec.visible) {
+        block.setSpec(
+          _BlockSpec(
+            geometry: const _FrozenGeometry(),
+            corners: block.spec.corners,
+            visible: false,
+          ),
+          m,
+          onGone: () {
+            if (_blocks[id] == block && !specs.containsKey(id)) {
+              _blocks.remove(id)!.dispose();
+              notifyListeners();
+            }
+          },
+        );
+      }
+    }
+  }
+
+  Rect? _resolve(_Geometry geometry, FluidLayerGeometry items, Rect? last) {
+    Rect? union(int start, int end) {
+      Rect? result;
+      for (var i = start; i <= end; i++) {
+        final r = items.rectOf(i);
+        if (r == null) continue;
+        result = result == null ? r : result.expandToInclude(r);
+      }
+      return result;
+    }
+
+    switch (geometry) {
+      case _RunGeometry(:final start, :final end):
+        return union(start, end);
+      case _HalfGeometry(:final start, :final end, :final gap, :final first):
+        final whole = union(start, end);
+        final gapRect = items.rectOf(gap);
+        if (whole == null || gapRect == null) return null;
+        if (_axis == Axis.vertical) {
+          final mid = gapRect.center.dy;
+          return first
+              ? Rect.fromLTRB(whole.left, whole.top, whole.right, mid)
+              : Rect.fromLTRB(whole.left, mid, whole.right, whole.bottom);
+        }
+        final mid = gapRect.center.dx;
+        return first
+            ? Rect.fromLTRB(whole.left, whole.top, mid, whole.bottom)
+            : Rect.fromLTRB(mid, whole.top, whole.right, whole.bottom);
+      case _FrozenGeometry():
+        return last;
+    }
+  }
+
+  /// How many blocks are painted (including ones fading out).
+  @visibleForTesting
+  int get debugBlockCount => _blocks.length;
 
   @override
-  State<FluidSelectionBackground> createState() =>
-      _FluidSelectionBackgroundState();
+  void paint(Canvas canvas, Offset offset, FluidLayerGeometry geometry) {
+    for (final block in _blocks.values) {
+      final target = _resolve(block.spec.geometry, geometry, block.lastPainted);
+      if (target == null) continue;
+      if (block.spec.geometry case _HalfGeometry(
+        :final gap,
+      ) when block.pendingSeamCorners != null) {
+        // The web's merge corner delay: 0.07 s plus a hair per seam
+        // position, at most 0.10 s.
+        final gapRect = geometry.rectOf(gap);
+        if (gapRect != null) {
+          final vertical = _axis == Axis.vertical;
+          final mid = vertical ? gapRect.center.dy : gapRect.center.dx;
+          final along = vertical ? gapRect.height : gapRect.width;
+          final seconds = math.min(
+            0.10,
+            math.max(0.07, 0.07 + (mid / along) * 0.002),
+          );
+          block.startSeamCorners(
+            Duration(microseconds: (seconds * 1e6).round()),
+            _motion,
+          );
+        }
+      }
+      final from = block.pendingFrom;
+      final rect = block.resolve(
+        target,
+        from == null ? null : _resolve(from, geometry, null),
+        _motion,
+      );
+      final opacity = block.opacity;
+      if (opacity <= 0) continue;
+      if (opacity < 1) {
+        canvas.saveLayer(
+          null,
+          Paint()..color = Color.fromRGBO(0, 0, 0, opacity),
+        );
+      }
+      final shifted = rect.shift(offset);
+      ShapeDecoration(
+            color: _color,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: block.corners.borderRadius,
+            ),
+          )
+          .createBoxPainter(_noop)
+          .paint(
+            canvas,
+            shifted.topLeft,
+            ImageConfiguration(size: shifted.size),
+          );
+      if (opacity < 1) canvas.restore();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final b in _boundaries) {
+      b.timer?.cancel();
+    }
+    for (final block in _blocks.values) {
+      block.dispose();
+    }
+    super.dispose();
+  }
 }
 
-/// What one block should look like now.
-@immutable
-class _BlockSpec {
-  const _BlockSpec({
-    required this.rect,
-    required this.corners,
-    this.instant = false,
-    this.cornerDelay = Duration.zero,
-    this.enterFrom,
-    this.visible = true,
-  });
+extension on _BlockSpec {
+  _BlockSpec withFrom(_Geometry from, _Corners fromCorners) => _BlockSpec(
+    geometry: geometry,
+    corners: corners,
+    from: from,
+    fromCorners: fromCorners,
+  );
+}
 
-  final Rect rect;
-  final _Corners corners;
-  final bool instant;
-  final Duration cornerDelay;
-  final (Rect, _Corners)? enterFrom;
-  final bool visible;
+/// One block's motion: a rect delta relative to its geometry, its corner
+/// radii and its opacity, as tracks on one controller.
+class _BlockAnimation {
+  _BlockAnimation({
+    required TickerProvider vsync,
+    required _Corners corners,
+    required double opacity,
+    required VoidCallback onTick,
+  }) : _controller = TrackController(
+         vsync: vsync,
+         debugLabel: 'FluidSelectionBlock',
+       ) {
+    _cornersTrack = Track<_Corners>(
+      _Corners.converter,
+      initial: corners,
+      debugLabel: 'Corners',
+    );
+    _opacityTrack = Track<double>(
+      .single,
+      initial: opacity,
+      debugLabel: 'Opacity',
+    );
+    _controller.addListener(onTick);
+  }
+
+  final TrackController _controller;
+  final _delta = Track<Rect>(.rect, initial: Rect.zero, debugLabel: 'Delta');
+  late final Track<_Corners> _cornersTrack;
+  late final Track<double> _opacityTrack;
+
+  _BlockSpec spec = const _BlockSpec(
+    geometry: _FrozenGeometry(),
+    corners: _Corners.all(0),
+  );
+  bool _hasSpec = false;
+  bool _retarget = false;
+  bool _instant = false;
+  _Geometry? pendingFrom;
+  _Corners? pendingSeamCorners;
+  Rect? lastPainted;
+  bool gone = false;
+
+  _Corners get corners => _controller.value(_cornersTrack);
+  double get opacity => _controller.value(_opacityTrack).clamp(0.0, 1.0);
+
+  void setSpec(
+    _BlockSpec next,
+    FluidMotionThemeData m, {
+    VoidCallback? onGone,
+  }) {
+    final first = !_hasSpec;
+    _hasSpec = true;
+    final moved = first || next.geometry != spec.geometry || next.from != null;
+    spec = next;
+    if (moved && !first) {
+      _retarget = true;
+      _instant = next.instant;
+    }
+    pendingFrom = next.from;
+    pendingSeamCorners = next.seamCorners && !next.instant
+        ? next.corners
+        : null;
+    if (first && next.from == null) _retarget = false;
+    final travel = next.instant ? const Motion.instant() : m.moderate;
+    _controller
+        .animate([
+          if (next.fromCorners case final from?)
+            _cornersTrack([.to(next.corners, motion: travel)], from: from)
+          else if (!next.seamCorners || next.instant)
+            _cornersTrack([.to(next.corners, motion: travel)]),
+          _opacityTrack([
+            .to(
+              next.visible ? 1 : 0,
+              motion: next.visible ? m.fade : m.moderateExit,
+            ),
+          ]),
+        ])
+        .then(
+          (_) {
+            if (!next.visible) {
+              gone = true;
+              onGone?.call();
+            }
+          },
+          onError: (Object _) {},
+        );
+  }
+
+  /// Starts the corner change held for the seam delay.
+  void startSeamCorners(Duration delay, FluidMotionThemeData m) {
+    final corners = pendingSeamCorners;
+    if (corners == null) return;
+    pendingSeamCorners = null;
+    _controller.animate([
+      _cornersTrack([.to(corners, motion: m.moderate)], delay: delay),
+    ]);
+  }
+
+  /// The rect to paint this frame for [target], starting any glide the
+  /// last [setSpec] asked for. Called while painting.
+  Rect resolve(Rect target, Rect? from, FluidMotionThemeData m) {
+    Rect diff(Rect a, Rect b) => Rect.fromLTRB(
+      a.left - b.left,
+      a.top - b.top,
+      a.right - b.right,
+      a.bottom - b.bottom,
+    );
+    if (from != null || _retarget) {
+      final start = from ?? lastPainted;
+      final delta = start == null ? Rect.zero : diff(start, target);
+      if (_instant || delta == Rect.zero) {
+        _controller.set([_delta.value(Rect.zero)]);
+      } else {
+        _controller.animate([
+          _delta([.to(Rect.zero, motion: m.moderate)], from: delta),
+        ]);
+      }
+      _retarget = false;
+      _instant = false;
+      pendingFrom = null;
+    }
+    final d = _controller.value(_delta);
+    final rect = Rect.fromLTRB(
+      target.left + d.left,
+      target.top + d.top,
+      target.right + d.right,
+      target.bottom + d.bottom,
+    );
+    lastPainted = rect;
+    return rect;
+  }
+
+  void dispose() => _controller.dispose();
 }
 
 /// Four corner radii: top-left, top-right, bottom-right, bottom-left.
@@ -230,360 +701,4 @@ class _Corners {
   int get hashCode => Object.hash(tl, tr, br, bl);
 }
 
-class _FluidSelectionBackgroundState extends State<FluidSelectionBackground> {
-  final _runs = FluidSelectionRuns();
-  List<FluidSelectionRun> _previous = const [];
-  final _boundaries = <_Boundary>[];
-
-  /// Runs that disappeared, kept while they fade out.
-  final _leaving = <int, Rect>{};
-
-  /// Blocks that jump (for one frame) instead of springing: a merged run
-  /// at commit, whose two halves already look like the one block.
-  final _jump = <int>{};
-
-  @override
-  void initState() {
-    super.initState();
-    _previous = _runs.update(widget.selected);
-  }
-
-  @override
-  void didUpdateWidget(FluidSelectionBackground oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (setEquals(oldWidget.selected, widget.selected)) return;
-    final before = _previous;
-    final after = _runs.update(widget.selected);
-    _previous = after;
-    _detect(before, after);
-  }
-
-  @override
-  void dispose() {
-    for (final b in _boundaries) {
-      b.timer?.cancel();
-    }
-    super.dispose();
-  }
-
-  /// Merge/split detection (the layout effect in `useMergeSplitBlocks`).
-  void _detect(List<FluidSelectionRun> before, List<FluidSelectionRun> after) {
-    // Drop boundaries the new selection invalidated.
-    _boundaries.removeWhere((b) {
-      final stillValid = switch (b.phase) {
-        _Phase.converge => after.any(
-          (r) => r.id == b.survivor && r.start <= b.gap && r.end >= b.gap,
-        ),
-        _ =>
-          after.any((r) => r.id == b.survivor) &&
-              after.any((r) => r.id == b.other) &&
-              !widget.selected.contains(b.gap),
-      };
-      if (!stillValid) b.timer?.cancel();
-      return !stillValid;
-    });
-
-    for (final run in after) {
-      final pair = _bridgePair(run, before);
-      if (pair == null) continue;
-      final (up, lo, gap) = pair;
-      final other = up.id == run.id ? lo.id : up.id;
-      if (up.id != run.id && lo.id != run.id) continue;
-      _start(
-        _Boundary(
-          survivor: run.id,
-          other: other,
-          gap: gap,
-          phase: _Phase.converge,
-          span: (run.start, run.end),
-        ),
-        const Duration(milliseconds: 310),
-      );
-    }
-    for (final run in before) {
-      final pair = _bridgePair(run, after);
-      if (pair == null) continue;
-      final (up, lo, gap) = pair;
-      _start(
-        _Boundary(
-          survivor: up.id,
-          other: lo.id,
-          gap: gap,
-          phase: _Phase.splitIn,
-          span: (run.start, run.end),
-        ),
-        const Duration(milliseconds: 240),
-      );
-    }
-
-    // Plain disappearances fade out where they were.
-    final afterIds = after.map((r) => r.id).toSet();
-    final merging = _boundaries
-        .where((b) => b.phase == _Phase.converge)
-        .map((b) => b.other)
-        .toSet();
-    for (final run in before) {
-      if (afterIds.contains(run.id) || merging.contains(run.id)) continue;
-      final rect = _union(run.start, run.end);
-      if (rect != null) _leaving[run.id] = rect;
-    }
-    for (final id in afterIds) {
-      _leaving.remove(id);
-    }
-  }
-
-  void _start(_Boundary boundary, Duration resolveAfter) {
-    _boundaries.add(boundary);
-    if (boundary.phase == _Phase.splitIn) {
-      // Pinned at the seam for one frame, then the halves diverge.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_boundaries.contains(boundary)) return;
-        setState(() => boundary.phase = _Phase.diverge);
-      });
-    }
-    boundary.timer = Timer(resolveAfter, () {
-      if (!mounted) return;
-      setState(() {
-        _boundaries.remove(boundary);
-        if (boundary.phase == _Phase.converge) {
-          // Commit: the survivor becomes the whole run at once and the
-          // absorbed half goes; they already meet, so nothing visibly moves.
-          _jump.add(boundary.survivor);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _jump.remove(boundary.survivor));
-          });
-        }
-      });
-    });
-  }
-
-  Rect? _union(int start, int end) {
-    Rect? result;
-    for (var i = start; i <= end; i++) {
-      final r = widget.rects[i];
-      if (r == null) continue;
-      result = result == null ? r : result.expandToInclude(r);
-    }
-    return result;
-  }
-
-  bool get _vertical => widget.axis == Axis.vertical;
-
-  /// Splits [rect] at [mid] along the axis.
-  (Rect, Rect) _halves(Rect rect, double mid) => _vertical
-      ? (
-          Rect.fromLTRB(rect.left, rect.top, rect.right, mid),
-          Rect.fromLTRB(rect.left, mid, rect.right, rect.bottom),
-        )
-      : (
-          Rect.fromLTRB(rect.left, rect.top, mid, rect.bottom),
-          Rect.fromLTRB(mid, rect.top, rect.right, rect.bottom),
-        );
-
-  /// Corners with the inner side (toward the seam) square.
-  (_Corners, _Corners) _innerSquare(double r) => _vertical
-      ? (_Corners(r, r, 0, 0), _Corners(0, 0, r, r))
-      : (_Corners(r, 0, 0, r), _Corners(0, r, r, 0));
-
-  Map<int, _BlockSpec> _blocks(double r) {
-    final blocks = <int, _BlockSpec>{};
-    for (final run in _runs.runs) {
-      final rect = _union(run.start, run.end);
-      if (rect != null) {
-        blocks[run.id] = _BlockSpec(
-          rect: rect,
-          corners: _Corners.all(r),
-          instant: _jump.contains(run.id),
-        );
-      }
-    }
-    for (final b in _boundaries) {
-      final gapRect = widget.rects[b.gap];
-      final whole = _union(b.span.$1, b.span.$2);
-      if (gapRect == null || whole == null) continue;
-      final mid = _vertical ? gapRect.center.dy : gapRect.center.dx;
-      final (first, second) = _halves(whole, mid);
-      final (firstCorners, secondCorners) = _innerSquare(r);
-      final along = _vertical ? gapRect.height : gapRect.width;
-      final delay = Duration(
-        microseconds:
-            (math.min(0.10, math.max(0.07, 0.07 + (mid / along) * 0.002)) * 1e6)
-                .round(),
-      );
-      switch (b.phase) {
-        case _Phase.converge:
-          // The two old blocks' inner edges glide to the seam; the corners
-          // there straighten only once the edges are about to meet.
-          blocks[b.survivor] = _BlockSpec(
-            rect: first,
-            corners: firstCorners,
-            cornerDelay: delay,
-          );
-          blocks[b.other] = _BlockSpec(
-            rect: second,
-            corners: secondCorners,
-            cornerDelay: delay,
-          );
-        case _Phase.splitIn:
-          // Pinned at the seam: identical to the single block it was.
-          blocks[b.survivor] = _BlockSpec(
-            rect: first,
-            corners: firstCorners,
-            instant: true,
-          );
-          blocks[b.other] = _BlockSpec(
-            rect: second,
-            corners: secondCorners,
-            instant: true,
-            enterFrom: (second, secondCorners),
-          );
-        case _Phase.diverge:
-          break; // The plain run blocks: both spring to their real rects.
-      }
-    }
-    for (final MapEntry(key: id, value: rect) in _leaving.entries) {
-      blocks.putIfAbsent(
-        id,
-        () => _BlockSpec(rect: rect, corners: _Corners.all(r), visible: false),
-      );
-    }
-    return blocks;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluidTheme.of(context);
-    final motion = FluidTheme.motionOf(context, override: widget.motion);
-    final r = widget.radius ?? theme.shape.item;
-    final color = widget.color ?? theme.colors.active;
-    final blocks = _blocks(r);
-    return IgnorePointer(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          for (final MapEntry(key: id, value: spec) in blocks.entries)
-            _Block(
-              key: ValueKey(id),
-              spec: spec,
-              color: color,
-              motion: motion,
-              onGone: () => setState(() => _leaving.remove(id)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One animated block: rect, corner radii and opacity tracks on one
-/// controller.
-class _Block extends StatefulWidget {
-  const _Block({
-    required this.spec,
-    required this.color,
-    required this.motion,
-    required this.onGone,
-    super.key,
-  });
-
-  final _BlockSpec spec;
-  final Color color;
-  final FluidMotionThemeData motion;
-  final VoidCallback onGone;
-
-  @override
-  State<_Block> createState() => _BlockState();
-}
-
-class _BlockState extends State<_Block> with SingleTickerProviderStateMixin {
-  late final _controller = TrackController(
-    vsync: this,
-    debugLabel: 'FluidSelectionBlock',
-  );
-  late final _rect = Track<Rect>(
-    .rect,
-    initial: widget.spec.enterFrom?.$1 ?? widget.spec.rect,
-    debugLabel: 'Rect',
-  );
-  late final _corners = Track<_Corners>(
-    _Corners.converter,
-    initial: widget.spec.enterFrom?.$2 ?? widget.spec.corners,
-    debugLabel: 'Corners',
-  );
-  late final _opacity = Track<double>(
-    .single,
-    // A brand-new run fades in where it is; a split half appears at once.
-    initial: widget.spec.enterFrom != null ? 1 : 0,
-    debugLabel: 'Opacity',
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _apply(null);
-  }
-
-  @override
-  void didUpdateWidget(_Block oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.spec.rect != widget.spec.rect ||
-        oldWidget.spec.corners != widget.spec.corners ||
-        oldWidget.spec.visible != widget.spec.visible ||
-        oldWidget.spec.instant != widget.spec.instant) {
-      _apply(oldWidget.spec);
-    }
-  }
-
-  void _apply(_BlockSpec? old) {
-    final spec = widget.spec;
-    final m = widget.motion;
-    final travel = spec.instant ? const Motion.instant() : m.moderate;
-    _controller
-        .animate([
-          _rect([.to(spec.rect, motion: travel)]),
-          _corners(
-            [.to(spec.corners, motion: travel)],
-            delay: spec.instant ? Duration.zero : spec.cornerDelay,
-          ),
-          _opacity([
-            .to(
-              spec.visible ? 1 : 0,
-              motion: spec.visible ? m.fade : m.moderateExit,
-            ),
-          ]),
-        ])
-        .then((_) {
-          if (mounted && !widget.spec.visible) widget.onGone();
-        }, onError: (_) {});
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _controller,
-      builder: (context, _) {
-        final opacity = _controller.value(_opacity).clamp(0.0, 1.0);
-        return Positioned.fromRect(
-          rect: _controller.value(_rect),
-          child: Opacity(
-            opacity: opacity,
-            child: DecoratedBox(
-              decoration: ShapeDecoration(
-                color: widget.color,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: _controller.value(_corners).borderRadius,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+void _noop() {}

@@ -9,7 +9,7 @@ published package.
 | Layer | Files |
 | --- | --- |
 | Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotionThemeData` on `FluidThemeData.motion` (Motor `Motion` tokens from `springs.ts`, runtime-customizable, per-instance `motion:` override, reduced motion applied by `FluidTheme.motionOf`), `FluidTypographyThemeData` (bundled Inter variable, wght/opsz pairs, `capHeight` token) |
-| Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlight` (the gliding highlight), `FluidLabel` (cap-height text-box trim), `FluidSelectionBackground` + `FluidSelectionRuns` (merge/split selection) |
+| Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidMotionLayer` + `FluidMotionTarget` (paint layer that reads target rects at paint time), `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlightPainter` (the gliding highlight), `FluidLabel` (cap-height text-box trim), `FluidSelectionPainter` + `FluidSelectionRuns` (merge/split selection) |
 | Components | `FluidButton`, `FluidSwitch`, `FluidCheckbox`, `FluidTabs`, `FluidInput`, `FluidCheckboxGroup`, `FluidToggleGroup` |
 
 Components import only `src/foundation`, `src/primitives` and `src/icons`,

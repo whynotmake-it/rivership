@@ -75,15 +75,13 @@ Widget _sheet(ValueNotifier<Set<int>> selection) => Row(
   ],
 );
 
-/// The selection blocks currently painted (one DecoratedBox each).
+/// The selection blocks the first group's painter holds.
 int _blocks(WidgetTester tester) => tester
-    .widgetList(
-      find.descendant(
-        of: find.byType(FluidSelectionBackground).first,
-        matching: find.byType(DecoratedBox),
-      ),
-    )
-    .length;
+    .renderObject<RenderFluidMotionLayer>(find.byType(FluidMotionLayer).first)
+    .background
+    .whereType<FluidSelectionPainter>()
+    .single
+    .debugBlockCount;
 
 void main() {
   group('FluidSelectionRuns', () {
@@ -121,7 +119,7 @@ void main() {
       expect(_blocks(tester), 1, reason: 'committed to one block');
     });
 
-    testWidgets('split pins at the seam, then diverges into two', (
+    testWidgets('split starts at the seam and diverges into two', (
       tester,
     ) async {
       final selection = ValueNotifier<Set<int>>({0, 1, 2, 3, 4});
@@ -170,9 +168,8 @@ void main() {
 
       // Split: {0..4} - 2.
       selection.value = {0, 1, 3, 4};
+      // The halves start at the seam and diverge from the first frame.
       await tester.pump();
-      // Pinned at the seam for one frame, then the halves diverge.
-      await tester.pump(const Duration(milliseconds: 16));
       await tester.pump(const Duration(milliseconds: 40));
       await expectSheetGolden(
         tester,

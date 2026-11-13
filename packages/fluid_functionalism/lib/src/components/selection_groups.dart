@@ -11,7 +11,7 @@ import 'package:motor/motor.dart';
 /// A vertical list of checkable rows (`registry/radix/checkbox-group.tsx`).
 ///
 /// Checked rows that touch share one rounded background
-/// ([FluidSelectionBackground]); checking the row between two runs merges
+/// ([FluidSelectionPainter]); checking the row between two runs merges
 /// them, unchecking a row inside a run splits it. The fluid hover highlight
 /// glides over the rows on top of that.
 class FluidCheckboxGroup extends StatelessWidget {
@@ -50,17 +50,9 @@ class FluidCheckboxGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FluidTheme.of(context);
     final sizes = FluidTheme.sizesOf(context, density: density);
-    return FluidHoverRegion(
-      backgroundBuilder: (context, state) => Stack(
-        children: [
-          FluidSelectionBackground(
-            selected: values,
-            rects: state.isMeasured ? state.rects : const {},
-            motion: motion,
-          ),
-          FluidHoverRegion.defaultHighlight(context, state),
-        ],
-      ),
+    return _SelectionRegion(
+      selected: values,
+      motion: motion,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -204,19 +196,10 @@ class FluidToggleGroup extends StatelessWidget {
     final colors = theme.colors;
     final sizes = FluidTheme.sizesOf(context, density: density);
     final tokens = FluidTheme.motionOf(context, override: motion);
-    return FluidHoverRegion(
-      axis: FluidHoverAxis.x,
-      backgroundBuilder: (context, state) => Stack(
-        children: [
-          FluidSelectionBackground(
-            selected: selected,
-            rects: state.isMeasured ? state.rects : const {},
-            axis: Axis.horizontal,
-            motion: motion,
-          ),
-          FluidHoverRegion.defaultHighlight(context, state),
-        ],
-      ),
+    return _SelectionRegion(
+      selected: selected,
+      axis: Axis.horizontal,
+      motion: motion,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -268,6 +251,53 @@ class FluidToggleGroup extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// A hover region whose items also paint merged selection blocks behind the
+/// hover highlight, both on the region's `FluidMotionLayer`.
+class _SelectionRegion extends StatefulWidget {
+  const _SelectionRegion({
+    required this.selected,
+    required this.motion,
+    required this.child,
+    this.axis = Axis.vertical,
+  });
+
+  final Set<int> selected;
+  final FluidMotionThemeData? motion;
+  final Axis axis;
+  final Widget child;
+
+  @override
+  State<_SelectionRegion> createState() => _SelectionRegionState();
+}
+
+class _SelectionRegionState extends State<_SelectionRegion>
+    with TickerProviderStateMixin {
+  late final _selection = FluidSelectionPainter(vsync: this);
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluidTheme.of(context);
+    _selection.update(
+      selected: widget.selected,
+      axis: widget.axis,
+      color: theme.colors.active,
+      radius: theme.shape.item,
+      motion: FluidTheme.motionOf(context, override: widget.motion),
+    );
+    return FluidHoverRegion(
+      axis: widget.axis == Axis.vertical ? FluidHoverAxis.y : FluidHoverAxis.x,
+      background: [_selection],
+      child: widget.child,
     );
   }
 }

@@ -82,7 +82,20 @@ class FluidTabs extends StatefulWidget {
   State<FluidTabs> createState() => _FluidTabsState();
 }
 
-class _FluidTabsState extends State<FluidTabs> {
+class _FluidTabsState extends State<FluidTabs> with TickerProviderStateMixin {
+  late final _selectedPill = FluidHighlightPainter(
+    vsync: this,
+    debugLabel: 'FluidTabs.selected',
+  );
+  late final _hoverPill = FluidHighlightPainter(
+    vsync: this,
+    debugLabel: 'FluidTabs.hover',
+  );
+  late final _focusRing = FluidHighlightPainter(
+    vsync: this,
+    debugLabel: 'FluidTabs.focus',
+  );
+
   final _nodes = <FocusNode>[];
   final _states = <WidgetStatesController>[];
   int? _focusVisible;
@@ -116,6 +129,9 @@ class _FluidTabsState extends State<FluidTabs> {
 
   @override
   void dispose() {
+    _selectedPill.dispose();
+    _hoverPill.dispose();
+    _focusRing.dispose();
     for (final node in _nodes) {
       node.dispose();
     }
@@ -165,50 +181,56 @@ class _FluidTabsState extends State<FluidTabs> {
         onKeyEvent: _onKey,
         child: FluidHoverRegion(
           axis: FluidHoverAxis.x,
-          backgroundBuilder: (context, state) {
+          highlight: false,
+          background: [_selectedPill, _hoverPill],
+          foreground: [_focusRing],
+          onStateChanged: (state) {
             final hovered = widget.debugHoveredIndex ?? state.activeIndex;
-            final selectedRect = state.rectOf(selected);
-            final hoverRect = hovered != null && hovered != selected
-                ? state.rectOf(hovered)
-                : null;
-            final leftRegion = !state.pointerInside;
-            return Stack(
-              children: [
-                FluidHighlight(
-                  rect: selectedRect,
-                  motion: motion.moderate,
-                  opacity: hoverRect != null ? 0.8 : 1,
-                  fadeIn: false,
-                  color: colors.active,
-                  borderRadius: radius,
+            final hovering = hovered != null && hovered != selected;
+            final fill = BoxDecoration(
+              color: colors.active,
+              borderRadius: radius,
+            );
+            _selectedPill.update(
+              target: selected,
+              motion: motion.moderate,
+              exitMotion: motion.fastExit,
+              exitTravelMotion: motion.moderate,
+              fade: motion.fade,
+              opacity: hovering ? 0.8 : 1,
+              fadeIn: false,
+              decoration: fill,
+            );
+            _hoverPill.update(
+              target: hovering ? hovered : null,
+              session: state.session,
+              from: selected,
+              opacity: 0.4,
+              motion: motion.fast,
+              exitMotion: motion.fastExit,
+              exitTravelMotion: motion.moderate,
+              fade: motion.fade,
+              // Leaving the strip: glide back into the selected pill.
+              exitTo: state.pointerInside ? null : selected,
+              decoration: fill,
+            );
+            _focusRing.update(
+              target: focused,
+              fadeIn: false,
+              motion: motion.fast,
+              exitMotion: motion.fastExit,
+              exitTravelMotion: motion.moderate,
+              fade: motion.fade,
+              inflate: 1 + theme.focusRingWidth,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(theme.shape.focusRing),
+                border: Border.all(
+                  color: colors.focusRing,
+                  width: theme.focusRingWidth,
                 ),
-                FluidHighlight(
-                  rect: hoverRect,
-                  session: state.session,
-                  from: selectedRect,
-                  opacity: 0.4,
-                  color: colors.active,
-                  borderRadius: radius,
-                  motion: motion.fast,
-                  exitMotion: motion.fastExit,
-                  exitTravelMotion: motion.moderate,
-                  // Leaving the strip: glide back into the selected pill.
-                  exitTo: leftRegion ? selectedRect : null,
-                ),
-              ],
+              ),
             );
           },
-          foregroundBuilder: (context, state) => FluidHighlight(
-            rect: state.rectOf(focused)?.inflate(1 + theme.focusRingWidth),
-            fadeIn: false,
-            motion: motion.fast,
-            exitMotion: motion.fastExit,
-            borderRadius: BorderRadius.circular(theme.shape.focusRing),
-            border: Border.all(
-              color: colors.focusRing,
-              width: theme.focusRingWidth,
-            ),
-          ),
           child: Builder(
             builder: (context) {
               final region = FluidHoverRegion.maybeOf(context);
