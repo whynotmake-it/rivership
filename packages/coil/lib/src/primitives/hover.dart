@@ -51,24 +51,23 @@ class CoilHoverState {
   int get hashCode => Object.hash(activeIndex, session, pointerInside);
 }
 
-/// A group of [CoilHoverItem]s that share one highlight gliding between
-/// them: the signature Fluid Functionalism interaction.
+/// Tracks which of its [CoilHoverItem]s is lit, for a list, a tab strip or
+/// a grid.
 ///
-/// The port of `hooks/use-fluid-hover.ts`, on a [CoilMotionLayer]: items
-/// are [CoilMotionTarget]s of the layer, which reads their rects at paint
-/// time, so the highlight tracks a resizing or scrolling item in the same
-/// frame without measuring. The region tracks hover-capable pointers and
-/// keyboard focus into items and lights one item at a time; by default a
-/// [CoilHighlightPainter] paints behind the lit item ([highlight]).
-/// Callers add their own painters ([background], [foreground]) and read the
-/// state in [onStateChanged], called while building, to drive them.
+/// An item lights when a hovering pointer is over it, or when it holds
+/// keyboard focus. Touch never lights an item. Read the state with
+/// [CoilHoverRegion.maybeOf] from any descendant. The region paints
+/// nothing: put a [CoilHoverHighlight] (or your own [CoilMotionLayer]) between
+/// the region and the items.
 ///
 /// ```dart
 /// CoilHoverRegion(
-///   child: Column(children: [
-///     for (final (i, label) in labels.indexed)
-///       CoilHoverItem(index: i, child: MenuRow(label)),
-///   ]),
+///   child: CoilHoverHighlight(
+///     child: Column(children: [
+///       for (final (i, label) in labels.indexed)
+///         CoilHoverItem(index: i, child: Text(label)),
+///     ]),
+///   ),
 /// )
 /// ```
 class CoilHoverRegion extends StatefulWidget {
@@ -79,53 +78,27 @@ class CoilHoverRegion extends StatefulWidget {
     this.axis = CoilHoverAxis.y,
     this.nearest = false,
     this.followFocus = true,
-    this.background = const [],
-    this.foreground = const [],
-    this.highlight = true,
-    this.onStateChanged,
-    this.onActiveIndexChanged,
     this.activeItem,
-    this.highlightColor,
-    this.highlightRadius,
+    this.onActiveIndexChanged,
   });
-
-  /// The highlight's color; the theme's `hover` tint when null.
-  final Color? highlightColor;
-
-  /// The highlight's corner radius; the theme's item radius when null.
-  final double? highlightRadius;
-
-  /// Shares the lit item with a list's [CoilActiveItemController]: hovering
-  /// pointers write into it (via [CoilModality.pointer]) and the highlight
-  /// paints whatever it holds, including items the keyboard made active. A
-  /// pointer leaving the region clears an item it set.
-  final CoilActiveItemController? activeItem;
 
   /// The items, anywhere below.
   final Widget child;
 
-  /// The axis for [nearest].
+  /// The axis [nearest] measures along.
   final CoilHoverAxis axis;
 
-  /// Whether empty space (gaps, padding) lights the nearest item. Off by
+  /// Whether empty space between items lights the nearest one. Off by
   /// default: only the item under the pointer lights.
   final bool nearest;
 
-  /// Whether an item gaining focus lights it.
+  /// Whether an item that gets keyboard focus lights.
   final bool followFocus;
 
-  /// Painters behind the items (and behind the default highlight).
-  final List<CoilLayerPainter> background;
-
-  /// Painters in front of the items.
-  final List<CoilLayerPainter> foreground;
-
-  /// Whether the region paints its own hover highlight.
-  final bool highlight;
-
-  /// Called while the region builds, with its current state, so callers can
-  /// update their painters.
-  final ValueChanged<CoilHoverState>? onStateChanged;
+  /// Shares the lit item with a list's [CoilActiveItemController]. Hovering
+  /// writes into it, and items the keyboard makes active light too. A
+  /// pointer leaving the region clears an item it set.
+  final CoilActiveItemController? activeItem;
 
   /// Called when the lit item changes.
   final ValueChanged<int?>? onActiveIndexChanged;
@@ -138,13 +111,7 @@ class CoilHoverRegion extends StatefulWidget {
   State<CoilHoverRegion> createState() => _CoilHoverRegionState();
 }
 
-class _CoilHoverRegionState extends State<CoilHoverRegion>
-    with TickerProviderStateMixin {
-  final _layer = CoilMotionLayerHandle();
-  late final _highlight = CoilHighlightPainter(
-    vsync: this,
-    debugLabel: 'CoilHoverRegion',
-  );
+class _CoilHoverRegionState extends State<CoilHoverRegion> {
   final _items = <int, _CoilHoverItemState>{};
   final _focused = <int>{};
   int? _activeIndex;
@@ -164,19 +131,30 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
     if (_items[index] != item) return;
     _items.remove(index);
     _focused.remove(index);
-    // Called during unmount: no setState. The highlight stops painting a
-    // target that is gone, and the next build sees the cleared index.
+    // Called during unmount: no setState. The next build sees the cleared
+    // index.
     if (_activeIndex == index) _activeIndex = null;
   }
 
+  /// Lights [index] (or nothing). A shared [CoilActiveItemController] is
+  /// the source of truth when there is one; [_show] applies its value.
   void _setActive(int? index) {
     final controller = widget.activeItem;
-    if (controller != null) {
-      if (index == null && controller.via == CoilModality.keyboard) return;
-      controller.activate(index, via: CoilModality.pointer);
-      return; // _onController picks it up.
+    if (controller == null) {
+      _show(index);
+      return;
     }
+    if (index == null && controller.via == CoilModality.keyboard) return;
+    controller.activate(index, via: CoilModality.pointer);
+  }
+
+  void _onController() => _show(widget.activeItem?.index);
+
+  void _show(int? index) {
     if (index == _activeIndex) return;
+    // A new session starts when something lights after nothing was, or on
+    // the first light after the pointer entered: the highlight then fades
+    // in where it is instead of sliding over.
     if (index != null && (_activeIndex == null || _sessionPending)) {
       _session++;
       _sessionPending = false;
@@ -186,13 +164,19 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   }
 
   int? _hitTest(Offset position) {
+    final region = context.findRenderObject();
+    if (region is! RenderBox) return null;
     int? best;
     var bestDistance = double.infinity;
-    for (final index in _layer.indices) {
-      if (_items[index]?.widget.enabled != true) continue;
-      // Between frames layout is clean, so the layer's rects are current.
-      final rect = _layer.rectOf(index);
-      if (rect == null) continue;
+    for (final MapEntry(key: index, value: item) in _items.entries) {
+      if (!item.widget.enabled) continue;
+      // Between frames layout is clean, so the items' boxes are current.
+      final box = item.context.findRenderObject();
+      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+      final rect = MatrixUtils.transformRect(
+        box.getTransformTo(region),
+        Offset.zero & box.size,
+      );
       if (rect.contains(position)) return index;
       if (!widget.nearest) continue;
       final distance = switch (widget.axis) {
@@ -212,17 +196,16 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   // a highlight behind where the finger lifted.
   void _onEnter(PointerEnterEvent event) {
     if (!CoilInputModality.canHover(event.kind)) return;
-    _pointerInside = true;
     _sessionPending = true;
+    if (!_pointerInside) setState(() => _pointerInside = true);
   }
 
   void _onHover(PointerHoverEvent event) {
     if (!CoilInputModality.canHover(event.kind)) return;
     if (!_pointerInside) _onEnter(PointerEnterEvent.fromMouseEvent(event));
-    final index = _hitTest(event.localPosition);
-    // Over empty space without `nearest`, the highlight leaves: a
-    // keyboard-focused item keeps it though, like the web's blur handling.
-    _setActive(index ?? _focusLitIndex);
+    // Over empty space the highlight leaves, unless an item holds keyboard
+    // focus.
+    _setActive(_hitTest(event.localPosition) ?? _focusLitIndex);
   }
 
   void _onExit(PointerExitEvent event) {
@@ -232,7 +215,7 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   }
 
   /// The focused item, if focus should light it: only while the keyboard
-  /// drives focus (`:focus-visible`), never after a tap or click.
+  /// drives focus, never after a tap or click.
   int? get _focusLitIndex =>
       widget.followFocus &&
           _focused.isNotEmpty &&
@@ -243,17 +226,6 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   void _onModality() {
     if (!mounted || _pointerInside) return;
     _setActive(_focusLitIndex);
-  }
-
-  void _onController() {
-    final index = widget.activeItem?.index;
-    if (index == _activeIndex) return;
-    if (index != null && (_activeIndex == null || _sessionPending)) {
-      _session++;
-      _sessionPending = false;
-    }
-    setState(() => _activeIndex = index);
-    widget.onActiveIndexChanged?.call(index);
   }
 
   @override
@@ -278,7 +250,6 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   void dispose() {
     widget.activeItem?.removeListener(_onController);
     CoilInputModality.instance.removeListener(_onModality);
-    _highlight.dispose();
     super.dispose();
   }
 
@@ -293,42 +264,95 @@ class _CoilHoverRegionState extends State<CoilHoverRegion>
   }
 
   @override
+  Widget build(BuildContext context) => _CoilHoverScope(
+    region: this,
+    state: _state,
+    child: MouseRegion(
+      onEnter: _onEnter,
+      onHover: _onHover,
+      onExit: _onExit,
+      child: widget.child,
+    ),
+  );
+}
+
+/// The default gliding highlight for a [CoilHoverRegion]: a fill behind the
+/// lit item that glides between items and fades in where a new hover
+/// starts.
+///
+/// Put it between the region and the items. It hosts the region's
+/// [CoilMotionLayer], so pass any other decorations that share the layer
+/// (selection blocks, a focus ring) as [background] and [foreground].
+/// Inside a scroll view, put it in the scrolled content so the highlight
+/// moves with the rows.
+class CoilHoverHighlight extends StatefulWidget {
+  /// Creates the highlight.
+  const CoilHoverHighlight({
+    required this.child,
+    super.key,
+    this.color,
+    this.radius,
+    this.background = const [],
+    this.foreground = const [],
+  });
+
+  /// The items.
+  final Widget child;
+
+  /// The fill; the theme's `hover` tint when null.
+  final Color? color;
+
+  /// The corner radius; the theme's item radius when null.
+  final double? radius;
+
+  /// Painters behind the items, under the highlight.
+  final List<CoilLayerPainter> background;
+
+  /// Painters in front of the items.
+  final List<CoilLayerPainter> foreground;
+
+  @override
+  State<CoilHoverHighlight> createState() => _CoilHoverHighlightState();
+}
+
+class _CoilHoverHighlightState extends State<CoilHoverHighlight>
+    with TickerProviderStateMixin {
+  late final _highlight = CoilHighlightPainter(
+    vsync: this,
+    debugLabel: 'CoilHoverHighlight',
+  );
+
+  @override
+  void dispose() {
+    _highlight.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final state = _state;
-    widget.onStateChanged?.call(state);
+    final state = CoilHoverRegion.maybeOf(context);
     final theme = CoilTheme.of(context);
     final motion = CoilTheme.motionOf(context);
     _highlight.update(
-      target: widget.highlight ? state.activeIndex : null,
-      session: state.session,
+      target: state?.activeIndex,
+      session: state?.session ?? 0,
       motion: motion.quick,
       exitMotion: motion.quickExit,
       exitTravelMotion: motion.standard,
       fade: motion.fade,
       decoration: ShapeDecoration(
-        color: widget.highlightColor ?? theme.colors.hover,
+        color: widget.color ?? theme.colors.hover,
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(
-            widget.highlightRadius ??
-                theme.shape.radii(CoilTheme.tierOf(context)).item,
+            widget.radius ?? CoilTheme.radiiOf(context).item,
           ),
         ),
       ),
     );
-    return _CoilHoverScope(
-      region: this,
-      state: state,
-      child: MouseRegion(
-        onEnter: _onEnter,
-        onHover: _onHover,
-        onExit: _onExit,
-        child: CoilMotionLayer(
-          handle: _layer,
-          background: [...widget.background, _highlight],
-          foreground: widget.foreground,
-          child: widget.child,
-        ),
-      ),
+    return CoilMotionLayer(
+      background: [...widget.background, _highlight],
+      foreground: widget.foreground,
+      child: widget.child,
     );
   }
 }
@@ -345,14 +369,13 @@ class _CoilHoverScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_CoilHoverScope oldWidget) =>
-      oldWidget.state.activeIndex != state.activeIndex ||
-      oldWidget.state.session != state.session;
+      oldWidget.state != state;
 }
 
 /// One item of a [CoilHoverRegion].
 ///
-/// Registers [child]'s box under [index] and reports when anything inside
-/// it gains or loses focus, so keyboard focus moves the highlight too.
+/// Registers [child] under [index] for hit testing and for the painters of
+/// the nearest [CoilMotionLayer]. Focus inside it lights it too.
 class CoilHoverItem extends StatefulWidget {
   /// Creates a hover item.
   const CoilHoverItem({

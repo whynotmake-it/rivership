@@ -35,46 +35,48 @@ class _Menu extends StatelessWidget {
     return SizedBox(
       width: 220,
       child: CoilHoverRegion(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final (i, label) in _labels.indexed)
-              CoilHoverItem(
-                index: i,
-                child: Builder(
-                  builder: (context) {
-                    final active = CoilHoverItem.isActive(context, i);
-                    final color = active
-                        ? colors.foreground
-                        : colors.mutedForeground;
-                    return SizedBox(
-                      height: sizes.controlHeight,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: sizes.itemPaddingX,
-                        ),
-                        child: Row(
-                          spacing: sizes.gap,
-                          children: [
-                            IconTheme(
-                              data: IconThemeData(color: color, size: 16),
-                              child: TestIcon(_icons[i]),
-                            ),
-                            Text(
-                              label,
-                              style: const CoilTypography().style(
-                                sizes.body,
-                                color: color,
+        child: CoilHoverHighlight(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (i, label) in _labels.indexed)
+                CoilHoverItem(
+                  index: i,
+                  child: Builder(
+                    builder: (context) {
+                      final active = CoilHoverItem.isActive(context, i);
+                      final color = active
+                          ? colors.foreground
+                          : colors.mutedForeground;
+                      return SizedBox(
+                        height: sizes.controlHeight,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: sizes.itemPaddingX,
+                          ),
+                          child: Row(
+                            spacing: sizes.gap,
+                            children: [
+                              IconTheme(
+                                data: IconThemeData(color: color, size: 16),
+                                child: TestIcon(_icons[i]),
                               ),
-                            ),
-                          ],
+                              Text(
+                                label,
+                                style: const CoilTypography().style(
+                                  sizes.body,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

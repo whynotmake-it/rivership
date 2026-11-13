@@ -4,37 +4,55 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/paint_probe.dart';
 
-/// A list whose width and first-row height the test changes.
-class _List extends StatelessWidget {
-  const _List({required this.width, required this.firstRowHeight});
+const _red = Color(0xFFFF0000);
+const _white = Color(0xFFFFFFFF);
+final _boundary = find.byKey(const ValueKey('boundary'));
 
-  final double width;
-  final double firstRowHeight;
-
-  @override
-  Widget build(BuildContext context) => WidgetsApp(
+/// Ten rows in a region with a red highlight. [scroll] puts them in a
+/// short scroll view.
+Widget _list({
+  double width = 200,
+  double firstRowHeight = 36,
+  ScrollController? scroll,
+}) {
+  Widget rows = CoilHoverHighlight(
+    color: _red,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < 10; i++)
+          CoilHoverItem(
+            index: i,
+            child: SizedBox(
+              height: i == 0 ? firstRowHeight : 36,
+              child: Text('Row $i'),
+            ),
+          ),
+      ],
+    ),
+  );
+  if (scroll != null) {
+    rows = SizedBox(
+      height: 120,
+      child: SingleChildScrollView(controller: scroll, child: rows),
+    );
+  }
+  return WidgetsApp(
     color: const Color(0xFF000000),
     builder: (context, _) => CoilTheme(
       data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          width: width,
-          child: CoilHoverRegion(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < 3; i++)
-                  CoilHoverItem(
-                    index: i,
-                    child: SizedBox(
-                      height: i == 0 ? firstRowHeight : 36,
-                      child: Text('Row $i'),
-                    ),
-                  ),
-              ],
+      child: RepaintBoundary(
+        key: const ValueKey('boundary'),
+        child: ColoredBox(
+          color: _white,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: CoilHoverRegion(child: rows),
             ),
           ),
         ),
@@ -43,31 +61,71 @@ class _List extends StatelessWidget {
   );
 }
 
+/// A point near row [i]'s right end, clear of its text.
+Offset _rowPoint(WidgetTester tester, int i) =>
+    tester
+        .getRect(
+          find
+              .ancestor(
+                of: find.text('Row $i'),
+                matching: find.byType(SizedBox),
+              )
+              .first,
+        )
+        .centerRight -
+    const Offset(4, 0);
+
 void main() {
-  testWidgets('the highlight tracks a resized container in the same frame', (
+  testWidgets('the highlight follows its row when the list resizes', (
     tester,
   ) async {
-    await tester.pumpWidget(const _List(width: 200, firstRowHeight: 36));
+    await tester.pumpWidget(_list());
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     addTearDown(mouse.removePointer);
     await mouse.addPointer(location: const Offset(400, 400));
-    await mouse.moveTo(tester.getCenter(find.text('Row 1')));
+    await mouse.moveTo(_rowPoint(tester, 1));
+    await settle(tester);
+    expect(
+      isNear(await colorAt(tester, _boundary, _rowPoint(tester, 1)), _red),
+      isTrue,
+    );
+    expect(
+      isNear(await colorAt(tester, _boundary, _rowPoint(tester, 0)), _white),
+      isTrue,
+    );
+
+    // Wider and with a taller first row: one frame later the highlight
+    // already sits on row 1's new place.
+    await tester.pumpWidget(_list(width: 320, firstRowHeight: 60));
+    expect(
+      isNear(await colorAt(tester, _boundary, _rowPoint(tester, 1)), _red),
+      isTrue,
+    );
+    expect(
+      isNear(await colorAt(tester, _boundary, const Offset(316, 40)), _white),
+      isTrue,
+    );
+  });
+
+  testWidgets('the highlight stays on its row while the list scrolls under '
+      'a resting pointer', (tester) async {
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(_list(scroll: scroll));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(400, 400));
+    await mouse.moveTo(_rowPoint(tester, 1));
     await settle(tester);
 
-    RenderCoilMotionLayer layer() =>
-        tester.renderObject(find.byType(CoilMotionLayer));
-    CoilHighlightPainter highlight() =>
-        layer().background.whereType<CoilHighlightPainter>().single;
-
-    expect(highlight().debugLastPaintedRect, layer().rectOf(1));
-    expect(layer().rectOf(1), const Rect.fromLTWH(0, 36, 200, 36));
-
-    // Resize: wider container, taller first row (pushes row 1 down). One
-    // frame later the highlight already sits on row 1's new rect: no
-    // measuring pass, no extra frame.
-    await tester.pumpWidget(const _List(width: 320, firstRowHeight: 60));
-    final row1 = layer().rectOf(1);
-    expect(row1, const Rect.fromLTWH(0, 60, 320, 36));
-    expect(highlight().debugLastPaintedRect, row1);
+    scroll.jumpTo(10);
+    await tester.pump();
+    final row = _rowPoint(tester, 1);
+    expect(isNear(await colorAt(tester, _boundary, row), _red), isTrue);
+    // Just below the row's new bottom edge, where it used to be: no fill.
+    expect(
+      isNear(await colorAt(tester, _boundary, row + const Offset(0, 22)), _red),
+      isFalse,
+    );
   });
 }

@@ -310,18 +310,22 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
               child: CoilHoverRegion(
                 activeItem: _active,
                 followFocus: false,
-                highlightColor: style.highlight,
-                highlightRadius: style.radius,
-                background: [
-                  if (widget.multiple) _blocks else _selectedFill,
-                ],
-                foreground: [_ring],
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(metrics.popupInset),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: rows,
+                  // The layer scrolls with the rows, so the highlight, the
+                  // selection and the ring stay on their rows.
+                  child: CoilHoverHighlight(
+                    color: style.highlight,
+                    radius: style.radius,
+                    background: [
+                      if (widget.multiple) _blocks else _selectedFill,
+                    ],
+                    foreground: [_ring],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: rows,
+                    ),
                   ),
                 ),
               ),
