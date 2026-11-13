@@ -297,6 +297,7 @@ spatial token.
 | 2026-11-13 | `CoilBlurFade` (blur, scale-down, fade, optional offset) is coil's transition and the default enter/exit for overlays; `CoilBlurFade.transition()` fits `MotionSwitcher.transitionBuilder`; opacity and blur clamp, scale and offset use the raw presence | `motor_widgets` holds only Flutter equivalents |
 | 2026-11-13 | Groups take `children` + `values` (`CoilCheckboxGroup`, `CoilToggleGroup`) | composition uses `children`; sets use `values` |
 | 2026-11-13 | A text field shows its focus border however it was focused | as `:focus-visible` does for inputs; every other control shows the ring only after keyboard use |
+| 2026-11-13 | `CoilSlider` follows Flutter's `Slider` (`value`, `onChanged`, `min`, `max`, `divisions`, `onChangeStart`, `onChangeEnd`) with two differences: `label` is the row's `Widget`, not the value-indicator string, and `valueFormatter` replaces both that string and `semanticFormatterCallback`. The pill is a `variant`, not a size | a Flutter user would guess `label` is a string; size must not change anatomy |
 
 ## 10. Open questions
 

@@ -4,25 +4,22 @@ import 'package:flutter/widgets.dart';
 /// Overrides for how a `CoilSlider` looks; unset fields come from
 /// [CoilSliderStyle.fallback].
 ///
-/// The colors resolve these states:
-///
-/// * [handle]: [WidgetState.hovered], [WidgetState.focused],
-///   [WidgetState.pressed].
-/// * [label] and [value]: [WidgetState.hovered], [WidgetState.focused],
-///   [WidgetState.pressed] (any of them turns the text to foreground).
-/// * [pip]: [WidgetState.selected] for the pip at the value.
+/// [handle], [label] and [value] resolve [WidgetState.hovered],
+/// [WidgetState.focused] and [WidgetState.pressed].
 class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// Creates a slider style.
   const CoilSliderStyle({
     this.fill,
-    this.compactFill,
+    this.pillFill,
     this.border,
     this.handle,
     this.pip,
+    this.activePip,
     this.label,
     this.value,
     this.preview,
     this.knob,
+    this.knobShadows,
     this.bubble,
     this.bubbleText,
     this.textStyle,
@@ -30,23 +27,22 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.radius,
     this.knobSize,
     this.knobBox,
-    this.compactTrackHeight,
+    this.pillHeight,
     this.pipSize,
+    this.pipGrowth,
+    this.handleWidth,
+    this.handleInset,
+    this.bubbleGap,
+    this.bubblePadding,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
   factory CoilSliderStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     final touch = metrics.tier == CoilTier.touch;
-    final active = WidgetStateProperty.resolveWith<bool>(
-      (s) =>
-          s.contains(WidgetState.hovered) ||
-          s.contains(WidgetState.focused) ||
-          s.contains(WidgetState.pressed),
-    );
     return CoilSliderStyle(
       fill: c.active,
-      compactFill: theme.brightness == Brightness.dark
+      pillFill: theme.brightness == Brightness.dark
           ? c.accent.withValues(alpha: 0.4)
           : c.selected.withValues(alpha: 0.5),
       border: c.border,
@@ -57,19 +53,29 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
             ? c.foreground.withValues(alpha: 0.5)
             : c.foreground.withValues(alpha: 0.25),
       ),
-      pip: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected)
-            ? c.foreground
-            : c.mutedForeground.withValues(alpha: 0.3),
-      ),
+      pip: c.mutedForeground.withValues(alpha: 0.3),
+      activePip: c.foreground,
       label: WidgetStateProperty.resolveWith(
-        (s) => active.resolve(s) ? c.foreground : c.mutedForeground,
+        (s) => s.isEmpty ? c.mutedForeground : c.foreground,
       ),
       value: WidgetStateProperty.resolveWith(
-        (s) => active.resolve(s) ? c.foreground : c.mutedForeground,
+        (s) => s.isEmpty ? c.mutedForeground : c.foreground,
       ),
       preview: c.brand.withValues(alpha: 0.4),
       knob: const Color(0xFFFFFFFF),
+      knobShadows: const [
+        BoxShadow(
+          color: Color(0x1A000000),
+          offset: Offset(0, 1),
+          blurRadius: 3,
+        ),
+        BoxShadow(
+          color: Color(0x1A000000),
+          offset: Offset(0, 1),
+          blurRadius: 2,
+          spreadRadius: -1,
+        ),
+      ],
       bubble: c.foreground,
       bubbleText: c.background,
       textStyle: theme.typography.style(metrics.body),
@@ -77,25 +83,33 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
       radius: theme.shape.radii(metrics.tier).item,
       knobSize: touch ? 22 : 16,
       knobBox: touch ? 44 : 20,
-      compactTrackHeight: 18,
+      pillHeight: 18,
       pipSize: 5,
+      pipGrowth: 0.4,
+      handleWidth: 2,
+      handleInset: 8,
+      bubbleGap: 8,
+      bubblePadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
-  /// The comfortable row's fill, up to the value.
+  /// The row's fill, up to the value.
   final Color? fill;
 
-  /// The compact track's fill.
-  final Color? compactFill;
+  /// The pill track's fill.
+  final Color? pillFill;
 
-  /// The 1 px outline of the row and the compact track.
+  /// The 1 px outline of the row and the pill.
   final Color? border;
 
-  /// The handle line of the comfortable row.
+  /// The handle line of the row.
   final WidgetStateProperty<Color?>? handle;
 
   /// A pip dot.
-  final WidgetStateProperty<Color?>? pip;
+  final Color? pip;
+
+  /// The pip dot at the value.
+  final Color? activePip;
 
   /// The label color.
   final WidgetStateProperty<Color?>? label;
@@ -106,13 +120,16 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// The hover preview bar.
   final Color? preview;
 
-  /// The compact knob.
+  /// The pill's knob.
   final Color? knob;
+
+  /// The pill knob's shadows.
+  final List<BoxShadow>? knobShadows;
 
   /// The value bubble's fill.
   final Color? bubble;
 
-  /// The value bubble's text.
+  /// The value bubble's text color.
   final Color? bubbleText;
 
   /// The label and value text style (color from [label] and [value]).
@@ -124,31 +141,48 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// The row's and bubble's corner radius.
   final double? radius;
 
-  /// The compact knob's visual diameter.
+  /// The pill knob's visual diameter.
   final double? knobSize;
 
-  /// The compact knob's box (its hit area is this tall).
+  /// The pill knob's box; its hit area is this tall.
   final double? knobBox;
 
-  /// The compact track's height.
-  final double? compactTrackHeight;
+  /// The pill track's height.
+  final double? pillHeight;
 
   /// A pip's diameter.
   final double? pipSize;
+
+  /// How much larger the pip at the value is, as a fraction of [pipSize].
+  final double? pipGrowth;
+
+  /// The handle line's width.
+  final double? handleWidth;
+
+  /// How far the handle line stops short of the row's top and bottom.
+  final double? handleInset;
+
+  /// The gap between the value bubble and the track.
+  final double? bubbleGap;
+
+  /// The padding inside the value bubble.
+  final EdgeInsets? bubblePadding;
 
   @override
   CoilSliderStyle merge(CoilSliderStyle? other) => other == null
       ? this
       : CoilSliderStyle(
           fill: other.fill ?? fill,
-          compactFill: other.compactFill ?? compactFill,
+          pillFill: other.pillFill ?? pillFill,
           border: other.border ?? border,
           handle: other.handle ?? handle,
           pip: other.pip ?? pip,
+          activePip: other.activePip ?? activePip,
           label: other.label ?? label,
           value: other.value ?? value,
           preview: other.preview ?? preview,
           knob: other.knob ?? knob,
+          knobShadows: other.knobShadows ?? knobShadows,
           bubble: other.bubble ?? bubble,
           bubbleText: other.bubbleText ?? bubbleText,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
@@ -158,21 +192,28 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           radius: other.radius ?? radius,
           knobSize: other.knobSize ?? knobSize,
           knobBox: other.knobBox ?? knobBox,
-          compactTrackHeight: other.compactTrackHeight ?? compactTrackHeight,
+          pillHeight: other.pillHeight ?? pillHeight,
           pipSize: other.pipSize ?? pipSize,
+          pipGrowth: other.pipGrowth ?? pipGrowth,
+          handleWidth: other.handleWidth ?? handleWidth,
+          handleInset: other.handleInset ?? handleInset,
+          bubbleGap: other.bubbleGap ?? bubbleGap,
+          bubblePadding: other.bubblePadding ?? bubblePadding,
         );
 
   @override
   List<Object?> get props => [
     fill,
-    compactFill,
+    pillFill,
     border,
     handle,
     pip,
+    activePip,
     label,
     value,
     preview,
     knob,
+    knobShadows,
     bubble,
     bubbleText,
     textStyle,
@@ -180,7 +221,12 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     radius,
     knobSize,
     knobBox,
-    compactTrackHeight,
+    pillHeight,
     pipSize,
+    pipGrowth,
+    handleWidth,
+    handleInset,
+    bubbleGap,
+    bubblePadding,
   ];
 }

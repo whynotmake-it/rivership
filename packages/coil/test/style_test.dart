@@ -147,4 +147,48 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('slider: fallback < theme type override < instance style', (
+    tester,
+  ) async {
+    const red = Color(0xFFFF0000);
+    const blue = Color(0xFF0000FF);
+    Color? labelColor() => DefaultTextStyle.of(
+      tester.element(find.text('Volume')),
+    ).style.color;
+
+    Widget slider({CoilSliderStyle? style}) => SizedBox(
+      width: 200,
+      child: CoilSlider(
+        value: .5,
+        label: const Text('Volume'),
+        onChanged: (_) {},
+        style: style,
+      ),
+    );
+    CoilSliderStyle label(Color c) =>
+        CoilSliderStyle(label: WidgetStateProperty.all(c));
+
+    await tester.pumpWidget(_app(slider()));
+    await tester.pump();
+    expect(labelColor(), CoilThemeData.light.colors.mutedForeground);
+
+    await tester.pumpWidget(
+      _app(
+        slider(),
+        theme: CoilThemeData.light.withComponentStyle(label(red)),
+      ),
+    );
+    await tester.pump();
+    expect(labelColor(), red);
+
+    await tester.pumpWidget(
+      _app(
+        slider(style: label(blue)),
+        theme: CoilThemeData.light.withComponentStyle(label(red)),
+      ),
+    );
+    await tester.pump();
+    expect(labelColor(), blue);
+  });
 }

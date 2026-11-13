@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -134,5 +135,40 @@ void main() {
       ),
     );
     await expectSheetGolden(tester, sheet, 'goldens/high_contrast.png');
+  });
+
+  testWidgets('golden: tabs focus ring in high contrast', (tester) async {
+    final sheet = await pumpSheet(
+      tester,
+      SheetPanel(
+        title: 'Tabs, keyboard focus, high contrast',
+        theme: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+        child: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(highContrast: true),
+            child: FocusScope(
+              autofocus: true,
+              child: CoilTabs(
+                tabs: const [
+                  CoilTab(value: 0, label: 'Day'),
+                  CoilTab(value: 1, label: 'Week'),
+                ],
+                value: 0,
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+      surface: const Size(400, 200),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await settle(tester);
+    await expectSheetGolden(
+      tester,
+      sheet,
+      'goldens/high_contrast_tabs_focus.png',
+    );
   });
 }

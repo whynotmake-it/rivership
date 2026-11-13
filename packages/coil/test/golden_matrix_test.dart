@@ -104,7 +104,7 @@ final Map<String, WidgetBuilder> _stories = {
         ),
         CoilSlider(
           value: .65,
-          size: CoilSize.compact,
+          variant: CoilSliderVariant.pill,
           onChanged: (_) {},
           label: const Text('Zoom'),
           valueFormatter: (v) => '${(v * 100).round()}%',

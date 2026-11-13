@@ -328,21 +328,33 @@ Future<void> _select(WidgetTester tester, Finder finder) async {
 
 Future<void> _slider(WidgetTester tester, Finder finder) async {
   SemanticsData data() => tester.getSemantics(finder).getSemanticsData();
+  double value() => double.parse(data().value);
+  Future<void> press(LogicalKeyboardKey key) async {
+    await tester.sendKeyEvent(key);
+    await tester.pump();
+  }
+
   expect(data().flagsCollection.isSlider, isTrue, reason: 'slider semantics');
   expect(data().hasAction(SemanticsAction.increase), isTrue);
   expect(data().hasAction(SemanticsAction.decrease), isTrue);
-  final before = data().value;
-  expect(before, isNotEmpty, reason: 'a formatted value');
-  await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-  await tester.pump();
-  final up = data().value;
-  expect(up, isNot(before), reason: 'arrow up changes the value');
-  await tester.sendKeyEvent(LogicalKeyboardKey.home);
-  await tester.pump();
-  final home = data().value;
-  await tester.sendKeyEvent(LogicalKeyboardKey.end);
-  await tester.pump();
-  expect(data().value, isNot(home), reason: 'Home and End differ');
-  await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-  await tester.pump();
+
+  await press(LogicalKeyboardKey.home);
+  final min = value();
+  await press(LogicalKeyboardKey.end);
+  final max = value();
+  expect(max, greaterThan(min), reason: 'Home is the minimum, End the maximum');
+
+  await press(LogicalKeyboardKey.home);
+  await press(LogicalKeyboardKey.arrowUp);
+  final arrow = value() - min;
+  expect(arrow, greaterThan(0), reason: 'arrow up raises the value');
+  await press(LogicalKeyboardKey.home);
+  await press(LogicalKeyboardKey.pageUp);
+  expect(
+    value() - min,
+    greaterThan(arrow),
+    reason: 'Page Up moves further than an arrow',
+  );
+  await press(LogicalKeyboardKey.arrowDown);
+  expect(value(), greaterThanOrEqualTo(min));
 }

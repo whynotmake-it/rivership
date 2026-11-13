@@ -17,6 +17,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     this.textStyle,
     this.radius,
     this.minHeight,
+    this.edgeFade,
   });
 
   /// The defaults from the theme's tokens.
@@ -34,6 +35,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,
+      edgeFade: 24,
     );
   }
 
@@ -55,6 +57,9 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// The minimum tab height (tabs grow with text).
   final double? minHeight;
 
+  /// How far an edge fades when more tabs are scrolled out behind it.
+  final double? edgeFade;
+
   @override
   CoilTabsStyle merge(CoilTabsStyle? other) => other == null
       ? this
@@ -65,6 +70,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
           minHeight: other.minHeight ?? minHeight,
+          edgeFade: other.edgeFade ?? edgeFade,
         );
 
   @override
@@ -75,5 +81,6 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     textStyle,
     radius,
     minHeight,
+    edgeFade,
   ];
 }

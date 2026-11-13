@@ -131,6 +131,49 @@ void main() {
       await expectSheetGolden(tester, finder, 'goldens/tabs.png');
     });
 
+    // Hover and focus per variant, posed with a real mouse and real keys.
+    for (final (name, icons, labels, size) in [
+      ('icons', true, CoilTabLabels.always, null),
+      ('active_label', true, CoilTabLabels.selected, null),
+      ('compact', false, CoilTabLabels.always, CoilSize.compact),
+    ]) {
+      testWidgets('hover and focus: $name', (tester) async {
+        final sheet = await pumpSheet(
+          tester,
+          SheetPanel(
+            title: 'Tabs $name: hover Reports, then focus Analytics',
+            theme: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+            child: FocusScope(
+              autofocus: true,
+              child: CoilTabs(
+                tabs: _tabs(icons: icons),
+                value: 0,
+                onChanged: (_) {},
+                labels: labels,
+                size: size,
+              ),
+            ),
+          ),
+          surface: const Size(700, 200),
+        );
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: Offset.zero);
+        // Collapsed tabs have only their icon to point at.
+        final reports = icons
+            ? find.byType(TestIcon).at(2)
+            : find.text('Reports').last;
+        await mouse.moveTo(tester.getCenter(reports));
+        await settle(tester);
+        await expectSheetGolden(tester, sheet, 'goldens/tabs_hover_$name.png');
+        await mouse.moveTo(const Offset(650, 190));
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await settle(tester);
+        await expectSheetGolden(tester, sheet, 'goldens/tabs_focus_$name.png');
+      });
+    }
+
     testWidgets('real mouse hover lights a tab, arrows move focus', (
       tester,
     ) async {

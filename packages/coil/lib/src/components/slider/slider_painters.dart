@@ -1,235 +1,236 @@
 // Internal to CoilSlider; not exported.
-// ignore_for_file: public_member_api_docs, use_key_in_widget_constructors
+// ignore_for_file: public_member_api_docs
 
-import 'dart:math' as math;
-
-import 'package:coil/src/components/slider/slider.dart';
+import 'package:coil/primitives.dart';
+import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:flutter/widgets.dart';
-import 'package:motor/motor.dart';
 
-/// The reach of the handle line from the row's ends.
-const sliderHandleInset = 5.0;
+/// The motion-layer target indices a slider's painters read.
+abstract final class SliderTarget {
+  /// The label text.
+  static const label = 0;
 
-/// Positions the value bubble centered over the thumb, 8 px above the top.
-class SliderBubbleLayout extends SingleChildLayoutDelegate {
-  SliderBubbleLayout({required this.fraction, required this.reach});
+  /// The value text.
+  static const value = 1;
 
-  /// 0..1 from the leading edge, already mirrored for RTL.
-  final double fraction;
-  final (double, double) Function(double width) reach;
+  /// The track box (the whole row, or the pill's box).
+  static const track = 2;
+}
 
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
-      const BoxConstraints();
+/// What a slider painter needs besides the thumb's position.
+@immutable
+class SliderPaintState {
+  const SliderPaintState({
+    required this.reach,
+    required this.rtl,
+    required this.previewFraction,
+    required this.previewOpacity,
+    required this.previewColor,
+  });
 
-  @override
-  Offset getPositionForChild(Size size, Size childSize) {
-    final (start, end) = reach(size.width);
-    final x = start + fraction * (end - start);
-    return Offset(x - childSize.width / 2, -(8 + childSize.height));
+  final SliderReach reach;
+  final bool rtl;
+  final double previewFraction;
+  final double previewOpacity;
+  final Color previewColor;
+}
+
+/// Paints the regular row's pips, fill, hover preview and handle line.
+///
+/// Pips that would sit under the label or the value are left out, so the
+/// text never has dots behind it, on any surface.
+class SliderRowPainter extends CoilLayerPainter {
+  SliderRowPainter({required Listenable thumb, required this.fraction})
+    : _thumb = thumb {
+    thumb.addListener(notifyListeners);
+  }
+
+  final Listenable _thumb;
+  final ValueGetter<double> fraction;
+
+  SliderPaintState? _state;
+  Color _fill = const Color(0x00000000);
+  Color _handle = const Color(0x00000000);
+  double _emphasis = 0;
+  double _handleWidth = 2;
+  double _handleInset = 8;
+  int? _divisions;
+  double _pipSize = 5;
+  double _pipGrowth = 0.4;
+  Color _pip = const Color(0x00000000);
+  Color _activePip = const Color(0x00000000);
+
+  void update({
+    required SliderPaintState state,
+    required Color fill,
+    required Color handle,
+    required double emphasis,
+    required double handleWidth,
+    required double handleInset,
+    required int? pipDivisions,
+    required double pipSize,
+    required double pipGrowth,
+    required Color pip,
+    required Color activePip,
+  }) {
+    _state = state;
+    _fill = fill;
+    _handle = handle;
+    _emphasis = emphasis;
+    _handleWidth = handleWidth;
+    _handleInset = handleInset;
+    _divisions = pipDivisions;
+    _pipSize = pipSize;
+    _pipGrowth = pipGrowth;
+    _pip = pip;
+    _activePip = activePip;
+    notifyListeners();
   }
 
   @override
-  bool shouldRelayout(SliderBubbleLayout old) => old.fraction != fraction;
-}
-
-double _lerp(double a, double b, double t) => a + (b - a) * t;
-
-/// The comfortable row's fill, hover preview and handle line.
-class SliderFillPainter extends CustomPainter {
-  SliderFillPainter({
-    required this.controller,
-    required this.thumb,
-    required this.preview,
-    required this.previewOpacity,
-    required this.fill,
-    required this.previewColor,
-    required this.handle,
-    required this.emphasis,
-    required this.pad,
-    required this.rtl,
-  }) : super(repaint: controller);
-
-  final TrackController controller;
-  final CoilSliderTrack<double> thumb;
-  final CoilSliderTrack<double> preview;
-  final CoilSliderTrack<double> previewOpacity;
-  final Color fill;
-  final Color previewColor;
-  final Color handle;
-  final double emphasis;
-  final double pad;
-  final bool rtl;
+  void dispose() {
+    _thumb.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    double mirror(double x) => rtl ? w - x : x;
-    double xAt(double f) => pad > 0 ? _lerp(pad, w - pad, f) : _lerp(0, w, f);
-    final at = controller.value(thumb).clamp(0.0, 1.0);
-    final edge = xAt(at) + (pad > 0 ? 1 : 0);
+  void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
+    final state = _state;
+    final row = geometry.rectOf(SliderTarget.track);
+    if (state == null || row == null) return;
+    final at = fraction().clamp(0.0, 1.0);
+    final w = row.width;
+    double x(double f) => state.reach.xAt(f, w, rtl: state.rtl);
+    Rect span(double a, double b) => Rect.fromLTRB(
+      offset.dx + (a < b ? a : b),
+      offset.dy,
+      offset.dx + (a < b ? b : a),
+      offset.dy + row.height,
+    );
 
-    Rect span(double a, double b) {
-      final l = mirror(a);
-      final r = mirror(b);
-      return Rect.fromLTRB(math.min(l, r), 0, math.max(l, r), size.height);
+    final divisions = _divisions;
+    if (divisions != null) {
+      final label = geometry.rectOf(SliderTarget.label);
+      final value = geometry.rectOf(SliderTarget.value);
+      final clear = _pipSize * 2;
+      for (var i = 0; i <= divisions; i++) {
+        final f = i / divisions;
+        final cx = x(f);
+        final cy = row.height / 2;
+        bool under(Rect? r) =>
+            r != null && r.inflate(clear).contains(Offset(cx, cy));
+        if (under(label) || under(value)) continue;
+        final near = (1 - (at - f).abs() * divisions).clamp(0.0, 1.0);
+        final d = _pipSize * (1 + _pipGrowth * near);
+        canvas.drawRSuperellipse(
+          RSuperellipse.fromLTRBR(
+            offset.dx + cx - d / 2,
+            offset.dy + cy - d / 2,
+            offset.dx + cx + d / 2,
+            offset.dy + cy + d / 2,
+            Radius.circular(d / 2),
+          ),
+          Paint()..color = Color.lerp(_pip, _activePip, near)!,
+        );
+      }
     }
 
-    canvas.drawRect(span(0, edge), Paint()..color = fill);
-
-    final shown = controller.value(previewOpacity).clamp(0.0, 1.0);
-    if (shown > 0) {
-      final p = xAt(controller.value(preview).clamp(0.0, 1.0));
-      final a = math.min(edge, p);
-      final b = math.max(edge, p);
+    final edge = x(at);
+    canvas.drawRect(span(state.rtl ? w : 0, edge), Paint()..color = _fill);
+    if (state.previewOpacity > 0) {
+      final p = x(state.previewFraction.clamp(0.0, 1.0));
       canvas.drawRect(
-        span(a, b),
+        span(edge, p),
         Paint()
-          ..color = previewColor.withValues(
-            alpha: previewColor.a * shown,
+          ..color = state.previewColor.withValues(
+            alpha: state.previewColor.a * state.previewOpacity,
           ),
       );
     }
 
-    final lineX = mirror(
-      pad > 0 ? xAt(at) : edge.clamp(sliderHandleInset, w - sliderHandleInset),
+    final inset = _handleInset - _emphasis;
+    final half = _handleWidth / 2;
+    final line = edge.clamp(half + 3, w - half - 3);
+    canvas.drawRSuperellipse(
+      RSuperellipse.fromLTRBR(
+        offset.dx + line - half,
+        offset.dy + inset,
+        offset.dx + line + half,
+        offset.dy + row.height - inset,
+        Radius.circular(half),
+      ),
+      Paint()..color = _handle,
     );
-    final inset = 8 - emphasis;
-    final line = RSuperellipse.fromLTRBR(
-      lineX - 1,
-      inset,
-      lineX + 1,
-      size.height - inset,
-      const Radius.circular(1),
-    );
-    canvas.drawRSuperellipse(line, Paint()..color = handle);
+  }
+}
+
+/// Paints the pill track's outline, fill and hover preview.
+class SliderPillPainter extends CoilLayerPainter {
+  SliderPillPainter({required Listenable thumb, required this.fraction})
+    : _thumb = thumb {
+    thumb.addListener(notifyListeners);
+  }
+
+  final Listenable _thumb;
+  final ValueGetter<double> fraction;
+
+  SliderPaintState? _state;
+  Color _fill = const Color(0x00000000);
+  Color _border = const Color(0x00000000);
+  double _height = 18;
+
+  void update({
+    required SliderPaintState state,
+    required Color fill,
+    required Color border,
+    required double height,
+  }) {
+    _state = state;
+    _fill = fill;
+    _border = border;
+    _height = height;
+    notifyListeners();
   }
 
   @override
-  bool shouldRepaint(SliderFillPainter old) =>
-      old.fill != fill ||
-      old.previewColor != previewColor ||
-      old.handle != handle ||
-      old.emphasis != emphasis ||
-      old.pad != pad ||
-      old.rtl != rtl;
-}
-
-/// The dots of the pips variant, the active one in foreground.
-class SliderPipsPainter extends CustomPainter {
-  SliderPipsPainter({
-    required this.controller,
-    required this.thumb,
-    required this.divisions,
-    required this.pad,
-    required this.size,
-    required this.pip,
-    required this.active,
-    required this.rtl,
-  }) : super(repaint: controller);
-
-  final TrackController controller;
-  final CoilSliderTrack<double> thumb;
-  final int divisions;
-  final double pad;
-  final double size;
-  final Color pip;
-  final Color active;
-  final bool rtl;
-
-  @override
-  void paint(Canvas canvas, Size box) {
-    final at = controller.value(thumb).clamp(0.0, 1.0);
-    for (var i = 0; i <= divisions; i++) {
-      final f = i / divisions;
-      final near = (1 - (at - f).abs() * divisions).clamp(0.0, 1.0);
-      var x = _lerp(pad, box.width - pad, f);
-      if (rtl) x = box.width - x;
-      final d = size * (1 + 0.4 * near);
-      canvas.drawRSuperellipse(
-        RSuperellipse.fromLTRBR(
-          x - d / 2,
-          box.height / 2 - d / 2,
-          x + d / 2,
-          box.height / 2 + d / 2,
-          Radius.circular(d / 2),
-        ),
-        Paint()..color = Color.lerp(pip, active, near)!,
-      );
-    }
+  void dispose() {
+    _thumb.removeListener(notifyListeners);
+    super.dispose();
   }
 
   @override
-  bool shouldRepaint(SliderPipsPainter old) =>
-      old.pip != pip ||
-      old.active != active ||
-      old.pad != pad ||
-      old.size != size ||
-      old.divisions != divisions ||
-      old.rtl != rtl;
-}
-
-/// The compact pill track: outline, fill up to the knob and the preview.
-class SliderCompactPainter extends CustomPainter {
-  SliderCompactPainter({
-    required this.controller,
-    required this.thumb,
-    required this.preview,
-    required this.previewOpacity,
-    required this.fill,
-    required this.border,
-    required this.previewColor,
-    required this.trackHeight,
-    required this.box,
-    required this.rtl,
-  }) : super(repaint: controller);
-
-  final TrackController controller;
-  final CoilSliderTrack<double> thumb;
-  final CoilSliderTrack<double> preview;
-  final CoilSliderTrack<double> previewOpacity;
-  final Color fill;
-  final Color border;
-  final Color previewColor;
-  final double trackHeight;
-  final double box;
-  final bool rtl;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final top = (size.height - trackHeight) / 2;
+  void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
+    final state = _state;
+    final box = geometry.rectOf(SliderTarget.track);
+    if (state == null || box == null) return;
+    final top = offset.dy + (box.height - _height) / 2;
     final shape = RSuperellipse.fromLTRBR(
-      0,
+      offset.dx,
       top,
-      w,
-      top + trackHeight,
-      Radius.circular(trackHeight / 2),
+      offset.dx + box.width,
+      top + _height,
+      Radius.circular(_height / 2),
     );
-    double mirror(double x) => rtl ? w - x : x;
-    double xAt(double f) => _lerp(box / 2, math.max(box / 2, w - box / 2), f);
-    Rect span(double a, double b) {
-      final l = mirror(a);
-      final r = mirror(b);
-      return Rect.fromLTRB(
-        math.min(l, r),
-        top,
-        math.max(l, r),
-        top + trackHeight,
-      );
-    }
-
-    final edge = xAt(controller.value(thumb).clamp(0.0, 1.0));
+    double x(double f) => state.reach.xAt(f, box.width, rtl: state.rtl);
+    Rect span(double a, double b) => Rect.fromLTRB(
+      offset.dx + (a < b ? a : b),
+      top,
+      offset.dx + (a < b ? b : a),
+      top + _height,
+    );
+    final edge = x(fraction().clamp(0.0, 1.0));
     canvas
       ..save()
       ..clipRSuperellipse(shape)
-      ..drawRect(span(0, edge), Paint()..color = fill);
-    final shown = controller.value(previewOpacity).clamp(0.0, 1.0);
-    if (shown > 0) {
-      final p = xAt(controller.value(preview).clamp(0.0, 1.0));
+      ..drawRect(span(state.rtl ? box.width : 0, edge), Paint()..color = _fill);
+    if (state.previewOpacity > 0) {
+      final p = x(state.previewFraction.clamp(0.0, 1.0));
       canvas.drawRect(
-        span(math.min(edge, p), math.max(edge, p)),
-        Paint()..color = previewColor.withValues(alpha: previewColor.a * shown),
+        span(edge, p),
+        Paint()
+          ..color = state.previewColor.withValues(
+            alpha: state.previewColor.a * state.previewOpacity,
+          ),
       );
     }
     canvas
@@ -239,16 +240,39 @@ class SliderCompactPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1
-          ..color = border,
+          ..color = _border,
       );
   }
+}
+
+/// Positions the value bubble centered over the thumb, [gap] above the top.
+class SliderBubbleLayout extends SingleChildLayoutDelegate {
+  SliderBubbleLayout({
+    required this.fraction,
+    required this.reach,
+    required this.rtl,
+    required this.gap,
+  });
+
+  final double fraction;
+  final SliderReach reach;
+  final bool rtl;
+  final double gap;
 
   @override
-  bool shouldRepaint(SliderCompactPainter old) =>
-      old.fill != fill ||
-      old.border != border ||
-      old.previewColor != previewColor ||
-      old.trackHeight != trackHeight ||
-      old.box != box ||
-      old.rtl != rtl;
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      const BoxConstraints();
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) => Offset(
+    reach.xAt(fraction, size.width, rtl: rtl) - childSize.width / 2,
+    -(gap + childSize.height),
+  );
+
+  @override
+  bool shouldRelayout(SliderBubbleLayout old) =>
+      old.fraction != fraction ||
+      old.reach != reach ||
+      old.rtl != rtl ||
+      old.gap != gap;
 }
