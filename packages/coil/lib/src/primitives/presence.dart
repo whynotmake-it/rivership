@@ -42,8 +42,20 @@ mixin CoilSpringRoute<T> on TransitionRoute<T> {
 /// shrinks a little toward [alignment] as [presence] goes from 1 to 0.
 ///
 /// [presence] is any 0→1 animation driven by a spring (a [CoilSpringRoute]'s
-/// animation, a `MotionSwitcher` child's). Values past 1 from a bouncy
-/// spring overshoot the scale and offset, and clamp the opacity and blur.
+/// animation, a `MotionSwitcher` child's). A spring may overshoot 0–1:
+/// opacity and blur are clamped, scale and offset use the raw value so a
+/// bouncy spring visibly bounces.
+///
+/// As a `MotionSwitcher` transition:
+///
+/// ```dart
+/// MotionSwitcher(
+///   motion: motion.fade,
+///   exitMotion: motion.fadeExit,
+///   transitionBuilder: CoilBlurFade.transition(),
+///   child: Text(value, key: ValueKey(value)),
+/// )
+/// ```
 class CoilBlurFade extends StatelessWidget {
   /// Creates a blur-fade transition.
   const CoilBlurFade({
@@ -55,6 +67,23 @@ class CoilBlurFade extends StatelessWidget {
     this.offset = Offset.zero,
     this.alignment = Alignment.center,
   });
+
+  /// A transition builder with Flutter's `(child, animation)` signature,
+  /// for `MotionSwitcher` and `AnimatedSwitcher`.
+  static Widget Function(Widget child, Animation<double> animation) transition({
+    double blur = 4,
+    double scale = 0.96,
+    Offset offset = Offset.zero,
+    AlignmentGeometry alignment = Alignment.center,
+  }) =>
+      (child, animation) => CoilBlurFade(
+        presence: animation,
+        blur: blur,
+        scale: scale,
+        offset: offset,
+        alignment: alignment,
+        child: child,
+      );
 
   /// 0 (gone) to 1 (fully present).
   final Animation<double> presence;

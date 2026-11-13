@@ -6,6 +6,7 @@ import 'package:coil/src/foundation/shape.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Changes a parent theme for a subtree. See [CoilTheme.override].
 typedef CoilThemeTransform = CoilThemeData Function(CoilThemeData parent);
@@ -21,7 +22,13 @@ class CoilThemeData with Diagnosticable {
     this.motion = const CoilMotion(),
     this.typography = const CoilTypography(),
     this.focusRingWidth = 1,
+    this.trackMotions = const {},
   });
+
+  /// Theme-level per-track motions for any component, keyed by the
+  /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
+  /// `motions:` win over these; these win over the tokens.
+  final Map<Track<Object>, Motion> trackMotions;
 
   /// The light theme.
   static const light = CoilThemeData();
@@ -66,6 +73,7 @@ class CoilThemeData with Diagnosticable {
     CoilMotion? motion,
     CoilTypography? typography,
     double? focusRingWidth,
+    Map<Track<Object>, Motion>? trackMotions,
   }) => CoilThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
@@ -73,6 +81,7 @@ class CoilThemeData with Diagnosticable {
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
+    trackMotions: trackMotions ?? this.trackMotions,
   );
 
   /// Interpolates two themes, for animated theme changes. Colors and the
@@ -88,6 +97,7 @@ class CoilThemeData with Diagnosticable {
         typography: t < 0.5 ? a.typography : b.typography,
         focusRingWidth:
             a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
+        trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
       );
 
   @override
@@ -98,11 +108,21 @@ class CoilThemeData with Diagnosticable {
       other.tier == tier &&
       other.motion == motion &&
       other.typography == typography &&
-      other.focusRingWidth == focusRingWidth;
+      other.focusRingWidth == focusRingWidth &&
+      mapEquals(other.trackMotions, trackMotions);
 
   @override
-  int get hashCode =>
-      Object.hash(colors, shape, tier, motion, typography, focusRingWidth);
+  int get hashCode => Object.hash(
+    colors,
+    shape,
+    tier,
+    motion,
+    typography,
+    focusRingWidth,
+    Object.hashAllUnordered(
+      trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+  );
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -190,6 +210,25 @@ class CoilTheme extends StatelessWidget {
     return MediaQuery.maybeDisableAnimationsOf(context) ?? false
         ? motion.reduced()
         : motion;
+  }
+
+  /// The motion for one [track] of a component at [context]: the
+  /// component's [instance] map entry, else the theme's
+  /// [CoilThemeData.trackMotions] entry, else [token] (already resolved
+  /// through [motionOf]). Maps compare by value, so a rebuilt literal never
+  /// redirects an animation. Under reduced motion a [spatial] track is
+  /// instant whatever was configured.
+  static Motion trackMotionOf(
+    BuildContext context,
+    Track<Object> track, {
+    required Map<Track<Object>, Motion>? instance,
+    required Motion token,
+    bool spatial = true,
+  }) {
+    final custom = instance?[track] ?? of(context).trackMotions[track];
+    if (custom == null) return token;
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return reduced && spatial ? const Motion.instant() : custom;
   }
 
   /// The tier at [context]: the nearest [CoilAdaptiveScope]'s, else the

@@ -175,11 +175,7 @@ void main() {
           child: CoilSwitch(
             value: value,
             onChanged: (_) {},
-            motions: {
-              CoilSwitch.thumb: const Motion.linear(
-                Duration(milliseconds: 200),
-              ),
-            },
+            motions: {.thumb: const .linear(Duration(milliseconds: 200))},
           ),
         ),
       ),
@@ -205,5 +201,70 @@ void main() {
     }
     expect(m.reduced().fade, m.fade);
     expect(m.reduced().gentle, const Motion.instant());
+  });
+
+  testWidgets('theme-level track motions apply; the instance map wins', (
+    tester,
+  ) async {
+    Widget host({
+      required bool value,
+      Map<CoilSwitchTrack<Object>, Motion>? instance,
+    }) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: CoilThemeData.light.copyWith(
+          tier: CoilTier.pointer,
+          motion: _linear(1000),
+          trackMotions: {
+            CoilSwitchTrack.thumb: const Motion.linear(
+              Duration(milliseconds: 400),
+            ),
+          },
+        ),
+        child: Center(
+          child: CoilSwitch(value: value, onChanged: (_) {}, motions: instance),
+        ),
+      ),
+    );
+    await tester.pumpWidget(host(value: false));
+    await tester.pumpWidget(host(value: true));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(
+      host(
+        value: false,
+        instance: {.thumb: const .linear(Duration(milliseconds: 100))},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+  });
+
+  testWidgets('a rebuilt motions literal does not redirect the animation', (
+    tester,
+  ) async {
+    Widget host({required bool value}) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+        child: Center(
+          child: CoilSwitch(
+            value: value,
+            onChanged: (_) {},
+            // A new map instance on every build, equal by value.
+            motions: {.thumb: const .linear(Duration(milliseconds: 400))},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(host(value: false));
+    await tester.pumpWidget(host(value: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpWidget(host(value: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Halfway through the 400 ms linear move, as if never rebuilt.
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
   });
 }

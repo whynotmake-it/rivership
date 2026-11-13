@@ -379,8 +379,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       motion: motion.fade,
       exitMotion: motion.fadeExit,
       debugLabel: 'CoilSelect.label',
-      transitionBuilder: (child, presence) =>
-          CoilBlurFade(presence: presence, blur: 2, scale: 1, child: child),
+      transitionBuilder: CoilBlurFade.transition(blur: 2, scale: 1),
       layoutBuilder: (current, previous) => Stack(
         alignment: AlignmentDirectional.centerStart,
         children: [...previous, ?current],

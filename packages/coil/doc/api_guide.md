@@ -79,7 +79,7 @@ Rules:
 | Leading / trailing slot | `leading`, `trailing` | any `Widget`, styled by `IconTheme` and `DefaultTextStyle` |
 | Icon-only content | `icon` | named constructor `.icon(...)` where a widget can be icon-only |
 | Drawn glyph replacement | `<glyph>Builder` or a `Widget?` slot | e.g. `CoilCheckbox.glyphBuilder`, `CoilSelect.checkmark` |
-| Per-instance motion | `motion: CoilMotion?` | see §6 |
+| Per-instance motion | `motion: CoilMotion?`, plus `motions: Map<Coil<Name>Track<Object>, Motion>?` on multi-track components | see §6 |
 | Per-instance style | `style: Coil<Name>Style?` | see §6 (M1) |
 | Overlay presentation | `presentation: CoilPresentation?` | null lets `CoilAdaptivePopup` decide |
 | Focus | `focusNode`, `autofocus` | as in Flutter |
@@ -160,21 +160,33 @@ CoilSwitch(
 )
 ```
 
-Multi-part components also expose their Motor tracks as `static final`
-fields and take `motions: Map<Track, Motion>` for per-track overrides (PLAN
-§15, the convention `motor_widgets` uses too). `CoilSwitch.thumb`,
-`.squish` and `.tint` are the first:
+Multi-part components declare a track class and take per-track motions
+(PLAN §15; `motor_widgets` does the same with `MotionContainerTrack`):
 
-```dart
-CoilSwitch(
-  value: on,
-  onChanged: (v) => setState(() => on = v),
-  motions: {CoilSwitch.thumb: const CupertinoMotion(duration: Duration(milliseconds: 300), bounce: 0.2)},
-)
-```
+- `final class CoilSwitchTrack<T extends Object> extends Track<T>` with a
+  private constructor (`final`, not `sealed`) and the component's tracks as
+  `static final` fields on it: `CoilSwitchTrack.thumb`, `.squish`, `.tint`.
+  They are the real Motor tracks the component animates, carry a
+  `debugLabel`, and have no baked-in motion.
+- `motion:` is the default for every track (the token set, `CoilMotion`);
+  `motions: Map<CoilSwitchTrack<Object>, Motion>?` overrides single tracks.
+  Typing the keys by the component's track class means only its tracks
+  compile, and dot shorthand reads well:
 
-A per-track motion replaces the token that track would use; reduced motion
-still makes spatial tracks instant.
+  ```dart
+  CoilSwitch(value: on, onChanged: setOn, motions: {.thumb: const .bouncySpring()})
+  ```
+- Theme-level per-component overrides use the same keys in
+  `CoilThemeData.trackMotions` (`{CoilSwitchTrack.thumb: …}`).
+- Resolution for one track, through `CoilTheme.trackMotionOf`: the
+  instance's `motions` entry, else the theme's `trackMotions` entry, else
+  the token the component maps the track to (`thumb` → `standard`,
+  `squish` → `quick`, `tint` → `fade`). Reduced motion still makes spatial
+  tracks instant.
+- Maps compare by value, so a literal rebuilt every frame never redirects a
+  running animation.
+- There is no per-dimension map and no per-component motion class
+  (`CoilSwitchMotion(thumb: …)` is not used).
 
 Components read motion with `CoilTheme.motionOf(context, override: widget.motion)`
 **every time they start an animation** and pass it to that animation. They
@@ -238,8 +250,8 @@ spatial token.
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
 | 2026-11-13 | The brand color is `CoilColors.brand` (was `fluidAccent`) | `accent` already names FF's neutral `--accent` |
-| 2026-11-13 | `motion:` is the token set; `motions:` maps tracks to motions | PLAN §15; per-component motion classes are not used |
-| 2026-11-13 | Blur-fade (`CoilBlurFade`) lives in coil primitives and takes any 0→1 `Animation<double>` | PLAN §15: `motor_widgets` holds only Flutter equivalents; the same transition feeds routes and `MotionSwitcher` |
+| 2026-11-13 | `motion:` is the default (token set); `motions: Map<Coil<Name>Track<Object>, Motion>?` keyed by a `final class Coil<Name>Track` with a private constructor and `static final` tracks; the same keys in `CoilThemeData.trackMotions`; maps compare by value; no per-dimension map, no per-component motion classes | user, via PLAN §15 and the orchestrator, 2026-11-13 |
+| 2026-11-13 | `CoilBlurFade` (blur, scale-down, fade, optional offset) is coil's transition and the default enter/exit for overlays; `CoilBlurFade.transition()` fits `MotionSwitcher.transitionBuilder`; opacity and blur clamp, scale and offset use the raw presence | `motor_widgets` holds only Flutter equivalents |
 | 2026-11-13 | Groups take `children` + `values` (`CoilCheckboxGroup`, `CoilToggleGroup`) | composition uses `children`; sets use `values` |
 | 2026-11-13 | A text field shows its focus border however it was focused | as `:focus-visible` does for inputs; every other control shows the ring only after keyboard use |
 
@@ -255,9 +267,10 @@ spatial token.
 3. Should tabs and segmented groups take generic values (`CoilTabs<T>`)
    instead of an index? The index matches Flutter's `TabController`, a
    generic matches `CoilSelect<T>`.
-4. Should per-track `motions:` also be settable per component type in the
-   theme (PLAN §15 says "the same maps work for theme-level overrides")? Not
-   built in M0; it needs the per-type style slot of question 2.
+4. Theme-level track motions are one flat `trackMotions` map (tracks are
+   unique objects, so one map serves every component). Should they instead
+   live in each component's theme style once `style:` classes exist
+   (question 2)?
 5. `CoilAdaptiveScope.presentation` pins every overlay below it. Is a
    per-kind pin (menus vs selects) needed?
 6. `CoilSelect` / `CoilMultiSelect` are controlled and have no controller.

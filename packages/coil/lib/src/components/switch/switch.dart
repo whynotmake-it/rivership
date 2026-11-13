@@ -7,6 +7,30 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
+/// The animated parts of a [CoilSwitch], as Motor tracks. Use them as keys
+/// of [CoilSwitch.motions] or [CoilThemeData.trackMotions].
+final class CoilSwitchTrack<T extends Object> extends Track<T> {
+  CoilSwitchTrack._(super.converter, {required String super.debugLabel});
+
+  /// The thumb's position, 0 (off) to 1 (on). Default motion: `standard`.
+  static final thumb = CoilSwitchTrack<double>._(
+    .single,
+    debugLabel: 'CoilSwitch.thumb',
+  );
+
+  /// How pressed the thumb is, 0 to 1. Default motion: `quick`.
+  static final squish = CoilSwitchTrack<double>._(
+    .single,
+    debugLabel: 'CoilSwitch.squish',
+  );
+
+  /// The track color, 0 (off) to 1 (on). Default motion: `fade`.
+  static final tint = CoilSwitchTrack<double>._(
+    .single,
+    debugLabel: 'CoilSwitch.tint',
+  );
+}
+
 /// A switch with an optional label (`registry/radix/switch.tsx`).
 ///
 /// Built like Motor's toggle example: one [TrackController] animates three
@@ -37,21 +61,9 @@ class CoilSwitch extends StatefulWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
-    this.motions = const {},
+    this.motions,
     this.semanticLabel,
   });
-
-  /// The thumb's position, 0 (off) to 1 (on). Default motion: `standard`.
-  static final thumb = Track<double>(.single, debugLabel: 'CoilSwitch.thumb');
-
-  /// How pressed the thumb is, 0 to 1. Default motion: `quick`.
-  static final squish = Track<double>(
-    .single,
-    debugLabel: 'CoilSwitch.squish',
-  );
-
-  /// The track color, 0 (off) to 1 (on). Default motion: `fade`.
-  static final tint = Track<double>(.single, debugLabel: 'CoilSwitch.tint');
 
   /// Whether the switch is on.
   final bool value;
@@ -78,10 +90,11 @@ class CoilSwitch extends StatefulWidget {
   /// instance.
   final CoilMotion? motion;
 
-  /// Per-track motions for this instance, keyed by [thumb], [squish] and
-  /// [tint]. They replace the token a track would use; reduced motion still
-  /// makes [thumb] and [squish] instant.
-  final Map<Track<Object>, Motion> motions;
+  /// Per-track motions for this instance, keyed by [CoilSwitchTrack]s:
+  /// `motions: {.thumb: const .bouncySpring()}`. They win over the theme's
+  /// [CoilThemeData.trackMotions] and the tokens; reduced motion still makes
+  /// the thumb and squish instant.
+  final Map<CoilSwitchTrack<Object>, Motion>? motions;
 
   /// A label for assistive technology when [label] is not plain text.
   final String? semanticLabel;
@@ -117,20 +130,19 @@ class _CoilSwitchState extends State<CoilSwitch>
     debugLabel: 'CoilSwitch',
   );
 
-  final _thumb = CoilSwitch.thumb;
-  final _squish = CoilSwitch.squish;
-  final _tint = CoilSwitch.tint;
+  final _thumb = CoilSwitchTrack.thumb;
+  final _squish = CoilSwitchTrack.squish;
+  final _tint = CoilSwitchTrack.tint;
 
-  /// The motion for [track]: the instance's [CoilSwitch.motions] entry, else
-  /// [token]; spatial tracks are instant under reduced motion either way.
-  Motion _motionFor(Track<Object> track, Motion token) {
-    final custom = widget.motions[track];
-    if (custom == null) return token;
-    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    return reduced && track != CoilSwitch.tint
-        ? const Motion.instant()
-        : custom;
-  }
+  /// The motion for [track], per doc/api_guide.md §6.
+  Motion _motionFor(CoilSwitchTrack<Object> track, Motion token) =>
+      CoilTheme.trackMotionOf(
+        context,
+        track,
+        instance: widget.motions,
+        token: token,
+        spatial: track != CoilSwitchTrack.tint,
+      );
 
   Motion get _thumbMotion => _motionFor(_thumb, _motion.standard);
   Motion get _squishMotion => _motionFor(_squish, _motion.quick);
