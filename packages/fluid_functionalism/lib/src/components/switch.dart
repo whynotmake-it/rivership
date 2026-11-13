@@ -20,8 +20,8 @@ import 'package:motor/motor.dart';
 ///
 /// * **thumb**: where the thumb is. Dragging [TrackController.set]s it and
 ///   may pull it a little past either end, which stretches the switch;
-///   letting go animates from the release velocity, so a flick finishes the
-///   way it was thrown.
+///   letting go decides by the projected position `x + v·0.1 s` and animates
+///   from the release velocity, so a flick finishes the way it was thrown.
 /// * **squish**: the press. The thumb widens and flattens while pressed.
 /// * **tint**: the track color, off to on, on its own spring.
 ///
@@ -74,6 +74,13 @@ class FluidSwitch extends StatefulWidget {
   /// A label for assistive technology when [label] is not plain text.
   final String? semanticLabel;
 
+  /// Whether a drag released at [position] (0 off .. 1 on) moving at
+  /// [velocity] (travels per second) ends on: the projected position
+  /// `position + velocity · 0.1 s` past the midpoint.
+  @visibleForTesting
+  static bool decideRelease(double position, double velocity) =>
+      position + velocity * _projection > .5;
+
   @override
   State<FluidSwitch> createState() => _FluidSwitchState();
 }
@@ -81,8 +88,10 @@ class FluidSwitch extends StatefulWidget {
 /// How far a drag may pull the thumb past either end, in travels.
 const _overdrag = 0.15;
 
-/// A release faster than this (travels per second) decides by direction.
-const _flingSpeed = 2.0;
+/// How far ahead a release is projected: the thumb decides by where it
+/// would be this long after letting go (`x + v·t`), so a quick flick
+/// toggles even from the near side and a slow drag decides by position.
+const _projection = 0.1;
 
 class _FluidSwitchState extends State<FluidSwitch>
     with SingleTickerProviderStateMixin {
@@ -214,9 +223,7 @@ class _FluidSwitchState extends State<FluidSwitch>
     // in travels per second, like the thumb track.
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final speed = details.velocity.pixelsPerSecond.dx / travel * (rtl ? -1 : 1);
-    final on = speed.abs() > _flingSpeed
-        ? speed > 0
-        : _controller.value(_thumb) > .5;
+    final on = FluidSwitch.decideRelease(_controller.value(_thumb), speed);
     if (on != widget.value) {
       _dragDecided = true;
       widget.onChanged?.call(on);

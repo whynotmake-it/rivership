@@ -5,12 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'src/golden_sheet.dart';
 
 Widget _app(Widget child) => WidgetsApp(
-      color: const Color(0xFF000000),
-      builder: (context, _) => FluidTheme(
-        data: FluidThemeData.light.copyWith(tier: FluidTier.desktop),
-        child: Center(child: child),
-      ),
-    );
+  color: const Color(0xFF000000),
+  builder: (context, _) => FluidTheme(
+    data: FluidThemeData.light.copyWith(tier: FluidTier.desktop),
+    child: Center(child: child),
+  ),
+);
 
 /// Records the IconTheme it is given.
 class _Probe extends StatelessWidget {
@@ -26,8 +26,9 @@ class _Probe extends StatelessWidget {
 }
 
 void main() {
-  testWidgets('icon slots get size, color and a hover weight via IconTheme',
-      (tester) async {
+  testWidgets('icon slots get size, color and a hover weight via IconTheme', (
+    tester,
+  ) async {
     late IconThemeData seen;
     final states = WidgetStatesController();
     addTearDown(states.dispose);
