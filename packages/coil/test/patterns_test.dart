@@ -127,6 +127,36 @@ void main() {
         );
       });
 
+      testWidgets('CoilTextarea is a text field', (tester) async {
+        await check(
+          tester,
+          (_) => const SizedBox(width: 240, child: CoilTextarea()),
+          CoilPattern.textField,
+        );
+      });
+
+      testWidgets('CoilField with an input is a text field', (tester) async {
+        await check(
+          tester,
+          (_) => const SizedBox(
+            width: 240,
+            child: CoilField(label: Text('Email'), child: CoilInput()),
+          ),
+          CoilPattern.textField,
+        );
+      });
+
+      testWidgets('CoilInputCopy is a button', (tester) async {
+        await check(
+          tester,
+          (_) => const SizedBox(
+            width: 240,
+            child: CoilInputCopy(value: 'abc'),
+          ),
+          CoilPattern.button,
+        );
+      });
+
       testWidgets('CoilSelect is a select', (tester) async {
         await check(
           tester,

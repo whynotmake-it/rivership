@@ -88,6 +88,25 @@ void main() {
       width: 200,
       child: CoilInput(placeholder: _Ink(ink, const Text('HEH'))),
     ),
+    'textarea/one-line': (ink) => SizedBox(
+      width: 200,
+      child: CoilTextarea(
+        minLines: 1,
+        controller: TextEditingController(text: ink ? 'HEH' : ''),
+      ),
+    ),
+    'input-copy/value': (ink) => SizedBox(
+      width: 200,
+      child: CoilInputCopy(value: ink ? 'HEH' : ''),
+    ),
+    'input-copy/button': (ink) => SizedBox(
+      width: 200,
+      child: CoilInputCopy(
+        value: '',
+        variant: CoilInputCopyVariant.button,
+        labels: CoilInputCopyLabels(copy: ink ? 'HEH' : ''),
+      ),
+    ),
     'checkbox-group/row': (ink) => SizedBox(
       width: 200,
       child: CoilCheckboxGroup(

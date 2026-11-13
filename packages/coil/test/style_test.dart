@@ -123,6 +123,25 @@ void main() {
               width: 200,
               child: CoilInput(style: CoilInputStyle(radius: 2)),
             ),
+            const SizedBox(
+              width: 200,
+              child: CoilTextarea(style: CoilInputStyle(radius: 2)),
+            ),
+            const SizedBox(
+              width: 200,
+              child: CoilField(
+                style: CoilFieldStyle(labelGap: 2),
+                label: Text('A'),
+                child: CoilInput(),
+              ),
+            ),
+            const SizedBox(
+              width: 200,
+              child: CoilInputCopy(
+                value: 'A',
+                style: CoilInputCopyStyle(radius: 2),
+              ),
+            ),
             CoilCheckboxGroup(
               values: const {0},
               onChanged: (_) {},

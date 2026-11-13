@@ -540,14 +540,16 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - invalid: `destructive` 50 % (focus wins); disabled: 50 %; read-only: no hover.
 - **Number variant:** two stepper buttons inset 4 (2 compact) at the trailing edge, 28 / 24 / 36 visual (44 hit on touch), radius item − 4, muted → foreground on hover. Long-press repeats with acceleration (400 ms, then every 80 ms, then 40 ms). Up and Down step.
 - **Motion:** border and fill on `fade`.
-- **Platform:** `keyboardType`, `textInputAction`, `autofillHints` and `textCapitalization` per use; `scrollPadding` clears the keyboard by 16; native selection, magnifier and edit menu.
+- **Platform:** `keyboardType`, `textInputAction`, `autofillHints` and `textCapitalization` per use; autocorrect and suggestions are forced off while obscured; `scrollPadding` clears the keyboard by 16; native selection, magnifier and edit menu.
+- **Enter:** single-line Return is the input action (`onSubmitted`); a Return that commits an IME composition only commits.
 - **Keyboard:** native editing; IME-safe.
 - **Do:** always pair it with a Field label.
 - **Don't:** put a focus ring on fields; use the placeholder as the label.
 
 #### Textarea
 
-- **Same chrome as Input.** It grows from 3 lines to 10, then scrolls.
+- **Same chrome as Input** (and the same `CoilInputStyle`). It grows from 3 lines to 10, then scrolls. Leading and trailing slots sit on the first line.
+- **Radius:** the item radius, capped at the `rounded` container radius (12 / 16), so a `pill` shape doesn't make a capsule.
 - **Sizes:** min 3 lines and max 10, each plus the vertical pad. The first line aligns with Input text.
 - **Motion:** growth is instant; colors on `fade`.
 - **Keyboard:** Return inserts a newline. (Composers decide sending; see InputMessage.)
@@ -573,7 +575,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
 - **ChoiceCard:** a horizontal Field inside a bordered container at the container radius, padding 12 (10 compact, 16 touch). The whole card is the target. Hover (pointer) is the `hover` fill. Checked: border `foreground` 40 %. Keyboard focus rings the card.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
-- **Semantics:** the label names the control, descriptions and errors are attached as hints, and errors are announced.
+- **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
+- **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.
+- **Semantics:** label, control, description and error merge into the control's one node (`MergeSemantics`), so they're announced with the control's role and value. Flutter has no `aria-describedby`/hint-from-widget, so the description and error join the node's label after the label text rather than its hint. The node carries `isRequired` and `validationResult: invalid`, and is a live region while an error shows (the new error is announced). One control per Field; a group of controls goes in a FieldSet (a container with a header legend). A tap on the label runs the control's label action (`CoilFieldScope`/`CoilFieldControl`): text fields focus, toggles toggle.
 - **Invalid:** the label turns `destructive`, and the control gets its invalid look.
 
 #### CheckboxGroup (built)
@@ -659,7 +663,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s, then idle.
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap with the blur-fade on `quick` (out, then in); check draws on `fade`.
+- **Motion:** icon swap with the blur-fade on `quick` / `quickExit` (scale 0.8); the exit is the tighter spring, so the old glyph is mostly gone before the new one lands (`MotionSwitcher` has no sequential mode, so they overlap briefly); check and × draw on `fade`.
+- **Value font:** coil bundles no monospace font; the value is Inter with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
+- **Label** aligns with the row's content (`controlPaddingX` in).
 - **Semantics:** button labeled "Copy {label}", announces "Copied" or "Copy failed".
 - **Keyboard:** Enter or Space copies.
 

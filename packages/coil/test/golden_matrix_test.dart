@@ -99,6 +99,72 @@ final Map<String, WidgetBuilder> _stories = {
       ],
     ),
   ),
+  'textarea': (context) => SizedBox(
+    width: 240,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CoilTextarea(placeholder: Text('Tell us more')),
+        const SizedBox(height: 8),
+        CoilTextarea(
+          minLines: 1,
+          controller: TextEditingController(
+            text: 'Two lines of text that wrap',
+          ),
+          invalid: true,
+        ),
+      ],
+    ),
+  ),
+  'field': (context) => SizedBox(
+    width: 240,
+    child: CoilFieldGroup(
+      children: [
+        const CoilField(
+          label: Text('Name'),
+          description: Text('As on your ID.'),
+          isRequired: true,
+          child: CoilInput(),
+        ),
+        CoilField(
+          label: const Text('Email'),
+          error: const Text('Enter an email address'),
+          child: CoilInput(controller: TextEditingController(text: 'ada@')),
+        ),
+        const CoilFieldSeparator(label: Text('or')),
+      ],
+    ),
+  ),
+  'input_group': (context) => const SizedBox(
+    width: 240,
+    child: CoilInputGroup(
+      children: [
+        CoilField(
+          label: Text('Search'),
+          child: CoilInput(leading: TestIcon(TestGlyph.search)),
+        ),
+        CoilField(label: Text('Website'), child: CoilInput()),
+      ],
+    ),
+  ),
+  'input_copy': (context) => const SizedBox(
+    width: 240,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CoilInputCopy(
+          value: 'sk-live-0123456789',
+          label: 'API key',
+          icon: TestIcon(TestGlyph.plus),
+        ),
+        CoilInputCopy(
+          value: 'npm i coil',
+          variant: CoilInputCopyVariant.button,
+          icon: TestIcon(TestGlyph.plus),
+        ),
+      ],
+    ),
+  ),
   'selection_groups': (context) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +292,7 @@ void main() {
       final sheet = await pumpSheet(
         tester,
         _Matrix(story),
-        surface: const Size(2800, 1800),
+        surface: const Size(2800, 2800),
       );
       await expectSheetGolden(tester, sheet, 'goldens/matrix/$name.png');
     });

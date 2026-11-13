@@ -328,8 +328,9 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
           // The button's semantic label already says it.
           ExcludeSemantics(
             child: Padding(
+              // Aligned with the row's content.
               padding: EdgeInsetsDirectional.only(
-                start: start ? sizes.controlPaddingX : 0,
+                start: sizes.controlPaddingX,
               ),
               child: Text(
                 label,
