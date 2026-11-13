@@ -12,16 +12,20 @@ enum CoilModalPresentation {
 
   /// A bottom sheet that can be dragged away.
   sheet,
+
+  /// A full-height panel that slides in from the start edge, like a
+  /// navigation drawer.
+  drawer,
 }
 
 /// Shows [builder] as a modal above the current route, [presentation]
 /// deciding how.
 ///
-/// Centered modals spring in on the theme's `gentle` token and out on
-/// `gentleExit`; sheets use `gentle`. With [dismissible] false, the scrim,
-/// Esc, back and dragging don't close it. Themes from [context] carry over
-/// into the modal. The future completes with the value passed to
-/// `Navigator.pop`.
+/// Centered modals and drawers spring in on the theme's `gentle` token and
+/// out on `gentleExit`; sheets use `gentle`. With [dismissible] false, the
+/// scrim, Esc, back and dragging don't close it. Themes from [context]
+/// carry over into the modal. The future completes with the value passed
+/// to `Navigator.pop`.
 Future<T?> showCoilModal<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -58,6 +62,28 @@ Future<T?> showCoilModal<T>({
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
         builder: (context) => themes.wrap(content(context)),
+        transition: (animation, child) =>
+            CoilBlurFade(presence: animation, scale: 0.97, child: child),
+      ),
+    ),
+    CoilModalPresentation.drawer => navigator.push(
+      _CoilModalRoute<T>(
+        enter: tokens.gentle,
+        exit: tokens.gentleExit,
+        barrierColor: barrierColor,
+        barrierDismissible: dismissible,
+        barrierLabel: barrierLabel,
+        builder: (context) => themes.wrap(
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            // Slides by the panel's width, not the window's.
+            child: _SlideFromStart(
+              presence: ModalRoute.of(context)!.animation!,
+              child: content(context),
+            ),
+          ),
+        ),
+        transition: (animation, child) => child,
       ),
     ),
   };
@@ -71,15 +97,14 @@ class _CoilModalRoute<T> extends RawDialogRoute<T> {
     required this.exit,
     required Color barrierColor,
     required super.barrierDismissible,
+    required Widget Function(Animation<double> animation, Widget child)
+    transition,
     super.barrierLabel,
   }) : super(
          barrierColor: barrierColor,
          pageBuilder: (context, _, _) => builder(context),
-         transitionBuilder: (context, animation, _, child) => CoilBlurFade(
-           presence: animation,
-           scale: 0.97,
-           child: child,
-         ),
+         transitionBuilder: (context, animation, _, child) =>
+             transition(animation, child),
        );
 
   final Motion enter;
@@ -91,4 +116,26 @@ class _CoilModalRoute<T> extends RawDialogRoute<T> {
         start: animation?.value ?? (forward ? 0 : 1),
         end: forward ? 1 : 0,
       );
+}
+
+/// Slides [child] in from the start edge by its own width as [presence]
+/// goes from 0 to 1.
+class _SlideFromStart extends StatelessWidget {
+  const _SlideFromStart({required this.presence, required this.child});
+
+  final Animation<double> presence;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return ListenableBuilder(
+      listenable: presence,
+      builder: (context, child) => FractionalTranslation(
+        translation: Offset((1 - presence.value) * (rtl ? 1 : -1), 0),
+        child: child,
+      ),
+      child: child,
+    );
+  }
 }
