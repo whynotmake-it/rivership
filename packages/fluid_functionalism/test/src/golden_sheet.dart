@@ -184,9 +184,11 @@ Future<Finder> pumpSheet(
     WidgetsApp(
       color: const Color(0xFF6B97FF),
       debugShowCheckedModeBanner: false,
-      builder: (context, _) => Align(
-        alignment: Alignment.topLeft,
-        child: RepaintBoundary(key: _sheetKey, child: sheet),
+      builder: (context, _) => withOverlay(
+        Align(
+          alignment: Alignment.topLeft,
+          child: RepaintBoundary(key: _sheetKey, child: sheet),
+        ),
       ),
     ),
   );
@@ -201,3 +203,9 @@ Future<void> settle(WidgetTester tester) async {
     await tester.pump(const Duration(milliseconds: 300));
   }
 }
+
+/// Wraps [child] in an [Overlay], which [EditableText] needs (a bare
+/// `WidgetsApp.builder` has no Navigator, so no Overlay).
+Widget withOverlay(Widget child) => Overlay(
+  initialEntries: [OverlayEntry(builder: (_) => child)],
+);

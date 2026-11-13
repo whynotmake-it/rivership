@@ -3,6 +3,10 @@ library fluid_functionalism;
 
 // components
 export 'src/components/button.dart';
+export 'src/components/checkbox.dart';
+export 'src/components/input.dart';
+export 'src/components/switch.dart';
+export 'src/components/tabs.dart';
 
 // foundation
 export 'src/foundation/color_mix.dart';

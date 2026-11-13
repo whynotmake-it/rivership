@@ -282,20 +282,20 @@ class _IconPainter extends CustomPainter {
     final scale = size.shortestSide / 24;
     canvas
       ..save()
-      ..scale(scale);
-    canvas.drawPath(
-      icon.path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        // The web passes strokeWidth in grid units (lucide-style): a 1.5
-        // stroke on a 16 px icon is 1 px on screen.
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..isAntiAlias = true,
-    );
-    canvas.restore();
+      ..scale(scale)
+      ..drawPath(
+        icon.path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          // The web passes strokeWidth in grid units (lucide-style): a 1.5
+          // stroke on a 16 px icon is 1 px on screen.
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..isAntiAlias = true,
+      )
+      ..restore();
   }
 
   @override

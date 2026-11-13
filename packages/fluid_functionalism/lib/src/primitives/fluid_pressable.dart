@@ -152,19 +152,26 @@ class _FluidPressableState extends State<FluidPressable> {
       mouseCursor:
           widget.mouseCursor ??
           (widget.enabled ? SystemMouseCursors.click : MouseCursor.defer),
-      onShowHoverHighlight: (value) =>
-          _states.update(WidgetState.hovered, value),
       onShowFocusHighlight: (value) =>
           _states.update(WidgetState.focused, value),
       onFocusChange: widget.onFocusChange,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        excludeFromSemantics: widget.excludeFromSemantics,
-        onTapDown: (_) => _setPressed(true),
-        onTapUp: (_) => _setPressed(false),
-        onTapCancel: () => _setPressed(false),
-        onTap: widget.enabled ? _activate : null,
-        child: visual,
+      // Hover is pointer state, not focus state: tracked with a plain
+      // MouseRegion so it works whatever the focus highlight mode is
+      // (FocusableActionDetector hides hover in touch highlight mode).
+      child: MouseRegion(
+        onEnter: (_) {
+          if (widget.enabled) _states.update(WidgetState.hovered, true);
+        },
+        onExit: (_) => _states.update(WidgetState.hovered, false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: widget.excludeFromSemantics,
+          onTapDown: (_) => _setPressed(true),
+          onTapUp: (_) => _setPressed(false),
+          onTapCancel: () => _setPressed(false),
+          onTap: widget.enabled ? _activate : null,
+          child: visual,
+        ),
       ),
     );
   }

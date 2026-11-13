@@ -12,7 +12,7 @@ import 'package:flutter/painting.dart';
 @immutable
 class FluidColors with Diagnosticable {
   /// Creates a color set. Prefer [FluidColors.light] / [FluidColors.dark]
-  /// and [copyWith].
+  /// and [withAccent].
   const FluidColors({
     required this.brightness,
     required this.surfaces,
@@ -188,6 +188,8 @@ class FluidColors with Diagnosticable {
   final Color shadowColor;
 
   /// Linearly interpolates two color sets, for animated theme changes.
+  // A static lerp, like Color.lerp and TextStyle.lerp.
+  // ignore: prefer_constructors_over_static_methods
   static FluidColors lerp(FluidColors a, FluidColors b, double t) {
     Color c(Color x, Color y) => Color.lerp(x, y, t)!;
     return FluidColors(
