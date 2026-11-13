@@ -1,10 +1,12 @@
 import 'package:coil/src/foundation/input_modality.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/active_item.dart';
 import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Which direction "nearest item" is resolved along.
 enum CoilHoverAxis {
@@ -294,6 +296,8 @@ class CoilHoverHighlight extends StatefulWidget {
     this.radius,
     this.background = const [],
     this.foreground = const [],
+    this.motion,
+    this.glideMotion,
   });
 
   /// The items.
@@ -310,6 +314,13 @@ class CoilHoverHighlight extends StatefulWidget {
 
   /// Painters in front of the items.
   final List<CoilLayerPainter> foreground;
+
+  /// Overrides the theme's motion tokens for the highlight.
+  final CoilMotion? motion;
+
+  /// The glide between items, for a component's resolved track motion.
+  /// Defaults to `quick`.
+  final Motion? glideMotion;
 
   @override
   State<CoilHoverHighlight> createState() => _CoilHoverHighlightState();
@@ -332,11 +343,11 @@ class _CoilHoverHighlightState extends State<CoilHoverHighlight>
   Widget build(BuildContext context) {
     final state = CoilHoverRegion.maybeOf(context);
     final theme = CoilTheme.of(context);
-    final motion = CoilTheme.motionOf(context);
+    final motion = CoilTheme.motionOf(context, override: widget.motion);
     _highlight.update(
       target: state?.activeIndex,
       session: state?.session ?? 0,
-      motion: motion.quick,
+      motion: widget.glideMotion ?? motion.quick,
       exitMotion: motion.quickExit,
       exitTravelMotion: motion.standard,
       fade: motion.fade,
