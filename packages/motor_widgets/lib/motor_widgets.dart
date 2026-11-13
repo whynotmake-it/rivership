@@ -14,4 +14,7 @@ export 'src/motion_positioned.dart';
 export 'src/motion_rotation.dart';
 export 'src/motion_scale.dart';
 export 'src/motion_size.dart';
+export 'src/motion_size_switcher.dart';
 export 'src/motion_slide.dart';
+export 'src/motion_switcher.dart';
+export 'src/motion_transition.dart';
