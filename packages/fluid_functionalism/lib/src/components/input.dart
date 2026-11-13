@@ -44,6 +44,7 @@ class FluidInput extends StatefulWidget {
     this.onSubmitted,
     this.density,
     this.statesController,
+    this.motion,
     this.semanticLabel,
   });
 
@@ -101,6 +102,10 @@ class FluidInput extends StatefulWidget {
   /// Observes, and can force, hovered and focused looks.
   final WidgetStatesController? statesController;
 
+  /// Overrides the theme's motion tokens ([FluidThemeData.motion]) for this
+  /// instance.
+  final FluidMotionThemeData? motion;
+
   /// A label for assistive technology.
   final String? semanticLabel;
 
@@ -110,6 +115,11 @@ class FluidInput extends StatefulWidget {
 
 class _FluidInputState extends State<FluidInput>
     implements TextSelectionGestureDetectorBuilderDelegate {
+  /// The motion tokens, read where each animation starts so runtime
+  /// theme changes apply to the next one.
+  FluidMotionThemeData get _motion =>
+      FluidTheme.motionOf(context, override: widget.motion);
+
   TextEditingController? _ownController;
   FocusNode? _ownFocusNode;
   WidgetStatesController? _ownStates;
@@ -273,12 +283,12 @@ class _FluidInputState extends State<FluidInput>
                     : colors.hover.withValues(alpha: 0);
                 return MotionBuilder<Color>(
                   value: border,
-                  motion: FluidMotion.color,
+                  motion: _motion.color,
                   converter: MotionConverter.colorRgb,
                   builder: (context, borderColor, child) =>
                       MotionBuilder<Color>(
                         value: fill,
-                        motion: FluidMotion.color,
+                        motion: _motion.color,
                         converter: MotionConverter.colorRgb,
                         builder: (context, fillColor, child) => Container(
                           height: sizes.controlHeight,

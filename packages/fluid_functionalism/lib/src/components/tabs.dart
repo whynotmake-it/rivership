@@ -30,9 +30,9 @@ class FluidTab {
 
 /// A row of tabs with the fluid highlight (`registry/radix/tabs.tsx`).
 ///
-/// * The selected pill glides between tabs on [FluidMotion.moderate].
+/// * The selected pill glides between tabs on the theme's `moderate` motion.
 /// * A lighter hover pill glides out of the selected one, follows the
-///   pointer on [FluidMotion.fast], and glides back into it when the pointer
+///   pointer on `fast`, and glides back into it when the pointer
 ///   leaves.
 /// * Arrow keys, Home and End move focus; Enter or Space selects (manual
 ///   activation). Only the selected tab is in the Tab order. A focus ring
@@ -46,6 +46,7 @@ class FluidTabs extends StatefulWidget {
     super.key,
     this.activeLabel = false,
     this.density,
+    this.motion,
     this.debugHoveredIndex,
     this.debugFocusedIndex,
   });
@@ -65,6 +66,10 @@ class FluidTabs extends StatefulWidget {
 
   /// Pins the tabs to one size step. Null follows [FluidSizeScope].
   final FluidDensity? density;
+
+  /// Overrides the theme's motion tokens ([FluidThemeData.motion]) for these
+  /// tabs.
+  final FluidMotionThemeData? motion;
 
   /// Forces a hovered tab (for goldens and docs).
   @visibleForTesting
@@ -145,6 +150,7 @@ class _FluidTabsState extends State<FluidTabs> {
   Widget build(BuildContext context) {
     _sync();
     final theme = FluidTheme.of(context);
+    final motion = FluidTheme.motionOf(context, override: widget.motion);
     final colors = theme.colors;
     final sizes = FluidTheme.sizesOf(context, density: widget.density);
     final radius = BorderRadius.circular(theme.shape.item);
@@ -171,7 +177,7 @@ class _FluidTabsState extends State<FluidTabs> {
               children: [
                 FluidHighlight(
                   rect: selectedRect,
-                  motion: FluidMotion.moderate,
+                  motion: motion.moderate,
                   opacity: hoverRect != null ? 0.8 : 1,
                   fadeIn: false,
                   color: colors.active,
@@ -184,6 +190,9 @@ class _FluidTabsState extends State<FluidTabs> {
                   opacity: 0.4,
                   color: colors.active,
                   borderRadius: radius,
+                  motion: motion.fast,
+                  exitMotion: motion.fastExit,
+                  exitTravelMotion: motion.moderate,
                   // Leaving the strip: glide back into the selected pill.
                   exitTo: leftRegion ? selectedRect : null,
                 ),
@@ -193,6 +202,8 @@ class _FluidTabsState extends State<FluidTabs> {
           foregroundBuilder: (context, state) => FluidHighlight(
             rect: state.rectOf(focused)?.inflate(2),
             fadeIn: false,
+            motion: motion.fast,
+            exitMotion: motion.fastExit,
             borderRadius: BorderRadius.circular(theme.shape.focusRing),
             border: Border.all(color: colors.focusRing),
           ),
@@ -207,6 +218,7 @@ class _FluidTabsState extends State<FluidTabs> {
                     FluidHoverItem(
                       index: i,
                       child: _TabButton(
+                        motion: motion,
                         tab: tab,
                         sizes: sizes,
                         selected: i == selected,
@@ -237,6 +249,7 @@ class _TabButton extends StatelessWidget {
     required this.focusNode,
     required this.statesController,
     required this.onPressed,
+    required this.motion,
   });
 
   final FluidTab tab;
@@ -247,6 +260,7 @@ class _TabButton extends StatelessWidget {
   final FocusNode focusNode;
   final WidgetStatesController statesController;
   final VoidCallback onPressed;
+  final FluidMotionThemeData motion;
 
   @override
   Widget build(BuildContext context) {
@@ -271,11 +285,11 @@ class _TabButton extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: sizes.controlPaddingX),
             child: MotionBuilder<Color>(
               value: active ? colors.foreground : colors.mutedForeground,
-              motion: FluidMotion.color,
+              motion: motion.color,
               converter: MotionConverter.colorRgb,
               builder: (context, color, _) => SingleMotionBuilder(
                 value: selected ? FluidWeight.semibold.wght : 400,
-                motion: FluidMotion.color,
+                motion: motion.color,
                 builder: (context, wght, _) {
                   final style =
                       FluidTypography.style(
@@ -327,7 +341,7 @@ class _TabButton extends StatelessWidget {
                         ),
                       SingleMotionBuilder(
                         value: showLabel ? 1 : 0,
-                        motion: FluidMotion.travel(context, FluidMotion.fast),
+                        motion: motion.fast,
                         builder: (context, reveal, child) => ClipRect(
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,

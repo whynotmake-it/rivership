@@ -12,8 +12,8 @@ import 'package:motor/motor.dart';
 ///
 /// A 1.5 px outlined square with no fill. Checking draws a check (or, for
 /// [indeterminate], a dash) in the foreground color that slightly overhangs
-/// the box, drawing itself in over [FluidMotion.drawIn] and retracting over
-/// [FluidMotion.drawOut].
+/// the box, drawing itself in over the theme's `drawIn` motion and
+/// retracting over its `drawOut`.
 class FluidCheckbox extends StatefulWidget {
   /// Creates a checkbox.
   const FluidCheckbox({
@@ -26,6 +26,7 @@ class FluidCheckbox extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.statesController,
+    this.motion,
     this.semanticLabel,
   });
 
@@ -54,6 +55,10 @@ class FluidCheckbox extends StatefulWidget {
   /// Observes, and can force, hover/focus/press states.
   final WidgetStatesController? statesController;
 
+  /// Overrides the theme's motion tokens ([FluidThemeData.motion]) for this
+  /// instance.
+  final FluidMotionThemeData? motion;
+
   /// A label for assistive technology.
   final String? semanticLabel;
 
@@ -64,6 +69,11 @@ class FluidCheckbox extends StatefulWidget {
 enum _Glyph { none, check, dash }
 
 class _FluidCheckboxState extends State<FluidCheckbox> {
+  /// The motion tokens, read where each animation starts so runtime
+  /// theme changes apply to the next one.
+  FluidMotionThemeData get _motion =>
+      FluidTheme.motionOf(context, override: widget.motion);
+
   _Glyph get _glyph => widget.indeterminate
       ? _Glyph.dash
       : widget.value
@@ -131,7 +141,7 @@ class _FluidCheckboxState extends State<FluidCheckbox> {
               borderRadius: radius,
               child: MotionBuilder<Color>(
                 value: border,
-                motion: FluidMotion.color,
+                motion: _motion.color,
                 converter: MotionConverter.colorRgb,
                 builder: (context, borderColor, child) => Container(
                   width: sizes.checkboxSize,
@@ -150,7 +160,7 @@ class _FluidCheckboxState extends State<FluidCheckbox> {
                     value: on ? 1 : 0,
                     // A new glyph shape draws itself in from nothing.
                     from: _generation == 0 ? null : 0,
-                    motion: on ? FluidMotion.drawIn : FluidMotion.drawOut,
+                    motion: on ? _motion.drawIn : _motion.drawOut,
                     builder: (context, progress, _) => CustomPaint(
                       size: Size.square(sizes.checkboxGlyphSize),
                       painter: _GlyphPainter(

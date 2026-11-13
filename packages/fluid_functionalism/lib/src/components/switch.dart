@@ -25,6 +25,10 @@ import 'package:motor/motor.dart';
 /// * **squish**: the press. The thumb widens and flattens while pressed.
 /// * **tint**: the track color, off to on, on its own spring.
 ///
+/// The tracks carry no default motion: every `.to(...)` passes the theme's
+/// current token (or [motion]), so runtime theme changes apply to the next
+/// animation.
+///
 /// Hover (the thumb turning into a pill, the track darkening) is a plain
 /// [SingleMotionBuilder]. Geometry and colors are Fluid Functionalism's.
 class FluidSwitch extends StatefulWidget {
@@ -38,6 +42,7 @@ class FluidSwitch extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.statesController,
+    this.motion,
     this.semanticLabel,
   });
 
@@ -62,6 +67,10 @@ class FluidSwitch extends StatefulWidget {
   /// Observes, and can force, hover/focus/press states.
   final WidgetStatesController? statesController;
 
+  /// Overrides the theme's motion tokens ([FluidThemeData.motion]) for this
+  /// instance.
+  final FluidMotionThemeData? motion;
+
   /// A label for assistive technology when [label] is not plain text.
   final String? semanticLabel;
 
@@ -77,6 +86,11 @@ const _flingSpeed = 2.0;
 
 class _FluidSwitchState extends State<FluidSwitch>
     with SingleTickerProviderStateMixin {
+  /// The motion tokens, read where each animation starts so runtime
+  /// theme changes apply to the next one.
+  FluidMotionThemeData get _motion =>
+      FluidTheme.motionOf(context, override: widget.motion);
+
   late final _controller = TrackController(
     vsync: this,
     debugLabel: 'FluidSwitch',
@@ -85,19 +99,16 @@ class _FluidSwitchState extends State<FluidSwitch>
   late final _thumb = Track<double>(
     .single,
     initial: widget.value ? 1 : 0,
-    motion: FluidMotion.moderate,
     debugLabel: 'Thumb',
   );
   late final _squish = Track<double>(
     .single,
     initial: _states.value.contains(WidgetState.pressed) ? 1 : 0,
-    motion: FluidMotion.moderate,
     debugLabel: 'Squish',
   );
   late final _tint = Track<double>(
     .single,
     initial: widget.value ? 1 : 0,
-    motion: FluidMotion.fast,
     debugLabel: 'Tint',
   );
 
@@ -149,7 +160,7 @@ class _FluidSwitchState extends State<FluidSwitch>
     if (target == _squishTarget) return;
     _squishTarget = target;
     _controller.animate([
-      _squish([.to(target)]),
+      _squish([.to(target, motion: _motion.moderate)]),
     ]);
   }
 
@@ -159,10 +170,12 @@ class _FluidSwitchState extends State<FluidSwitch>
     final to = widget.value ? 1.0 : 0.0;
     _controller.animate([
       _thumb([
-        .to(to, motion: FluidMotion.travel(context, FluidMotion.moderate)),
+        .to(to, motion: _motion.moderate),
       ]),
-      _tint([.to(to)]),
-      _squish([.to(_squishTarget = _pressedNow ? 1 : 0)]),
+      _tint([.to(to, motion: _motion.fast)]),
+      _squish([
+        .to(_squishTarget = _pressedNow ? 1 : 0, motion: _motion.moderate),
+      ]),
     ]);
   }
 
@@ -213,11 +226,11 @@ class _FluidSwitchState extends State<FluidSwitch>
     final to = on ? 1.0 : 0.0;
     _controller.animate([
       _thumb(
-        [.to(to, motion: FluidMotion.travel(context, FluidMotion.moderate))],
+        [.to(to, motion: _motion.moderate)],
         withVelocity: speed,
       ),
-      _tint([.to(to)]),
-      _squish([.to(_squishTarget = 0)]),
+      _tint([.to(to, motion: _motion.fast)]),
+      _squish([.to(_squishTarget = 0, motion: _motion.moderate)]),
     ]);
   }
 
@@ -249,7 +262,7 @@ class _FluidSwitchState extends State<FluidSwitch>
           offset: 2,
           child: SingleMotionBuilder(
             value: states.contains(WidgetState.hovered) ? 1 : 0,
-            motion: FluidMotion.fast,
+            motion: _motion.fast,
             debugLabel: 'Hover',
             builder: (context, hover, _) => ListenableBuilder(
               listenable: _controller,
@@ -282,7 +295,7 @@ class _FluidSwitchState extends State<FluidSwitch>
                   value: widget.value
                       ? colors.foreground
                       : colors.mutedForeground,
-                  motion: FluidMotion.fast,
+                  motion: _motion.color,
                   converter: .colorRgb,
                   debugLabel: 'Label color',
                   builder: (context, color, child) => DefaultTextStyle(

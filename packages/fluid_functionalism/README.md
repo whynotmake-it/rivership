@@ -8,7 +8,7 @@ published package.
 
 | Layer | Files |
 | --- | --- |
-| Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotion` (Motor `Motion` tokens from `springs.ts`), `FluidTypography` (bundled Inter variable, wght/opsz pairs) |
+| Foundations | `FluidTheme` / `FluidThemeData`, `FluidColors` (light + dark from `globals.css`), `FluidColorMix.oklab` (CSS `color-mix(in oklab)`), `FluidSizes` + `FluidSizeScope` (desktop/touch tiers × regular/compact density), `FluidMotionThemeData` on `FluidThemeData.motion` (Motor `Motion` tokens from `springs.ts`, runtime-customizable, per-instance `motion:` override, reduced motion applied by `FluidTheme.motionOf`), `FluidTypography` (bundled Inter variable, wght/opsz pairs) |
 | Primitives | `FluidPressable` (hover / `:focus-visible` / pressed / disabled as `WidgetState`s), `FluidFocusRing`, `FluidHoverRegion` + `FluidHoverItem` + `FluidHighlight` (the gliding highlight), `FluidIcon` (small stroke icon set) |
 | Components | `FluidButton`, `FluidSwitch`, `FluidCheckbox`, `FluidTabs`, `FluidInput` |
 

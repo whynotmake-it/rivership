@@ -1,6 +1,7 @@
 import 'package:fluid_functionalism/fluid_functionalism.dart'
     show FluidColors, FluidHoverRegion;
-import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
+import 'package:fluid_functionalism/src/foundation/fluid_motion.dart'
+    show FluidMotionThemeData;
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -16,10 +17,14 @@ import 'package:motor/motor.dart';
 /// * When [rect] goes from null to a value, or [session] changes, the
 ///   highlight starts a fresh session: it appears at [from] (default: [rect])
 ///   and fades in rather than sliding over from wherever it was last.
-/// * While visible, a new [rect] glides there on [motion].
+/// * While visible, a new [rect] glides there on [motion] (default: the
+///   theme's [FluidMotionThemeData.fast]).
 /// * When [rect] becomes null it fades out on [exitMotion], gliding to
 ///   [exitTo] if given.
-/// * [opacity] changes fade on [FluidMotion.fade].
+/// * [opacity] changes fade on [FluidMotionThemeData.fade].
+///
+/// Motions are read from the theme on every change, so runtime theme
+/// changes apply to the next move.
 ///
 /// Reduced motion (`MediaQuery.disableAnimations`) keeps the fades and drops
 /// the travel.
@@ -33,9 +38,9 @@ class FluidHighlight extends StatefulWidget {
     this.exitTo,
     this.fadeIn = true,
     this.opacity = 1,
-    this.motion = FluidMotion.fast,
-    this.exitMotion = FluidMotion.fastExit,
-    this.exitTravelMotion = FluidMotion.moderate,
+    this.motion,
+    this.exitMotion,
+    this.exitTravelMotion,
     this.color,
     this.borderRadius,
     this.border,
@@ -60,14 +65,15 @@ class FluidHighlight extends StatefulWidget {
   /// The opacity while visible. Changes fade.
   final double opacity;
 
-  /// The positional motion while visible.
-  final Motion motion;
+  /// The positional motion while visible. Defaults to the theme's `fast`.
+  final Motion? motion;
 
-  /// The opacity motion when hiding.
-  final Motion exitMotion;
+  /// The opacity motion when hiding. Defaults to the theme's `fastExit`.
+  final Motion? exitMotion;
 
-  /// The positional motion toward [exitTo] when hiding.
-  final Motion exitTravelMotion;
+  /// The positional motion toward [exitTo] when hiding. Defaults to the
+  /// theme's `moderate`.
+  final Motion? exitTravelMotion;
 
   /// Fill color. Defaults to [FluidColors.hover] when no [border] is given.
   final Color? color;
@@ -86,7 +92,8 @@ class FluidHighlight extends StatefulWidget {
 class _FluidHighlightState extends State<FluidHighlight>
     with TickerProviderStateMixin {
   late final MotionController<Rect> _rect = MotionController<Rect>(
-    motion: widget.motion,
+    // Every move sets its motion from the theme first.
+    motion: const Motion.instant(),
     vsync: this,
     converter: MotionConverter.rect,
     initialValue: widget.rect ?? widget.from ?? Rect.zero,
@@ -95,7 +102,7 @@ class _FluidHighlightState extends State<FluidHighlight>
   );
 
   late final SingleMotionController _opacity = SingleMotionController(
-    motion: FluidMotion.fade,
+    motion: const Motion.instant(),
     vsync: this,
     initialValue: widget.rect == null ? 0 : widget.opacity,
     velocityTracking: const VelocityTracking.off(),
@@ -116,6 +123,7 @@ class _FluidHighlightState extends State<FluidHighlight>
   @override
   void didUpdateWidget(FluidHighlight oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final tokens = FluidTheme.motionOf(context);
     final rect = widget.rect;
     if (rect != null) {
       final fresh = !_visible || widget.session != oldWidget.session;
@@ -127,14 +135,14 @@ class _FluidHighlightState extends State<FluidHighlight>
           _opacityTarget = 0;
         }
       }
-      _moveTo(rect, FluidMotion.travel(context, widget.motion));
-      _fadeTo(widget.opacity, FluidMotion.fade);
+      _moveTo(rect, widget.motion ?? tokens.fast);
+      _fadeTo(widget.opacity, tokens.fade);
       _visible = true;
     } else if (_visible) {
       _visible = false;
-      _fadeTo(0, widget.exitMotion);
+      _fadeTo(0, widget.exitMotion ?? tokens.fastExit);
       if (widget.exitTo case final exitTo?) {
-        _moveTo(exitTo, FluidMotion.travel(context, widget.exitTravelMotion));
+        _moveTo(exitTo, widget.exitTravelMotion ?? tokens.moderate);
       }
     }
   }

@@ -1,4 +1,5 @@
 import 'package:fluid_functionalism/src/foundation/fluid_colors.dart';
+import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:flutter/foundation.dart';
@@ -44,6 +45,7 @@ class FluidThemeData with Diagnosticable {
     this.colors = FluidColors.light,
     this.shape = FluidShape.rounded,
     this.tier,
+    this.motion = const FluidMotionThemeData(),
   });
 
   /// The light theme.
@@ -62,6 +64,10 @@ class FluidThemeData with Diagnosticable {
   /// ([FluidTier.forPlatform]). A [FluidSizeScope] overrides it.
   final FluidTier? tier;
 
+  /// The motion tokens. Change them at runtime: components read them on
+  /// every animation.
+  final FluidMotionThemeData motion;
+
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
@@ -70,10 +76,12 @@ class FluidThemeData with Diagnosticable {
     FluidColors? colors,
     FluidShape? shape,
     FluidTier? tier,
+    FluidMotionThemeData? motion,
   }) => FluidThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
     tier: tier ?? this.tier,
+    motion: motion ?? this.motion,
   );
 
   @override
@@ -81,10 +89,11 @@ class FluidThemeData with Diagnosticable {
       other is FluidThemeData &&
       other.colors == colors &&
       other.shape == shape &&
-      other.tier == tier;
+      other.tier == tier &&
+      other.motion == motion;
 
   @override
-  int get hashCode => Object.hash(colors, shape, tier);
+  int get hashCode => Object.hash(colors, shape, tier, motion);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -92,7 +101,8 @@ class FluidThemeData with Diagnosticable {
     properties
       ..add(DiagnosticsProperty('colors', colors))
       ..add(EnumProperty('shape', shape))
-      ..add(EnumProperty('tier', tier, defaultValue: null));
+      ..add(EnumProperty('tier', tier, defaultValue: null))
+      ..add(DiagnosticsProperty('motion', motion));
   }
 }
 
@@ -116,6 +126,21 @@ class FluidTheme extends StatelessWidget {
           .dependOnInheritedWidgetOfExactType<_InheritedFluidTheme>()
           ?.data ??
       FluidThemeData.light;
+
+  /// The motion tokens in effect at [context]: [override] if given (a
+  /// component's `motion:` parameter), else the theme's, made
+  /// [FluidMotionThemeData.reduced] when the platform asks for reduced
+  /// motion. Read it where an animation starts, not once, so runtime
+  /// changes apply to the next animation.
+  static FluidMotionThemeData motionOf(
+    BuildContext context, {
+    FluidMotionThemeData? override,
+  }) {
+    final motion = override ?? of(context).motion;
+    return MediaQuery.maybeDisableAnimationsOf(context) ?? false
+        ? motion.reduced()
+        : motion;
+  }
 
   /// The sizes in effect at [context]: [density] if given, else the nearest
   /// [FluidSizeScope]'s, else regular; the nearest scope's tier, else the

@@ -54,6 +54,7 @@ class FluidButton extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.statesController,
+    this.motion,
     this.semanticLabel,
   }) : icon = null;
 
@@ -71,6 +72,7 @@ class FluidButton extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.statesController,
+    this.motion,
   }) : child = null,
        leading = null,
        trailing = null;
@@ -113,6 +115,10 @@ class FluidButton extends StatefulWidget {
   /// Observes, and can force, hover/focus/press states.
   final WidgetStatesController? statesController;
 
+  /// Overrides the theme's motion tokens ([FluidThemeData.motion]) for this
+  /// instance.
+  final FluidMotionThemeData? motion;
+
   /// Overrides the label for assistive technology.
   final String? semanticLabel;
 
@@ -137,6 +143,11 @@ class _ButtonLook {
 }
 
 class _FluidButtonState extends State<FluidButton> {
+  /// The motion tokens, read where each animation starts so runtime
+  /// theme changes apply to the next one.
+  FluidMotionThemeData get _motion =>
+      FluidTheme.motionOf(context, override: widget.motion);
+
   Track<Color>? _fill;
   Track<Color>? _label;
   Track<double>? _spread;
@@ -232,17 +243,15 @@ class _FluidButtonState extends State<FluidButton> {
               borderRadius: BorderRadius.circular(radius),
               child: TrackBuilder(
                 animations: [
-                  fill([.to(look.fill, motion: FluidMotion.color)]),
-                  labelTrack([.to(look.label, motion: FluidMotion.color)]),
+                  fill([.to(look.fill, motion: _motion.color)]),
+                  labelTrack([.to(look.label, motion: _motion.color)]),
                   spread([
                     .to(
                       look.spread,
-                      motion: pressing
-                          ? FluidMotion.press
-                          : FluidMotion.release,
+                      motion: pressing ? _motion.press : _motion.release,
                     ),
                   ]),
-                  stroke([.to(look.stroke, motion: FluidMotion.color)]),
+                  stroke([.to(look.stroke, motion: _motion.color)]),
                 ],
                 builder: (context, value, _) {
                   final labelColor = value(labelTrack);
