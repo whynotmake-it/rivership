@@ -17,7 +17,7 @@ class FluidFocusRing extends StatelessWidget {
     required this.child,
     super.key,
     this.offset = 0,
-    this.width = 1,
+    this.width,
     this.color,
   });
 
@@ -31,8 +31,9 @@ class FluidFocusRing extends StatelessWidget {
   /// Gap between [child] and the ring.
   final double offset;
 
-  /// Ring thickness.
-  final double width;
+  /// Ring thickness. Defaults to the theme's `focusRingWidth` (1, or 2 in
+  /// high contrast).
+  final double? width;
 
   /// Ring color. Defaults to the theme's focus ring color.
   final Color? color;
@@ -48,7 +49,7 @@ class FluidFocusRing extends StatelessWidget {
               color: color ?? FluidTheme.of(context).colors.focusRing,
               borderRadius: borderRadius,
               offset: offset,
-              width: width,
+              width: width ?? FluidTheme.of(context).focusRingWidth,
             )
           : null,
       child: child,

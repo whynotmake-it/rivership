@@ -36,6 +36,8 @@ class FluidColors with Diagnosticable {
     required this.red,
     required this.redLabel,
     required this.shadowColor,
+    this.borderAlpha = 0.12,
+    this.focusRingColor,
   });
 
   /// The light theme (`light-dark()` first arguments).
@@ -157,8 +159,14 @@ class FluidColors with Diagnosticable {
   /// `--fluid-accent`: the one brand color (switch track, focus rings).
   final Color fluidAccent;
 
-  /// `--focus-ring`, which follows [fluidAccent].
-  Color get focusRing => fluidAccent;
+  /// `--focus-ring`: [focusRingColor] if set, else [fluidAccent].
+  Color get focusRing => focusRingColor ?? fluidAccent;
+
+  /// Overrides the focus ring color (high contrast derives one).
+  final Color? focusRingColor;
+
+  /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
+  final double borderAlpha;
 
   /// `--overlay` as an opaque color: black in light, white in dark.
   final Color overlay;
@@ -176,7 +184,7 @@ class FluidColors with Diagnosticable {
   final Color tintHover;
 
   /// `--border`: `color-mix(in oklab, foreground 12%, transparent)`.
-  Color get border => FluidColorMix.withTransparent(foreground, 0.12);
+  Color get border => FluidColorMix.withTransparent(foreground, borderAlpha);
 
   /// The destructive button's red wash base (tailwind red-500).
   final Color red;
@@ -217,6 +225,8 @@ class FluidColors with Diagnosticable {
       red: c(a.red, b.red),
       redLabel: c(a.redLabel, b.redLabel),
       shadowColor: c(a.shadowColor, b.shadowColor),
+      borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
+      focusRingColor: c(a.focusRing, b.focusRing),
     );
   }
 
@@ -247,6 +257,38 @@ class FluidColors with Diagnosticable {
     shadowColor: shadowColor,
   );
 
+  /// These colors resolved for high contrast
+  /// (`MediaQuery.highContrastOf`): borders at foreground 40%, a stronger
+  /// off-state track ([accent] pushed toward the foreground), and a focus
+  /// ring derived from [fluidAccent] with at least 3:1 contrast against the
+  /// background.
+  FluidColors highContrast() => FluidColors(
+    brightness: brightness,
+    surfaces: surfaces,
+    foreground: foreground,
+    muted: muted,
+    mutedForeground: mutedForeground,
+    accent: FluidColorMix.oklab(accent, foreground, 0.7),
+    selected: selected,
+    input: input,
+    destructive: destructive,
+    destructiveLight: destructiveLight,
+    info: info,
+    success: success,
+    warning: warning,
+    fluidAccent: fluidAccent,
+    overlay: overlay,
+    hover: hover,
+    active: active,
+    tint: tint,
+    tintHover: tintHover,
+    red: red,
+    redLabel: redLabel,
+    shadowColor: shadowColor,
+    borderAlpha: 0.4,
+    focusRingColor: FluidColorMix.ensureContrast(fluidAccent, background, 3),
+  );
+
   @override
   bool operator ==(Object other) =>
       other is FluidColors &&
@@ -271,7 +313,9 @@ class FluidColors with Diagnosticable {
       other.tintHover == tintHover &&
       other.red == red &&
       other.redLabel == redLabel &&
-      other.shadowColor == shadowColor;
+      other.shadowColor == shadowColor &&
+      other.borderAlpha == borderAlpha &&
+      other.focusRingColor == focusRingColor;
 
   @override
   int get hashCode => Object.hashAll([

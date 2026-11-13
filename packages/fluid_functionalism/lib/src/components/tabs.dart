@@ -200,12 +200,15 @@ class _FluidTabsState extends State<FluidTabs> {
             );
           },
           foregroundBuilder: (context, state) => FluidHighlight(
-            rect: state.rectOf(focused)?.inflate(2),
+            rect: state.rectOf(focused)?.inflate(1 + theme.focusRingWidth),
             fadeIn: false,
             motion: motion.fast,
             exitMotion: motion.fastExit,
             borderRadius: BorderRadius.circular(theme.shape.focusRing),
-            border: Border.all(color: colors.focusRing),
+            border: Border.all(
+              color: colors.focusRing,
+              width: theme.focusRingWidth,
+            ),
           ),
           child: Builder(
             builder: (context) {

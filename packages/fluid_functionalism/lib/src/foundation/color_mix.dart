@@ -30,6 +30,37 @@ abstract final class FluidColorMix {
   static Color withTransparent(Color color, double amount) =>
       color.withValues(alpha: color.a * amount);
 
+  /// The WCAG contrast ratio between [a] and [b] (1..21), ignoring alpha.
+  static double contrastRatio(Color a, Color b) {
+    double lum(Color c) =>
+        0.2126 * _toLinear(c.r) +
+        0.7152 * _toLinear(c.g) +
+        0.0722 * _toLinear(c.b);
+    final la = lum(a);
+    final lb = lum(b);
+    final hi = la > lb ? la : lb;
+    final lo = la > lb ? lb : la;
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /// [color], mixed toward black or white (whichever [against] is further
+  /// from) in small Oklab steps until it reaches [minRatio] contrast with
+  /// [against]. Keeps the hue; returns [color] if it already passes.
+  static Color ensureContrast(Color color, Color against, double minRatio) {
+    if (contrastRatio(color, against) >= minRatio) return color;
+    final towardBlack =
+        contrastRatio(const Color(0xFF000000), against) >
+        contrastRatio(const Color(0xFFFFFFFF), against);
+    final target = towardBlack
+        ? const Color(0xFF000000)
+        : const Color(0xFFFFFFFF);
+    for (var keep = 0.98; keep > 0; keep -= 0.02) {
+      final mixed = oklab(color, target, keep);
+      if (contrastRatio(mixed, against) >= minRatio) return mixed;
+    }
+    return target;
+  }
+
   static double _toLinear(double c) =>
       c <= 0.04045 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
 

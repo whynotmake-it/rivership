@@ -47,6 +47,7 @@ class FluidThemeData with Diagnosticable {
     this.tier,
     this.motion = const FluidMotionThemeData(),
     this.typography = const FluidTypographyThemeData(),
+    this.focusRingWidth = 1,
   });
 
   /// The light theme.
@@ -72,6 +73,17 @@ class FluidThemeData with Diagnosticable {
   /// The font family and its metrics (cap height for label centering).
   final FluidTypographyThemeData typography;
 
+  /// The focus ring's thickness: 1 (the web's `ring-1`), 2 in high contrast.
+  final double focusRingWidth;
+
+  /// This theme resolved for high contrast: see [FluidColors.highContrast],
+  /// plus a 2 px focus ring. `FluidTheme.of` applies it when
+  /// `MediaQuery.highContrastOf` is true.
+  FluidThemeData highContrast() => copyWith(
+    colors: colors.highContrast(),
+    focusRingWidth: 2,
+  );
+
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
@@ -82,12 +94,14 @@ class FluidThemeData with Diagnosticable {
     FluidTier? tier,
     FluidMotionThemeData? motion,
     FluidTypographyThemeData? typography,
+    double? focusRingWidth,
   }) => FluidThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
     tier: tier ?? this.tier,
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
+    focusRingWidth: focusRingWidth ?? this.focusRingWidth,
   );
 
   @override
@@ -97,10 +111,12 @@ class FluidThemeData with Diagnosticable {
       other.shape == shape &&
       other.tier == tier &&
       other.motion == motion &&
-      other.typography == typography;
+      other.typography == typography &&
+      other.focusRingWidth == focusRingWidth;
 
   @override
-  int get hashCode => Object.hash(colors, shape, tier, motion, typography);
+  int get hashCode =>
+      Object.hash(colors, shape, tier, motion, typography, focusRingWidth);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -127,12 +143,19 @@ class FluidTheme extends StatelessWidget {
   /// The subtree.
   final Widget child;
 
-  /// The nearest theme, or [FluidThemeData.light] if there is none.
-  static FluidThemeData of(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<_InheritedFluidTheme>()
-          ?.data ??
-      FluidThemeData.light;
+  /// The nearest theme, or [FluidThemeData.light] if there is none,
+  /// resolved for high contrast when the platform asks for it
+  /// (`MediaQuery.highContrastOf`).
+  static FluidThemeData of(BuildContext context) {
+    final data =
+        context
+            .dependOnInheritedWidgetOfExactType<_InheritedFluidTheme>()
+            ?.data ??
+        FluidThemeData.light;
+    return MediaQuery.maybeHighContrastOf(context) ?? false
+        ? data.highContrast()
+        : data;
+  }
 
   /// The motion tokens in effect at [context]: [override] if given (a
   /// component's `motion:` parameter), else the theme's, made
