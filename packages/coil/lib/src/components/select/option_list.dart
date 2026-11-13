@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/select/select_style.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -97,6 +98,21 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     if (oldWidget.options.length != widget.options.length) {
       _rowKeys = _keysFor(widget.options.length);
     }
+    // The owner's value wins over what this list showed since its last
+    // build (a popover rebuilds with its owner; a sheet's route doesn't).
+    if (!setEquals(oldWidget.picked, widget.picked) ||
+        oldWidget.options != widget.options) {
+      _syncChecked();
+    }
+  }
+
+  void _syncChecked() {
+    _checked
+      ..clear()
+      ..addAll([
+        for (final (i, option) in widget.options.indexed)
+          if (widget.picked.contains(option.value)) i,
+      ]);
   }
 
   /// The rows showing as picked.
@@ -106,9 +122,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
   @override
   void initState() {
     super.initState();
-    for (final (i, option) in widget.options.indexed) {
-      if (widget.picked.contains(option.value)) _checked.add(i);
-    }
+    _syncChecked();
     final first = _checked.isEmpty ? null : _checked.reduce(math.min);
     if (widget.keyboardOpened) {
       if (first != null) {

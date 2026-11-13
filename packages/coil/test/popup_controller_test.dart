@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +20,8 @@ class _Host extends StatefulWidget {
 
 class _HostState extends State<_Host> {
   String? value = 'banana';
+
+  void select(String next) => setState(() => value = next);
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -140,5 +144,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(await closed, CoilPopupCloseReason.outsideTap);
     expect(find.byType(CoilSheetPanel), findsNothing);
+  });
+
+  testWidgets('back closes the popover with dismissed, not the page', (
+    tester,
+  ) async {
+    final controller = await _pump(tester);
+    final closed = controller.open();
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(await closed, CoilPopupCloseReason.dismissed);
+    expect(find.byKey(const ValueKey('select')), findsOneWidget);
+  });
+
+  testWidgets('the open popover shows a value changed from outside', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final controller = await _pump(tester);
+    unawaited(controller.open());
+    await tester.pumpAndSettle();
+    tester.state<_HostState>(find.byType(_Host)).select('cherry');
+    await tester.pump();
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Cherry').last),
+      isSemantics(isSelected: true),
+    );
+    semantics.dispose();
   });
 }

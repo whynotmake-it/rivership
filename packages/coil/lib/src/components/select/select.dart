@@ -265,124 +265,104 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       widget.focusNode ??
       (_ownFocusNode ??= FocusNode(debugLabel: 'CoilSelect'));
 
+  CoilPopupController? _ownController;
+  CoilPopupController get _controller =>
+      widget.controller ?? (_ownController ??= CoilPopupController());
+
   final _states = WidgetStatesController();
-  bool _open = false;
 
-  /// The open list, if any.
-  CoilPopupHandle? _popup;
+  /// Whether the list opened from the keyboard: then a row starts active.
+  bool _keyboard = false;
 
-  void _attach(CoilPopupController? controller) => controller?.attach(
-    open: () => _show(keyboard: false),
-    close: (reason) => _popup?.close(reason),
-  );
+  /// Holds a single-choice list open after a pick.
+  Timer? _acknowledge;
+
+  bool get _enabled => widget.onPick != null;
 
   @override
   void initState() {
     super.initState();
-    _attach(widget.controller);
+    _controller.addListener(_onOpenChanged);
   }
 
   @override
   void didUpdateWidget(_SelectCore<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller?.detach();
-      _attach(widget.controller);
+    final old = oldWidget.controller ?? _ownController;
+    if (old != _controller) {
+      old?.removeListener(_onOpenChanged);
+      _controller.addListener(_onOpenChanged);
     }
   }
 
-  bool get _enabled => widget.onPick != null;
-
   @override
   void dispose() {
-    widget.controller?.detach();
+    _controller.removeListener(_onOpenChanged);
+    _acknowledge?.cancel();
+    _ownController?.dispose();
     _ownFocusNode?.dispose();
     _states.dispose();
     super.dispose();
   }
 
-  Future<CoilPopupCloseReason> _show({required bool keyboard}) async {
-    if (_popup case final popup?) return popup.closed;
-    if (!_enabled) return CoilPopupCloseReason.programmatic;
-    final presentation = CoilAdaptivePopup.presentationOf(
-      context,
-      override: widget.presentation,
-      traits: CoilOverlayTraits(
-        kind: CoilOverlayKind.select,
-        itemCount: widget.options.length,
-        multiSelect: widget.multiple,
-      ),
-    );
-    final sheet = presentation == CoilPresentation.sheet;
-    final motion = CoilTheme.motionOf(context, override: widget.motion);
-    // The open list is a route, not a descendant of this select, so it can't
-    // rebuild with it: it starts from this copy and reports each change.
-    var picked = {...widget.picked};
+  void _onOpenChanged() {
+    if (!_controller.isOpen) _acknowledge?.cancel();
+    setState(() {});
+  }
+
+  void _show({required bool keyboard}) {
+    if (!_enabled) return;
+    _keyboard = keyboard;
+    unawaited(_controller.open());
+  }
+
+  Widget _buildList(BuildContext context, CoilPopupHandle popup) {
+    final sheet = popup.presentation == CoilPresentation.sheet;
     // The sheet is a touch surface whatever the tier: touch-sized rows.
     final metrics = sheet
         ? CoilTheme.of(
             context,
           ).metrics.resolve(CoilTier.touch, CoilSize.regular)
         : CoilTheme.metricsOf(context);
-    final pointerTier = CoilTheme.tierOf(context) == CoilTier.pointer;
-    final style = _resolveStyle(context, metrics);
-
-    Timer? acknowledge;
-    setState(() => _open = true);
-    final popup = _popup = CoilAdaptivePopup.show(
-      context,
-      presentation: presentation,
-      // Pointer: a 300 px cap. Touch popovers list at most eight rows, so
-      // only the room on screen bounds them.
-      maxHeight: pointerTier && !sheet ? 300 : double.infinity,
-      motion: widget.motion,
-      content: (context, popup) => _withMotion(
-        MotorInspectionScope(
-          group: 'CoilSelect',
-          child: CoilOptionList<T>(
-            options: widget.options,
-            picked: picked,
-            multiple: widget.multiple,
-            checkmark: widget.checkmark,
-            metrics: metrics,
-            style: style,
-            keyboardOpened: keyboard,
-            selectedFill: !sheet,
-            fullEmphasis: sheet || !pointerTier,
-            onPick: (value) {
-              if (widget.multiple) {
-                picked = picked.contains(value)
+    return _withMotion(
+      MotorInspectionScope(
+        group: 'CoilSelect',
+        child: CoilOptionList<T>(
+          options: widget.options,
+          picked: widget.picked,
+          multiple: widget.multiple,
+          checkmark: widget.checkmark,
+          metrics: metrics,
+          style: _resolveStyle(context, metrics),
+          keyboardOpened: _keyboard,
+          selectedFill: !sheet,
+          fullEmphasis: sheet || CoilTheme.tierOf(context) == CoilTier.touch,
+          onPick: (value) {
+            final picked = widget.picked;
+            if (widget.multiple) {
+              widget.onPick?.call(
+                value,
+                picked.contains(value)
                     ? ({...picked}..remove(value))
-                    : {...picked, value};
-                widget.onPick?.call(value, picked);
-                return;
-              }
-              widget.onPick?.call(value, {value});
-              // Hold the list open long enough to see the check draw and the
-              // selected fill land on the picked row.
-              acknowledge = Timer(
-                motion.acknowledgeDuration,
-                () => popup.close(.selected),
+                    : {...picked, value},
               );
-            },
-            onDismiss: popup.close,
-          ),
+              return;
+            }
+            widget.onPick?.call(value, {value});
+            // Hold the list open long enough to see the check draw and the
+            // selected fill land on the picked row.
+            _acknowledge = Timer(
+              CoilTheme.motionOf(
+                context,
+                override: widget.motion,
+              ).acknowledgeDuration,
+              () => popup.close(.selected),
+            );
+          },
+          onDismiss: popup.close,
         ),
       ),
-      popover: (context, content) =>
-          _PopoverSurface(metrics: metrics, style: style, child: content),
-      sheet: (context, content) =>
-          CoilSheetPanel(title: widget.sheetTitle, child: content),
     );
-    widget.controller?.didOpen(popup.closed);
-    final reason = await popup.closed;
-    acknowledge?.cancel();
-    _popup = null;
-    if (!mounted) return reason;
-    setState(() => _open = false);
-    // Focus goes back to the trigger however the list closed.
-    _focusNode.requestFocus();
-    return reason;
   }
 
   /// Applies the per-instance motion to [child]'s subtree.
@@ -396,8 +376,34 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      _withMotion(Builder(builder: _buildTrigger));
+  Widget build(BuildContext context) {
+    final pointerTier = CoilTheme.tierOf(context) == CoilTier.pointer;
+    return CoilAdaptivePopup(
+      controller: _controller,
+      presentation: widget.presentation,
+      traits: CoilOverlayTraits(
+        kind: CoilOverlayKind.select,
+        itemCount: widget.options.length,
+        multiSelect: widget.multiple,
+      ),
+      // Pointer: a 300 px cap. Touch popovers list at most eight rows, so
+      // only the room on screen bounds them.
+      maxHeight: pointerTier ? 300 : double.infinity,
+      motion: widget.motion,
+      content: _buildList,
+      popover: (context, content) {
+        final metrics = CoilTheme.metricsOf(context);
+        return _PopoverSurface(
+          metrics: metrics,
+          style: _resolveStyle(context, metrics),
+          child: content,
+        );
+      },
+      sheet: (context, content) =>
+          CoilSheetPanel(title: widget.sheetTitle, child: content),
+      child: _withMotion(Builder(builder: _buildTrigger)),
+    );
+  }
 
   CoilSelectStyle _resolveStyle(BuildContext context, CoilMetrics metrics) =>
       CoilSelectStyle.fallback(
@@ -440,8 +446,8 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       child: Semantics(
         button: true,
         enabled: _enabled,
-        expanded: _open,
-        onTap: _enabled ? () => unawaited(_show(keyboard: false)) : null,
+        expanded: _controller.isOpen,
+        onTap: _enabled ? () => _show(keyboard: false) : null,
         value: value,
         hint: value == null ? widget.placeholder : null,
         child: CallbackShortcuts(
@@ -450,16 +456,14 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
               LogicalKeyboardKey.arrowDown,
               LogicalKeyboardKey.arrowUp,
             ])
-              SingleActivator(key): () => unawaited(_show(keyboard: true)),
+              SingleActivator(key): () => _show(keyboard: true),
           },
           child: CoilInteraction(
             onPressed: _enabled
-                ? () => unawaited(
-                    _show(
-                      keyboard:
-                          CoilInputModality.instance.value ==
-                          CoilModality.keyboard,
-                    ),
+                ? () => _show(
+                    keyboard:
+                        CoilInputModality.instance.value ==
+                        CoilModality.keyboard,
                   )
                 : null,
             focusNode: _focusNode,
@@ -472,7 +476,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
               states: {
                 ...states,
                 // The list shows where the pointer is while open.
-                if (_open) WidgetState.selected,
+                if (_controller.isOpen) WidgetState.selected,
               },
               icon: widget.icon,
               indicator: widget.indicator,

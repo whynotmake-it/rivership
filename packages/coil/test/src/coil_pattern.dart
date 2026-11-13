@@ -439,16 +439,20 @@ Future<void> _select(WidgetTester tester, Finder finder) async {
     isTrue,
     reason: 'select: an enabled button node with a tap action',
   );
+  final pageScope = FocusManager.instance.primaryFocus?.enclosingScope;
   await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
   await tester.pumpAndSettle();
-  // While open, a modal barrier hides the trigger's node; the list is a
-  // menu node with the focus.
+  // While open, the list is a menu node with the focus, in its own scope.
   final menu = find.semantics
       .byPredicate((node) => node.getSemanticsData().role == SemanticsRole.menu)
       .evaluate()
       .isNotEmpty;
   expect(menu, isTrue, reason: 'select: Down opens a menu list');
-  expect(_focusInside(finder), isFalse, reason: 'select: the list has focus');
+  expect(
+    FocusManager.instance.primaryFocus?.enclosingScope,
+    isNot(pageScope),
+    reason: 'select: the list has focus',
+  );
   await tester.sendKeyEvent(LogicalKeyboardKey.escape);
   await tester.pumpAndSettle();
   expect(expanded(), Tristate.isFalse, reason: 'select: Escape closes it');

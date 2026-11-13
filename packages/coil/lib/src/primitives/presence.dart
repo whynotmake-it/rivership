@@ -1,49 +1,13 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/widgets.dart';
-import 'package:motor/motor.dart';
-
-/// Drives a route's transition with Motor springs: its `animation` is a
-/// presence value going 0 → 1 on [enterMotion] when pushed, and back to 0
-/// on [exitMotion] when popped, starting from wherever it is with its
-/// current velocity. So a popover closed mid-opening reverses smoothly, and
-/// the route is removed when the exit spring settles.
-///
-/// Read the motions from `CoilTheme.motionOf` when creating the route.
-mixin CoilSpringRoute<T> on TransitionRoute<T> {
-  /// The spring that brings the route in.
-  Motion get enterMotion;
-
-  /// The tighter spring that takes it out.
-  Motion get exitMotion;
-
-  // Only checked to be non-negative: the simulations below drive the
-  // transition.
-  @override
-  Duration get transitionDuration =>
-      enterMotion.duration ?? const Duration(milliseconds: 300);
-
-  @override
-  Duration get reverseTransitionDuration =>
-      exitMotion.duration ?? const Duration(milliseconds: 300);
-
-  @override
-  Simulation createSimulation({required bool forward}) {
-    final controller = this.controller!;
-    return (forward ? enterMotion : exitMotion).createSimulation(
-      start: controller.value,
-      end: forward ? 1 : 0,
-      velocity: controller.velocity,
-    );
-  }
-}
 
 /// coil's default enter and exit for overlays: [child] blurs, fades and
 /// shrinks a little toward [alignment] as [presence] goes from 1 to 0.
 ///
-/// [presence] is any 0→1 animation driven by a spring (a [CoilSpringRoute]'s
-/// animation, a `MotionSwitcher` child's). A spring may overshoot 0–1:
-/// opacity and blur are clamped, scale and offset use the raw value so a
+/// [presence] is any 0→1 animation driven by a spring: a popover's
+/// presence, a `MotionSwitcher` child's animation. A spring may overshoot
+/// 0–1: opacity and blur are clamped, scale and offset use the raw value so a
 /// bouncy spring visibly bounces.
 ///
 /// As a `MotionSwitcher` transition:

@@ -98,7 +98,7 @@ Rules:
 | the item Enter acts on | `CoilActiveItemController` |
 | which item is lit (pointer, keyboard focus) | `CoilHoverRegion`, read with `CoilHoverRegion.maybeOf` |
 | travelling highlight, pills, merge/split selection | `CoilHoverHighlight`, or your own `CoilMotionLayer` with `CoilHighlightPainter` and `CoilSelectionPainter`; inside a scroll view, put it in the scrolled content |
-| anchored popover | `CoilPopoverRoute` via `CoilAdaptivePopup` |
+| anchored popover | `CoilPopover` via `CoilAdaptivePopup` |
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
 | editable text | `CoilTextFieldCore` |

@@ -36,7 +36,7 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
 - Every component takes `size:`, `motion:`, `style:` and, if it has
   focusable parts, `focusNode`/`autofocus`.
 - Overlays take `presentation:` and `controller: CoilPopupController?`.
-  They open through `CoilAdaptivePopup.show` and close with a
+  They wrap their trigger in `CoilAdaptivePopup` and close with a
   `CoilPopupCloseReason`.
 
 ## 3. Style class

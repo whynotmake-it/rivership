@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:coil/src/foundation/adaptive.dart';
 import 'package:flutter/foundation.dart';
 
 /// Why a popup closed. A [CoilPopupController.open] future resolves with
@@ -55,8 +56,7 @@ class CoilPopupController extends ChangeNotifier {
     if (isOpen) _host?.close(CoilPopupCloseReason.programmatic);
   }
 
-  /// Connects the component that owns the popup. Components call this;
-  /// apps don't.
+  /// Connects the popup. `CoilAdaptivePopup` calls this; apps don't.
   void attach({
     required Future<CoilPopupCloseReason> Function() open,
     required void Function(CoilPopupCloseReason reason) close,
@@ -64,12 +64,15 @@ class CoilPopupController extends ChangeNotifier {
     _host = _CoilPopupHost(open, close);
   }
 
-  /// Disconnects the owning component.
-  void detach() => _host = null;
+  /// Disconnects the popup. A popup that goes away while open still
+  /// resolves its future, but the controller forgets it without notifying.
+  void detach() {
+    _host = null;
+    _closed = null;
+  }
 
-  /// Reports that the owning component opened its popup (by user input or
-  /// through [open]); [closed] resolves when it closes. Components call
-  /// this; apps don't.
+  /// Reports that the popup opened; [closed] resolves when it closes.
+  /// `CoilAdaptivePopup` calls this; apps don't.
   void didOpen(Future<CoilPopupCloseReason> closed) {
     _closed = closed;
     notifyListeners();
@@ -90,9 +93,12 @@ class _CoilPopupHost {
   final void Function(CoilPopupCloseReason reason) close;
 }
 
-/// One open popup, as `CoilAdaptivePopup.show` hands it to its owner and
-/// its content: close it with a reason, or wait for it to close.
+/// One open popup, as `CoilAdaptivePopup` hands it to its content: close it
+/// with a reason, or wait for it to close.
 abstract interface class CoilPopupHandle {
+  /// How it opened: anchored or in a sheet.
+  CoilPresentation get presentation;
+
   /// Resolves once, when the popup closes.
   Future<CoilPopupCloseReason> get closed;
 

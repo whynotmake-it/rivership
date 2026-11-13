@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 final _anchor = find.byKey(const ValueKey('anchor'));
 final _content = find.byKey(const ValueKey('content'));
+final _controller = CoilPopupController();
 
 /// An app with an anchor at [anchorTop]; opening it shows a popover of
 /// [contentHeight].
@@ -26,21 +27,24 @@ Widget _app({
           Positioned(
             left: 40,
             top: anchorTop,
-            child: Builder(
-              builder: (context) => GestureDetector(
+            child: CoilAdaptivePopup(
+              controller: _controller,
+              presentation: CoilPresentation.popover,
+              traits: const CoilOverlayTraits(
+                kind: CoilOverlayKind.actionMenu,
+                itemCount: 1,
+              ),
+              content: (context, popup) => SizedBox(
+                key: const ValueKey('content'),
+                width: 160,
+                height: contentHeight,
+              ),
+              popover: (context, content) => content,
+              sheet: (context, content) => content,
+              child: GestureDetector(
                 key: const ValueKey('anchor'),
                 behavior: HitTestBehavior.opaque,
-                onTap: () => CoilAdaptivePopup.show(
-                  context,
-                  presentation: CoilPresentation.popover,
-                  content: (context, popup) => SizedBox(
-                    key: const ValueKey('content'),
-                    width: 160,
-                    height: contentHeight,
-                  ),
-                  popover: (context, content) => content,
-                  sheet: (context, content) => content,
-                ),
+                onTap: _controller.open,
                 child: const SizedBox(width: 120, height: 36),
               ),
             ),
@@ -81,13 +85,12 @@ void main() {
     );
   });
 
-  testWidgets('follows the anchor when the route rebuilds after it moved', (
+  testWidgets('follows the anchor in the same frame when it moves', (
     tester,
   ) async {
     await tester.pumpWidget(_app(anchorTop: 40));
     await _open(tester);
     await tester.pumpWidget(_app(anchorTop: 100));
-    await tester.pump();
     expect(
       tester.getRect(_content).top,
       tester.getRect(_anchor).bottom + 6,

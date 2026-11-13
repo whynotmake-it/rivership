@@ -55,9 +55,61 @@ class CoilOverlayTraits {
   final int submenuDepth;
 }
 
-/// The one place that decides whether a choice overlay is a popover or a
-/// sheet, and opens it.
-abstract final class CoilAdaptivePopup {
+/// Opens [content] from [child]: anchored to it in a [CoilPopover], or in
+/// a sheet, as [presentationOf] decides each time it opens.
+///
+/// [controller] opens and closes it; its `open()` resolves with why it
+/// closed. The popover is a descendant of this widget, so its content
+/// rebuilds with the owner. The sheet is a route: its content builds from
+/// the owner's widget when the sheet builds, but doesn't rebuild with it.
+///
+/// [popover] wraps the content in the popover's surface and [sheet] in the
+/// sheet's; [content] gets the [CoilPopupHandle] so it can close with a
+/// reason. A tap outside closes either one with
+/// [CoilPopupCloseReason.outsideTap] on tap-up; a sheet dragged away or
+/// closed by back reports [CoilPopupCloseReason.dismissed].
+class CoilAdaptivePopup extends StatefulWidget {
+  /// Creates an adaptive popup anchored to [child].
+  const CoilAdaptivePopup({
+    required this.controller,
+    required this.traits,
+    required this.content,
+    required this.popover,
+    required this.sheet,
+    required this.child,
+    super.key,
+    this.presentation,
+    this.maxHeight = double.infinity,
+    this.motion,
+  });
+
+  /// Opens and closes the popup.
+  final CoilPopupController controller;
+
+  /// What the popup is, for [presentationOf].
+  final CoilOverlayTraits traits;
+
+  /// Pins the presentation instead of deciding it.
+  final CoilPresentation? presentation;
+
+  /// The popup's content.
+  final Widget Function(BuildContext context, CoilPopupHandle popup) content;
+
+  /// Wraps the content in the popover's surface.
+  final Widget Function(BuildContext context, Widget content) popover;
+
+  /// Wraps the content in the sheet's surface.
+  final Widget Function(BuildContext context, Widget content) sheet;
+
+  /// The anchor.
+  final Widget child;
+
+  /// Maximum popover height.
+  final double maxHeight;
+
+  /// Motion tokens for the popup's enter and exit, instead of the theme's.
+  final CoilMotion? motion;
+
   /// The most rows a phone shows in an anchored touch popover.
   static const shortMenuMaxItems = 8;
 
@@ -104,102 +156,144 @@ abstract final class CoilAdaptivePopup {
     return needsRoom ? CoilPresentation.sheet : CoilPresentation.popover;
   }
 
-  /// Opens [content] anchored to [anchorContext]'s box, or in a sheet, as
-  /// [presentation] says, and returns its [CoilPopupHandle]. Themes and
-  /// adaptive pins at [anchorContext] are carried into the overlay.
-  ///
-  /// [popover] wraps the content in the popover's surface; [sheet] in the
-  /// sheet's. Both receive the same [content], which gets the handle so it
-  /// can close with a reason. A tap outside the popup closes it with
-  /// [CoilPopupCloseReason.outsideTap] on tap-up; a route popped any other
-  /// way (sheet drag, system back) reports [CoilPopupCloseReason.dismissed].
-  /// [motion] overrides the theme's tokens for the popup's own enter and
-  /// exit.
-  static CoilPopupHandle show(
-    BuildContext anchorContext, {
-    required CoilPresentation presentation,
-    required Widget Function(BuildContext context, CoilPopupHandle popup)
-    content,
-    required Widget Function(BuildContext context, Widget content) popover,
-    required Widget Function(BuildContext context, Widget content) sheet,
-    double maxHeight = double.infinity,
-    CoilMotion? motion,
-  }) {
-    final navigator = Navigator.of(anchorContext);
-    final themes = InheritedTheme.capture(
-      from: anchorContext,
-      to: navigator.context,
+  @override
+  State<CoilAdaptivePopup> createState() => _CoilAdaptivePopupState();
+}
+
+class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
+  final _popover = CoilPopoverController(debugLabel: 'CoilAdaptivePopup');
+
+  /// The open popup, if any.
+  _Handle? _open;
+
+  /// The last popup shown: an exiting popover still builds with it.
+  _Handle? _shown;
+
+  @override
+  void initState() {
+    super.initState();
+    _attach();
+  }
+
+  @override
+  void didUpdateWidget(CoilAdaptivePopup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.detach();
+      _attach();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.detach();
+    final open = _open;
+    _open = null;
+    open?.close(.programmatic);
+    super.dispose();
+  }
+
+  void _attach() => widget.controller.attach(
+    open: _show,
+    close: (reason) => _open?.close(reason),
+  );
+
+  Future<CoilPopupCloseReason> _show() {
+    if (_open case final open?) return open.closed;
+    final presentation = CoilAdaptivePopup.presentationOf(
+      context,
+      traits: widget.traits,
+      override: widget.presentation,
     );
-    final tokens = CoilTheme.motionOf(anchorContext, override: motion);
-    final handle = _Handle();
-    Widget body(BuildContext context, Widget Function(Widget) chrome) =>
-        TapRegion(
-          onTapUpOutside: (_) => handle.close(.outsideTap),
-          child: chrome(content(context, handle)),
-        );
-    final Route<CoilPopupCloseReason> route;
+    final handle = _Handle(presentation, _closed);
+    setState(() => _open = _shown = handle);
     switch (presentation) {
       case CoilPresentation.popover:
-        final box = anchorContext.findRenderObject()! as RenderBox;
-        // Reduced motion: no grow, so the popover fades on the fade tokens
-        // (the spatial tokens are instant).
-        final reduce =
-            MediaQuery.maybeDisableAnimationsOf(anchorContext) ?? false;
-        route = CoilPopoverRoute<CoilPopupCloseReason>(
-          anchorContext: anchorContext,
-          minWidth: box.size.width,
-          maxHeight: maxHeight,
-          enterMotion: reduce ? tokens.fade : tokens.standard,
-          exitMotion: reduce ? tokens.fadeExit : tokens.standardExit,
-          reduceMotion: reduce,
-          capturedThemes: themes,
-          // The TapRegion closes on tap-up outside, with its reason.
-          barrierDismissible: false,
-          builder: (context) =>
-              body(context, (content) => popover(context, content)),
-        );
+        _popover.show();
       case CoilPresentation.sheet:
-        route = CoilSheetRoute<CoilPopupCloseReason>(
-          motion: tokens.gentle,
-          barrierColor: CoilSheetPanel.barrierColorOf(anchorContext),
-          barrierDismissible: false,
-          capturedThemes: themes,
-          child: Builder(
-            builder: (context) =>
-                body(context, (content) => sheet(context, content)),
-          ),
-        );
+        _pushSheet(handle);
     }
+    widget.controller.didOpen(handle.closed);
+    return handle.closed;
+  }
+
+  void _closed(_Handle handle) {
+    if (_open != handle) return;
+    _popover.hide();
+    setState(() => _open = null);
+  }
+
+  void _pushSheet(_Handle handle) {
+    final navigator = Navigator.of(context);
+    final route = CoilSheetRoute<CoilPopupCloseReason>(
+      motion: CoilTheme.motionOf(context, override: widget.motion).gentle,
+      barrierColor: CoilSheetPanel.barrierColorOf(context),
+      // The TapRegion closes on tap-up outside, with its reason.
+      barrierDismissible: false,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+      child: Builder(
+        builder: (context) => TapRegion(
+          onTapUpOutside: (_) => handle.close(.outsideTap),
+          child: widget.sheet(context, widget.content(context, handle)),
+        ),
+      ),
+    );
     handle._route = route;
     unawaited(
       navigator
           .push(route)
-          .then(
-            (result) =>
-                handle._finish(result ?? CoilPopupCloseReason.dismissed),
-          ),
+          .then((result) => handle._finish(result ?? .dismissed)),
     );
-    return handle;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _shown;
+    return CoilPopover(
+      controller: _popover,
+      onClose: (reason) => _open?.close(reason),
+      maxHeight: widget.maxHeight,
+      motion: widget.motion,
+      popover: (context) => widget.popover(
+        context,
+        widget.content(context, shown!),
+      ),
+      child: widget.child,
+    );
   }
 }
 
 class _Handle implements CoilPopupHandle {
+  _Handle(this.presentation, this._onClosed);
+
+  @override
+  final CoilPresentation presentation;
+  final void Function(_Handle handle) _onClosed;
   final _done = Completer<CoilPopupCloseReason>();
+
+  /// The sheet's route, when it is a sheet.
   Route<CoilPopupCloseReason>? _route;
 
   @override
   Future<CoilPopupCloseReason> get closed => _done.future;
 
   void _finish(CoilPopupCloseReason reason) {
-    if (!_done.isCompleted) _done.complete(reason);
+    if (_done.isCompleted) return;
+    _done.complete(reason);
+    _onClosed(this);
   }
 
   @override
   void close(CoilPopupCloseReason reason) {
-    final route = _route;
-    if (_done.isCompleted || route == null || !route.isActive) return;
-    // Resolve now: the route keeps animating out, but the popup is closed.
+    if (_done.isCompleted) return;
+    // Resolve now: a popover or sheet keeps animating out, but the popup is
+    // closed.
     _finish(reason);
+    final route = _route;
+    if (route == null || !route.isActive) return;
     final navigator = route.navigator!;
     if (route.isCurrent) {
       navigator.pop(reason);
