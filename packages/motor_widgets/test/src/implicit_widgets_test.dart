@@ -227,6 +227,58 @@ void main() {
       expect(colorOf(tester), const Color(0xFFFFFFFF));
     });
 
+    testWidgets('motions gives one track its own motion', (tester) async {
+      Widget build(double width, Color color) => _wrap(
+        MotionContainer(
+          width: width,
+          height: 20,
+          color: color,
+          motion: spring,
+          // Dot shorthand resolves on MotionContainerTrack.
+          motions: {.color: const Motion.instant()},
+        ),
+      );
+      await tester.pumpWidget(build(100, const Color(0xFF000000)));
+      await tester.pumpWidget(build(200, const Color(0xFFFFFFFF)));
+      await tester.pump(frame);
+      await tester.pump(frame);
+      expect(colorOf(tester), const Color(0xFFFFFFFF));
+      expect(
+        tester.getSize(find.byType(MotionContainer)).width,
+        inExclusiveRange(100, 200),
+      );
+    });
+
+    testWidgets('a rebuilt motions map with equal motions redirects nothing', (
+      tester,
+    ) async {
+      Future<List<double>> widths({required bool rebuild}) async {
+        Widget build(double width) => _wrap(
+          MotionContainer(
+            width: width,
+            height: 20,
+            motion: spring,
+            motions: {
+              MotionContainerTrack.minWidth: const CupertinoMotion.smooth(),
+              MotionContainerTrack.maxWidth: const CupertinoMotion.smooth(),
+            },
+          ),
+        );
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(build(100));
+        await tester.pumpWidget(build(200));
+        final widths = <double>[];
+        for (var i = 0; i < 20; i++) {
+          if (rebuild && i == 5) await tester.pumpWidget(build(200));
+          await tester.pump(frame);
+          widths.add(tester.getSize(find.byType(MotionContainer)).width);
+        }
+        return widths;
+      }
+
+      expect(await widths(rebuild: true), await widths(rebuild: false));
+    });
+
     testWidgets('animates decoration color and border radius', (tester) async {
       Widget build(double radius, Color color) => _wrap(
         MotionContainer(
@@ -311,6 +363,44 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getSize(find.byType(MotionContainer)).height, 60);
     });
+  });
+
+  testWidgets('MotionAlign and MotionPositioned take per-track motions', (
+    tester,
+  ) async {
+    Widget build(double t) => _wrap(
+      SizedBox(
+        width: 200,
+        height: 200,
+        child: Stack(
+          children: [
+            MotionPositioned(
+              left: 100 * t,
+              top: 100 * t,
+              motion: spring,
+              motions: {.top: const Motion.instant()},
+              child: MotionAlign(
+                alignment: Alignment(t, t),
+                widthFactor: 1 + t,
+                motion: spring,
+                motions: {.widthFactor: const Motion.instant()},
+                child: _box,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpWidget(build(0));
+    await tester.pumpWidget(build(1));
+    await tester.pump(frame);
+    await tester.pump(frame);
+    final positioned = _below<Positioned>(tester, MotionPositioned);
+    expect(positioned.top, 100);
+    expect(positioned.left, inExclusiveRange(0, 100));
+    final align = _below<Align>(tester, MotionAlign);
+    expect(align.widthFactor, 2);
+    expect((align.alignment as Alignment).x, inExclusiveRange(0, 1));
   });
 
   testWidgets('onEnd is called when the motion settles', (tester) async {

@@ -4,59 +4,120 @@ import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/implicit_tracks.dart';
 import 'package:motor_widgets/src/layout/padding_extended.dart';
 
-final _alignment = Track<Alignment>(
-  MotionConverter.alignment,
-  debugLabel: 'alignment',
-);
-final _padding = Track<EdgeInsets>(
-  MotionConverter.edgeInsets,
-  debugLabel: 'padding',
-);
-final _color = Track<Color>(MotionConverter.colorRgb, debugLabel: 'color');
-final _decorationColor = Track<Color>(
-  MotionConverter.colorRgb,
-  debugLabel: 'decoration.color',
-);
-final _decorationRadius = Track<BorderRadius>(
-  const BorderRadiusMotionConverter(),
-  debugLabel: 'decoration.borderRadius',
-);
-final _foregroundColor = Track<Color>(
-  MotionConverter.colorRgb,
-  debugLabel: 'foregroundDecoration.color',
-);
-final _foregroundRadius = Track<BorderRadius>(
-  const BorderRadiusMotionConverter(),
-  debugLabel: 'foregroundDecoration.borderRadius',
-);
-final _minWidth = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'minWidth',
-);
-final _maxWidth = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'maxWidth',
-);
-final _minHeight = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'minHeight',
-);
-final _maxHeight = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'maxHeight',
-);
-final _margin = Track<EdgeInsets>(
-  MotionConverter.edgeInsets,
-  debugLabel: 'margin',
-);
-final _transform = Track<Matrix4>(
-  const Matrix4MotionConverter(),
-  debugLabel: 'transform',
-);
-final _transformAlignment = Track<Alignment>(
-  MotionConverter.alignment,
-  debugLabel: 'transformAlignment',
-);
+/// The tracks of a [MotionContainer], one per animated property.
+///
+/// Use them as keys of [MotionContainer.motions] to give a property its own
+/// motion:
+///
+/// ```dart
+/// MotionContainer(
+///   motion: const .smoothSpring(),
+///   motions: {.alignment: const .snappySpring()},
+///   …
+/// )
+/// ```
+///
+/// Only the tracks declared here exist; they are real [Track]s, played by
+/// the widget's `TrackBuilder` and labeled for `motor_devtools`.
+///
+/// [MotionContainer.width] and [MotionContainer.height] fold into the
+/// constraints, so they move with [minWidth], [maxWidth], [minHeight] and
+/// [maxHeight].
+final class MotionContainerTrack<T extends Object> extends Track<T> {
+  MotionContainerTrack._(super.converter, {required String super.debugLabel});
+
+  /// [MotionContainer.alignment], resolved against the ambient
+  /// [Directionality].
+  static final alignment = MotionContainerTrack<Alignment>._(
+    MotionConverter.alignment,
+    debugLabel: 'MotionContainer.alignment',
+  );
+
+  /// [MotionContainer.padding], including the decoration's padding.
+  static final padding = MotionContainerTrack<EdgeInsets>._(
+    MotionConverter.edgeInsets,
+    debugLabel: 'MotionContainer.padding',
+  );
+
+  /// [MotionContainer.color].
+  static final color = MotionContainerTrack<Color>._(
+    MotionConverter.colorRgb,
+    debugLabel: 'MotionContainer.color',
+  );
+
+  /// The `color` of a [BoxDecoration] in [MotionContainer.decoration].
+  static final decorationColor = MotionContainerTrack<Color>._(
+    MotionConverter.colorRgb,
+    debugLabel: 'MotionContainer.decorationColor',
+  );
+
+  /// The `borderRadius` of a [BoxDecoration] in [MotionContainer.decoration].
+  static final decorationBorderRadius = MotionContainerTrack<BorderRadius>._(
+    const BorderRadiusMotionConverter(),
+    debugLabel: 'MotionContainer.decorationBorderRadius',
+  );
+
+  /// The `color` of a [BoxDecoration] in
+  /// [MotionContainer.foregroundDecoration].
+  static final foregroundDecorationColor = MotionContainerTrack<Color>._(
+    MotionConverter.colorRgb,
+    debugLabel: 'MotionContainer.foregroundDecorationColor',
+  );
+
+  /// The `borderRadius` of a [BoxDecoration] in
+  /// [MotionContainer.foregroundDecoration].
+  static final foregroundDecorationBorderRadius =
+      MotionContainerTrack<BorderRadius>._(
+        const BorderRadiusMotionConverter(),
+        debugLabel: 'MotionContainer.foregroundDecorationBorderRadius',
+      );
+
+  /// The minimum width of [MotionContainer.constraints], including
+  /// [MotionContainer.width].
+  static final minWidth = MotionContainerTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionContainer.minWidth',
+  );
+
+  /// The maximum width of [MotionContainer.constraints], including
+  /// [MotionContainer.width]. Unused while unbounded.
+  static final maxWidth = MotionContainerTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionContainer.maxWidth',
+  );
+
+  /// The minimum height of [MotionContainer.constraints], including
+  /// [MotionContainer.height].
+  static final minHeight = MotionContainerTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionContainer.minHeight',
+  );
+
+  /// The maximum height of [MotionContainer.constraints], including
+  /// [MotionContainer.height]. Unused while unbounded.
+  static final maxHeight = MotionContainerTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionContainer.maxHeight',
+  );
+
+  /// [MotionContainer.margin], resolved against the ambient [Directionality].
+  static final margin = MotionContainerTrack<EdgeInsets>._(
+    MotionConverter.edgeInsets,
+    debugLabel: 'MotionContainer.margin',
+  );
+
+  /// [MotionContainer.transform], decomposed like `Matrix4Tween`.
+  static final transform = MotionContainerTrack<Matrix4>._(
+    const Matrix4MotionConverter(),
+    debugLabel: 'MotionContainer.transform',
+  );
+
+  /// [MotionContainer.transformAlignment].
+  static final transformAlignment = MotionContainerTrack<Alignment>._(
+    MotionConverter.alignment,
+    debugLabel: 'MotionContainer.transformAlignment',
+  );
+}
 
 /// Animated version of [Container] that springs each of its properties to
 /// its new value whenever it changes.
@@ -87,6 +148,7 @@ class MotionContainer extends StatelessWidget {
   /// Creates a container that animates its parameters with [motion].
   MotionContainer({
     required this.motion,
+    this.motions,
     this.alignment,
     this.padding,
     this.color,
@@ -175,8 +237,15 @@ class MotionContainer extends StatelessWidget {
   /// [Container.clipBehavior].
   final Clip clipBehavior;
 
-  /// The motion every property follows.
+  /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
+
+  /// Motions for single properties, overriding [motion], keyed by the
+  /// widget's tracks: `motions: {.color: const .snappySpring()}`.
+  ///
+  /// Motions compare by value, so a map literal rebuilt in `build` with the
+  /// same motions redirects nothing.
+  final Map<MotionContainerTrack<Object>, Motion>? motions;
 
   /// Called every time the animation settles.
   final VoidCallback? onEnd;
@@ -208,34 +277,37 @@ class MotionContainer extends StatelessWidget {
 
     return ImplicitTrackBuilder(
       motion: motion,
+      motions: motions,
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionContainer',
       tracks: [
-        _alignment.implicit(alignment?.resolve(direction)),
-        _padding.implicit(
+        MotionContainerTrack.alignment.implicit(alignment?.resolve(direction)),
+        MotionContainerTrack.padding.implicit(
           _paddingIncludingDecoration?.resolve(direction),
         ),
-        _color.implicit(color),
+        MotionContainerTrack.color.implicit(color),
         if (decoration is BoxDecoration) ...[
-          _decorationColor.implicit(decoration.color),
-          _decorationRadius.implicit(
+          MotionContainerTrack.decorationColor.implicit(decoration.color),
+          MotionContainerTrack.decorationBorderRadius.implicit(
             decoration.borderRadius?.resolve(direction),
           ),
         ],
         if (foregroundDecoration is BoxDecoration) ...[
-          _foregroundColor.implicit(foregroundDecoration.color),
-          _foregroundRadius.implicit(
+          MotionContainerTrack.foregroundDecorationColor.implicit(
+            foregroundDecoration.color,
+          ),
+          MotionContainerTrack.foregroundDecorationBorderRadius.implicit(
             foregroundDecoration.borderRadius?.resolve(direction),
           ),
         ],
-        _minWidth.implicit(finite(constraints?.minWidth)),
-        _maxWidth.implicit(finite(constraints?.maxWidth)),
-        _minHeight.implicit(finite(constraints?.minHeight)),
-        _maxHeight.implicit(finite(constraints?.maxHeight)),
-        _margin.implicit(margin?.resolve(direction)),
-        _transform.implicit(transform),
-        _transformAlignment.implicit(
+        MotionContainerTrack.minWidth.implicit(finite(constraints?.minWidth)),
+        MotionContainerTrack.maxWidth.implicit(finite(constraints?.maxWidth)),
+        MotionContainerTrack.minHeight.implicit(finite(constraints?.minHeight)),
+        MotionContainerTrack.maxHeight.implicit(finite(constraints?.maxHeight)),
+        MotionContainerTrack.margin.implicit(margin?.resolve(direction)),
+        MotionContainerTrack.transform.implicit(transform),
+        MotionContainerTrack.transformAlignment.implicit(
           transformAlignment?.resolve(direction),
         ),
       ],
@@ -261,33 +333,41 @@ class MotionContainer extends StatelessWidget {
         final currentConstraints = constraints == null
             ? null
             : BoxConstraints(
-                minWidth: value(_minWidth) ?? constraints.minWidth,
-                maxWidth: value(_maxWidth) ?? constraints.maxWidth,
-                minHeight: value(_minHeight) ?? constraints.minHeight,
-                maxHeight: value(_maxHeight) ?? constraints.maxHeight,
+                minWidth:
+                    value(MotionContainerTrack.minWidth) ??
+                    constraints.minWidth,
+                maxWidth:
+                    value(MotionContainerTrack.maxWidth) ??
+                    constraints.maxWidth,
+                minHeight:
+                    value(MotionContainerTrack.minHeight) ??
+                    constraints.minHeight,
+                maxHeight:
+                    value(MotionContainerTrack.maxHeight) ??
+                    constraints.maxHeight,
               ).normalize();
 
         return _ContainerLayout(
-          alignment: value(_alignment),
-          padding: value(_padding),
-          color: value(_color),
+          alignment: value(MotionContainerTrack.alignment),
+          padding: value(MotionContainerTrack.padding),
+          color: value(MotionContainerTrack.color),
           decoration: animatedDecoration(
             decoration,
-            _decorationColor,
-            _decorationRadius,
+            MotionContainerTrack.decorationColor,
+            MotionContainerTrack.decorationBorderRadius,
           ),
           foregroundDecoration: animatedDecoration(
             foregroundDecoration,
-            _foregroundColor,
-            _foregroundRadius,
+            MotionContainerTrack.foregroundDecorationColor,
+            MotionContainerTrack.foregroundDecorationBorderRadius,
           ),
           constraints: currentConstraints,
           // Decided on the target, so the tree doesn't change shape while
           // the constraints are moving.
           expandsWhenEmpty: constraints == null || !constraints.isTight,
-          margin: value(_margin),
-          transform: value(_transform),
-          transformAlignment: value(_transformAlignment),
+          margin: value(MotionContainerTrack.margin),
+          transform: value(MotionContainerTrack.transform),
+          transformAlignment: value(MotionContainerTrack.transformAlignment),
           clipBehavior: clipBehavior,
           child: child,
         );

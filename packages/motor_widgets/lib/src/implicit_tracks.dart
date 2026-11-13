@@ -56,6 +56,7 @@ class ImplicitTrackBuilder extends StatefulWidget {
     required this.tracks,
     required this.motion,
     required this.builder,
+    this.motions,
     this.onEnd,
     this.child,
     this.debugLabel,
@@ -66,8 +67,14 @@ class ImplicitTrackBuilder extends StatefulWidget {
   /// The properties to animate. Each track may appear once.
   final List<ImplicitTrack<Object>> tracks;
 
-  /// The motion every property follows.
+  /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
+
+  /// Motions for single tracks, overriding [motion].
+  ///
+  /// Motions compare by value, so a map literal rebuilt in `build` with the
+  /// same motions redirects nothing.
+  final Map<Track<Object>, Motion>? motions;
 
   /// Builds the widget from the current values.
   final ImplicitTrackWidgetBuilder builder;
@@ -133,7 +140,7 @@ class _ImplicitTrackBuilderState extends State<ImplicitTrackBuilder> {
     final animations = <TrackAnimation>[
       for (final property in widget.tracks)
         if (property._animation(
-              widget.motion,
+              widget.motions?[property.track] ?? widget.motion,
               appearedAt: _appearedAt[property.track],
             )
             case final animation?)

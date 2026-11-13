@@ -3,18 +3,42 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/implicit_tracks.dart';
 
-final _alignment = Track<Alignment>(
-  MotionConverter.alignment,
-  debugLabel: 'alignment',
-);
-final _widthFactor = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'widthFactor',
-);
-final _heightFactor = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'heightFactor',
-);
+/// The tracks of a [MotionAlign], one per animated property.
+///
+/// Use them as keys of [MotionAlign.motions] to give a property its own
+/// motion:
+///
+/// ```dart
+/// MotionAlign(
+///   motion: const .smoothSpring(),
+///   motions: {.alignment: const .snappySpring()},
+///   …
+/// )
+/// ```
+///
+/// Only the tracks declared here exist; they are real [Track]s, played by
+/// the widget's `TrackBuilder` and labeled for `motor_devtools`.
+final class MotionAlignTrack<T extends Object> extends Track<T> {
+  MotionAlignTrack._(super.converter, {required String super.debugLabel});
+
+  /// [MotionAlign.alignment], resolved against the ambient [Directionality].
+  static final alignment = MotionAlignTrack<Alignment>._(
+    MotionConverter.alignment,
+    debugLabel: 'MotionAlign.alignment',
+  );
+
+  /// [MotionAlign.widthFactor].
+  static final widthFactor = MotionAlignTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionAlign.widthFactor',
+  );
+
+  /// [MotionAlign.heightFactor].
+  static final heightFactor = MotionAlignTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionAlign.heightFactor',
+  );
+}
 
 /// Animated version of [Align] that springs to a new [alignment],
 /// [widthFactor] or [heightFactor] whenever they change.
@@ -30,6 +54,7 @@ class MotionAlign extends StatelessWidget {
   const MotionAlign({
     required this.alignment,
     required this.motion,
+    this.motions,
     this.child,
     this.heightFactor,
     this.widthFactor,
@@ -60,8 +85,15 @@ class MotionAlign extends StatelessWidget {
   /// factor. See [Align.widthFactor].
   final double? widthFactor;
 
-  /// The motion to animate with.
+  /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
+
+  /// Motions for single properties, overriding [motion], keyed by the
+  /// widget's tracks: `motions: {.alignment: const .snappySpring()}`.
+  ///
+  /// Motions compare by value, so a map literal rebuilt in `build` with the
+  /// same motions redirects nothing.
+  final Map<MotionAlignTrack<Object>, Motion>? motions;
 
   /// Called every time the animation settles.
   final VoidCallback? onEnd;
@@ -80,20 +112,21 @@ class MotionAlign extends StatelessWidget {
   Widget build(BuildContext context) {
     return ImplicitTrackBuilder(
       motion: motion,
+      motions: motions,
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionAlign',
       tracks: [
-        _alignment.implicit(
+        MotionAlignTrack.alignment.implicit(
           alignment.resolve(Directionality.maybeOf(context)),
         ),
-        _widthFactor.implicit(widthFactor),
-        _heightFactor.implicit(heightFactor),
+        MotionAlignTrack.widthFactor.implicit(widthFactor),
+        MotionAlignTrack.heightFactor.implicit(heightFactor),
       ],
       builder: (context, value, child) => Align(
-        alignment: value(_alignment)!,
-        widthFactor: value(_widthFactor),
-        heightFactor: value(_heightFactor),
+        alignment: value(MotionAlignTrack.alignment)!,
+        widthFactor: value(MotionAlignTrack.widthFactor),
+        heightFactor: value(MotionAlignTrack.heightFactor),
         child: child,
       ),
       child: child,

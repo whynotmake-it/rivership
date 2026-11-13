@@ -3,18 +3,60 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/implicit_tracks.dart';
 
-final _left = Track<double>(MotionConverter.single, debugLabel: 'left');
-final _top = Track<double>(MotionConverter.single, debugLabel: 'top');
-final _right = Track<double>(MotionConverter.single, debugLabel: 'right');
-final _bottom = Track<double>(MotionConverter.single, debugLabel: 'bottom');
-final _width = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'width',
-);
-final _height = Track<double>(
-  const NonNegativeMotionConverter(),
-  debugLabel: 'height',
-);
+/// The tracks of a [MotionPositioned], one per animated property.
+///
+/// Use them as keys of [MotionPositioned.motions] to give a property its own
+/// motion:
+///
+/// ```dart
+/// MotionPositioned(
+///   motion: const .smoothSpring(),
+///   motions: {.left: const .snappySpring()},
+///   …
+/// )
+/// ```
+///
+/// Only the tracks declared here exist; they are real [Track]s, played by
+/// the widget's `TrackBuilder` and labeled for `motor_devtools`.
+final class MotionPositionedTrack<T extends Object> extends Track<T> {
+  MotionPositionedTrack._(super.converter, {required String super.debugLabel});
+
+  /// [MotionPositioned.left].
+  static final left = MotionPositionedTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionPositioned.left',
+  );
+
+  /// [MotionPositioned.top].
+  static final top = MotionPositionedTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionPositioned.top',
+  );
+
+  /// [MotionPositioned.right].
+  static final right = MotionPositionedTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionPositioned.right',
+  );
+
+  /// [MotionPositioned.bottom].
+  static final bottom = MotionPositionedTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionPositioned.bottom',
+  );
+
+  /// [MotionPositioned.width].
+  static final width = MotionPositionedTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionPositioned.width',
+  );
+
+  /// [MotionPositioned.height].
+  static final height = MotionPositionedTrack<double>._(
+    const NonNegativeMotionConverter(),
+    debugLabel: 'MotionPositioned.height',
+  );
+}
 
 /// Animated version of [Positioned] that springs to a new position whenever
 /// it changes. Only works as a child of a [Stack].
@@ -32,6 +74,7 @@ class MotionPositioned extends StatelessWidget {
   const MotionPositioned({
     required this.child,
     required this.motion,
+    this.motions,
     this.left,
     this.top,
     this.right,
@@ -56,6 +99,7 @@ class MotionPositioned extends StatelessWidget {
     required this.child,
     required this.motion,
     required Rect rect,
+    this.motions,
     this.onEnd,
     this.tickerRate,
     this.debugLabel,
@@ -88,8 +132,15 @@ class MotionPositioned extends StatelessWidget {
   /// The child's height.
   final double? height;
 
-  /// The motion to animate with.
+  /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
+
+  /// Motions for single properties, overriding [motion], keyed by the
+  /// widget's tracks: `motions: {.left: const .snappySpring()}`.
+  ///
+  /// Motions compare by value, so a map literal rebuilt in `build` with the
+  /// same motions redirects nothing.
+  final Map<MotionPositionedTrack<Object>, Motion>? motions;
 
   /// Called every time the animation settles.
   final VoidCallback? onEnd;
@@ -108,24 +159,25 @@ class MotionPositioned extends StatelessWidget {
   Widget build(BuildContext context) {
     return ImplicitTrackBuilder(
       motion: motion,
+      motions: motions,
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionPositioned',
       tracks: [
-        _left.implicit(left),
-        _top.implicit(top),
-        _right.implicit(right),
-        _bottom.implicit(bottom),
-        _width.implicit(width),
-        _height.implicit(height),
+        MotionPositionedTrack.left.implicit(left),
+        MotionPositionedTrack.top.implicit(top),
+        MotionPositionedTrack.right.implicit(right),
+        MotionPositionedTrack.bottom.implicit(bottom),
+        MotionPositionedTrack.width.implicit(width),
+        MotionPositionedTrack.height.implicit(height),
       ],
       builder: (context, value, child) => Positioned(
-        left: value(_left),
-        top: value(_top),
-        right: value(_right),
-        bottom: value(_bottom),
-        width: value(_width),
-        height: value(_height),
+        left: value(MotionPositionedTrack.left),
+        top: value(MotionPositionedTrack.top),
+        right: value(MotionPositionedTrack.right),
+        bottom: value(MotionPositionedTrack.bottom),
+        width: value(MotionPositionedTrack.width),
+        height: value(MotionPositionedTrack.height),
         child: child!,
       ),
       child: child,
