@@ -17,6 +17,8 @@ dependencies:
   material_ui: ^1.11.0
   motor:
     path: ../motor
+  motor_widgets:
+    path: ../motor_widgets
   stupid_simple_sheet:
     path: ../stupid_simple_sheet
 

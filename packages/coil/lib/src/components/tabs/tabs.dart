@@ -3,6 +3,7 @@ import 'package:coil/primitives.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// Which tabs of [CoilTabs] show their label.
 enum CoilTabLabels {
@@ -353,27 +354,25 @@ class _TabButton extends StatelessWidget {
                           ),
                           child: icon,
                         ),
-                      // TODO(motor_widgets): MotionSize around the label.
-                      SingleMotionBuilder(
-                        value: showLabel ? 1 : 0,
+                      // Collapsed tabs keep their icon; the label springs
+                      // its width open and fades in.
+                      MotionSizeSwitcher(
                         motion: motion.quick,
-                        builder: (context, reveal, child) => ClipRect(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            widthFactor: reveal.clamp(0, 1),
-                            heightFactor: 1,
-                            child: Opacity(
-                              opacity: reveal.clamp(0, 1),
-                              child: child,
-                            ),
-                          ),
+                        exitMotion: motion.quickExit,
+                        // MotionSizeSwitcher takes a resolved Alignment.
+                        alignment: AlignmentDirectional.centerStart.resolve(
+                          Directionality.of(context),
                         ),
-                        child: Padding(
-                          padding: EdgeInsetsDirectional.only(
-                            start: tab.icon == null ? 0 : sizes.gap,
-                          ),
-                          child: label,
-                        ),
+                        debugLabel: 'CoilTabs.label',
+                        child: showLabel
+                            ? Padding(
+                                key: const ValueKey('label'),
+                                padding: EdgeInsetsDirectional.only(
+                                  start: tab.icon == null ? 0 : sizes.gap,
+                                ),
+                                child: label,
+                              )
+                            : const SizedBox.shrink(key: ValueKey('none')),
                       ),
                     ],
                   );

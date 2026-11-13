@@ -15,7 +15,7 @@ then this guide, and FF's web names last.
 |---|---|---|
 | Foundation: tokens, theme, motion, metrics, input modality, adaptive scope | `package:coil/foundation.dart` | Flutter (`widgets`, `foundation`, `painting`, `services`, `gestures`, `rendering`, `scheduler`, `physics`, `semantics`), `motor` |
 | Primitives: interaction, focus, active item, motion layer, anchor, presence, sheet, adaptive popup, text-field core | `package:coil/primitives.dart` | the above, foundation, other primitives, `stupid_simple_sheet` |
-| Components: look and composition | `package:coil/<component>.dart` | the above, `package:coil/foundation.dart`, `package:coil/primitives.dart`, other components' **public** libraries |
+| Components: look and composition | `package:coil/<component>.dart` | the above, `package:coil/foundation.dart`, `package:coil/primitives.dart`, other components' **public** libraries, `motor_widgets` |
 
 - A component never imports another component's `src/`, and never imports a
   primitive's or foundation's `src/` file. It goes through the public
@@ -101,7 +101,8 @@ Rules:
 | sheet | `CoilSheetRoute` via `CoilAdaptivePopup` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
 | editable text | `CoilTextFieldCore` |
-| enter/exit, cross-fades, size changes | `motor_widgets` (`MotionSwitcher`, `MotionTransition`, `MotionSize`). Until that package lands, leave `TODO(motor_widgets)` |
+| enter/exit of a route (popover, sheet) | `CoilSpringRoute` + `CoilBlurFade` (via `CoilAdaptivePopup`) |
+| cross-fades and size changes in place | `motor_widgets`' `MotionSwitcher`, `MotionSizeSwitcher`, `MotionSize`, with `CoilBlurFade` as the `transitionBuilder` |
 
 ## 4. Enums over booleans
 
@@ -148,8 +149,8 @@ previous one when a component builds:
 8. Reduced motion (`MediaQuery.disableAnimationsOf`): applied **last** by
    `CoilTheme.motionOf`, on top of whatever 1–7 produced.
 
-`motion:` takes a whole `CoilMotion`. Write it as a copy of the inherited
-tokens when only one field changes:
+`motion:` takes a whole `CoilMotion` (the token set). Write it as a copy of
+the inherited tokens when only one field changes:
 
 ```dart
 CoilSwitch(
@@ -158,6 +159,22 @@ CoilSwitch(
   motion: CoilTheme.of(context).motion.copyWith(standard: const CupertinoMotion(duration: Duration(milliseconds: 300))),
 )
 ```
+
+Multi-part components also expose their Motor tracks as `static final`
+fields and take `motions: Map<Track, Motion>` for per-track overrides (PLAN
+§15, the convention `motor_widgets` uses too). `CoilSwitch.thumb`,
+`.squish` and `.tint` are the first:
+
+```dart
+CoilSwitch(
+  value: on,
+  onChanged: (v) => setState(() => on = v),
+  motions: {CoilSwitch.thumb: const CupertinoMotion(duration: Duration(milliseconds: 300), bounce: 0.2)},
+)
+```
+
+A per-track motion replaces the token that track would use; reduced motion
+still makes spatial tracks instant.
 
 Components read motion with `CoilTheme.motionOf(context, override: widget.motion)`
 **every time they start an animation** and pass it to that animation. They
@@ -221,6 +238,10 @@ spatial token.
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
 | 2026-11-13 | The brand color is `CoilColors.brand` (was `fluidAccent`) | `accent` already names FF's neutral `--accent` |
+| 2026-11-13 | `motion:` is the token set; `motions:` maps tracks to motions | PLAN §15; per-component motion classes are not used |
+| 2026-11-13 | Blur-fade (`CoilBlurFade`) lives in coil primitives and takes any 0→1 `Animation<double>` | PLAN §15: `motor_widgets` holds only Flutter equivalents; the same transition feeds routes and `MotionSwitcher` |
+| 2026-11-13 | Groups take `children` + `values` (`CoilCheckboxGroup`, `CoilToggleGroup`) | composition uses `children`; sets use `values` |
+| 2026-11-13 | A text field shows its focus border however it was focused | as `:focus-visible` does for inputs; every other control shows the ring only after keyboard use |
 
 ## 10. Open questions
 
@@ -234,7 +255,14 @@ spatial token.
 3. Should tabs and segmented groups take generic values (`CoilTabs<T>`)
    instead of an index? The index matches Flutter's `TabController`, a
    generic matches `CoilSelect<T>`.
-4. Per-component motion deltas (03 §5.2 `FluidSwitchMotion(thumb:)`) or only
-   whole `CoilMotion` overrides? M0 has only the latter.
+4. Should per-track `motions:` also be settable per component type in the
+   theme (PLAN §15 says "the same maps work for theme-level overrides")? Not
+   built in M0; it needs the per-type style slot of question 2.
 5. `CoilAdaptiveScope.presentation` pins every overlay below it. Is a
    per-kind pin (menus vs selects) needed?
+6. `CoilSelect` / `CoilMultiSelect` are controlled and have no controller.
+   M3's overlay acceptance tests ask for `open()` resolving with a reason;
+   that implies a `CoilPopupController`. Shape it like `MenuController`?
+7. Should `expectCoilPattern` ship in the package (a `coil_test` library) so
+   ejected copies can use it without copying `test/src/`? That adds
+   `flutter_test` as a dependency of whatever exposes it.

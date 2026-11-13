@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 export 'package:coil/src/components/select/option_list.dart' show CoilOption;
 
@@ -372,6 +373,20 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       _ => Text(picked.map((o) => o.label).join(', ')),
     };
     final value = picked.isEmpty ? null : picked.map((o) => o.label).join(', ');
+    final motion = CoilTheme.motionOf(context);
+    // A new value blur-fades in over the old one.
+    final switched = MotionSwitcher(
+      motion: motion.fade,
+      exitMotion: motion.fadeExit,
+      debugLabel: 'CoilSelect.label',
+      transitionBuilder: (child, presence) =>
+          CoilBlurFade(presence: presence, blur: 2, scale: 1, child: child),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: AlignmentDirectional.centerStart,
+        children: [...previous, ?current],
+      ),
+      child: KeyedSubtree(key: ValueKey(value), child: label),
+    );
 
     return MotorInspectionScope(
       group: 'CoilSelect',
@@ -413,7 +428,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
               },
               icon: widget.icon,
               indicator: widget.indicator,
-              label: label,
+              label: switched,
             ),
           ),
         ),
