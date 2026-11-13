@@ -64,7 +64,7 @@ class _HostState extends State<_Host> {
                 visible: visible,
                 motions: widget.motions,
                 title: const Text('Update available'),
-                onDismissed: () => setState(() {
+                onDismissRequested: () => setState(() {
                   dismissed++;
                   if (widget.hideOnDismiss) visible = false;
                 }),
@@ -90,7 +90,7 @@ Widget _gallery() => Column(
     CoilBanner(
       title: const Text('Your trial ends in 3 days'),
       icon: const TestIcon(TestGlyph.heart),
-      onDismissed: () {},
+      onDismissRequested: () {},
     ),
     CoilBanner(
       status: CoilBannerStatus.warning,
@@ -106,7 +106,7 @@ Widget _gallery() => Column(
           child: const Text('Later'),
         ),
       ],
-      onDismissed: () {},
+      onDismissRequested: () {},
     ),
     CoilBanner(
       status: CoilBannerStatus.destructive,
@@ -168,7 +168,7 @@ void main() {
                 variant: CoilBannerVariant.tinted,
                 icon: const TestIcon(TestGlyph.heart),
                 title: const Text('fixed, 20 px safe area'),
-                onDismissed: () {},
+                onDismissRequested: () {},
               ),
             ),
           ),
@@ -195,7 +195,7 @@ void main() {
           CoilBanner(title: InkLabel(ink, const Text('HEH'))),
       'banner/title+dismiss': (ink) => CoilBanner(
         title: InkLabel(ink, const Text('HEH')),
-        onDismissed: () {},
+        onDismissRequested: () {},
       ),
     });
   });

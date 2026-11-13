@@ -1,8 +1,8 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
-import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/banner/banner_content.dart';
 import 'package:coil/src/components/banner/banner_kinds.dart';
 import 'package:coil/src/components/banner/banner_style.dart';
 import 'package:flutter/foundation.dart';
@@ -54,8 +54,9 @@ final class CoilBannerTrack<T extends Object> extends Track<T> {
 /// `visible: false` and then flip it. A hidden banner takes no space and
 /// is skipped by focus, semantics and hit testing.
 ///
-/// [onDismissed] adds the dismiss button and, on touch, a horizontal swipe.
-/// Both only report the request: set [visible] to false in response.
+/// [onDismissRequested] adds the dismiss button and, on touch, a
+/// horizontal swipe. Both only report the request: set [visible] to false
+/// in response.
 ///
 /// The banner is a polite live region, so screen readers announce it when
 /// it appears.
@@ -67,8 +68,9 @@ class CoilBanner extends StatefulWidget {
     this.description,
     this.icon,
     this.actions = const [],
-    this.onDismissed,
+    this.onDismissRequested,
     this.dismissIcon,
+    this.dismissLabel = 'Dismiss',
     this.status = CoilBannerStatus.neutral,
     this.variant = CoilBannerVariant.plain,
     this.placement = CoilBannerPlacement.inline,
@@ -96,10 +98,13 @@ class CoilBanner extends StatefulWidget {
   /// Called when the user asks to dismiss the banner, with the dismiss
   /// button or a touch swipe. Null hides the button and turns off the
   /// swipe.
-  final VoidCallback? onDismissed;
+  final VoidCallback? onDismissRequested;
 
   /// Replaces the dismiss button's drawn ✕.
   final Widget? dismissIcon;
+
+  /// The dismiss button's name for assistive technology.
+  final String dismissLabel;
 
   /// What the banner reports.
   final CoilBannerStatus status;
@@ -268,7 +273,7 @@ class _CoilBannerState extends State<CoilBanner>
         ),
       ], withVelocity: v),
     ]);
-    widget.onDismissed?.call();
+    widget.onDismissRequested?.call();
     // If the owner keeps the banner, it springs back.
     away.ended.then((_) {
       if (mounted && widget.visible && !_dragging) {
@@ -299,7 +304,16 @@ class _CoilBannerState extends State<CoilBanner>
       placement: widget.placement,
     ).merge(CoilTheme.styleOf<CoilBannerStyle>(context)).merge(widget.style);
     final fixed = widget.placement == CoilBannerPlacement.fixed;
-    final media = MediaQuery.of(context);
+    final content = BannerContent(
+      style: style,
+      title: widget.title,
+      description: widget.description,
+      icon: widget.icon,
+      actions: widget.actions,
+      onDismissRequested: widget.onDismissRequested,
+      dismissIcon: widget.dismissIcon,
+      dismissLabel: widget.dismissLabel,
+    );
 
     Widget surface = DecoratedBox(
       decoration: ShapeDecoration(
@@ -308,28 +322,10 @@ class _CoilBannerState extends State<CoilBanner>
           borderRadius: BorderRadius.circular(style.radius!),
         ),
       ),
-      child: Padding(
-        padding: fixed
-            ? EdgeInsets.only(
-                top: media.padding.top,
-                left: media.padding.left,
-                right: media.padding.right,
-              )
-            : EdgeInsets.zero,
-        child: _BannerContent(
-          style: style,
-          metrics: metrics,
-          title: widget.title,
-          description: widget.description,
-          icon: widget.icon,
-          actions: widget.actions,
-          onDismissed: widget.onDismissed,
-          dismissIcon: widget.dismissIcon,
-        ),
-      ),
+      child: fixed ? SafeArea(bottom: false, child: content) : content,
     );
 
-    if (widget.onDismissed != null && widget.visible) {
+    if (widget.onDismissRequested != null && widget.visible) {
       surface = GestureDetector(
         // A swipe is a touch gesture; a mouse drag selects or does nothing.
         supportedDevices: const {
@@ -405,170 +401,4 @@ class _CoilBannerState extends State<CoilBanner>
       ),
     );
   }
-}
-
-/// The banner's layout: [icon] text [actions] [✕]. With a description,
-/// the actions move under the text.
-class _BannerContent extends StatelessWidget {
-  const _BannerContent({
-    required this.style,
-    required this.metrics,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.actions,
-    required this.onDismissed,
-    required this.dismissIcon,
-  });
-
-  final CoilBannerStyle style;
-  final CoilMetrics metrics;
-  final Widget title;
-  final Widget? description;
-  final Widget? icon;
-  final List<Widget> actions;
-  final VoidCallback? onDismissed;
-  final Widget? dismissIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    final pad = style.padding!;
-    final gap = style.gap!;
-    final scaler = MediaQuery.textScalerOf(context);
-    final titleLine = scaler.scale(metrics.body.lineHeight);
-    final stacked = description != null;
-
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DefaultTextStyle(style: style.titleStyle!, child: title),
-        if (description case final description?)
-          DefaultTextStyle(style: style.descriptionStyle!, child: description),
-      ],
-    );
-    final buttons = actions.isEmpty
-        ? null
-        : CoilAdaptiveScope(
-            size: CoilSize.compact,
-            child: Wrap(spacing: 8, runSpacing: 8, children: actions),
-          );
-
-    final main = Row(
-      crossAxisAlignment: stacked
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
-      children: [
-        if (icon case final icon?) ...[
-          SizedBox(
-            height: titleLine,
-            child: Center(
-              widthFactor: 1,
-              child: ExcludeSemantics(
-                child: IconTheme(
-                  data: IconThemeData(
-                    size: style.iconSize,
-                    color: style.statusColor,
-                    applyTextScaling: true,
-                  ),
-                  child: icon,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: gap),
-        ],
-        Expanded(
-          child: stacked && buttons != null
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [text, const SizedBox(height: 8), buttons],
-                )
-              : text,
-        ),
-        if (!stacked && buttons != null) ...[SizedBox(width: gap), buttons],
-      ],
-    );
-
-    final dismiss = onDismissed;
-    if (dismiss == null) {
-      return Padding(padding: EdgeInsets.all(pad), child: main);
-    }
-
-    // The ✕ is a compact ghost button. Its box is centered on the title
-    // line and its glyph lines up with the padding edge.
-    final buttonMetrics = const CoilMetricsTable().resolve(
-      metrics.tier,
-      CoilSize.compact,
-    );
-    final box = buttonMetrics.controlHeight > buttonMetrics.minHitTarget
-        ? buttonMetrics.controlHeight
-        : buttonMetrics.minHitTarget;
-    final glyph = scaler.scale(buttonMetrics.iconSize);
-    final clearance = (box - glyph) / 2;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              pad,
-              pad,
-              (gap - clearance).clamp(0, gap),
-              pad,
-            ),
-            child: main,
-          ),
-        ),
-        Padding(
-          padding: EdgeInsetsDirectional.only(
-            top: (pad + titleLine / 2 - box / 2).clamp(0, pad),
-            end: (pad - clearance).clamp(0, pad),
-          ),
-          child: CoilButton.icon(
-            onPressed: dismiss,
-            variant: CoilButtonVariant.ghost,
-            size: CoilSize.compact,
-            semanticLabel: 'Dismiss',
-            icon: dismissIcon ?? const _DismissGlyph(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The default ✕, drawn in the [IconTheme]'s size and color.
-class _DismissGlyph extends StatelessWidget {
-  const _DismissGlyph();
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: Size.square(CoilIconSize.of(context)),
-    painter: _DismissPainter(
-      IconTheme.of(context).color ?? const Color(0xFF000000),
-    ),
-  );
-}
-
-class _DismissPainter extends CustomPainter {
-  _DismissPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width / 24;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2 * s
-      ..strokeCap = StrokeCap.round;
-    canvas
-      ..drawLine(Offset(6 * s, 6 * s), Offset(18 * s, 18 * s), paint)
-      ..drawLine(Offset(18 * s, 6 * s), Offset(6 * s, 18 * s), paint);
-  }
-
-  @override
-  bool shouldRepaint(_DismissPainter old) => old.color != color;
 }

@@ -47,6 +47,7 @@ CoilCard _card({
   VoidCallback? onDismissed,
   List<Widget> actions = const [],
   CoilMotion? motion,
+  Map<CoilCardTrack<Object>, Motion>? motions,
   CoilCardStyle? style,
   CoilCardVariant variant = CoilCardVariant.stacked,
   Widget? icon,
@@ -59,6 +60,7 @@ CoilCard _card({
   onPressed: onPressed,
   onDismissed: onDismissed,
   motion: motion,
+  motions: motions,
   style: style,
 );
 
@@ -369,6 +371,31 @@ void main() {
     expect(dismissed, 0);
     await tester.pumpAndSettle();
     expect(dismissed, 1);
+  });
+
+  testWidgets('motions: an instant dismissHeight collapses at once', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        tier: CoilTier.touch,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _card(
+              motions: {CoilCardTrack.dismissHeight: const Motion.instant()},
+              onDismissed: () {},
+            ),
+            const Text('Below'),
+          ],
+        ),
+      ),
+    );
+    final top = tester.getTopLeft(find.byType(CoilCard)).dy;
+    await tester.tap(find.bySemanticsLabel('Dismiss'));
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('Below')).dy, top);
   });
 
   testWidgets('touch presses fill and leave nothing behind', (tester) async {

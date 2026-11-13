@@ -14,6 +14,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
     this.radius,
     this.padding,
     this.gap,
+    this.actionSpacing,
     this.iconSize,
   });
 
@@ -60,6 +61,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
           : theme.shape.radii(metrics.tier).container,
       padding: compact ? 12 : 16,
       gap: 12,
+      actionSpacing: 8,
       iconSize: compact ? 16 : 20,
     );
   }
@@ -82,8 +84,13 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
   /// The padding on every side.
   final double? padding;
 
-  /// The gap between the icon, the text and the actions.
+  /// The gap between the icon, the text, the actions and the dismiss
+  /// button.
   final double? gap;
+
+  /// The gap between the actions, and between the text and actions under
+  /// it.
+  final double? actionSpacing;
 
   /// The icon slot's size, before text scaling.
   final double? iconSize;
@@ -101,6 +108,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
           radius: other.radius ?? radius,
           padding: other.padding ?? padding,
           gap: other.gap ?? gap,
+          actionSpacing: other.actionSpacing ?? actionSpacing,
           iconSize: other.iconSize ?? iconSize,
         );
 
@@ -113,6 +121,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
     radius,
     padding,
     gap,
+    actionSpacing,
     iconSize,
   ];
 }

@@ -20,7 +20,14 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     this.highlight,
     this.divider,
     this.spacing,
+    this.gap,
+    this.headerGap,
+    this.actionSpacing,
+    this.mediaExtent,
     this.tile,
+    this.tileExtent,
+    this.tilePadding,
+    this.dismissInset,
     this.titleStyle,
     this.descriptionStyle,
     this.contentStyle,
@@ -46,7 +53,14 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
       highlight: c.hover,
       divider: c.border,
       spacing: 8,
+      gap: 12,
+      headerGap: 4,
+      actionSpacing: 4,
+      mediaExtent: 160,
       tile: c.active,
+      tileExtent: 32,
+      tilePadding: 8,
+      dismissInset: 8,
       titleStyle: typography.style(
         _title(metrics),
         weight: CoilWeight.semibold,
@@ -97,8 +111,30 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
   /// The gap between the cards of a separated group.
   final double? spacing;
 
+  /// The gap between a card's icon, header, content and actions.
+  final double? gap;
+
+  /// The gap between the title and the description.
+  final double? headerGap;
+
+  /// The gap between a card's action buttons.
+  final double? actionSpacing;
+
+  /// The side of an inline card's square media.
+  final double? mediaExtent;
+
   /// The tinted tile behind a card's `icon`.
   final Color? tile;
+
+  /// The smallest side of the icon tile.
+  final double? tileExtent;
+
+  /// The padding between the icon tile and its icon.
+  final double? tilePadding;
+
+  /// The gap between the dismiss button and the card's top and trailing
+  /// edges.
+  final double? dismissInset;
 
   /// The title's text style.
   final TextStyle? titleStyle;
@@ -122,7 +158,14 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
           highlight: other.highlight ?? highlight,
           divider: other.divider ?? divider,
           spacing: other.spacing ?? spacing,
+          gap: other.gap ?? gap,
+          headerGap: other.headerGap ?? headerGap,
+          actionSpacing: other.actionSpacing ?? actionSpacing,
+          mediaExtent: other.mediaExtent ?? mediaExtent,
           tile: other.tile ?? tile,
+          tileExtent: other.tileExtent ?? tileExtent,
+          tilePadding: other.tilePadding ?? tilePadding,
+          dismissInset: other.dismissInset ?? dismissInset,
           titleStyle: titleStyle?.merge(other.titleStyle) ?? other.titleStyle,
           descriptionStyle:
               descriptionStyle?.merge(other.descriptionStyle) ??
@@ -142,7 +185,14 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     highlight,
     divider,
     spacing,
+    gap,
+    headerGap,
+    actionSpacing,
+    mediaExtent,
     tile,
+    tileExtent,
+    tilePadding,
+    dismissInset,
     titleStyle,
     descriptionStyle,
     contentStyle,
