@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/select_harness.dart';
 
 /// Shows the level a [CoilSurface] gave it.
 class _Level extends StatelessWidget {
@@ -110,6 +111,28 @@ void main() {
         8,
       );
     });
+  });
+
+  group('opened from a dialog', () {
+    for (final presentation in CoilPresentation.values) {
+      testWidgets('a select ${presentation.name} sits two levels above it', (
+        tester,
+      ) async {
+        useScreen(tester, TestScreen.desktop);
+        await tester.pumpWidget(
+          testApp(
+            home: CoilSurface(
+              offset: CoilSurface.dialogOffset,
+              child: SelectDemo(presentation: presentation),
+            ),
+          ),
+        );
+        await tester.tap(find.byType(CoilSelect<String>));
+        await tester.pumpAndSettle();
+
+        expect(CoilSurface.levelOf(tester.element(find.text('Apple'))), 7);
+      });
+    }
   });
 
   group('painting', () {

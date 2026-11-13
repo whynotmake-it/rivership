@@ -10,12 +10,14 @@ import 'package:flutter/widgets.dart';
 /// dialog doesn't melt into it. The level is `min(ambient + offset, 8)`,
 /// where the ambient level is the nearest [CoilSurface]'s (1, the page,
 /// when there is none). Use [popoverOffset] for popovers, menus and sheets
-/// and [dialogOffset] for dialogs.
+/// and [dialogOffset] for dialogs. The level also reaches routes opened
+/// from inside, such as a sheet.
 ///
-/// The surface paints `surface(level)` and `shadow(shadowLevel)` on a
-/// superellipse. In dark mode it also paints the inset ring and the 1 px
-/// top highlight inside the shape. Pass [shadowLevel] to keep one shadow
-/// weight wherever the surface opens, while its fill follows the substrate.
+/// In dark mode the edge gets a faint inner ring and a lighter top line.
+/// They paint over the fill and under [child].
+///
+/// Pass [shadowLevel] to keep one shadow weight wherever the surface opens
+/// while its fill follows the level, and [color] to replace the fill.
 ///
 /// The surface doesn't clip: clip [child] with `ClipRSuperellipse` when it
 /// has its own backgrounds.
@@ -23,11 +25,12 @@ class CoilSurface extends StatelessWidget {
   /// Creates a surface [offset] steps above the one it sits on.
   const CoilSurface({
     required this.offset,
-    required this.borderRadius,
     required this.child,
     super.key,
+    this.borderRadius,
     this.shadowLevel,
-  });
+    this.color,
+  }) : assert(offset >= 0, 'a surface sits at or above its substrate');
 
   /// The offset of popovers, menus and sheets.
   static const popoverOffset = 2;
@@ -38,11 +41,15 @@ class CoilSurface extends StatelessWidget {
   /// How many steps above the ambient surface this one sits.
   final int offset;
 
-  /// The corner radius of the superellipse.
-  final BorderRadiusGeometry borderRadius;
+  /// The corner radius of the superellipse. Null is the theme's container
+  /// radius.
+  final BorderRadiusGeometry? borderRadius;
 
   /// The shadow step. Null follows the surface's own level.
   final int? shadowLevel;
+
+  /// The fill. Null is the color of the surface's level.
+  final Color? color;
 
   /// The content, which sits on this surface's level.
   final Widget child;
@@ -55,21 +62,24 @@ class CoilSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final level = math.min(levelOf(context) + offset, 8);
-    final shadows = colors.shadow(shadowLevel ?? level);
-    final ring = colors.insetRing(shadowLevel ?? level);
+    final radius =
+        borderRadius ??
+        BorderRadius.circular(CoilTheme.radiiOf(context).container);
+    final weight = shadowLevel ?? level;
     return _SurfaceLevel(
       level: level,
       child: DecoratedBox(
         decoration: ShapeDecoration(
-          color: colors.surface(level),
-          shadows: shadows,
-          shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+          color: color ?? colors.surface(level),
+          shadows: colors.shadow(weight),
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),
+        // Between the fill and the content, as inset shadows are.
         child: CustomPaint(
-          foregroundPainter: _EdgePainter(
-            borderRadius: borderRadius,
-            ring: ring,
-            highlight: colors.topHighlight(shadowLevel ?? level),
+          painter: _EdgePainter(
+            borderRadius: radius,
+            ring: colors.insetRing(weight),
+            highlight: colors.topHighlight(weight),
             textDirection: Directionality.of(context),
           ),
           child: child,
@@ -79,10 +89,16 @@ class CoilSurface extends StatelessWidget {
   }
 }
 
-class _SurfaceLevel extends InheritedWidget {
+/// Carries the level. It is an [InheritedTheme] so that routes opened from
+/// inside (through [InheritedTheme.capture]) continue the ladder.
+class _SurfaceLevel extends InheritedTheme {
   const _SurfaceLevel({required this.level, required super.child});
 
   final int level;
+
+  @override
+  Widget wrap(BuildContext context, Widget child) =>
+      _SurfaceLevel(level: level, child: child);
 
   @override
   bool updateShouldNotify(_SurfaceLevel old) => old.level != level;

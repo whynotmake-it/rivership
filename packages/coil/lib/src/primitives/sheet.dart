@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
+import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
@@ -110,101 +111,88 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
           constraints: const BoxConstraints(
             maxWidth: CoilSheetPanel.maxWidth,
           ),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: colors.surface(3),
-              shadows: colors.shadow(3),
-              shape: RoundedSuperellipseBorder(borderRadius: radius),
-            ),
-            child: DecoratedBox(
-              position: DecorationPosition.foreground,
-              decoration: ShapeDecoration(
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: radius,
-                  side: colors.insetRing(3),
-                ),
-              ),
-              child: ClipRSuperellipse(
-                borderRadius: radius,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 6, bottom: 6),
-                        child: SizedBox(
-                          width: 36,
-                          height: 5,
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(
-                              color: colors.foreground.withValues(alpha: 0.16),
-                              shape: RoundedSuperellipseBorder(
-                                borderRadius: BorderRadius.circular(3),
-                              ),
+          child: CoilSurface(
+            offset: CoilSurface.popoverOffset,
+            shadowLevel: 3,
+            borderRadius: radius,
+            child: ClipRSuperellipse(
+              borderRadius: radius,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6, bottom: 6),
+                      child: SizedBox(
+                        width: 36,
+                        height: 5,
+                        child: DecoratedBox(
+                          decoration: ShapeDecoration(
+                            color: colors.foreground.withValues(alpha: 0.16),
+                            shape: RoundedSuperellipseBorder(
+                              borderRadius: BorderRadius.circular(3),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    if (title != null)
-                      Padding(
-                        padding: EdgeInsetsDirectional.fromSTEB(
-                          textInset,
-                          4,
-                          textInset,
-                          6,
-                        ),
-                        child: Semantics(
-                          header: true,
-                          child: DefaultTextStyle(
-                            style: theme.typography.style(
-                              CoilSheetPanel.titleStep,
-                              weight: .semibold,
-                              color: colors.foreground,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            child: title,
+                  ),
+                  if (title != null)
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        textInset,
+                        4,
+                        textInset,
+                        6,
+                      ),
+                      child: Semantics(
+                        header: true,
+                        child: DefaultTextStyle(
+                          style: theme.typography.style(
+                            CoilSheetPanel.titleStep,
+                            weight: .semibold,
+                            color: colors.foreground,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          child: title,
                         ),
                       ),
-                    // The scroll-edge hairline: painted over the top of the
-                    // content, so showing it never shifts layout.
-                    Flexible(
-                      child: SingleMotionBuilder(
-                        value: _scrolledUnder ? 1 : 0,
-                        motion: _scrolledUnder
-                            ? CoilTheme.motionOf(context).fade
-                            : CoilTheme.motionOf(context).fadeExit,
-                        debugLabel: 'CoilSheetPanel.hairline',
-                        builder: (context, hairline, child) => DecoratedBox(
-                          position: DecorationPosition.foreground,
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(
-                                color: colors.border.withValues(
-                                  alpha:
-                                      colors.border.a *
-                                      hairline.clamp(0.0, 1.0),
-                                ),
+                    ),
+                  // The scroll-edge hairline: painted over the top of the
+                  // content, so showing it never shifts layout.
+                  Flexible(
+                    child: SingleMotionBuilder(
+                      value: _scrolledUnder ? 1 : 0,
+                      motion: _scrolledUnder
+                          ? CoilTheme.motionOf(context).fade
+                          : CoilTheme.motionOf(context).fadeExit,
+                      debugLabel: 'CoilSheetPanel.hairline',
+                      builder: (context, hairline, child) => DecoratedBox(
+                        position: DecorationPosition.foreground,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              color: colors.border.withValues(
+                                alpha:
+                                    colors.border.a * hairline.clamp(0.0, 1.0),
                               ),
                             ),
                           ),
-                          child: child,
                         ),
-                        child: NotificationListener<ScrollMetricsNotification>(
+                        child: child,
+                      ),
+                      child: NotificationListener<ScrollMetricsNotification>(
+                        onNotification: (n) => _onScroll(n.metrics, n.depth),
+                        child: NotificationListener<ScrollNotification>(
                           onNotification: (n) => _onScroll(n.metrics, n.depth),
-                          child: NotificationListener<ScrollNotification>(
-                            onNotification: (n) =>
-                                _onScroll(n.metrics, n.depth),
-                            child: widget.child,
-                          ),
+                          child: widget.child,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

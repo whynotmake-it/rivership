@@ -45,7 +45,6 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
       textStyle: theme.typography.style(metrics.body, color: c.foreground),
       placeholder: c.mutedForeground,
       radius: theme.shape.radii(metrics.tier).item,
-      surface: c.surface(3),
       selectedFill: c.active,
       highlight: c.hover,
       rowLabel: WidgetStateProperty.resolveWith(
@@ -72,7 +71,8 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
   /// The trigger and row corner radius; popups add their inset.
   final double? radius;
 
-  /// The popover's surface.
+  /// The popover's fill. Null follows the surface level the popover opens
+  /// on.
   final Color? surface;
 
   /// The fill behind the picked row (and merged blocks).

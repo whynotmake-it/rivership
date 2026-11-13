@@ -614,27 +614,16 @@ class _PopoverSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
     // Concentric with the rows: item radius + the popup's inset, which is
     // the shape's container radius at the default style.
     final radius = BorderRadius.circular(style.radius! + metrics.popupInset);
     return IntrinsicWidth(
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: style.surface,
-          shadows: colors.shadow(3),
-          shape: RoundedSuperellipseBorder(borderRadius: radius),
-        ),
-        child: DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: ShapeDecoration(
-            shape: RoundedSuperellipseBorder(
-              borderRadius: radius,
-              side: colors.insetRing(3),
-            ),
-          ),
-          child: ClipRSuperellipse(borderRadius: radius, child: child),
-        ),
+      child: CoilSurface(
+        offset: CoilSurface.popoverOffset,
+        shadowLevel: 3,
+        color: style.surface,
+        borderRadius: radius,
+        child: ClipRSuperellipse(borderRadius: radius, child: child),
       ),
     );
   }
