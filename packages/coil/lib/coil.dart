@@ -29,3 +29,4 @@ export 'table.dart';
 export 'tabs.dart';
 export 'thinking.dart';
 export 'toggle_group.dart';
+export 'tooltip.dart';
