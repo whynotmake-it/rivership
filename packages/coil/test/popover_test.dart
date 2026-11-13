@@ -31,7 +31,7 @@ Widget _app({
             child: CoilAdaptivePopup(
               controller: _controller,
               presentation: CoilPresentation.popover,
-              traits: const CoilOverlayTraits(
+              traits: () => const CoilOverlayTraits(
                 kind: CoilOverlayKind.actionMenu,
                 itemCount: 1,
               ),

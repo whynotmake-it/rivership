@@ -381,7 +381,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
     return CoilAdaptivePopup(
       controller: _controller,
       presentation: widget.presentation,
-      traits: CoilOverlayTraits(
+      traits: () => CoilOverlayTraits(
         kind: CoilOverlayKind.select,
         itemCount: widget.options.length,
         multiSelect: widget.multiple,

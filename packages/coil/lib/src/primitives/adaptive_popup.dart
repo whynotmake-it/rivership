@@ -86,8 +86,9 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// Opens and closes the popup.
   final CoilPopupController controller;
 
-  /// What the popup is, for [presentationOf].
-  final CoilOverlayTraits traits;
+  /// What the popup is, for [presentationOf]. Called when it opens, so
+  /// it can describe what the owner shows then (a count decided in layout).
+  final ValueGetter<CoilOverlayTraits> traits;
 
   /// Pins the presentation instead of deciding it.
   final CoilPresentation? presentation;
@@ -202,7 +203,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     if (_open case final open?) return open.closed;
     final presentation = CoilAdaptivePopup.presentationOf(
       context,
-      traits: widget.traits,
+      traits: widget.traits(),
       override: widget.presentation,
     );
     final handle = _Handle(presentation, _closed);
