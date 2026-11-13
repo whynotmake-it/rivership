@@ -1,4 +1,3 @@
-import 'package:coil/chat_message.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';

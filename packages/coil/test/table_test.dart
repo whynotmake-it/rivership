@@ -1,5 +1,4 @@
 import 'package:coil/coil.dart';
-import 'package:coil/table.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

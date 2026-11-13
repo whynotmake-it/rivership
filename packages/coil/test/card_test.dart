@@ -1,4 +1,3 @@
-import 'package:coil/card.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';

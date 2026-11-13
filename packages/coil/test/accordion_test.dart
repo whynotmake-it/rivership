@@ -1,6 +1,5 @@
 import 'dart:ui' show SemanticsRole, Tristate;
 
-import 'package:coil/accordion.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
