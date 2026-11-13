@@ -12,6 +12,7 @@ Widget _app({
   required double anchorTop,
   double contentHeight = 200,
   bool reduceMotion = false,
+  bool openOnLongPress = false,
 }) => MediaQuery(
   data: MediaQueryData(
     size: const Size(400, 600),
@@ -44,7 +45,8 @@ Widget _app({
               child: GestureDetector(
                 key: const ValueKey('anchor'),
                 behavior: HitTestBehavior.opaque,
-                onTap: _controller.open,
+                onTap: openOnLongPress ? null : _controller.open,
+                onLongPress: openOnLongPress ? _controller.open : null,
                 child: const SizedBox(width: 120, height: 36),
               ),
             ),
@@ -111,5 +113,17 @@ void main() {
       reason: 'no slide while it fades in',
     );
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('a long press that opens it lifts without closing it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(anchorTop: 40, openOnLongPress: true));
+    await tester.longPress(_anchor);
+    await tester.pumpAndSettle();
+    expect(_content, findsOneWidget);
+    await tester.tapAt(const Offset(390, 590));
+    await tester.pumpAndSettle();
+    expect(_content, findsNothing, reason: 'a later tap outside closes it');
   });
 }

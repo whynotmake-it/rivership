@@ -133,6 +133,10 @@ class _CoilPopoverState extends State<CoilPopover>
   /// What had focus when the popover opened.
   FocusNode? _returnFocus;
 
+  /// Pointers that went down outside while open. Only their up is a tap
+  /// outside: the finger that long-pressed it open lifts outside too.
+  final _downOutside = <int>{};
+
   bool get _reduceMotion =>
       MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
@@ -230,7 +234,10 @@ class _CoilPopoverState extends State<CoilPopover>
           // hang under the anchor's node.
           child: TapRegion(
             consumeOutsideTaps: open,
-            onTapUpOutside: (_) => close(.outsideTap),
+            onTapOutside: (event) => _downOutside.add(event.pointer),
+            onTapUpOutside: (event) {
+              if (_downOutside.remove(event.pointer)) close(.outsideTap);
+            },
             child: FocusScope(
               node: _scope,
               autofocus: true,
