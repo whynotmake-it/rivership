@@ -9,6 +9,8 @@ export 'banner.dart';
 export 'breadcrumb.dart';
 export 'button.dart';
 export 'card.dart';
+export 'carousel_dots.dart';
+export 'chat_message.dart';
 export 'checkbox.dart';
 export 'checkbox_group.dart';
 export 'field.dart';
