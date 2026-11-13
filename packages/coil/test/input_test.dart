@@ -33,7 +33,7 @@ void main() {
           placeholder: const Text('you@example.com'),
           enabled: !s.isDisabled,
           invalid: invalid,
-          size: size,
+          size: density,
           statesController: s.controller(),
           leading: slots ? const TestIcon(TestGlyph.search) : null,
           trailing: slots ? const TestIcon(TestGlyph.x) : null,
