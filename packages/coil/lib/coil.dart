@@ -4,6 +4,8 @@
 library;
 
 export 'badge.dart';
+export 'banner.dart';
+export 'breadcrumb.dart';
 export 'button.dart';
 export 'checkbox.dart';
 export 'checkbox_group.dart';
