@@ -1,9 +1,9 @@
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
-import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_interaction.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -186,7 +186,10 @@ class _FluidInputState extends State<FluidInput>
     final theme = FluidTheme.of(context);
     final colors = theme.colors;
     final sizes = FluidTheme.sizesOf(context, density: widget.density);
-    final style = FluidTypography.style(sizes.field, color: colors.foreground);
+    final style = theme.typography.style(
+      sizes.field,
+      color: colors.foreground,
+    );
     final radius = BorderRadius.circular(theme.shape.item);
 
     final editable = EditableText(
@@ -226,13 +229,21 @@ class _FluidInputState extends State<FluidInput>
                 style: style.copyWith(color: colors.mutedForeground),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                child: placeholder,
+                child: FluidLabel(child: placeholder),
               ),
             ),
           ),
         _selectionGestures.buildGestureDetector(
           behavior: HitTestBehavior.translucent,
-          child: editable,
+          // Fills the field's height so a click anywhere in it lands, while
+          // the text itself sits centered on its cap height.
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: DefaultTextStyle(
+              style: style,
+              child: FluidLabel(child: editable),
+            ),
+          ),
         ),
       ],
     );

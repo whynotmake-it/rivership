@@ -46,6 +46,7 @@ class FluidThemeData with Diagnosticable {
     this.shape = FluidShape.rounded,
     this.tier,
     this.motion = const FluidMotionThemeData(),
+    this.typography = const FluidTypographyThemeData(),
   });
 
   /// The light theme.
@@ -68,6 +69,9 @@ class FluidThemeData with Diagnosticable {
   /// every animation.
   final FluidMotionThemeData motion;
 
+  /// The font family and its metrics (cap height for label centering).
+  final FluidTypographyThemeData typography;
+
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
@@ -77,11 +81,13 @@ class FluidThemeData with Diagnosticable {
     FluidShape? shape,
     FluidTier? tier,
     FluidMotionThemeData? motion,
+    FluidTypographyThemeData? typography,
   }) => FluidThemeData(
     colors: colors ?? this.colors,
     shape: shape ?? this.shape,
     tier: tier ?? this.tier,
     motion: motion ?? this.motion,
+    typography: typography ?? this.typography,
   );
 
   @override
@@ -90,10 +96,11 @@ class FluidThemeData with Diagnosticable {
       other.colors == colors &&
       other.shape == shape &&
       other.tier == tier &&
-      other.motion == motion;
+      other.motion == motion &&
+      other.typography == typography;
 
   @override
-  int get hashCode => Object.hash(colors, shape, tier, motion);
+  int get hashCode => Object.hash(colors, shape, tier, motion, typography);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -167,7 +174,10 @@ class FluidTheme extends StatelessWidget {
     return _InheritedFluidTheme(
       data: data,
       child: DefaultTextStyle(
-        style: FluidTypography.style(sizes.body, color: data.colors.foreground),
+        style: data.typography.style(
+          sizes.body,
+          color: data.colors.foreground,
+        ),
         child: DefaultSelectionStyle(
           cursorColor: data.colors.foreground,
           selectionColor: data.colors.fluidAccent.withValues(alpha: 0.3),

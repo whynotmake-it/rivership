@@ -56,20 +56,37 @@ class FluidTypeStep {
   int get hashCode => Object.hash(fontSize, lineHeight);
 }
 
-/// Builds Inter text styles for the system.
-abstract final class FluidTypography {
-  /// The bundled font family.
-  static const fontFamily = 'Inter';
+/// The type family and its metrics, as theme data
+/// (`FluidThemeData.typography`).
+///
+/// Apps that swap the font set [fontFamily] (and [fontPackage]) and the
+/// font's [capHeight], which `FluidLabel` uses to center labels on their
+/// cap height like CSS `text-box: trim-both cap alphabetic`.
+@immutable
+class FluidTypographyThemeData {
+  /// Creates typography theme data. Defaults to the bundled Inter.
+  const FluidTypographyThemeData({
+    this.fontFamily = 'Inter',
+    this.fontPackage = 'fluid_functionalism',
+    this.capHeight = interCapHeight,
+  });
 
-  /// The package that bundles [fontFamily].
-  static const fontPackage = 'fluid_functionalism';
+  /// Inter's cap height as a fraction of the em: OS/2 `sCapHeight` 1490 over
+  /// `unitsPerEm` 2048, read from the bundled InterVariable.ttf.
+  static const interCapHeight = 1490 / 2048;
+
+  /// The font family.
+  final String fontFamily;
+
+  /// The package bundling [fontFamily], or null for an app font.
+  final String? fontPackage;
+
+  /// The height of a flat capital (H, E) as a fraction of the font size.
+  /// Read it from the font: OS/2 `sCapHeight / unitsPerEm`.
+  final double capHeight;
 
   /// A text style for [step] at [weight] in [color].
-  ///
-  /// The line height is distributed evenly above and below, which is the
-  /// closest Flutter gets to the web's `text-box: trim-both cap alphabetic`
-  /// optical centering.
-  static TextStyle style(
+  TextStyle style(
     FluidTypeStep step, {
     FluidWeight weight = FluidWeight.normal,
     Color? color,
@@ -92,4 +109,40 @@ abstract final class FluidTypography {
       textBaseline: TextBaseline.alphabetic,
     );
   }
+
+  /// Returns a copy with the given fields replaced.
+  FluidTypographyThemeData copyWith({
+    String? fontFamily,
+    String? fontPackage,
+    double? capHeight,
+  }) => FluidTypographyThemeData(
+    fontFamily: fontFamily ?? this.fontFamily,
+    fontPackage: fontPackage ?? this.fontPackage,
+    capHeight: capHeight ?? this.capHeight,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is FluidTypographyThemeData &&
+      other.fontFamily == fontFamily &&
+      other.fontPackage == fontPackage &&
+      other.capHeight == capHeight;
+
+  @override
+  int get hashCode => Object.hash(fontFamily, fontPackage, capHeight);
+}
+
+/// Text styles with the default typography (bundled Inter). Components use
+/// `FluidTheme.of(context).typography` instead, so apps can swap the font.
+abstract final class FluidTypography {
+  /// A text style for [step] at [weight] in [color], in Inter.
+  static TextStyle style(
+    FluidTypeStep step, {
+    FluidWeight weight = FluidWeight.normal,
+    Color? color,
+  }) => const FluidTypographyThemeData().style(
+    step,
+    weight: weight,
+    color: color,
+  );
 }

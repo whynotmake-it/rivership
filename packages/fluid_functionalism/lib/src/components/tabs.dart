@@ -5,6 +5,7 @@ import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_highlight.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_hover.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -264,9 +265,10 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = FluidTheme.of(context).colors;
+    final theme = FluidTheme.of(context);
+    final colors = theme.colors;
     final showLabel = !collapseLabel || selected;
-    final semibold = FluidTypography.style(
+    final semibold = theme.typography.style(
       sizes.body,
       weight: FluidWeight.semibold,
     );
@@ -291,11 +293,12 @@ class _TabButton extends StatelessWidget {
                 value: selected ? FluidWeight.semibold.wght : 400,
                 motion: motion.color,
                 builder: (context, wght, _) {
-                  final style =
-                      FluidTypography.style(
+                  final style = theme.typography
+                      .style(
                         sizes.body,
                         color: color,
-                      ).copyWith(
+                      )
+                      .copyWith(
                         fontVariations: [
                           FontVariation('wght', wght),
                           FontVariation(
@@ -315,7 +318,7 @@ class _TabButton extends StatelessWidget {
                             style: semibold,
                             maxLines: 1,
                             softWrap: false,
-                            child: tab.label,
+                            child: FluidLabel(child: tab.label),
                           ),
                         ),
                       ),
@@ -323,7 +326,7 @@ class _TabButton extends StatelessWidget {
                         style: style,
                         maxLines: 1,
                         softWrap: false,
-                        child: tab.label,
+                        child: FluidLabel(child: tab.label),
                       ),
                     ],
                   );

@@ -5,9 +5,9 @@ import 'package:fluid_functionalism/src/foundation/fluid_colors.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
-import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/icons/fluid_icon.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -274,7 +274,7 @@ class _FluidButtonState extends State<FluidButton> {
                       child: IconTheme(
                         data: IconThemeData(size: iconSize, color: labelColor),
                         child: DefaultTextStyle(
-                          style: FluidTypography.style(
+                          style: theme.typography.style(
                             sizes.body,
                             color: labelColor,
                           ),
@@ -311,7 +311,8 @@ class _FluidButtonState extends State<FluidButton> {
       spacing: sizes.buttonGap,
       children: [
         if (leading != null) leading,
-        widget.child!,
+        // Centered on its cap height, like CSS text-box trim.
+        FluidLabel(child: widget.child!),
         if (trailing != null) trailing,
       ],
     );

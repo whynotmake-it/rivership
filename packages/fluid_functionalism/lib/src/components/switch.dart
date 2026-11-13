@@ -6,8 +6,8 @@ import 'package:fluid_functionalism/src/foundation/fluid_colors.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_motion.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_sizes.dart';
 import 'package:fluid_functionalism/src/foundation/fluid_theme.dart';
-import 'package:fluid_functionalism/src/foundation/fluid_typography.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_focus_ring.dart';
+import 'package:fluid_functionalism/src/primitives/fluid_label.dart';
 import 'package:fluid_functionalism/src/primitives/fluid_pressable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -299,10 +299,10 @@ class _FluidSwitchState extends State<FluidSwitch>
                   converter: .colorRgb,
                   debugLabel: 'Label color',
                   builder: (context, color, child) => DefaultTextStyle(
-                    style: FluidTypography.style(sizes.body, color: color),
+                    style: theme.typography.style(sizes.body, color: color),
                     child: child!,
                   ),
-                  child: label,
+                  child: FluidLabel(child: label),
                 ),
               ],
             ),
