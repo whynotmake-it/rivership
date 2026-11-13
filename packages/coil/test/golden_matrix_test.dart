@@ -82,6 +82,37 @@ final Map<String, WidgetBuilder> _stories = {
     value: 1,
     onChanged: (_) {},
   ),
+  'slider': (context) => SizedBox(
+    width: 260,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 12,
+      children: [
+        CoilSlider(
+          value: .42,
+          onChanged: (_) {},
+          label: const Text('Volume'),
+          valueFormatter: (v) => '${(v * 100).round()}%',
+        ),
+        CoilSlider(
+          value: .5,
+          divisions: 4,
+          variant: CoilSliderVariant.pips,
+          onChanged: (_) {},
+          label: const Text('Quality'),
+          valueFormatter: (v) => '${(v * 4).round()}',
+        ),
+        CoilSlider(
+          value: .65,
+          size: CoilSize.compact,
+          onChanged: (_) {},
+          label: const Text('Zoom'),
+          valueFormatter: (v) => '${(v * 100).round()}%',
+        ),
+        const CoilSlider(value: .3, onChanged: null),
+      ],
+    ),
+  ),
   'input': (context) => SizedBox(
     width: 240,
     child: Column(

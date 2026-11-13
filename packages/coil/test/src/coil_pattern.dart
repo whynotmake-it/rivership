@@ -24,6 +24,10 @@ enum CoilPattern {
   /// A switch: a toggled state that Space flips.
   switchControl,
 
+  /// A slider: an adjustable node with a value; arrows, page keys, Home and
+  /// End change it.
+  slider,
+
   /// A tab list: one tab stop, arrows move between tabs, Enter selects.
   tabs,
 
@@ -80,6 +84,8 @@ Future<void> expectCoilPattern(
           (f) => f.isToggled == Tristate.isTrue,
           'toggled',
         );
+      case CoilPattern.slider:
+        await _slider(tester, finder);
       case CoilPattern.tabs:
         await _tabs(tester, finder);
       case CoilPattern.textField:
@@ -318,4 +324,25 @@ Future<void> _select(WidgetTester tester, Finder finder) async {
     isTrue,
     reason: 'select: the returned focus shows its ring after keyboard use',
   );
+}
+
+Future<void> _slider(WidgetTester tester, Finder finder) async {
+  SemanticsData data() => tester.getSemantics(finder).getSemanticsData();
+  expect(data().flagsCollection.isSlider, isTrue, reason: 'slider semantics');
+  expect(data().hasAction(SemanticsAction.increase), isTrue);
+  expect(data().hasAction(SemanticsAction.decrease), isTrue);
+  final before = data().value;
+  expect(before, isNotEmpty, reason: 'a formatted value');
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+  await tester.pump();
+  final up = data().value;
+  expect(up, isNot(before), reason: 'arrow up changes the value');
+  await tester.sendKeyEvent(LogicalKeyboardKey.home);
+  await tester.pump();
+  final home = data().value;
+  await tester.sendKeyEvent(LogicalKeyboardKey.end);
+  await tester.pump();
+  expect(data().value, isNot(home), reason: 'Home and End differ');
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+  await tester.pump();
 }

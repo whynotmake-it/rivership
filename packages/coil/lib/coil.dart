@@ -10,5 +10,6 @@ export 'input.dart';
 export 'primitives.dart';
 export 'select.dart';
 export 'selection_groups.dart';
+export 'slider.dart';
 export 'switch.dart';
 export 'tabs.dart';

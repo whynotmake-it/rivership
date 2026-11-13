@@ -21,6 +21,7 @@ class _HostState extends State<_Host> {
   bool checked = false;
   bool on = false;
   int tab = 0;
+  double level = .5;
   String? fruit = 'banana';
 
   void update(VoidCallback change) => setState(change);
@@ -97,6 +98,19 @@ void main() {
             onChanged: (v) => s.update(() => s.on = v),
           ),
           CoilPattern.switchControl,
+        );
+      });
+
+      testWidgets('CoilSlider is a slider', (tester) async {
+        await check(
+          tester,
+          (s) => CoilSlider(
+            value: s.level,
+            label: const Text('Volume'),
+            semanticLabel: 'Volume',
+            onChanged: (v) => s.update(() => s.level = v),
+          ),
+          CoilPattern.slider,
         );
       });
 
