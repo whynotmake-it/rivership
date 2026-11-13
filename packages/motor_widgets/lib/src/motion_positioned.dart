@@ -15,9 +15,6 @@ import 'package:motor_widgets/src/implicit_tracks.dart';
 ///   …
 /// )
 /// ```
-///
-/// Only the tracks declared here exist; they are real [Track]s, played by
-/// the widget's `TrackBuilder` and labeled for `motor_devtools`.
 final class MotionPositionedTrack<T extends Object> extends Track<T> {
   MotionPositionedTrack._(super.converter, {required String super.debugLabel});
 
@@ -135,24 +132,18 @@ class MotionPositioned extends StatelessWidget {
   /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
 
-  /// Motions for single properties, overriding [motion], keyed by the
-  /// widget's tracks: `motions: {.left: const .snappySpring()}`.
+  /// {@macro motor_widgets.motions}
   ///
-  /// Motions compare by value, so a map literal rebuilt in `build` with the
-  /// same motions redirects nothing.
+  /// For example `motions: {.left: const .snappySpring()}`.
   final Map<MotionPositionedTrack<Object>, Motion>? motions;
 
-  /// Called every time the animation settles.
+  /// {@macro motor_widgets.onEnd}
   final VoidCallback? onEnd;
 
-  /// How often the animation ticks, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the controller, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   @override

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Flutter animation APIs that restart on interruption or use curves. The
 /// widgets in this package are driven by Motor springs only.
 final _forbidden = RegExp(
-  r'\b(AnimationController|Tween|CurvedAnimation|ImplicitlyAnimatedWidget|'
+  r'\b(AnimationController|\w*Tween|CurvedAnimation|ImplicitlyAnimatedWidget|'
   r'AnimatedWidgetBaseState|Curves?)\b'
   // Constructing a Flutter implicit animation widget. Its static builders,
   // such as AnimatedSwitcher.defaultTransitionBuilder, are fine.

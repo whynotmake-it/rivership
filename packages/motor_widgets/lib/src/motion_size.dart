@@ -2,6 +2,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
+import 'package:motor_widgets/src/on_end.dart';
 import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// Animated widget that springs its own size toward its child's size
@@ -41,17 +42,13 @@ class MotionSize extends StatefulWidget {
   /// How to clip the child while it is larger than this widget.
   final Clip clipBehavior;
 
-  /// Called every time the size settles.
+  /// {@macro motor_widgets.onEnd}
   final VoidCallback? onEnd;
 
-  /// How often the animation ticks, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the controller, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   @override
@@ -77,7 +74,16 @@ class _MotionSizeState extends State<MotionSize>
       // values set from outside.
       velocityTracking: const VelocityTracking.off(),
       debugLabel: widget.debugLabel ?? 'MotionSize',
-    )..addStatusListener(_onStatus);
+    );
+    _listenForEnd();
+  }
+
+  ValueChanged<AnimationStatus>? _onEnd;
+
+  void _listenForEnd() {
+    if (_onEnd case final listener?) _controller.removeStatusListener(listener);
+    _onEnd = onEndListener(widget.onEnd);
+    if (_onEnd case final listener?) _controller.addStatusListener(listener);
   }
 
   @override
@@ -85,10 +91,7 @@ class _MotionSizeState extends State<MotionSize>
     super.didUpdateWidget(oldWidget);
     if (widget.motion != oldWidget.motion) _controller.motion = widget.motion;
     if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
-  }
-
-  void _onStatus(AnimationStatus status) {
-    if (!status.isAnimating) widget.onEnd?.call();
+    if (widget.onEnd != oldWidget.onEnd) _listenForEnd();
   }
 
   @override
@@ -121,8 +124,8 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
   final Clip clipBehavior;
 
   @override
-  RenderMotionSize createRenderObject(BuildContext context) {
-    return RenderMotionSize(
+  _RenderMotionSize createRenderObject(BuildContext context) {
+    return _RenderMotionSize(
       controller: controller,
       alignment: alignment,
       clipBehavior: clipBehavior,
@@ -131,7 +134,10 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderMotionSize renderObject) {
+  void updateRenderObject(
+    BuildContext context,
+    _RenderMotionSize renderObject,
+  ) {
     renderObject
       ..controller = controller
       ..alignment = alignment
@@ -146,14 +152,13 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
 /// Each layout compares the child's size with the size the controller is
 /// heading for. When they differ, the controller is retargeted, which keeps
 /// the velocity it has.
-class RenderMotionSize extends RenderAligningShiftedBox {
-  /// Creates a [RenderMotionSize] driven by [controller].
-  RenderMotionSize({
+class _RenderMotionSize extends RenderAligningShiftedBox {
+  /// Creates a [_RenderMotionSize] driven by [controller].
+  _RenderMotionSize({
     required MotionController<Size> controller,
     super.alignment,
     super.textDirection,
     Clip clipBehavior = Clip.hardEdge,
-    super.child,
   }) : _controller = controller,
        _clipBehavior = clipBehavior;
 
@@ -188,13 +193,7 @@ class RenderMotionSize extends RenderAligningShiftedBox {
   /// change of the child's size on.
   bool _following = false;
 
-  /// Whether this render object is changing [controller] from its own
-  /// layout, which must not mark it as needing layout again.
-  bool _layingOut = false;
-
-  void _onControllerChanged() {
-    if (!_layingOut) markNeedsLayout();
-  }
+  void _onControllerChanged() => markNeedsLayout();
 
   bool _hasVisualOverflow = false;
   final _clipRectLayer = LayerHandle<ClipRectLayer>();
@@ -225,12 +224,8 @@ class RenderMotionSize extends RenderAligningShiftedBox {
     if (child == null || constraints.isTight) {
       // Nothing to animate toward: settle on the smallest size, as
       // AnimatedSize does.
-      if (_controller.isAnimating) {
-        // Stopping notifies at once; this layout already accounts for it.
-        _layingOut = true;
-        _controller.stop(canceled: true);
-        _layingOut = false;
-      }
+      // A stop changes no value, so it doesn't notify mid-layout.
+      _controller.stop(canceled: true);
       _target = null;
       _following = false;
       size = constraints.smallest;

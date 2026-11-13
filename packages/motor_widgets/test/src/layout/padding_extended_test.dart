@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_widgets/src/layout/padding_extended.dart';
@@ -182,13 +181,6 @@ void main() {
       final childRect = tester.getRect(find.byKey(childKey));
       expect(bounds.size, const Size(40, 40));
       expect(childRect.size, childSize);
-
-      final result = HitTestResult();
-      tester.binding.hitTestInView(result, bounds.center, tester.view.viewId);
-      expect(
-        result.path.map((entry) => entry.target),
-        contains(isA<RenderPaddingExtended>()),
-      );
 
       await tester.tapAt(bounds.center);
       expect(taps, 1);

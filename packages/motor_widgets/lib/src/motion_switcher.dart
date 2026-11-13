@@ -81,14 +81,10 @@ class MotionSwitcher extends StatefulWidget {
   /// to [AnimatedSwitcher.defaultLayoutBuilder].
   final AnimatedSwitcherLayoutBuilder layoutBuilder;
 
-  /// How often the animations tick, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, they tick every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the children's controllers, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   @override
@@ -135,19 +131,26 @@ class _MotionSwitcherState extends State<MotionSwitcher>
   }
 
   _Entry _createEntry(Widget child, {required double presence}) {
-    return _Entry(
-      widget: child,
-      controller: SingleMotionController(
-        motion: widget.motion,
-        vsync: this,
-        initialValue: presence,
-        // Presence only ever springs between 0 and 1; nothing sets it.
-        velocityTracking: const VelocityTracking.off(),
-        debugLabel:
-            '${widget.debugLabel ?? 'MotionSwitcher'} '
-            '${child.key ?? child.runtimeType}',
-      ),
-    );
+    late final _Entry entry;
+    return entry =
+        _Entry(
+            widget: child,
+            controller: SingleMotionController(
+              motion: widget.motion,
+              vsync: this,
+              initialValue: presence,
+              // Presence only ever springs between 0 and 1; nothing sets it.
+              velocityTracking: const VelocityTracking.off(),
+              debugLabel:
+                  '${widget.debugLabel ?? 'MotionSwitcher'} '
+                  '${child.key ?? child.runtimeType}',
+            ),
+          )
+          ..controller.addStatusListener((status) {
+            // A leaving child is gone once its presence settles at 0, however
+            // often its motion changed on the way.
+            if (status.isDismissed && entry.leaving) _remove(entry);
+          });
   }
 
   @override
@@ -211,13 +214,12 @@ class _MotionSwitcherState extends State<MotionSwitcher>
     _leaving.add(entry);
     entry.controller
       ..motion = _exitMotion
-      ..animateTo(0).then((_) => _remove(entry));
+      ..animateTo(0);
   }
 
   /// Removes [entry] once it has settled at presence 0. The future of an
   /// entry that came back in the meantime is canceled and never gets here.
   void _remove(_Entry entry) {
-    if (!mounted || !entry.leaving) return;
     setState(() => _leaving.remove(entry));
     entry.controller.dispose();
   }

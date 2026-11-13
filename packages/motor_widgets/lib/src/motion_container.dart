@@ -17,9 +17,6 @@ import 'package:motor_widgets/src/layout/padding_extended.dart';
 /// )
 /// ```
 ///
-/// Only the tracks declared here exist; they are real [Track]s, played by
-/// the widget's `TrackBuilder` and labeled for `motor_devtools`.
-///
 /// [MotionContainer.width] and [MotionContainer.height] fold into the
 /// constraints, so they move with [minWidth], [maxWidth], [minHeight] and
 /// [maxHeight].
@@ -240,24 +237,24 @@ class MotionContainer extends StatelessWidget {
   /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
 
+  /// {@template motor_widgets.motions}
   /// Motions for single properties, overriding [motion], keyed by the
-  /// widget's tracks: `motions: {.color: const .snappySpring()}`.
+  /// widget's tracks.
   ///
   /// Motions compare by value, so a map literal rebuilt in `build` with the
   /// same motions redirects nothing.
+  /// {@endtemplate}
+  ///
+  /// For example `motions: {.color: const .snappySpring()}`.
   final Map<MotionContainerTrack<Object>, Motion>? motions;
 
-  /// Called every time the animation settles.
+  /// {@macro motor_widgets.onEnd}
   final VoidCallback? onEnd;
 
-  /// How often the animation ticks, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the controller, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   EdgeInsetsGeometry? get _paddingIncludingDecoration {

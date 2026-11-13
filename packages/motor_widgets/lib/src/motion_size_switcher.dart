@@ -11,8 +11,8 @@ import 'package:motor_widgets/src/motion_switcher.dart';
 class MotionSizeSwitcher extends StatelessWidget {
   /// Creates a [MotionSizeSwitcher].
   const MotionSizeSwitcher({
+    required this.motion,
     required this.child,
-    this.motion = const CupertinoMotion.smooth(),
     this.exitMotion,
     this.alignment = Alignment.center,
     this.clipBehavior = Clip.hardEdge,
@@ -30,16 +30,14 @@ class MotionSizeSwitcher extends StatelessWidget {
   /// possible.
   final Widget? child;
 
-  /// The spring the size and an entering child follow.
-  ///
-  /// Defaults to [CupertinoMotion.smooth].
+  /// The motion the size and an entering child follow.
   final Motion motion;
 
   /// The spring a leaving child follows. Defaults to [motion].
   final Motion? exitMotion;
 
   /// How the children are aligned while the size animates.
-  final Alignment alignment;
+  final AlignmentGeometry alignment;
 
   /// How children are clipped while they overflow the animated size.
   final Clip clipBehavior;
@@ -58,14 +56,10 @@ class MotionSizeSwitcher extends StatelessWidget {
   /// children are stretched over the new size and may overflow it.
   final bool immediateResize;
 
-  /// How often the animations tick, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, they tick every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the controllers, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   @override
@@ -84,15 +78,20 @@ class MotionSizeSwitcher extends StatelessWidget {
           transitionBuilder: transitionBuilder,
           tickerRate: tickerRate,
           debugLabel: label,
-          layoutBuilder: (currentChild, previousChildren) => Stack(
-            clipBehavior: clipBehavior,
-            alignment: alignment,
-            children: [
-              ...previousChildren,
-              if (currentChild != null) currentChild,
-            ],
-          ),
-          child: child ?? const _EmptyChild(),
+          // An empty Stack would take the biggest size it is allowed, not
+          // the smallest.
+          layoutBuilder: (currentChild, previousChildren) =>
+              currentChild == null && previousChildren.isEmpty
+              ? const SizedBox.shrink()
+              : Stack(
+                  clipBehavior: clipBehavior,
+                  alignment: alignment,
+                  children: [
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                ),
+          child: child,
         ),
       );
     }
@@ -119,12 +118,4 @@ class MotionSizeSwitcher extends StatelessWidget {
       child: child,
     );
   }
-}
-
-/// Stands in for a null child, with a type no caller's child has.
-class _EmptyChild extends StatelessWidget {
-  const _EmptyChild();
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }

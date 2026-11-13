@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/src/on_end.dart';
 
 /// One optional property of an implicitly animated widget: a [track] and the
 /// [value] it should settle on, or null when the property is unset.
@@ -14,12 +15,12 @@ class ImplicitTrack<T extends Object> {
   /// The value the property animates to, or null when it is unset.
   final T? value;
 
-  TrackAnimation<T>? _animation(Motion motion, {required Object? appearedAt}) {
+  TrackAnimation<T>? _animation(Motion motion, {required Object? jumpedTo}) {
     final value = this.value;
     if (value == null) return null;
     return track(
       [TrackStep.to(value, motion: motion)],
-      from: appearedAt == value ? value : null,
+      from: jumpedTo == value ? value : null,
     );
   }
 }
@@ -96,17 +97,37 @@ class ImplicitTrackBuilder extends StatefulWidget {
 }
 
 class _ImplicitTrackBuilderState extends State<ImplicitTrackBuilder> {
-  /// The value each property had when it appeared, until it changes.
+  /// The value each property jumped to, until it changes.
   ///
   /// The animation of such a property starts `from` that value, so a property
-  /// that was just set jumps there instead of animating from nothing.
-  final _appearedAt = <Track<Object>, Object>{};
+  /// that was just set, or whose value changed with the text direction, jumps
+  /// there instead of animating.
+  final _jumpedTo = <Track<Object>, Object>{};
+
+  TextDirection? _textDirection;
 
   @override
   void initState() {
     super.initState();
+    _jumpAll();
+  }
+
+  void _jumpAll() {
     for (final ImplicitTrack(:track, :value) in widget.tracks) {
-      if (value != null) _appearedAt[track] = value;
+      if (value != null) _jumpedTo[track] = value;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Properties are resolved against the text direction before they
+    // animate. A new direction jumps, as it does in AnimatedAlign, rather
+    // than sending the child across the box.
+    final textDirection = Directionality.maybeOf(context);
+    if (textDirection != _textDirection) {
+      if (_textDirection != null) _jumpAll();
+      _textDirection = textDirection;
     }
   }
 
@@ -114,46 +135,40 @@ class _ImplicitTrackBuilderState extends State<ImplicitTrackBuilder> {
   void didUpdateWidget(ImplicitTrackBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
     final tracks = {for (final property in widget.tracks) property.track};
-    _appearedAt.removeWhere((track, _) => !tracks.contains(track));
+    _jumpedTo.removeWhere((track, _) => !tracks.contains(track));
     final oldValues = {
       for (final ImplicitTrack(:track, :value) in oldWidget.tracks)
         track: value,
     };
     for (final ImplicitTrack(:track, :value) in widget.tracks) {
       if (value == null) {
-        _appearedAt.remove(track);
+        _jumpedTo.remove(track);
       } else if (oldValues[track] == null) {
-        _appearedAt[track] = value;
-      } else if (_appearedAt[track] != value) {
-        _appearedAt.remove(track);
+        _jumpedTo[track] = value;
+      } else if (_jumpedTo[track] != value) {
+        _jumpedTo.remove(track);
       }
     }
-  }
-
-  void _onStatus(AnimationStatus status) {
-    if (!status.isAnimating) widget.onEnd?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final present = <Track<Object>>{};
-    final animations = <TrackAnimation>[
-      for (final property in widget.tracks)
-        if (property._animation(
-              widget.motions?[property.track] ?? widget.motion,
-              appearedAt: _appearedAt[property.track],
-            )
-            case final animation?)
-          animation,
-    ];
-    for (final animation in animations) {
+    final animations = <TrackAnimation>[];
+    for (final property in widget.tracks) {
+      final animation = property._animation(
+        widget.motions?[property.track] ?? widget.motion,
+        jumpedTo: _jumpedTo[property.track],
+      );
+      if (animation == null) continue;
+      animations.add(animation);
       present.add(animation.track);
     }
     return TrackBuilder(
       animations: animations,
       debugLabel: widget.debugLabel,
       tickerRate: widget.tickerRate,
-      onAnimationStatusChanged: widget.onEnd == null ? null : _onStatus,
+      onAnimationStatusChanged: onEndListener(widget.onEnd),
       builder: (context, value, child) => widget.builder(
         context,
         <T extends Object>(Track<T> track) =>

@@ -35,17 +35,23 @@ class MotionOpacity extends StatelessWidget {
   /// See [Opacity.alwaysIncludeSemantics].
   final bool alwaysIncludeSemantics;
 
-  /// Called every time the animation settles.
+  /// {@template motor_widgets.onEnd}
+  /// Called every time the animation settles after a change.
+  /// {@endtemplate}
   final VoidCallback? onEnd;
 
+  /// {@template motor_widgets.tickerRate}
   /// How often the animation ticks, for example `tickerRate: .fps(30)`.
   ///
   /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
   /// frame.
+  /// {@endtemplate}
   final TickerRate? tickerRate;
 
+  /// {@template motor_widgets.debugLabel}
   /// A name for the controller, shown by inspection tools such as
   /// `motor_devtools`.
+  /// {@endtemplate}
   final String? debugLabel;
 
   @override

@@ -40,17 +40,13 @@ class MotionRotation extends StatelessWidget {
   /// operation. See [Transform.filterQuality].
   final FilterQuality? filterQuality;
 
-  /// Called every time the animation settles.
+  /// {@macro motor_widgets.onEnd}
   final VoidCallback? onEnd;
 
-  /// How often the animation ticks, for example `tickerRate: .fps(30)`.
-  ///
-  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
-  /// frame.
+  /// {@macro motor_widgets.tickerRate}
   final TickerRate? tickerRate;
 
-  /// A name for the controller, shown by inspection tools such as
-  /// `motor_devtools`.
+  /// {@macro motor_widgets.debugLabel}
   final String? debugLabel;
 
   @override

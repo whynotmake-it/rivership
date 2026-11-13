@@ -8,20 +8,28 @@ import 'package:motor_widgets/motor_widgets.dart';
 import '../util.dart';
 
 /// One implicitly animated widget, driven by a number `t` that it maps to
-/// its property, and read back as that number.
+/// its property, and read back as that number from what is on screen.
 class _Case {
   const _Case(this.name, this.build, this.read);
 
   final String name;
 
   /// Builds the widget with its property at `t` (0 to 1).
-  final Widget Function(double t, Motion motion) build;
+  final Widget Function(
+    double t,
+    Motion motion, {
+    VoidCallback? onEnd,
+    TickerRate? tickerRate,
+  })
+  build;
 
   /// Reads the property back as `t`.
   final double Function(WidgetTester tester) read;
 }
 
 const _box = SizedBox(width: 20, height: 20);
+
+final _boxFinder = find.byWidget(_box);
 
 T _below<T extends Widget>(WidgetTester tester, Type of) => tester.widget<T>(
   find.descendant(of: find.byType(of), matching: find.byType(T)).first,
@@ -30,75 +38,115 @@ T _below<T extends Widget>(WidgetTester tester, Type of) => tester.widget<T>(
 final _cases = [
   _Case(
     'MotionOpacity',
-    (t, motion) => MotionOpacity(opacity: t, motion: motion, child: _box),
+    (t, motion, {onEnd, tickerRate}) => MotionOpacity(
+      opacity: t,
+      motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
+      child: _box,
+    ),
+    // Opacity has no geometry to measure.
     (tester) => _below<Opacity>(tester, MotionOpacity).opacity,
   ),
   _Case(
     'MotionScale',
-    (t, motion) => MotionScale(scale: 1 + t, motion: motion, child: _box),
-    (tester) => _below<Transform>(tester, MotionScale).transform.storage[0] - 1,
+    (t, motion, {onEnd, tickerRate}) => MotionScale(
+      scale: 1 + t,
+      motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
+      child: _box,
+    ),
+    (tester) {
+      final width =
+          tester.getBottomRight(_boxFinder).dx -
+          tester.getTopLeft(_boxFinder).dx;
+      return width / 20 - 1;
+    },
   ),
   _Case(
     'MotionRotation',
-    (t, motion) => MotionRotation(turns: t / 4, motion: motion, child: _box),
+    (t, motion, {onEnd, tickerRate}) => MotionRotation(
+      turns: t / 4,
+      motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
+      child: _box,
+    ),
+    // Read from where the box's top edge points.
     (tester) {
-      final storage = _below<Transform>(
-        tester,
-        MotionRotation,
-      ).transform.storage;
-      return math.atan2(storage[1], storage[0]) / (math.pi / 2);
+      final edge =
+          tester.getTopRight(_boxFinder) - tester.getTopLeft(_boxFinder);
+      return math.atan2(edge.dy, edge.dx) / (math.pi / 2);
     },
   ),
   _Case(
     'MotionSlide',
-    (t, motion) =>
-        MotionSlide(offset: Offset(t, 0), motion: motion, child: _box),
-    (tester) =>
-        _below<FractionalTranslation>(tester, MotionSlide).translation.dx,
+    (t, motion, {onEnd, tickerRate}) => MotionSlide(
+      offset: Offset(t, 0),
+      motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
+      child: _box,
+    ),
+    (tester) => tester.getTopLeft(_boxFinder).dx / 20,
   ),
   _Case(
     'MotionAlign',
-    (t, motion) => MotionAlign(
-      alignment: Alignment(t, 0),
+    (t, motion, {onEnd, tickerRate}) => MotionAlign(
+      alignment: Alignment(t * 2 - 1, -1),
       motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
       child: _box,
     ),
-    (tester) => (_below<Align>(tester, MotionAlign).alignment as Alignment).x,
+    // The box travels across the 800 px wide test surface.
+    (tester) => tester.getTopLeft(_boxFinder).dx / (800 - 20),
   ),
   _Case(
     'MotionPositioned',
-    (t, motion) => Stack(
+    (t, motion, {onEnd, tickerRate}) => Stack(
       children: [
-        MotionPositioned(left: 100 * t, top: 0, motion: motion, child: _box),
+        MotionPositioned(
+          left: 100 * t,
+          top: 0,
+          motion: motion,
+          onEnd: onEnd,
+          tickerRate: tickerRate,
+          child: _box,
+        ),
       ],
     ),
-    (tester) => _below<Positioned>(tester, MotionPositioned).left! / 100,
+    (tester) => tester.getTopLeft(_boxFinder).dx / 100,
   ),
   _Case(
     'MotionPadding',
-    (t, motion) => MotionPadding(
+    (t, motion, {onEnd, tickerRate}) => MotionPadding(
       padding: EdgeInsets.only(left: 100 * t),
       motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
       child: _box,
     ),
-    (tester) =>
-        (_below<PaddingExtended>(tester, MotionPadding).padding as EdgeInsets)
-            .left /
-        100,
+    (tester) => tester.getTopLeft(_boxFinder).dx / 100,
   ),
   _Case(
     'MotionContainer',
-    (t, motion) => MotionContainer(
+    (t, motion, {onEnd, tickerRate}) => MotionContainer(
       width: 100 + 100 * t,
       height: 20,
       motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
     ),
     (tester) => tester.getSize(find.byType(MotionContainer)).width / 100 - 1,
   ),
   _Case(
     'MotionSize',
-    (t, motion) => MotionSize(
+    (t, motion, {onEnd, tickerRate}) => MotionSize(
       motion: motion,
+      onEnd: onEnd,
+      tickerRate: tickerRate,
       child: SizedBox(width: 100 + 100 * t, height: 20),
     ),
     (tester) => tester.getSize(find.byType(MotionSize)).width / 100 - 1,
@@ -121,8 +169,73 @@ void main() {
       testWidgets('starts at its value without animating', (tester) async {
         await pumpAt(tester, 0.5);
         expect(c.read(tester), closeTo(0.5, 1e-12));
+        expect(tester.binding.hasScheduledFrame, isFalse);
+      });
+
+      testWidgets('onEnd is not called without a change', (tester) async {
+        var ends = 0;
+        Future<void> pump() => tester.pumpWidget(
+          _wrap(c.build(0.5, spring, onEnd: () => ends++)),
+        );
+        await pump();
+        await tester.pumpAndSettle(frame);
+        await pump();
+        await tester.pumpAndSettle(frame);
+        expect(ends, 0);
+      });
+
+      testWidgets('onEnd is called once a change has settled', (tester) async {
+        var ends = 0;
+        Future<void> pumpAt(double t) => tester.pumpWidget(
+          _wrap(c.build(t, spring, onEnd: () => ends++)),
+        );
+        await pumpAt(0);
+        await pumpAt(1);
         await tester.pump(frame);
-        expect(c.read(tester), closeTo(0.5, 1e-12));
+        expect(ends, 0);
+        await tester.pumpAndSettle(frame);
+        expect(ends, 1);
+      });
+
+      testWidgets('ticks at its tickerRate, or else the TickerRateScope '
+          'rate', (tester) async {
+        Future<int> distinctValues(Widget Function(double t) build) async {
+          await tester.pumpWidget(_wrap(build(0)));
+          await tester.pumpWidget(_wrap(build(1)));
+          final values = <double>{};
+          for (var i = 0; i < 12; i++) {
+            await tester.pump(frame);
+            values.add(c.read(tester));
+          }
+          await tester.pumpWidget(const SizedBox());
+          return values.length;
+        }
+
+        final own = await distinctValues(
+          (t) => c.build(t, spring, tickerRate: TickerRate.fps(10)),
+        );
+        final scoped = await distinctValues(
+          (t) => TickerRateScope(
+            rate: TickerRate.fps(10),
+            child: c.build(t, spring),
+          ),
+        );
+        final everyFrame = await distinctValues((t) => c.build(t, spring));
+
+        // 12 frames of 16 ms span about 2 ticks at 10 fps.
+        expect(own, lessThanOrEqualTo(3));
+        expect(scoped, lessThanOrEqualTo(3));
+        expect(everyFrame, 12);
+      });
+
+      testWidgets('unmounting mid-flight leaves no ticker running', (
+        tester,
+      ) async {
+        await pumpAt(tester, 0);
+        await pumpAt(tester, 1);
+        await tester.pump(frame);
+        expect(tester.hasRunningAnimations, isTrue);
+        await tester.pumpWidget(const SizedBox());
         expect(tester.hasRunningAnimations, isFalse);
       });
 
@@ -403,22 +516,65 @@ void main() {
     expect((align.alignment as Alignment).x, inExclusiveRange(0, 1));
   });
 
-  testWidgets('onEnd is called when the motion settles', (tester) async {
-    var ends = 0;
-    Widget build(double opacity) => _wrap(
-      MotionOpacity(
-        opacity: opacity,
-        motion: spring,
-        onEnd: () => ends++,
-        child: _box,
-      ),
+  group('a change of text direction jumps', () {
+    Widget build(TextDirection direction, Widget child) => Directionality(
+      textDirection: direction,
+      child: Align(alignment: Alignment.topLeft, child: child),
     );
-    await tester.pumpWidget(build(0));
-    await tester.pumpWidget(build(1));
-    await tester.pump(frame);
-    expect(ends, 0);
-    await tester.pumpAndSettle();
-    expect(ends, 1);
+
+    for (final (name, widget) in [
+      (
+        'MotionAlign',
+        const MotionAlign(
+          alignment: AlignmentDirectional.topStart,
+          motion: spring,
+          child: _box,
+        ),
+      ),
+      (
+        'MotionContainer',
+        MotionContainer(
+          alignment: AlignmentDirectional.topStart,
+          width: 100,
+          height: 20,
+          motion: spring,
+          child: _box,
+        ),
+      ),
+      (
+        'MotionPadding',
+        const MotionPadding(
+          padding: EdgeInsetsDirectional.only(start: 80),
+          motion: spring,
+          child: _box,
+        ),
+      ),
+    ]) {
+      testWidgets(name, (tester) async {
+        await tester.pumpWidget(build(TextDirection.ltr, widget));
+        final ltr = tester.getTopLeft(_boxFinder);
+        await tester.pumpWidget(build(TextDirection.rtl, widget));
+        final rtl = tester.getTopLeft(_boxFinder);
+
+        expect(rtl, isNot(ltr));
+        expect(tester.hasRunningAnimations, isFalse);
+        await tester.pump(frame);
+        expect(tester.getTopLeft(_boxFinder), rtl);
+      });
+    }
+
+    testWidgets('MotionPadding takes any EdgeInsetsGeometry', (tester) async {
+      final mixed = const EdgeInsets.only(left: 10).add(
+        const EdgeInsetsDirectional.only(start: 20),
+      );
+      await tester.pumpWidget(
+        build(
+          TextDirection.ltr,
+          MotionPadding(padding: mixed, motion: spring, child: _box),
+        ),
+      );
+      expect(tester.getTopLeft(_boxFinder).dx, 30);
+    });
   });
 
   group('MotionSize', () {

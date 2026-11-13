@@ -178,17 +178,73 @@ void main() {
   testWidgets('passes the children to layoutBuilder, oldest first', (
     tester,
   ) async {
-    final calls = <(Widget?, int)>[];
+    final calls = <(Key?, List<Key?>)>[];
+    Key? keyOf(Widget child) => find
+        .descendant(of: find.byWidget(child), matching: find.byType(_Child))
+        .evaluate()
+        .map((element) => element.widget.key)
+        .firstOrNull;
     Widget layout(Widget? current, List<Widget> previous) {
-      calls.add((current, previous.length));
+      calls.add((
+        current?.key,
+        [for (final child in previous) child.key],
+      ));
       return AnimatedSwitcher.defaultLayoutBuilder(current, previous);
     }
 
     await tester.pumpWidget(_switcher(_child('a'), layoutBuilder: layout));
     await tester.pumpWidget(_switcher(_child('b'), layoutBuilder: layout));
     await tester.pumpWidget(_switcher(_child('c'), layoutBuilder: layout));
-    expect(calls.map((call) => call.$2), [0, 1, 2]);
-    expect(calls.every((call) => call.$1 != null), isTrue);
+
+    // Each child is wrapped in its own keyed subtree; resolve those keys to
+    // the labels of the children inside.
+    final labels = <Key?, Key?>{};
+    for (final element in find.byType(KeyedSubtree).evaluate()) {
+      labels[element.widget.key] = keyOf(element.widget);
+    }
+    final named = [
+      for (final (current, previous) in calls)
+        [labels[current], for (final key in previous) labels[key]],
+    ];
+    expect(named, [
+      [const ValueKey('a')],
+      [const ValueKey('b'), const ValueKey('a')],
+      [const ValueKey('c'), const ValueKey('a'), const ValueKey('b')],
+    ]);
+  });
+
+  testWidgets('a leaving child is removed even if exitMotion changes while '
+      'it leaves', (tester) async {
+    await tester.pumpWidget(_switcher(_child('a')));
+    await tester.pumpWidget(_switcher(_child('b')));
+    await tester.pump(frame * 2);
+    await tester.pumpWidget(
+      _switcher(_child('b'), exitMotion: const CupertinoMotion.smooth()),
+    );
+    await tester.pumpAndSettle(frame);
+
+    expect(find.byKey(const ValueKey('a')), findsNothing);
+    expect(find.byKey(const ValueKey('b')), findsOneWidget);
+  });
+
+  testWidgets('a bouncy exit removes the child only once it has settled', (
+    tester,
+  ) async {
+    const bouncy = Motion.bouncySpring(extraBounce: 0.2);
+    await tester.pumpWidget(_switcher(_child('a'), exitMotion: bouncy));
+    await tester.pumpWidget(_switcher(_child('b'), exitMotion: bouncy));
+    var lowest = 1.0;
+    for (
+      var presence = _presence(tester, 'a');
+      presence != null;
+      presence = _presence(tester, 'a')
+    ) {
+      lowest = presence < lowest ? presence : lowest;
+      await tester.pump(frame);
+    }
+
+    expect(lowest, lessThan(0), reason: 'it passed through 0 on the way');
+    expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
   testWidgets(
@@ -253,6 +309,17 @@ void main() {
     expect(_presence(tester, 'b'), 1);
   });
 
+  testWidgets('unmounting mid-switch leaves no ticker running', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_switcher(_child('a')));
+    await tester.pumpWidget(_switcher(_child('b')));
+    await tester.pump(frame);
+    expect(tester.hasRunningAnimations, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.hasRunningAnimations, isFalse);
+  });
+
   group('MotionSizeSwitcher', () {
     Widget sizeSwitcher(Widget? child, {bool immediateResize = false}) =>
         Directionality(
@@ -260,6 +327,7 @@ void main() {
           child: Align(
             alignment: Alignment.topLeft,
             child: MotionSizeSwitcher(
+              motion: _spring,
               immediateResize: immediateResize,
               child: child,
             ),
@@ -295,6 +363,66 @@ void main() {
         );
       });
     }
+
+    testWidgets('keeps the space of a leaving child until it is gone '
+        '(immediateResize: false)', (tester) async {
+      await tester.pumpWidget(
+        sizeSwitcher(const SizedBox(key: ValueKey(1), width: 200, height: 40)),
+      );
+      await tester.pumpWidget(
+        sizeSwitcher(const SizedBox(key: ValueKey(2), width: 100, height: 20)),
+      );
+      while (find.byKey(const ValueKey(1)).evaluate().isNotEmpty) {
+        expect(
+          tester.getSize(find.byType(MotionSizeSwitcher)),
+          const Size(200, 40),
+        );
+        await tester.pump(frame);
+      }
+      await tester.pumpAndSettle(frame);
+      expect(
+        tester.getSize(find.byType(MotionSizeSwitcher)),
+        const Size(100, 20),
+      );
+    });
+
+    testWidgets('follows the new child at once (immediateResize: true)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        sizeSwitcher(
+          const SizedBox(key: ValueKey(1), width: 200, height: 40),
+          immediateResize: true,
+        ),
+      );
+      await tester.pumpWidget(
+        sizeSwitcher(
+          const SizedBox(key: ValueKey(2), width: 100, height: 20),
+          immediateResize: true,
+        ),
+      );
+      await tester.pump(frame * 5);
+      expect(find.byKey(const ValueKey(1)), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(MotionSizeSwitcher)).width,
+        inExclusiveRange(100, 200),
+      );
+    });
+
+    testWidgets('unmounting mid-resize leaves no ticker running', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        sizeSwitcher(const SizedBox(key: ValueKey(1), width: 100, height: 20)),
+      );
+      await tester.pumpWidget(
+        sizeSwitcher(const SizedBox(key: ValueKey(2), width: 200, height: 40)),
+      );
+      await tester.pump(frame);
+      expect(tester.hasRunningAnimations, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.hasRunningAnimations, isFalse);
+    });
 
     testWidgets('shrinks to nothing for a null child', (tester) async {
       await tester.pumpWidget(
