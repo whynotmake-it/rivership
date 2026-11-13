@@ -4,14 +4,14 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// A region that opens and closes its height on a spring: accordion panels,
-/// thinking steps, sidebar groups.
+/// A region whose height springs open and closed, for accordion panels,
+/// thinking steps and sidebar groups.
 ///
-/// The height springs with `motor_widgets`' `MotionSize` on the theme's
-/// `standard` token (`standardExit` closing), and the content fades on
-/// `fade` / `fadeExit`. Reduced motion makes the height instant and keeps
-/// the fade. [child] stays mounted while closed (its state survives), but it
-/// is clipped away, left out of focus traversal and hidden from semantics.
+/// The height uses the `standard` spring and the content fades. Under
+/// reduced motion only the fade remains.
+///
+/// [child] stays mounted while closed, so its state survives. It can't be
+/// focused or read by screen readers until it opens.
 class CoilCollapsible extends StatelessWidget {
   /// Creates a collapsible region.
   const CoilCollapsible({

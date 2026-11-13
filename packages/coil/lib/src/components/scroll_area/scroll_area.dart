@@ -18,18 +18,15 @@ enum CoilEdgeFades {
   none,
 }
 
-/// A scrolling region with coil's scroll behavior: platform physics,
-/// Android's stretch overscroll, a thin pointer scrollbar that widens on
-/// hover, a touch overlay bar, and edge fades where there's more content.
+/// A scrolling region with coil's scrollbar, edge fades and platform
+/// physics.
 ///
-/// When its content overflows, the viewport is a tab stop: the arrow keys
-/// scroll by a line, Page Up/Down by a page, Home/End to the ends, and a
-/// keyboard focus ring sits 1 px inside it. Keyboard scrolls spring on the
-/// theme's `standard` token (instant under reduced motion).
+/// When the content overflows, the viewport becomes a tab stop. The arrow
+/// keys scroll a line, Page Up and Page Down a page, Home and End to the
+/// ends. Keyboard scrolls spring, and its focus ring sits 1 px inside.
 ///
-/// [CoilScrollArea] scrolls [child] itself. Use [CoilScrollArea.scrollable]
-/// to give an existing scrollable (a `ListView`) the same behavior; pass it
-/// the same [controller].
+/// Use [CoilScrollArea.scrollable] to wrap a list you already have, and pass
+/// both the same [controller].
 class CoilScrollArea extends StatefulWidget {
   /// Scrolls [child] along [axis].
   const CoilScrollArea({

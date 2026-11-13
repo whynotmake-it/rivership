@@ -5,8 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// How a coil scrollbar looks. Resolved by the owner (e.g. from a
-/// `CoilScrollAreaStyle`) and handed to [CoilScrollBehavior].
+/// The colors and sizes of a coil scrollbar. The owner resolves it, for
+/// example from a `CoilScrollAreaStyle`.
 @immutable
 class CoilScrollbarLook {
   /// Creates a scrollbar look.
@@ -70,19 +70,16 @@ class CoilScrollbarLook {
   );
 }
 
-/// coil's scroll behavior, applied locally (never app-wide) by scroll
-/// areas, menus, sheets and tables.
+/// coil's scroll behavior. Scroll areas, menus, sheets and tables apply it
+/// locally, never app-wide.
 ///
-/// * Physics: the platform's (bouncing on Apple platforms, clamping
-///   elsewhere), as the widgets layer's [ScrollBehavior] picks them.
-/// * Overscroll: Android stretches (`StretchingOverscrollIndicator`); other
-///   platforms bounce or stop. No glow.
-/// * Scrollbar: on the pointer [tier], [CoilScrollbar] (thin, widens on
-///   hover, hides when idle); on the touch tier a thin overlay bar that
-///   shows only while scrolling, like the OS's. Pass `scrollbar: false` to
-///   draw none.
-/// * Drag devices: touch, stylus and trackpad drag the content; a mouse
-///   drags only the scrollbar.
+/// * Physics: the platform's, as Flutter picks them (bouncing on Apple
+///   platforms, clamping elsewhere).
+/// * Overscroll: Android stretches. Nothing glows.
+/// * Scrollbar: a [CoilScrollbar] for [tier], or none when [scrollbar] is
+///   false.
+/// * Dragging: touch, stylus and trackpad drag the content. A mouse drags
+///   only the scrollbar.
 class CoilScrollBehavior extends ScrollBehavior {
   /// Creates the behavior.
   const CoilScrollBehavior({
@@ -145,17 +142,16 @@ class CoilScrollBehavior extends ScrollBehavior {
       scrollbar != oldDelegate.scrollbar;
 }
 
-/// coil's scrollbar: a [RawScrollbar] whose thumb is a superellipse pill.
+/// coil's scrollbar: a [RawScrollbar] with a superellipse pill thumb.
 ///
-/// On the pointer tier it's 4 wide and widens to 6 while a hovering pointer
-/// is over it or it's dragged, springing on the theme's `quick` token; its
-/// color moves on `fade`. It shows while scrolling or hovered and hides
-/// 600 ms after. On the touch tier it's a thin overlay bar that only shows
-/// while scrolling and can't be grabbed, like the OS's.
+/// On the pointer tier the thumb is 4 wide. It springs to 6 while a mouse
+/// hovers it or drags it. It shows while scrolling or hovered and hides
+/// 600 ms later.
 ///
-/// The idle fade itself is [RawScrollbar]'s: a timed fade driven by its own
-/// controller, with [RawScrollbar.fadeDuration] taken from the `fade`
-/// token's duration.
+/// On the touch tier it's a thin overlay bar that shows only while
+/// scrolling and can't be grabbed, like the OS's.
+///
+/// The hide fade is [RawScrollbar]'s own timed fade, not a spring.
 class CoilScrollbar extends RawScrollbar {
   /// Creates a scrollbar for [child]'s primary scrollable.
   CoilScrollbar({
@@ -272,13 +268,12 @@ class _CoilScrollbarState extends RawScrollbarState<CoilScrollbar> {
   }
 }
 
-/// Fades [child]'s scrolled content out at whichever edges have more
-/// content, over [extent] logical pixels.
+/// Fades out the edges of [child]'s scrollable where more content is
+/// hidden.
 ///
-/// The fade at each edge grows with how far there is to scroll in that
-/// direction, up to [extent], read from the scroll notifications of
-/// [child]'s scrollable along [axis] (nothing is measured). Painted with a
-/// [ShaderMask], so it never changes layout.
+/// Each fade grows with the distance left to scroll that way, up to
+/// [extent]. It reads the scroll notifications, so nothing is measured, and
+/// it paints with a [ShaderMask], so layout never changes.
 class CoilEdgeFade extends StatefulWidget {
   /// Creates an edge fade.
   const CoilEdgeFade({
@@ -364,12 +359,10 @@ class _CoilEdgeFadeState extends State<CoilEdgeFade> {
   }
 }
 
-/// Scrolls a [ScrollController] to a target on a Motor spring, for keyboard
-/// scrolling (arrows, Page Up/Down, Home/End).
+/// Springs a [ScrollController] to a target, for keyboard scrolling.
 ///
-/// The position follows the spring with `jumpTo`, so a repeated key adds to
-/// where the scroll is headed instead of restarting, and a user drag takes
-/// over (call [stop] on a drag start).
+/// A repeated key adds to where the scroll is headed instead of starting
+/// over. Call [stop] when a user drag starts, so the drag takes over.
 class CoilScrollSpring {
   /// Creates a scroll spring ticking on [vsync].
   CoilScrollSpring({required TickerProvider vsync, String? debugLabel})

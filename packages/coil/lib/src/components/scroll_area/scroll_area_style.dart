@@ -16,8 +16,7 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.fadeExtent,
   });
 
-  /// The defaults from the theme's tokens. [metrics] is unused today; it
-  /// keeps every style's fallback the same shape.
+  /// The defaults from the theme's tokens.
   factory CoilScrollAreaStyle.fallback(
     CoilThemeData theme,
     // Same shape as every fallback.
