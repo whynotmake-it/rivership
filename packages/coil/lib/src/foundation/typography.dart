@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:flutter/widgets.dart' show IconTheme, IconThemeData;
+import 'package:flutter/widgets.dart'
+    show BuildContext, IconTheme, IconThemeData, MediaQuery;
 
 /// The three Inter weights the system uses.
 ///
@@ -134,4 +135,19 @@ abstract final class CoilIconWeight {
 
   /// Hovered or active: a 2 stroke (400 × 2 / 1.5).
   static const double emphasis = 1600 / 3;
+}
+
+/// The size a painted glyph should draw at, the way Flutter's `Icon` sizes
+/// itself: the ambient [IconTheme]'s size, scaled by the ambient
+/// `TextScaler` when [IconThemeData.applyTextScaling] is true (coil's
+/// icon themes set it, so slot icons and drawn glyphs grow with text).
+abstract final class CoilIconSize {
+  /// The glyph size at [context]; [fallback] when the theme has none.
+  static double of(BuildContext context, {double fallback = 16}) {
+    final theme = IconTheme.of(context);
+    final size = theme.size ?? fallback;
+    return theme.applyTextScaling ?? false
+        ? MediaQuery.textScalerOf(context).scale(size)
+        : size;
+  }
 }

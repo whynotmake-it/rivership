@@ -138,8 +138,14 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
     final enabled = widget.onChanged != null;
     final on = _glyph != _Glyph.none;
+    // The box and its glyph grow with text, like icons; gaps don't.
+    final scaler = MediaQuery.textScalerOf(context);
+    final boxSize = scaler.scale(sizes.checkboxSize);
+    final glyphSize = scaler.scale(sizes.checkboxGlyphSize);
     final radius = BorderRadius.circular(
-      theme.shape == CoilShape.sharp ? 0 : sizes.checkboxRadius,
+      theme.shape == CoilShape.sharp
+          ? 0
+          : sizes.checkboxRadius * boxSize / sizes.checkboxSize,
     );
 
     return Semantics(
@@ -149,9 +155,7 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
       enabled: enabled,
       label: widget.semanticLabel,
       child: CoilInteraction(
-        onPressed: enabled
-            ? () => widget.onChanged!(_next)
-            : null,
+        onPressed: enabled ? () => widget.onChanged!(_next) : null,
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         statesController: widget.statesController,
@@ -179,8 +183,8 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                 motion: _motion.fade,
                 converter: MotionConverter.colorRgb,
                 builder: (context, borderColor, child) => Container(
-                  width: sizes.checkboxSize,
-                  height: sizes.checkboxSize,
+                  width: boxSize,
+                  height: boxSize,
                   decoration: BoxDecoration(
                     borderRadius: radius,
                     border: Border.all(color: borderColor, width: 1.5),
@@ -188,8 +192,8 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                   child: child,
                 ),
                 child: OverflowBox(
-                  maxWidth: sizes.checkboxGlyphSize,
-                  maxHeight: sizes.checkboxGlyphSize,
+                  maxWidth: glyphSize,
+                  maxHeight: glyphSize,
                   child: SingleMotionBuilder(
                     key: ValueKey(_generation),
                     value: on ? 1 : 0,
@@ -206,11 +210,11 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
                               : CoilCheckboxGlyph.check,
                           progress.clamp(0, 1),
                           colors.foreground,
-                          sizes.checkboxGlyphSize,
+                          glyphSize,
                         );
                       }
                       return CustomPaint(
-                        size: Size.square(sizes.checkboxGlyphSize),
+                        size: Size.square(glyphSize),
                         painter: _GlyphPainter(
                           glyph: _shown,
                           progress: progress,

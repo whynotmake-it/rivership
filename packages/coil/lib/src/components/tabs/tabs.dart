@@ -347,6 +347,7 @@ class _TabButton extends StatelessWidget {
                         IconTheme(
                           data: IconThemeData(
                             size: sizes.iconSize,
+                            applyTextScaling: true,
                             weight: active
                                 ? CoilIconWeight.emphasis
                                 : CoilIconWeight.rest,

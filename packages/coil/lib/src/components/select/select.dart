@@ -511,6 +511,7 @@ class CoilSelectTrigger extends StatelessWidget {
               child: IconTheme(
                 data: IconThemeData(
                   size: metrics.iconSize,
+                  applyTextScaling: true,
                   color: hovered ? colors.foreground : colors.mutedForeground,
                 ),
                 child: DefaultTextStyle(
@@ -584,7 +585,7 @@ class _Chevron extends StatelessWidget {
   Widget build(BuildContext context) {
     final icons = IconTheme.of(context);
     return CustomPaint(
-      size: Size.square(icons.size ?? 16),
+      size: Size.square(CoilIconSize.of(context)),
       painter: _ChevronPainter(icons.color ?? const Color(0xFF000000)),
     );
   }

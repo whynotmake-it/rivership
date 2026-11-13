@@ -457,7 +457,11 @@ class _OptionRowState extends State<_OptionRow> {
                     vertical: metrics.controlPaddingY(metrics.body),
                   ),
                   child: IconTheme(
-                    data: IconThemeData(size: metrics.iconSize, color: color),
+                    data: IconThemeData(
+                      size: metrics.iconSize,
+                      applyTextScaling: true,
+                      color: color,
+                    ),
                     child: DefaultTextStyle(
                       style: theme.typography.style(metrics.body, color: color),
                       maxLines: 1,
@@ -502,7 +506,7 @@ class _Check extends StatelessWidget {
     final icons = IconTheme.of(context);
     final motion = CoilTheme.motionOf(context);
     return SizedBox.square(
-      dimension: icons.size ?? 16,
+      dimension: CoilIconSize.of(context),
       child: SingleMotionBuilder(
         value: checked ? 1 : 0,
         debugLabel: 'CoilSelect check',

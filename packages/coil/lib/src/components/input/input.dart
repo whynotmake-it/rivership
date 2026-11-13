@@ -160,6 +160,7 @@ class _CoilInputState extends State<CoilInput> {
     Widget slot(Widget child) => IconTheme(
       data: IconThemeData(
         size: sizes.iconSize,
+        applyTextScaling: true,
         color: colors.mutedForeground,
         weight: CoilIconWeight.rest,
       ),

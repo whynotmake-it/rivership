@@ -273,6 +273,7 @@ class _CoilButtonState extends State<CoilButton> {
                     child: IconTheme(
                       data: IconThemeData(
                         size: iconSize,
+                        applyTextScaling: true,
                         color: labelColor,
                         weight: value(iconWeight),
                       ),
@@ -435,7 +436,8 @@ class _CoilSpinner extends StatelessWidget {
       builder: (context, value, _) => Transform.rotate(
         angle: value(_turn) * 2 * math.pi,
         child: CustomPaint(
-          size: Size.square(size),
+          // Grows with text, like the icons beside it.
+          size: Size.square(MediaQuery.textScalerOf(context).scale(size)),
           painter: _SpinnerPainter(color),
         ),
       ),

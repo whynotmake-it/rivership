@@ -18,7 +18,10 @@ class TestIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = IconTheme.of(context);
-    final size = theme.size ?? 16;
+    // Sized like Flutter's Icon: scaled with text when the theme says so.
+    final size = theme.applyTextScaling ?? false
+        ? MediaQuery.textScalerOf(context).scale(theme.size ?? 16)
+        : theme.size ?? 16;
     return ExcludeSemantics(
       child: CustomPaint(
         size: Size.square(size),

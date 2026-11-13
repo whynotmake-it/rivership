@@ -124,7 +124,9 @@ already has a shape for a state, coil uses it: `CoilCheckbox` takes
 - A component that shows something optional takes a `Widget?` slot, not a
   `showX: bool`. `leading: null` means no leading slot.
 - coil bundles no icons. Slots take any widget; the component styles them
-  with `IconTheme` (size, color, `weight`) and `DefaultTextStyle`.
+  with `IconTheme` (size, color, `weight`, `applyTextScaling: true`) and
+  `DefaultTextStyle`. A custom slot glyph that paints itself should size
+  with `CoilIconSize.of(context)` so it grows with text like `Icon` does.
 - Glyphs a component draws itself (checkbox tick, chevron, spinner) are
   private painters, replaceable through a slot or a builder.
 - State-dependent slot content uses a builder
@@ -248,6 +250,7 @@ spatial token.
 | 2026-11-13 | `CoilSelect<T>` and `CoilMultiSelect<T>` are two widgets | one `onChanged` name with one type per widget, instead of `onValuesChanged` |
 | 2026-11-13 | Tabs: `value` (index) + `onChanged`, `labels: CoilTabLabels` | same idea, same name; enums over booleans |
 | 2026-11-13 | `CoilCheckbox(value: bool?, tristate:, onChanged: ValueChanged<bool?>?)`: null is indeterminate (dash) and needs `tristate`; only a tristate box cycles false → true → null → false. The `indeterminate` flag is gone. `CoilCheckboxGroup` has no select-all yet; when it gets one it uses the same shape | user review of M0; Flutter's `Checkbox` shape, no contradicting booleans |
+| 2026-11-13 | Icons scale with text: every `IconThemeData` coil provides sets `applyTextScaling: true` (Flutter's `Icon` then scales itself); drawn glyphs (check, chevron, spinner) size through `CoilIconSize.of(context)`, which applies the ambient `TextScaler` the same way; the checkbox box and its radius scale too. Gaps and paddings don't | user review of M0; Flutter's own mechanism, no custom scaling factor |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |
 | 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree deltas | the transform runs on the parent's data, so root changes still flow through and nothing is snapshotted |
