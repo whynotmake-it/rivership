@@ -5,7 +5,6 @@ import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/dialog/dialog_style.dart';
 import 'package:flutter/widgets.dart';
-import 'package:motor/motor.dart';
 
 /// What a dialog asks of the user, which decides how it opens on a phone.
 enum CoilDialogKind {
@@ -32,47 +31,21 @@ Future<T?> showCoilDialog<T>({
   String? barrierLabel,
   CoilMotion? motion,
 }) {
-  final navigator = Navigator.of(context);
-  final themes = InheritedTheme.capture(from: context, to: navigator.context);
-  final tokens = CoilTheme.motionOf(context, override: motion);
   final sheet =
       kind == CoilDialogKind.form &&
       CoilTheme.tierOf(context) == CoilTier.touch &&
       MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth;
-
-  Widget content(BuildContext context) => _CoilDialogPresentation(
-    sheet: sheet,
-    child: Builder(builder: builder),
-  );
-
-  if (sheet) {
-    return navigator.push(
-      CoilSheetRoute<T>(
-        motion: tokens.gentle,
-        barrierColor: CoilSheetPanel.barrierColorOf(context),
-        barrierDismissible: dismissible,
-        barrierLabel: barrierLabel,
-        capturedThemes: themes,
-        child: PopScope(
-          canPop: dismissible,
-          child: Builder(builder: content),
-        ),
-      ),
-    );
-  }
-  return navigator.push(
-    _CoilDialogRoute<T>(
-      enter: tokens.gentle,
-      exit: tokens.gentleExit,
-      barrierColor: CoilSheetPanel.barrierColorOf(context),
-      barrierDismissible: dismissible,
-      barrierLabel: barrierLabel,
-      builder: (context) => themes.wrap(
-        PopScope(
-          canPop: dismissible,
-          child: Builder(builder: content),
-        ),
-      ),
+  return showCoilModal<T>(
+    context: context,
+    presentation: sheet
+        ? CoilModalPresentation.sheet
+        : CoilModalPresentation.centered,
+    dismissible: dismissible,
+    barrierLabel: barrierLabel,
+    motion: motion,
+    builder: (context) => _CoilDialogPresentation(
+      sheet: sheet,
+      child: Builder(builder: builder),
     ),
   );
 }
@@ -235,34 +208,4 @@ class _CoilDialogPresentation extends InheritedWidget {
   @override
   bool updateShouldNotify(_CoilDialogPresentation oldWidget) =>
       oldWidget.sheet != sheet;
-}
-
-/// A centered modal route whose panel springs in and out on Motor.
-class _CoilDialogRoute<T> extends RawDialogRoute<T> {
-  _CoilDialogRoute({
-    required WidgetBuilder builder,
-    required this.enter,
-    required this.exit,
-    required Color barrierColor,
-    required super.barrierDismissible,
-    super.barrierLabel,
-  }) : super(
-         barrierColor: barrierColor,
-         pageBuilder: (context, _, _) => builder(context),
-         transitionBuilder: (context, animation, _, child) => CoilBlurFade(
-           presence: animation,
-           scale: 0.97,
-           child: child,
-         ),
-       );
-
-  final Motion enter;
-  final Motion exit;
-
-  @override
-  Simulation createSimulation({required bool forward}) =>
-      (forward ? enter : exit).createSimulation(
-        start: animation?.value ?? (forward ? 0 : 1),
-        end: forward ? 1 : 0,
-      );
 }

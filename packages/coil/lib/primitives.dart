@@ -19,6 +19,7 @@ export 'src/primitives/hover.dart';
 export 'src/primitives/interaction.dart';
 export 'src/primitives/layer.dart';
 export 'src/primitives/line_box.dart';
+export 'src/primitives/modal.dart';
 export 'src/primitives/motion_layer.dart'
     hide CoilLayerPainter, CoilPainterLayer, RenderCoilMotionLayer;
 export 'src/primitives/popover_surface.dart';
