@@ -14,5 +14,10 @@ Milestone M0, unreleased.
 - Components on those layers: `CoilButton`, `CoilCheckbox`, `CoilSwitch`,
   `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`,
   `CoilSelect`, `CoilMultiSelect`.
+- `CoilSlider`: one value, with scrubber and pips rows, a compact pill,
+  hover preview, a value bubble and full keyboard and screen reader
+  support. Range, step lists and click-to-edit come later.
+- `CoilTabs` scrolls when the tabs don't fit: 24 px edge fades, and the
+  selected or focused tab springs into view.
 - Test harness: golden matrix, pattern checker, ink centering, IME tests,
   import rules, runtime motion.

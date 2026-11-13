@@ -614,19 +614,19 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Semantics:** toggle buttons with `selected`.
 - **Use:** multi-select formatting (Bold / Italic). For single choice use Tabs or a RadioGroup.
 
-#### Slider
+#### Slider (built)
 
 - **Anatomy:**
   - **Comfortable** (default step): a full-width bordered row, `controlHeight` tall, with label (start) and value (end, tabular, muted). The fill is `active`, and a handle line sits at the value. Variants: `pips` (5 px dots per step) and `scrubber` (a continuous fill).
   - **Compact** (compact step, ranges, step lists): an 18 high pill track with 1 px `border` and a 16 white knob in a 20 box; fill `selected` 50 % (dark `accent` 40 %).
 - **Sizes:** the comfortable row is 36 / 28 / 44 / 36, padding 12 / 10 / 16 / 12. On touch the compact knob is 22 visual, 44 hit.
 - **States:** the label and value turn foreground and semibold (with ghost width) while hovered, pressed or focused. Pips: dots at 30 % muted, the active one foreground. Disabled 50 %.
-- **Pointer extras:** hover shows a preview bar (brand 40 %) toward the snapped hover value, plus a value tooltip.
+- **Pointer extras:** hover shows a preview bar (brand 40 %) toward the snapped hover value, plus the value bubble (the touch bubble, shown at the hover value) until a Tooltip exists.
 - **Touch:** no preview. **A value bubble** (tooltip style) sits 8 + 24 above the thumb while pressed and fades on `fade` / `fadeExit`. Tapping the track jumps; dragging sets the value directly with no fling.
 - **Motion:** thumb and fill settle on `standard` after a jump or keyboard step; follow the finger 1:1 while dragging; handle and color on `fade`; pip growth `standard`.
 - **Keyboard:** arrows ±step; PageUp/PageDown and Shift+arrow ±10 %; Home and End go to min and max. Click-to-edit value (P1): the number becomes a field.
 - **Semantics:** `slider` / adjustable, a formatted `value`, increase and decrease actions; range thumbs are named "minimum" and "maximum".
-- **Scope:** single value in v1; range, step lists, click-to-edit and tooltip mode in v1.x.
+- **Scope:** single value in v1. Regular size is the comfortable row and compact size is the pill track; the 28 / 36 row heights above are unused; range, step lists, click-to-edit and tooltip mode in v1.x.
 
 #### Tabs (built)
 

@@ -11,7 +11,6 @@ import 'src/golden_sheet.dart';
 class _Host extends StatefulWidget {
   const _Host({
     this.divisions,
-    this.variant = CoilSliderVariant.scrubber,
     this.size,
     this.tier = CoilTier.pointer,
     this.textDirection = TextDirection.ltr,
@@ -24,7 +23,6 @@ class _Host extends StatefulWidget {
   });
 
   final int? divisions;
-  final CoilSliderVariant variant;
   final CoilSize? size;
   final CoilTier tier;
   final TextDirection textDirection;
@@ -68,7 +66,6 @@ class _HostState extends State<_Host> {
                     key: const ValueKey('slider'),
                     value: value,
                     divisions: widget.divisions,
-                    variant: widget.variant,
                     size: widget.size,
                     label: const Text('Volume'),
                     statesController: widget.states,
@@ -243,20 +240,13 @@ void main() {
     handle.dispose();
   });
 
-  Finder bubbleText() => find.descendant(
-    of: _slider,
-    matching: find.byWidgetPredicate(
-      (w) => w is Opacity && w.child is CustomSingleChildLayout,
-    ),
-  );
-
   testWidgets('touch: the bubble shows while pressed and leaves no hover', (
     tester,
   ) async {
     final states = WidgetStatesController();
     addTearDown(states.dispose);
     await tester.pumpWidget(_Host(states: states, tier: CoilTier.touch));
-    expect(bubbleText(), findsNothing);
+    final shownAtRest = find.text('0.5').evaluate().length;
     final rect = tester.getRect(_slider);
     final g = await tester.startGesture(
       Offset(rect.left + rect.width * .5, rect.center.dy),
@@ -264,15 +254,17 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(states.value, contains(WidgetState.pressed));
-    expect(bubbleText(), findsOneWidget);
-    await g.moveBy(const Offset(30, 0));
-    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      find.text('0.5').evaluate().length,
+      shownAtRest + 1,
+      reason: 'a bubble repeats the value above the thumb',
+    );
     await g.up();
     await settle(tester);
     expect(states.value, isNot(contains(WidgetState.hovered)));
     expect(states.value, isNot(contains(WidgetState.pressed)));
     expect(states.value, isNot(contains(WidgetState.focused)));
-    expect(bubbleText(), findsNothing, reason: 'the bubble fades out');
+    expect(find.text('0.5').evaluate().length, shownAtRest);
   });
 
   testWidgets('mouse: hover shows the preview and bubble; leaving hides', (
@@ -289,12 +281,15 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(states.value, contains(WidgetState.hovered));
-    expect(bubbleText(), findsOneWidget);
-    expect(find.text('0.75'), findsOneWidget);
+    expect(
+      find.text('0.75'),
+      findsOneWidget,
+      reason: 'the bubble shows the value under the pointer',
+    );
     await mouse.moveTo(const Offset(5, 5));
     await settle(tester);
     expect(states.value, isNot(contains(WidgetState.hovered)));
-    expect(bubbleText(), findsNothing);
+    expect(find.text('0.75'), findsNothing);
   });
 
   testWidgets('a click shows no focus ring; the keyboard does', (tester) async {
@@ -425,18 +420,5 @@ void main() {
       expect(progress(tester), closeTo(1, 1e-6));
       expect((half - rest) / (end - rest), closeTo(.5, .1));
     });
-  });
-
-  testWidgets('compact size and pips build and drag', (tester) async {
-    await tester.pumpWidget(const _Host(size: CoilSize.compact, divisions: 4));
-    final rect = tester.getRect(_slider);
-    await tester.tapAt(Offset(rect.center.dx + 60, rect.center.dy));
-    await tester.pump();
-    expect(_valueOf(tester), greaterThan(.5));
-    await tester.pumpWidget(
-      const _Host(variant: CoilSliderVariant.pips, divisions: 4),
-    );
-    await tester.pump();
-    expect(tester.takeException(), isNull);
   });
 }

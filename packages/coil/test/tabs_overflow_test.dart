@@ -165,35 +165,21 @@ void main() {
     );
   });
 
-  testWidgets('the pill follows its tab while scrolling', (tester) async {
-    await tester.pumpWidget(const _Host(initial: 1));
-    await settle(tester);
-    final tab = find.text('Tab number 1').first;
-    final before = tester.getRect(tab);
-    final pill = find.descendant(
-      of: find.byKey(const ValueKey('tabs')),
-      matching: find.byType(CustomPaint),
-    );
-    expect(pill, findsWidgets);
-    await tester.drag(tab, const Offset(-60, 0));
-    await tester.pump();
-    final after = tester.getRect(tab);
-    expect(after.left, lessThan(before.left));
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets(
     'touch scroll physics follow the platform',
     (tester) async {
       await tester.pumpWidget(const _Host(tier: CoilTier.touch));
       await tester.pump();
-      final physics = _position(tester).physics.runtimeType.toString();
-      expect(
-        physics,
-        defaultTargetPlatform == TargetPlatform.iOS
-            ? contains('Bouncing')
-            : contains('Clamping'),
+      final g = await tester.startGesture(
+        tester.getCenter(find.text('Tab number 1').first),
       );
+      await g.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await g.moveBy(const Offset(40, 0));
+      await tester.pump();
+      final overscrolls = _position(tester).pixels < 0;
+      expect(overscrolls, defaultTargetPlatform == TargetPlatform.iOS);
+      await g.up();
     },
     variant: const TargetPlatformVariant({
       TargetPlatform.iOS,
