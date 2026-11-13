@@ -6,8 +6,8 @@ import 'package:flutter/widgets.dart';
 /// style app-wide or for a subtree with
 /// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
 ///
-/// [label] is resolved with [WidgetState.selected] and
-/// [WidgetState.hovered].
+/// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
+/// and [WidgetState.focused].
 class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   /// Creates a style.
   const CoilToggleGroupStyle({
@@ -27,12 +27,15 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     return CoilToggleGroupStyle(
       selection: c.active,
       highlight: c.hover,
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      // Touch rows rest at full strength: "the pointer is here" means nothing
+      // to a finger.
+      label: metrics.tier == CoilTier.touch
+          ? WidgetStatePropertyAll<Color?>(c.foreground)
+          : WidgetStateProperty<Color?>.fromMap({
+              WidgetState.selected | WidgetState.hovered | WidgetState.focused:
+                  c.foreground,
+              WidgetState.any: c.mutedForeground,
+            }),
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
     );

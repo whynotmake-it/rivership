@@ -22,6 +22,7 @@ class _HostState extends State<_Host> {
   bool on = false;
   int tab = 0;
   int plan = 1;
+  Set<int> picked = {0};
   String? fruit = 'banana';
 
   void update(VoidCallback change) => setState(change);
@@ -131,6 +132,39 @@ void main() {
             ],
           ),
           CoilPattern.radioGroup,
+        );
+      });
+
+      testWidgets('CoilCheckboxGroup is a checkbox group', (tester) async {
+        await check(
+          tester,
+          (s) => CoilCheckboxGroup<int>(
+            semanticLabel: 'Notify me',
+            values: s.picked,
+            onChanged: (v) => s.update(() => s.picked = v),
+            options: const [
+              CoilOption(value: 0, label: 'Email'),
+              CoilOption(value: 1, label: 'Push'),
+              CoilOption(value: 2, label: 'SMS'),
+            ],
+          ),
+          CoilPattern.checkboxGroup,
+        );
+      });
+
+      testWidgets('CoilToggleGroup is a toggle group', (tester) async {
+        await check(
+          tester,
+          (s) => CoilToggleGroup<int>(
+            values: s.picked,
+            onChanged: (v) => s.update(() => s.picked = v),
+            options: const [
+              CoilOption(value: 0, label: 'Bold'),
+              CoilOption(value: 1, label: 'Italic'),
+              CoilOption(value: 2, label: 'Underline'),
+            ],
+          ),
+          CoilPattern.toggleGroup,
         );
       });
 

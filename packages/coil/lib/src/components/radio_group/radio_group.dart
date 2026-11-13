@@ -3,20 +3,60 @@ import 'dart:ui' show SemanticsRole;
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/radio_group/radio_group_style.dart';
+import 'package:coil/src/components/radio_group/radio_indicator.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A vertical list of mutually exclusive rows.
+/// The animated parts of a [CoilRadioGroup], as Motor tracks. Use them as
+/// keys of [CoilRadioGroup.motions] or [CoilThemeData.trackMotions].
+final class CoilRadioGroupTrack<T extends Object> extends Track<T> {
+  CoilRadioGroupTrack._(super.converter, {required String super.debugLabel});
+
+  /// The selected fill gliding between rows. Default motion: `standard`.
+  static final selection = CoilRadioGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilRadioGroup.selection',
+  );
+
+  /// The focus ring travelling between rows. Default motion: `quick`.
+  static final ring = CoilRadioGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilRadioGroup.ring',
+  );
+
+  /// The label color and weight. Default motion: `fade`.
+  static final label = CoilRadioGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilRadioGroup.label',
+  );
+
+  /// The touch press fill. Default motion: `fade`.
+  static final press = CoilRadioGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilRadioGroup.press',
+  );
+
+  /// The circle's outline color. Default motion: `fade`.
+  static final border = CoilRadioGroupTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilRadioGroup.border',
+  );
+
+  /// The dot scaling in and fading out. Default motion: `quick` in,
+  /// `fadeExit` out.
+  static final dot = CoilRadioGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilRadioGroup.dot',
+  );
+}
+
+/// A vertical list of options where one is selected.
 ///
-/// * One selected fill glides between rows on `standard`; hover is the
-///   gliding highlight.
-/// * The selected row is the one tab stop (the first row when nothing is
-///   selected). The arrow keys, Home and End move focus *and* select, with
-///   wrapping; disabled rows are skipped.
-/// * The selected row's label turns semibold foreground, its circle's
-///   border clears and its dot fills in (scale 0.3 → 1 on `quick`, out on
-///   `fadeExit`).
-/// * Labels wrap and grow their row. Use a select past seven options.
+/// The selected row is the group's one tab stop. The arrow keys, Home and
+/// End move to another row and select it, with wrapping. Disabled rows are
+/// skipped. Labels wrap and grow their row.
+///
+/// Use a select for more than seven options.
 class CoilRadioGroup<T> extends StatelessWidget {
   /// Creates a radio group.
   const CoilRadioGroup({
@@ -26,6 +66,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
     super.key,
     this.size,
     this.motion,
+    this.motions,
     this.style,
     this.semanticLabel,
   });
@@ -45,6 +86,9 @@ class CoilRadioGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
+  /// Per-track motions, keyed by [CoilRadioGroupTrack]s.
+  final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
+
   /// Overrides for this group's look, on top of the theme's
   /// [CoilRadioGroupStyle] and the defaults.
   final CoilRadioGroupStyle? style;
@@ -61,148 +105,96 @@ class CoilRadioGroup<T> extends StatelessWidget {
       theme,
       sizes,
     ).merge(CoilTheme.styleOf<CoilRadioGroupStyle>(context)).merge(style);
-    final selected = options.indexWhere((o) => o.value == value);
-    bool enabled(int i) => onChanged != null && options[i].enabled;
+    Motion motionFor(
+      CoilRadioGroupTrack<Object> track,
+      Motion token, {
+      bool spatial = true,
+    }) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: motions,
+      token: token,
+      spatial: spatial,
+    );
+    final labelMotion = motionFor(
+      CoilRadioGroupTrack.label,
+      tokens.fade,
+      spatial: false,
+    );
 
     return Semantics(
       container: true,
       label: semanticLabel,
       role: SemanticsRole.radioGroup,
-      child: CoilChoiceGroup(
-        count: options.length,
-        mergeSelection: false,
-        selected: {if (selected >= 0) selected},
-        tabStop: selected >= 0 && enabled(selected) ? selected : null,
+      child: CoilChoiceGroup<T>(
+        options: options,
+        selected: {?value},
+        selection: CoilChoiceSelection.gliding,
+        tabStops: CoilRovingTabStops.one,
+        enabled: onChanged != null,
         selectionColor: look.selection!,
         highlightColor: look.highlight!,
         radius: look.radius!,
-        motion: tokens,
-        isEnabled: enabled,
+        selectionMotion: motionFor(
+          CoilRadioGroupTrack.selection,
+          tokens.standard,
+        ),
+        ringMotion: motionFor(CoilRadioGroupTrack.ring, tokens.quick),
+        fadeMotion: tokens.fade,
         // Arrows move focus; landing on a row selects it.
-        onFocusMoved: (i) {
-          if (enabled(i) && i != selected) onChanged!(options[i].value);
+        onFocusMoved: (v) {
+          if (v != value) onChanged!(v);
         },
-        itemBuilder: (context, i, node, states) {
-          final option = options[i];
-          final checked = i == selected;
-          final onPressed = enabled(i) ? () => onChanged!(option.value) : null;
+        itemBuilder: (context, option, node, states) {
+          final checked = option.value == value;
+          final onPressed = onChanged == null || !option.enabled
+              ? null
+              : () => onChanged!(option.value);
           return Semantics(
             container: true,
             inMutuallyExclusiveGroup: true,
             checked: checked,
             enabled: onPressed != null,
             label: option.child == null ? null : option.label,
-            child: CoilChoiceRow(
-              selected: checked,
-              metrics: sizes,
-              motion: tokens,
-              textStyle: look.textStyle!,
-              labelColor: look.label!,
-              pressFill: look.selection!,
-              radius: look.radius!,
+            child: CoilChoiceItem(
+              size: size,
+              onPressed: onPressed,
               focusNode: node,
               statesController: states,
-              onPressed: onPressed,
-              leading: (states) => CoilRadioIndicator(
-                selected: checked,
-                states: states,
-                size: size,
-                motion: motion,
-                style: style,
+              pressFill: look.selection!,
+              radius: look.radius!,
+              pressMotion: motionFor(
+                CoilRadioGroupTrack.press,
+                tokens.fade,
+                spatial: false,
               ),
-              label: option.child ?? Text(option.label),
+              releaseMotion: motionFor(
+                CoilRadioGroupTrack.press,
+                tokens.fadeExit,
+                spatial: false,
+              ),
+              builder: (context, itemStates, _) => CoilChoiceRow(
+                size: size,
+                selected: checked,
+                labelStyle: look.textStyle!,
+                labelColor: look.label!.resolve({
+                  if (checked) WidgetState.selected,
+                  ...itemStates,
+                })!,
+                labelMotion: labelMotion,
+                leading: CoilRadioIndicator(
+                  selected: checked,
+                  states: itemStates,
+                  size: size,
+                  motion: motion,
+                  motions: motions,
+                  style: style,
+                ),
+                label: option.child ?? Text(option.label),
+              ),
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-/// The circle of a radio: a 1.5 px border (clear when selected) and a dot,
-/// with no interaction of its own.
-///
-/// [states] drives the border; only `hovered` is read. Use it inside a row
-/// that is already the tap target, as [CoilRadioGroup] does. The circle
-/// grows with the text scale. The dot scales in from 0.3 on `quick` and
-/// fades out on `fadeExit`.
-class CoilRadioIndicator extends StatelessWidget {
-  /// Creates a radio indicator.
-  const CoilRadioIndicator({
-    required this.selected,
-    required this.states,
-    super.key,
-    this.size,
-    this.motion,
-    this.style,
-  });
-
-  /// Whether the dot shows.
-  final bool selected;
-
-  /// The states the border reacts to.
-  final Set<WidgetState> states;
-
-  /// Pins the circle to one size step. Null follows [CoilAdaptiveScope].
-  final CoilSize? size;
-
-  /// Overrides the theme's motion tokens for this instance.
-  final CoilMotion? motion;
-
-  /// Overrides for this indicator's look, on top of the theme's
-  /// [CoilRadioGroupStyle] and the defaults.
-  final CoilRadioGroupStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final sizes = CoilTheme.metricsOf(context, size: size);
-    final tokens = CoilTheme.motionOf(context, override: motion);
-    final look = CoilRadioGroupStyle.fallback(
-      theme,
-      sizes,
-    ).merge(CoilTheme.styleOf<CoilRadioGroupStyle>(context)).merge(style);
-    final box = MediaQuery.textScalerOf(context).scale(sizes.checkboxSize);
-    final border = states.contains(WidgetState.hovered)
-        ? look.radioBorderHover!
-        : selected
-        ? look.radioBorder!.withValues(alpha: 0)
-        : look.radioBorder!;
-    return MotionBuilder<Color>(
-      value: border,
-      converter: MotionConverter.colorRgb,
-      motion: tokens.fade,
-      debugLabel: 'CoilRadioIndicator border',
-      builder: (context, color, child) => DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(box / 2),
-            side: BorderSide(color: color, width: 1.5),
-          ),
-        ),
-        child: SizedBox.square(dimension: box, child: child),
-      ),
-      child: Center(
-        child: SingleMotionBuilder(
-          value: selected ? 1 : 0,
-          motion: selected ? tokens.quick : tokens.fadeExit,
-          debugLabel: 'CoilRadioIndicator dot',
-          builder: (context, progress, _) => Opacity(
-            opacity: progress.clamp(0, 1),
-            child: Transform.scale(
-              scale: 0.3 + 0.7 * progress,
-              child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: look.dot,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(box / 4),
-                  ),
-                ),
-                child: SizedBox.square(dimension: box / 2),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

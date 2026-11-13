@@ -212,7 +212,6 @@ final Map<String, WidgetBuilder> _stories = {
         ),
       ),
       const SizedBox(height: 8),
-      const SizedBox(height: 8),
       CoilToggleGroup(
         values: const {0, 1},
         onChanged: (_) {},

@@ -1,3 +1,4 @@
+import 'package:coil/checkbox.dart';
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -6,9 +7,8 @@ import 'package:flutter/widgets.dart';
 /// style app-wide or for a subtree with
 /// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
 ///
-/// [label] is resolved with [WidgetState.selected] and
-/// [WidgetState.hovered] (a hovered or keyboard-focused row; touch rows
-/// always resolve as selected, so they rest at full strength).
+/// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
+/// and [WidgetState.focused].
 class CoilCheckboxGroupStyle
     extends CoilComponentStyle<CoilCheckboxGroupStyle> {
   /// Creates a style.
@@ -18,6 +18,7 @@ class CoilCheckboxGroupStyle
     this.label,
     this.textStyle,
     this.radius,
+    this.checkbox,
   });
 
   /// The defaults from the theme's tokens.
@@ -29,12 +30,15 @@ class CoilCheckboxGroupStyle
     return CoilCheckboxGroupStyle(
       selection: c.active,
       highlight: c.hover,
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      // Touch rows rest at full strength: "the pointer is here" means nothing
+      // to a finger.
+      label: metrics.tier == CoilTier.touch
+          ? WidgetStatePropertyAll<Color?>(c.foreground)
+          : WidgetStateProperty<Color?>.fromMap({
+              WidgetState.selected | WidgetState.hovered | WidgetState.focused:
+                  c.foreground,
+              WidgetState.any: c.mutedForeground,
+            }),
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
     );
@@ -55,6 +59,9 @@ class CoilCheckboxGroupStyle
   /// The corner radius of blocks and the highlight.
   final double? radius;
 
+  /// The look of each row's box.
+  final CoilCheckboxStyle? checkbox;
+
   @override
   CoilCheckboxGroupStyle merge(CoilCheckboxGroupStyle? other) => other == null
       ? this
@@ -64,8 +71,16 @@ class CoilCheckboxGroupStyle
           label: other.label ?? label,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
+          checkbox: checkbox?.merge(other.checkbox) ?? other.checkbox,
         );
 
   @override
-  List<Object?> get props => [selection, highlight, label, textStyle, radius];
+  List<Object?> get props => [
+    selection,
+    highlight,
+    label,
+    textStyle,
+    radius,
+    checkbox,
+  ];
 }

@@ -6,9 +6,9 @@ import 'package:flutter/widgets.dart';
 /// style app-wide or for a subtree with
 /// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
 ///
-/// [label] is resolved with [WidgetState.selected] and
-/// [WidgetState.hovered] (a hovered or keyboard-focused row; touch rows
-/// always resolve as selected, so they rest at full strength).
+/// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
+/// and [WidgetState.focused]. [border] is resolved with
+/// [WidgetState.hovered] and [WidgetState.selected].
 class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   /// Creates a style.
   const CoilRadioGroupStyle({
@@ -17,9 +17,12 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     this.label,
     this.textStyle,
     this.radius,
-    this.radioBorder,
-    this.radioBorderHover,
+    this.border,
+    this.borderWidth,
+    this.size,
     this.dot,
+    this.dotRatio,
+    this.dotScale,
   });
 
   /// The defaults from the theme's tokens.
@@ -31,17 +34,27 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     return CoilRadioGroupStyle(
       selection: c.active,
       highlight: c.hover,
-      label: WidgetStateProperty.resolveWith(
-        (s) =>
-            s.contains(WidgetState.selected) || s.contains(WidgetState.hovered)
-            ? c.foreground
-            : c.mutedForeground,
-      ),
+      // Touch rows rest at full strength: "the pointer is here" means nothing
+      // to a finger.
+      label: metrics.tier == CoilTier.touch
+          ? WidgetStatePropertyAll<Color?>(c.foreground)
+          : WidgetStateProperty<Color?>.fromMap({
+              WidgetState.selected | WidgetState.hovered | WidgetState.focused:
+                  c.foreground,
+              WidgetState.any: c.mutedForeground,
+            }),
       textStyle: theme.typography.style(metrics.body),
       radius: theme.shape.radii(metrics.tier).item,
-      radioBorder: c.border,
-      radioBorderHover: c.foreground.withValues(alpha: 0.4),
+      border: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.hovered: c.foreground.withValues(alpha: 0.4),
+        WidgetState.selected: c.border.withValues(alpha: 0),
+        WidgetState.any: c.border,
+      }),
+      borderWidth: 1.5,
+      size: metrics.checkboxSize,
       dot: c.foreground,
+      dotRatio: 0.5,
+      dotScale: 0.3,
     );
   }
 
@@ -60,14 +73,23 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   /// The corner radius of the selected fill and the highlight.
   final double? radius;
 
-  /// The circle's outline at rest (it clears when selected).
-  final Color? radioBorder;
+  /// The circle's outline color.
+  final WidgetStateProperty<Color?>? border;
 
-  /// The circle's outline while its row is hovered.
-  final Color? radioBorderHover;
+  /// The circle's outline width.
+  final double? borderWidth;
 
-  /// The selected dot.
+  /// The circle's diameter before text scaling.
+  final double? size;
+
+  /// The selected dot's color.
   final Color? dot;
+
+  /// The dot's diameter as a fraction of the circle's.
+  final double? dotRatio;
+
+  /// The scale the dot grows from when it appears.
+  final double? dotScale;
 
   @override
   CoilRadioGroupStyle merge(CoilRadioGroupStyle? other) => other == null
@@ -78,9 +100,12 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
           label: other.label ?? label,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
-          radioBorder: other.radioBorder ?? radioBorder,
-          radioBorderHover: other.radioBorderHover ?? radioBorderHover,
+          border: other.border ?? border,
+          borderWidth: other.borderWidth ?? borderWidth,
+          size: other.size ?? size,
           dot: other.dot ?? dot,
+          dotRatio: other.dotRatio ?? dotRatio,
+          dotScale: other.dotScale ?? dotScale,
         );
 
   @override
@@ -90,8 +115,11 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     label,
     textStyle,
     radius,
-    radioBorder,
-    radioBorderHover,
+    border,
+    borderWidth,
+    size,
     dot,
+    dotRatio,
+    dotScale,
   ];
 }

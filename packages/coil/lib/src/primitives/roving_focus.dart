@@ -1,6 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+/// How many items of a [CoilRovingFocus] Tab can reach.
+enum CoilRovingTabStops {
+  /// Only the item at `tabStop`: a radio group, tab list or toolbar.
+  one,
+
+  /// Every item. The arrow keys still move focus: a checkbox group.
+  each,
+}
+
 /// One tab stop for a group of items, with arrow keys between them.
 ///
 /// The roving tab index of WAI-ARIA toolbars, tab lists and radio groups:
@@ -22,6 +31,8 @@ class CoilRovingFocus extends StatefulWidget {
     super.key,
     this.axis = Axis.horizontal,
     this.wrap = true,
+    this.tabStops = CoilRovingTabStops.one,
+    this.onMoved,
   });
 
   /// The items' focus nodes, in order.
@@ -37,6 +48,14 @@ class CoilRovingFocus extends StatefulWidget {
   /// Whether moving past the last item goes to the first, and back.
   final bool wrap;
 
+  /// Which items Tab reaches. With [CoilRovingTabStops.each], `tabStop` is
+  /// ignored.
+  final CoilRovingTabStops tabStops;
+
+  /// Called with the index of the item an arrow key, Home or End moved focus
+  /// to, after the request. Not called for other focus changes.
+  final ValueChanged<int>? onMoved;
+
   /// The items, anywhere below.
   final Widget child;
 
@@ -47,6 +66,7 @@ class CoilRovingFocus extends StatefulWidget {
 class _CoilRovingFocusState extends State<CoilRovingFocus> {
   void _syncTraversal() {
     final nodes = widget.nodes;
+    if (widget.tabStops == CoilRovingTabStops.each) return;
     var stop = widget.tabStop;
     if (stop == null ||
         stop < 0 ||
@@ -106,6 +126,7 @@ class _CoilRovingFocusState extends State<CoilRovingFocus> {
           : KeyEventResult.ignored;
     }
     nodes[target].requestFocus();
+    widget.onMoved?.call(target);
     return KeyEventResult.handled;
   }
 

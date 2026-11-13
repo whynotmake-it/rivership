@@ -31,6 +31,14 @@ enum CoilPattern {
   /// and select with wrapping.
   radioGroup,
 
+  /// A checkbox group: every row is a tab stop, arrows move focus between
+  /// rows, Space toggles the focused row.
+  checkboxGroup,
+
+  /// A toggle group: one tab stop, arrows move focus between toggles, Space
+  /// flips the focused toggle.
+  toggleGroup,
+
   /// A single-line text field.
   textField,
 
@@ -88,6 +96,10 @@ Future<void> expectCoilPattern(
         await _tabs(tester, finder);
       case CoilPattern.radioGroup:
         await _radioGroup(tester, finder);
+      case CoilPattern.checkboxGroup:
+        await _checkboxGroup(tester, finder);
+      case CoilPattern.toggleGroup:
+        await _toggleGroup(tester, finder);
       case CoilPattern.textField:
         await _textField(tester, finder);
       case CoilPattern.select:
@@ -318,6 +330,75 @@ Future<void> _radioGroup(WidgetTester tester, Finder finder) async {
     reason: 'radioGroup: the group is one tab stop',
   );
   await _focusWithTab(tester, finder, CoilPattern.radioGroup);
+}
+
+Future<void> _checkboxGroup(WidgetTester tester, Finder finder) async {
+  List<SemanticsData> rows() => _nodes(
+    tester,
+    finder,
+  ).where((n) => n.flagsCollection.isChecked != CheckedState.none).toList();
+  int checkedCount() => rows()
+      .where((n) => n.flagsCollection.isChecked == CheckedState.isTrue)
+      .length;
+  expect(rows().length, greaterThan(1), reason: 'checkboxGroup: row nodes');
+  final before = checkedCount();
+  await tester.sendKeyEvent(LogicalKeyboardKey.space);
+  await tester.pumpAndSettle();
+  expect(checkedCount(), isNot(before), reason: 'checkboxGroup: Space flips');
+  final start = FocusManager.instance.primaryFocus;
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+  await tester.pumpAndSettle();
+  expect(
+    FocusManager.instance.primaryFocus,
+    isNot(start),
+    reason: 'checkboxGroup: Down moves focus',
+  );
+  expect(_focusInside(finder), isTrue);
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  await tester.pumpAndSettle();
+  expect(
+    _focusInside(finder),
+    isTrue,
+    reason: 'checkboxGroup: every row is a tab stop',
+  );
+  await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _toggleGroup(WidgetTester tester, Finder finder) async {
+  List<SemanticsData> toggles() => _nodes(
+    tester,
+    finder,
+  ).where((n) => n.flagsCollection.isSelected != Tristate.none).toList();
+  int selected() => toggles()
+      .where((n) => n.flagsCollection.isSelected == Tristate.isTrue)
+      .length;
+  expect(toggles().length, greaterThan(1), reason: 'toggleGroup: toggles');
+  final rtl =
+      Directionality.of(FocusManager.instance.primaryFocus!.context!) ==
+      TextDirection.rtl;
+  final start = FocusManager.instance.primaryFocus;
+  await tester.sendKeyEvent(
+    rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight,
+  );
+  await tester.pumpAndSettle();
+  expect(
+    FocusManager.instance.primaryFocus,
+    isNot(start),
+    reason: 'toggleGroup: the forward arrow moves focus',
+  );
+  final before = selected();
+  await tester.sendKeyEvent(LogicalKeyboardKey.space);
+  await tester.pumpAndSettle();
+  expect(selected(), isNot(before), reason: 'toggleGroup: Space flips');
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  await tester.pumpAndSettle();
+  expect(
+    _focusInside(finder),
+    isFalse,
+    reason: 'toggleGroup: the group is one tab stop',
+  );
+  await _focusWithTab(tester, finder, CoilPattern.toggleGroup);
 }
 
 Future<void> _textField(WidgetTester tester, Finder finder) async {

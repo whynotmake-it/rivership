@@ -23,16 +23,11 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   ) {
     final c = theme.colors;
     return CoilCheckboxStyle(
-      border: WidgetStateProperty.resolveWith((s) {
-        final hovered = s.contains(WidgetState.hovered);
-        if (hovered) return c.foreground.withValues(alpha: 0.4);
-        if (s.contains(WidgetState.selected)) {
-          return c.border.withValues(alpha: 0);
-        }
-        if (s.contains(WidgetState.error)) {
-          return c.destructive.withValues(alpha: 0.5);
-        }
-        return c.border;
+      border: WidgetStateProperty<Color?>.fromMap({
+        WidgetState.hovered: c.foreground.withValues(alpha: 0.4),
+        WidgetState.selected: c.border.withValues(alpha: 0),
+        WidgetState.error: c.destructive.withValues(alpha: 0.5),
+        WidgetState.any: c.border,
       }),
       borderWidth: 1.5,
       glyphColor: c.foreground,

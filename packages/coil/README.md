@@ -42,7 +42,7 @@ Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 |---|---|---|
 | Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilInputModality`, `CoilAdaptiveScope` |
 | Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlightPainter`, `CoilSelectionPainter` (merge/split), `CoilSpringRoute` + `CoilBlurFade`, `CoilPopoverRoute`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore` |
-| Components | one library each | `CoilButton`, `CoilCheckbox`, `CoilSwitch`, `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
+| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect` |
 
 Components reach pointers, overlays, haptics and travelling motion only
 through primitives. `test/architecture/import_rules_test.dart` enforces it,

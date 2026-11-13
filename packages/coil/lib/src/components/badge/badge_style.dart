@@ -9,11 +9,13 @@ enum CoilBadgeVariant {
   /// A hairline outline, foreground text and a colored dot.
   dot,
 
-  /// No outline and no padding; inherits the surrounding text color.
+  /// A dot and a label with no outline and no padding; the label inherits
+  /// the surrounding text color.
   ghost,
 }
 
-/// The hue of a `CoilBadge`: gray, the theme's brand, or a Tailwind-500 hue.
+/// The hue of a `CoilBadge`: gray, the theme's brand, or one of sixteen
+/// fixed hues.
 enum CoilBadgeColor {
   /// The neutral default (`accent` fill, muted dot).
   gray(null),
@@ -21,52 +23,52 @@ enum CoilBadgeColor {
   /// The theme's `brand` color.
   brand(null),
 
-  /// Tailwind red-500.
+  /// Red.
   red(Color(0xFFEF4444)),
 
-  /// Tailwind orange-500.
+  /// Orange.
   orange(Color(0xFFF97316)),
 
-  /// Tailwind amber-500.
+  /// Amber.
   amber(Color(0xFFF59E0B)),
 
-  /// Tailwind yellow-500.
+  /// Yellow.
   yellow(Color(0xFFEAB308)),
 
-  /// Tailwind lime-500.
+  /// Lime.
   lime(Color(0xFF84CC16)),
 
-  /// Tailwind green-500.
+  /// Green.
   green(Color(0xFF22C55E)),
 
-  /// Tailwind emerald-500.
+  /// Emerald.
   emerald(Color(0xFF10B981)),
 
-  /// Tailwind teal-500.
+  /// Teal.
   teal(Color(0xFF14B8A6)),
 
-  /// Tailwind cyan-500.
+  /// Cyan.
   cyan(Color(0xFF06B6D4)),
 
-  /// Tailwind blue-500.
+  /// Blue.
   blue(Color(0xFF3B82F6)),
 
-  /// Tailwind indigo-500.
+  /// Indigo.
   indigo(Color(0xFF6366F1)),
 
-  /// Tailwind violet-500.
+  /// Violet.
   violet(Color(0xFF8B5CF6)),
 
-  /// Tailwind purple-500.
+  /// Purple.
   purple(Color(0xFFA855F7)),
 
-  /// Tailwind fuchsia-500.
+  /// Fuchsia.
   fuchsia(Color(0xFFD946EF)),
 
-  /// Tailwind pink-500.
+  /// Pink.
   pink(Color(0xFFEC4899)),
 
-  /// Tailwind rose-500.
+  /// Rose.
   rose(Color(0xFFF43F5E));
 
   const CoilBadgeColor(this._hue);
@@ -109,9 +111,8 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
       CoilBadgeColor.brand => c.brand,
       _ => color._hue,
     };
-    final step = compact
-        ? const CoilTypeStep(11, 14)
-        : const CoilTypeStep(12, 16);
+    // A badge never grows a touch bump: its type is the pointer tier's.
+    final step = CoilMetrics.resolve(CoilTier.pointer, metrics.size).caption;
     return CoilBadgeStyle(
       fill: switch (variant) {
         CoilBadgeVariant.solid =>

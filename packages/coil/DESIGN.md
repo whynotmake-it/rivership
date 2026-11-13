@@ -211,6 +211,7 @@ Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
 - `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes.
+- Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
 Named holds that aren't tokens:
 
@@ -475,7 +476,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `loading`: a spinner replaces the leading slot (or the icon) with the width locked, at full strength, `Semantics(value: 'Loading')`.
   - `selected`: held pressed colors, for a menu trigger while its menu shows.
   - Disabled: 50 %.
-- **Motion:** fill and label colors on `fade`; press collapse on `quick`; icon weight on `fade`; leading/loading swap with the blur-fade on `quick`.
+- **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`.
 - **Keyboard:** Enter or Space activates.
 - **Do:** one primary per view; destructive actions as `destructive` with a confirm.
 - **Don't:** scale on press; ripple; a solid red button; two primaries side by side.

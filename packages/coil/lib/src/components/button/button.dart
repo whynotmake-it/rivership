@@ -253,7 +253,7 @@ class _CoilButtonState extends State<CoilButton> {
           final disabled = widget.onPressed == null && !widget.loading;
 
           return Opacity(
-            opacity: disabled ? 0.5 : 1,
+            opacity: disabled ? sizes.disabledOpacity : 1,
             child: CoilFocusRing(
               visible: states.contains(WidgetState.focused),
               borderRadius: BorderRadius.circular(radius),
@@ -542,7 +542,7 @@ class _SpinnerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5 * scale
       ..strokeCap = StrokeCap.round;
-    // Two opposing arcs, like the web spinner mid-lap.
+    // Two opposing arcs, drawn mid-lap.
     canvas
       ..drawArc(rect, -math.pi / 2, math.pi * 0.55, false, paint)
       ..drawArc(rect, math.pi / 2, math.pi * 0.55, false, paint);

@@ -319,7 +319,7 @@ class _CoilSwitchState extends State<CoilSwitch>
         final first = !_started;
         _started = true;
         return Opacity(
-          opacity: _enabled ? 1 : 0.5,
+          opacity: _enabled ? 1 : sizes.disabledOpacity,
           child: TrackBuilder(
             animations: [
               CoilSwitchTrack.hover([
@@ -470,7 +470,7 @@ class _SwitchTrack extends StatelessWidget {
               height: height,
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  color: style.thumb, // Tailwind `shadow-sm`.
+                  color: style.thumb,
                   shadows: const [
                     BoxShadow(
                       color: Color(0x1A000000),

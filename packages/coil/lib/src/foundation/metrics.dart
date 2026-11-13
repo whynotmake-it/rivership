@@ -271,6 +271,13 @@ class CoilMetrics {
         (CoilTier.touch, CoilSize.compact) => touchCompact,
       };
 
+  /// The opacity of a disabled control.
+  double get disabledOpacity => 0.5;
+
+  /// The opacity of a disabled row in a list or group: a little fainter on
+  /// touch, where rows rest at full strength.
+  double get disabledRowOpacity => tier == CoilTier.touch ? 0.4 : 0.5;
+
   /// The tier these sizes are for.
   final CoilTier tier;
 

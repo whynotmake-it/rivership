@@ -5,7 +5,11 @@ import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilSkeleton].
 final class CoilSkeletonTrack<T extends Object> extends Track<T> {
-  CoilSkeletonTrack._(super.converter, {super.initial, super.debugLabel});
+  CoilSkeletonTrack._(
+    super.converter, {
+    required String super.debugLabel,
+    super.initial,
+  });
 
   /// The fade-in after the grace period (default motion: `fade`).
   static final appear = CoilSkeletonTrack<double>._(
@@ -14,7 +18,7 @@ final class CoilSkeletonTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSkeleton.appear',
   );
 
-  /// One leg of the pulse, 1 → 0.5 → 1 (default: a 1 s ease; loops).
+  /// The opacity pulse. Each leg runs on this motion; the default takes 1 s.
   static final pulse = CoilSkeletonTrack<double>._(
     .single,
     initial: 1,
@@ -42,20 +46,21 @@ class CoilSkeleton extends StatelessWidget {
     this.motion,
     this.motions,
     this.style,
-  }) : text = false,
+  }) : _text = false,
        widthFactor = null;
 
-  /// A line of text: [widthFactor] of the available width, 0.6 of a body
-  /// line box high, with full-pill corners.
+  /// A line of text: one body line box tall with a pill bar inside it, which
+  /// takes [widthFactor] of the width the parent gives (give it a tight
+  /// width, as a stretched column does).
   const CoilSkeleton.text({
     super.key,
-    this.width,
     this.widthFactor,
     this.size,
     this.motion,
     this.motions,
     this.style,
-  }) : text = true,
+  }) : _text = true,
+       width = null,
        height = null;
 
   /// The block's width.
@@ -64,8 +69,7 @@ class CoilSkeleton extends StatelessWidget {
   /// The block's height.
   final double? height;
 
-  /// Whether this is a text line.
-  final bool text;
+  final bool _text;
 
   /// The fraction of the available width a text line takes.
   final double? widthFactor;
@@ -84,6 +88,9 @@ class CoilSkeleton extends StatelessWidget {
 
   /// How long a skeleton waits before it appears.
   static const grace = Duration(milliseconds: 160);
+
+  /// A radius larger than any bar, which clamps to a full pill.
+  static const _fullRadius = 1000.0;
 
   static const _pulseCurve = CurvedMotion(
     Duration(seconds: 1),
@@ -115,26 +122,47 @@ class CoilSkeleton extends StatelessWidget {
     );
     final pulsing = !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
 
-    final blockHeight = text
-        ? MediaQuery.textScalerOf(context).scale(sizes.body.lineHeight) *
-              look.textHeightFactor!
-        : height;
-    final radius = text ? (blockHeight! / 2) : look.radius!;
-
-    Widget block = DecoratedBox(
-      decoration: ShapeDecoration(
-        color: look.fill,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-      child: SizedBox(width: text ? null : width, height: blockHeight),
-    );
-    if (text) {
-      block = FractionallySizedBox(
-        widthFactor: widthFactor ?? 1,
+    final Widget block;
+    if (_text) {
+      // One real line box fixes the height, so N lines are as tall as N
+      // lines of text at any scale and font. The bar sits inside it.
+      block = Stack(
         alignment: AlignmentDirectional.centerStart,
-        child: SizedBox(width: width, child: block),
+        children: [
+          Opacity(
+            opacity: 0,
+            child: Text(
+              ' ',
+              maxLines: 1,
+              style: theme.typography.style(sizes.body),
+            ),
+          ),
+          Positioned.fill(
+            child: FractionallySizedBox(
+              widthFactor: widthFactor ?? 1,
+              heightFactor: look.textHeightFactor,
+              alignment: AlignmentDirectional.centerStart,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: look.fill,
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(_fullRadius),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      block = DecoratedBox(
+        decoration: ShapeDecoration(
+          color: look.fill,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(look.radius!),
+          ),
+        ),
+        child: SizedBox(width: width, height: height),
       );
     }
 
@@ -171,7 +199,7 @@ class CoilSkeleton extends StatelessWidget {
 
 /// A column of text-line skeletons with the varied widths of real text:
 /// each line takes between 55 % and 82 % of the width, and the last line is
-/// the shortest.
+/// the shortest. [lines] skeletons are as tall as [lines] lines of text.
 class CoilSkeletonText extends StatelessWidget {
   /// Creates [lines] text lines.
   const CoilSkeletonText({
@@ -179,6 +207,7 @@ class CoilSkeletonText extends StatelessWidget {
     this.lines = 3,
     this.size,
     this.motion,
+    this.motions,
     this.style,
   }) : assert(lines > 0, 'A skeleton has at least one line');
 
@@ -191,30 +220,30 @@ class CoilSkeletonText extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
+  /// Overrides single tracks' motions.
+  final Map<CoilSkeletonTrack<Object>, Motion>? motions;
+
   /// Overrides for the lines' look.
   final CoilSkeletonStyle? style;
 
   static const _factors = [0.82, 0.7, 0.76, 0.64];
 
   @override
-  Widget build(BuildContext context) {
-    final sizes = CoilTheme.metricsOf(context, size: size);
-    return Column(
-      spacing: sizes.body.lineHeight * 0.4,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < lines; i++)
-          CoilSkeleton.text(
-            widthFactor: i == lines - 1 && lines > 1
-                ? 0.55
-                : _factors[i % _factors.length],
-            size: size,
-            motion: motion,
-            style: style,
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (var i = 0; i < lines; i++)
+        CoilSkeleton.text(
+          widthFactor: i == lines - 1 && lines > 1
+              ? 0.55
+              : _factors[i % _factors.length],
+          size: size,
+          motion: motion,
+          motions: motions,
+          style: style,
+        ),
+    ],
+  );
 }
 
 /// Marks the region that is loading: announced once as "Loading" to

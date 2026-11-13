@@ -6,6 +6,25 @@ import 'package:coil/src/components/checkbox/checkbox_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
+/// The animated parts of a checkbox, as Motor tracks. Use them as keys of
+/// `motions` or [CoilThemeData.trackMotions].
+final class CoilCheckboxTrack<T extends Object> extends Track<T> {
+  CoilCheckboxTrack._(super.converter, {required String super.debugLabel});
+
+  /// The box outline color. Default motion: `fade`.
+  static final border = CoilCheckboxTrack<Color>._(
+    .colorRgb,
+    debugLabel: 'CoilCheckbox.border',
+  );
+
+  /// The tick or dash drawing in and out. Default motion: `fade` in,
+  /// `fadeExit` out.
+  static final glyph = CoilCheckboxTrack<double>._(
+    .single,
+    debugLabel: 'CoilCheckbox.glyph',
+  );
+}
+
 /// A checkbox.
 ///
 /// A tap, Space or Enter reports the next value. [value] is a `bool?` where
@@ -28,6 +47,7 @@ class CoilCheckbox extends StatelessWidget {
     this.autofocus = false,
     this.statesController,
     this.motion,
+    this.motions,
     this.style,
     this.semanticLabel,
     this.glyphBuilder,
@@ -60,6 +80,9 @@ class CoilCheckbox extends StatelessWidget {
 
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
+
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
   /// Overrides for this checkbox's look, on top of the theme's
   /// [CoilCheckboxStyle] and the defaults.
@@ -100,16 +123,17 @@ class CoilCheckbox extends StatelessWidget {
         statesController: statesController,
         minHitTarget: sizes.minHitTarget,
         builder: (context, states, _) => Opacity(
-          opacity: enabled ? 1 : 0.5,
+          opacity: enabled ? 1 : sizes.disabledOpacity,
           child: CoilFocusRing(
             visible: states.contains(WidgetState.focused),
-            borderRadius: CoilCheckboxIndicator.radiusOf(context, look),
+            borderRadius: _radiusOf(context, look),
             child: CoilCheckboxIndicator(
               value: value,
               states: {if (invalid) WidgetState.error, ...states},
               size: size,
               motion: motion,
-              style: look,
+              motions: motions,
+              style: style,
               glyphBuilder: glyphBuilder,
             ),
           ),
@@ -141,16 +165,19 @@ typedef CoilCheckboxGlyphBuilder =
 
 enum _Glyph { none, check, dash }
 
+/// The corner radius of the box at the current text scale.
+BorderRadius _radiusOf(BuildContext context, CoilCheckboxStyle style) {
+  final box = MediaQuery.textScalerOf(context).scale(style.size!);
+  return BorderRadius.circular(style.radius! * box / style.size!);
+}
+
 /// The box and glyph of a checkbox, with no interaction of its own.
 ///
 /// [states] drives the border: `hovered` and `error` (invalid) are read, the
 /// checked look comes from [value]. Use it inside a row that is already the
-/// tap target. [CoilCheckbox] adds the focus, hover and tap handling around
-/// it.
+/// tap target. [CoilCheckbox] adds focus, hover and tap handling around it.
 ///
-/// The box and tick grow with the text scale. The tick draws in on `fade`
-/// and retracts on `fadeExit`; check and dash re-key, so the old glyph
-/// retracts while the new one draws.
+/// The box and tick grow with the text scale.
 class CoilCheckboxIndicator extends StatefulWidget {
   /// Creates a checkbox indicator.
   const CoilCheckboxIndicator({
@@ -159,6 +186,7 @@ class CoilCheckboxIndicator extends StatefulWidget {
     super.key,
     this.size,
     this.motion,
+    this.motions,
     this.style,
     this.glyphBuilder,
   });
@@ -175,19 +203,15 @@ class CoilCheckboxIndicator extends StatefulWidget {
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  final Map<CoilCheckboxTrack<Object>, Motion>? motions;
+
   /// Overrides for this indicator's look, on top of the theme's
   /// [CoilCheckboxStyle] and the defaults.
   final CoilCheckboxStyle? style;
 
   /// Replaces the built-in tick and dash.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
-
-  /// The corner radius of the box at the current text scale, for a focus
-  /// ring that hugs it.
-  static BorderRadius radiusOf(BuildContext context, CoilCheckboxStyle style) {
-    final box = MediaQuery.textScalerOf(context).scale(style.size!);
-    return BorderRadius.circular(style.radius! * box / style.size!);
-  }
 
   @override
   State<CoilCheckboxIndicator> createState() => _CoilCheckboxIndicatorState();
@@ -219,7 +243,7 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final motion = CoilTheme.motionOf(context, override: widget.motion);
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
     final style = CoilCheckboxStyle.fallback(
       theme,
@@ -237,16 +261,25 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
       if (on) WidgetState.selected,
     })!;
 
+    Motion motionFor(CoilCheckboxTrack<Object> track, Motion token) =>
+        CoilTheme.trackMotionOf(
+          context,
+          track,
+          instance: widget.motions,
+          token: token,
+          spatial: false,
+        );
+
     return MotionBuilder<Color>(
       value: border,
-      motion: motion.fade,
+      motion: motionFor(CoilCheckboxTrack.border, tokens.fade),
       converter: MotionConverter.colorRgb,
       builder: (context, borderColor, child) => Container(
         width: boxSize,
         height: boxSize,
         decoration: ShapeDecoration(
           shape: RoundedSuperellipseBorder(
-            borderRadius: CoilCheckboxIndicator.radiusOf(context, style),
+            borderRadius: _radiusOf(context, style),
             side: BorderSide(color: borderColor, width: style.borderWidth!),
           ),
         ),
@@ -260,7 +293,10 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
           value: on ? 1 : 0,
           // A new glyph shape draws itself in from nothing.
           from: _generation == 0 ? null : 0,
-          motion: on ? motion.fade : motion.fadeExit,
+          motion: motionFor(
+            CoilCheckboxTrack.glyph,
+            on ? tokens.fade : tokens.fadeExit,
+          ),
           builder: (context, progress, _) {
             final builder = widget.glyphBuilder;
             if (builder != null && _shown != _Glyph.none) {
@@ -303,7 +339,7 @@ class _GlyphPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (glyph == _Glyph.none || progress <= 0) return;
-    // Paths from the web, on a 24-unit grid.
+    // Paths on a 24-unit grid.
     final path = ui.Path();
     if (glyph == _Glyph.dash) {
       path

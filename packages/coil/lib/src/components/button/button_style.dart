@@ -31,58 +31,54 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     final c = theme.colors;
     final dark = c.brightness == Brightness.dark;
     final clear = c.hover.withValues(alpha: 0);
-    bool held(Set<WidgetState> s) =>
-        s.contains(WidgetState.selected) || s.contains(WidgetState.pressed);
-    bool hovered(Set<WidgetState> s) => s.contains(WidgetState.hovered);
+    final held = WidgetState.selected | WidgetState.pressed;
     final (fill, foreground) = switch (variant) {
       CoilButtonVariant.primary => (
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => held(s)
-              ? CoilColorMix.oklab(c.foreground, c.background, 0.8)
-              : hovered(s)
-              ? CoilColorMix.oklab(c.foreground, c.background, 0.9)
-              : c.foreground,
-        ),
+        WidgetStateProperty<Color?>.fromMap({
+          held: CoilColorMix.oklab(c.foreground, c.background, 0.8),
+          WidgetState.hovered: CoilColorMix.oklab(
+            c.foreground,
+            c.background,
+            0.9,
+          ),
+          WidgetState.any: c.foreground,
+        }),
         WidgetStatePropertyAll<Color?>(c.background),
       ),
       CoilButtonVariant.secondary => (
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => !held(s) && hovered(s) ? c.tintHover : c.tint,
-        ),
+        WidgetStateProperty<Color?>.fromMap({
+          held: c.tint,
+          WidgetState.hovered: c.tintHover,
+          WidgetState.any: c.tint,
+        }),
         WidgetStatePropertyAll<Color?>(c.foreground),
       ),
       CoilButtonVariant.tertiary => (
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => held(s)
-              ? c.active
-              : hovered(s)
-              ? c.hover
-              : clear,
-        ),
+        WidgetStateProperty<Color?>.fromMap({
+          held: c.active,
+          WidgetState.hovered: c.hover,
+          WidgetState.any: clear,
+        }),
         WidgetStatePropertyAll<Color?>(c.foreground),
       ),
       CoilButtonVariant.ghost => (
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => held(s)
-              ? c.active
-              : hovered(s)
-              ? c.hover
-              : clear,
-        ),
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => held(s) || hovered(s) ? c.foreground : c.mutedForeground,
-        ),
+        WidgetStateProperty<Color?>.fromMap({
+          held: c.active,
+          WidgetState.hovered: c.hover,
+          WidgetState.any: clear,
+        }),
+        WidgetStateProperty<Color?>.fromMap({
+          held | WidgetState.hovered: c.foreground,
+          WidgetState.any: c.mutedForeground,
+        }),
       ),
       CoilButtonVariant.destructive => (
-        WidgetStateProperty.resolveWith<Color?>(
-          (s) => c.red.withValues(
-            alpha:
-                s.contains(WidgetState.selected) ||
-                    (!s.contains(WidgetState.pressed) && hovered(s))
-                ? (dark ? 0.30 : 0.25)
-                : (dark ? 0.20 : 0.15),
-          ),
-        ),
+        WidgetStateProperty<Color?>.fromMap({
+          WidgetState.selected: c.red.withValues(alpha: dark ? 0.30 : 0.25),
+          WidgetState.pressed: c.red.withValues(alpha: dark ? 0.20 : 0.15),
+          WidgetState.hovered: c.red.withValues(alpha: dark ? 0.30 : 0.25),
+          WidgetState.any: c.red.withValues(alpha: dark ? 0.20 : 0.15),
+        }),
         WidgetStatePropertyAll<Color?>(c.redLabel),
       ),
     };

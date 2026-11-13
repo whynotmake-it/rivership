@@ -3,6 +3,37 @@ import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/checkbox_group/checkbox_group_style.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
+
+/// The animated parts of a [CoilCheckboxGroup], as Motor tracks. Use them as
+/// keys of [CoilCheckboxGroup.motions] or [CoilThemeData.trackMotions].
+final class CoilCheckboxGroupTrack<T extends Object> extends Track<T> {
+  CoilCheckboxGroupTrack._(super.converter, {required String super.debugLabel});
+
+  /// The merged selection blocks. Default motion: `standard`.
+  static final selection = CoilCheckboxGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilCheckboxGroup.selection',
+  );
+
+  /// The focus ring travelling between rows. Default motion: `quick`.
+  static final ring = CoilCheckboxGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilCheckboxGroup.ring',
+  );
+
+  /// The label color and weight. Default motion: `fade`.
+  static final label = CoilCheckboxGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilCheckboxGroup.label',
+  );
+
+  /// The touch press fill. Default motion: `fade`.
+  static final press = CoilCheckboxGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilCheckboxGroup.press',
+  );
+}
 
 /// A vertical list of checkable rows.
 ///
@@ -24,13 +55,10 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
     super.key,
     this.size,
     this.motion,
+    this.motions,
     this.style,
     this.semanticLabel,
   });
-
-  /// Overrides for this group's look, on top of the theme's
-  /// [CoilCheckboxGroupStyle] and the defaults.
-  final CoilCheckboxGroupStyle? style;
 
   /// The rows: each option's [CoilOption.child] or `Text(label)`.
   final List<CoilOption<T>> options;
@@ -47,6 +75,13 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
+  /// Per-track motions, keyed by [CoilCheckboxGroupTrack]s.
+  final Map<CoilCheckboxGroupTrack<Object>, Motion>? motions;
+
+  /// Overrides for this group's look, on top of the theme's
+  /// [CoilCheckboxGroupStyle] and the defaults.
+  final CoilCheckboxGroupStyle? style;
+
   /// Names the group for assistive technology.
   final String? semanticLabel;
 
@@ -59,48 +94,89 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
       theme,
       sizes,
     ).merge(CoilTheme.styleOf<CoilCheckboxGroupStyle>(context)).merge(style);
+    Motion motionFor(
+      CoilCheckboxGroupTrack<Object> track,
+      Motion token, {
+      bool spatial = true,
+    }) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: motions,
+      token: token,
+      spatial: spatial,
+    );
+    final labelMotion = motionFor(
+      CoilCheckboxGroupTrack.label,
+      tokens.fade,
+      spatial: false,
+    );
+
     return Semantics(
       container: true,
       label: semanticLabel,
-      child: CoilChoiceGroup(
-        count: options.length,
-        // Every row is a tab stop; the arrows still move between them.
-        singleTabStop: false,
-        selected: CoilChoiceGroup.selectedIndexes(options, values),
+      child: CoilChoiceGroup<T>(
+        options: options,
+        selected: values,
+        enabled: onChanged != null,
         selectionColor: look.selection!,
         highlightColor: look.highlight!,
         radius: look.radius!,
-        motion: tokens,
-        isEnabled: (i) => onChanged != null && options[i].enabled,
-        itemBuilder: (context, i, node, states) {
-          final option = options[i];
+        selectionMotion: motionFor(
+          CoilCheckboxGroupTrack.selection,
+          tokens.standard,
+        ),
+        ringMotion: motionFor(CoilCheckboxGroupTrack.ring, tokens.quick),
+        fadeMotion: tokens.fade,
+        itemBuilder: (context, option, node, states) {
           final checked = values.contains(option.value);
           final onPressed = onChanged == null || !option.enabled
               ? null
-              : () => onChanged!(CoilChoiceGroup.toggled(values, option.value));
+              : () => onChanged!(
+                  checked
+                      ? ({...values}..remove(option.value))
+                      : {...values, option.value},
+                );
           return Semantics(
             container: true,
             checked: checked,
             enabled: onPressed != null,
             // The Text already names the row; a custom child needs it.
             label: option.child == null ? null : option.label,
-            child: CoilChoiceRow(
-              selected: checked,
-              metrics: sizes,
-              motion: tokens,
-              textStyle: look.textStyle!,
-              labelColor: look.label!,
-              pressFill: look.selection!,
-              radius: look.radius!,
+            child: CoilChoiceItem(
+              size: size,
+              onPressed: onPressed,
               focusNode: node,
               statesController: states,
-              onPressed: onPressed,
-              leading: (states) => CoilCheckboxIndicator(
-                value: checked,
-                states: states,
-                motion: motion,
+              pressFill: look.selection!,
+              radius: look.radius!,
+              pressMotion: motionFor(
+                CoilCheckboxGroupTrack.press,
+                tokens.fade,
+                spatial: false,
               ),
-              label: option.child ?? Text(option.label),
+              releaseMotion: motionFor(
+                CoilCheckboxGroupTrack.press,
+                tokens.fadeExit,
+                spatial: false,
+              ),
+              builder: (context, itemStates, _) => CoilChoiceRow(
+                size: size,
+                selected: checked,
+                labelStyle: look.textStyle!,
+                labelColor: look.label!.resolve({
+                  if (checked) WidgetState.selected,
+                  ...itemStates,
+                })!,
+                labelMotion: labelMotion,
+                leading: CoilCheckboxIndicator(
+                  value: checked,
+                  states: itemStates,
+                  size: size,
+                  motion: motion,
+                  style: look.checkbox,
+                ),
+                label: option.child ?? Text(option.label),
+              ),
             ),
           );
         },
