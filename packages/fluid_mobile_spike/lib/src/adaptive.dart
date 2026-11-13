@@ -22,6 +22,17 @@ enum FluidPresentation {
   sheet,
 }
 
+/// Whether a pointer of [kind] can hover, and so may drive hover
+/// highlights. Fingers can't: a highlight they leave behind is the "sticky
+/// hover" mobile browsers show on the web version.
+bool fluidCanHover(PointerDeviceKind? kind) => switch (kind) {
+  PointerDeviceKind.mouse ||
+  PointerDeviceKind.trackpad ||
+  PointerDeviceKind.stylus ||
+  PointerDeviceKind.invertedStylus => true,
+  PointerDeviceKind.touch || PointerDeviceKind.unknown || null => false,
+};
+
 /// Window widths below this are phone-sized (Material's compact window
 /// class, iOS's compact horizontal size class).
 const double fluidCompactWidth = 600;

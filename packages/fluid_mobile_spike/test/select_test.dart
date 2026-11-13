@@ -23,6 +23,18 @@ bool _triggerHasFocus(WidgetTester tester) {
   return focus.focusNode?.hasPrimaryFocus ?? false;
 }
 
+/// The list's fill whose key starts with `fill-[role]`.
+FluidFill _fill(WidgetTester tester, String role) => tester
+    .widgetList<FluidFill>(find.byType(FluidFill))
+    .singleWhere(
+      (fill) => (fill.key! as ValueKey<String>).value.startsWith('fill-$role'),
+    );
+
+Iterable<String> _checkedRows(WidgetTester tester) => tester
+    .widgetList<FluidOptionRow>(find.byType(FluidOptionRow))
+    .where((row) => row.checked)
+    .map((row) => (row.label as Text).data!);
+
 void main() {
   group('presentation', () {
     testWidgets('pointer opens an anchored popover', (tester) async {
@@ -308,6 +320,105 @@ void main() {
       await tester.tapAt(const Offset(200, 200));
       await tester.pumpAndSettle();
       expect(find.byType(FluidSheetPanel), findsNothing);
+    });
+  });
+
+  group('no sticky hover on touch', () {
+    Future<void> openSheet(WidgetTester tester) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(home: const SelectDemo(), inputMode: FluidInputMode.touch),
+      );
+      await tester.tap(_select);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a touch tap on a sheet row leaves no highlight behind', (
+      tester,
+    ) async {
+      await openSheet(tester);
+      // At rest the picked row has its check and no fill.
+      expect(_fill(tester, 'selected').rect, isNull);
+      expect(_checkedRows(tester), ['Banana']);
+
+      await tester.tap(find.text('Mango'));
+      // Still open for the acknowledgment: the check moved, nothing is lit.
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(find.byType(FluidSheetPanel), findsOneWidget);
+      expect(_fill(tester, 'hover').rect, isNull);
+      expect(_fill(tester, 'press').rect, isNull);
+      expect(_fill(tester, 'selected').rect, isNull);
+      expect(_fill(tester, 'focus').rect, isNull);
+      expect(_checkedRows(tester), ['Mango']);
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      final trigger = tester.widget<FluidTriggerBox>(
+        find.byType(FluidTriggerBox),
+      );
+      expect(trigger.hovered, isFalse);
+      expect(trigger.pressed, isFalse);
+    });
+
+    testWidgets('press feedback shows while the finger is down only', (
+      tester,
+    ) async {
+      await openSheet(tester);
+      final finger = await tester.startGesture(
+        tester.getCenter(find.text('Cherry')),
+      );
+      await tester.pump(kPressTimeout + const Duration(milliseconds: 20));
+      expect(_fill(tester, 'press').rect, isNotNull);
+      expect(_fill(tester, 'hover').rect, isNull);
+
+      // Sliding off cancels the tap: feedback clears and nothing is picked.
+      await finger.moveBy(const Offset(0, 120));
+      await tester.pump();
+      expect(_fill(tester, 'press').rect, isNull);
+      await finger.up();
+      await tester.pumpAndSettle();
+      expect(_checkedRows(tester), ['Banana']);
+      expect(find.byType(FluidSheetPanel), findsOneWidget);
+    });
+
+    testWidgets('a touch tap in a tablet popover leaves no hover either', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      tester.view.physicalSize = const Size(1024, 768) * 2;
+      await tester.pumpWidget(
+        testApp(home: const SelectDemo(), inputMode: FluidInputMode.touch),
+      );
+      await tester.tap(_select);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cherry'));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(find.byType(FluidSheetPanel), findsNothing);
+      expect(_fill(tester, 'hover').rect, isNull);
+      expect(_fill(tester, 'press').rect, isNull);
+      // The popover keeps the web's selected fill, now on the picked row.
+      expect(_fill(tester, 'selected').rect, isNotNull);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a mouse still drives the fluid hover highlight', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.desktop);
+      await tester.pumpWidget(
+        testApp(home: const SelectDemo(), inputMode: FluidInputMode.pointer),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: tester.getCenter(_select));
+      await mouse.down(tester.getCenter(_select));
+      await mouse.up();
+      await tester.pumpAndSettle();
+      await mouse.moveTo(tester.getCenter(find.text('Cherry')));
+      await tester.pumpAndSettle();
+      expect(_fill(tester, 'hover').rect, isNotNull);
+      expect(_fill(tester, 'press').rect, isNull);
+      await mouse.removePointer();
     });
   });
 }

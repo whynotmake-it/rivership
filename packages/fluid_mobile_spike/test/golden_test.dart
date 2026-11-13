@@ -98,6 +98,31 @@ void main() {
         );
       });
 
+      testWidgets('mobile sheet, finger down on a row', (tester) async {
+        useScreen(tester, TestScreen.phone);
+        await tester.pumpWidget(
+          testApp(
+            home: const SelectDemo(),
+            colors: colors,
+            inputMode: FluidInputMode.touch,
+          ),
+        );
+        await tester.tap(_select);
+        await tester.pumpAndSettle();
+        final finger = await tester.startGesture(
+          tester.getCenter(find.text('Cherry')),
+        );
+        await tester.pump(kPressTimeout);
+        await tester.pumpAndSettle();
+        await expectLater(
+          _app,
+          matchesGoldenFile('goldens/mobile_sheet_pressed_$theme.png'),
+        );
+        await finger.up();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+      });
+
       testWidgets('controls at pointer vs touch size', (tester) async {
         useScreen(tester, TestScreen.desktop);
         tester.view.physicalSize = const Size(560, 600) * 2;

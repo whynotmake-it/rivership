@@ -77,6 +77,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       (_ownFocusNode ??= FocusNode(debugLabel: 'FluidSelect'));
 
   bool _hovered = false;
+  bool _pressed = false;
   bool _focused = false;
   bool _open = false;
 
@@ -116,6 +117,7 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
       selected: widget.value,
       metrics: metrics,
       keyboardOpened: keyboard,
+      selectedFill: presentation == FluidPresentation.popover,
       onPick: (value) {
         widget.onChanged?.call(value);
         // Hold the list open long enough to see the check draw and the
@@ -205,16 +207,28 @@ class _FluidSelectState<T> extends State<FluidSelect<T>> {
           cursor: _enabled
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
-          onEnter: (_) => setState(() => _hovered = true),
+          onEnter: (event) {
+            if (fluidCanHover(event.kind)) setState(() => _hovered = true);
+          },
           onExit: (_) => setState(() => _hovered = false),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            // Touch gets press feedback that ends with the press, never a
+            // hover state that outlives it.
+            onTapDown: (details) {
+              if (_enabled && !fluidCanHover(details.kind)) {
+                setState(() => _pressed = true);
+              }
+            },
+            onTapCancel: () => setState(() => _pressed = false),
+            onTapUp: (_) => setState(() => _pressed = false),
             onTap: () => _show(keyboard: false),
             child: ValueListenableBuilder(
               valueListenable: FluidKeyboardModality.instance,
               builder: (context, keyboard, _) => FluidTriggerBox(
                 metrics: metrics,
                 hovered: _hovered && !_open,
+                pressed: _pressed,
                 focusRing: _focused && keyboard && !_open,
                 enabled: _enabled,
                 icon: widget.icon,
@@ -237,6 +251,7 @@ class FluidTriggerBox extends StatelessWidget {
     required this.label,
     this.icon,
     this.hovered = false,
+    this.pressed = false,
     this.focusRing = false,
     this.enabled = true,
     super.key,
@@ -254,6 +269,9 @@ class FluidTriggerBox extends StatelessWidget {
   /// Draws the hover fill.
   final bool hovered;
 
+  /// Draws the press fill (touch, while the finger is down).
+  final bool pressed;
+
   /// Draws the keyboard focus ring.
   final bool focusRing;
 
@@ -266,7 +284,9 @@ class FluidTriggerBox extends StatelessWidget {
     return Opacity(
       opacity: enabled ? 1 : 0.5,
       child: MotionBuilder<Color>(
-        value: hovered ? colors.hover : colors.hover.withValues(alpha: 0),
+        value: pressed
+            ? colors.active
+            : (hovered ? colors.hover : colors.hover.withValues(alpha: 0)),
         converter: MotionConverter.colorRgb,
         motion: const Motion.curved(Duration(milliseconds: 80)),
         builder: (context, fill, child) => Container(
