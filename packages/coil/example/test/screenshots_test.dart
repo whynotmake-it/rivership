@@ -19,7 +19,7 @@ void main() {
     'phone': (Devices.ios.iPhone16Pro, CatalogTier.touch),
     'desktop': (Devices.macOS.macBookPro, CatalogTier.pointer),
   };
-  final pages = [null, 'button', 'select', 'tabs'];
+  final pages = [null, 'button', 'radio-group', 'badge', 'select'];
 
   for (final MapEntry(key: name, value: (device, tier)) in devices.entries) {
     for (final mode in [CatalogThemeMode.light, CatalogThemeMode.dark]) {

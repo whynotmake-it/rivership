@@ -1,3 +1,4 @@
+import 'package:coil_example/src/pages/components/badge_page.dart';
 import 'package:coil_example/src/pages/components/button_page.dart';
 import 'package:coil_example/src/pages/components/checkbox_group_page.dart';
 import 'package:coil_example/src/pages/components/checkbox_page.dart';
@@ -5,7 +6,9 @@ import 'package:coil_example/src/pages/components/field_page.dart';
 import 'package:coil_example/src/pages/components/input_copy_page.dart';
 import 'package:coil_example/src/pages/components/input_group_page.dart';
 import 'package:coil_example/src/pages/components/input_page.dart';
+import 'package:coil_example/src/pages/components/radio_group_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
+import 'package:coil_example/src/pages/components/skeleton_page.dart';
 import 'package:coil_example/src/pages/components/switch_page.dart';
 import 'package:coil_example/src/pages/components/tabs_page.dart';
 import 'package:coil_example/src/pages/components/textarea_page.dart';
@@ -81,12 +84,15 @@ const catalogEntries = <CatalogEntry>[
   shapesEntry,
   motionEntry,
   buttonEntry,
+  badgeEntry,
+  skeletonEntry,
   checkboxEntry,
   switchEntry,
   inputEntry,
   textareaEntry,
   fieldEntry,
   checkboxGroupEntry,
+  radioGroupEntry,
   toggleGroupEntry,
   tabsEntry,
   inputGroupEntry,
