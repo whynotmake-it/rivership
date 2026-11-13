@@ -6,18 +6,16 @@ import 'package:coil/src/components/checkbox/checkbox_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A checkbox (`registry/radix/checkbox.tsx`).
+/// A checkbox.
 ///
-/// A 1.5 px outlined square with no fill. Checking draws a check (or, when
-/// [value] is null, a dash) in the foreground color that slightly overhangs
-/// the box, drawing itself in on the theme's `fade` spring and retracting on
-/// `fadeExit`.
-///
-/// Like Flutter's `Checkbox`: [value] is a `bool?` where null means
-/// indeterminate, which needs [tristate]. Only a tristate checkbox cycles
-/// through null when tapped (false → true → null → false); otherwise a tap
+/// A tap, Space or Enter reports the next value. [value] is a `bool?` where
+/// null means indeterminate, which needs [tristate]. Only a tristate
+/// checkbox cycles through null (false, true, null, false); otherwise a tap
 /// reports `!value`.
-class CoilCheckbox extends StatefulWidget {
+///
+/// The box is a [CoilCheckboxIndicator]. Rows that are themselves the tap
+/// target (a checkbox group) use the indicator directly.
+class CoilCheckbox extends StatelessWidget {
   /// Creates a checkbox.
   const CoilCheckbox({
     required this.value,
@@ -33,18 +31,16 @@ class CoilCheckbox extends StatefulWidget {
     this.style,
     this.semanticLabel,
     this.glyphBuilder,
-    this.tapTargetSize = CoilTapTargetSize.padded,
   }) : assert(tristate || value != null, 'Only a tristate checkbox is null');
 
-  /// Whether the box is checked; null (only with [tristate]) shows a dash:
+  /// Whether the box is checked. Null (only with [tristate]) shows a dash:
   /// some, not all, of what this box stands for is on.
   final bool? value;
 
   /// Called with the next value. Null disables the checkbox.
   final ValueChanged<bool?>? onChanged;
 
-  /// Whether a tap cycles through null (false → true → null → false), and
-  /// whether [value] may be null.
+  /// Whether a tap cycles through null, and whether [value] may be null.
   final bool tristate;
 
   /// Marks the box as invalid (a red-tinted border while unchecked).
@@ -62,8 +58,7 @@ class CoilCheckbox extends StatefulWidget {
   /// Observes, and can force, hover/focus/press states.
   final WidgetStatesController? statesController;
 
-  /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for this
-  /// instance.
+  /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
   /// Overrides for this checkbox's look, on top of the theme's
@@ -73,17 +68,55 @@ class CoilCheckbox extends StatefulWidget {
   /// A label for assistive technology.
   final String? semanticLabel;
 
-  /// Replaces the built-in tick and dash. Gets the glyph, its draw-in
-  /// progress (animated on the theme's `fade` / `fadeExit`), color and
-  /// size.
+  /// Replaces the built-in tick and dash.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
 
-  /// Whether the hit area is padded to the tier's minimum. Rows that are
-  /// themselves the target pass [CoilTapTargetSize.shrinkWrap].
-  final CoilTapTargetSize tapTargetSize;
+  bool? get _next => switch (value) {
+    false => true,
+    true => tristate ? null : false,
+    null => false,
+  };
 
   @override
-  State<CoilCheckbox> createState() => _CoilCheckboxState();
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final sizes = CoilTheme.metricsOf(context, size: size);
+    final look = CoilCheckboxStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(style);
+    final enabled = onChanged != null;
+
+    return Semantics(
+      container: true,
+      checked: value ?? false,
+      mixed: value == null,
+      enabled: enabled,
+      label: semanticLabel,
+      child: CoilInteraction(
+        onPressed: enabled ? () => onChanged!(_next) : null,
+        focusNode: focusNode,
+        autofocus: autofocus,
+        statesController: statesController,
+        minHitTarget: sizes.minHitTarget,
+        builder: (context, states, _) => Opacity(
+          opacity: enabled ? 1 : 0.5,
+          child: CoilFocusRing(
+            visible: states.contains(WidgetState.focused),
+            borderRadius: CoilCheckboxIndicator.radiusOf(context, look),
+            child: CoilCheckboxIndicator(
+              value: value,
+              states: {if (invalid) WidgetState.error, ...states},
+              size: size,
+              motion: motion,
+              style: look,
+              glyphBuilder: glyphBuilder,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// The glyph a [CoilCheckbox] shows.
@@ -108,22 +141,63 @@ typedef CoilCheckboxGlyphBuilder =
 
 enum _Glyph { none, check, dash }
 
-class _CoilCheckboxState extends State<CoilCheckbox> {
-  /// The motion tokens, read where each animation starts so runtime
-  /// theme changes apply to the next one.
-  CoilMotion get _motion =>
-      CoilTheme.motionOf(context, override: widget.motion);
+/// The box and glyph of a checkbox, with no interaction of its own.
+///
+/// [states] drives the border: `hovered` and `error` (invalid) are read, the
+/// checked look comes from [value]. Use it inside a row that is already the
+/// tap target. [CoilCheckbox] adds the focus, hover and tap handling around
+/// it.
+///
+/// The box and tick grow with the text scale. The tick draws in on `fade`
+/// and retracts on `fadeExit`; check and dash re-key, so the old glyph
+/// retracts while the new one draws.
+class CoilCheckboxIndicator extends StatefulWidget {
+  /// Creates a checkbox indicator.
+  const CoilCheckboxIndicator({
+    required this.value,
+    required this.states,
+    super.key,
+    this.size,
+    this.motion,
+    this.style,
+    this.glyphBuilder,
+  });
 
+  /// Whether the box is checked; null shows the dash.
+  final bool? value;
+
+  /// The states the border reacts to.
+  final Set<WidgetState> states;
+
+  /// Pins the box to one size step. Null follows [CoilAdaptiveScope].
+  final CoilSize? size;
+
+  /// Overrides the theme's motion tokens for this instance.
+  final CoilMotion? motion;
+
+  /// Overrides for this indicator's look, on top of the theme's
+  /// [CoilCheckboxStyle] and the defaults.
+  final CoilCheckboxStyle? style;
+
+  /// Replaces the built-in tick and dash.
+  final CoilCheckboxGlyphBuilder? glyphBuilder;
+
+  /// The corner radius of the box at the current text scale, for a focus
+  /// ring that hugs it.
+  static BorderRadius radiusOf(BuildContext context, CoilCheckboxStyle style) {
+    final box = MediaQuery.textScalerOf(context).scale(style.size!);
+    return BorderRadius.circular(style.radius! * box / style.size!);
+  }
+
+  @override
+  State<CoilCheckboxIndicator> createState() => _CoilCheckboxIndicatorState();
+}
+
+class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
   _Glyph get _glyph => switch (widget.value) {
     null => _Glyph.dash,
     true => _Glyph.check,
     false => _Glyph.none,
-  };
-
-  bool? get _next => switch (widget.value) {
-    false => true,
-    true => widget.tristate ? null : false,
-    null => false,
   };
 
   /// The glyph being drawn, kept while it retracts.
@@ -133,7 +207,7 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
   int _generation = 0;
 
   @override
-  void didUpdateWidget(CoilCheckbox oldWidget) {
+  void didUpdateWidget(CoilCheckboxIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
     final glyph = _glyph;
     if (glyph != _Glyph.none && glyph != _shown) {
@@ -145,103 +219,71 @@ class _CoilCheckboxState extends State<CoilCheckbox> {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
+    final motion = CoilTheme.motionOf(context, override: widget.motion);
     final sizes = CoilTheme.metricsOf(context, size: widget.size);
     final style = CoilCheckboxStyle.fallback(
       theme,
       sizes,
     ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(widget.style);
-    final enabled = widget.onChanged != null;
     final on = _glyph != _Glyph.none;
-    // The box and its glyph grow with text, like icons; gaps don't.
     final scaler = MediaQuery.textScalerOf(context);
     final boxSize = scaler.scale(style.size!);
     final glyphSize = scaler.scale(
       sizes.checkboxGlyphSize * style.size! / sizes.checkboxSize,
     );
-    final radius = BorderRadius.circular(
-      style.radius! * boxSize / style.size!,
-    );
+    final border = style.border!.resolve({
+      if (widget.states.contains(WidgetState.hovered)) WidgetState.hovered,
+      if (widget.states.contains(WidgetState.error)) WidgetState.error,
+      if (on) WidgetState.selected,
+    })!;
 
-    return Semantics(
-      container: true,
-      checked: widget.value ?? false,
-      mixed: widget.value == null,
-      enabled: enabled,
-      label: widget.semanticLabel,
-      child: CoilInteraction(
-        onPressed: enabled ? () => widget.onChanged!(_next) : null,
-        focusNode: widget.focusNode,
-        autofocus: widget.autofocus,
-        statesController: widget.statesController,
-        minHitTarget: widget.tapTargetSize == CoilTapTargetSize.padded
-            ? sizes.minHitTarget
-            : 0,
-        builder: (context, states, _) {
-          final border = style.border!.resolve({
-            if (states.contains(WidgetState.hovered)) WidgetState.hovered,
-            if (on) WidgetState.selected,
-            if (widget.invalid) WidgetState.error,
-          })!;
-          return Opacity(
-            opacity: enabled ? 1 : 0.5,
-            child: CoilFocusRing(
-              visible: states.contains(WidgetState.focused),
-              borderRadius: radius,
-              child: MotionBuilder<Color>(
-                value: border,
-                motion: _motion.fade,
-                converter: MotionConverter.colorRgb,
-                builder: (context, borderColor, child) => Container(
-                  width: boxSize,
-                  height: boxSize,
-                  decoration: ShapeDecoration(
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: radius,
-                      side: BorderSide(
-                        color: borderColor,
-                        width: style.borderWidth!,
-                      ),
-                    ),
-                  ),
-                  child: child,
-                ),
-                child: OverflowBox(
-                  maxWidth: glyphSize,
-                  maxHeight: glyphSize,
-                  child: SingleMotionBuilder(
-                    key: ValueKey(_generation),
-                    value: on ? 1 : 0,
-                    // A new glyph shape draws itself in from nothing.
-                    from: _generation == 0 ? null : 0,
-                    motion: on ? _motion.fade : _motion.fadeExit,
-                    builder: (context, progress, _) {
-                      final builder = widget.glyphBuilder;
-                      if (builder != null && _shown != _Glyph.none) {
-                        return builder(
-                          context,
-                          _shown == _Glyph.dash
-                              ? CoilCheckboxGlyph.dash
-                              : CoilCheckboxGlyph.check,
-                          progress.clamp(0, 1),
-                          style.glyphColor!,
-                          glyphSize,
-                        );
-                      }
-                      return CustomPaint(
-                        size: Size.square(glyphSize),
-                        painter: _GlyphPainter(
-                          glyph: _shown,
-                          progress: progress,
-                          color: style.glyphColor!,
-                        ),
-                      );
-                    },
-                  ),
-                ),
+    return MotionBuilder<Color>(
+      value: border,
+      motion: motion.fade,
+      converter: MotionConverter.colorRgb,
+      builder: (context, borderColor, child) => Container(
+        width: boxSize,
+        height: boxSize,
+        decoration: ShapeDecoration(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: CoilCheckboxIndicator.radiusOf(context, style),
+            side: BorderSide(color: borderColor, width: style.borderWidth!),
+          ),
+        ),
+        child: child,
+      ),
+      child: OverflowBox(
+        maxWidth: glyphSize,
+        maxHeight: glyphSize,
+        child: SingleMotionBuilder(
+          key: ValueKey(_generation),
+          value: on ? 1 : 0,
+          // A new glyph shape draws itself in from nothing.
+          from: _generation == 0 ? null : 0,
+          motion: on ? motion.fade : motion.fadeExit,
+          builder: (context, progress, _) {
+            final builder = widget.glyphBuilder;
+            if (builder != null && _shown != _Glyph.none) {
+              return builder(
+                context,
+                _shown == _Glyph.dash
+                    ? CoilCheckboxGlyph.dash
+                    : CoilCheckboxGlyph.check,
+                progress.clamp(0, 1),
+                style.glyphColor!,
+                glyphSize,
+              );
+            }
+            return CustomPaint(
+              size: Size.square(glyphSize),
+              painter: _GlyphPainter(
+                glyph: _shown,
+                progress: progress,
+                color: style.glyphColor!,
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,134 +1,11 @@
-import 'package:coil/checkbox.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
-import 'package:coil/src/components/selection_groups/checkbox_group_style.dart';
-import 'package:coil/src/components/selection_groups/choice_group.dart';
-import 'package:coil/src/components/selection_groups/toggle_group_style.dart';
+import 'package:coil/src/components/toggle_group/toggle_group_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A vertical list of checkable rows (`registry/radix/checkbox-group.tsx`).
-///
-/// * Checked rows that touch share one rounded background
-///   ([CoilSelectionPainter]); checking the row between two runs merges
-///   them, unchecking a row inside a run splits it.
-/// * The fluid hover highlight glides over the rows on top of that.
-/// * Each row is a tab stop. Up and Down move focus with wrapping, Home and
-///   End jump, Space or Enter toggles, and one ring travels with keyboard
-///   focus.
-/// * Labels wrap and grow their row.
-/// * On touch the merged blocks are the only selection mark, and a finger
-///   shows a press fill.
-class CoilCheckboxGroup<T> extends StatelessWidget {
-  /// Creates a checkbox group.
-  const CoilCheckboxGroup({
-    required this.options,
-    required this.values,
-    required this.onChanged,
-    super.key,
-    this.size,
-    this.motion,
-    this.style,
-    this.semanticLabel,
-  });
-
-  /// Overrides for this group's look, on top of the theme's
-  /// [CoilCheckboxGroupStyle] and the defaults.
-  final CoilCheckboxGroupStyle? style;
-
-  /// The rows: each option's [CoilOption.child] or `Text(label)`.
-  final List<CoilOption<T>> options;
-
-  /// The values of the checked rows.
-  final Set<T> values;
-
-  /// Called with the new set of checked values. Null disables the group.
-  final ValueChanged<Set<T>>? onChanged;
-
-  /// Pins the group to one size step.
-  final CoilSize? size;
-
-  /// Overrides the theme's motion tokens.
-  final CoilMotion? motion;
-
-  /// Names the group for assistive technology.
-  final String? semanticLabel;
-
-  void _toggle(T value) {
-    final next = {...values};
-    if (!next.remove(value)) next.add(value);
-    onChanged?.call(next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final sizes = CoilTheme.metricsOf(context, size: size);
-    final tokens = CoilTheme.motionOf(context, override: motion);
-    final look = CoilCheckboxGroupStyle.fallback(
-      theme,
-      sizes,
-    ).merge(CoilTheme.styleOf<CoilCheckboxGroupStyle>(context)).merge(style);
-    return Semantics(
-      container: true,
-      label: semanticLabel,
-      child: ChoiceGroup(
-        count: options.length,
-        // Every row is a tab stop; the arrows still move between them.
-        singleTabStop: false,
-        selected: {
-          for (final (i, option) in options.indexed)
-            if (values.contains(option.value)) i,
-        },
-        selectionColor: look.selection!,
-        highlightColor: look.highlight!,
-        radius: look.radius!,
-        motion: tokens,
-        isEnabled: (i) => onChanged != null && options[i].enabled,
-        itemBuilder: (context, i, node, states) {
-          final option = options[i];
-          final checked = values.contains(option.value);
-          final onPressed = onChanged == null || !option.enabled
-              ? null
-              : () => _toggle(option.value);
-          return Semantics(
-            container: true,
-            checked: checked,
-            enabled: onPressed != null,
-            // The Text already names the row; a custom child needs it.
-            label: option.child == null ? null : option.label,
-            child: ChoiceRow(
-              selected: checked,
-              metrics: sizes,
-              motion: tokens,
-              textStyle: look.textStyle!,
-              labelColor: look.label!,
-              pressFill: look.selection!,
-              radius: look.radius!,
-              focusNode: node,
-              statesController: states,
-              onPressed: onPressed,
-              // The row owns interaction; the box mirrors its states
-              // (hovering the row darkens the box's border).
-              leading: (_) => CoilCheckbox(
-                value: checked,
-                onChanged: onPressed == null ? null : (_) {},
-                statesController: states,
-                motion: motion,
-                // The row is the target, so the box doesn't pad itself.
-                tapTargetSize: CoilTapTargetSize.shrinkWrap,
-              ),
-              label: option.child ?? Text(option.label),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// A horizontal row of toggles whose selected items merge into one shape:
-/// a multi-select segmented control.
+/// A horizontal row of toggles whose selected items merge into one block: a
+/// multi-select segmented control.
 ///
 /// Left and Right (following the text direction) move focus, Home and End
 /// jump, Space or Enter toggles, and the segments keep one tab stop.
@@ -167,12 +44,6 @@ class CoilToggleGroup<T> extends StatelessWidget {
   /// Names the group for assistive technology.
   final String? semanticLabel;
 
-  void _toggle(T value) {
-    final next = {...values};
-    if (!next.remove(value)) next.add(value);
-    onChanged?.call(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -186,13 +57,10 @@ class CoilToggleGroup<T> extends StatelessWidget {
     return Semantics(
       container: true,
       label: semanticLabel,
-      child: ChoiceGroup(
+      child: CoilChoiceGroup(
         count: options.length,
         axis: Axis.horizontal,
-        selected: {
-          for (final (i, option) in options.indexed)
-            if (values.contains(option.value)) i,
-        },
+        selected: CoilChoiceGroup.selectedIndexes(options, values),
         selectionColor: look.selection!,
         highlightColor: look.highlight!,
         radius: look.radius!,
@@ -203,7 +71,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
           final selected = values.contains(item.value);
           final onPressed = onChanged == null || !item.enabled
               ? null
-              : () => _toggle(item.value);
+              : () => onChanged!(CoilChoiceGroup.toggled(values, item.value));
           return Semantics(
             container: true,
             toggled: selected,

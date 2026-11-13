@@ -223,12 +223,12 @@ class CoilSkeletonText extends StatelessWidget {
 class CoilSkeletonRegion extends StatelessWidget {
   /// Creates a loading region.
   const CoilSkeletonRegion({
+    required this.label,
     required this.child,
     super.key,
-    this.label = 'Loading',
   });
 
-  /// The announced label.
+  /// The announced label, for example "Loading" in the app's language.
   final String label;
 
   /// The skeletons.

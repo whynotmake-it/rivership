@@ -498,7 +498,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Checkbox
 
 - **Anatomy:** a box (1.5 px border); when checked, a bare tick with no box (FF's signature); a dash when null.
-- **Sizes:** box 16 / 14 / 20 / 18, radius 5 / 4 / 6 / 5, glyph 18 / 16 / 22 / 20. Hit box 44 on touch unless inside a row (`tapTargetSize: .shrinkWrap`).
+- **Sizes:** box 16 / 14 / 20 / 18, radius 5 / 4 / 6 / 5, glyph 18 / 16 / 22 / 20. Hit box 44 on touch. Inside a row, use `CoilCheckboxIndicator`, which has no hit box of its own.
 - **States:**
   - unchecked: `border`; hover: foreground 40 %; invalid: destructive 50 %;
   - checked / indeterminate: border transparent; hover brings the 40 % border back;

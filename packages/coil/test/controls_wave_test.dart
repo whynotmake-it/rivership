@@ -67,6 +67,75 @@ Future<void> _key(WidgetTester tester, LogicalKeyboardKey key) async {
 }
 
 void main() {
+  group('disabled controls', () {
+    testWidgets('do not activate, hover, press or take focus', (tester) async {
+      final states = <WidgetStatesController>[
+        for (var i = 0; i < 4; i++) WidgetStatesController(),
+      ];
+      addTearDown(() {
+        for (final c in states) {
+          c.dispose();
+        }
+      });
+      await _pump(
+        tester,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CoilButton(
+              onPressed: null,
+              statesController: states[0],
+              child: const Text('Save'),
+            ),
+            CoilCheckbox(
+              value: false,
+              onChanged: null,
+              statesController: states[1],
+            ),
+            CoilSwitch(
+              value: false,
+              onChanged: null,
+              statesController: states[2],
+            ),
+            CoilCheckbox(
+              value: true,
+              tristate: true,
+              onChanged: null,
+              statesController: states[3],
+            ),
+            CoilButton(onPressed: () {}, child: const Text('After')),
+          ],
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      for (final target in [
+        find.byType(CoilButton).first,
+        find.byType(CoilCheckbox).first,
+        find.byType(CoilSwitch),
+      ]) {
+        await mouse.moveTo(tester.getCenter(target));
+        await mouse.down(tester.getCenter(target));
+        await tester.pump();
+        await mouse.up();
+        await tester.pump();
+      }
+      for (final c in states) {
+        expect(c.value, isNot(contains(WidgetState.hovered)));
+        expect(c.value, isNot(contains(WidgetState.pressed)));
+      }
+      await _key(tester, LogicalKeyboardKey.tab);
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<CoilButton>()
+            ?.child,
+        isA<Text>().having((t) => t.data, 'label', 'After'),
+        reason: 'Tab skips every disabled control',
+      );
+    });
+  });
+
   group('CoilButton loading', () {
     testWidgets('the spinner takes the leading slot and the width is locked', (
       tester,
@@ -115,6 +184,7 @@ void main() {
         CoilButton.icon(
           onPressed: () {},
           loading: true,
+          loadingLabel: 'Loading',
           semanticLabel: 'Add',
           icon: const TestIcon(TestGlyph.plus),
         ),
@@ -218,6 +288,7 @@ void main() {
       await _pump(
         tester,
         const CoilSkeletonRegion(
+          label: 'Loading',
           child: SizedBox(width: 200, child: CoilSkeletonText()),
         ),
         reduceMotion: true,

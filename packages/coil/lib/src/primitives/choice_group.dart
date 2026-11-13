@@ -1,12 +1,20 @@
-import 'package:coil/foundation.dart';
-import 'package:coil/primitives.dart';
+import 'package:coil/src/foundation/metrics.dart';
+import 'package:coil/src/foundation/motion.dart';
+import 'package:coil/src/foundation/option.dart';
+import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/foundation/typography.dart';
+import 'package:coil/src/primitives/highlight.dart';
+import 'package:coil/src/primitives/hover.dart';
+import 'package:coil/src/primitives/interaction.dart';
+import 'package:coil/src/primitives/roving_focus.dart';
+import 'package:coil/src/primitives/selection_blocks.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Builds item [index] of a [ChoiceGroup], given the focus node and states
+/// Builds item [index] of a [CoilChoiceGroup], given the focus node and states
 /// controller the group keeps for it.
-typedef ChoiceItemBuilder =
+typedef CoilChoiceItemBuilder =
     Widget Function(
       BuildContext context,
       int index,
@@ -22,9 +30,9 @@ typedef ChoiceItemBuilder =
 /// With [mergeSelection] the selected items share merged blocks (the
 /// checkbox and toggle groups). Without it the single selected item has one
 /// fill that glides between items on `standard` (the radio group).
-class ChoiceGroup extends StatefulWidget {
+class CoilChoiceGroup extends StatefulWidget {
   /// Creates a choice group of [count] items.
-  const ChoiceGroup({
+  const CoilChoiceGroup({
     required this.count,
     required this.selected,
     required this.itemBuilder,
@@ -48,7 +56,7 @@ class ChoiceGroup extends StatefulWidget {
   final Set<int> selected;
 
   /// Builds one item.
-  final ChoiceItemBuilder itemBuilder;
+  final CoilChoiceItemBuilder itemBuilder;
 
   /// The selection fill.
   final Color selectionColor;
@@ -83,11 +91,27 @@ class ChoiceGroup extends StatefulWidget {
   /// Whether item `i` takes part in hover and focus. All do when null.
   final bool Function(int i)? isEnabled;
 
+  /// The indexes of the [options] whose value is in [values].
+  static Set<int> selectedIndexes<T>(
+    List<CoilOption<T>> options,
+    Set<T> values,
+  ) => {
+    for (final (i, option) in options.indexed)
+      if (values.contains(option.value)) i,
+  };
+
+  /// [values] with [value] added, or removed if it is there.
+  static Set<T> toggled<T>(Set<T> values, T value) {
+    final next = {...values};
+    if (!next.remove(value)) next.add(value);
+    return next;
+  }
+
   @override
-  State<ChoiceGroup> createState() => _ChoiceGroupState();
+  State<CoilChoiceGroup> createState() => _CoilChoiceGroupState();
 }
 
-class _ChoiceGroupState extends State<ChoiceGroup>
+class _CoilChoiceGroupState extends State<CoilChoiceGroup>
     with TickerProviderStateMixin {
   late final _blocks = CoilSelectionPainter(vsync: this);
   late final _fill = CoilHighlightPainter(
@@ -301,9 +325,9 @@ class _ChoiceGroupState extends State<ChoiceGroup>
 /// foreground and from regular to semibold when selected (a hidden semibold
 /// copy reserves the width), the touch press fill, and the shared
 /// interaction states.
-class ChoiceRow extends StatelessWidget {
+class CoilChoiceRow extends StatelessWidget {
   /// Creates a row.
-  const ChoiceRow({
+  const CoilChoiceRow({
     required this.leading,
     required this.label,
     required this.selected,
@@ -386,7 +410,7 @@ class ChoiceRow extends StatelessWidget {
             value: pressing ? pressFill : pressFill.withValues(alpha: 0),
             converter: MotionConverter.colorRgb,
             motion: pressing ? motion.fade : motion.fadeExit,
-            debugLabel: 'CoilChoiceRow press',
+            debugLabel: 'CoilCoilChoiceRow press',
             builder: (context, fill, child) => DecoratedBox(
               decoration: ShapeDecoration(
                 color: fill,
@@ -406,17 +430,13 @@ class ChoiceRow extends StatelessWidget {
                 child: Row(
                   spacing: metrics.gap,
                   children: [
-                    ExcludeFocus(
-                      child: IgnorePointer(
-                        child: ExcludeSemantics(child: leading(states)),
-                      ),
-                    ),
+                    leading(states),
                     Expanded(
                       child: MotionBuilder<Color>(
                         value: color,
                         converter: MotionConverter.colorRgb,
                         motion: motion.fade,
-                        debugLabel: 'CoilChoiceRow label color',
+                        debugLabel: 'CoilCoilChoiceRow label color',
                         builder: (context, color, _) => SingleMotionBuilder(
                           value: selected ? CoilWeight.semibold.wght : 400,
                           motion: motion.fade,

@@ -39,23 +39,17 @@ final class CoilButtonTrack<T extends Object> extends Track<T> {
   );
 }
 
-/// A button (`registry/radix/button.tsx`).
+/// A button.
 ///
-/// [child] is the label.
-/// [leading] and [trailing] are icon slots that take any widget, styled
-/// through [IconTheme]: the size for the current density, the label color,
-/// and a `weight` that rises from [CoilIconWeight.rest] to
-/// [CoilIconWeight.emphasis] on hover (the web's 1.5 → 2 stroke). The
-/// package bundles no icons. [loadingIndicator] replaces the built-in
-/// spinner.
+/// [child] is the label. [leading] and [trailing] take any widget and are
+/// styled through [IconTheme]: icon size, the label color, and a weight that
+/// rises on hover. Pressing shrinks the fill by 1 px per side.
 ///
-/// Pressing collapses the fill by exactly 1 px per side at any width (the
-/// web's shrinking box-shadow spread), rather than scaling.
-///
-/// While [loading] a spinner replaces the leading slot (the icon of an
-/// icon-only button, or the whole content when there is no leading slot),
-/// swapping with the blur-fade on `quick`. The width is locked to the idle
-/// content, and the button keeps full strength.
+/// While [loading], a spinner takes the leading slot (the icon of an
+/// icon-only button, or the whole content when there is no leading slot) and
+/// presses are ignored. The width stays locked and the button keeps full
+/// strength. The animated parts are [CoilButtonTrack]s; override them with
+/// [motions].
 class CoilButton extends StatefulWidget {
   /// Creates a labeled button.
   const CoilButton({
@@ -76,6 +70,7 @@ class CoilButton extends StatefulWidget {
     this.style,
     this.semanticLabel,
     this.loadingIndicator,
+    this.loadingLabel,
   }) : icon = null;
 
   /// Creates a square, icon-only button. [semanticLabel] names it for
@@ -85,6 +80,7 @@ class CoilButton extends StatefulWidget {
     required Widget this.icon,
     required String this.semanticLabel,
     this.loadingIndicator,
+    this.loadingLabel,
     super.key,
     this.variant = CoilButtonVariant.primary,
     this.size,
@@ -154,6 +150,10 @@ class CoilButton extends StatefulWidget {
   /// Overrides the label for assistive technology.
   final String? semanticLabel;
 
+  /// What assistive technology announces as the button's value while
+  /// [loading] (for example "Loading", in the app's language).
+  final String? loadingLabel;
+
   /// Replaces the built-in spinner shown while [loading]. It is laid out in
   /// an icon-sized box and inherits the label color through [IconTheme] and
   /// [DefaultTextStyle].
@@ -204,10 +204,8 @@ class _CoilButtonState extends State<CoilButton> {
   bool get _enabled => widget.onPressed != null && !widget.loading;
 
   _ButtonLook _look(CoilButtonStyle style, Set<WidgetState> raw) {
-    final hovered =
-        !widget.loading && raw.contains(WidgetState.hovered) && _enabled;
-    final pressed =
-        !widget.loading && raw.contains(WidgetState.pressed) && _enabled;
+    final hovered = raw.contains(WidgetState.hovered) && _enabled;
+    final pressed = raw.contains(WidgetState.pressed) && _enabled;
     final states = {
       if (hovered) WidgetState.hovered,
       if (pressed) WidgetState.pressed,
@@ -239,7 +237,7 @@ class _CoilButtonState extends State<CoilButton> {
       button: true,
       enabled: widget.onPressed != null,
       label: widget.semanticLabel,
-      value: widget.loading ? 'Loading' : null,
+      value: widget.loading ? widget.loadingLabel : null,
       child: CoilInteraction(
         onPressed: _enabled ? widget.onPressed : null,
         focusNode: widget.focusNode,

@@ -14,6 +14,9 @@ Milestone M0, unreleased.
 - Components on those layers: `CoilButton`, `CoilCheckbox`, `CoilSwitch`,
   `CoilTabs`, `CoilInput`, `CoilCheckboxGroup`, `CoilToggleGroup`,
   `CoilSelect`, `CoilMultiSelect`.
+- Wave A controls: `CoilCheckboxIndicator` and `CoilRadioIndicator` (the
+  box and circle without interaction), `CoilChoiceGroup` (primitive), and
+  `CoilSwitchTrack.hover`/`.label`.
 - Wave A controls: `CoilBadge`, `CoilSkeleton` (with `CoilSkeletonText`
   and `CoilSkeletonRegion`) and `CoilRadioGroup`. `CoilButton` swaps its
   spinner in with the blur-fade and takes `motions:`. The checkbox and

@@ -5,6 +5,7 @@ library;
 export 'src/primitives/active_item.dart';
 export 'src/primitives/adaptive_popup.dart';
 export 'src/primitives/anchor.dart';
+export 'src/primitives/choice_group.dart';
 export 'src/primitives/focus_ring.dart';
 export 'src/primitives/highlight.dart';
 export 'src/primitives/hover.dart';

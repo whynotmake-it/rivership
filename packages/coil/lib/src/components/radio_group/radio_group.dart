@@ -1,8 +1,8 @@
 import 'dart:ui' show SemanticsRole;
 
 import 'package:coil/foundation.dart';
-import 'package:coil/src/components/selection_groups/choice_group.dart';
-import 'package:coil/src/components/selection_groups/radio_group_style.dart';
+import 'package:coil/primitives.dart';
+import 'package:coil/src/components/radio_group/radio_group_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -68,7 +68,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
       container: true,
       label: semanticLabel,
       role: SemanticsRole.radioGroup,
-      child: ChoiceGroup(
+      child: CoilChoiceGroup(
         count: options.length,
         mergeSelection: false,
         selected: {if (selected >= 0) selected},
@@ -92,7 +92,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
             checked: checked,
             enabled: onPressed != null,
             label: option.child == null ? null : option.label,
-            child: ChoiceRow(
+            child: CoilChoiceRow(
               selected: checked,
               metrics: sizes,
               motion: tokens,
@@ -103,12 +103,12 @@ class CoilRadioGroup<T> extends StatelessWidget {
               focusNode: node,
               statesController: states,
               onPressed: onPressed,
-              leading: (s) => _Radio(
+              leading: (states) => CoilRadioIndicator(
                 selected: checked,
-                hovered: s.contains(WidgetState.hovered),
-                look: look,
-                sizes: sizes,
-                motion: tokens,
+                states: states,
+                size: size,
+                motion: motion,
+                style: style,
               ),
               label: option.child ?? Text(option.label),
             ),
@@ -119,27 +119,51 @@ class CoilRadioGroup<T> extends StatelessWidget {
   }
 }
 
-/// The circle: a 1.5 px border (clear when selected) and a dot.
-class _Radio extends StatelessWidget {
-  const _Radio({
+/// The circle of a radio: a 1.5 px border (clear when selected) and a dot,
+/// with no interaction of its own.
+///
+/// [states] drives the border; only `hovered` is read. Use it inside a row
+/// that is already the tap target, as [CoilRadioGroup] does. The circle
+/// grows with the text scale. The dot scales in from 0.3 on `quick` and
+/// fades out on `fadeExit`.
+class CoilRadioIndicator extends StatelessWidget {
+  /// Creates a radio indicator.
+  const CoilRadioIndicator({
     required this.selected,
-    required this.hovered,
-    required this.look,
-    required this.sizes,
-    required this.motion,
+    required this.states,
+    super.key,
+    this.size,
+    this.motion,
+    this.style,
   });
 
+  /// Whether the dot shows.
   final bool selected;
-  final bool hovered;
-  final CoilRadioGroupStyle look;
-  final CoilMetrics sizes;
-  final CoilMotion motion;
+
+  /// The states the border reacts to.
+  final Set<WidgetState> states;
+
+  /// Pins the circle to one size step. Null follows [CoilAdaptiveScope].
+  final CoilSize? size;
+
+  /// Overrides the theme's motion tokens for this instance.
+  final CoilMotion? motion;
+
+  /// Overrides for this indicator's look, on top of the theme's
+  /// [CoilRadioGroupStyle] and the defaults.
+  final CoilRadioGroupStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    // Like the checkbox, the circle grows with text.
+    final theme = CoilTheme.of(context);
+    final sizes = CoilTheme.metricsOf(context, size: size);
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    final look = CoilRadioGroupStyle.fallback(
+      theme,
+      sizes,
+    ).merge(CoilTheme.styleOf<CoilRadioGroupStyle>(context)).merge(style);
     final box = MediaQuery.textScalerOf(context).scale(sizes.checkboxSize);
-    final border = hovered
+    final border = states.contains(WidgetState.hovered)
         ? look.radioBorderHover!
         : selected
         ? look.radioBorder!.withValues(alpha: 0)
@@ -147,8 +171,8 @@ class _Radio extends StatelessWidget {
     return MotionBuilder<Color>(
       value: border,
       converter: MotionConverter.colorRgb,
-      motion: motion.fade,
-      debugLabel: 'CoilRadioGroup border',
+      motion: tokens.fade,
+      debugLabel: 'CoilRadioIndicator border',
       builder: (context, color, child) => DecoratedBox(
         decoration: ShapeDecoration(
           shape: RoundedSuperellipseBorder(
@@ -161,26 +185,23 @@ class _Radio extends StatelessWidget {
       child: Center(
         child: SingleMotionBuilder(
           value: selected ? 1 : 0,
-          motion: selected ? motion.quick : motion.fadeExit,
-          debugLabel: 'CoilRadioGroup dot',
-          builder: (context, progress, _) {
-            final dot = box / 2;
-            return Opacity(
-              opacity: progress.clamp(0, 1),
-              child: Transform.scale(
-                scale: 0.3 + 0.7 * progress,
-                child: DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: look.dot,
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(dot / 2),
-                    ),
+          motion: selected ? tokens.quick : tokens.fadeExit,
+          debugLabel: 'CoilRadioIndicator dot',
+          builder: (context, progress, _) => Opacity(
+            opacity: progress.clamp(0, 1),
+            child: Transform.scale(
+              scale: 0.3 + 0.7 * progress,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: look.dot,
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(box / 4),
                   ),
-                  child: SizedBox.square(dimension: dot),
                 ),
+                child: SizedBox.square(dimension: box / 2),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
