@@ -370,9 +370,10 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   /// Applies the per-instance motion to [child]'s subtree.
   Widget _withMotion(Widget child) {
     final override = widget.motion;
-    if (override == null) return child;
+    // Always wrapped, so setting or clearing [motion] at runtime doesn't
+    // move [child] in the tree (an open list would lose its state).
     return CoilTheme.override(
-      transform: (t) => t.copyWith(motion: override),
+      transform: (t) => override == null ? t : t.copyWith(motion: override),
       child: child,
     );
   }
