@@ -62,7 +62,7 @@ void main() {
 
   testWidgets('the subtle pace is quicker', (tester) async {
     await tester.pumpWidget(
-      _app(CoilReveal(pace: CoilRevealPace.subtle, children: _blocks(2))),
+      _app(CoilReveal(preset: CoilRevealPreset.subtle, children: _blocks(2))),
     );
     final at = await _arrivals(tester, 2);
     expect((at[1] - at[0]).inMilliseconds, closeTo(40, 8));
@@ -108,7 +108,7 @@ void main() {
     await tester.pumpWidget(_app(CoilReveal(children: _blocks(3))));
     await tester.pumpAndSettle();
     await tester.pumpWidget(
-      _app(CoilReveal(pace: CoilRevealPace.subtle, children: _blocks(3))),
+      _app(CoilReveal(preset: CoilRevealPreset.subtle, children: _blocks(3))),
     );
     await tester.pump();
     for (var i = 0; i < 3; i++) {
@@ -124,7 +124,7 @@ void main() {
         CoilReveal(
           motion: const CoilMotion(stagger: Duration(milliseconds: 200)),
           motions: {
-            CoilRevealTrack.opacity: const CupertinoMotion(
+            CoilRevealTrack.presence: const CupertinoMotion(
               duration: Duration(milliseconds: 20),
             ),
           },
@@ -134,6 +134,121 @@ void main() {
     );
     final at = await _arrivals(tester, 2);
     expect((at[1] - at[0]).inMilliseconds, closeTo(200, 8));
+  });
+
+  testWidgets('landing rises into place, a longer step apart', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(CoilReveal(preset: CoilRevealPreset.landing, children: _blocks(2))),
+    );
+    await tester.pumpAndSettle();
+    final rest = tester.getRect(find.text('0')).top;
+    await tester.pumpWidget(_app(const SizedBox()));
+    await tester.pumpWidget(
+      _app(CoilReveal(preset: CoilRevealPreset.landing, children: _blocks(2))),
+    );
+    final at = await _arrivals(tester, 2);
+    expect((at[1] - at[0]).inMilliseconds, closeTo(100, 8));
+    await tester.pumpWidget(_app(const SizedBox()));
+    await tester.pumpWidget(
+      _app(CoilReveal(preset: CoilRevealPreset.landing, children: _blocks(2))),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(tester.getRect(find.text('0')).top, greaterThan(rest));
+  });
+
+  group('visible', () {
+    Widget reveal({required bool visible, bool reducedMotion = false}) => _app(
+      CoilReveal(visible: visible, children: _blocks(3)),
+      reducedMotion: reducedMotion,
+    );
+
+    testWidgets('hides in the same order, then shows again', (tester) async {
+      await tester.pumpWidget(reveal(visible: true));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(reveal(visible: false));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(
+        _opacity(tester, 0),
+        lessThan(1),
+        reason: 'the first leaves first',
+      );
+      expect(_opacity(tester, 2), 1, reason: 'the last waits its turn');
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 3; i++) {
+        expect(_opacity(tester, i), 0);
+        expect(find.text('$i'), findsOneWidget, reason: 'still mounted');
+      }
+
+      await tester.pumpWidget(reveal(visible: true));
+      final at = await _arrivals(tester, 3);
+      expect(at[1], greaterThan(at[0]));
+      await tester.pumpAndSettle();
+      expect(_opacity(tester, 2), 1);
+    });
+
+    testWidgets('a flip halfway turns around from where it is', (
+      tester,
+    ) async {
+      await tester.pumpWidget(reveal(visible: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      final mid = _opacity(tester, 0);
+      expect(mid, inExclusiveRange(0, 1));
+
+      await tester.pumpWidget(reveal(visible: false));
+      await tester.pump();
+      final turned = _opacity(tester, 0);
+      expect(turned, closeTo(mid, 0.25), reason: 'no jump, no restart');
+      await tester.pumpAndSettle();
+      expect(_opacity(tester, 0), 0);
+    });
+
+    testWidgets('hidden children keep their state and take no taps', (
+      tester,
+    ) async {
+      final taps = <int>[];
+      Widget host({required bool visible}) => _app(
+        CoilReveal(
+          visible: visible,
+          children: [
+            GestureDetector(
+              onTap: () => taps.add(1),
+              child: const SizedBox(height: 40, child: _Counter()),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(host(visible: true));
+      await tester.pumpAndSettle();
+      tester.state<_CounterState>(find.byType(_Counter)).count = 5;
+
+      await tester.pumpWidget(host(visible: false));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(_Counter), warnIfMissed: false);
+      expect(taps, isEmpty);
+
+      await tester.pumpWidget(host(visible: true));
+      await tester.pumpAndSettle();
+      expect(tester.state<_CounterState>(find.byType(_Counter)).count, 5);
+    });
+
+    testWidgets('reduced motion: hides and shows all at once, fading', (
+      tester,
+    ) async {
+      await tester.pumpWidget(reveal(visible: true, reducedMotion: true));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(reveal(visible: false, reducedMotion: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      final first = _opacity(tester, 0);
+      expect(first, inExclusiveRange(0, 1));
+      expect(_opacity(tester, 2), first);
+    });
   });
 
   testWidgets('a custom layout reveals its children', (tester) async {
@@ -152,4 +267,18 @@ void main() {
     );
     expect(_opacity(tester, 1), 1);
   });
+}
+
+class _Counter extends StatefulWidget {
+  const _Counter();
+
+  @override
+  State<_Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<_Counter> {
+  int count = 0;
+
+  @override
+  Widget build(BuildContext context) => Text('count $count');
 }

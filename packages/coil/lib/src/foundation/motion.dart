@@ -15,6 +15,7 @@ import 'package:motor/motor.dart';
 /// | [standard] | 180 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
 /// | [gentle] | 340 ms, bounce 0.1 | sheets, dialogs, panels |
 /// | [fade] | 120 ms, no bounce | opacity and color |
+/// | [stagger] | 60 ms, a delay | siblings arriving in turn (`CoilReveal`) |
 ///
 /// Durations are [CupertinoMotion] durations: the perceptual length of the
 /// spring, after which it has ended (about 99% of the way); it settles a
