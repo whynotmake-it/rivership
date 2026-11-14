@@ -212,7 +212,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
-- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes.
+- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked.
 - `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
 - Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
@@ -751,7 +751,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Dropdown (action menu; +sub, +search)
 
-- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px `border` 60 % edge to edge); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding 24).
+- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding 24).
 - **Sizes:** rows per §13.1. Default width 288 (pointer), `max(trigger, 220)` (touch). Submenu width 224.
 - **States:** the pointer highlight glides; checked rows are semibold with a check; the single-choice selected fill glides on `standard`; disabled rows are skipped.
 - **Submenus:**
@@ -760,7 +760,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Pointer: autofocused. Touch sheet: not autofocused.
 - **Presentation:** §9.1. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
 - **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
-- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows, and immediately for actions.
+- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile), and immediately for actions.
 - **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
 - **Haptic:** iOS `selectionClick` on a pick in a sheet.
 - **Do:** keep it to ≤ 12 items and ≤ 1 submenu level.
@@ -771,7 +771,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Trigger:** like Input (hairline, `controlHeight`, `controlPaddingX`, min width 160) → [icon] value (placeholder muted) → chevron (muted → foreground on hover). Hover is the `hover` fill. While open it holds the `active` fill.
 - **List:** popup rows; a trailing check; selected `active` fill in popovers; check only in sheets; multi-select uses merged blocks plus checks.
 - **Presentation:** pointer popover (max height 300); phone ≤ 8 options touch popover; > 8 options or multi → sheet with the field label as its title. Lists over 12 options add a search row.
-- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), then closes; the selected fill glides `standard`.
+- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input, then closes; the selected fill glides `standard`.
 - **Keyboard:** the trigger opens on Enter, Space, Up or Down (the list starts on the picked row with the ring). The list has arrows, Home/End, PageUp/PageDown, typeahead, Enter/Space to pick, and Esc/Tab to dismiss. Focus returns to the trigger.
 - **Semantics:** the trigger is a button with `expanded` and its value; the list is a menu; rows are `selected`.
 - **Don't:** use it for fewer than 3 options (use a RadioGroup or Tabs) or for actions (use Dropdown).

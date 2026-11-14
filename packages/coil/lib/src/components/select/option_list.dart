@@ -269,6 +269,10 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
         child: CoilHoverRegion(
           activeItem: _active,
           followFocus: false,
+          // After a pick the list waits out the acknowledgement: the
+          // highlight stays on the picked row and the rows ignore the
+          // pointer until it closes.
+          hold: (_) => _done,
           child: SingleChildScrollView(
             padding: EdgeInsets.all(metrics.popupInset),
             // The layer scrolls with the rows, so the highlight, the
@@ -300,17 +304,18 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
                 return CoilHoverHighlight(
                   color: style.highlight,
                   radius: style.radius,
-                  background: [
-                    if (widget.multiple) blocks else selectedFill,
-                  ],
+                  background: [if (widget.multiple) blocks else selectedFill],
                   foreground: [ring],
                   child: rows!,
                 );
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: rows,
+              child: IgnorePointer(
+                ignoring: _done,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: rows,
+                ),
               ),
             ),
           ),
