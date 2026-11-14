@@ -745,10 +745,13 @@ class _TabButton extends StatelessWidget {
                           child: icon,
                         ),
                       // Collapsed tabs keep their icon; the label springs
-                      // its width open and fades in.
+                      // its width open and fades in. The width follows the
+                      // new state at once, so a closing label shrinks while
+                      // it fades instead of after.
                       MotionSizeSwitcher(
                         motion: labelMotion.enter,
                         exitMotion: labelMotion.exit,
+                        immediateResize: true,
                         // MotionSizeSwitcher takes a resolved Alignment.
                         alignment: AlignmentDirectional.centerStart.resolve(
                           Directionality.of(context),
