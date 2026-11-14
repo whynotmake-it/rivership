@@ -51,7 +51,7 @@ class _Panel extends StatelessWidget {
               onChanged: (v) => selection.value = v,
               options: [
                 for (final (i, r) in _rows.indexed)
-                  CoilOption(value: i, label: r),
+                  CoilOption(value: i, label: Text(r), searchText: r),
               ],
             ),
           ),
@@ -60,7 +60,7 @@ class _Panel extends StatelessWidget {
             onChanged: (v) => selection.value = v,
             options: [
               for (final (i, d) in _days.indexed)
-                CoilOption(value: i, label: d),
+                CoilOption(value: i, label: Text(d), searchText: d),
             ],
           ),
         ],

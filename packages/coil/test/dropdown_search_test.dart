@@ -7,15 +7,34 @@ import 'src/select_harness.dart';
 
 Widget _menu(List<String> log) => Center(
   child: CoilDropdown(
-    search: const CoilMenuSearch(hint: 'Find'),
+    search: const CoilMenuSearch(
+      placeholder: Text('Find'),
+      semanticLabel: 'Find',
+    ),
     entries: [
-      const CoilMenuLabel('Edit'),
-      CoilAction(label: 'Copy', onPressed: () => log.add('copy')),
-      CoilAction(label: 'Cut', onPressed: () => log.add('cut')),
+      const CoilMenuLabel(Text('Edit')),
+      CoilAction(
+        label: const Text('Copy'),
+        searchText: 'Copy',
+        onPressed: () => log.add('copy'),
+      ),
+      CoilAction(
+        label: const Text('Cut'),
+        searchText: 'Cut',
+        onPressed: () => log.add('cut'),
+      ),
       const CoilMenuSeparator(),
-      const CoilMenuLabel('File'),
-      CoilAction(label: 'Close', onPressed: () => log.add('close')),
-      CoilAction(label: 'Rename', onPressed: () => log.add('rename')),
+      const CoilMenuLabel(Text('File')),
+      CoilAction(
+        label: const Text('Close'),
+        searchText: 'Close',
+        onPressed: () => log.add('close'),
+      ),
+      CoilAction(
+        label: const Text('Rename'),
+        searchText: 'Rename',
+        onPressed: () => log.add('rename'),
+      ),
     ],
     builder: (context, menu) =>
         CoilButton(onPressed: menu.open, child: const Text('Actions')),

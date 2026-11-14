@@ -21,7 +21,7 @@ class ChatMessageMeta extends StatelessWidget {
   final bool visible;
 
   /// The formatted time, if any.
-  final String? time;
+  final Widget? time;
 
   /// The action buttons.
   final List<Widget> actions;
@@ -45,7 +45,9 @@ class ChatMessageMeta extends StatelessWidget {
         children: [
           if (time case final time?)
             // The container's label already says the time.
-            ExcludeSemantics(child: Text(time, style: style.metaStyle)),
+            ExcludeSemantics(
+              child: DefaultTextStyle(style: style.metaStyle!, child: time),
+            ),
           if (actions.isNotEmpty)
             Row(
               mainAxisSize: MainAxisSize.min,

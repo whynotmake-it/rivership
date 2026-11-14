@@ -47,7 +47,7 @@ class CrumbLink extends StatelessWidget {
   final int index;
 
   /// The visible label.
-  final String label;
+  final Widget label;
 
   /// Replaces [label] for screen readers.
   final String? semanticLabel;
@@ -157,7 +157,7 @@ class CrumbPage extends StatelessWidget {
   });
 
   /// The page's name.
-  final String label;
+  final Widget label;
 
   /// A glyph before the label.
   final Widget? leading;
@@ -201,7 +201,7 @@ class CrumbContent extends StatelessWidget {
   });
 
   /// The label.
-  final String label;
+  final Widget label;
 
   /// Whether screen readers read [label].
   final bool labelInSemantics;
@@ -259,8 +259,7 @@ class CrumbContent extends StatelessWidget {
               Flexible(
                 child: ExcludeSemantics(
                   excluding: !labelInSemantics,
-                  child: Text(
-                    label,
+                  child: DefaultTextStyle(
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.ellipsis,
@@ -268,6 +267,7 @@ class CrumbContent extends StatelessWidget {
                     // separator follows it closely.
                     textWidthBasis: TextWidthBasis.longestLine,
                     style: style.textStyle!.copyWith(color: color),
+                    child: label,
                   ),
                 ),
               ),

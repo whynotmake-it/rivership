@@ -181,7 +181,11 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
                                 const Align(
                                   alignment: AlignmentDirectional.centerStart,
                                   child: CoilThinkingIndicator(
-                                    words: ['Thinking', 'Reading', 'Drafting'],
+                                    words: [
+                                      Text('Thinking'),
+                                      Text('Reading'),
+                                      Text('Drafting'),
+                                    ],
                                   ),
                                 ),
                               for (final turn in _turns.reversed)

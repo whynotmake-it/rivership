@@ -44,8 +44,8 @@ class _Controls extends StatelessWidget {
         ),
         CoilTabs(
           tabs: const [
-            CoilTab(value: 0, label: 'Day'),
-            CoilTab(value: 1, label: 'Week'),
+            CoilTab(value: 0, label: Text('Day')),
+            CoilTab(value: 1, label: Text('Week')),
           ],
           value: 0,
           onChanged: (_) {},
@@ -150,8 +150,8 @@ void main() {
               autofocus: true,
               child: CoilTabs(
                 tabs: const [
-                  CoilTab(value: 0, label: 'Day'),
-                  CoilTab(value: 1, label: 'Week'),
+                  CoilTab(value: 0, label: Text('Day')),
+                  CoilTab(value: 1, label: Text('Week')),
                 ],
                 value: 0,
                 onChanged: (_) {},

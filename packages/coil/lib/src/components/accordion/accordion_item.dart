@@ -29,6 +29,7 @@ class CoilAccordionItem<T> {
     required this.label,
     required this.panel,
     this.leading,
+    this.semanticLabel,
     this.enabled = true,
   });
 
@@ -36,8 +37,11 @@ class CoilAccordionItem<T> {
   /// identifies the item, so it must be unique within the accordion.
   final T value;
 
-  /// The trigger's text. It also names the panel for screen readers.
-  final String label;
+  /// The trigger's label, usually a [Text].
+  final Widget label;
+
+  /// Names the open panel for screen readers, usually the label's text.
+  final String? semanticLabel;
 
   /// The panel's content, shown while the item is open.
   final Widget panel;

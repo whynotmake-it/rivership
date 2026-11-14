@@ -325,9 +325,9 @@ class _ColumnState extends State<_Column> {
         ),
         CoilTabs(
           tabs: const [
-            CoilTab(value: 0, label: 'Day'),
-            CoilTab(value: 1, label: 'Week'),
-            CoilTab(value: 2, label: 'Month'),
+            CoilTab(value: 0, label: Text('Day')),
+            CoilTab(value: 1, label: Text('Week')),
+            CoilTab(value: 2, label: Text('Month')),
           ],
           value: _tab,
           onChanged: (i) => setState(() => _tab = i),

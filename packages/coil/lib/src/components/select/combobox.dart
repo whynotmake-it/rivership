@@ -4,6 +4,7 @@ import 'package:coil/foundation.dart';
 import 'package:coil/input.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/select/option_list.dart';
+import 'package:coil/src/components/select/picked_label.dart';
 import 'package:coil/src/components/select/select_style.dart';
 import 'package:coil/src/components/select/select_trigger.dart';
 import 'package:flutter/foundation.dart';
@@ -13,11 +14,13 @@ import 'package:flutter/widgets.dart';
 /// A text field that filters a list of [options] as the user types, to
 /// pick one.
 ///
-/// Typing opens the list and narrows it to labels that contain the text;
+/// Typing opens the list and narrows it to options whose
+/// [CoilOption.searchText] contains the text;
 /// the first match is active. The arrows move through the matches and
 /// Enter picks one, while focus stays in the field. An Enter that only
 /// commits an IME composition picks nothing. Escape closes the list, and
-/// leaving the field puts the picked option's label back.
+/// leaving the field puts the picked option's search text back. Give every
+/// option a [CoilOption.searchText]: the field and the filter need it.
 ///
 /// On a phone the field opens a sheet with its own field and the list, so
 /// the keyboard doesn't cover the matches. [presentation] pins one.
@@ -28,8 +31,8 @@ class CoilCombobox<T> extends StatelessWidget {
     required this.value,
     required this.onChanged,
     super.key,
-    this.placeholder = 'Search…',
-    this.emptyLabel = 'No results',
+    this.placeholder = const Text('Search…'),
+    this.empty = const Text('No results'),
     this.sheetTitle,
     this.presentation,
     this.size,
@@ -48,11 +51,11 @@ class CoilCombobox<T> extends StatelessWidget {
   /// Called with the picked value. Null disables the combobox.
   final ValueChanged<T>? onChanged;
 
-  /// Shown in the empty field.
-  final String placeholder;
+  /// Shown, muted, in the empty field. Usually a [Text].
+  final Widget placeholder;
 
-  /// Shown in the list when nothing matches.
-  final String emptyLabel;
+  /// Shown in the list when nothing matches. Usually a [Text].
+  final Widget empty;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
@@ -86,7 +89,7 @@ class CoilCombobox<T> extends StatelessWidget {
     },
     removeLabel: '',
     placeholder: placeholder,
-    emptyLabel: emptyLabel,
+    empty: empty,
     sheetTitle: sheetTitle,
     presentation: presentation,
     size: size,
@@ -109,8 +112,8 @@ class CoilMultiCombobox<T> extends StatelessWidget {
     required this.values,
     required this.onChanged,
     super.key,
-    this.placeholder = 'Search…',
-    this.emptyLabel = 'No results',
+    this.placeholder = const Text('Search…'),
+    this.empty = const Text('No results'),
     this.removeLabel = 'Remove',
     this.sheetTitle,
     this.presentation,
@@ -130,11 +133,11 @@ class CoilMultiCombobox<T> extends StatelessWidget {
   /// Called with the new picks. Null disables the combobox.
   final ValueChanged<Set<T>>? onChanged;
 
-  /// Shown in the empty field.
-  final String placeholder;
+  /// Shown, muted, in the empty field. Usually a [Text].
+  final Widget placeholder;
 
-  /// Shown in the list when nothing matches.
-  final String emptyLabel;
+  /// Shown in the list when nothing matches. Usually a [Text].
+  final Widget empty;
 
   /// A chip's remove button label for screen readers, before its label.
   final String removeLabel;
@@ -168,7 +171,7 @@ class CoilMultiCombobox<T> extends StatelessWidget {
     onChanged: onChanged,
     removeLabel: removeLabel,
     placeholder: placeholder,
-    emptyLabel: emptyLabel,
+    empty: empty,
     sheetTitle: sheetTitle,
     presentation: presentation,
     size: size,
@@ -186,8 +189,8 @@ class _ComboboxCore<T> extends StatefulWidget {
     required this.multiple,
     required this.onChanged,
     required this.removeLabel,
-    this.placeholder = 'Search…',
-    this.emptyLabel = 'No results',
+    this.placeholder = const Text('Search…'),
+    this.empty = const Text('No results'),
     this.sheetTitle,
     this.presentation,
     this.size,
@@ -212,11 +215,11 @@ class _ComboboxCore<T> extends StatefulWidget {
   /// A chip's remove button label.
   final String removeLabel;
 
-  /// Shown in the empty field.
-  final String placeholder;
+  /// Shown, muted, in the empty field. Usually a [Text].
+  final Widget placeholder;
 
-  /// Shown in the list when nothing matches.
-  final String emptyLabel;
+  /// Shown in the list when nothing matches. Usually a [Text].
+  final Widget empty;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
@@ -293,7 +296,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
 
   String _labelOf(T? value) {
     for (final option in widget.options) {
-      if (option.value == value) return option.label;
+      if (option.value == value) return option.searchText ?? '';
     }
     return '';
   }
@@ -303,7 +306,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     if (q.isEmpty) return widget.options;
     return [
       for (final option in widget.options)
-        if (option.label.toLowerCase().contains(q)) option,
+        if (option.searchText?.toLowerCase().contains(q) ?? false) option,
     ];
   }
 
@@ -456,7 +459,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     focusNode: focusNode,
     autofocus: inSheet,
     enabled: _enabled,
-    placeholder: Text(widget.placeholder),
+    placeholder: widget.placeholder,
     size: widget.size,
     motion: widget.motion,
     autocorrect: false,
@@ -499,7 +502,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
                 for (final option in picked)
                   _Chip(
                     label: option.label,
-                    removeLabel: widget.removeLabel,
+                    removeLabel:
+                        '${widget.removeLabel} '
+                        '${option.semanticLabel ?? option.searchText ?? ''}',
                     onRemove: _enabled ? () => remove(option.value) : null,
                   ),
               ],
@@ -527,13 +532,13 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
               padding: EdgeInsets.all(
                 metrics.popupInset + metrics.itemPaddingX,
               ),
-              child: Text(
-                widget.emptyLabel,
+              child: DefaultTextStyle(
                 textAlign: TextAlign.center,
                 style: theme.typography.style(
                   metrics.body,
                   color: theme.colors.mutedForeground,
                 ),
+                child: widget.empty,
               ),
             ),
           );
@@ -560,11 +565,11 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   /// The phone's trigger: a select-style button that opens the sheet.
   Widget _trigger(CoilMetrics metrics) {
     final style = _style(context, metrics);
-    final labels = [
+    final picked = [
       for (final option in widget.options)
-        if (widget.picked.contains(option.value)) option.label,
+        if (widget.picked.contains(option.value)) option,
     ];
-    final value = labels.isEmpty ? null : labels.join(', ');
+    final value = pickedSemanticValue(picked);
     return ListenableBuilder(
       listenable: _popup,
       builder: (context, _) => Semantics(
@@ -572,7 +577,6 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
         enabled: _enabled,
         expanded: _popup.isOpen,
         value: value,
-        hint: value == null ? widget.placeholder : null,
         child: CoilInteraction(
           onPressed: _enabled ? _open : null,
           focusNode: _focus,
@@ -582,9 +586,14 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
             metrics: metrics,
             style: style,
             states: {...states, if (_popup.isOpen) WidgetState.selected},
-            label: Text(
-              value ?? widget.placeholder,
-              style: value == null ? TextStyle(color: style.placeholder) : null,
+            label: ExcludeSemantics(
+              excluding: value != null,
+              child: pickedLabel(
+                picked,
+                multiple: widget.multiple,
+                placeholder: widget.placeholder,
+                placeholderColor: style.placeholder!,
+              ),
             ),
           ),
         ),
@@ -667,7 +676,9 @@ class _Chip extends StatelessWidget {
     required this.onRemove,
   });
 
-  final String label;
+  final Widget label;
+
+  /// The remove button's name for screen readers.
   final String removeLabel;
   final VoidCallback? onRemove;
 
@@ -692,16 +703,16 @@ class _Chip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 2,
           children: [
-            Text(
-              label,
+            DefaultTextStyle(
               style: theme.typography.style(
                 metrics.caption,
                 color: colors.foreground,
               ),
+              child: label,
             ),
             Semantics(
               button: true,
-              label: '$removeLabel $label',
+              label: removeLabel,
               excludeSemantics: true,
               onTap: onRemove,
               child: CoilInteraction(

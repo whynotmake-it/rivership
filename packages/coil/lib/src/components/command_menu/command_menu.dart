@@ -6,7 +6,8 @@ import 'package:coil/scroll_area.dart';
 import 'package:flutter/widgets.dart';
 
 /// Opens a command menu over the current route: a search field over
-/// [entries], filtered as the user types.
+/// [entries], filtered as the user types. The filter matches each row's
+/// `searchText`, so give every row one.
 ///
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
@@ -18,17 +19,26 @@ import 'package:flutter/widgets.dart';
 /// showCoilCommandMenu(
 ///   context: context,
 ///   entries: [
-///     const CoilMenuLabel('Navigation'),
-///     CoilAction(label: 'Go to inbox', onPressed: openInbox),
-///     CoilAction(label: 'Go to settings', onPressed: openSettings),
+///     const CoilMenuLabel(Text('Navigation')),
+///     CoilAction(
+///       label: const Text('Go to inbox'),
+///       searchText: 'Go to inbox',
+///       onPressed: openInbox,
+///     ),
+///     CoilAction(
+///       label: const Text('Go to settings'),
+///       searchText: 'Go to settings',
+///       onPressed: openSettings,
+///     ),
 ///   ],
 /// );
 /// ```
 Future<void> showCoilCommandMenu({
   required BuildContext context,
   required List<CoilMenuEntry> entries,
-  String placeholder = 'Type a command or search…',
-  String emptyLabel = 'No results',
+  Widget placeholder = const Text('Type a command or search…'),
+  String semanticLabel = 'Type a command or search…',
+  Widget empty = const Text('No results'),
   CoilMotion? motion,
 }) {
   final sheet =
@@ -42,7 +52,11 @@ Future<void> showCoilCommandMenu({
     motion: motion,
     builder: (context) => _CommandMenu(
       entries: entries,
-      search: CoilMenuSearch(hint: placeholder, emptyLabel: emptyLabel),
+      search: CoilMenuSearch(
+        placeholder: placeholder,
+        semanticLabel: semanticLabel,
+        empty: empty,
+      ),
       sheet: sheet,
       motion: motion,
     ),

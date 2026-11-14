@@ -39,10 +39,15 @@ Future<void> _pump(
 );
 
 const _plans = [
-  CoilOption(value: 0, label: 'Free'),
-  CoilOption(value: 1, label: 'Team'),
-  CoilOption(value: 2, label: 'Business', enabled: false),
-  CoilOption(value: 3, label: 'Enterprise'),
+  CoilOption(value: 0, label: Text('Free'), searchText: 'Free'),
+  CoilOption(value: 1, label: Text('Team'), searchText: 'Team'),
+  CoilOption(
+    value: 2,
+    label: Text('Business'),
+    searchText: 'Business',
+    enabled: false,
+  ),
+  CoilOption(value: 3, label: Text('Enterprise'), searchText: 'Enterprise'),
 ];
 
 class _Stateful<T> extends StatefulWidget {
@@ -357,7 +362,7 @@ void main() {
       await _pump(
         tester,
         const CoilSkeletonRegion(
-          label: 'Loading',
+          semanticLabel: 'Loading',
           child: SizedBox(width: 200, child: CoilSkeletonText()),
         ),
         reduceMotion: true,
@@ -547,7 +552,9 @@ void main() {
             child: CoilRadioGroup<int>(
               value: 0,
               onChanged: (_) {},
-              options: [CoilOption(value: 0, label: label)],
+              options: [
+                CoilOption(value: 0, label: Text(label), searchText: label),
+              ],
             ),
           ),
         );
@@ -737,9 +744,14 @@ void main() {
             values: values,
             onChanged: set,
             options: const [
-              CoilOption(value: 0, label: 'Bold'),
-              CoilOption(value: 1, label: 'Italic'),
-              CoilOption(value: 2, label: 'Underline', enabled: false),
+              CoilOption(value: 0, label: Text('Bold'), searchText: 'Bold'),
+              CoilOption(value: 1, label: Text('Italic'), searchText: 'Italic'),
+              CoilOption(
+                value: 2,
+                label: Text('Underline'),
+                searchText: 'Underline',
+                enabled: false,
+              ),
             ],
           ),
           Text('values:${(values.toList()..sort()).join(',')}'),
@@ -816,8 +828,12 @@ void main() {
               values: const {},
               onChanged: (_) {},
               options: const [
-                CoilOption(value: 0, label: 'Bold'),
-                CoilOption(value: 1, label: 'Italic'),
+                CoilOption(value: 0, label: Text('Bold'), searchText: 'Bold'),
+                CoilOption(
+                  value: 1,
+                  label: Text('Italic'),
+                  searchText: 'Italic',
+                ),
               ],
             ),
           ],

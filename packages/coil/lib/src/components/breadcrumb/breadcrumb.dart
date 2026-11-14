@@ -20,9 +20,9 @@ class CoilCrumb {
   /// Creates a crumb.
   const CoilCrumb({required this.label, this.onPressed, this.leading});
 
-  /// The page's name. Long names truncate in the trail; the "…" menu and
-  /// semantics always have the full name.
-  final String label;
+  /// The page's name, usually a [Text]. Long names truncate in the trail;
+  /// the "…" menu and screen readers get the full name.
+  final Widget label;
 
   /// Goes to the page. Null disables the crumb. The last crumb is the
   /// current page and ignores it.
@@ -63,24 +63,24 @@ final class CoilBreadcrumbTrack<T extends Object> extends Track<T> {
 class CoilBreadcrumbLabels {
   /// Creates the labels.
   const CoilBreadcrumbLabels({
-    this.navigation = 'Breadcrumb',
-    this.showHidden = 'Show hidden pages',
+    this.navigationLabel = 'Breadcrumb',
+    this.showHiddenLabel = 'Show hidden pages',
   });
 
   /// The name of the trail.
-  final String navigation;
+  final String navigationLabel;
 
   /// The name of the "…" button.
-  final String showHidden;
+  final String showHiddenLabel;
 
   @override
   bool operator ==(Object other) =>
       other is CoilBreadcrumbLabels &&
-      other.navigation == navigation &&
-      other.showHidden == showHidden;
+      other.navigationLabel == navigationLabel &&
+      other.showHiddenLabel == showHiddenLabel;
 
   @override
-  int get hashCode => Object.hash(navigation, showHidden);
+  int get hashCode => Object.hash(navigationLabel, showHiddenLabel);
 }
 
 /// A trail of links to the current page, which is the last crumb.
@@ -300,7 +300,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
       child: Semantics(
         container: true,
         role: SemanticsRole.navigation,
-        label: widget.labels.navigation,
+        label: widget.labels.navigationLabel,
         explicitChildNodes: true,
         child: CoilHoverRegion(
           axis: CoilHoverAxis.x,
@@ -325,8 +325,8 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
                     style,
                     CrumbLink(
                       index: widget.crumbs.length,
-                      label: '…',
-                      semanticLabel: widget.labels.showHidden,
+                      label: const Text('…'),
+                      semanticLabel: widget.labels.showHiddenLabel,
                       link: false,
                       focusNode: _ellipsisFocus,
                       onPressed: _openMenu,

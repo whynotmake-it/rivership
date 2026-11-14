@@ -11,9 +11,17 @@ Widget _opener(List<String> log) => Builder(
       onPressed: () => showCoilCommandMenu(
         context: context,
         entries: [
-          const CoilMenuLabel('Go to'),
-          CoilAction(label: 'Inbox', onPressed: () => log.add('inbox')),
-          CoilAction(label: 'Settings', onPressed: () => log.add('settings')),
+          const CoilMenuLabel(Text('Go to')),
+          CoilAction(
+            label: const Text('Inbox'),
+            searchText: 'Inbox',
+            onPressed: () => log.add('inbox'),
+          ),
+          CoilAction(
+            label: const Text('Settings'),
+            searchText: 'Settings',
+            onPressed: () => log.add('settings'),
+          ),
         ],
       ),
       child: const Text('Open'),

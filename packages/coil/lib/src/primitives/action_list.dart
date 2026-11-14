@@ -57,6 +57,7 @@ class CoilAction extends CoilMenuEntry {
   /// Creates an action.
   const CoilAction({
     required this.label,
+    this.searchText,
     this.leading,
     this.shortcut,
     this.onPressed,
@@ -65,8 +66,13 @@ class CoilAction extends CoilMenuEntry {
     this.selected = false,
   });
 
-  /// The row's text, also used for typeahead and semantics.
-  final String label;
+  /// What the row shows, usually a [Text]. The row styles it and screen
+  /// readers read it.
+  final Widget label;
+
+  /// The row as plain text: typeahead and a search field match it. Without
+  /// it, they skip the row.
+  final String? searchText;
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? leading;
@@ -95,10 +101,19 @@ class CoilAction extends CoilMenuEntry {
 /// place on touch.
 class CoilSubmenu extends CoilMenuEntry {
   /// Creates a submenu row.
-  const CoilSubmenu({required this.label, required this.entries, this.leading});
+  const CoilSubmenu({
+    required this.label,
+    required this.entries,
+    this.searchText,
+    this.leading,
+  });
 
-  /// The row's text, also the back row's in a touch submenu.
-  final String label;
+  /// What the row shows, usually a [Text]; also the back row's label in a
+  /// touch submenu.
+  final Widget label;
+
+  /// The row as plain text: typeahead and a search field match it.
+  final String? searchText;
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? leading;
@@ -119,17 +134,25 @@ class CoilSubmenu extends CoilMenuEntry {
   );
 }
 
-/// A search field over a [CoilActionList] that filters its rows by label.
+/// A search field over a [CoilActionList] that filters its rows by their
+/// `searchText`.
 @immutable
 class CoilMenuSearch {
   /// Describes the search field.
-  const CoilMenuSearch({this.hint = 'Search', this.emptyLabel = 'No results'});
+  const CoilMenuSearch({
+    this.placeholder = const Text('Search'),
+    this.semanticLabel = 'Search',
+    this.empty = const Text('No results'),
+  });
 
-  /// The field's placeholder, also its name for screen readers.
-  final String hint;
+  /// The field's placeholder, usually a [Text].
+  final Widget placeholder;
 
-  /// Shown when no row matches.
-  final String emptyLabel;
+  /// The field's name for screen readers.
+  final String semanticLabel;
+
+  /// Shown when no row matches, usually a [Text].
+  final Widget empty;
 }
 
 /// A heading over a group of rows.
@@ -137,8 +160,8 @@ class CoilMenuLabel extends CoilMenuEntry {
   /// Creates a heading.
   const CoilMenuLabel(this.label);
 
-  /// The heading's text.
-  final String label;
+  /// The heading, usually a [Text], styled as a muted caption.
+  final Widget label;
 }
 
 /// A hairline between groups of rows.
@@ -151,8 +174,8 @@ class CoilMenuSeparator extends CoilMenuEntry {
 ///
 /// A hovering pointer lights rows with a gliding highlight. The arrow keys,
 /// Home and End move between enabled rows, typing jumps to a row by its
-/// label, and Enter or Space picks. Escape and Tab dismiss. Opened from the
-/// keyboard, the list starts on the first row with a focus ring.
+/// `searchText`, and Enter or Space picks. Escape and Tab dismiss. Opened
+/// from the keyboard, the list starts on the first row with a focus ring.
 ///
 /// Picking an action calls [onClose] with [CoilPopupCloseReason.selected]
 /// and then runs it. Picking a checkable row runs it first and closes after
@@ -293,7 +316,7 @@ class _CoilActionListState extends State<CoilActionList>
         case final CoilMenuLabel label:
           heading = label;
         case CoilAction() || CoilSubmenu()
-            when _labelOf(entry).toLowerCase().contains(query):
+            when _searchTextOf(entry)?.toLowerCase().contains(query) ?? false:
           if (gap) shown.add(const CoilMenuSeparator());
           if (heading != null) shown.add(heading);
           shown.add(entry);
@@ -551,11 +574,12 @@ class _CoilActionListState extends State<CoilActionList>
     if (i != null && _items[i] is CoilSubmenu) _pick(i);
   }
 
-  /// The typeahead text of [entry]; headings and separators match nothing.
-  static String _labelOf(CoilMenuEntry? entry) => switch (entry) {
-    final CoilAction action => action.label,
-    final CoilSubmenu sub => sub.label,
-    _ => '',
+  /// The search text of [entry]; headings, separators and rows without
+  /// one match nothing.
+  static String? _searchTextOf(CoilMenuEntry? entry) => switch (entry) {
+    final CoilAction action => action.searchText,
+    final CoilSubmenu sub => sub.searchText,
+    _ => null,
   };
 
   void _pickActive() {
@@ -783,7 +807,7 @@ class _CoilActionListState extends State<CoilActionList>
           const _Separator(inset: 0, padding: EdgeInsets.zero),
           Flexible(
             child: items.isEmpty
-                ? _Empty(label: search.emptyLabel, metrics: metrics)
+                ? _Empty(label: search.empty, metrics: metrics)
                 : list,
           ),
         ],
@@ -794,7 +818,7 @@ class _CoilActionListState extends State<CoilActionList>
       child: ListenableBuilder(
         listenable: _active,
         builder: (context, child) => CoilTypeahead(
-          labels: [for (final entry in items) _labelOf(entry)],
+          searchTexts: [for (final entry in items) _searchTextOf(entry)],
           current: _active.index,
           isEnabled: _enabled,
           onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
@@ -812,6 +836,7 @@ class _CoilActionListState extends State<CoilActionList>
   /// A submenu's row as an action that does nothing itself.
   static CoilAction _asAction(CoilSubmenu sub) => CoilAction(
     label: sub.label,
+    searchText: sub.searchText,
     leading: sub.leading,
     onPressed: sub.enabled ? () {} : null,
   );
@@ -884,8 +909,7 @@ class _RowState extends State<_Row> {
       checked: action.mark == CoilActionMark.none ? null : action.selected,
       expanded: widget.expanded,
       enabled: enabled,
-      label: widget.action.label,
-      excludeSemantics: true,
+      container: true,
       onTap: widget.onPressed,
       child: Opacity(
         opacity: enabled ? 1 : widget.metrics.disabledRowOpacity,
@@ -1026,18 +1050,22 @@ class _RowContent extends StatelessWidget {
               child: Row(
                 spacing: metrics.gap,
                 children: [
-                  ?action.leading,
-                  Expanded(child: Text(action.label)),
+                  // The row reads its label only.
+                  if (action.leading case final leading?)
+                    ExcludeSemantics(child: leading),
+                  Expanded(child: action.label),
                   if (shortcut != null)
-                    DefaultTextStyle(
-                      style: theme.typography.style(
-                        metrics.caption,
-                        color: theme.colors.mutedForeground,
+                    ExcludeSemantics(
+                      child: DefaultTextStyle(
+                        style: theme.typography.style(
+                          metrics.caption,
+                          color: theme.colors.mutedForeground,
+                        ),
+                        child: shortcut,
                       ),
-                      child: shortcut,
                     ),
-                  ?mark,
-                  ?trailing,
+                  if (mark != null) ExcludeSemantics(child: mark),
+                  if (trailing != null) ExcludeSemantics(child: trailing),
                 ],
               ),
             ),
@@ -1052,7 +1080,7 @@ class _RowContent extends StatelessWidget {
 class _GroupLabel extends StatelessWidget {
   const _GroupLabel({required this.label, required this.metrics, super.key});
 
-  final String label;
+  final Widget label;
   final CoilMetrics metrics;
 
   @override
@@ -1067,14 +1095,14 @@ class _GroupLabel extends StatelessWidget {
           metrics.itemPaddingX,
           6,
         ),
-        child: Text(
-          label,
+        child: DefaultTextStyle(
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.typography.style(
             metrics.caption,
             color: theme.colors.mutedForeground,
           ),
+          child: label,
         ),
       ),
     );
@@ -1135,7 +1163,7 @@ class _SearchField extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     return Semantics(
-      label: search.hint,
+      label: search.semanticLabel,
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: metrics.controlHeight),
         child: Padding(
@@ -1148,7 +1176,7 @@ class _SearchField extends StatelessWidget {
             child: CoilTextFieldCore(
               controller: controller,
               autofocus: true,
-              placeholder: Text(search.hint),
+              placeholder: search.placeholder,
               placeholderColor: colors.mutedForeground,
               style: theme.typography.style(
                 metrics.body,
@@ -1171,7 +1199,7 @@ class _SearchField extends StatelessWidget {
 class _Empty extends StatelessWidget {
   const _Empty({required this.label, required this.metrics});
 
-  final String label;
+  final Widget label;
   final CoilMetrics metrics;
 
   @override
@@ -1181,13 +1209,13 @@ class _Empty extends StatelessWidget {
       liveRegion: true,
       child: Padding(
         padding: EdgeInsets.all(metrics.popupInset + metrics.itemPaddingX),
-        child: Text(
-          label,
+        child: DefaultTextStyle(
           textAlign: TextAlign.center,
           style: theme.typography.style(
             metrics.body,
             color: theme.colors.mutedForeground,
           ),
+          child: label,
         ),
       ),
     );

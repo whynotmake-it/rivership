@@ -253,13 +253,13 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
     }
 
     final labels = widget.labels;
-    String position(int index) => labels.position(index + 1, widget.count);
+    String position(int index) => labels.positionLabel(index + 1, widget.count);
 
     return Semantics(
       container: true,
       slider: true,
       enabled: enabled,
-      label: labels.slides,
+      label: labels.slidesLabel,
       value: position(widget.value),
       increasedValue: widget.value < widget.count - 1
           ? position(widget.value + 1)

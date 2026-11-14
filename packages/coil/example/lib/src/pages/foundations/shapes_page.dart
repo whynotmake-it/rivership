@@ -60,7 +60,11 @@ class _ShapesPageState extends State<ShapesPage> {
                 onChanged: (value) => setState(() => _shape = value),
                 options: [
                   for (final (name, shape) in _shapes)
-                    CoilOption(value: shape, label: name),
+                    CoilOption(
+                      value: shape,
+                      label: Text(name),
+                      searchText: name,
+                    ),
                 ],
               ),
             ),
@@ -86,8 +90,8 @@ class _ShapesPageState extends State<ShapesPage> {
                     value: _framework,
                     onChanged: (value) => setState(() => _framework = value),
                     tabs: const [
-                      CoilTab(value: 'flutter', label: 'Flutter'),
-                      CoilTab(value: 'web', label: 'Web'),
+                      CoilTab(value: 'flutter', label: Text('Flutter')),
+                      CoilTab(value: 'web', label: Text('Web')),
                     ],
                   ),
                 ],

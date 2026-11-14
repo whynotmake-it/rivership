@@ -153,10 +153,10 @@ class _HeaderCell extends StatelessWidget {
       role: SemanticsRole.columnHeader,
       button: onSort != null,
       enabled: onSort == null ? null : true,
-      label: column.child == null ? null : column.label,
+      label: column.semanticLabel,
       value: switch (column.sort) {
-        CoilSortDirection.ascending => labels.sortedAscending,
-        CoilSortDirection.descending => labels.sortedDescending,
+        CoilSortDirection.ascending => labels.sortedAscendingLabel,
+        CoilSortDirection.descending => labels.sortedDescendingLabel,
         null => null,
       },
       child: onSort == null
@@ -219,7 +219,7 @@ class _HeaderCell extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: style.sortIndicatorGap!,
                   children: [
-                    Flexible(child: column.child ?? Text(column.label)),
+                    Flexible(child: column.label),
                     if (sort != null)
                       column.sortIndicator ??
                           CoilDrawnGlyph(switch (sort) {

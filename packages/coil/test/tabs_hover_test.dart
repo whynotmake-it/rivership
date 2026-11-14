@@ -19,7 +19,7 @@ List<CoilTab<int>> _tabs({bool icons = false}) => [
   for (final (i, label) in _labels.indexed)
     CoilTab(
       value: i,
-      label: label,
+      label: Text(label),
       icon: icons ? TestIcon(_icons[i]) : null,
     ),
 ];

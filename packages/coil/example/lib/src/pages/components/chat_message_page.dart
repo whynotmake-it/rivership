@@ -31,7 +31,8 @@ class ChatMessagePage extends StatelessWidget {
               sender: CoilChatSender.assistant,
               actions: [
                 CoilChatMessageAction(
-                  label: 'Copy',
+                  label: const Text('Copy'),
+                  semanticLabel: 'Copy',
                   icon: const CoilDrawnGlyph(CoilGlyph.check),
                   onPressed: () {},
                 ),

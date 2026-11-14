@@ -55,9 +55,9 @@ class _TabsPageState extends State<TabsPage> {
               value: _range,
               onChanged: (value) => setState(() => _range = value),
               tabs: const [
-                CoilTab(value: 'day', label: 'Day'),
-                CoilTab(value: 'week', label: 'Week'),
-                CoilTab(value: 'month', label: 'Month'),
+                CoilTab(value: 'day', label: Text('Day')),
+                CoilTab(value: 'week', label: Text('Week')),
+                CoilTab(value: 'month', label: Text('Month')),
               ],
             ),
             RoleText(
@@ -79,7 +79,7 @@ class _TabsPageState extends State<TabsPage> {
                 for (final view in _View.values.take(3))
                   CoilTab(
                     value: view,
-                    label: view.label,
+                    label: Text(view.label),
                     icon: CatalogIcon(view.glyph),
                   ),
               ],
@@ -102,7 +102,7 @@ class _TabsPageState extends State<TabsPage> {
                 for (final view in _View.values)
                   CoilTab(
                     value: view,
-                    label: view.label,
+                    label: Text(view.label),
                     icon: CatalogIcon(view.glyph),
                   ),
               ],
@@ -120,7 +120,7 @@ class _TabsPageState extends State<TabsPage> {
           value: _month,
           onChanged: (value) => setState(() => _month = value),
           tabs: [
-            for (final m in _months) CoilTab(value: m, label: m),
+            for (final m in _months) CoilTab(value: m, label: Text(m)),
           ],
         ),
       ),
@@ -131,9 +131,9 @@ class _TabsPageState extends State<TabsPage> {
           value: _range,
           onChanged: (value) => setState(() => _range = value),
           tabs: const [
-            CoilTab(value: 'day', label: 'Day'),
-            CoilTab(value: 'week', label: 'Week'),
-            CoilTab(value: 'month', label: 'Month'),
+            CoilTab(value: 'day', label: Text('Day')),
+            CoilTab(value: 'week', label: Text('Week')),
+            CoilTab(value: 'month', label: Text('Month')),
           ],
         ),
       ),

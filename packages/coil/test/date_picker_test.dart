@@ -46,7 +46,10 @@ void main() {
     final now = DateTime.now();
     expect(
       find.text(
-        const CoilCalendarLabels().date(DateTime(now.year, now.month, 15)),
+        const CoilCalendarLabels().dateLabel(
+          DateTime(now.year, now.month, 15),
+          withTime: false,
+        ),
       ),
       findsOneWidget,
     );

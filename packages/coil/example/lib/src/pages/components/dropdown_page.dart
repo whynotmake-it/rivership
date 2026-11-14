@@ -23,19 +23,22 @@ class _DropdownPageState extends State<DropdownPage> {
   var _sort = 'Name';
 
   List<CoilMenuEntry> get _entries => [
-    const CoilMenuLabel('View'),
+    const CoilMenuLabel(Text('View')),
     CoilAction(
-      label: 'Show grid',
+      label: const Text('Show grid'),
+      searchText: 'Show grid',
       mark: CoilActionMark.check,
       selected: _grid,
       onPressed: () => setState(() => _grid = !_grid),
     ),
     CoilSubmenu(
-      label: 'Sort by',
+      label: const Text('Sort by'),
+      searchText: 'Sort by',
       entries: [
         for (final key in ['Name', 'Date', 'Size'])
           CoilAction(
-            label: key,
+            label: Text(key),
+            searchText: key,
             mark: CoilActionMark.radio,
             selected: _sort == key,
             onPressed: () => setState(() => _sort = key),
@@ -43,9 +46,15 @@ class _DropdownPageState extends State<DropdownPage> {
       ],
     ),
     const CoilMenuSeparator(),
-    CoilAction(label: 'Rename', shortcut: const Text('⌘R'), onPressed: () {}),
     CoilAction(
-      label: 'Delete',
+      label: const Text('Rename'),
+      searchText: 'Rename',
+      shortcut: const Text('⌘R'),
+      onPressed: () {},
+    ),
+    CoilAction(
+      label: const Text('Delete'),
+      searchText: 'Delete',
       tone: CoilActionTone.destructive,
       onPressed: () {},
     ),
@@ -71,7 +80,10 @@ class _DropdownPageState extends State<DropdownPage> {
               ),
             ),
             CoilDropdown(
-              search: const CoilMenuSearch(hint: 'Filter actions'),
+              search: const CoilMenuSearch(
+                placeholder: Text('Filter actions'),
+                semanticLabel: 'Filter actions',
+              ),
               entries: _entries,
               builder: (context, menu) => CoilButton(
                 variant: CoilButtonVariant.secondary,

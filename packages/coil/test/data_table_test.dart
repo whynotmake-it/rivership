@@ -66,12 +66,12 @@ void main() {
             controller: controller,
             columns: [
               CoilDataColumn(
-                label: 'Name',
+                label: const Text('Name'),
                 cellBuilder: (context, p) => Text(p.name),
                 compare: (a, b) => a.name.compareTo(b.name),
               ),
               CoilDataColumn(
-                label: 'Age',
+                label: const Text('Age'),
                 cellBuilder: (context, p) => Text('${p.age}'),
               ),
             ],

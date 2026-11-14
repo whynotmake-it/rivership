@@ -79,7 +79,7 @@ class AccordionSection<T> extends StatelessWidget {
     final panelId = 'CoilAccordion.panel.${identityHashCode(focusNode)}';
 
     Widget trigger = CoilDisclosureTrigger(
-      label: Text(item.label),
+      label: item.label,
       leading: item.leading,
       indicator: indicator,
       expanded: open,
@@ -152,7 +152,7 @@ class AccordionSection<T> extends StatelessWidget {
             container: true,
             explicitChildNodes: true,
             role: SemanticsRole.region,
-            label: item.label,
+            label: item.semanticLabel,
             identifier: panelId,
             child: Padding(
               padding: style.panelPadding!,

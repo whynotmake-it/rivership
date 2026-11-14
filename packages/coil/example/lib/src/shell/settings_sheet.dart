@@ -73,17 +73,20 @@ class SettingsPanel extends StatelessWidget {
                   options: const [
                     CoilOption(
                       value: CatalogThemeMode.system,
-                      label: 'System',
+                      label: Text('System'),
+                      searchText: 'System',
                       icon: CatalogIcon(Glyph.monitor),
                     ),
                     CoilOption(
                       value: CatalogThemeMode.light,
-                      label: 'Light',
+                      label: Text('Light'),
+                      searchText: 'Light',
                       icon: CatalogIcon(Glyph.sun),
                     ),
                     CoilOption(
                       value: CatalogThemeMode.dark,
-                      label: 'Dark',
+                      label: Text('Dark'),
+                      searchText: 'Dark',
                       icon: CatalogIcon(Glyph.moon),
                     ),
                   ],
@@ -99,7 +102,8 @@ class SettingsPanel extends StatelessWidget {
                     for (final brand in CatalogBrand.values)
                       CoilOption(
                         value: brand,
-                        label: brand.label,
+                        label: Text(brand.label),
+                        searchText: brand.label,
                         icon: _Swatch(brand.color),
                       ),
                   ],
@@ -133,7 +137,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.font = value,
                   options: [
                     for (final font in CatalogFont.values)
-                      CoilOption(value: font, label: font.label),
+                      CoilOption(
+                        value: font,
+                        label: Text(font.label),
+                        searchText: font.label,
+                      ),
                   ],
                 ),
               ),
@@ -145,7 +153,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.shape = value,
                   options: [
                     for (final shape in CatalogShape.values)
-                      CoilOption(value: shape, label: shape.label),
+                      CoilOption(
+                        value: shape,
+                        label: Text(shape.label),
+                        searchText: shape.label,
+                      ),
                   ],
                 ),
               ),
@@ -169,7 +181,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.spacing = value,
                   options: [
                     for (final spacing in CatalogSpacing.values)
-                      CoilOption(value: spacing, label: spacing.label),
+                      CoilOption(
+                        value: spacing,
+                        label: Text(spacing.label),
+                        searchText: spacing.label,
+                      ),
                   ],
                 ),
               ),
@@ -192,7 +208,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.motion = value,
                   options: [
                     for (final motion in CatalogMotion.values)
-                      CoilOption(value: motion, label: motion.label),
+                      CoilOption(
+                        value: motion,
+                        label: Text(motion.label),
+                        searchText: motion.label,
+                      ),
                   ],
                 ),
               ),
@@ -227,7 +247,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.tier = value,
                   options: [
                     for (final tier in CatalogTier.values)
-                      CoilOption(value: tier, label: tier.label),
+                      CoilOption(
+                        value: tier,
+                        label: Text(tier.label),
+                        searchText: tier.label,
+                      ),
                   ],
                 ),
               ),
@@ -239,7 +263,11 @@ class SettingsPanel extends StatelessWidget {
                   onChanged: (value) => settings.textScale = value,
                   options: [
                     for (final scale in CatalogTextScale.values)
-                      CoilOption(value: scale, label: scale.label),
+                      CoilOption(
+                        value: scale,
+                        label: Text(scale.label),
+                        searchText: scale.label,
+                      ),
                   ],
                 ),
               ),

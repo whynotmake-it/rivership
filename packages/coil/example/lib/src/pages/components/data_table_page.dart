@@ -54,16 +54,16 @@ class _DataTablePageState extends State<DataTablePage> {
           controller: _controller,
           columns: [
             CoilDataColumn(
-              label: 'Name',
+              label: const Text('Name'),
               cellBuilder: (context, m) => Text(m.name),
               compare: (a, b) => a.name.compareTo(b.name),
             ),
             CoilDataColumn(
-              label: 'Role',
+              label: const Text('Role'),
               cellBuilder: (context, m) => Text(m.role),
             ),
             CoilDataColumn(
-              label: 'Commits',
+              label: const Text('Commits'),
               width: 112,
               alignment: AlignmentDirectional.centerEnd,
               cellBuilder: (context, m) => Text('${m.commits}'),

@@ -6,17 +6,17 @@ import 'package:flutter/widgets.dart';
 /// Type-to-jump for lists and menus.
 ///
 /// Printable keys typed within [timeout] of each other build one query,
-/// matched case-insensitively against the start of each enabled label. A
-/// query of one repeated letter ("sss") cycles through the items starting
-/// with that letter. Space is part of a query once one has started ("New
-/// York"); otherwise it is left to the item (to activate it).
+/// matched case-insensitively against the start of each enabled item's
+/// search text. A query of one repeated letter ("sss") cycles through the
+/// items starting with that letter. Space is part of a query once one has
+/// started ("New York"); otherwise it is left to the item (to activate it).
 ///
 /// Only hardware key events are read: text typed through an IME goes to a
 /// text field, never here.
 class CoilTypeahead extends StatefulWidget {
   /// Creates a typeahead.
   const CoilTypeahead({
-    required this.labels,
+    required this.searchTexts,
     required this.current,
     required this.onMatch,
     required this.child,
@@ -25,8 +25,8 @@ class CoilTypeahead extends StatefulWidget {
     this.timeout = const Duration(seconds: 1),
   });
 
-  /// The text of each item, in order.
-  final List<String> labels;
+  /// The plain text of each item, in order. Null never matches.
+  final List<String?> searchTexts;
 
   /// The item the search starts after (the active item), or null.
   final int? current;
@@ -92,7 +92,7 @@ class _CoilTypeaheadState extends State<CoilTypeahead> {
     _query += character.toLowerCase();
     final repeated = _query.split('').every((c) => c == _query[0]);
     final query = repeated ? _query[0] : _query;
-    final count = widget.labels.length;
+    final count = widget.searchTexts.length;
     if (count == 0) return;
     final start = _lastMatch ?? widget.current ?? -1;
     // A repeated letter moves on; a longer query may still match the item
@@ -101,7 +101,7 @@ class _CoilTypeaheadState extends State<CoilTypeahead> {
     for (var n = 0; n < count; n++) {
       final i = (start + offset + n + count) % count;
       if (!(widget.isEnabled?.call(i) ?? true)) continue;
-      if (widget.labels[i].toLowerCase().startsWith(query)) {
+      if (widget.searchTexts[i]?.toLowerCase().startsWith(query) ?? false) {
         _lastMatch = i;
         widget.onMatch(i);
         return;

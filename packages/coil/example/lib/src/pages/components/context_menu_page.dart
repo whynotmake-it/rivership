@@ -27,11 +27,20 @@ class ContextMenuPage extends StatelessWidget {
           title: 'Area',
           child: CoilContextMenu(
             entries: [
-              CoilAction(label: 'Copy', onPressed: () {}),
-              CoilAction(label: 'Paste', onPressed: () {}),
+              CoilAction(
+                label: const Text('Copy'),
+                searchText: 'Copy',
+                onPressed: () {},
+              ),
+              CoilAction(
+                label: const Text('Paste'),
+                searchText: 'Paste',
+                onPressed: () {},
+              ),
               const CoilMenuSeparator(),
               CoilAction(
-                label: 'Delete',
+                label: const Text('Delete'),
+                searchText: 'Delete',
                 tone: CoilActionTone.destructive,
                 onPressed: () {},
               ),

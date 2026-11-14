@@ -28,19 +28,19 @@ List<CoilTableColumn<_Person>> _columns({
   double minWidth = 96,
 }) => [
   CoilTableColumn(
-    label: 'Name',
+    label: const Text('Name'),
     sort: sort,
     onSort: onSort,
     minWidth: minWidth,
     cellBuilder: (context, p) => Text(p.name),
   ),
   CoilTableColumn(
-    label: 'Role',
+    label: const Text('Role'),
     minWidth: minWidth,
     cellBuilder: (context, p) => Text(p.role),
   ),
   CoilTableColumn(
-    label: 'Commits',
+    label: const Text('Commits'),
     width: 104,
     alignment: AlignmentDirectional.centerEnd,
     cellBuilder: (context, p) => Text('${p.commits}'),
@@ -179,8 +179,8 @@ void main() {
     'table/header': (ink) => CoilTable<int>(
       columns: [
         CoilTableColumn(
-          label: 'HEH',
-          child: InkLabel(ink, const Text('HEH')),
+          label: InkLabel(ink, const Text('HEH')),
+          semanticLabel: 'HEH',
           cellBuilder: (context, row) => Text('$row'),
         ),
       ],

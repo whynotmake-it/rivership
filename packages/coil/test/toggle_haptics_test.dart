@@ -5,8 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _options = [
-  CoilOption(value: 'a', label: 'Alpha'),
-  CoilOption(value: 'b', label: 'Beta'),
+  CoilOption(value: 'a', label: Text('Alpha'), searchText: 'Alpha'),
+  CoilOption(value: 'b', label: Text('Beta'), searchText: 'Beta'),
 ];
 
 /// Each toggle-type control, built so that tapping "Beta" (or the control

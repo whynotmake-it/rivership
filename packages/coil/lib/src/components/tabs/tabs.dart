@@ -77,22 +77,22 @@ class CoilTab<T> {
     required this.value,
     required this.label,
     this.icon,
-    this.child,
+    this.semanticLabel,
   });
 
   /// What selecting this tab reports.
   final T value;
 
-  /// The tab's text: shown unless [child] is set, and read by screen
-  /// readers.
-  final String label;
+  /// The tab's label, usually a [Text]. It turns semibold when selected; a
+  /// hidden semibold copy reserves the width so neighbors never shift.
+  final Widget label;
 
   /// An optional icon before the label.
   final Widget? icon;
 
-  /// Replaces the `Text(label)`. It turns semibold when selected; a hidden
-  /// semibold copy reserves the width so neighbors never shift.
-  final Widget? child;
+  /// Names the tab for screen readers. Set it with
+  /// [CoilTabLabels.selected], where an unselected tab shows only its icon.
+  final String? semanticLabel;
 }
 
 /// A row of tabs with a selected pill that glides between them.
@@ -673,7 +673,7 @@ class _TabButton extends StatelessWidget {
     return Semantics(
       role: SemanticsRole.tab,
       selected: selected,
-      label: tab.child == null ? null : tab.label,
+      label: tab.semanticLabel,
       child: CoilInteraction(
         onPressed: onPressed,
         focusNode: focusNode,
@@ -717,7 +717,7 @@ class _TabButton extends StatelessWidget {
                             style: semibold,
                             maxLines: 1,
                             softWrap: false,
-                            child: tab.child ?? Text(tab.label),
+                            child: tab.label,
                           ),
                         ),
                       ),
@@ -725,7 +725,7 @@ class _TabButton extends StatelessWidget {
                         style: textStyle,
                         maxLines: 1,
                         softWrap: false,
-                        child: tab.child ?? Text(tab.label),
+                        child: tab.label,
                       ),
                     ],
                   );

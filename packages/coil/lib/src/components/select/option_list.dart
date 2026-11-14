@@ -319,7 +319,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     );
     if (widget.activeItem != null) return list;
     return CoilTypeahead(
-      labels: [for (final o in widget.options) o.label],
+      searchTexts: [for (final o in widget.options) o.searchText],
       current: _active.index,
       isEnabled: _enabled,
       onMatch: (i) => _done ? null : _active.activate(i, via: .keyboard),
@@ -424,8 +424,8 @@ class _OptionRowState extends State<_OptionRow> {
       selected: checked,
       enabled: option.enabled,
       button: true,
-      label: option.label,
-      excludeSemantics: true,
+      container: true,
+      label: option.semanticLabel,
       onTap: onPressed,
       child: Opacity(
         opacity: option.enabled ? 1 : metrics.disabledRowOpacity,
@@ -494,14 +494,23 @@ class _OptionRowState extends State<_OptionRow> {
                       child: Row(
                         children: [
                           if (option.icon case final icon?) ...[
-                            icon,
+                            ExcludeSemantics(child: icon),
                             SizedBox(width: metrics.gap),
                           ],
-                          Expanded(child: option.child ?? Text(option.label)),
+                          // The row reads its label, unless a semantic
+                          // label replaces it.
+                          Expanded(
+                            child: ExcludeSemantics(
+                              excluding: option.semanticLabel != null,
+                              child: option.label,
+                            ),
+                          ),
                           SizedBox(width: metrics.gap),
                           IconTheme.merge(
                             data: IconThemeData(color: colors.foreground),
-                            child: _Check(checked: checked, glyph: checkmark),
+                            child: ExcludeSemantics(
+                              child: _Check(checked: checked, glyph: checkmark),
+                            ),
                           ),
                         ],
                       ),

@@ -16,8 +16,8 @@ import 'package:flutter/widgets.dart';
 /// ```dart
 /// CoilContextMenu(
 ///   entries: [
-///     CoilAction(label: 'Copy', onPressed: copy),
-///     CoilAction(label: 'Paste', onPressed: paste),
+///     CoilAction(label: const Text('Copy'), onPressed: copy),
+///     CoilAction(label: const Text('Paste'), onPressed: paste),
 ///   ],
 ///   child: const FileTile(),
 /// )

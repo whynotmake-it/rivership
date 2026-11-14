@@ -11,15 +11,32 @@ Widget _menu(List<String> log) => Align(
   alignment: const Alignment(-0.8, -0.8),
   child: CoilDropdown(
     entries: [
-      CoilAction(label: 'Open', onPressed: () => log.add('open')),
+      CoilAction(
+        label: const Text('Open'),
+        searchText: 'Open',
+        onPressed: () => log.add('open'),
+      ),
       CoilSubmenu(
-        label: 'Share',
+        label: const Text('Share'),
+        searchText: 'Share',
         entries: [
-          CoilAction(label: 'Email', onPressed: () => log.add('email')),
-          CoilAction(label: 'Message', onPressed: () => log.add('message')),
+          CoilAction(
+            label: const Text('Email'),
+            searchText: 'Email',
+            onPressed: () => log.add('email'),
+          ),
+          CoilAction(
+            label: const Text('Message'),
+            searchText: 'Message',
+            onPressed: () => log.add('message'),
+          ),
         ],
       ),
-      CoilAction(label: 'Delete', onPressed: () => log.add('delete')),
+      CoilAction(
+        label: const Text('Delete'),
+        searchText: 'Delete',
+        onPressed: () => log.add('delete'),
+      ),
     ],
     builder: (context, menu) =>
         CoilButton(onPressed: menu.open, child: const Text('Actions')),

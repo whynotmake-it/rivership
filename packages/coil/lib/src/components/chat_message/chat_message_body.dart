@@ -35,7 +35,7 @@ class ChatMessageBody extends StatefulWidget {
   final List<Widget> attachments;
 
   /// The formatted time.
-  final String? time;
+  final Widget? time;
 
   /// The actions.
   final List<CoilChatMessageAction> actions;
@@ -148,7 +148,7 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
                   CoilButton.icon(
                     onPressed: action.onPressed,
                     icon: action.icon,
-                    semanticLabel: action.label,
+                    semanticLabel: action.semanticLabel,
                     variant: CoilButtonVariant.ghost,
                     size: CoilSize.compact,
                   ),

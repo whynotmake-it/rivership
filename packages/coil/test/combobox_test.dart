@@ -6,9 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'src/select_harness.dart';
 
 const _fruit = [
-  CoilOption(value: 'apple', label: 'Apple'),
-  CoilOption(value: 'apricot', label: 'Apricot'),
-  CoilOption(value: 'banana', label: 'Banana'),
+  CoilOption(value: 'apple', label: Text('Apple'), searchText: 'Apple'),
+  CoilOption(value: 'apricot', label: Text('Apricot'), searchText: 'Apricot'),
+  CoilOption(value: 'banana', label: Text('Banana'), searchText: 'Banana'),
 ];
 
 class _Demo extends StatefulWidget {

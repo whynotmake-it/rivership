@@ -11,22 +11,29 @@ class CoilOption<T> {
     required this.value,
     required this.label,
     this.icon,
-    this.child,
+    this.searchText,
+    this.semanticLabel,
     this.enabled = true,
   });
 
   /// What picking this choice reports.
   final T value;
 
-  /// The text of the choice: shown unless [child] is set, matched by
-  /// typeahead, and read by screen readers.
-  final String label;
+  /// What the row shows, usually a [Text]. The row styles it with
+  /// [DefaultTextStyle] and [IconTheme], and screen readers read it.
+  final Widget label;
 
   /// A leading glyph, sized and colored by the row through [IconTheme].
   final Widget? icon;
 
-  /// Replaces the `Text(label)` in the row.
-  final Widget? child;
+  /// The choice as plain text, for what needs a string: typeahead and
+  /// filtering match it, and a select announces it as its value. Without
+  /// it, typeahead and filters skip the choice.
+  final String? searchText;
+
+  /// Names the choice for screen readers when [label] can't, such as an
+  /// icon-only toggle.
+  final String? semanticLabel;
 
   /// Whether the choice can be picked. Disabled rows are skipped by the
   /// highlight, the arrow keys and typeahead.

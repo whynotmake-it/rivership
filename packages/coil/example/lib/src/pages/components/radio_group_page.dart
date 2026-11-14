@@ -40,12 +40,21 @@ class _RadioGroupPageState extends State<RadioGroupPage> {
               value: _shipping,
               onChanged: (value) => setState(() => _shipping = value),
               options: const [
-                CoilOption(value: 'standard', label: 'Standard, 5–7 days'),
-                CoilOption(value: 'express', label: 'Express, 2 days'),
-                CoilOption(value: 'overnight', label: 'Overnight'),
+                CoilOption(
+                  value: 'standard',
+                  label: Text('Standard, 5–7 days'),
+                ),
+                CoilOption(
+                  value: 'express',
+                  label: Text('Express, 2 days'),
+                ),
+                CoilOption(
+                  value: 'overnight',
+                  label: Text('Overnight'),
+                ),
                 CoilOption(
                   value: 'pickup',
-                  label: 'Store pickup (unavailable)',
+                  label: Text('Store pickup (unavailable)'),
                   enabled: false,
                 ),
               ],
@@ -60,9 +69,9 @@ class _RadioGroupPageState extends State<RadioGroupPage> {
           value: _size,
           onChanged: (value) => setState(() => _size = value),
           options: const [
-            CoilOption(value: 's', label: 'Small'),
-            CoilOption(value: 'm', label: 'Medium'),
-            CoilOption(value: 'l', label: 'Large'),
+            CoilOption(value: 's', label: Text('Small')),
+            CoilOption(value: 'm', label: Text('Medium')),
+            CoilOption(value: 'l', label: Text('Large')),
           ],
         ),
       ),
@@ -74,8 +83,14 @@ class _RadioGroupPageState extends State<RadioGroupPage> {
           value: _density,
           onChanged: (value) => setState(() => _density = value),
           options: const [
-            CoilOption(value: 'comfortable', label: 'Comfortable'),
-            CoilOption(value: 'compact', label: 'Compact'),
+            CoilOption(
+              value: 'comfortable',
+              label: Text('Comfortable'),
+            ),
+            CoilOption(
+              value: 'compact',
+              label: Text('Compact'),
+            ),
           ],
         ),
       ),

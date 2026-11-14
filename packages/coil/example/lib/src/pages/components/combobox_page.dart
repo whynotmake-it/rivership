@@ -31,7 +31,8 @@ class _ComboboxPageState extends State<ComboboxPage> {
   @override
   Widget build(BuildContext context) {
     final options = [
-      for (final c in _countries) CoilOption(value: c, label: c),
+      for (final c in _countries)
+        CoilOption(value: c, label: Text(c), searchText: c),
     ];
     return CatalogPage(
       title: 'Combobox',

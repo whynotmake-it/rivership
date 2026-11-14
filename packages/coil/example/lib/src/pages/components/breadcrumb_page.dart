@@ -24,8 +24,8 @@ class BreadcrumbPage extends StatelessWidget {
         child: CoilBreadcrumb(
           crumbs: [
             for (final label in ['Home', 'Projects', 'Coil', 'Design'])
-              CoilCrumb(label: label, onPressed: () {}),
-            const CoilCrumb(label: 'Tokens'),
+              CoilCrumb(label: Text(label), onPressed: () {}),
+            const CoilCrumb(label: Text('Tokens')),
           ],
         ),
       ),

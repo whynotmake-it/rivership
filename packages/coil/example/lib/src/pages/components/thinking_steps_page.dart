@@ -29,7 +29,7 @@ class _ThinkingStepsPageState extends State<ThinkingStepsPage> {
       const DemoSection(
         title: 'Indicator',
         child: CoilThinkingIndicator(
-          words: ['Thinking', 'Searching', 'Reading'],
+          words: [Text('Thinking'), Text('Searching'), Text('Reading')],
         ),
       ),
       DemoSection(
@@ -39,12 +39,12 @@ class _ThinkingStepsPageState extends State<ThinkingStepsPage> {
           expanded: _expanded,
           onChanged: (v) => setState(() => _expanded = v),
           steps: const [
-            CoilThinkingStep(title: 'Read the spec'),
+            CoilThinkingStep(title: Text('Read the spec')),
             CoilThinkingStep(
-              title: 'Compared three options',
-              detail: 'Kept the one with the fewest moving parts.',
+              title: Text('Compared three options'),
+              detail: Text('Kept the one with the fewest moving parts.'),
             ),
-            CoilThinkingStep(title: 'Wrote the answer'),
+            CoilThinkingStep(title: Text('Wrote the answer')),
           ],
         ),
       ),

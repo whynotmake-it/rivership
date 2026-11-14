@@ -48,24 +48,24 @@ final class CoilChatMessageTrack<T extends Object> extends Track<T> {
 class CoilChatMessageLabels {
   /// Creates the labels.
   const CoilChatMessageLabels({
-    this.user = 'You',
-    this.assistant = 'Assistant',
+    this.userLabel = 'You',
+    this.assistantLabel = 'Assistant',
   });
 
   /// The sender name of a [CoilChatSender.user] message.
-  final String user;
+  final String userLabel;
 
   /// The sender name of a [CoilChatSender.assistant] message.
-  final String assistant;
+  final String assistantLabel;
 
   @override
   bool operator ==(Object other) =>
       other is CoilChatMessageLabels &&
-      other.user == user &&
-      other.assistant == assistant;
+      other.userLabel == userLabel &&
+      other.assistantLabel == assistantLabel;
 
   @override
-  int get hashCode => Object.hash(user, assistant);
+  int get hashCode => Object.hash(userLabel, assistantLabel);
 }
 
 /// Who wrote a [CoilChatMessage].
@@ -112,6 +112,7 @@ class CoilChatMessage extends StatelessWidget {
     this.child,
     this.attachments = const [],
     this.time,
+    this.timeLabel,
     this.actions = const [],
     this.entrance = CoilChatMessageEntrance.animated,
     this.semanticLabel,
@@ -133,8 +134,12 @@ class CoilChatMessage extends StatelessWidget {
   /// aligned to the sender's side.
   final List<Widget> attachments;
 
-  /// When the message was sent, already formatted for the locale.
-  final String? time;
+  /// When the message was sent, already formatted for the locale. Usually
+  /// a [Text], shown muted in the meta row.
+  final Widget? time;
+
+  /// The time as screen readers hear it, in the container's label.
+  final String? timeLabel;
 
   /// Actions in the meta row and the long-press menu.
   final List<CoilChatMessageAction> actions;
@@ -143,7 +148,7 @@ class CoilChatMessage extends StatelessWidget {
   final CoilChatMessageEntrance entrance;
 
   /// Replaces the container's label, which is the sender's name from
-  /// [labels] and the [time].
+  /// [labels] and the [timeLabel].
   final String? semanticLabel;
 
   /// The sender names screen readers hear.
@@ -184,7 +189,7 @@ class CoilChatMessage extends StatelessWidget {
       metrics,
     ).merge(CoilTheme.styleOf<CoilChatMessageStyle>(context)).merge(this.style);
     final user = sender == CoilChatSender.user;
-    final name = user ? labels.user : labels.assistant;
+    final name = user ? labels.userLabel : labels.assistantLabel;
 
     Widget message = Align(
       alignment: user
@@ -226,7 +231,7 @@ class CoilChatMessage extends StatelessWidget {
     return Semantics(
       container: true,
       explicitChildNodes: true,
-      label: semanticLabel ?? [name, ?time].join(', '),
+      label: semanticLabel ?? [name, ?timeLabel].join(', '),
       child: MotorInspectionScope(group: 'CoilChatMessage', child: message),
     );
   }

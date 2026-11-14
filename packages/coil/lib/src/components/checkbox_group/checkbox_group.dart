@@ -62,7 +62,7 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
     this.semanticLabel,
   });
 
-  /// The rows: each option's [CoilOption.child] or `Text(label)`.
+  /// The rows: each option's [CoilOption.label].
   final List<CoilOption<T>> options;
 
   /// The values of the checked rows.
@@ -146,7 +146,7 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
             checked: checked,
             enabled: onPressed != null,
             // The Text already names the row; a custom child needs it.
-            label: option.child == null ? null : option.label,
+            label: option.semanticLabel,
             child: CoilChoiceItem(
               size: size,
               onPressed: onPressed,
@@ -180,7 +180,7 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
                   motion: motion,
                   style: look.checkbox,
                 ),
-                label: option.child ?? Text(option.label),
+                label: option.label,
               ),
             ),
           );
