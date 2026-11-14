@@ -52,6 +52,34 @@ class SidebarPage extends StatelessWidget {
         ),
       ),
       _Section(
+        title: 'Nesting',
+        description:
+            'Two levels: a section opens its pages, and the current page is '
+            'lit beside its section.',
+        child: _Frame(
+          child: _RailOnly(
+            sidebar: CoilSidebar(
+              header: DemoHeader(),
+              children: [NestedGroup()],
+            ),
+          ),
+        ),
+      ),
+      _Section(
+        title: 'Actions and badges',
+        description:
+            'Up to three actions per row show on hover (always on touch); '
+            'the badge keeps the last slot. The section label has its own.',
+        child: _Frame(
+          child: _RailOnly(
+            sidebar: CoilSidebar(
+              header: DemoHeader(),
+              children: [ThreadsGroup(rowActions: 3, groupActions: 3)],
+            ),
+          ),
+        ),
+      ),
+      _Section(
         title: 'Header and footer, vertical',
         description: 'Every part on its own row; actions are menu rows.',
         child: _Frame(child: _HeaderFooter(vertical: true)),

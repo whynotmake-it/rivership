@@ -3,6 +3,7 @@
 // signed-in user.
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 const workspaceNav = [
@@ -201,11 +202,23 @@ class _WorkspaceGroupState extends State<WorkspaceGroup> {
   );
 }
 
-/// Recent threads, with a count of new messages.
+/// Recent threads: a status dot for each, a count of new messages, and up
+/// to three actions that show on hover (always on touch).
 class ThreadsGroup extends StatefulWidget {
-  const ThreadsGroup({super.key, this.count = 5});
+  const ThreadsGroup({
+    super.key,
+    this.count = 5,
+    this.rowActions = 0,
+    this.groupActions = 1,
+  });
 
   final int count;
+
+  /// How many actions each row carries, 0 to 3.
+  final int rowActions;
+
+  /// How many actions the label row carries, 0 to 3.
+  final int groupActions;
 
   @override
   State<ThreadsGroup> createState() => _ThreadsGroupState();
@@ -213,26 +226,150 @@ class ThreadsGroup extends StatefulWidget {
 
 class _ThreadsGroupState extends State<ThreadsGroup> {
   var _current = demoThreads.first;
+  var _open = true;
+
+  static const _statuses = [
+    CoilSidebarStatus.idle,
+    CoilSidebarStatus.unread,
+    CoilSidebarStatus.idle,
+    CoilSidebarStatus.unread,
+    CoilSidebarStatus.idle,
+  ];
+
+  List<Widget> _rowActions(String thread) => [
+    CoilSidebarAction(
+      icon: const CatalogIcon(Glyph.branch),
+      semanticLabel: 'Branch $thread',
+      tooltip: const Text('Branch thread'),
+      onPressed: () {},
+    ),
+    CoilSidebarAction(
+      icon: const CatalogIcon(Glyph.link),
+      semanticLabel: 'Share $thread',
+      tooltip: const Text('Share thread'),
+      onPressed: () {},
+    ),
+    // The overflow menu stays rightmost at every count, like FF's.
+    CoilDropdown(
+      entries: [
+        CoilAction(
+          label: 'Rename',
+          leading: const CatalogIcon(Glyph.pencil),
+          onPressed: () {},
+        ),
+        CoilAction(
+          label: 'Delete',
+          leading: const CatalogIcon(Glyph.trash),
+          tone: CoilActionTone.destructive,
+          onPressed: () {},
+        ),
+      ],
+      builder: (context, menu) => CoilSidebarAction(
+        icon: const CatalogIcon(Glyph.more),
+        semanticLabel: 'More options for $thread',
+        onPressed: menu.open,
+      ),
+    ),
+  ].sublist(3 - widget.rowActions);
 
   @override
   Widget build(BuildContext context) => CoilSidebarGroup(
     label: const Text('Threads'),
+    expanded: _open,
+    onExpandedChanged: (open) => setState(() => _open = open),
     actions: [
       CoilSidebarAction(
         icon: const CatalogIcon(Glyph.plus),
         semanticLabel: 'New thread',
         tooltip: const Text('New thread'),
+        shortcut: const SingleActivator(
+          LogicalKeyboardKey.keyO,
+          meta: true,
+          shift: true,
+        ),
         onPressed: () {},
       ),
-    ],
+      CoilSidebarAction(
+        icon: const CatalogIcon(Glyph.sliders),
+        semanticLabel: 'Filter threads',
+        tooltip: const Text('Filter'),
+        onPressed: () {},
+      ),
+      CoilSidebarAction(
+        icon: const CatalogIcon(Glyph.more),
+        semanticLabel: 'Section options',
+        tooltip: const Text('More options'),
+        onPressed: () {},
+      ),
+    ].sublist(0, widget.groupActions),
     child: CoilSidebarMenu(
       items: [
         for (final (i, thread) in demoThreads.take(widget.count).indexed)
           CoilSidebarItem(
             label: Text(thread),
-            selected: thread == _current,
+            status: thread == _current
+                ? CoilSidebarStatus.active
+                : _statuses[i],
             trailing: i.isOdd ? Text('${i + 1}') : null,
+            actions: _rowActions(thread),
             onPressed: () => setState(() => _current = thread),
+          ),
+      ],
+    ),
+  );
+}
+
+/// The product's navigation two levels deep: each section opens its
+/// pages, one starts open, and the current page is lit with its section.
+class NestedGroup extends StatefulWidget {
+  const NestedGroup({super.key});
+
+  @override
+  State<NestedGroup> createState() => _NestedGroupState();
+}
+
+class _NestedGroupState extends State<NestedGroup> {
+  static const _pages = {
+    'Chat': ['Recent', 'Starred', 'Archived'],
+    'Agents': ['Research', 'Support', 'Release notes'],
+    'Knowledge': ['Docs', 'Playbooks'],
+    'Runs': ['Scheduled', 'History'],
+  };
+  static const _badges = {'Support': '3', 'Scheduled': '2'};
+
+  final _open = {'Agents'};
+  var _current = 'Research';
+
+  @override
+  Widget build(BuildContext context) => CoilSidebarGroup(
+    label: const Text('Workspace'),
+    child: CoilSidebarMenu(
+      items: [
+        for (final (label, glyph) in workspaceNav.take(4))
+          CoilSidebarItem(
+            label: Text(label),
+            leading: CatalogIcon(glyph),
+            expanded: _open.contains(label),
+            onExpandedChanged: (open) => setState(
+              () => open ? _open.add(label) : _open.remove(label),
+            ),
+            children: [
+              for (final page in _pages[label]!)
+                CoilSidebarItem(
+                  label: Text(page),
+                  selected: page == _current,
+                  trailing: _badges[page] == null ? null : Text(_badges[page]!),
+                  actions: [
+                    CoilSidebarAction(
+                      icon: const CatalogIcon(Glyph.plus),
+                      semanticLabel: 'New in $page',
+                      tooltip: const Text('New'),
+                      onPressed: () {},
+                    ),
+                  ],
+                  onPressed: () => setState(() => _current = page),
+                ),
+            ],
           ),
       ],
     ),

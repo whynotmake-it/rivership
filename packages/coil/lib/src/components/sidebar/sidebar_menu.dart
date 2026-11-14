@@ -421,7 +421,6 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
         label: semanticLabel,
         child: CoilInteraction(
           focusNode: node,
-          excludeFromSemantics: true,
           onPressed: item._enabled ? () => _pick(item) : null,
           minHitTarget: CoilTheme.metricsOf(context).minHitTarget,
           onFocusChange: (focused) => setState(() {
