@@ -18,3 +18,4 @@ export 'src/motion_size.dart';
 export 'src/motion_size_switcher.dart';
 export 'src/motion_slide.dart';
 export 'src/motion_switcher.dart';
+export 'src/reorder/motion_reorder.dart';
