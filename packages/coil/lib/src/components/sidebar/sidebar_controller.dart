@@ -37,10 +37,12 @@ class CoilSidebarController extends ChangeNotifier {
   /// Opens or closes the sidebar. Where the scaffold shows it as a drawer,
   /// this opens the drawer instead, and [open] stays as it is.
   void toggle() => _toggle != null ? _toggle!() : open = !open;
-
-  /// Lets a scaffold decide what [toggle] does.
-  @internal
-  // A setter would hide that this attaches a scaffold.
-  // ignore: use_setters_to_change_properties
-  void attach(VoidCallback? toggle) => _toggle = toggle;
 }
+
+/// Lets a scaffold decide what [CoilSidebarController.toggle] does, or
+/// stop deciding with null. `sidebar.dart` hides it: only the scaffold
+/// calls it.
+void attachSidebarScaffold(
+  CoilSidebarController controller,
+  VoidCallback? toggle,
+) => controller._toggle = toggle;

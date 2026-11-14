@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/manifest.dart';
-import 'package:coil/src/eject/operations.dart';
+import 'package:coil_cli/src/coil_source.dart';
+import 'package:coil_cli/src/manifest.dart';
+import 'package:coil_cli/src/operations.dart';
+import 'package:coil_cli/src/transform.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
-/// `dart run coil:eject`. Returns the exit code.
+/// `dart run coil_cli:eject`. Returns the exit code.
 Future<int> ejectCommand(
   List<String> arguments, {
   String? appRoot,
@@ -15,10 +16,28 @@ Future<int> ejectCommand(
 }) => _run(out ?? stdout, () async {
   final parser = ArgParser()
     ..addFlag('list', abbr: 'l', negatable: false, help: 'List components.')
+    ..addFlag('all', negatable: false, help: 'Eject every component.')
+    ..addOption(
+      'prefix',
+      help:
+          'Replace "Coil" in names with this (CoilButton → AcmeButton) and '
+          'prefix file names (acme_button.dart). Set by the first eject.',
+    )
+    ..addMultiOption(
+      'rename',
+      help: 'Rename one name, like CoilButton=PrimaryButton. Repeatable.',
+    )
+    ..addOption(
+      'library',
+      help:
+          'Name of the generated app library (acme → lib/acme.dart). '
+          'Defaults to the prefix in snake_case, or coil.',
+    )
     ..addOption(
       'into',
-      defaultsTo: 'lib/coil',
-      help: 'Folder for the copy, relative to the app root.',
+      help:
+          'Folder for the copies, relative to the app root. Defaults to '
+          'the library path without .dart (lib/coil).',
     )
     ..addFlag(
       'force',
@@ -29,12 +48,14 @@ Future<int> ejectCommand(
   final args = parser.parse(arguments);
   final o = out ?? stdout;
   final root = appRoot ?? Directory.current.path;
-  if (args.flag('help') || (!args.flag('list') && args.rest.isEmpty)) {
+  if (args.flag('help') ||
+      (!args.flag('list') && !args.flag('all') && args.rest.isEmpty)) {
     o
       ..writeln('Copies coil components into your app to edit them.')
       ..writeln()
-      ..writeln('Usage: dart run coil:eject <component>... [options]')
-      ..writeln('       dart run coil:eject --list')
+      ..writeln('Usage: dart run coil_cli:eject <component>... [options]')
+      ..writeln('       dart run coil_cli:eject --all [options]')
+      ..writeln('       dart run coil_cli:eject --list')
       ..writeln()
       ..writeln(parser.usage);
     return args.flag('help') ? 0 : 64;
@@ -55,32 +76,46 @@ Future<int> ejectCommand(
     }
     return 0;
   }
-  for (final name in args.rest) {
-    final ejected = eject(
-      coil,
-      root,
-      name,
-      into: args.option('into')!,
+  final renames = <String, String>{};
+  for (final rename in args.multiOption('rename')) {
+    final parts = rename.split('=');
+    if (parts.length != 2 || parts.any((s) => s.isEmpty)) {
+      throw EjectException('--rename takes From=To, like CoilButton=MyButton.');
+    }
+    renames[parts[0]] = parts[1];
+  }
+  final workspace = await EjectWorkspace.open(coil, root);
+  final ejected = await eject(
+    workspace,
+    args.flag('all') ? coil.components.keys : args.rest,
+    options: EjectOptions(
+      into: args.option('into'),
+      library: args.option('library'),
+      prefix: args.option('prefix'),
+      renames: renames,
       force: args.flag('force'),
-    );
-    final manifest = Manifest.read(root);
+    ),
+  );
+  final manifest = Manifest.read(root);
+  for (final name in ejected) {
     o.writeln(
-      'Ejected $ejected from coil ${coil.version} to '
-      '${manifest.components[ejected]!.path}.',
+      'Ejected $name from coil ${coil.version} to '
+      '${manifest.components[name]!.path}.',
     );
   }
-  final library = Manifest.read(
-    root,
-  ).library.replaceFirst('lib/', 'package:${_appName(root)}/');
+  final library = manifest.library!.replaceFirst(
+    'lib/',
+    'package:${_appName(root)}/',
+  );
   o.writeln(
     'Import $library '
     'instead of package:coil/coil.dart. Commit ${Manifest.path} and '
-    '.coil/base/: they are the base for `dart run coil:update`.',
+    '.coil/base/: they are the base for `dart run coil_cli:update`.',
   );
   return 0;
 });
 
-/// `dart run coil:update`. Returns the exit code: 0 when everything merged,
+/// `dart run coil_cli:update`. Returns the exit code: 0 when everything merged,
 /// 1 when files need attention.
 Future<int> updateCommand(
   List<String> arguments, {
@@ -105,7 +140,7 @@ Future<int> updateCommand(
         '(all of them if none are named).',
       )
       ..writeln()
-      ..writeln('Usage: dart run coil:update [<component>...] [options]')
+      ..writeln('Usage: dart run coil_cli:update [<component>...] [options]')
       ..writeln()
       ..writeln(parser.usage);
     return 0;
@@ -120,15 +155,16 @@ Future<int> updateCommand(
   }
   final dryRun = args.flag('dry-run');
   var attention = false;
+  final workspace = await EjectWorkspace.open(coil, root);
   for (final name in names) {
-    final result = update(coil, root, name, dryRun: dryRun);
+    final result = await update(workspace, name, dryRun: dryRun);
     o.writeln(
       '${result.component}: ${result.from.join(', ')} → ${result.to}'
       '${dryRun ? ' (dry run)' : ''}',
     );
     for (final MapEntry(key: file, value: outcome) in result.files.entries) {
       if (outcome != FileUpdate.unchanged) {
-        o.writeln('  ${_describe(outcome, dryRun)}: $file');
+        o.writeln('  ${_describe(outcome, dryRun)}: ${result.paths[file]}');
       }
     }
     if (result.files.values.every((f) => f == FileUpdate.unchanged)) {
@@ -139,8 +175,8 @@ Future<int> updateCommand(
       attention = true;
       if (!dryRun) {
         o.writeln(
-          '  Resolve the conflict markers, then run coil:update again. These '
-          'files keep their old base until they merge cleanly.',
+          '  Resolve the conflict markers, then run coil_cli:update again. '
+          'These files keep their old base until they merge cleanly.',
         );
       }
     }

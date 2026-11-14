@@ -8,7 +8,7 @@ import 'package:coil/reveal.dart';
 
 Exports `CoilReveal`, `CoilRevealPreset`, `CoilRevealSteps`, `CoilRevealTrack`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject reveal` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject reveal` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Reveal
 

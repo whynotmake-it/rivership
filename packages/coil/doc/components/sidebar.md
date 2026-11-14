@@ -8,7 +8,7 @@ import 'package:coil/sidebar.dart';
 
 Exports `CoilSidebar`, `CoilSidebarAction`, `CoilSidebarActionsVisibility`, `CoilSidebarBar`, `CoilSidebarCalloutExpand`, `CoilSidebarCalloutStack`, `CoilSidebarCollapsible`, `CoilSidebarController`, `CoilSidebarDot`, `CoilSidebarDotStyle`, `CoilSidebarGroup`, `CoilSidebarItem`, `CoilSidebarMenu`, `CoilSidebarMenuFocus`, `CoilSidebarPeek`, `CoilSidebarRail`, `CoilSidebarScaffold`, `CoilSidebarSeparator`, `CoilSidebarSide`, `CoilSidebarStatus`, `CoilSidebarStyle`, `CoilSidebarTrack`, `CoilSidebarTrigger`, `CoilSidebarVariant`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject sidebar` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject sidebar` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Sidebar
 

@@ -1,7 +1,7 @@
 import 'dart:ui' show CheckedState;
 
 import 'package:coil/coil.dart';
-import 'package:coil/testing.dart';
+import 'package:coil_cli/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

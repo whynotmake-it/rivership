@@ -221,9 +221,8 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
   @override
   void initState() {
     super.initState();
-    _controller
-      ..attach(_toggle)
-      ..addListener(_onController);
+    attachSidebarScaffold(_controller, _toggle);
+    _controller.addListener(_onController);
     _stripStates.addListener(_onStripStates);
   }
 
@@ -232,12 +231,12 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     super.didUpdateWidget(oldWidget);
     final old = oldWidget.controller ?? _ownController;
     if (old != _controller) {
-      old
-        ?..attach(null)
-        ..removeListener(_onController);
-      _controller
-        ..attach(_toggle)
-        ..addListener(_onController);
+      if (old != null) {
+        attachSidebarScaffold(old, null);
+        old.removeListener(_onController);
+      }
+      attachSidebarScaffold(_controller, _toggle);
+      _controller.addListener(_onController);
     }
     if (!_peekAllowed) _dropPeek();
   }
@@ -245,9 +244,8 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
   @override
   void dispose() {
     _dropPeek();
-    _controller
-      ..attach(null)
-      ..removeListener(_onController);
+    attachSidebarScaffold(_controller, null);
+    _controller.removeListener(_onController);
     _ownController?.dispose();
     _stripStates.dispose();
     _focusScope.dispose();

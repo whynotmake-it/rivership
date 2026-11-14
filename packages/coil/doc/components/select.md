@@ -10,7 +10,7 @@ import 'package:coil/select.dart';
 
 Exports `CoilCombobox`, `CoilDatePicker`, `CoilMultiCombobox`, `CoilMultiSelect`, `CoilSelect`, `CoilSelectStyle`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject select` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject select` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Select / MultiSelect
 

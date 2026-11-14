@@ -8,7 +8,7 @@ import 'package:coil/accordion.dart';
 
 Exports `CoilAccordion`, `CoilAccordionItem`, `CoilAccordionMode`, `CoilAccordionStyle`, `CoilAccordionTrack`, `CoilAccordionVariant`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject accordion` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject accordion` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Accordion
 
