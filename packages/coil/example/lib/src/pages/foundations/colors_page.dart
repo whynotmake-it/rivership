@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
+import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
@@ -120,7 +121,15 @@ class _TokenSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final highContrast = MediaQuery.highContrastOf(context);
-    CoilColors resolve(CoilColors c) => highContrast ? c.highContrast() : c;
+    // The app's palettes, so the preview settings (the brand color) show.
+    final settings = CatalogSettingsScope.maybeOf(context);
+    CoilColors resolve(Brightness brightness) {
+      final c =
+          settings?.theme(brightness).colors ??
+          (brightness == Brightness.dark ? CoilColors.dark : CoilColors.light);
+      return highContrast ? c.highContrast() : c;
+    }
+
     return DemoSection(
       title: title,
       description: description,
@@ -128,12 +137,12 @@ class _TokenSection extends StatelessWidget {
         builder: (context, constraints) {
           final light = _ThemeColumn(
             title: 'Light',
-            colors: resolve(CoilColors.light),
+            colors: resolve(Brightness.light),
             tokens: tokens.tokens,
           );
           final dark = _ThemeColumn(
             title: 'Dark',
-            colors: resolve(CoilColors.dark),
+            colors: resolve(Brightness.dark),
             tokens: tokens.tokens,
           );
           if (constraints.maxWidth < 480) {

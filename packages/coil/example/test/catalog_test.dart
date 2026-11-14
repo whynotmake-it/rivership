@@ -7,6 +7,7 @@ import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
+import 'package:coil_example/src/shell/settings_sheet.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,6 +115,15 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Preview settings'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Right to left'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(SettingsPanel),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Right to left'));
     await tester.pumpAndSettle();
 
@@ -138,4 +148,47 @@ void main() {
       expect(CoilTheme.metricsOf(home).controlHeight, 44);
     },
   );
+
+  testWidgets('the theme settings reach every component through the theme', (
+    tester,
+  ) async {
+    final settings = await _pumpCatalog(tester, tier: CatalogTier.pointer);
+    final home = tester.element(find.byType(HomePage));
+
+    settings
+      ..brand = CatalogBrand.violet
+      ..font = CatalogFont.system
+      ..shape = CatalogShape.custom
+      ..customRadius = 4
+      ..spacing = CatalogSpacing.roomy
+      ..motion = CatalogMotion.bouncy
+      ..boldFocusRing = true
+      ..hapticsOff = true;
+    await tester.pumpAndSettle();
+
+    final theme = CoilTheme.of(home);
+    expect(theme.colors.brand, CatalogBrand.violet.color);
+    expect(theme.colors.focusRing, CatalogBrand.violet.color);
+    expect(DefaultTextStyle.of(home).style.fontFamily, isNull);
+    expect(CoilTheme.radiiOf(home).item, 4);
+    expect(CoilTheme.radiiOf(home).container, 8);
+    expect(CoilTheme.metricsOf(home).controlHeight, 40);
+    expect(theme.motion, CatalogMotion.bouncy.motion);
+    expect(theme.focusRingWidth, 2);
+    expect(theme.haptics, CoilHaptics.none);
+  });
+
+  testWidgets('a custom shape shows a radius slider in the settings', (
+    tester,
+  ) async {
+    final settings = await _pumpCatalog(tester, tier: CatalogTier.touch);
+    await tester.tap(find.bySemanticsLabel('Preview settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Corner radius'), findsNothing);
+
+    settings.shape = CatalogShape.custom;
+    await tester.pumpAndSettle();
+    expect(find.text('Corner radius'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
