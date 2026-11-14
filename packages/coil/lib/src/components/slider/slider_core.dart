@@ -158,7 +158,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   ];
 
   bool get _enabled => widget.onChanged != null;
-  bool get _compactTrack => widget.variant == CoilSliderVariant.pill;
+  bool get _compactTrack =>
+      widget.variant == CoilSliderVariant.pill ||
+      widget.variant == CoilSliderVariant.pillPips;
   bool get _tooltip => widget.valueDisplay == CoilSliderValueDisplay.tooltip;
   bool get _editable =>
       _enabled && widget.valueDisplay == CoilSliderValueDisplay.editable;
@@ -179,6 +181,11 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       _ when track == CoilSliderTrack.preview => (
         tokens.quick,
         tokens.quickExit,
+        true,
+      ),
+      _ when track == CoilSliderTrack.dots => (
+        tokens.standard,
+        tokens.standardExit,
         true,
       ),
       _ => (tokens.fade, tokens.fadeExit, false),
@@ -533,6 +540,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final bubble = _motionFor(CoilSliderTrack.bubble, tokens);
     final handle = _motionFor(CoilSliderTrack.handle, tokens);
     final emphasis = _motionFor(CoilSliderTrack.emphasis, tokens);
+    final dots = _motionFor(CoilSliderTrack.dots, tokens);
     // Retarget only what changed; a fade out uses the exit spring.
     Motion pick(({Motion enter, Motion exit}) m, {required bool entering}) =>
         entering ? m.enter : m.exit;
@@ -574,6 +582,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                 showBubble ? 1 : 0,
                 motion: pick(bubble, entering: showBubble),
               ),
+            ]),
+            CoilSliderTrack.dots([
+              .to(hovered ? 1 : 0, motion: pick(dots, entering: hovered)),
             ]),
             CoilSliderTrack.emphasis([
               .to(active ? 1 : 0, motion: pick(emphasis, entering: active)),
@@ -708,6 +719,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           fill: style.pillFill!,
           border: style.border!,
           height: style.pillHeight!,
+          stops: widget.variant == CoilSliderVariant.pillPips
+              ? scale.stops
+              : null,
+          dotSize: style.dotSize!,
+          dotGrowth: style.dotGrowth!,
+          dotColor: style.pip!,
+          dots: v(CoilSliderTrack.dots).clamp(0.0, 1.0),
         ),
         style: style,
         metrics: metrics,

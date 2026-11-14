@@ -62,6 +62,7 @@ class CoilRangeSlider extends StatelessWidget {
     this.semanticFormatter,
     this.editFormatter,
     this.editParser,
+    this.variant = CoilSliderVariant.pill,
     this.valueDisplay = CoilSliderValueDisplay.text,
     this.size,
     this.autofocus = false,
@@ -80,6 +81,17 @@ class CoilRangeSlider extends StatelessWidget {
        assert(
          divisions == null || steps == null,
          'use divisions or steps, not both',
+       ),
+       assert(
+         variant == CoilSliderVariant.pill ||
+             variant == CoilSliderVariant.pillPips,
+         'a range is drawn on the pill',
+       ),
+       assert(
+         variant != CoilSliderVariant.pillPips ||
+             divisions != null ||
+             steps != null,
+         'pips need divisions or steps',
        );
 
   /// The current range, with `start <= end`, between [min] and [max].
@@ -123,6 +135,11 @@ class CoilRangeSlider extends StatelessWidget {
 
   /// Reads a typed value back; see [CoilSlider.editParser].
   final double? Function(String text)? editParser;
+
+  /// The pill, with or without step dots: [CoilSliderVariant.pill] or
+  /// [CoilSliderVariant.pillPips]. On the row, a range's handle lines would
+  /// sit in the label and value text.
+  final CoilSliderVariant variant;
 
   /// Where the values show, and whether they can be typed.
   final CoilSliderValueDisplay valueDisplay;
@@ -182,7 +199,7 @@ class CoilRangeSlider extends StatelessWidget {
       semanticFormatter: semanticFormatter,
       editFormatter: editFormatter,
       editParser: editParser,
-      variant: CoilSliderVariant.pill,
+      variant: variant,
       valueDisplay: valueDisplay,
       size: size,
       focusNode: null,

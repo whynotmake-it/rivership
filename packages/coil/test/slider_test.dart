@@ -790,6 +790,98 @@ void main() {
     });
   });
 
+  group('pill step dots', () {
+    /// The dots' centers (as fractions of the track) and diameters: the
+    /// marks no wider than a grown dot, so not the outline or the knobs.
+    List<({double at, double size})> dots(WidgetTester tester) {
+      final layer = find.descendant(
+        of: _slider,
+        matching: find.byType(CoilPainterLayer),
+      );
+      final box = tester.getRect(layer);
+      final marks = <Rect>[];
+      expect(
+        tester.renderObject(layer),
+        paints..everything((method, args) {
+          if (method == #drawRSuperellipse) {
+            marks.add((args.first as RSuperellipse).outerRect);
+          }
+          return true;
+        }),
+      );
+      // The knob box is 20 on the pointer tier; centers stop 10 in.
+      return [
+        for (final r in marks)
+          if (r.width <= 6)
+            (at: (r.center.dx - 10) / (box.width - 20), size: r.width),
+      ];
+    }
+
+    testWidgets('dots sit at the steps past the fill', (tester) async {
+      await tester.pumpWidget(
+        const _Host(
+          variant: CoilSliderVariant.pillPips,
+          steps: [0, .1, .25, .7, 1],
+          initial: .25,
+        ),
+      );
+      await settle(tester);
+      expect(
+        [for (final d in dots(tester)) d.at],
+        [closeTo(.7, .001), closeTo(1, .001)],
+        reason: 'the dots under the fill are hidden',
+      );
+    });
+
+    testWidgets('a range shows dots outside its thumbs only', (tester) async {
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => CoilTheme(
+            data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+            child: Center(
+              child: SizedBox(
+                width: 300,
+                child: CoilRangeSlider(
+                  key: const ValueKey('slider'),
+                  variant: CoilSliderVariant.pillPips,
+                  divisions: 4,
+                  values: const CoilRangeValues(.25, .75),
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await settle(tester);
+      expect(
+        [for (final d in dots(tester)) d.at],
+        [closeTo(0, .001), closeTo(1, .001)],
+      );
+    });
+
+    testWidgets('dots grow while a mouse hovers, not under a finger', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const _Host(variant: CoilSliderVariant.pillPips, divisions: 4),
+      );
+      await settle(tester);
+      final rest = dots(tester).first.size;
+      final g = await tester.startGesture(_at(tester, .1));
+      await settle(tester);
+      expect(dots(tester).first.size, rest, reason: 'touch: no hover');
+      await g.up();
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(_at(tester, .1));
+      await settle(tester);
+      expect(dots(tester).first.size, closeTo(rest * 1.25, .01));
+    });
+  });
+
   group('click-to-edit', () {
     final field = find.byType(EditableText);
 

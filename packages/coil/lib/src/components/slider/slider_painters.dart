@@ -207,8 +207,9 @@ class SliderRowPaint extends CoilLayerPaint {
   }
 }
 
-/// Paints the pill track's outline, fill and hover preview. One thumb fills
-/// from the start; two fill between them.
+/// Paints the pill track's outline, fill, hover preview and step dots. One
+/// thumb fills from the start; two fill between them. Dots under the fill
+/// fade out over 2 px past its edge, so the fill hides them.
 class SliderPillPaint extends CoilLayerPaint {
   const SliderPillPaint({
     required Listenable moves,
@@ -218,6 +219,11 @@ class SliderPillPaint extends CoilLayerPaint {
     required this.fill,
     required this.border,
     required this.height,
+    required this.stops,
+    required this.dotSize,
+    required this.dotGrowth,
+    required this.dotColor,
+    required this.dots,
   }) : super(repaint: moves);
 
   /// The thumbs' current fractions, read while painting.
@@ -230,12 +236,26 @@ class SliderPillPaint extends CoilLayerPaint {
   final Color border;
   final double height;
 
+  /// The fractions to draw dots at, or null for none.
+  final List<double>? stops;
+  final double dotSize;
+  final double dotGrowth;
+  final Color dotColor;
+
+  /// 0 at rest, 1 grown.
+  final double dots;
+
   @override
   bool shouldRepaint(SliderPillPaint oldItem) =>
       oldItem.state != state ||
       oldItem.fill != fill ||
       oldItem.border != border ||
-      oldItem.height != height;
+      oldItem.height != height ||
+      !listEquals(oldItem.stops, stops) ||
+      oldItem.dotSize != dotSize ||
+      oldItem.dotGrowth != dotGrowth ||
+      oldItem.dotColor != dotColor ||
+      oldItem.dots != dots;
 
   @override
   void paint(Canvas canvas, Offset offset, CoilLayerGeometry geometry) {
@@ -276,6 +296,31 @@ class SliderPillPaint extends CoilLayerPaint {
             alpha: state.previewColor.a * state.previewOpacity,
           ),
       );
+    }
+    if (stops case final stops?) {
+      // The filled span, in x: from the start to the thumb, or between two.
+      final a = edges.first;
+      final b = edges.length == 1 ? (state.rtl ? box.width : 0.0) : edges.last;
+      final lo = a < b ? a : b;
+      final hi = a < b ? b : a;
+      final d = dotSize * (1 + dotGrowth * dots);
+      final cy = top + height / 2;
+      for (final f in stops) {
+        final cx = x(f);
+        final outside = cx < lo ? lo - cx : cx - hi;
+        final alpha = (outside / 2).clamp(0.0, 1.0);
+        if (alpha == 0) continue;
+        canvas.drawRSuperellipse(
+          RSuperellipse.fromLTRBR(
+            offset.dx + cx - d / 2,
+            cy - d / 2,
+            offset.dx + cx + d / 2,
+            cy + d / 2,
+            Radius.circular(d / 2),
+          ),
+          Paint()..color = dotColor.withValues(alpha: dotColor.a * alpha),
+        );
+      }
     }
     canvas
       ..restore()

@@ -30,6 +30,8 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.pillHeight,
     this.pipSize,
     this.pipGrowth,
+    this.dotSize,
+    this.dotGrowth,
     this.handleWidth,
     this.handleInset,
     this.bubbleGap,
@@ -86,6 +88,8 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
       pillHeight: 18,
       pipSize: 5,
       pipGrowth: 0.4,
+      dotSize: 4,
+      dotGrowth: 0.25,
       handleWidth: 2,
       handleInset: 8,
       bubbleGap: 8,
@@ -156,6 +160,13 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// How much larger the pip at the value is, as a fraction of [pipSize].
   final double? pipGrowth;
 
+  /// The diameter of a step dot on the pill, colored [pip].
+  final double? dotSize;
+
+  /// How much larger the pill's dots grow while hovered, as a fraction of
+  /// [dotSize].
+  final double? dotGrowth;
+
   /// The handle line's width.
   final double? handleWidth;
 
@@ -195,6 +206,8 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           pillHeight: other.pillHeight ?? pillHeight,
           pipSize: other.pipSize ?? pipSize,
           pipGrowth: other.pipGrowth ?? pipGrowth,
+          dotSize: other.dotSize ?? dotSize,
+          dotGrowth: other.dotGrowth ?? dotGrowth,
           handleWidth: other.handleWidth ?? handleWidth,
           handleInset: other.handleInset ?? handleInset,
           bubbleGap: other.bubbleGap ?? bubbleGap,
@@ -224,6 +237,8 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     pillHeight,
     pipSize,
     pipGrowth,
+    dotSize,
+    dotGrowth,
     handleWidth,
     handleInset,
     bubbleGap,

@@ -49,6 +49,13 @@ final class CoilSliderTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSlider.handle',
   );
 
+  /// The pill's step dots growing while the slider is hovered. Default
+  /// motion: `standard`.
+  static final dots = CoilSliderTrack<double>._(
+    .single,
+    debugLabel: 'CoilSlider.dots',
+  );
+
   /// The label and value turning foreground and semibold, and the handle
   /// growing. Default motion: `fade`.
   static final emphasis = CoilSliderTrack<double>._(
@@ -68,6 +75,10 @@ enum CoilSliderVariant {
 
   /// A thin pill track with a knob, between the label and the value.
   pill,
+
+  /// Like [pill], plus a small dot at every step, hidden under the fill.
+  /// Needs `divisions` or `steps`.
+  pillPips,
 }
 
 /// Where a slider shows its value.
@@ -140,7 +151,8 @@ class CoilSlider extends StatelessWidget {
          'use divisions or steps, not both',
        ),
        assert(
-         variant != CoilSliderVariant.pips ||
+         (variant != CoilSliderVariant.pips &&
+                 variant != CoilSliderVariant.pillPips) ||
              divisions != null ||
              steps != null,
          'pips need divisions or steps',
