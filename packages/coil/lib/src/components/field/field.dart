@@ -106,12 +106,6 @@ class _CoilFieldState extends State<CoilField> {
       size: widget.size,
       style: widget.style,
     );
-    final control = CoilFieldScope(
-      invalid: _invalid,
-      isRequired: widget.isRequired,
-      labelTarget: _labelTarget,
-      child: widget.child,
-    );
     Widget body({required bool beside}) => _FieldBody(
       style: style,
       beside: beside,
@@ -136,17 +130,21 @@ class _CoilFieldState extends State<CoilField> {
               icon: widget.errorIcon,
               child: widget.error!,
             ),
-      control: control,
+      control: widget.child,
     );
-    return switch (widget.orientation) {
-      CoilFieldOrientation.vertical => body(beside: false),
-      CoilFieldOrientation.horizontal => body(beside: true),
-      CoilFieldOrientation.responsive => LayoutBuilder(
-        builder: (context, constraints) => body(
-          beside: constraints.maxWidth >= style.responsiveBreakpoint!,
+    return CoilFieldScope(
+      invalid: _invalid,
+      isRequired: widget.isRequired,
+      labelTarget: _labelTarget,
+      child: switch (widget.orientation) {
+        CoilFieldOrientation.vertical => body(beside: false),
+        CoilFieldOrientation.horizontal => body(beside: true),
+        CoilFieldOrientation.responsive => LayoutBuilder(
+          builder: (context, constraints) =>
+              body(beside: constraints.maxWidth >= style.responsiveBreakpoint!),
         ),
-      ),
-    };
+      },
+    );
   }
 }
 
@@ -183,25 +181,28 @@ class _FieldBody extends StatelessWidget {
     final Widget body;
     if (beside) {
       final text = [?label, ?description];
-      body = Row(
-        spacing: style.besideGap!,
-        children: [
-          if (text.isNotEmpty)
+      // Beside, the row is one target for a toggle (a switch, a checkbox).
+      body = CoilFieldRow(
+        child: Row(
+          spacing: style.besideGap!,
+          children: [
+            if (text.isNotEmpty)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: style.messageGap!,
+                  children: text,
+                ),
+              ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                spacing: style.messageGap!,
-                children: text,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: control,
               ),
             ),
-          Expanded(
-            child: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: control,
-            ),
-          ),
-        ],
+          ],
+        ),
       );
     } else {
       body = Column(

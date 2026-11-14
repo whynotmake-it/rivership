@@ -233,7 +233,20 @@ class _CoilSwitchState extends State<CoilSwitch>
   }
 
   bool get _pressedNow =>
-      _enabled && _states.value.contains(WidgetState.pressed);
+      _enabled &&
+      (_states.value.contains(WidgetState.pressed) || _containerPressed);
+
+  /// A field row around the switch is pressed (`CoilFieldRow`).
+  bool _containerPressed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pressed = CoilFieldScope.maybeOf(context)?.containerPressed ?? false;
+    if (pressed == _containerPressed) return;
+    _containerPressed = pressed;
+    _onStates();
+  }
 
   void _toggle() {
     if (_dragDecided) {
@@ -388,6 +401,7 @@ class _CoilSwitchState extends State<CoilSwitch>
 
     return CoilFieldControl(
       onLabelTap: _enabled ? () => _report(!widget.value) : null,
+      tapArea: CoilFieldTapArea.row,
       child: MotorInspectionScope(
         group: 'CoilSwitch',
         child: Semantics(

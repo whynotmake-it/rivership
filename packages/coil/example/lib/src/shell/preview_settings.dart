@@ -148,7 +148,6 @@ class _SwitchRow extends StatelessWidget {
     description: description,
     trailing: CoilSwitch(
       value: value,
-      semanticLabel: label,
       onChanged: onChanged,
     ),
   );
@@ -185,7 +184,6 @@ class _SliderRow extends StatelessWidget {
     ),
     trailing: _Control(
       child: CoilSlider(
-        semanticLabel: label,
         max: max,
         divisions: divisions,
         value: value,

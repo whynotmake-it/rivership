@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:coil/dialog.dart';
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
 import 'package:coil/select.dart';
 import 'package:coil/sidebar.dart';
@@ -313,7 +314,14 @@ class CoilSettingsList extends StatelessWidget {
 
 /// One setting: a [label] and an optional [description] at the start, and
 /// its control at the end.
-class CoilSettingRow extends StatelessWidget {
+///
+/// Like a native settings row, a row with a toggle (a switch, a checkbox)
+/// is one tap target: a tap anywhere in it toggles the control, and the
+/// control shows hover and press while the row has them. A row with a
+/// select, a slider or a button responds only on the control. Screen
+/// readers hear the label and description with the control, so it needs no
+/// `semanticLabel`. Put one control in a row.
+class CoilSettingRow extends StatefulWidget {
   /// Creates a setting row.
   const CoilSettingRow({
     required this.label,
@@ -332,39 +340,58 @@ class CoilSettingRow extends StatelessWidget {
   final Widget trailing;
 
   @override
+  State<CoilSettingRow> createState() => _CoilSettingRowState();
+}
+
+class _CoilSettingRowState extends State<CoilSettingRow> {
+  final _target = CoilFieldLabelTarget();
+
+  @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        spacing: 24,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 2,
+    final description = widget.description;
+    return CoilFieldScope(
+      invalid: false,
+      isRequired: false,
+      labelTarget: _target,
+      // One node: the control's role and value, read with the label and
+      // description.
+      child: MergeSemantics(
+        child: CoilFieldRow(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              spacing: 24,
               children: [
-                DefaultTextStyle(
-                  style: theme.typography.style(
-                    metrics.body,
-                    color: theme.colors.foreground,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 2,
+                    children: [
+                      DefaultTextStyle(
+                        style: theme.typography.style(
+                          metrics.body,
+                          color: theme.colors.foreground,
+                        ),
+                        child: widget.label,
+                      ),
+                      if (description != null)
+                        DefaultTextStyle(
+                          style: theme.typography.style(
+                            metrics.caption,
+                            color: theme.colors.mutedForeground,
+                          ),
+                          child: description,
+                        ),
+                    ],
                   ),
-                  child: label,
                 ),
-                if (description case final description?)
-                  DefaultTextStyle(
-                    style: theme.typography.style(
-                      metrics.caption,
-                      color: theme.colors.mutedForeground,
-                    ),
-                    child: description,
-                  ),
+                widget.trailing,
               ],
             ),
           ),
-          trailing,
-        ],
+        ),
       ),
     );
   }

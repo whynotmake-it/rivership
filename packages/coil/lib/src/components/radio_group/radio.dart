@@ -129,6 +129,7 @@ class _CoilRadioState<T> extends State<CoilRadio<T>> with RadioClient<T> {
 
     return CoilFieldControl(
       onLabelTap: enabled ? _select : null,
+      tapArea: CoilFieldTapArea.row,
       child: Semantics(
         container: true,
         inMutuallyExclusiveGroup: true,
@@ -151,6 +152,8 @@ class _CoilRadioState<T> extends State<CoilRadio<T>> with RadioClient<T> {
                 states: {
                   if (enabled && (field?.containerHovered ?? false))
                     WidgetState.hovered,
+                  if (enabled && (field?.containerPressed ?? false))
+                    WidgetState.pressed,
                   ...states,
                 },
                 size: size,

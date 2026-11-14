@@ -117,6 +117,7 @@ class CoilCheckbox extends StatelessWidget {
 
     return CoilFieldControl(
       onLabelTap: enabled ? report : null,
+      tapArea: CoilFieldTapArea.row,
       child: Semantics(
         container: true,
         checked: value ?? false,
@@ -143,6 +144,8 @@ class CoilCheckbox extends StatelessWidget {
                   if (invalid) WidgetState.error,
                   if (enabled && (field?.containerHovered ?? false))
                     WidgetState.hovered,
+                  if (enabled && (field?.containerPressed ?? false))
+                    WidgetState.pressed,
                   ...states,
                 },
                 size: size,

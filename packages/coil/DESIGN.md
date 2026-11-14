@@ -609,6 +609,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.
 - **Semantics:** one node per field. Label, description and error join the control's label, in that order, so they're read with its role and value. The node carries `isRequired` and `validationResult`, and is a live region while an error shows.
 - **Label tap:** runs the control's label action (`CoilFieldControl`): text fields focus, toggles toggle.
+- **Toggle rows are one target.** In a horizontal field or a setting row, a tap anywhere in the row (padding, gap, description) toggles a checkbox, switch or radio, as in a native settings list. The control shows hover and press while the row has them, and keeps its own focus ring. Other controls (text fields, selects, sliders, buttons) and rows with several controls respond only on the control; the label still focuses a text field. `CoilFieldRow` does this for any row; a control opts in with `CoilFieldControl.tapArea`.
 - **One control per Field.** A group of controls goes in a FieldSet, a container with a header legend.
 - **Invalid:** the label turns `destructive`, and the control gets its invalid look.
 
@@ -968,7 +969,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### SettingsDialog
 
 - **Anatomy:** an `xl` dialog frame, `min(640, window − 64)` tall: a static sidebar of sections (208 wide, a 3 % `overlay` tint, no hairline) beside a panel with the section's heading, description and a scrolling body of setting rows.
-- **Setting row:** label (body) and an optional description (caption, muted) at the start, the control at the end, 16 vertical padding, hairlines between rows.
+- **Setting row:** label (body) and an optional description (caption, muted) at the start, the control at the end, 16 vertical padding, hairlines between rows. A toggle row is one tap target, and one semantics node named by the label and description (§ Field).
 - **Compact (< 600):** the sidebar hides and a select at the top of the panel picks the section, under the dialog's title.
 - **Touch, phone:** it opens as a sheet, like a form dialog.
 - **Keyboard and semantics:** as the dialog and the sidebar; the title names the route; the close button sits in the corner.
