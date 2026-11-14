@@ -25,6 +25,7 @@ import 'package:coil_example/src/pages/components/input_message_page.dart';
 import 'package:coil_example/src/pages/components/input_page.dart';
 import 'package:coil_example/src/pages/components/queued_stack_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
+import 'package:coil_example/src/pages/components/reorder_page.dart';
 import 'package:coil_example/src/pages/components/reveal_page.dart';
 import 'package:coil_example/src/pages/components/scroll_area_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
@@ -150,6 +151,7 @@ const catalogEntries = <CatalogEntry>[
   chatMessageEntry,
   scrollAreaEntry,
   revealEntry,
+  reorderEntry,
 ];
 
 /// Every component DESIGN.md §14 specifies, by group. The home screen lists

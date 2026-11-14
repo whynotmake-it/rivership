@@ -446,6 +446,42 @@ MotionPadding(
 );
 ```
 
+### `MotionDraggable` moved to `motor_widgets`
+
+`MotionDraggable` now lives in [`motor_widgets`](../motor_widgets).
+Add the package as for `MotionPadding` above and import
+`package:motor_widgets/motor_widgets.dart`.
+
+It now animates every drop, not only the return. An accepted drop flies to
+where the item now lives, found by its `tag` (which defaults to `data`), and
+a drop with nowhere to land plays an exit. Three parameters changed:
+
+- `onlyReturnWhenCanceled` is removed. An accepted drop that removed the item
+  now shrinks and fades out where it was dropped. To animate it differently,
+  pass `transitions`.
+- `feedbackMatchesConstraints` is removed. The feedback is always laid out
+  at the child's measured size. A feedback that wants its own size wraps
+  itself in an `Align`.
+- `motion` defaults to `CupertinoMotion.smooth()` instead of
+  `CupertinoMotion.interactive()`, because a landing travels further than a
+  return. Pass `motion: const .interactive()` to keep the 1.x spring.
+
+```dart
+// Before (1.x):
+MotionDraggable(
+  data: item,
+  onlyReturnWhenCanceled: true,
+  feedbackMatchesConstraints: true,
+  child: ItemCard(item),
+);
+
+// After (2.0):
+MotionDraggable(
+  data: item,
+  child: ItemCard(item),
+);
+```
+
 ## Sequences → Tracks
 
 The legacy sequence stack — `MotionSequence` (with `StateSequence`,
