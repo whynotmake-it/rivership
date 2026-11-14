@@ -64,6 +64,21 @@ void main() {
       width: 200,
       child: CoilInput(placeholder: InkLabel(ink, const Text('HEH'))),
     ),
+    // With a leading icon, as a search or filter field.
+    'input/icon+text': (ink) => SizedBox(
+      width: 200,
+      child: CoilInput(
+        leading: const TestIcon(TestGlyph.search),
+        controller: TextEditingController(text: ink ? 'HEH' : ''),
+      ),
+    ),
+    'input/icon+placeholder': (ink) => SizedBox(
+      width: 200,
+      child: CoilInput(
+        leading: const TestIcon(TestGlyph.search),
+        placeholder: InkLabel(ink, const Text('HEH')),
+      ),
+    ),
     'textarea/one-line': (ink) => SizedBox(
       width: 200,
       child: CoilInput.multiline(
