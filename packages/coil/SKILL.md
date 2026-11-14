@@ -39,8 +39,8 @@ Eject copies a component's source into the app so you can change its look or com
 
 ```sh
 dart run coil:eject --list          # every component; * marks ejected ones
-dart run coil:eject button          # copy Button to lib/coil/button/
-dart run coil:eject button --into lib/ui
+dart run coil:eject button dialog   # copy Button and Dialog to lib/coil/
+dart run coil:eject --all           # copy every component
 dart run coil:eject button --force  # replace the copy, discarding edits
 ```
 
@@ -48,7 +48,7 @@ Eject writes:
 
 - `lib/coil/button/`: the public library `button.dart` and its sources in `src/`.
 - `lib/coil.dart`: the app library. It exports `package:coil/coil.dart` minus the ejected names, plus the copies.
-- `.coil/ejected.yaml` and `.coil/base/`: the coil version and a pristine copy of each file, which are the merge base for updates.
+- `.coil/ejected.yaml` and `.coil/base/`: the coil version, the names, and a pristine copy of each file, which are the merge base for updates.
 
 After ejecting:
 
@@ -56,7 +56,23 @@ After ejecting:
 2. Commit `.coil/`.
 3. Edit the copy. It imports only `package:coil/foundation.dart`, `primitives.dart` and other components' public libraries.
 
-Other coil components keep using coil's version of an ejected one. For example, `CoilDialog` still builds coil's `CoilButton`.
+**Ejected components use each other.** An ejected Dialog builds the ejected Button, whether you eject them together or one after the other: a later eject re-points the earlier copies (and their bases) at the new one. A component you didn't eject keeps coil's version of everything; coil's own `CoilDialog` still builds coil's `CoilButton`.
+
+### Your own names
+
+The first eject can name the copies after your app. These settings stay fixed for later ejects and updates.
+
+```sh
+dart run coil:eject --all --prefix Acme
+dart run coil:eject button --rename CoilButton=PrimaryButton
+dart run coil:eject button --library ui   # lib/ui.dart and lib/ui/
+```
+
+- `--prefix Acme` replaces `Coil` in every public name the copies declare (`CoilButton` becomes `AcmeButton`, `showCoilDialog` becomes `showAcmeDialog`) and leads their file names (`acme_button.dart`). The app library is `lib/acme.dart`, and it adds aliases for the foundation's types, such as `typedef AcmeTheme = CoilTheme;`.
+- `--rename From=To` renames one name, and wins over the prefix.
+- `--library` names the app library and the folder the copies go in.
+
+The rename uses the analyzer. It renames declarations, references and `[Name]` doc links. It never touches strings, private names, members or parameters, and primitives keep their `Coil` names.
 
 ## Update
 
@@ -70,6 +86,7 @@ Update needs `git` on PATH. It runs `git merge-file` per file, with the base fro
 - A clean merge applies, and that file's base and version advance.
 - A conflict writes `<<<<<<< app` / `>>>>>>> coil <version>` markers into the copy. The base stays put, so after resolving, run update again. The exit code is 1 while files need attention.
 - Files coil added are copied. Files coil removed are deleted, unless the app edited them.
+- Renamed copies merge as cleanly as plain ones: update renames coil's new version the same way first.
 
 ## Test an ejected copy
 

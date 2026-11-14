@@ -48,7 +48,15 @@ dart run coil:update button   # later: three-way merge of coil's changes
 
 The app then imports its generated `lib/coil.dart` instead of
 `package:coil/coil.dart`. Behavior stays in coil's primitives, so only the
-look and composition are copied. [`SKILL.md`](SKILL.md) covers eject and
+look and composition are copied. Components ejected together, or one
+after another, use each other's copies.
+
+The first eject can give the copies the app's names:
+`dart run coil:eject --all --prefix Acme` turns `CoilButton` into
+`AcmeButton` in `acme_button.dart`, exported from `lib/acme.dart`.
+`--rename CoilButton=PrimaryButton` renames a single name. The analyzer
+does the renaming, and `coil:update` renames coil's new version the same
+way before merging, so renamed copies merge as cleanly as plain ones. [`SKILL.md`](SKILL.md) covers eject and
 update in full. [`doc/llms.txt`](doc/llms.txt) indexes the per-component
 pages in `doc/components/`, which `tool/generate_docs.dart` builds from
 DESIGN.md.

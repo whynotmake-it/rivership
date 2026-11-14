@@ -2,6 +2,15 @@
 
 Milestone M0, unreleased.
 
+- `coil:eject` takes several components or `--all`, and names copies
+  after the app with `--prefix`, `--rename` and `--library`. The
+  analyzer renames declarations, references, doc links and files; update
+  renames coil's new version the same way before merging. Components
+  ejected together, or later, use each other's copies, and copies come
+  out with their imports sorted. coil now depends on `analyzer`.
+- `CoilSidebarController.attach` is gone; the scaffold attaches through
+  a function `sidebar.dart` hides, so an ejected sidebar has no
+  `@internal` member outside `lib/src/`.
 - Breaking: `primitives.dart` no longer exports internals.
   - `CoilMotionLayerHandle` is gone, and so is the `handle` parameter of
     `CoilMotionLayer`. Nothing used them.
