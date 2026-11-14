@@ -100,8 +100,9 @@ The scaffold owns state and layout, like `Scaffold` owns its drawer. FF's
 
 **Rail** (`CoilSidebarRail`, pointer only): an 8 strip on the inner edge.
 A drag resizes 1:1, dragging 56 past the minimum folds (pulling back before
-release reopens), and a click folds. Screen readers get increase, decrease
-and tap.
+release reopens), and a click folds. Its tooltip opens beside the strip
+and follows the pointer: "**Drag** to resize", "**Click** to collapse" and
+the key. Screen readers get increase, decrease and tap.
 
 **Peek:** while folded, a 12 strip at the edge. `hover` floats the sidebar
 out after 150 ms, and so does resting on the folded trigger; `click` does on
@@ -196,10 +197,6 @@ static scaffold (208 wide) whose menu shows focus as the highlight. Under
 
 ## Open
 
-- **Rail tooltip.** FF shows "Drag to resize, Click to collapse `[`" beside
-  the strip, following the pointer. `CoilTooltip` opens above or below its
-  anchor, which doesn't work for a full-height strip, so the rail has no
-  tooltip yet.
 - **Header and footer menu width.** FF sizes those menus to the trigger
   plus 10, so items line up with the rows; `CoilDropdown` has no option
   for that yet.
