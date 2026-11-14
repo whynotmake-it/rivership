@@ -893,6 +893,41 @@ void main() {
     });
   });
 
+  testWidgets('its height is its own under a loose, bounded parent', (
+    tester,
+  ) async {
+    for (final display in CoilSliderValueDisplay.values) {
+      for (final slider in [
+        CoilSlider(
+          value: .5,
+          valueDisplay: display,
+          variant: CoilSliderVariant.pill,
+          onChanged: (_) {},
+        ),
+        CoilRangeSlider(
+          values: const CoilRangeValues(.2, .8),
+          valueDisplay: display,
+          onChanged: (_) {},
+        ),
+      ]) {
+        await tester.pumpWidget(
+          WidgetsApp(
+            color: const Color(0xFF000000),
+            builder: (context, _) => CoilTheme(
+              data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+              child: Center(child: SizedBox(width: 300, child: slider)),
+            ),
+          ),
+        );
+        expect(
+          tester.getSize(find.byWidget(slider)).height,
+          20,
+          reason: '$display ${slider.runtimeType}',
+        );
+      }
+    }
+  });
+
   group('tooltip mode', () {
     Finder tip(String text) => find.descendant(
       of: find.byKey(sliderBubbleKey),

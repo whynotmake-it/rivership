@@ -618,38 +618,37 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                 ),
               ),
             ),
-        ListenableBuilder(
-          listenable: _thumbMoves,
-          builder: (context, _) => Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (_tooltip)
-                for (var i = 0; i < _count; i++)
-                  SliderBubble(
-                    key: ValueKey(i),
-                    style: style,
-                    fraction: _at(i),
-                    reach: reach,
-                    rtl: rtl,
-                    opacity: v(CoilSliderTrack.bubble),
-                    text: _format(widget.values[i]),
-                  )
-              else
-                SliderBubble(
-                  style: style,
-                  fraction: pressed ? _at(_active) : paint.previewFraction,
-                  reach: reach,
-                  rtl: rtl,
-                  opacity: v(CoilSliderTrack.bubble),
-                  text: _format(
-                    pressed
-                        ? widget.values[_active]
-                        : scale.valueAt(hovering ?? _at(_active)),
-                  ),
-                ),
-            ],
+        // Each bubble is a positioned child of this stack, so it never
+        // sizes the track.
+        if (_tooltip)
+          for (var i = 0; i < _count; i++)
+            ListenableBuilder(
+              listenable: _thumbs[i],
+              builder: (context, _) => SliderBubble(
+                style: style,
+                fraction: _at(i),
+                reach: reach,
+                rtl: rtl,
+                opacity: v(CoilSliderTrack.bubble),
+                text: _format(widget.values[i]),
+              ),
+            )
+        else
+          ListenableBuilder(
+            listenable: _thumbs[_active],
+            builder: (context, _) => SliderBubble(
+              style: style,
+              fraction: pressed ? _at(_active) : paint.previewFraction,
+              reach: reach,
+              rtl: rtl,
+              opacity: v(CoilSliderTrack.bubble),
+              text: _format(
+                pressed
+                    ? widget.values[_active]
+                    : scale.valueAt(hovering ?? _at(_active)),
+              ),
+            ),
           ),
-        ),
       ],
     );
 
