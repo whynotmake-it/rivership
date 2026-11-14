@@ -6,6 +6,10 @@ import 'package:flutter/widgets.dart';
 /// A control shows its invalid look when [invalid] is true, and wraps
 /// itself in [CoilFieldControl] so a tap on the label reaches it. The field
 /// handles semantics itself, so controls don't read their label from here.
+///
+/// A field drawn as a container (a `CoilChoiceCard`) also tells its
+/// control that the container frames it ([framed]) and when the pointer is
+/// over it ([containerHovered]).
 class CoilFieldScope extends InheritedWidget {
   /// Creates a field scope.
   const CoilFieldScope({
@@ -14,6 +18,8 @@ class CoilFieldScope extends InheritedWidget {
     required this.labelTarget,
     required super.child,
     super.key,
+    this.framed = false,
+    this.containerHovered = false,
   });
 
   /// Whether the field has an error: the control shows its invalid look.
@@ -25,6 +31,15 @@ class CoilFieldScope extends InheritedWidget {
   /// Where the field's label sends taps.
   final CoilFieldLabelTarget labelTarget;
 
+  /// Whether the field is a container that frames its control: the whole
+  /// container is the tap target and draws the focus ring. The control then
+  /// leaves out its own ring, so one shows, and its hit-area padding.
+  final bool framed;
+
+  /// Whether a hovering pointer is over the field's container. The control
+  /// shows its hover look, as if the pointer were on it.
+  final bool containerHovered;
+
   /// The nearest field scope, if any.
   static CoilFieldScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<CoilFieldScope>();
@@ -33,7 +48,9 @@ class CoilFieldScope extends InheritedWidget {
   bool updateShouldNotify(CoilFieldScope oldWidget) =>
       oldWidget.invalid != invalid ||
       oldWidget.isRequired != isRequired ||
-      oldWidget.labelTarget != labelTarget;
+      oldWidget.labelTarget != labelTarget ||
+      oldWidget.framed != framed ||
+      oldWidget.containerHovered != containerHovered;
 }
 
 /// The action a field's label runs, set by its control through

@@ -584,7 +584,12 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `horizontal`: label left, control right, `gap`;
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
-- **ChoiceCard:** a horizontal Field inside a bordered container at the container radius, padding 12 (10 compact, 16 touch). The whole card is the target. Hover (pointer) is the `hover` fill. Checked: border `foreground` 40 %. Keyboard focus rings the card.
+- **ChoiceCard:** a checkbox or switch at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+  - The whole card is the target. Inside it the control drops its own hit-area padding.
+  - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
+  - Selected: border `foreground` 40 %.
+  - Keyboard focus rings the whole card (1 px, no offset). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
 - **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.

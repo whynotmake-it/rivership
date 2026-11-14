@@ -307,15 +307,19 @@ class _CoilSwitchState extends State<CoilSwitch>
     final travel = m.trackWidth - m.thumbSize - m.thumbInset * 2;
     final sharp = theme.shape == CoilShape.sharp;
     final label = widget.label;
+    final field = CoilFieldScope.maybeOf(context);
 
     final pressable = CoilInteraction(
       onPressed: _enabled ? _toggle : null,
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
       statesController: _states,
-      minHitTarget: sizes.minHitTarget,
+      // A framing container is the target.
+      minHitTarget: (field?.framed ?? false) ? 0 : sizes.minHitTarget,
       builder: (context, states, _) {
-        final hovered = states.contains(WidgetState.hovered);
+        final hovered =
+            states.contains(WidgetState.hovered) ||
+            (_enabled && (field?.containerHovered ?? false));
         final labelColor = style.label!.resolve({
           if (widget.value) WidgetState.selected,
         })!;
@@ -336,7 +340,9 @@ class _CoilSwitchState extends State<CoilSwitch>
             ],
             builder: (context, value, _) {
               final track = CoilFocusRing(
-                visible: states.contains(WidgetState.focused),
+                visible:
+                    states.contains(WidgetState.focused) &&
+                    !(field?.framed ?? false),
                 borderRadius: BorderRadius.circular(style.radius!),
                 offset: 2,
                 child: ListenableBuilder(
