@@ -1,6 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/semantics.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +17,7 @@ const _names = ['Home', 'Projects', 'Coil', 'Components', 'Breadcrumb'];
 List<CoilCrumb> _crumbs([List<String> names = _names, List<String>? log]) => [
   for (final (i, name) in names.indexed)
     CoilCrumb(
-      label: name,
+      label: Text(name),
       leading: i == 0 ? const TestIcon(TestGlyph.home) : null,
       onPressed: () => log?.add(name),
     ),
@@ -107,8 +107,8 @@ void main() {
             size: CoilSize.regular,
             crumbs: [
               ..._crumbs(['Home', 'Docs']),
-              const CoilCrumb(label: 'Archived'),
-              const CoilCrumb(label: 'Breadcrumb'),
+              const CoilCrumb(label: Text('Archived')),
+              const CoilCrumb(label: Text('Breadcrumb')),
             ],
           ),
         ],
@@ -199,13 +199,13 @@ void main() {
       'breadcrumb/link': (ink) => CoilBreadcrumb(
         style: hide(ink: ink),
         crumbs: [
-          CoilCrumb(label: 'HEH', onPressed: () {}),
-          const CoilCrumb(label: 'HEH'),
+          CoilCrumb(label: const Text('HEH'), onPressed: () {}),
+          const CoilCrumb(label: Text('HEH')),
         ],
       ),
       'breadcrumb/page': (ink) => CoilBreadcrumb(
         style: hide(ink: ink),
-        crumbs: const [CoilCrumb(label: 'HEH')],
+        crumbs: const [CoilCrumb(label: Text('HEH'))],
       ),
     });
   });
@@ -391,7 +391,11 @@ void main() {
       await mouse.moveTo(tester.getCenter(find.text('Coil')));
       await tester.pumpAndSettle();
       expect(
-        tester.widget<Text>(find.text('Coil')).style!.color,
+        tester
+            .renderObject<RenderParagraph>(find.text('Coil'))
+            .text
+            .style!
+            .color,
         CoilThemeData.light.colors.foreground,
       );
     });
@@ -408,7 +412,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(log, ['Coil']);
       expect(
-        tester.widget<Text>(find.text('Coil')).style!.color,
+        tester
+            .renderObject<RenderParagraph>(find.text('Coil'))
+            .text
+            .style!
+            .color,
         CoilThemeData.light.colors.mutedForeground,
       );
       expect(
@@ -467,7 +475,11 @@ void main() {
       await mouse.moveTo(tester.getCenter(find.text('Coil')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      return tester.widget<Text>(find.text('Coil')).style!.color!;
+      return tester
+          .renderObject<RenderParagraph>(find.text('Coil'))
+          .text
+          .style!
+          .color!;
     }
 
     const slow = CupertinoMotion(duration: Duration(seconds: 2));
@@ -509,8 +521,8 @@ void main() {
           child: CoilBreadcrumb(
             crumbs: _crumbs(),
             labels: const CoilBreadcrumbLabels(
-              navigation: 'Fil d’Ariane',
-              showHidden: 'Pages masquées',
+              navigationLabel: 'Fil d’Ariane',
+              showHiddenLabel: 'Pages masquées',
             ),
           ),
         ),
@@ -531,7 +543,11 @@ void main() {
         child: CoilBreadcrumb(crumbs: _crumbs(), style: style),
       ),
     );
-    Color page() => tester.widget<Text>(find.text('Breadcrumb')).style!.color!;
+    Color page() => tester
+        .renderObject<RenderParagraph>(find.text('Breadcrumb'))
+        .text
+        .style!
+        .color!;
     await tester.pumpWidget(app(CoilThemeData.light));
     expect(page(), CoilThemeData.light.colors.foreground);
     final theme = CoilThemeData.light.withComponentStyle(

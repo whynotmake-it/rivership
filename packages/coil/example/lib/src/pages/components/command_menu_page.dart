@@ -28,16 +28,25 @@ class CommandMenuPage extends StatelessWidget {
               onPressed: () => showCoilCommandMenu(
                 context: context,
                 entries: [
-                  const CoilMenuLabel('Go to'),
+                  const CoilMenuLabel(Text('Go to')),
                   for (final page in ['Inbox', 'Projects', 'Settings'])
-                    CoilAction(label: page, onPressed: () {}),
-                  const CoilMenuLabel('Actions'),
+                    CoilAction(
+                      label: Text(page),
+                      searchText: page,
+                      onPressed: () {},
+                    ),
+                  const CoilMenuLabel(Text('Actions')),
                   CoilAction(
-                    label: 'New project',
+                    label: const Text('New project'),
+                    searchText: 'New project',
                     shortcut: const Text('⌘N'),
                     onPressed: () {},
                   ),
-                  CoilAction(label: 'Invite people', onPressed: () {}),
+                  CoilAction(
+                    label: const Text('Invite people'),
+                    searchText: 'Invite people',
+                    onPressed: () {},
+                  ),
                 ],
               ),
               child: const Text('Command menu'),

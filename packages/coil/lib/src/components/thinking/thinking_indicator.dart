@@ -30,9 +30,9 @@ class CoilThinkingIndicator extends StatefulWidget {
     this.style,
   });
 
-  /// The words to cycle through, starting with the first. Needs at least
-  /// one.
-  final List<String> words;
+  /// The words to cycle through, starting with the first, usually [Text]s.
+  /// Needs at least one. Screen readers hear the current one.
+  final List<Widget> words;
 
   /// An optional glyph before the words, styled by [IconTheme] in the
   /// muted color.
@@ -58,7 +58,7 @@ class CoilThinkingIndicator extends StatefulWidget {
 
 class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
   Timer? _timer;
-  late String _word = widget.words.first;
+  late Widget _word = widget.words.first;
 
   /// Counts word changes, so a word that repeats still rolls.
   int _turn = 0;
@@ -87,8 +87,9 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
   // keeps announcements at most one per interval.
   void _next() {
     final words = widget.words;
+    // A word no longer in [words] continues from the start.
     final next = words[(words.indexOf(_word) + 1) % words.length];
-    if (next == _word) return;
+    if (identical(next, _word)) return;
     setState(() {
       _word = next;
       _turn++;
@@ -111,14 +112,13 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
         .merge(CoilTheme.styleOf<CoilThinkingIndicatorStyle>(context))
         .merge(widget.style);
 
-    Text text(String word, {Key? key}) =>
-        Text(word, key: key, maxLines: 1, softWrap: false);
-
     final words = Stack(
       children: [
         // Invisible copies of every word reserve the longest one's width.
         for (final word in {...widget.words, _word})
-          Visibility.maintain(visible: false, child: text(word)),
+          ExcludeSemantics(
+            child: Visibility.maintain(visible: false, child: word),
+          ),
         Positioned.fill(
           child: ClipRect(
             child: MotionSwitcher(
@@ -131,7 +131,10 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
                 alignment: AlignmentDirectional.centerStart,
                 children: [...previous, ?current],
               ),
-              child: text(_word, key: ValueKey(_turn)),
+              child: KeyedSubtree(
+                key: ValueKey(_turn),
+                child: _word,
+              ),
             ),
           ),
         ),
@@ -143,16 +146,19 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
       child: Semantics(
         container: true,
         liveRegion: true,
-        label: _word,
-        child: ExcludeSemantics(
-          child: DefaultTextStyle(
-            style: style.textStyle!,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: metrics.gap,
-              children: [
-                if (widget.leading case final leading?)
-                  IconTheme(
+        // The current word names the region; the glyph, the hidden copies
+        // and a leaving word stay out.
+        child: DefaultTextStyle(
+          style: style.textStyle!,
+          maxLines: 1,
+          softWrap: false,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: metrics.gap,
+            children: [
+              if (widget.leading case final leading?)
+                ExcludeSemantics(
+                  child: IconTheme(
                     data: IconThemeData(
                       size: style.glyphSize,
                       color: style.glyphColor,
@@ -160,9 +166,9 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
                     ),
                     child: leading,
                   ),
-                words,
-              ],
-            ),
+                ),
+              words,
+            ],
           ),
         ),
       ),
@@ -191,9 +197,21 @@ class _Roll extends StatelessWidget {
     builder: (context, child) {
       final p = presence.value;
       final leaving = presence.status == AnimationStatus.reverse;
-      return FractionalTranslation(
-        translation: Offset(0, rise ? (1 - p) * 0.8 * (leaving ? -1 : 1) : 0),
-        child: Opacity(opacity: p.clamp(0, 1), child: child),
+      return ExcludeSemantics(
+        excluding: leaving,
+        child: FractionalTranslation(
+          translation: Offset(
+            0,
+            rise ? (1 - p) * 0.8 * (leaving ? -1 : 1) : 0,
+          ),
+          // An entering word names the live region from its first frame,
+          // while it's still transparent.
+          child: Opacity(
+            opacity: p.clamp(0, 1),
+            alwaysIncludeSemantics: true,
+            child: child,
+          ),
+        ),
       );
     },
   );

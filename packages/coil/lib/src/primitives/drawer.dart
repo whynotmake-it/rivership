@@ -28,7 +28,7 @@ enum CoilDrawerEdge {
 ///   [onClose] (a fling decides by its direction, a slow release by how far
 ///   the panel moved);
 /// * focus stays inside the panel, and returns to where it was on close;
-/// * screen readers only reach the panel, named [label].
+/// * screen readers only reach the panel, named [semanticLabel].
 ///
 /// It slides in on [motion] and out on [exitMotion] (the theme's
 /// `standard` and `standardExit` by default); a drag follows the finger
@@ -44,7 +44,7 @@ class CoilDrawer extends StatefulWidget {
     super.key,
     this.edge = CoilDrawerEdge.start,
     this.width,
-    this.label,
+    this.semanticLabel,
     this.motion,
     this.exitMotion,
   });
@@ -68,7 +68,7 @@ class CoilDrawer extends StatefulWidget {
   final double? width;
 
   /// The panel's name for screen readers.
-  final String? label;
+  final String? semanticLabel;
 
   /// The slide in. The theme's `standard` when null.
   final Motion? motion;
@@ -185,7 +185,7 @@ class _CoilDrawerState extends State<CoilDrawer> {
             open: widget.open,
             left: left,
             width: panelWidth,
-            label: widget.label,
+            label: widget.semanticLabel,
             onClose: widget.onClose,
             onDragUpdate: (delta) => setState(() {
               final towardEdge = left ? -delta : delta;

@@ -52,14 +52,22 @@ class _MenuState extends State<_Menu> {
             trailing: const Text('4'),
             actions: [
               CoilAction(
-                label: 'Branch',
+                label: const Text('Branch'),
+                searchText: 'Branch',
                 leading: const TestIcon(TestGlyph.plus),
                 onPressed: widget.onAction,
               ),
               CoilSubmenu(
-                label: 'More',
+                label: const Text('More'),
+                searchText: 'More',
                 leading: const TestIcon(TestGlyph.settings),
-                entries: [CoilAction(label: 'Rename', onPressed: () {})],
+                entries: [
+                  CoilAction(
+                    label: const Text('Rename'),
+                    searchText: 'Rename',
+                    onPressed: () {},
+                  ),
+                ],
               ),
             ],
             onPressed: () => setState(() => page = 'Fix login'),

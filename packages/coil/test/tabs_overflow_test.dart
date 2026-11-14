@@ -62,14 +62,14 @@ class _HostState extends State<_Host> {
                       for (var i = 0; i < _count; i++)
                         CoilTab(
                           value: i,
-                          label: 'Tab number $i',
-                          child: widget.solid
+                          label: widget.solid
                               ? const SizedBox(
                                   width: 100,
                                   height: 20,
                                   child: ColoredBox(color: Color(0xFF000000)),
                                 )
-                              : null,
+                              : Text('Tab number $i'),
+                          semanticLabel: widget.solid ? 'Tab number $i' : null,
                         ),
                     ],
                     value: tab,
@@ -121,8 +121,8 @@ void main() {
             child: CoilTabs(
               key: const ValueKey('tabs'),
               tabs: const [
-                CoilTab(value: 0, label: 'One'),
-                CoilTab(value: 1, label: 'Two'),
+                CoilTab(value: 0, label: Text('One')),
+                CoilTab(value: 1, label: Text('Two')),
               ],
               value: 0,
               onChanged: (_) {},

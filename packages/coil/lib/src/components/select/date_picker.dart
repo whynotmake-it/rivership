@@ -22,7 +22,7 @@ class CoilDatePicker extends StatefulWidget {
     required this.value,
     required this.onChanged,
     super.key,
-    this.placeholder = 'Pick a date',
+    this.placeholder = const Text('Pick a date'),
     this.icon,
     this.firstDate,
     this.lastDate,
@@ -47,8 +47,8 @@ class CoilDatePicker extends StatefulWidget {
   /// Called with the picked date. Null disables the picker.
   final ValueChanged<DateTime>? onChanged;
 
-  /// Shown in the field when no date is picked.
-  final String placeholder;
+  /// Shown, muted, in the field when no date is picked. Usually a [Text].
+  final Widget placeholder;
 
   /// A leading glyph in the field.
   final Widget? icon;
@@ -136,11 +136,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
     final value = widget.value;
     final text = value == null
         ? null
-        : widget.withTime
-        ? '${widget.labels.date(value)}, '
-              '${value.hour.toString().padLeft(2, '0')}:'
-              '${value.minute.toString().padLeft(2, '0')}'
-        : widget.labels.date(value);
+        : widget.labels.dateLabel(value, withTime: widget.withTime);
     return CoilAdaptivePopup(
       controller: _popup,
       presentation: widget.presentation,
@@ -191,7 +187,6 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
           enabled: _enabled,
           expanded: _popup.isOpen,
           value: text,
-          hint: text == null ? widget.placeholder : null,
           onTap: _enabled ? _open : null,
           child: CallbackShortcuts(
             bindings: {
@@ -209,11 +204,14 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
                 style: style,
                 states: {...states, if (_popup.isOpen) WidgetState.selected},
                 icon: widget.icon,
-                label: Text(
-                  text ?? widget.placeholder,
-                  style: text == null
-                      ? TextStyle(color: style.placeholder)
-                      : null,
+                label: ExcludeSemantics(
+                  excluding: value != null,
+                  child: value == null
+                      ? DefaultTextStyle.merge(
+                          style: TextStyle(color: style.placeholder),
+                          child: widget.placeholder,
+                        )
+                      : widget.labels.date(value, withTime: widget.withTime),
                 ),
               ),
             ),

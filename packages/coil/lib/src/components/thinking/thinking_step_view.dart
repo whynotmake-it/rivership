@@ -95,11 +95,14 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(step.title, style: style.titleStyle),
+                  DefaultTextStyle(style: style.titleStyle!, child: step.title),
                   if (step.detail case final detail?)
                     Padding(
                       padding: EdgeInsets.only(top: style.detailGap!),
-                      child: Text(detail, style: style.detailStyle),
+                      child: DefaultTextStyle(
+                        style: style.detailStyle!,
+                        child: detail,
+                      ),
                     ),
                   if (step.sources.isNotEmpty)
                     Padding(

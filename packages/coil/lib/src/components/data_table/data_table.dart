@@ -14,6 +14,7 @@ class CoilDataColumn<T> {
   const CoilDataColumn({
     required this.label,
     required this.cellBuilder,
+    this.semanticLabel,
     this.compare,
     this.width,
     this.flex = 1,
@@ -21,8 +22,11 @@ class CoilDataColumn<T> {
     this.alignment = AlignmentDirectional.centerStart,
   });
 
-  /// The header text.
-  final String label;
+  /// The header, usually a [Text].
+  final Widget label;
+
+  /// Names the column for screen readers when [label] can't.
+  final String? semanticLabel;
 
   /// Builds this column's cell for a row.
   final Widget Function(BuildContext context, T row) cellBuilder;
@@ -43,31 +47,45 @@ class CoilDataColumn<T> {
   final AlignmentGeometry alignment;
 }
 
-/// The texts a [CoilDataTable] shows.
+/// What a [CoilDataTable] shows and announces. The widgets are usually
+/// [Text]s the table styles; the `*Label` strings are for screen readers.
+/// English by default.
 @immutable
 class CoilDataTableLabels {
-  /// Creates the labels. English by default.
+  /// Creates the labels.
   const CoilDataTableLabels({
-    this.search = 'Search',
-    this.previousPage = 'Previous page',
-    this.nextPage = 'Next page',
+    this.search = const Text('Search'),
+    this.searchLabel = 'Search',
+    this.count = _count,
+    this.page = _page,
+    this.previousPageLabel = 'Previous page',
+    this.nextPageLabel = 'Next page',
   });
 
   /// The search field's placeholder.
-  final String search;
+  final Widget search;
+
+  /// The search field's name for screen readers.
+  final String searchLabel;
+
+  /// The footer's count, like "2 of 40 selected" or "40 rows". It's a live
+  /// region, so changes are announced.
+  final Widget Function({required int selected, required int total}) count;
+
+  /// The page position, like "Page 2 of 5", from the page number (from 1)
+  /// and the page count.
+  final Widget Function(int page, int count) page;
 
   /// The previous-page button's label for screen readers.
-  final String previousPage;
+  final String previousPageLabel;
 
   /// The next-page button's label for screen readers.
-  final String nextPage;
+  final String nextPageLabel;
 
-  /// The footer's count, like "2 of 40 selected" or "40 rows".
-  String count({required int selected, required int total}) =>
-      selected > 0 ? '$selected of $total selected' : '$total rows';
+  static Widget _count({required int selected, required int total}) =>
+      Text(selected > 0 ? '$selected of $total selected' : '$total rows');
 
-  /// The page position, like "Page 2 of 5".
-  String page(int page, int count) => 'Page $page of $count';
+  static Widget _page(int page, int count) => Text('Page $page of $count');
 }
 
 /// A [CoilTable] driven by a [CoilDataTableController]: a search field
@@ -128,7 +146,8 @@ class CoilDataTable<T> extends StatelessWidget {
           children: [
             if (searchable)
               CoilInput(
-                placeholder: Text(labels.search),
+                placeholder: labels.search,
+                semanticLabel: labels.searchLabel,
                 autocorrect: false,
                 textInputAction: TextInputAction.search,
                 onChanged: (text) => controller.query = text,
@@ -146,6 +165,7 @@ class CoilDataTable<T> extends StatelessWidget {
                 for (final (i, column) in columns.indexed)
                   CoilTableColumn<T>(
                     label: column.label,
+                    semanticLabel: column.semanticLabel,
                     cellBuilder: column.cellBuilder,
                     width: column.width,
                     flex: column.flex,
@@ -166,25 +186,25 @@ class CoilDataTable<T> extends StatelessWidget {
                 Expanded(
                   child: Semantics(
                     liveRegion: true,
-                    child: Text(
-                      labels.count(
-                        selected: controller.selected.length,
-                        total: controller.matching.length,
-                      ),
+                    child: DefaultTextStyle(
                       style: theme.typography.style(
                         metrics.caption,
                         color: theme.colors.mutedForeground,
+                      ),
+                      child: labels.count(
+                        selected: controller.selected.length,
+                        total: controller.matching.length,
                       ),
                     ),
                   ),
                 ),
                 if (pages > 1) ...[
-                  Text(
-                    labels.page(controller.page + 1, pages),
+                  DefaultTextStyle(
                     style: theme.typography.style(
                       metrics.caption,
                       color: theme.colors.mutedForeground,
                     ),
+                    child: labels.page(controller.page + 1, pages),
                   ),
                   SizedBox(width: metrics.gap),
                   CoilButton.icon(
@@ -193,7 +213,7 @@ class CoilDataTable<T> extends StatelessWidget {
                     onPressed: controller.page > 0
                         ? () => controller.page--
                         : null,
-                    semanticLabel: labels.previousPage,
+                    semanticLabel: labels.previousPageLabel,
                     icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
                   ),
                   CoilButton.icon(
@@ -202,7 +222,7 @@ class CoilDataTable<T> extends StatelessWidget {
                     onPressed: controller.page < pages - 1
                         ? () => controller.page++
                         : null,
-                    semanticLabel: labels.nextPage,
+                    semanticLabel: labels.nextPageLabel,
                     icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
                   ),
                 ],

@@ -356,8 +356,8 @@ void main() {
             value: 1,
             onChanged: (_) {},
             labels: CoilCarouselDotsLabels(
-              slides: 'Folien',
-              position: (number, count) => 'Folie $number von $count',
+              slidesLabel: 'Folien',
+              positionLabel: (number, count) => 'Folie $number von $count',
             ),
           ),
         ),

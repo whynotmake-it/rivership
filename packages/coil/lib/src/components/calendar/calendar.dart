@@ -4,47 +4,76 @@ import 'package:coil/primitives.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// The names a [CoilCalendar] shows and announces. English by default.
+/// What a [CoilCalendar] (and a `CoilDatePicker`) shows and announces.
+/// English by default.
+///
+/// The builders return what's shown, usually a [Text] that the calendar
+/// styles. The `*Label` functions and strings are for screen readers.
 @immutable
 class CoilCalendarLabels {
   /// Creates calendar labels.
   const CoilCalendarLabels({
-    this.months = const [
-      'January', 'February', 'March', 'April', 'May', 'June', 'July', //
-      'August', 'September', 'October', 'November', 'December',
-    ],
-    this.weekdays = const [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', //
-      'Sunday',
-    ],
-    this.previousMonth = 'Previous month',
-    this.nextMonth = 'Next month',
+    this.monthTitle = _monthTitle,
+    this.weekday = _weekday,
+    this.date = _date,
+    this.dateLabel = _dateLabel,
+    this.dayLabel = _dayLabel,
+    this.previousMonthLabel = 'Previous month',
+    this.nextMonthLabel = 'Next month',
   });
 
-  /// The month names, January first.
-  final List<String> months;
+  /// The month title, like "November 2026". It's announced as the month
+  /// changes.
+  final Widget Function(DateTime month) monthTitle;
 
-  /// The weekday names, Monday first. The header shows their first two
-  /// letters.
-  final List<String> weekdays;
+  /// A weekday's column heading, like "Mo", from [DateTime.weekday].
+  final Widget Function(int weekday) weekday;
 
-  /// The previous-month button's label for screen readers.
-  final String previousMonth;
+  /// A picked date in a date picker's trigger, like "November 14, 2026",
+  /// with the time when the picker picks one.
+  final Widget Function(DateTime value, {required bool withTime}) date;
 
-  /// The next-month button's label for screen readers.
-  final String nextMonth;
-
-  /// The month title, like "November 2026".
-  String monthTitle(DateTime month) =>
-      '${months[month.month - 1]} ${month.year}';
-
-  /// A date as a picker shows it, like "November 14, 2026".
-  String date(DateTime day) =>
-      '${months[day.month - 1]} ${day.day}, ${day.year}';
+  /// [date] for screen readers.
+  final String Function(DateTime value, {required bool withTime}) dateLabel;
 
   /// A day's name for screen readers, like "Saturday, November 14, 2026".
-  String dayLabel(DateTime day) =>
-      '${weekdays[day.weekday - 1]}, ${months[day.month - 1]} ${day.day}, '
+  final String Function(DateTime day) dayLabel;
+
+  /// The previous-month button's label for screen readers.
+  final String previousMonthLabel;
+
+  /// The next-month button's label for screen readers.
+  final String nextMonthLabel;
+
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', //
+    'August', 'September', 'October', 'November', 'December',
+  ];
+
+  static const _weekdays = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', //
+    'Sunday',
+  ];
+
+  static Widget _monthTitle(DateTime month) =>
+      Text('${_months[month.month - 1]} ${month.year}');
+
+  static Widget _weekday(int weekday) =>
+      Text(_weekdays[weekday - 1].substring(0, 2));
+
+  static Widget _date(DateTime value, {required bool withTime}) =>
+      Text(_dateLabel(value, withTime: withTime));
+
+  static String _dateLabel(DateTime value, {required bool withTime}) {
+    final date = '${_months[value.month - 1]} ${value.day}, ${value.year}';
+    if (!withTime) return date;
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$date, $hour:$minute';
+  }
+
+  static String _dayLabel(DateTime day) =>
+      '${_weekdays[day.weekday - 1]}, ${_months[day.month - 1]} ${day.day}, '
       '${day.year}';
 }
 
@@ -234,13 +263,13 @@ class _CoilCalendarState extends State<CoilCalendar> {
             padding: EdgeInsetsDirectional.only(start: metrics.itemPaddingX),
             child: Semantics(
               liveRegion: true,
-              child: Text(
-                labels.monthTitle(_month),
+              child: DefaultTextStyle(
                 style: theme.typography.style(
                   metrics.body,
                   weight: CoilWeight.semibold,
                   color: colors.foreground,
                 ),
+                child: labels.monthTitle(_month),
               ),
             ),
           ),
@@ -251,7 +280,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
           onPressed: _canShow(DateTime(_month.year, _month.month - 1))
               ? () => _showMonth(-1)
               : null,
-          semanticLabel: labels.previousMonth,
+          semanticLabel: labels.previousMonthLabel,
           icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
         ),
         CoilButton.icon(
@@ -260,7 +289,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
           onPressed: _canShow(DateTime(_month.year, _month.month + 1))
               ? () => _showMonth(1)
               : null,
-          semanticLabel: labels.nextMonth,
+          semanticLabel: labels.nextMonthLabel,
           icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
         ),
       ],
@@ -272,16 +301,13 @@ class _CoilCalendarState extends State<CoilCalendar> {
           _Column(
             width: cell,
             child: ExcludeSemantics(
-              child: Text(
-                labels.weekdays[(widget.firstDayOfWeek - 1 + i) % 7].substring(
-                  0,
-                  2,
-                ),
+              child: DefaultTextStyle(
                 textAlign: TextAlign.center,
                 style: theme.typography.style(
                   metrics.caption,
                   color: colors.mutedForeground,
                 ),
+                child: labels.weekday((widget.firstDayOfWeek - 1 + i) % 7 + 1),
               ),
             ),
           ),

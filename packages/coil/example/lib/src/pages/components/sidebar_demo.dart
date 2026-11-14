@@ -61,22 +61,25 @@ class WorkspaceSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CoilDropdown(
     entries: [
-      const CoilMenuLabel('Workspaces'),
+      const CoilMenuLabel(Text('Workspaces')),
       CoilAction(
-        label: 'Acme AI',
+        label: const Text('Acme AI'),
+        searchText: 'Acme AI',
         leading: const WorkspaceTile('A'),
         selected: true,
         mark: CoilActionMark.check,
         onPressed: () {},
       ),
       CoilAction(
-        label: 'Side project',
+        label: const Text('Side project'),
+        searchText: 'Side project',
         leading: const WorkspaceTile('S'),
         onPressed: () {},
       ),
       const CoilMenuSeparator(),
       CoilAction(
-        label: 'New workspace',
+        label: const Text('New workspace'),
+        searchText: 'New workspace',
         leading: const CatalogIcon(Glyph.plus),
         onPressed: () {},
       ),
@@ -115,17 +118,20 @@ class UserMenu extends StatelessWidget {
   Widget build(BuildContext context) => CoilDropdown(
     entries: [
       CoilAction(
-        label: 'Profile',
+        label: const Text('Profile'),
+        searchText: 'Profile',
         leading: const CatalogIcon(Glyph.user),
         onPressed: () {},
       ),
       CoilAction(
-        label: 'Settings',
+        label: const Text('Settings'),
+        searchText: 'Settings',
         leading: const CatalogIcon(Glyph.settings),
         onPressed: () {},
       ),
       CoilAction(
-        label: 'Log out',
+        label: const Text('Log out'),
+        searchText: 'Log out',
         leading: const CatalogIcon(Glyph.logOut),
         onPressed: () {},
       ),
@@ -237,27 +243,32 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
 
   List<CoilMenuEntry> _rowActions(String thread) => [
     CoilAction(
-      label: 'Branch thread',
+      label: const Text('Branch thread'),
+      searchText: 'Branch thread',
       leading: const CatalogIcon(Glyph.branch),
       onPressed: () {},
     ),
     CoilAction(
-      label: 'Share thread',
+      label: const Text('Share thread'),
+      searchText: 'Share thread',
       leading: const CatalogIcon(Glyph.link),
       onPressed: () {},
     ),
     // The overflow menu stays rightmost at every count, like FF's.
     CoilSubmenu(
-      label: 'More options',
+      label: const Text('More options'),
+      searchText: 'More options',
       leading: const CatalogIcon(Glyph.more),
       entries: [
         CoilAction(
-          label: 'Rename',
+          label: const Text('Rename'),
+          searchText: 'Rename',
           leading: const CatalogIcon(Glyph.pencil),
           onPressed: () {},
         ),
         CoilAction(
-          label: 'Delete',
+          label: const Text('Delete'),
+          searchText: 'Delete',
           leading: const CatalogIcon(Glyph.trash),
           tone: CoilActionTone.destructive,
           onPressed: () {},
@@ -351,7 +362,8 @@ class _NestedGroupState extends State<NestedGroup> {
                   trailing: _badges[page] == null ? null : Text(_badges[page]!),
                   actions: [
                     CoilAction(
-                      label: 'New in $page',
+                      label: Text('New in $page'),
+                      searchText: 'New in $page',
                       leading: const CatalogIcon(Glyph.plus),
                       onPressed: () {},
                     ),

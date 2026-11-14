@@ -231,7 +231,7 @@ class CardDismissButton extends StatelessWidget {
   const CardDismissButton({
     required this.visible,
     required this.icon,
-    required this.label,
+    required this.semanticLabel,
     required this.showMotion,
     required this.hideMotion,
     required this.onPressed,
@@ -245,7 +245,7 @@ class CardDismissButton extends StatelessWidget {
   final Widget? icon;
 
   /// The name for assistive technology.
-  final String label;
+  final String semanticLabel;
 
   /// The fade in.
   final Motion showMotion;
@@ -272,7 +272,7 @@ class CardDismissButton extends StatelessWidget {
           onPressed: onPressed,
           variant: CoilButtonVariant.ghost,
           size: CoilSize.compact,
-          semanticLabel: label,
+          semanticLabel: semanticLabel,
           icon: icon ?? const CoilDrawnGlyph(CoilGlyph.cross),
         ),
       ),

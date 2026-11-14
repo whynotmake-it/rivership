@@ -3,24 +3,41 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const fruits = [
-  CoilOption(value: 'apple', label: 'Apple'),
-  CoilOption(value: 'banana', label: 'Banana'),
-  CoilOption(value: 'blueberry', label: 'Blueberry'),
-  CoilOption(value: 'cherry', label: 'Cherry'),
-  CoilOption(value: 'grapes', label: 'Grapes', enabled: false),
-  CoilOption(value: 'mango', label: 'Mango'),
-  CoilOption(value: 'orange', label: 'Orange'),
+  CoilOption(value: 'apple', label: Text('Apple'), searchText: 'Apple'),
+  CoilOption(value: 'banana', label: Text('Banana'), searchText: 'Banana'),
+  CoilOption(
+    value: 'blueberry',
+    label: Text('Blueberry'),
+    searchText: 'Blueberry',
+  ),
+  CoilOption(value: 'cherry', label: Text('Cherry'), searchText: 'Cherry'),
+  CoilOption(
+    value: 'grapes',
+    label: Text('Grapes'),
+    searchText: 'Grapes',
+    enabled: false,
+  ),
+  CoilOption(value: 'mango', label: Text('Mango'), searchText: 'Mango'),
+  CoilOption(value: 'orange', label: Text('Orange'), searchText: 'Orange'),
 ];
 
 /// More than `CoilAdaptivePopup.shortMenuMaxItems`, so a phone opens it in
 /// a sheet.
 const moreFruits = [
   ...fruits,
-  CoilOption(value: 'peach', label: 'Peach'),
-  CoilOption(value: 'pear', label: 'Pear'),
-  CoilOption(value: 'plum', label: 'Plum'),
-  CoilOption(value: 'raspberry', label: 'Raspberry'),
-  CoilOption(value: 'strawberry', label: 'Strawberry'),
+  CoilOption(value: 'peach', label: Text('Peach'), searchText: 'Peach'),
+  CoilOption(value: 'pear', label: Text('Pear'), searchText: 'Pear'),
+  CoilOption(value: 'plum', label: Text('Plum'), searchText: 'Plum'),
+  CoilOption(
+    value: 'raspberry',
+    label: Text('Raspberry'),
+    searchText: 'Raspberry',
+  ),
+  CoilOption(
+    value: 'strawberry',
+    label: Text('Strawberry'),
+    searchText: 'Strawberry',
+  ),
 ];
 
 /// A desktop window (pointer) or a phone (touch, with a notch and a home

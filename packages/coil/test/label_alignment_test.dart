@@ -30,13 +30,13 @@ void main() {
       tabs: [
         CoilTab(
           value: 0,
-          label: 'HEH',
-          child: InkLabel(ink, const Text('HEH')),
+          label: InkLabel(ink, const Text('HEH')),
+          semanticLabel: 'HEH',
         ),
         CoilTab(
           value: 1,
-          label: 'HEH',
-          child: InkLabel(ink, const Text('HEH')),
+          label: InkLabel(ink, const Text('HEH')),
+          semanticLabel: 'HEH',
         ),
       ],
       value: 0,
@@ -47,8 +47,8 @@ void main() {
         CoilTab(
           value: 0,
           icon: const TestIcon(TestGlyph.home),
-          label: 'HEH',
-          child: InkLabel(ink, const Text('HEH')),
+          label: InkLabel(ink, const Text('HEH')),
+          semanticLabel: 'HEH',
         ),
       ],
       value: 0,
@@ -80,7 +80,7 @@ void main() {
       child: CoilInputCopy(
         value: '',
         variant: CoilInputCopyVariant.button,
-        labels: CoilInputCopyLabels(copy: ink ? 'HEH' : ''),
+        labels: CoilInputCopyLabels(copy: Text(ink ? 'HEH' : '')),
       ),
     ),
     'checkbox-group/row': (ink) => SizedBox(
@@ -91,8 +91,9 @@ void main() {
         options: [
           CoilOption(
             value: 0,
-            label: 'HEH',
-            child: InkLabel(ink, const Text('HEH')),
+            label: InkLabel(ink, const Text('HEH')),
+            searchText: 'HEH',
+            semanticLabel: 'HEH',
           ),
         ],
       ),
@@ -105,8 +106,9 @@ void main() {
         options: [
           CoilOption(
             value: 0,
-            label: 'HEH',
-            child: InkLabel(ink, const Text('HEH')),
+            label: InkLabel(ink, const Text('HEH')),
+            searchText: 'HEH',
+            semanticLabel: 'HEH',
           ),
         ],
       ),
@@ -122,8 +124,9 @@ void main() {
       options: [
         CoilOption(
           value: 0,
-          label: 'HEH',
-          child: InkLabel(ink, const Text('HEH')),
+          label: InkLabel(ink, const Text('HEH')),
+          searchText: 'HEH',
+          semanticLabel: 'HEH',
         ),
       ],
     ),
@@ -133,8 +136,9 @@ void main() {
         options: [
           CoilOption(
             value: 0,
-            label: 'HEH',
-            child: InkLabel(ink, const Text('HEH')),
+            label: InkLabel(ink, const Text('HEH')),
+            searchText: 'HEH',
+            semanticLabel: 'HEH',
           ),
         ],
         value: 0,

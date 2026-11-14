@@ -2,6 +2,46 @@
 
 Milestone M0, unreleased.
 
+- Breaking: visible text and icons are `Widget` parameters that the
+  component styles. Strings stay only for screen readers (`semanticLabel`
+  or a name ending in `Label`) and for matching (`searchText`).
+  - `CoilOption`, `CoilAction` and `CoilSubmenu`: `label` is a `Widget`;
+    the `child` override is gone. Add `searchText` where typeahead, a menu
+    search or a combobox should find the entry; entries without it are
+    skipped. `CoilOption.semanticLabel` names an icon-only option.
+  - `CoilTab`, `CoilTableColumn`: `label` is a `Widget`, `child` is gone,
+    and `semanticLabel` names a tab or column the label can't.
+    `CoilDataColumn.label`, `CoilCrumb.label`, `CoilMenuLabel(…)`,
+    `CoilThinkingStep.title` and `.detail` are widgets.
+    `CoilAccordionItem.label` is a widget; `semanticLabel` names its panel.
+  - `CoilSelect`, `CoilMultiSelect`, `CoilCombobox` and `CoilDatePicker`:
+    `placeholder` is a widget. The combobox's `emptyLabel` is `empty`, a
+    widget, and it filters and fills its field from `searchText`.
+  - `CoilMenuSearch` takes `placeholder` and `empty` widgets and a
+    `semanticLabel`. `showCoilCommandMenu` takes the same three.
+  - `CoilThinkingIndicator.words` is a list of widgets.
+  - `CoilChatMessage.time` is a widget; `timeLabel` is what screen readers
+    hear. `CoilChatMessageAction` takes a `label` widget for its menu row
+    and a `semanticLabel` for its button.
+  - `CoilSkeletonRegion.label` is `semanticLabel`.
+  - Labels classes: `CoilCalendarLabels` builds `monthTitle`, `weekday`
+    and `date` widgets and has `dateLabel`, `dayLabel`,
+    `previousMonthLabel` and `nextMonthLabel` for screen readers.
+    `CoilInputCopyLabels` has `copy`, `copied` and `failed` widgets and
+    `copyLabel`, `copiedLabel`, `copyFailedLabel` and
+    `copyToClipboardLabel` strings. `CoilDataTableLabels` builds `count` and
+    `page` widgets, takes a `search` widget, and adds `searchLabel`. The
+    screen-reader fields of `CoilBreadcrumbLabels`, `CoilChatMessageLabels`,
+    `CoilCarouselDotsLabels`, `CoilTableLabels` and `CoilDataTableLabels`
+    end in `Label` (`navigationLabel`, `userLabel`, `slidesLabel`,
+    `sortedAscendingLabel`, `previousPageLabel` and so on).
+  - `CoilTypeahead.labels` is `searchTexts`.
+  - `CoilAction` and `CoilSubmenu` gain `semanticLabel`, which names them
+    where they show as an icon only, such as a sidebar row action (else
+    their `searchText`).
+  - `CoilInputMessage.placeholder` is a widget. `CoilQueuedStackLabels`
+    fields end in `Label` (`editLabel`, `removeLabel`, `collapseLabel`,
+    `messageLabel`, `countLabel`). `CoilDrawer.label` is `semanticLabel`.
 - The sidebar is rebuilt to match FF's. `CoilSidebarScaffold` takes a
   `CoilSidebarController` (open state and width, which the app stores),
   `side`, `variant` (`sidebar`, `floating`, `inset`), `collapsible`

@@ -74,33 +74,42 @@ enum CoilInputCopyAlign {
   start,
 }
 
-/// The texts a [CoilInputCopy] shows and announces. The defaults are
-/// English.
+/// What a [CoilInputCopy] shows and announces. The widgets are what the
+/// button variant shows, usually a [Text]; the `*Label` strings are for
+/// screen readers. The defaults are English.
 @immutable
 class CoilInputCopyLabels {
   /// Creates the labels.
   const CoilInputCopyLabels({
-    this.copy = 'Copy',
-    this.copied = 'Copied',
-    this.failed = 'Failed',
-    this.copyFailed = 'Copy failed',
-    this.copyToClipboard = 'Copy to clipboard',
+    this.copy = const Text('Copy'),
+    this.copied = const Text('Copied'),
+    this.failed = const Text('Failed'),
+    this.copyLabel = 'Copy',
+    this.copiedLabel = 'Copied',
+    this.copyFailedLabel = 'Copy failed',
+    this.copyToClipboardLabel = 'Copy to clipboard',
   });
 
-  /// The button label, and the spoken name inside a `CoilField`.
-  final String copy;
+  /// The button's label at rest.
+  final Widget copy;
 
-  /// Shown and announced after a copy.
-  final String copied;
+  /// The button's label after a copy.
+  final Widget copied;
 
-  /// The button label after a failed copy.
-  final String failed;
+  /// The button's label after a failed copy.
+  final Widget failed;
+
+  /// The spoken name inside a `CoilField`.
+  final String copyLabel;
+
+  /// Announced after a copy.
+  final String copiedLabel;
 
   /// Announced after a failed copy.
-  final String copyFailed;
+  final String copyFailedLabel;
 
   /// The spoken name outside a `CoilField`.
-  final String copyToClipboard;
+  final String copyToClipboardLabel;
 
   @override
   bool operator ==(Object other) =>
@@ -108,12 +117,21 @@ class CoilInputCopyLabels {
       other.copy == copy &&
       other.copied == copied &&
       other.failed == failed &&
-      other.copyFailed == copyFailed &&
-      other.copyToClipboard == copyToClipboard;
+      other.copyLabel == copyLabel &&
+      other.copiedLabel == copiedLabel &&
+      other.copyFailedLabel == copyFailedLabel &&
+      other.copyToClipboardLabel == copyToClipboardLabel;
 
   @override
-  int get hashCode =>
-      Object.hash(copy, copied, failed, copyFailed, copyToClipboard);
+  int get hashCode => Object.hash(
+    copy,
+    copied,
+    failed,
+    copyLabel,
+    copiedLabel,
+    copyFailedLabel,
+    copyToClipboardLabel,
+  );
 }
 
 /// A read-only value with a copy button: an API key, an invite link.
@@ -247,7 +265,7 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
     unawaited(
       SemanticsService.sendAnnouncement(
         View.of(context),
-        status == _Status.copied ? labels.copied : labels.copyFailed,
+        status == _Status.copied ? labels.copiedLabel : labels.copyFailedLabel,
         Directionality.of(context),
       ),
     );
@@ -260,11 +278,11 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
   String _semanticLabel(bool inField) {
     final labels = widget.labels;
     return switch (_status) {
-      _Status.copied => labels.copied,
-      _Status.failed => labels.copyFailed,
+      _Status.copied => labels.copiedLabel,
+      _Status.failed => labels.copyFailedLabel,
       _Status.idle =>
         widget.semanticLabel ??
-            (inField ? labels.copy : labels.copyToClipboard),
+            (inField ? labels.copyLabel : labels.copyToClipboardLabel),
     };
   }
 
@@ -496,7 +514,7 @@ class _Action extends StatelessWidget {
     _Status.failed => _DrawIn(glyph: CoilGlyph.cross, motion: draw),
   };
 
-  String _text(_Status status) => switch (status) {
+  Widget _text(_Status status) => switch (status) {
     _Status.idle => labels.copy,
     _Status.copied => labels.copied,
     _Status.failed => labels.failed,
@@ -510,7 +528,14 @@ class _Action extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       spacing: style.actionGap!,
-      children: [glyph, Text(_text(status), maxLines: 1, softWrap: false)],
+      children: [
+        glyph,
+        DefaultTextStyle.merge(
+          maxLines: 1,
+          softWrap: false,
+          child: _text(status),
+        ),
+      ],
     );
   }
 

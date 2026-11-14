@@ -9,12 +9,16 @@ class CoilChatMessageAction {
   /// Creates an action.
   const CoilChatMessageAction({
     required this.label,
+    required this.semanticLabel,
     required this.icon,
     required this.onPressed,
   });
 
-  /// The name: the button's semantic label and the menu row's text.
-  final String label;
+  /// The long-press menu row's text, usually a [Text].
+  final Widget label;
+
+  /// Names the icon-only button for screen readers.
+  final String semanticLabel;
 
   /// The button's icon, styled through [IconTheme].
   final Widget icon;

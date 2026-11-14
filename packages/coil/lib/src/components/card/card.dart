@@ -238,7 +238,7 @@ class _CoilCardState extends State<CoilCard> {
                     _focusWithin ||
                     _states.value.contains(WidgetState.hovered),
                 icon: widget.dismissIcon,
-                label: widget.dismissLabel,
+                semanticLabel: widget.dismissLabel,
                 showMotion: _motionFor(
                   CoilCardTrack.dismissReveal,
                   motion.fade,

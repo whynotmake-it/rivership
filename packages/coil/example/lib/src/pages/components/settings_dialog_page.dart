@@ -105,10 +105,22 @@ class _GeneralState extends State<_General> {
             value: _language,
             onChanged: (value) => setState(() => _language = value),
             options: const [
-              CoilOption(value: 'en', label: 'English'),
-              CoilOption(value: 'fr', label: 'Français'),
-              CoilOption(value: 'de', label: 'Deutsch'),
-              CoilOption(value: 'ja', label: '日本語'),
+              CoilOption(
+                value: 'en',
+                label: Text('English'),
+                searchText: 'English',
+              ),
+              CoilOption(
+                value: 'fr',
+                label: Text('Français'),
+                searchText: 'Français',
+              ),
+              CoilOption(
+                value: 'de',
+                label: Text('Deutsch'),
+                searchText: 'Deutsch',
+              ),
+              CoilOption(value: 'ja', label: Text('日本語'), searchText: '日本語'),
             ],
           ),
         ),
@@ -181,17 +193,20 @@ class _AppearanceState extends State<_Appearance> {
             options: const [
               CoilOption(
                 value: 'system',
-                label: 'System',
+                label: Text('System'),
+                searchText: 'System',
                 icon: CatalogIcon(Glyph.monitor),
               ),
               CoilOption(
                 value: 'light',
-                label: 'Light',
+                label: Text('Light'),
+                searchText: 'Light',
                 icon: CatalogIcon(Glyph.sun),
               ),
               CoilOption(
                 value: 'dark',
-                label: 'Dark',
+                label: Text('Dark'),
+                searchText: 'Dark',
                 icon: CatalogIcon(Glyph.moon),
               ),
             ],

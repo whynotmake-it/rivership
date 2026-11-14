@@ -197,7 +197,8 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
       for (final section in widget.sections)
         CoilOption(
           value: section.value,
-          label: section._text,
+          label: section.label,
+          searchText: section._text,
           icon: section.icon,
         ),
     ],

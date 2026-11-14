@@ -47,9 +47,18 @@ class _FieldPageState extends State<FieldPage> {
               value: _orientation,
               onChanged: (value) => setState(() => _orientation = value),
               tabs: const [
-                CoilTab(value: CoilFieldOrientation.vertical, label: 'Stacked'),
-                CoilTab(value: CoilFieldOrientation.horizontal, label: 'Side'),
-                CoilTab(value: CoilFieldOrientation.responsive, label: 'Auto'),
+                CoilTab(
+                  value: CoilFieldOrientation.vertical,
+                  label: Text('Stacked'),
+                ),
+                CoilTab(
+                  value: CoilFieldOrientation.horizontal,
+                  label: Text('Side'),
+                ),
+                CoilTab(
+                  value: CoilFieldOrientation.responsive,
+                  label: Text('Auto'),
+                ),
               ],
             ),
             CoilFieldGroup(
@@ -68,9 +77,21 @@ class _FieldPageState extends State<FieldPage> {
                     value: _plan,
                     onChanged: (value) => setState(() => _plan = value),
                     options: const [
-                      CoilOption(value: 'free', label: 'Free'),
-                      CoilOption(value: 'team', label: 'Team'),
-                      CoilOption(value: 'enterprise', label: 'Enterprise'),
+                      CoilOption(
+                        value: 'free',
+                        label: Text('Free'),
+                        searchText: 'Free',
+                      ),
+                      CoilOption(
+                        value: 'team',
+                        label: Text('Team'),
+                        searchText: 'Team',
+                      ),
+                      CoilOption(
+                        value: 'enterprise',
+                        label: Text('Enterprise'),
+                        searchText: 'Enterprise',
+                      ),
                     ],
                   ),
                 ),

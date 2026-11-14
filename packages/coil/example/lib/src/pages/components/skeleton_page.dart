@@ -78,7 +78,7 @@ class _SkeletonPageState extends State<SkeletonPage> {
               loading: _loading,
               motions: _crossfade ? null : {.swap: const Motion.instant()},
               skeleton: const CoilSkeletonRegion(
-                label: 'Loading profile',
+                semanticLabel: 'Loading profile',
                 child: _ProfileSkeleton(),
               ),
               child: const _Profile(),

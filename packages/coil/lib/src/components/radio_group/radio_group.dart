@@ -111,7 +111,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
     this.semanticLabel,
   }) : options = null;
 
-  /// The rows: each option's [CoilOption.child] or `Text(label)`. Null for
+  /// The rows: each option's [CoilOption.label]. Null for
   /// [CoilRadioGroup.custom].
   final List<CoilOption<T>>? options;
 
@@ -206,7 +206,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
             inMutuallyExclusiveGroup: true,
             checked: checked,
             enabled: onPressed != null,
-            label: option.child == null ? null : option.label,
+            label: option.semanticLabel,
             child: CoilChoiceItem(
               size: size,
               onPressed: onPressed,
@@ -241,7 +241,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
                   motions: motions,
                   style: style,
                 ),
-                label: option.child ?? Text(option.label),
+                label: option.label,
               ),
             ),
           );

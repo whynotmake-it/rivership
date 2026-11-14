@@ -34,17 +34,20 @@ class _AccordionPageState extends State<AccordionPage> {
           items: const [
             CoilAccordionItem(
               value: 'shipping',
-              label: 'Shipping',
+              label: Text('Shipping'),
+              semanticLabel: 'Shipping',
               panel: Text('Orders ship within two working days.'),
             ),
             CoilAccordionItem(
               value: 'returns',
-              label: 'Returns',
+              label: Text('Returns'),
+              semanticLabel: 'Returns',
               panel: Text('Send it back within 30 days for a refund.'),
             ),
             CoilAccordionItem(
               value: 'warranty',
-              label: 'Warranty',
+              label: Text('Warranty'),
+              semanticLabel: 'Warranty',
               panel: Text('Two years on every part.'),
             ),
           ],

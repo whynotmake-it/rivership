@@ -55,7 +55,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
     this.semanticLabel,
   });
 
-  /// The toggles: each option's [CoilOption.child] or `Text(label)`.
+  /// The toggles: each option's [CoilOption.label].
   final List<CoilOption<T>> options;
 
   /// The values of the selected toggles.
@@ -135,7 +135,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
             container: true,
             selected: selected,
             enabled: onPressed != null,
-            label: option.child == null ? null : option.label,
+            label: option.semanticLabel,
             child: CoilChoiceItem(
               size: size,
               onPressed: onPressed,
@@ -189,7 +189,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
                             child: child!,
                           ),
                         ),
-                        child: option.child ?? Text(option.label),
+                        child: option.label,
                       ),
                     ),
                   ),

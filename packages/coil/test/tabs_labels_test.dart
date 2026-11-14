@@ -20,7 +20,11 @@ class _TabsState extends State<_Tabs> {
   Widget build(BuildContext context) => CoilTabs<int>(
     tabs: [
       for (final (i, label) in ['Overview', 'Analytics', 'Reports'].indexed)
-        CoilTab(value: i, label: label, icon: const TestIcon(TestGlyph.home)),
+        CoilTab(
+          value: i,
+          label: Text(label),
+          icon: const TestIcon(TestGlyph.home),
+        ),
     ],
     value: value,
     onChanged: (v) => setState(() => value = v),

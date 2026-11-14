@@ -220,14 +220,14 @@ class _CardBodyState extends State<_CardBody> {
           CoilButton.icon(
             variant: CoilButtonVariant.ghost,
             size: CoilSize.compact,
-            semanticLabel: card.labels.edit,
+            semanticLabel: card.labels.editLabel,
             onPressed: edit,
             icon: icon,
           ),
         CoilButton.icon(
           variant: CoilButtonVariant.ghost,
           size: CoilSize.compact,
-          semanticLabel: card.labels.remove,
+          semanticLabel: card.labels.removeLabel,
           onPressed: remove,
           icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
         ),
@@ -364,7 +364,7 @@ class _CardBodyState extends State<_CardBody> {
           label: card.semanticLabel,
           customSemanticsActions: {
             if (edit != null)
-              CustomSemanticsAction(label: card.labels.edit): edit,
+              CustomSemanticsAction(label: card.labels.editLabel): edit,
           },
           child: GestureDetector(
             onVerticalDragStart: card.onDragStart == null

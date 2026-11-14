@@ -287,7 +287,7 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 - Enter, Space and the soft keyboard's Search key act on it;
 - in search and combobox lists, completed taps move it too.
 
-**Typeahead:** a 1 s buffer, prefix-matched on `label`, searching from the active item and skipping disabled rows.
+**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows.
 
 ### 8.4 Merged selection
 

@@ -109,7 +109,7 @@ class _RevealPageState extends State<RevealPage> {
             CoilSkeletonSwitcher(
               loading: _loading,
               skeleton: const CoilSkeletonRegion(
-                label: 'Loading',
+                semanticLabel: 'Loading',
                 child: CoilSkeletonText(lines: 5),
               ),
               child: CoilReveal(

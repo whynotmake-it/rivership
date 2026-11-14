@@ -5,8 +5,10 @@ import 'dart:async';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/select/option_list.dart';
+import 'package:coil/src/components/select/picked_label.dart';
 import 'package:coil/src/components/select/select_style.dart';
 import 'package:coil/src/components/select/select_trigger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -34,7 +36,7 @@ class CoilSelect<T> extends StatelessWidget {
     required this.value,
     required this.onChanged,
     super.key,
-    this.placeholder = 'Select…',
+    this.placeholder = const Text('Select…'),
     this.icon,
     this.indicator,
     this.checkmark,
@@ -57,8 +59,8 @@ class CoilSelect<T> extends StatelessWidget {
   /// Called with the picked value. Null disables the select.
   final ValueChanged<T>? onChanged;
 
-  /// Shown in the trigger when nothing is picked.
-  final String placeholder;
+  /// Shown, muted, in the trigger when nothing is picked. Usually a [Text].
+  final Widget placeholder;
 
   /// A leading glyph in the trigger.
   final Widget? icon;
@@ -131,7 +133,7 @@ class CoilMultiSelect<T> extends StatelessWidget {
     required this.values,
     required this.onChanged,
     super.key,
-    this.placeholder = 'Select…',
+    this.placeholder = const Text('Select…'),
     this.icon,
     this.indicator,
     this.checkmark,
@@ -154,8 +156,8 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// Called with the new set after each toggle. Null disables the select.
   final ValueChanged<Set<T>>? onChanged;
 
-  /// Shown in the trigger when nothing is picked.
-  final String placeholder;
+  /// Shown, muted, in the trigger when nothing is picked. Usually a [Text].
+  final Widget placeholder;
 
   /// A leading glyph in the trigger.
   final Widget? icon;
@@ -242,7 +244,7 @@ class _SelectCore<T> extends StatefulWidget {
 
   /// Reports the toggled or picked value and the new set.
   final void Function(T value, Set<T> picked)? onPick;
-  final String placeholder;
+  final Widget placeholder;
   final Widget? icon;
   final Widget? indicator;
   final Widget? checkmark;
@@ -423,15 +425,15 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       for (final option in widget.options)
         if (widget.picked.contains(option.value)) option,
     ];
-    final label = switch (picked) {
-      [] => Text(
-        widget.placeholder,
-        style: TextStyle(color: style.placeholder),
-      ),
-      [final only] when !widget.multiple => only.child ?? Text(only.label),
-      _ => Text(picked.map((o) => o.label).join(', ')),
-    };
-    final value = picked.isEmpty ? null : picked.map((o) => o.label).join(', ');
+    final label = pickedLabel(
+      picked,
+      multiple: widget.multiple,
+      placeholder: widget.placeholder,
+      placeholderColor: style.placeholder!,
+    );
+    // Screen readers hear the picked options' text as the value; without
+    // it they read the labels themselves.
+    final value = pickedSemanticValue(picked);
     final motion = CoilTheme.motionOf(context);
     // A new value blur-fades in over the old one.
     final switched = MotionSwitcher(
@@ -443,7 +445,10 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         alignment: AlignmentDirectional.centerStart,
         children: [...previous, ?current],
       ),
-      child: KeyedSubtree(key: ValueKey(value), child: label),
+      child: KeyedSubtree(
+        key: _PickedKey([for (final o in picked) o.value]),
+        child: ExcludeSemantics(excluding: value != null, child: label),
+      ),
     );
 
     return MotorInspectionScope(
@@ -454,7 +459,6 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         expanded: _controller.isOpen,
         onTap: _enabled ? () => _show(keyboard: false) : null,
         value: value,
-        hint: value == null ? widget.placeholder : null,
         child: CallbackShortcuts(
           bindings: {
             for (final key in [
@@ -492,4 +496,19 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
       ),
     );
   }
+}
+
+/// Keys the trigger's label by the picked values, so the label switches only
+/// when they change.
+class _PickedKey extends LocalKey {
+  const _PickedKey(this.values);
+
+  final List<Object?> values;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _PickedKey && listEquals(other.values, values);
+
+  @override
+  int get hashCode => Object.hashAll(values);
 }

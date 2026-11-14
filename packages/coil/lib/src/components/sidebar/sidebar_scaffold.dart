@@ -672,7 +672,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       edge: widget.side == CoilSidebarSide.start
           ? CoilDrawerEdge.start
           : CoilDrawerEdge.end,
-      label: widget.drawerLabel,
+      semanticLabel: widget.drawerLabel,
       motion: _motionFor(CoilSidebarTrack.drawer, motion.standard),
       exitMotion: _motionFor(CoilSidebarTrack.drawer, motion.standardExit),
       drawer: CoilSidebarScope(

@@ -102,28 +102,28 @@ class CoilQueuedMessage {
 class CoilQueuedStackLabels {
   /// Creates the labels.
   const CoilQueuedStackLabels({
-    this.edit = 'Edit',
-    this.remove = 'Remove',
-    this.collapse = 'Collapse queued messages',
-    this.message = _message,
-    this.count = _count,
+    this.editLabel = 'Edit',
+    this.removeLabel = 'Remove',
+    this.collapseLabel = 'Collapse queued messages',
+    this.messageLabel = _message,
+    this.countLabel = _count,
   });
 
   /// The edit button.
-  final String edit;
+  final String editLabel;
 
   /// The remove button.
-  final String remove;
+  final String removeLabel;
 
   /// The collapse button an expanded stack shows on touch.
-  final String collapse;
+  final String collapseLabel;
 
   /// A card: its place in the queue (from 1), the queue's length and the
   /// message's [CoilQueuedMessage.semanticLabel].
-  final String Function(int position, int count, String label) message;
+  final String Function(int position, int count, String label) messageLabel;
 
   /// The gutter: how many messages are queued.
-  final String Function(int count) count;
+  final String Function(int count) countLabel;
 
   static String _message(int position, int count, String label) =>
       'Queued message $position of $count: $label';
@@ -405,14 +405,14 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
               child: CoilButton.icon(
                 variant: CoilButtonVariant.ghost,
                 size: CoilSize.compact,
-                semanticLabel: widget.labels.collapse,
+                semanticLabel: widget.labels.collapseLabel,
                 onPressed: () => setState(() => _pinned = false),
                 icon: const CoilDrawnGlyph(CoilGlyph.chevronDown),
               ),
             )
           : Semantics(
               key: const ValueKey('count'),
-              label: count == 0 ? null : widget.labels.count(count),
+              label: count == 0 ? null : widget.labels.countLabel(count),
               child: ExcludeSemantics(
                 child: IconTheme.merge(
                   data: IconThemeData(
@@ -458,7 +458,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       expand: expand,
       expanded: expanded,
       showActions: touch,
-      semanticLabel: widget.labels.message(
+      semanticLabel: widget.labels.messageLabel(
         entry.slot + 1,
         count,
         entry.message.semanticLabel,

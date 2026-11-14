@@ -65,12 +65,25 @@ class _SelectPageState extends State<SelectPage> {
                 onChanged: (value) => setState(() => _role = value),
                 icon: const CatalogIcon(Glyph.user),
                 options: const [
-                  CoilOption(value: 'viewer', label: 'Viewer'),
-                  CoilOption(value: 'editor', label: 'Editor'),
-                  CoilOption(value: 'admin', label: 'Admin'),
+                  CoilOption(
+                    value: 'viewer',
+                    label: Text('Viewer'),
+                    searchText: 'Viewer',
+                  ),
+                  CoilOption(
+                    value: 'editor',
+                    label: Text('Editor'),
+                    searchText: 'Editor',
+                  ),
+                  CoilOption(
+                    value: 'admin',
+                    label: Text('Admin'),
+                    searchText: 'Admin',
+                  ),
                   CoilOption(
                     value: 'owner',
-                    label: 'Owner',
+                    label: Text('Owner'),
+                    searchText: 'Owner',
                     enabled: false,
                   ),
                 ],
@@ -80,17 +93,19 @@ class _SelectPageState extends State<SelectPage> {
               label: const Text('Visibility'),
               child: CoilSelect<String>(
                 value: _visibility,
-                placeholder: 'Choose who can see it',
+                placeholder: const Text('Choose who can see it'),
                 onChanged: (value) => setState(() => _visibility = value),
                 options: const [
                   CoilOption(
                     value: 'private',
-                    label: 'Private',
+                    label: Text('Private'),
+                    searchText: 'Private',
                     icon: CatalogIcon(Glyph.lock),
                   ),
                   CoilOption(
                     value: 'public',
-                    label: 'Public',
+                    label: Text('Public'),
+                    searchText: 'Public',
                     icon: CatalogIcon(Glyph.globe),
                   ),
                 ],
@@ -106,11 +121,12 @@ class _SelectPageState extends State<SelectPage> {
           label: const Text('Country'),
           child: CoilSelect<String>(
             value: _country,
-            placeholder: 'Select a country',
+            placeholder: const Text('Select a country'),
             sheetTitle: const Text('Country'),
             onChanged: (value) => setState(() => _country = value),
             options: [
-              for (final c in _countries) CoilOption(value: c, label: c),
+              for (final c in _countries)
+                CoilOption(value: c, label: Text(c), searchText: c),
             ],
           ),
         ),
@@ -123,15 +139,31 @@ class _SelectPageState extends State<SelectPage> {
           label: const Text('Labels'),
           child: CoilMultiSelect<String>(
             values: _labels,
-            placeholder: 'Add labels',
+            placeholder: const Text('Add labels'),
             sheetTitle: const Text('Labels'),
             onChanged: (values) => setState(() => _labels = values),
             options: const [
-              CoilOption(value: 'bug', label: 'Bug'),
-              CoilOption(value: 'feature', label: 'Feature'),
-              CoilOption(value: 'docs', label: 'Docs'),
-              CoilOption(value: 'design', label: 'Design'),
-              CoilOption(value: 'perf', label: 'Performance'),
+              CoilOption(value: 'bug', label: Text('Bug'), searchText: 'Bug'),
+              CoilOption(
+                value: 'feature',
+                label: Text('Feature'),
+                searchText: 'Feature',
+              ),
+              CoilOption(
+                value: 'docs',
+                label: Text('Docs'),
+                searchText: 'Docs',
+              ),
+              CoilOption(
+                value: 'design',
+                label: Text('Design'),
+                searchText: 'Design',
+              ),
+              CoilOption(
+                value: 'perf',
+                label: Text('Performance'),
+                searchText: 'Performance',
+              ),
             ],
           ),
         ),
@@ -175,8 +207,16 @@ class _SelectPageState extends State<SelectPage> {
   );
 
   static const _ranges = [
-    CoilOption(value: 'day', label: 'Today'),
-    CoilOption(value: 'week', label: 'This week'),
-    CoilOption(value: 'month', label: 'This month'),
+    CoilOption(value: 'day', label: Text('Today'), searchText: 'Today'),
+    CoilOption(
+      value: 'week',
+      label: Text('This week'),
+      searchText: 'This week',
+    ),
+    CoilOption(
+      value: 'month',
+      label: Text('This month'),
+      searchText: 'This month',
+    ),
   ];
 }

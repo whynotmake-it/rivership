@@ -9,9 +9,17 @@ import 'src/select_harness.dart';
 Widget _menu(List<String> log, {int extra = 0}) => Center(
   child: CoilContextMenu(
     entries: [
-      CoilAction(label: 'Copy', onPressed: () => log.add('copy')),
+      CoilAction(
+        label: const Text('Copy'),
+        searchText: 'Copy',
+        onPressed: () => log.add('copy'),
+      ),
       for (var i = 0; i < extra; i++)
-        CoilAction(label: 'Extra $i', onPressed: () {}),
+        CoilAction(
+          label: Text('Extra $i'),
+          searchText: 'Extra $i',
+          onPressed: () {},
+        ),
     ],
     child: CoilButton(
       onPressed: () => log.add('tap'),

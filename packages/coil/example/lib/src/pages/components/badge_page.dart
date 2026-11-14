@@ -65,7 +65,11 @@ class _BadgePageState extends State<BadgePage> {
                 onChanged: (value) => setState(() => _variant = value),
                 options: [
                   for (final v in CoilBadgeVariant.values)
-                    CoilOption(value: v, label: v.name),
+                    CoilOption(
+                      value: v,
+                      label: Text(v.name),
+                      searchText: v.name,
+                    ),
                 ],
               ),
             ),

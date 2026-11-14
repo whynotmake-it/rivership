@@ -181,7 +181,11 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
                               const Align(
                                 alignment: AlignmentDirectional.centerStart,
                                 child: CoilThinkingIndicator(
-                                  words: ['Thinking', 'Reading', 'Drafting'],
+                                  words: [
+                                    Text('Thinking'),
+                                    Text('Reading'),
+                                    Text('Drafting'),
+                                  ],
                                 ),
                               ),
                             for (final turn in _turns.reversed)
@@ -201,9 +205,11 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
                     ),
                     CoilInputMessage(
                       controller: _composer,
-                      placeholder: _replying
-                          ? 'Send while I’m replying to queue a message…'
-                          : 'Message…',
+                      placeholder: Text(
+                        _replying
+                            ? 'Send while I’m replying to queue a message…'
+                            : 'Message…',
+                      ),
                       status: _replying
                           ? CoilMessageStatus.streaming
                           : CoilMessageStatus.idle,

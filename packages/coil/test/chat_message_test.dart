@@ -60,12 +60,14 @@ class _Calls {
 
 List<CoilChatMessageAction> _actions(_Calls calls) => [
   CoilChatMessageAction(
-    label: 'Copy',
+    label: const Text('Copy'),
+    semanticLabel: 'Copy',
     icon: const TestIcon(TestGlyph.plus),
     onPressed: () => calls.copied.add(1),
   ),
   CoilChatMessageAction(
-    label: 'Retry',
+    label: const Text('Retry'),
+    semanticLabel: 'Retry',
     icon: const TestIcon(TestGlyph.arrowRight),
     onPressed: () => calls.retried.add(1),
   ),
@@ -85,7 +87,8 @@ Widget _transcript({CoilChatMessageEntrance entrance = .none}) => Column(
     CoilChatMessage(
       sender: CoilChatSender.user,
       entrance: entrance,
-      time: '10:42',
+      time: const Text('10:42'),
+      timeLabel: '10:42',
       attachments: [_thumb(), _thumb()],
       actions: _actions(_Calls()),
       child: const Text('Can you summarize the design doc?'),
@@ -93,7 +96,8 @@ Widget _transcript({CoilChatMessageEntrance entrance = .none}) => Column(
     CoilChatMessage(
       sender: CoilChatSender.assistant,
       entrance: entrance,
-      time: '10:43',
+      time: const Text('10:43'),
+      timeLabel: '10:43',
       actions: _actions(_Calls()),
       child: const Text(
         'Coil is a Flutter design system on Motor springs. Hover is never '
@@ -144,7 +148,8 @@ void main() {
       sender: CoilChatSender.user,
       entrance: .none,
       size: size,
-      time: '10:42',
+      time: const Text('10:42'),
+      timeLabel: '10:42',
       actions: _actions(_Calls()),
       child: const Text('Ship it on Friday?'),
     );
@@ -254,7 +259,8 @@ void main() {
     Widget message(_Calls calls) => CoilChatMessage(
       sender: CoilChatSender.user,
       entrance: .none,
-      time: '10:42',
+      time: const Text('10:42'),
+      timeLabel: '10:42',
       actions: _actions(calls),
       child: const Text('Hello'),
     );
@@ -359,8 +365,9 @@ void main() {
         const CoilChatMessage(
           sender: CoilChatSender.assistant,
           entrance: .none,
-          time: '10:43',
-          labels: CoilChatMessageLabels(assistant: 'Assistant IA'),
+          time: Text('10:43'),
+          timeLabel: '10:43',
+          labels: CoilChatMessageLabels(assistantLabel: 'Assistant IA'),
           child: Text('Bonjour'),
         ),
       ),

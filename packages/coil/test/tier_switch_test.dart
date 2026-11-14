@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'src/test_icons.dart';
 
 const _options = [
-  CoilOption(value: 0, label: 'One'),
-  CoilOption(value: 1, label: 'Two'),
+  CoilOption(value: 0, label: Text('One'), searchText: 'One'),
+  CoilOption(value: 1, label: Text('Two'), searchText: 'Two'),
 ];
 
 Widget _everything() => SizedBox(
@@ -36,8 +36,8 @@ Widget _everything() => SizedBox(
         ),
         CoilTabs<int>(
           tabs: const [
-            CoilTab(value: 0, label: 'One'),
-            CoilTab(value: 1, label: 'Two'),
+            CoilTab(value: 0, label: Text('One')),
+            CoilTab(value: 1, label: Text('Two')),
           ],
           value: 0,
           onChanged: (_) {},

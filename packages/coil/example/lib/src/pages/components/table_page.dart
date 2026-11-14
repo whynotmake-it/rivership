@@ -42,15 +42,15 @@ class _TablePageState extends State<TablePage> {
           onChanged: (v) => setState(() => _selected = v),
           columns: [
             CoilTableColumn(
-              label: 'Invoice',
+              label: const Text('Invoice'),
               cellBuilder: (context, row) => Text(row.id),
             ),
             CoilTableColumn(
-              label: 'Client',
+              label: const Text('Client'),
               cellBuilder: (context, row) => Text(row.client),
             ),
             CoilTableColumn(
-              label: 'Amount',
+              label: const Text('Amount'),
               width: 112,
               alignment: AlignmentDirectional.centerEnd,
               cellBuilder: (context, row) => Text('€${row.amount}'),

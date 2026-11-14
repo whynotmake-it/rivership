@@ -78,10 +78,22 @@ class _Board extends StatelessWidget {
                 values: const {0, 1, 3},
                 onChanged: (_) {},
                 options: const [
-                  CoilOption(value: 0, label: 'Email'),
-                  CoilOption(value: 1, label: 'Push notifications'),
-                  CoilOption(value: 2, label: 'SMS'),
-                  CoilOption(value: 3, label: 'Weekly digest'),
+                  CoilOption(
+                    value: 0,
+                    label: Text('Email'),
+                    searchText: 'Email',
+                  ),
+                  CoilOption(
+                    value: 1,
+                    label: Text('Push notifications'),
+                    searchText: 'Push notifications',
+                  ),
+                  CoilOption(value: 2, label: Text('SMS'), searchText: 'SMS'),
+                  CoilOption(
+                    value: 3,
+                    label: Text('Weekly digest'),
+                    searchText: 'Weekly digest',
+                  ),
                 ],
               ),
             ),
@@ -91,9 +103,17 @@ class _Board extends StatelessWidget {
                 values: const {0, 1},
                 onChanged: (_) {},
                 options: const [
-                  CoilOption(value: 0, label: 'Bold'),
-                  CoilOption(value: 1, label: 'Italic'),
-                  CoilOption(value: 2, label: 'Underline'),
+                  CoilOption(value: 0, label: Text('Bold'), searchText: 'Bold'),
+                  CoilOption(
+                    value: 1,
+                    label: Text('Italic'),
+                    searchText: 'Italic',
+                  ),
+                  CoilOption(
+                    value: 2,
+                    label: Text('Underline'),
+                    searchText: 'Underline',
+                  ),
                 ],
               ),
             ),
@@ -103,17 +123,17 @@ class _Board extends StatelessWidget {
                 tabs: const [
                   CoilTab(
                     value: 0,
-                    label: 'Overview',
+                    label: Text('Overview'),
                     icon: TestIcon(TestGlyph.home),
                   ),
                   CoilTab(
                     value: 1,
-                    label: 'Activity',
+                    label: Text('Activity'),
                     icon: TestIcon(TestGlyph.heart),
                   ),
                   CoilTab(
                     value: 2,
-                    label: 'Settings',
+                    label: Text('Settings'),
                     icon: TestIcon(TestGlyph.settings),
                   ),
                 ],

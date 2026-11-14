@@ -269,13 +269,14 @@ class CoilSkeletonText extends StatelessWidget {
 class CoilSkeletonRegion extends StatelessWidget {
   /// Creates a loading region.
   const CoilSkeletonRegion({
-    required this.label,
+    required this.semanticLabel,
     required this.child,
     super.key,
   });
 
-  /// The announced label, for example "Loading" in the app's language.
-  final String label;
+  /// What screen readers announce, for example "Loading" in the app's
+  /// language.
+  final String semanticLabel;
 
   /// The skeletons.
   final Widget child;
@@ -283,7 +284,7 @@ class CoilSkeletonRegion extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     container: true,
-    label: label,
+    label: semanticLabel,
     liveRegion: true,
     child: child,
   );
@@ -300,7 +301,10 @@ class CoilSkeletonRegion extends StatelessWidget {
 /// ```dart
 /// CoilSkeletonSwitcher(
 ///   loading: profile == null,
-///   skeleton: CoilSkeletonRegion(label: 'Loading', child: ProfileSkeleton()),
+///   skeleton: CoilSkeletonRegion(
+///     semanticLabel: 'Loading',
+///     child: ProfileSkeleton(),
+///   ),
 ///   child: Profile(profile),
 /// )
 /// ```

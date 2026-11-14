@@ -14,16 +14,16 @@ import 'src/test_icons.dart';
 
 const _steps = [
   CoilThinkingStep(
-    title: 'Searched the docs',
+    title: Text('Searched the docs'),
     leading: TestIcon(TestGlyph.search),
     sources: [Text('flutter.dev'), Text('api.flutter.dev')],
   ),
   CoilThinkingStep(
-    title: 'Compared two layouts',
-    detail: 'The grid keeps cards aligned at every width.',
+    title: Text('Compared two layouts'),
+    detail: Text('The grid keeps cards aligned at every width.'),
   ),
   CoilThinkingStep(
-    title: 'Drew a sketch',
+    title: Text('Drew a sketch'),
     image: ColoredBox(
       color: Color(0xFF9DB7F5),
       child: SizedBox(width: 240, height: 64),
@@ -31,7 +31,7 @@ const _steps = [
   ),
 ];
 
-const _words = ['Thinking', 'Moonwalking', 'Planning'];
+const _words = [Text('Thinking'), Text('Moonwalking'), Text('Planning')];
 
 Widget _app(
   Widget child, {
@@ -245,7 +245,7 @@ void main() {
     testWidgets('a new step grows in; steps there at first show at once', (
       tester,
     ) async {
-      const added = CoilThinkingStep(title: 'Wrote the answer');
+      const added = CoilThinkingStep(title: Text('Wrote the answer'));
       final first = _steps.take(1).toList();
       final content = await _pumpLive(
         tester,
@@ -272,7 +272,7 @@ void main() {
     testWidgets('reduced motion: a new step takes its height at once', (
       tester,
     ) async {
-      const added = CoilThinkingStep(title: 'Wrote the answer');
+      const added = CoilThinkingStep(title: Text('Wrote the answer'));
       final first = _steps.take(1).toList();
       final content = await _pumpLive(
         tester,
@@ -370,7 +370,7 @@ void main() {
       );
       await tester.pump(const Duration(seconds: 1));
       content.value = const CoilThinkingIndicator(
-        words: ['Reading', 'Writing'],
+        words: [Text('Reading'), Text('Writing')],
       );
       await tester.pump();
       expect(announced(tester), 'Thinking');
@@ -392,7 +392,7 @@ void main() {
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(
-        _app(const CoilThinkingIndicator(words: ['Moonwalking'])),
+        _app(const CoilThinkingIndicator(words: [Text('Moonwalking')])),
       );
       await tester.pump();
       expect(tester.getSize(word).width, widths.first);
@@ -426,7 +426,7 @@ void main() {
 
     inkCenteringTests({
       'thinking_indicator': (ink) => CoilThinkingIndicator(
-        words: const ['HEH'],
+        words: const [Text('HEH')],
         style: ink
             ? null
             : const CoilThinkingIndicatorStyle(

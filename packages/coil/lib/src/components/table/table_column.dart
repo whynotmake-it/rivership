@@ -21,7 +21,7 @@ class CoilTableColumn<T> {
   const CoilTableColumn({
     required this.label,
     required this.cellBuilder,
-    this.child,
+    this.semanticLabel,
     this.width,
     this.flex = 1,
     this.minWidth = 96,
@@ -31,11 +31,13 @@ class CoilTableColumn<T> {
     this.sortIndicator,
   });
 
-  /// The header text, also the column's name for assistive technology.
-  final String label;
+  /// The header, usually a [Text]. Screen readers read it as the
+  /// column's name.
+  final Widget label;
 
-  /// Replaces the default `Text(label)` in the header.
-  final Widget? child;
+  /// Names the column for screen readers when [label] can't, such as an
+  /// icon-only header.
+  final String? semanticLabel;
 
   /// Builds this column's cell for a row.
   final Widget Function(BuildContext context, T row) cellBuilder;
@@ -70,24 +72,24 @@ class CoilTableColumn<T> {
 class CoilTableLabels {
   /// Creates the labels.
   const CoilTableLabels({
-    this.sortedAscending = 'Sorted ascending',
-    this.sortedDescending = 'Sorted descending',
+    this.sortedAscendingLabel = 'Sorted ascending',
+    this.sortedDescendingLabel = 'Sorted descending',
   });
 
   /// The value of a column header sorted [CoilSortDirection.ascending].
-  final String sortedAscending;
+  final String sortedAscendingLabel;
 
   /// The value of a column header sorted [CoilSortDirection.descending].
-  final String sortedDescending;
+  final String sortedDescendingLabel;
 
   @override
   bool operator ==(Object other) =>
       other is CoilTableLabels &&
-      other.sortedAscending == sortedAscending &&
-      other.sortedDescending == sortedDescending;
+      other.sortedAscendingLabel == sortedAscendingLabel &&
+      other.sortedDescendingLabel == sortedDescendingLabel;
 
   @override
-  int get hashCode => Object.hash(sortedAscending, sortedDescending);
+  int get hashCode => Object.hash(sortedAscendingLabel, sortedDescendingLabel);
 }
 
 /// The animated parts of a `CoilTable`. Use them as keys of

@@ -24,10 +24,10 @@ typedef CoilDropdownTriggerBuilder =
 /// ```dart
 /// CoilDropdown(
 ///   entries: [
-///     CoilAction(label: 'Rename', onPressed: rename),
+///     CoilAction(label: const Text('Rename'), onPressed: rename),
 ///     const CoilMenuSeparator(),
 ///     CoilAction(
-///       label: 'Delete',
+///       label: const Text('Delete'),
 ///       tone: CoilActionTone.destructive,
 ///       onPressed: delete,
 ///     ),

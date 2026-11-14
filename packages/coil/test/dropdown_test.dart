@@ -24,15 +24,17 @@ class _MenuState extends State<_Menu> {
   Widget build(BuildContext context) => Center(
     child: CoilDropdown(
       entries: [
-        const CoilMenuLabel('File'),
+        const CoilMenuLabel(Text('File')),
         CoilAction(
-          label: 'Rename',
+          label: const Text('Rename'),
+          searchText: 'Rename',
           shortcut: const Text('⌘R'),
           onPressed: () => widget.log.add('rename'),
         ),
-        const CoilAction(label: 'Move'),
+        const CoilAction(label: Text('Move'), searchText: 'Move'),
         CoilAction(
-          label: 'Show grid',
+          label: const Text('Show grid'),
+          searchText: 'Show grid',
           mark: CoilActionMark.check,
           selected: grid,
           onPressed: () {
@@ -41,10 +43,15 @@ class _MenuState extends State<_Menu> {
           },
         ),
         for (var i = 0; i < widget.extra; i++)
-          CoilAction(label: 'Extra $i', onPressed: () {}),
+          CoilAction(
+            label: Text('Extra $i'),
+            searchText: 'Extra $i',
+            onPressed: () {},
+          ),
         const CoilMenuSeparator(),
         CoilAction(
-          label: 'Delete',
+          label: const Text('Delete'),
+          searchText: 'Delete',
           tone: CoilActionTone.destructive,
           onPressed: () => widget.log.add('delete'),
         ),

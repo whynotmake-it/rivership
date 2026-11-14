@@ -130,7 +130,8 @@ class CoilSidebarItem {
   /// Up to three actions, drawn as 24 icon buttons before [trailing]:
   /// a [CoilAction] (its `leading` is the icon, its label the tooltip) or a
   /// [CoilSubmenu], whose button opens its entries, usually the last, an
-  /// overflow ⋯.
+  /// overflow ⋯. Each button is named by the entry's `semanticLabel`, else
+  /// its `searchText`; give every action one.
   ///
   /// The same entries open as a context menu on a right-click, and on a
   /// long press on touch, where only the last action shows (all of them
@@ -732,25 +733,35 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) => switch (entry) {
     CoilAction(
       :final label,
+      :final semanticLabel,
+      :final searchText,
       :final leading,
       :final shortcut,
       :final onPressed,
     ) =>
       CoilSidebarAction(
         icon: leading ?? const SizedBox.shrink(),
-        semanticLabel: label,
-        tooltip: Text(label),
+        // An icon-only button: named by the action's semantic label, or
+        // its plain text.
+        semanticLabel: semanticLabel ?? searchText ?? '',
+        tooltip: label,
         shortcut: shortcut,
         onPressed: onPressed,
       ),
-    CoilSubmenu(:final label, :final leading, :final entries) => CoilDropdown(
-      entries: entries,
-      builder: (context, menu) => CoilSidebarAction(
-        icon: leading ?? const SizedBox.shrink(),
-        semanticLabel: label,
-        onPressed: menu.open,
+    CoilSubmenu(
+      :final semanticLabel,
+      :final searchText,
+      :final leading,
+      :final entries,
+    ) =>
+      CoilDropdown(
+        entries: entries,
+        builder: (context, menu) => CoilSidebarAction(
+          icon: leading ?? const SizedBox.shrink(),
+          semanticLabel: semanticLabel ?? searchText ?? '',
+          onPressed: menu.open,
+        ),
       ),
-    ),
     _ => throw ArgumentError.value(
       entry,
       'actions',

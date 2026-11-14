@@ -38,7 +38,7 @@ class CoilInputMessage extends StatefulWidget {
     super.key,
     this.controller,
     this.focusNode,
-    this.placeholder = 'Message…',
+    this.placeholder = const Text('Message…'),
     this.attachments,
     this.leading,
     this.trailing,
@@ -64,8 +64,8 @@ class CoilInputMessage extends StatefulWidget {
   /// The field's focus node.
   final FocusNode? focusNode;
 
-  /// Shown in the empty field.
-  final String placeholder;
+  /// Shown, muted, in the empty field. Usually a [Text].
+  final Widget placeholder;
 
   /// Shown above the text, such as attached files' thumbnails.
   final Widget? attachments;
@@ -277,7 +277,7 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           controller: _controller,
           focusNode: _focus,
           enabled: widget.enabled,
-          placeholder: Text(widget.placeholder),
+          placeholder: widget.placeholder,
           placeholderColor: look.placeholder,
           style: textStyle,
           strutStyle: StrutStyle.fromTextStyle(

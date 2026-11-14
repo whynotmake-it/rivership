@@ -110,7 +110,9 @@ Iterable<String> _checkedRows(WidgetTester tester) => [
   for (final semantics in tester.widgetList<Semantics>(
     find.descendant(of: _list, matching: find.byType(Semantics)),
   ))
-    if (semantics.properties.selected ?? false) semantics.properties.label!,
+    // The row's node reads the label widget.
+    if (semantics.properties.selected ?? false)
+      tester.getSemantics(find.byWidget(semantics)).label,
 ];
 
 Set<WidgetState> _triggerStates(WidgetTester tester) => tester
@@ -662,7 +664,15 @@ void main() {
         {'banana', 'mango', 'blueberry'},
       ]);
       expect(_list, findsOneWidget);
-      expect(find.text('Banana, Blueberry, Mango'), findsOneWidget);
+      // The trigger announces the picks in option order.
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              w.properties.value == 'Banana, Blueberry, Mango',
+        ),
+        findsOneWidget,
+      );
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
     });

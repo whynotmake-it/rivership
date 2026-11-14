@@ -152,9 +152,21 @@ final Map<String, WidgetBuilder> _stories = {
   ),
   'tabs': (context) => CoilTabs(
     tabs: const [
-      CoilTab(value: 0, label: 'Overview', icon: TestIcon(TestGlyph.home)),
-      CoilTab(value: 1, label: 'Analytics', icon: TestIcon(TestGlyph.heart)),
-      CoilTab(value: 2, label: 'Settings', icon: TestIcon(TestGlyph.settings)),
+      CoilTab(
+        value: 0,
+        label: Text('Overview'),
+        icon: TestIcon(TestGlyph.home),
+      ),
+      CoilTab(
+        value: 1,
+        label: Text('Analytics'),
+        icon: TestIcon(TestGlyph.heart),
+      ),
+      CoilTab(
+        value: 2,
+        label: Text('Settings'),
+        icon: TestIcon(TestGlyph.settings),
+      ),
     ],
     value: 1,
     onChanged: (_) {},
@@ -202,7 +214,8 @@ final Map<String, WidgetBuilder> _stories = {
     width: 260,
     child: CoilTabs(
       tabs: [
-        for (var i = 0; i < 8; i++) CoilTab(value: i, label: 'Section $i'),
+        for (var i = 0; i < 8; i++)
+          CoilTab(value: i, label: Text('Section $i')),
       ],
       value: 3,
       onChanged: (_) {},
@@ -303,9 +316,9 @@ final Map<String, WidgetBuilder> _stories = {
           values: const {0, 1},
           onChanged: (_) {},
           options: const [
-            CoilOption(value: 0, label: 'Email'),
-            CoilOption(value: 1, label: 'Push'),
-            CoilOption(value: 2, label: 'SMS'),
+            CoilOption(value: 0, label: Text('Email'), searchText: 'Email'),
+            CoilOption(value: 1, label: Text('Push'), searchText: 'Push'),
+            CoilOption(value: 2, label: Text('SMS'), searchText: 'SMS'),
           ],
         ),
       ),
@@ -314,9 +327,13 @@ final Map<String, WidgetBuilder> _stories = {
         values: const {0, 1},
         onChanged: (_) {},
         options: const [
-          CoilOption(value: 0, label: 'Bold'),
-          CoilOption(value: 1, label: 'Italic'),
-          CoilOption(value: 2, label: 'Underline'),
+          CoilOption(value: 0, label: Text('Bold'), searchText: 'Bold'),
+          CoilOption(value: 1, label: Text('Italic'), searchText: 'Italic'),
+          CoilOption(
+            value: 2,
+            label: Text('Underline'),
+            searchText: 'Underline',
+          ),
         ],
       ),
     ],
@@ -331,9 +348,14 @@ final Map<String, WidgetBuilder> _stories = {
           value: 1,
           onChanged: (_) {},
           options: const [
-            CoilOption(value: 0, label: 'Free'),
-            CoilOption(value: 1, label: 'Team'),
-            CoilOption(value: 2, label: 'Enterprise', enabled: false),
+            CoilOption(value: 0, label: Text('Free'), searchText: 'Free'),
+            CoilOption(value: 1, label: Text('Team'), searchText: 'Team'),
+            CoilOption(
+              value: 2,
+              label: Text('Enterprise'),
+              searchText: 'Enterprise',
+              enabled: false,
+            ),
           ],
         ),
       ),

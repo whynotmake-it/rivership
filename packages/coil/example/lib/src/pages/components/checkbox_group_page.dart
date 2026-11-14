@@ -41,13 +41,25 @@ class _CheckboxGroupPageState extends State<CheckboxGroupPage> {
               values: _toppings,
               onChanged: (values) => setState(() => _toppings = values),
               options: const [
-                CoilOption(value: 'basil', label: 'Basil'),
-                CoilOption(value: 'mozzarella', label: 'Mozzarella'),
-                CoilOption(value: 'olives', label: 'Olives'),
-                CoilOption(value: 'mushrooms', label: 'Mushrooms'),
+                CoilOption(
+                  value: 'basil',
+                  label: Text('Basil'),
+                ),
+                CoilOption(
+                  value: 'mozzarella',
+                  label: Text('Mozzarella'),
+                ),
+                CoilOption(
+                  value: 'olives',
+                  label: Text('Olives'),
+                ),
+                CoilOption(
+                  value: 'mushrooms',
+                  label: Text('Mushrooms'),
+                ),
                 CoilOption(
                   value: 'anchovies',
-                  label: 'Anchovies (sold out)',
+                  label: Text('Anchovies (sold out)'),
                   enabled: false,
                 ),
               ],
@@ -61,15 +73,28 @@ class _CheckboxGroupPageState extends State<CheckboxGroupPage> {
           values: _days,
           onChanged: (values) => setState(() => _days = values),
           options: const [
-            CoilOption(value: 'mon', label: 'Monday: standup and planning'),
+            CoilOption(
+              value: 'mon',
+              label: Text('Monday: standup and planning'),
+            ),
             CoilOption(
               value: 'tue',
-              label:
+              label: Text(
+                'Tuesday: design review with the whole product team, '
+                'including the people joining remotely',
+              ),
+              searchText:
                   'Tuesday: design review with the whole product team, '
                   'including the people joining remotely',
             ),
-            CoilOption(value: 'wed', label: 'Wednesday: focus day'),
-            CoilOption(value: 'thu', label: 'Thursday: demos'),
+            CoilOption(
+              value: 'wed',
+              label: Text('Wednesday: focus day'),
+            ),
+            CoilOption(
+              value: 'thu',
+              label: Text('Thursday: demos'),
+            ),
           ],
         ),
       ),
@@ -80,9 +105,15 @@ class _CheckboxGroupPageState extends State<CheckboxGroupPage> {
           values: _compact,
           onChanged: (values) => setState(() => _compact = values),
           options: const [
-            CoilOption(value: 'errors', label: 'Errors'),
-            CoilOption(value: 'warnings', label: 'Warnings'),
-            CoilOption(value: 'info', label: 'Info'),
+            CoilOption(
+              value: 'errors',
+              label: Text('Errors'),
+            ),
+            CoilOption(
+              value: 'warnings',
+              label: Text('Warnings'),
+            ),
+            CoilOption(value: 'info', label: Text('Info')),
           ],
         ),
       ),

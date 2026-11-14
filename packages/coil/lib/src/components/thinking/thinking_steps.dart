@@ -21,11 +21,11 @@ class CoilThinkingStep {
     this.leading,
   });
 
-  /// What the step did, in one line.
-  final String title;
+  /// What the step did, in one line. Usually a [Text].
+  final Widget title;
 
-  /// More about the step, in a muted caption.
-  final String? detail;
+  /// More about the step, in a muted caption. Usually a [Text].
+  final Widget? detail;
 
   /// Where the step looked, each shown in a small badge. Usually `Text`.
   final List<Widget> sources;

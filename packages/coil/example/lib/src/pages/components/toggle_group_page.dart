@@ -46,26 +46,22 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
                 options: const [
                   CoilOption(
                     value: 'bold',
-                    label: 'Bold',
-                    child: CatalogIcon(Glyph.bold, semanticLabel: 'Bold'),
+                    label: CatalogIcon(Glyph.bold, semanticLabel: 'Bold'),
                   ),
                   CoilOption(
                     value: 'italic',
-                    label: 'Italic',
-                    child: CatalogIcon(Glyph.italic, semanticLabel: 'Italic'),
+                    label: CatalogIcon(Glyph.italic, semanticLabel: 'Italic'),
                   ),
                   CoilOption(
                     value: 'underline',
-                    label: 'Underline',
-                    child: CatalogIcon(
+                    label: CatalogIcon(
                       Glyph.underline,
                       semanticLabel: 'Underline',
                     ),
                   ),
                   CoilOption(
                     value: 'strike',
-                    label: 'Strikethrough',
-                    child: CatalogIcon(
+                    label: CatalogIcon(
                       Glyph.strikethrough,
                       semanticLabel: 'Strikethrough',
                     ),
@@ -93,9 +89,15 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
             values: _channels,
             onChanged: (values) => setState(() => _channels = values),
             options: const [
-              CoilOption(value: 'email', label: 'Email'),
-              CoilOption(value: 'push', label: 'Push'),
-              CoilOption(value: 'sms', label: 'SMS'),
+              CoilOption(
+                value: 'email',
+                label: Text('Email'),
+              ),
+              CoilOption(
+                value: 'push',
+                label: Text('Push'),
+              ),
+              CoilOption(value: 'sms', label: Text('SMS')),
             ],
           ),
         ),
@@ -106,9 +108,18 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
             values: _format,
             onChanged: (values) => setState(() => _format = values),
             options: const [
-              CoilOption(value: 'bold', label: 'Bold'),
-              CoilOption(value: 'italic', label: 'Italic'),
-              CoilOption(value: 'underline', label: 'Underline'),
+              CoilOption(
+                value: 'bold',
+                label: Text('Bold'),
+              ),
+              CoilOption(
+                value: 'italic',
+                label: Text('Italic'),
+              ),
+              CoilOption(
+                value: 'underline',
+                label: Text('Underline'),
+              ),
             ],
           ),
         ),

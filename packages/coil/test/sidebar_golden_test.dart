@@ -85,12 +85,14 @@ Widget _panel() => SizedBox(
               trailing: const Text('4'),
               actions: [
                 CoilAction(
-                  label: 'Add',
+                  label: const Text('Add'),
+                  searchText: 'Add',
                   leading: const TestIcon(TestGlyph.plus),
                   onPressed: () {},
                 ),
                 CoilAction(
-                  label: 'Close',
+                  label: const Text('Close'),
+                  searchText: 'Close',
                   leading: const TestIcon(TestGlyph.x),
                   onPressed: () {},
                 ),

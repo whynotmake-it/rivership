@@ -19,18 +19,21 @@ const _panelText = 'Orders ship within two business days.';
 List<CoilAccordionItem<String>> _items({bool disableLast = false}) => [
   const CoilAccordionItem(
     value: 'shipping',
-    label: 'Shipping',
+    label: Text('Shipping'),
+    semanticLabel: 'Shipping',
     leading: TestIcon(TestGlyph.home),
     panel: Text(_panelText),
   ),
   const CoilAccordionItem(
     value: 'returns',
-    label: 'Returns',
+    label: Text('Returns'),
+    semanticLabel: 'Returns',
     panel: Text('Return anything within 30 days.'),
   ),
   CoilAccordionItem(
     value: 'support',
-    label: 'Support',
+    label: const Text('Support'),
+    semanticLabel: 'Support',
     enabled: !disableLast,
     panel: const Text('Write to us any time.'),
   ),
@@ -188,7 +191,12 @@ void main() {
       width: 200,
       child: CoilAccordion<int>.single(
         items: const [
-          CoilAccordionItem(value: 0, label: 'HEH', panel: Text('')),
+          CoilAccordionItem(
+            value: 0,
+            label: Text('HEH'),
+            semanticLabel: 'HEH',
+            panel: Text(''),
+          ),
         ],
         value: null,
         onChanged: (_) {},
