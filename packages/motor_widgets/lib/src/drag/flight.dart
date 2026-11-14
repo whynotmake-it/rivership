@@ -1,0 +1,629 @@
+import 'dart:math' as math;
+
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
+import 'package:motor_widgets/src/drag/motion_draggable.dart';
+import 'package:motor_widgets/src/ticker_rate.dart';
+
+/// A mounted [MotionDraggable] that a [DragFlight] can land on.
+abstract interface class LandingSite {
+  /// The site's rect in global coordinates, or null while it isn't laid out.
+  Rect? get globalRect;
+
+  /// Called when a flight starts or stops landing on this site's tag, so
+  /// that the site hides or shows its child.
+  void landingChanged();
+
+  /// Starts recognizing a drag of this site for [event], which hit [flight]
+  /// while it lands here. Returns whether the site took the pointer.
+  bool grab(PointerDownEvent event, DragFlight flight);
+
+  /// Forgets a [grab] of [flight] whose pointer went up before a drag
+  /// started.
+  void endGrab(DragFlight flight);
+}
+
+/// The [LandingSite]s of one [Overlay], by tag, and the tags that flights
+/// are landing on.
+///
+/// It is kept per [OverlayState], which is where the flights fly, so no
+/// widget has to provide it.
+class LandingRegistry {
+  /// The registry of [overlay].
+  factory LandingRegistry.of(OverlayState overlay) =>
+      _registries[overlay] ??= LandingRegistry._();
+
+  LandingRegistry._();
+
+  static final _registries = Expando<LandingRegistry>('LandingRegistry');
+
+  final _sites = <Object, List<LandingSite>>{};
+  final _landing = <Object, int>{};
+
+  /// Registers [site] under [tag].
+  void add(Object tag, LandingSite site) => (_sites[tag] ??= []).add(site);
+
+  /// Unregisters [site] from [tag].
+  void remove(Object tag, LandingSite site) {
+    final sites = _sites[tag];
+    if (sites == null) return;
+    sites.remove(site);
+    if (sites.isEmpty) _sites.remove(tag);
+  }
+
+  /// The sites registered under [tag].
+  List<LandingSite> sitesFor(Object tag) => List.of(_sites[tag] ?? const []);
+
+  /// Whether a flight is landing on [tag], so its sites hide their child.
+  bool isLanding(Object tag) => _landing.containsKey(tag);
+
+  /// Marks [tag] as landing until a matching [endLanding].
+  void beginLanding(Object tag) {
+    final count = _landing[tag] ?? 0;
+    _landing[tag] = count + 1;
+    if (count == 0) _notify(tag);
+  }
+
+  /// Ends one [beginLanding] of [tag].
+  void endLanding(Object tag) {
+    final count = _landing[tag];
+    if (count == null) return;
+    if (count > 1) {
+      _landing[tag] = count - 1;
+      return;
+    }
+    _landing.remove(tag);
+    _notify(tag);
+  }
+
+  void _notify(Object tag) {
+    // Sites rebuild with setState, which isn't allowed while the tree is
+    // being built or torn down, for example when an overlay unmounts.
+    final binding = SchedulerBinding.instance;
+    if (binding.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      binding.addPostFrameCallback((_) => _notifyNow(tag));
+      return;
+    }
+    _notifyNow(tag);
+  }
+
+  void _notifyNow(Object tag) {
+    for (final site in sitesFor(tag)) {
+      site.landingChanged();
+    }
+  }
+}
+
+/// Smooths the pointer's velocity while dragging.
+///
+/// Each pointer sample retargets it to the tracked estimate. Once that
+/// spring has ended without a new sample, it heads back to zero, so a
+/// resting pointer reads as still.
+final _velocity = Track<Offset>(
+  MotionConverter.offset,
+  initial: Offset.zero,
+  debugLabel: 'MotionDraggable.velocity',
+);
+
+const _smoothing = CupertinoMotion(duration: Duration(milliseconds: 100));
+
+/// One drag's feedback, from the moment it is picked up until it has landed
+/// or finished its exit.
+///
+/// It lives in its own [OverlayEntry] and owns its controller there, so it
+/// outlives the [MotionDraggable] that started it. That draggable is
+/// disposed, for example, when a drop moves the item to another column.
+class DragFlight {
+  /// Creates a flight for a drag that starts at [pointer], with the
+  /// feedback's top-left [anchor] away from it.
+  DragFlight({
+    required this.overlay,
+    required this.registry,
+    required this.tag,
+    required MotionDraggable<Object> widget,
+    required Offset pointer,
+    required Offset anchor,
+    required Size size,
+  }) : _widget = widget,
+       _pointer = pointer,
+       _anchor = anchor,
+       _initialSize = size;
+
+  /// The overlay the flight flies in.
+  final OverlayState overlay;
+
+  /// The registry the flight looks up its destination in.
+  final LandingRegistry registry;
+
+  /// The tag the flight lands on.
+  final Object tag;
+
+  /// The draggable the flight was last dragged from.
+  MotionDraggable<Object> get widget => _widget;
+  MotionDraggable<Object> _widget;
+  set widget(MotionDraggable<Object> value) {
+    if (identical(value, _widget)) return;
+    _widget = value;
+    // The draggable updates while it builds, when the flight's entry can't
+    // be marked for a rebuild yet.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!isDone) _entry.markNeedsBuild();
+    });
+  }
+
+  late final OverlayEntry _entry = OverlayEntry(
+    builder: (context) => _FlightView(flight: this),
+  );
+
+  _FlightViewState? _view;
+  TrackController? get _controller => _view?._controller;
+
+  /// What happened to the drag.
+  MotionDragPhase phase = MotionDragPhase.dragging;
+
+  /// Whether a target accepted the drop, set while the drag ends.
+  bool accepted = false;
+
+  /// Whether the flight has landed, finished its exit, or lost its overlay.
+  bool get isDone => _done;
+  var _done = false;
+
+  Offset _pointer;
+  Offset _anchor;
+  final Size _initialSize;
+  Offset _releaseVelocity = Offset.zero;
+
+  /// Whether the destination has been looked up since the drop.
+  var _resolved = false;
+  var _landingMarked = false;
+
+  /// The destination, and its rect as last measured. While there is one,
+  /// the offset track holds the distance from its top-left.
+  LandingSite? _site;
+  Rect? _siteRect;
+  var _lossScheduled = false;
+  var _resizeScheduled = false;
+
+  /// The feedback's top-left in global coordinates.
+  Offset get globalTopLeft {
+    final controller = _controller;
+    if (controller == null) return _pointer - _anchor;
+    final offset = controller.value(MotionDraggableTrack.offset);
+    return switch (_siteRect) {
+      final rect? when _site != null => rect.topLeft + offset,
+      _ => offset,
+    };
+  }
+
+  /// The live drag, as the builder and the transitions see it.
+  MotionDragDetails get details {
+    final controller = _controller!;
+    return MotionDragDetails(
+      phase: phase,
+      destination: _site == null ? null : _siteRect,
+      velocity: phase == MotionDragPhase.dragging
+          ? controller.value(_velocity)
+          : controller.velocity(MotionDraggableTrack.offset),
+      values: controller.value,
+    );
+  }
+
+  Motion _motionFor(Track<Object> track) =>
+      widget.motions?[track] ?? widget.motion;
+
+  Offset _restrict(Offset offset) => switch (widget.axis) {
+    Axis.horizontal => Offset(offset.dx, 0),
+    Axis.vertical => Offset(0, offset.dy),
+    null => offset,
+  };
+
+  /// Shows the flight.
+  void start() => overlay.insert(_entry);
+
+  /// Moves the feedback with the pointer.
+  void moveBy(Offset delta) {
+    if (_done || phase != MotionDragPhase.dragging) return;
+    _pointer += _restrict(delta);
+    final controller = _controller;
+    if (controller == null) return;
+    controller.set([MotionDraggableTrack.offset.value(_pointer - _anchor)]);
+    final estimate =
+        controller
+            .trackedVelocityEstimate(MotionDraggableTrack.offset)
+            ?.perSecond ??
+        Offset.zero;
+    controller.animate([
+      _velocity([
+        TrackStep.to(estimate, motion: _smoothing, until: WaitUntil.ended),
+        const TrackStep.to(Offset.zero, motion: _smoothing),
+      ]),
+    ]);
+  }
+
+  /// Ends the drag with the pointer's [velocity], and starts landing.
+  void release(Offset velocity) {
+    if (_done) return;
+    phase = accepted ? MotionDragPhase.accepted : MotionDragPhase.rejected;
+    _releaseVelocity = _restrict(velocity);
+    registry.beginLanding(tag);
+    _landingMarked = true;
+    _coast();
+    // The drop rebuilds the item in its new place in the next frame. It is
+    // laid out after that frame, so look for it then.
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) => _resolve())
+      ..scheduleFrame();
+  }
+
+  /// Starts a drag of the landing feedback from its destination.
+  void regrab(MotionDraggable<Object> widget, Offset pointer, Offset anchor) {
+    final controller = _controller;
+    final global = globalTopLeft;
+    final velocity = controller?.velocity(MotionDraggableTrack.offset);
+    _widget = widget;
+    phase = MotionDragPhase.dragging;
+    accepted = false;
+    _resolved = false;
+    _site = null;
+    _siteRect = null;
+    _pointer = pointer;
+    _anchor = anchor;
+    _endLanding();
+    if (controller == null) return;
+    controller.set([
+      MotionDraggableTrack.offset.value(global, velocity: velocity),
+    ]);
+    _applyTransitions();
+  }
+
+  /// Lets the feedback carry on from the release while the destination
+  /// isn't known, and while it exits without one.
+  void _coast({Offset? velocity}) {
+    final controller = _controller;
+    if (controller == null) return;
+    controller
+      ..stop(tracks: [_velocity], canceled: true)
+      ..set([_velocity.value(Offset.zero)])
+      ..animate([
+        MotionDraggableTrack.offset(
+          [
+            TrackStep.to(
+              globalTopLeft,
+              motion: _motionFor(MotionDraggableTrack.offset),
+            ),
+          ],
+          withVelocity: velocity ?? _releaseVelocity,
+        ),
+      ]);
+  }
+
+  void _resolve() {
+    if (_done || phase == MotionDragPhase.dragging || _resolved) return;
+    final controller = _controller;
+    if (controller == null) {
+      // The entry never built, because its overlay went away.
+      _finish(landed: false);
+      return;
+    }
+    _resolved = true;
+    final candidates = [
+      for (final site in registry.sitesFor(tag))
+        if (site.globalRect case final rect?) (site: site, rect: rect),
+    ];
+    assert(() {
+      if (candidates.length > 1) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: FlutterError.fromParts([
+              ErrorSummary(
+                '${candidates.length} MotionDraggables have the tag $tag.',
+              ),
+              ErrorDescription(
+                'A MotionDraggable lands on the mounted MotionDraggable with '
+                'its tag, so only one of them may have it at a time in an '
+                'Overlay. The feedback lands on the nearest one.',
+              ),
+              ErrorHint(
+                'Give each item a unique tag, or data that is unique.',
+              ),
+            ]),
+            library: 'motor_widgets',
+            context: ErrorDescription('while landing a MotionDraggable'),
+          ),
+        );
+      }
+      return true;
+    }(), 'never fails: it only reports duplicate tags');
+    if (candidates.isNotEmpty) {
+      final center =
+          globalTopLeft & controller.value(MotionDraggableTrack.size);
+      final nearest = candidates.reduce(
+        (a, b) =>
+            (a.rect.center - center.center).distanceSquared <=
+                (b.rect.center - center.center).distanceSquared
+            ? a
+            : b,
+      );
+      _landOn(nearest.site, nearest.rect);
+    }
+    _applyTransitions();
+    _checkSettled();
+  }
+
+  void _landOn(LandingSite site, Rect rect) {
+    final controller = _controller!;
+    final global = globalTopLeft;
+    final velocity = controller.velocity(MotionDraggableTrack.offset);
+    _site = site;
+    _siteRect = rect;
+    controller.animate([
+      MotionDraggableTrack.offset(
+        [
+          TrackStep.to(
+            Offset.zero,
+            motion: _motionFor(MotionDraggableTrack.offset),
+          ),
+        ],
+        from: global - rect.topLeft,
+        withVelocity: velocity,
+      ),
+      MotionDraggableTrack.size([
+        TrackStep.to(
+          rect.size,
+          motion: _motionFor(MotionDraggableTrack.size),
+        ),
+      ]),
+    ]);
+  }
+
+  /// Follows the destination: called on every build of the flight.
+  void _measure() {
+    final site = _site;
+    if (site == null || _done) return;
+    final rect = site.globalRect;
+    final binding = SchedulerBinding.instance;
+    if (rect == null) {
+      if (!_lossScheduled) {
+        _lossScheduled = true;
+        binding.addPostFrameCallback((_) => _loseSite(site));
+      }
+      return;
+    }
+    if (rect.size != _siteRect?.size && !_resizeScheduled) {
+      _resizeScheduled = true;
+      binding.addPostFrameCallback((_) => _resize());
+    }
+    _siteRect = rect;
+  }
+
+  void _loseSite(LandingSite site) {
+    _lossScheduled = false;
+    final controller = _controller;
+    if (_done || controller == null || _site != site) return;
+    final global = globalTopLeft;
+    final velocity = controller.velocity(MotionDraggableTrack.offset);
+    _site = null;
+    controller.set([MotionDraggableTrack.offset.value(global)]);
+    _coast(velocity: velocity);
+    _applyTransitions();
+    _checkSettled();
+  }
+
+  void _resize() {
+    _resizeScheduled = false;
+    final controller = _controller;
+    final rect = _siteRect;
+    if (_done || controller == null || _site == null || rect == null) return;
+    controller.animate([
+      MotionDraggableTrack.size([
+        TrackStep.to(
+          rect.size,
+          motion: _motionFor(MotionDraggableTrack.size),
+        ),
+      ]),
+    ]);
+  }
+
+  void _applyTransitions() {
+    final controller = _controller;
+    if (controller == null) return;
+    final details = this.details;
+    final animations =
+        widget.transitions?.call(details) ?? _defaultTransitions(details);
+    final mentioned = <Track<Object>>{};
+    final resolved = <TrackAnimation<Object>>[
+      for (final animation in animations)
+        if (mentioned.add(animation.track))
+          switch (animation.track) {
+            final MotionDraggableTrack<Object> track => _ownTrack(
+              track,
+              animation,
+            ),
+            _ => animation,
+          },
+      for (final track in MotionDraggableTrack.visual)
+        if (!mentioned.contains(track)) track.toRest(_motionFor(track)),
+    ];
+    controller.animate(resolved);
+  }
+
+  TrackAnimation<Object> _ownTrack(
+    MotionDraggableTrack<Object> track,
+    TrackAnimation<Object> animation,
+  ) {
+    assert(
+      track.rest != null,
+      'MotionDraggable.transitions can only animate the visual tracks '
+      '(scale, rotation and opacity) of MotionDraggableTrack: the draggable '
+      'owns $track.',
+    );
+    return track.withDefaultMotion(animation, _motionFor(track));
+  }
+
+  static List<TrackAnimation<Object>> _defaultTransitions(
+    MotionDragDetails drag,
+  ) {
+    if (drag.phase == MotionDragPhase.dragging || drag.destination != null) {
+      return const [];
+    }
+    return [
+      MotionDraggableTrack.scale([const TrackStep.to(0)]),
+      MotionDraggableTrack.opacity([const TrackStep.to(0)]),
+    ];
+  }
+
+  void _checkSettled() {
+    final controller = _controller;
+    if (_done || controller == null) return;
+    if (phase == MotionDragPhase.dragging || !_resolved) return;
+    if (controller.status.isAnimating) return;
+    _finish(landed: true);
+  }
+
+  void _endLanding() {
+    if (!_landingMarked) return;
+    _landingMarked = false;
+    registry.endLanding(tag);
+  }
+
+  void _finish({required bool landed}) {
+    if (_done) return;
+    _done = true;
+    _endLanding();
+    _entry
+      ..remove()
+      ..dispose();
+    if (landed) widget.onLanded?.call();
+  }
+
+  void _attach(_FlightViewState view) {
+    _view = view;
+    view._controller.addStatusListener(_onStatus);
+    if (phase == MotionDragPhase.dragging) {
+      _applyTransitions();
+    } else {
+      // The drag ended before the entry first built.
+      _coast();
+    }
+  }
+
+  void _detach(_FlightViewState view) {
+    if (_view != view) return;
+    view._controller.removeStatusListener(_onStatus);
+    _view = null;
+    if (_done) return;
+    // The overlay went away while the flight was still in it.
+    _done = true;
+    _endLanding();
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (!status.isAnimating) _checkSettled();
+  }
+
+  void _grab(PointerDownEvent event) => _site?.grab(event, this);
+
+  void _endGrab(PointerEvent event) => _site?.endGrab(this);
+}
+
+class _FlightView extends StatefulWidget {
+  const _FlightView({required this.flight});
+
+  final DragFlight flight;
+
+  @override
+  State<_FlightView> createState() => _FlightViewState();
+}
+
+class _FlightViewState extends State<_FlightView>
+    with FixedTickerProviderStateMixin, WidgetTickerRateMixin {
+  late final TrackController _controller;
+
+  DragFlight get _flight => widget.flight;
+
+  @override
+  TickerRate? get widgetTickerRate => _flight.widget.tickerRate;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TrackController(
+      vsync: this,
+      initialValues: [
+        MotionDraggableTrack.offset.value(_flight._pointer - _flight._anchor),
+        MotionDraggableTrack.size.value(_flight._initialSize),
+      ],
+      debugLabel: _flight.widget.debugLabel ?? 'MotionDraggable',
+    );
+    _flight._attach(this);
+  }
+
+  @override
+  void dispose() {
+    _flight._detach(this);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) => _buildFlight(context),
+    );
+  }
+
+  Widget _buildFlight(BuildContext context) {
+    final flight = _flight.._measure();
+    final config = flight.widget;
+    final value = _controller.value;
+    final overlayBox = flight.overlay.context.findRenderObject();
+    final global = flight.globalTopLeft;
+    final topLeft = overlayBox is RenderBox && overlayBox.hasSize
+        ? overlayBox.globalToLocal(global)
+        : global;
+    final size = value(MotionDraggableTrack.size);
+    final details = flight.details;
+    final dragging = flight.phase == MotionDragPhase.dragging;
+    final grabbable = !dragging && flight._site != null;
+
+    final feedback = config.feedback ?? config.child;
+    return Positioned(
+      left: topLeft.dx,
+      top: topLeft.dy,
+      width: size.width,
+      height: size.height,
+      child: Listener(
+        behavior: grabbable
+            ? HitTestBehavior.opaque
+            : HitTestBehavior.deferToChild,
+        onPointerDown: grabbable ? flight._grab : null,
+        onPointerUp: flight._endGrab,
+        onPointerCancel: flight._endGrab,
+        child: IgnorePointer(
+          ignoring: !dragging || config.ignoringFeedbackPointer,
+          child: ExcludeSemantics(
+            excluding: config.ignoringFeedbackSemantics,
+            child: Opacity(
+              opacity: value(MotionDraggableTrack.opacity).clamp(0, 1),
+              child: Transform.rotate(
+                angle: value(MotionDraggableTrack.rotation) * 2 * math.pi,
+                child: Transform.scale(
+                  scale: value(MotionDraggableTrack.scale),
+                  child:
+                      config.feedbackBuilder?.call(
+                        context,
+                        details,
+                        feedback,
+                      ) ??
+                      feedback,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

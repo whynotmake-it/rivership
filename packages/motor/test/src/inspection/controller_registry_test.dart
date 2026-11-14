@@ -225,11 +225,6 @@ void main() {
                     motion: motion,
                     builder: build,
                   ),
-                  const MotionDraggable(
-                    debugLabel: 'Draggable',
-                    data: 1,
-                    child: SizedBox(),
-                  ),
                 ],
               ),
             ),
@@ -240,7 +235,7 @@ void main() {
 
     expect(
       [for (final controller in observer.registered) controller.debugLabel],
-      containsAll(['Tracks', 'Phases', 'Single value', 'Draggable']),
+      containsAll(['Tracks', 'Phases', 'Single value']),
     );
     expect(
       {
@@ -254,7 +249,6 @@ void main() {
         'Tracks': 'TrackBuilder',
         'Phases': 'PhaseTrackBuilder<int>',
         'Single value': 'SingleMotionBuilder',
-        'Draggable': 'MotionDraggable<int>',
       },
     );
 
