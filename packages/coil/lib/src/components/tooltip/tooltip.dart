@@ -118,7 +118,8 @@ class CoilTooltipGroup extends StatelessWidget {
   );
 }
 
-/// The bubble's enter and exit around a [CoilTooltipBubble].
+/// The tooltip's enter and exit around a [CoilTooltipBubble]: a blur-fade
+/// and a 4 px slide toward the trigger.
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.presence,
@@ -134,7 +135,10 @@ class _Bubble extends StatelessWidget {
   Widget build(BuildContext context) => CoilBlurFade(
     presence: presence,
     scale: 1,
-    child: CoilTooltipBubble(motion: motion, child: content),
+    child: CoilTooltipSlide(
+      presence: presence,
+      child: CoilTooltipBubble(motion: motion, child: content),
+    ),
   );
 }
 
@@ -149,7 +153,7 @@ class _Bubble extends StatelessWidget {
 /// that updates in place resizes the bubble on `quick` too.
 ///
 /// It has no enter or exit of its own; wrap it in one, such as
-/// [CoilBlurFade].
+/// [CoilBlurFade] and [CoilTooltipSlide].
 class CoilTooltipBubble extends StatelessWidget {
   /// Creates a tooltip bubble around [child].
   const CoilTooltipBubble({required this.child, super.key, this.motion});

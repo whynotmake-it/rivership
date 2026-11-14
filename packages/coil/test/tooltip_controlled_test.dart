@@ -178,4 +178,52 @@ void main() {
     expect(button.getSemanticsData().tooltip, 'Bold');
     semantics.dispose();
   });
+
+  testWidgets('a controlled bubble that only fades does not move', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    presence.value = 1;
+    await tester.pumpWidget(_thumb(presence: presence, x: x));
+    await tester.pump();
+    final rest = tester.getRect(_bubble);
+
+    presence.value = 0.3;
+    await tester.pump();
+    expect(tester.getRect(_bubble), rest);
+  });
+
+  testWidgets('below its trigger, the tooltip slides up toward it', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: Align(
+          alignment: Alignment.topCenter,
+          child: CoilTooltip(
+            message: const Text('Bold'),
+            child: CoilButton.icon(
+              onPressed: () {},
+              semanticLabel: 'Bold button',
+              icon: const SizedBox.square(dimension: 16),
+            ),
+          ),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.byType(CoilButton)));
+    await tester.pump(CoilTooltipAnchor.hoverDelay);
+    await tester.pump(const Duration(milliseconds: 16));
+    final bubble = find.byType(CoilTooltipBubble);
+    final sliding = tester.getRect(bubble).top;
+    await tester.pumpAndSettle();
+    final rest = tester.getRect(bubble).top;
+    expect(rest, greaterThan(tester.getRect(find.byType(CoilButton)).bottom));
+    expect(sliding - rest, inExclusiveRange(0, 4));
+  });
 }

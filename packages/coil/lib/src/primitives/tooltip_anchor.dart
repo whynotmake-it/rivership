@@ -44,9 +44,10 @@ Motion _presenceMotion(
 ///   without firing [child]. iOS shows none.
 ///
 /// The bubble sits [gap] above [child], or below when there's no room
-/// above, and slides the last 4 px toward it as it appears. Under reduced
-/// motion it only fades, on `fade`. It follows [child] every frame while
-/// [child] moves in layout, without rebuilding the bubble.
+/// above. Its enter and exit are whatever [bubble] builds from the presence;
+/// coil's tooltip blur-fades and slides in with [CoilTooltipSlide]. Under
+/// reduced motion the presence springs on `fade`. It follows [child] every
+/// frame while [child] moves in layout, without rebuilding the bubble.
 ///
 /// [semanticLabel] merges into [child]'s semantics as its tooltip; the
 /// bubble itself stays out of the semantics tree, so it's announced once.
@@ -253,7 +254,6 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
             info.childPaintTransform,
             Offset.zero & info.childSize,
           ),
-          presence: presence,
           child: bubble,
         ),
       ),
@@ -442,7 +442,6 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
             builder: (context, glide, child) => _BubblePlacement(
               anchor: rect,
               glide: glide,
-              presence: _presence,
               child: child,
             ),
             child: bubble,
@@ -467,18 +466,12 @@ class _GroupScope extends InheritedWidget {
 }
 
 /// Places the bubble above the trigger, or below when there's no room
-/// above, and slides it the last 4 px toward the trigger as it appears.
-/// Under reduced motion it doesn't slide.
+/// above.
 ///
 /// In a group, [glide] is where the bubble is on its way to [anchor]: the
 /// bubble is drawn there as if it were placed on that rect.
 class _BubblePlacement extends SingleChildRenderObjectWidget {
-  const _BubblePlacement({
-    required this.anchor,
-    required this.presence,
-    this.glide,
-    super.child,
-  });
+  const _BubblePlacement({required this.anchor, this.glide, super.child});
 
   /// The trigger's rect in the overlay.
   final Rect anchor;
@@ -486,16 +479,12 @@ class _BubblePlacement extends SingleChildRenderObjectWidget {
   /// The rect the bubble is drawn on while it glides to [anchor].
   final Rect? glide;
 
-  final Animation<double> presence;
-
   @override
   _RenderBubblePlacement createRenderObject(BuildContext context) =>
       _RenderBubblePlacement(
         anchor: anchor,
         glide: glide,
         safeTop: MediaQuery.paddingOf(context).top,
-        presence: presence,
-        slide: !(MediaQuery.maybeDisableAnimationsOf(context) ?? false),
       );
 
   @override
@@ -506,35 +495,38 @@ class _BubblePlacement extends SingleChildRenderObjectWidget {
     renderObject
       ..anchor = anchor
       ..glide = glide
-      ..safeTop = MediaQuery.paddingOf(context).top
-      ..presence = presence
-      ..slide = !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+      ..safeTop = MediaQuery.paddingOf(context).top;
   }
 }
 
-/// Lays the bubble out at rest on its anchor and paints the slide and the
-/// glide as a resample of it (a matrix image filter), as the popover's grow
-/// does. Moved by layout, the text would snap to the pixel grid on every
-/// frame. While the bubble resizes, its centered content stays put.
+/// Lays the bubble out at rest on its anchor and paints the glide as a
+/// resample of it (a matrix image filter), as the popover's grow does.
+/// Moved by layout, the text would snap to the pixel grid on every frame.
+/// While the bubble resizes, its centered content stays put.
 class _RenderBubblePlacement extends RenderBox
     with RenderObjectWithChildMixin<RenderBox> {
   _RenderBubblePlacement({
     required this._anchor,
     required this._glide,
     required this._safeTop,
-    required this._presence,
-    required this._slide,
   });
 
   static const _edge = 8.0;
-  static const _distance = 4.0;
+
+  /// The placement [descendant] is drawn in, if any.
+  static _RenderBubblePlacement? maybeOf(RenderObject descendant) {
+    for (var node = descendant.parent; node != null; node = node.parent) {
+      if (node is _RenderBubblePlacement) return node;
+    }
+    return null;
+  }
 
   Rect get anchor => _anchor;
   Rect _anchor;
   set anchor(Rect value) {
     if (value == _anchor) return;
     _anchor = value;
-    _updateMoving();
+    _updateGliding();
     markNeedsLayout();
   }
 
@@ -543,7 +535,7 @@ class _RenderBubblePlacement extends RenderBox
   set glide(Rect? value) {
     if (value == _glide) return;
     _glide = value;
-    _updateMoving();
+    _updateGliding();
     markNeedsPaint();
   }
 
@@ -555,61 +547,31 @@ class _RenderBubblePlacement extends RenderBox
     markNeedsLayout();
   }
 
-  Animation<double> get presence => _presence;
-  Animation<double> _presence;
-  set presence(Animation<double> value) {
-    if (value == _presence) return;
-    if (attached) _presence.removeListener(_onPresence);
-    _presence = value;
-    if (attached) _presence.addListener(_onPresence);
-    _onPresence();
-  }
-
-  /// Whether the bubble slides in; false under reduced motion.
-  bool get slide => _slide;
-  bool _slide;
-  set slide(bool value) {
-    if (value == _slide) return;
-    _slide = value;
-    _onPresence();
-  }
-
   Offset _childOffset = Offset.zero;
+
+  /// Whether the bubble sits above its trigger, picked in layout.
+  bool get above => _above;
   bool _above = true;
 
-  /// Whether the bubble is mid-slide or mid-glide, so painted through a
-  /// matrix filter.
-  bool _moving = false;
+  /// Whether the bubble is mid-glide, so painted through a matrix filter.
+  bool _gliding = false;
 
-  bool get _shouldMove =>
-      (_slide && _presence.value != 1) || (_glide != null && _glide != _anchor);
+  bool get _shouldGlide => _glide != null && _glide != _anchor;
 
-  void _updateMoving() {
-    final moving = _shouldMove;
-    if (moving == _moving) return;
-    _moving = moving;
+  void _updateGliding() {
+    final gliding = _shouldGlide;
+    if (gliding == _gliding) return;
+    _gliding = gliding;
     markNeedsCompositingBitsUpdate();
   }
 
-  void _onPresence() {
-    _updateMoving();
-    markNeedsPaint();
-  }
-
   @override
-  bool get alwaysNeedsCompositing => _moving;
+  bool get alwaysNeedsCompositing => _gliding;
 
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    _presence.addListener(_onPresence);
-    _moving = _shouldMove;
-  }
-
-  @override
-  void detach() {
-    _presence.removeListener(_onPresence);
-    super.detach();
+    _gliding = _shouldGlide;
   }
 
   @override
@@ -645,17 +607,13 @@ class _RenderBubblePlacement extends RenderBox
     return Offset(x, y);
   }
 
-  /// How far the bubble is drawn from where it's laid out: the glide's
-  /// remaining way, plus the slide, [_distance] away from the trigger at
-  /// presence 0. A spring's overshoot is kept, so a bouncy one bounces.
-  Offset get _moveOffset {
+  /// The glide's remaining way: how far the bubble is drawn from where it's
+  /// laid out.
+  Offset get _glideOffset {
     final glide = _glide;
-    final glided = glide == null || child == null
+    return glide == null || child == null
         ? Offset.zero
         : _place(glide) - _childOffset;
-    if (!_slide) return glided;
-    final away = _distance * (1 - _presence.value);
-    return glided + Offset(0, _above ? -away : away);
   }
 
   @override
@@ -663,30 +621,17 @@ class _RenderBubblePlacement extends RenderBox
     final child = this.child;
     if (child == null) return;
     final origin = offset + _childOffset;
-    if (!_moving) {
+    if (!_gliding) {
       layer = null;
       context.paintChild(child, origin);
       return;
     }
-    final move = _moveOffset;
-    final filter = ImageFilter.matrix(
-      Matrix4.translationValues(move.dx, move.dy, 0).storage,
-    );
-    if (layer case final ImageFilterLayer layer) {
-      layer.imageFilter = filter;
-    } else {
-      layer = ImageFilterLayer(imageFilter: filter);
-    }
-    context.pushLayer(
-      layer!,
-      (context, offset) => context.paintChild(child, offset),
-      origin,
-    );
+    layer = _pushTranslation(context, layer, _glideOffset, child, origin);
   }
 
   @override
   void applyPaintTransform(RenderBox child, Matrix4 transform) {
-    final at = _childOffset + _moveOffset;
+    final at = _childOffset + _glideOffset;
     transform.translateByDouble(at.dx, at.dy, 0, 1);
   }
 
@@ -695,7 +640,179 @@ class _RenderBubblePlacement extends RenderBox
     final child = this.child;
     if (child == null) return false;
     return result.addWithPaintOffset(
-      offset: _childOffset + _moveOffset,
+      offset: _childOffset + _glideOffset,
+      position: position,
+      hitTest: (result, position) => child.hitTest(result, position: position),
+    );
+  }
+}
+
+/// Paints [child] at [origin] moved by [move], as a resample of it drawn at
+/// rest (a matrix image filter): text moves as one image instead of
+/// snapping to the pixel grid each frame. Returns the layer to keep.
+ImageFilterLayer _pushTranslation(
+  PaintingContext context,
+  ContainerLayer? oldLayer,
+  Offset move,
+  RenderBox child,
+  Offset origin,
+) {
+  final filter = ImageFilter.matrix(
+    Matrix4.translationValues(move.dx, move.dy, 0).storage,
+  );
+  final layer = switch (oldLayer) {
+    final ImageFilterLayer layer => layer..imageFilter = filter,
+    _ => ImageFilterLayer(imageFilter: filter),
+  };
+  context.pushLayer(
+    layer,
+    (context, offset) => context.paintChild(child, offset),
+    origin,
+  );
+  return layer;
+}
+
+/// A tooltip bubble's slide: [child] is drawn [distance] away from the
+/// trigger at [presence] 0 and comes to rest at 1, toward the trigger of
+/// the [CoilTooltipAnchor] whose bubble it's in, on whichever side the
+/// bubble sits. Under reduced motion it doesn't move.
+///
+/// Like the rest of an enter transition it belongs in the anchor's bubble
+/// builder, around the bubble:
+///
+/// ```dart
+/// bubble: (context, presence, content) => CoilBlurFade(
+///   presence: presence,
+///   scale: 1,
+///   child: CoilTooltipSlide(
+///     presence: presence,
+///     child: CoilTooltipBubble(child: content),
+///   ),
+/// ),
+/// ```
+///
+/// The slide is painted as a resample of [child] drawn at rest, so text
+/// moves as one image. A spring's overshoot is kept.
+class CoilTooltipSlide extends SingleChildRenderObjectWidget {
+  /// Creates a slide driven by [presence].
+  const CoilTooltipSlide({
+    required this.presence,
+    required super.child,
+    super.key,
+    this.distance = 4,
+  });
+
+  /// 0 (gone) to 1 (at rest).
+  final Animation<double> presence;
+
+  /// How far from rest [child] is at presence 0, in logical pixels.
+  final double distance;
+
+  double _distance(BuildContext context) =>
+      MediaQuery.maybeDisableAnimationsOf(context) ?? false ? 0 : distance;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderTooltipSlide(presence: presence, distance: _distance(context));
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderTooltipSlide)
+      ..presence = presence
+      ..distance = _distance(context);
+  }
+}
+
+class _RenderTooltipSlide extends RenderProxyBox {
+  _RenderTooltipSlide({
+    required this._presence,
+    required this._distance,
+  });
+
+  Animation<double> get presence => _presence;
+  Animation<double> _presence;
+  set presence(Animation<double> value) {
+    if (value == _presence) return;
+    if (attached) _presence.removeListener(_onPresence);
+    _presence = value;
+    if (attached) _presence.addListener(_onPresence);
+    _onPresence();
+  }
+
+  double get distance => _distance;
+  double _distance;
+  set distance(double value) {
+    if (value == _distance) return;
+    _distance = value;
+    _onPresence();
+  }
+
+  /// Whether it's mid-slide, so painted through a matrix filter.
+  bool _sliding = false;
+
+  bool get _shouldSlide => _distance != 0 && _presence.value != 1;
+
+  void _onPresence() {
+    final sliding = _shouldSlide;
+    if (sliding != _sliding) {
+      _sliding = sliding;
+      markNeedsCompositingBitsUpdate();
+    }
+    markNeedsPaint();
+  }
+
+  @override
+  bool get alwaysNeedsCompositing => _sliding;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _presence.addListener(_onPresence);
+    _sliding = _shouldSlide;
+  }
+
+  @override
+  void detach() {
+    _presence.removeListener(_onPresence);
+    super.detach();
+  }
+
+  /// Away from the trigger: up when the bubble is above it, down below.
+  Offset get _offset {
+    if (!_sliding) return Offset.zero;
+    final placement = _RenderBubblePlacement.maybeOf(this);
+    assert(
+      placement != null,
+      'CoilTooltipSlide must be inside a CoilTooltipAnchor bubble.',
+    );
+    final away = _distance * (1 - _presence.value);
+    return Offset(0, placement?.above ?? true ? -away : away);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    if (!_sliding) {
+      layer = null;
+      context.paintChild(child, offset);
+      return;
+    }
+    layer = _pushTranslation(context, layer, _offset, child, offset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final at = _offset;
+    transform.translateByDouble(at.dx, at.dy, 0, 1);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) return false;
+    return result.addWithPaintOffset(
+      offset: _offset,
       position: position,
       hitTest: (result, position) => child.hitTest(result, position: position),
     );
