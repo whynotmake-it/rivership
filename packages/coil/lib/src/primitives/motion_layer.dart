@@ -44,18 +44,6 @@ abstract class CoilLayerPainter extends ChangeNotifier {
   }
 }
 
-/// Lets a widget that owns a layer ask it where its targets are (for
-/// pointer hit tests between frames). Set by the layer's render object.
-class CoilMotionLayerHandle implements CoilLayerGeometry {
-  RenderCoilMotionLayer? _layer;
-
-  /// The index of every target, in registration order.
-  Iterable<int> get indices => _layer?._targets.keys ?? const [];
-
-  @override
-  Rect? rectOf(int index) => _layer?.rectOf(index);
-}
-
 /// A paint layer for decorations shared by sibling items: a gliding
 /// highlight, a tab pill, merged selection blocks, a travelling ring.
 ///
@@ -74,7 +62,6 @@ class CoilPainterLayer extends SingleChildRenderObjectWidget {
     super.key,
     this.background = const [],
     this.foreground = const [],
-    this.handle,
   });
 
   /// Painted behind the child.
@@ -83,15 +70,11 @@ class CoilPainterLayer extends SingleChildRenderObjectWidget {
   /// Painted in front of the child.
   final List<CoilLayerPainter> foreground;
 
-  /// Gives the owning widget access to target rects.
-  final CoilMotionLayerHandle? handle;
-
   @override
   RenderCoilMotionLayer createRenderObject(BuildContext context) =>
       RenderCoilMotionLayer(
         background: background,
         foreground: foreground,
-        handle: handle,
       );
 
   @override
@@ -101,8 +84,7 @@ class CoilPainterLayer extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..background = background
-      ..foreground = foreground
-      ..handle = handle;
+      ..foreground = foreground;
   }
 }
 
@@ -113,10 +95,7 @@ class RenderCoilMotionLayer extends RenderProxyBox
   RenderCoilMotionLayer({
     this._background = const [],
     this._foreground = const [],
-    this._handle,
-  }) {
-    _handle?._layer = this;
-  }
+  });
 
   final _targets = <int, RenderBox>{};
 
@@ -138,15 +117,6 @@ class RenderCoilMotionLayer extends RenderProxyBox
     _relisten(_foreground, value);
     _foreground = value;
     markNeedsPaint();
-  }
-
-  /// The handle this layer reports to.
-  CoilMotionLayerHandle? get handle => _handle;
-  CoilMotionLayerHandle? _handle;
-  set handle(CoilMotionLayerHandle? value) {
-    if (value == _handle) return;
-    if (_handle?._layer == this) _handle?._layer = null;
-    _handle = value?.._layer = this;
   }
 
   void _relisten(List<CoilLayerPainter> old, List<CoilLayerPainter> next) {
