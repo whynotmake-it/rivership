@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:coil_example/src/pages/components/settings_dialog_page.dart';
 import 'package:coil_example/src/pages/components/sidebar_demo.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
@@ -79,6 +80,12 @@ class SidebarPage extends StatelessWidget {
         description:
             'Press the left edge; Escape or a press elsewhere hides it.',
         child: _Frame(child: _Peek(peek: CoilSidebarPeek.click, open: false)),
+      ),
+      DemoSection(
+        title: 'Inside a dialog',
+        description:
+            'A sidebar that never folds, as the settings dialog uses it.',
+        child: _OpenSettings(),
       ),
     ],
   );
@@ -341,5 +348,20 @@ class _PeekState extends State<_Peek> {
       children: [ThreadsGroup()],
     ),
     body: const DemoPage(title: 'Threads'),
+  );
+}
+
+class _OpenSettings extends StatelessWidget {
+  const _OpenSettings();
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: CoilButton(
+      variant: CoilButtonVariant.secondary,
+      leading: const CatalogIcon(Glyph.settings),
+      onPressed: () => showDemoSettings(context),
+      child: const Text('Open settings'),
+    ),
   );
 }
