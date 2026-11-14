@@ -1,22 +1,18 @@
-// TODO(coil-eject): expose expectCoilPattern outside coil's own tests
-// (e.g. as a coil_test package) so ejected components can use it. Until
-// then it stays internal: not exported, no extra package.
 import 'dart:ui' show CheckedState, SemanticsRole, Tristate;
 
-import 'package:coil/coil.dart';
+import 'package:coil/primitives.dart';
+import 'package:coil/src/testing/patterns/adjustable.dart';
+import 'package:coil/src/testing/patterns/card.dart';
+import 'package:coil/src/testing/patterns/disclosure.dart';
+import 'package:coil/src/testing/patterns/live_region.dart';
+import 'package:coil/src/testing/patterns/navigation.dart';
+import 'package:coil/src/testing/patterns/question.dart';
+import 'package:coil/src/testing/patterns/table.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'patterns/adjustable.dart';
-import 'patterns/card.dart';
-import 'patterns/disclosure.dart';
-import 'patterns/live_region.dart';
-import 'patterns/navigation.dart';
-import 'patterns/question.dart';
-import 'patterns/table.dart';
 
 /// The interaction patterns coil components implement. Each one is a
 /// contract for semantics, keyboard and focus that [expectCoilPattern]

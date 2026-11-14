@@ -1,11 +1,11 @@
 import 'package:coil/coil.dart';
+import 'package:coil/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/coil_pattern.dart';
 import 'src/select_harness.dart';
 import 'src/test_icons.dart';
 
