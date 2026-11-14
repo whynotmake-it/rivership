@@ -46,26 +46,28 @@ class _HostState extends State<_Host> {
       textDirection: widget.textDirection,
       child: CoilTheme(
         data: CoilThemeData.light.copyWith(tier: widget.tier),
-        child: FocusScope(
-          autofocus: true,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: SizedBox(
-                width: 300,
-                child: CoilRangeSlider(
-                  key: const ValueKey('slider'),
-                  values: values,
-                  divisions: widget.divisions,
-                  motions: widget.motions,
-                  label: const Text('Price'),
-                  onChangeStart: (v) => log.add('start ${_fmt(v)}'),
-                  onChangeEnd: (v) => log.add('end ${_fmt(v)}'),
-                  onChanged: (v) {
-                    log.add('changed ${_fmt(v)}');
-                    setState(() => values = v);
-                  },
+        child: Overlay.wrap(
+          child: FocusScope(
+            autofocus: true,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: SizedBox(
+                  width: 300,
+                  child: CoilRangeSlider(
+                    key: const ValueKey('slider'),
+                    values: values,
+                    divisions: widget.divisions,
+                    motions: widget.motions,
+                    label: const Text('Price'),
+                    onChangeStart: (v) => log.add('start ${_fmt(v)}'),
+                    onChangeEnd: (v) => log.add('end ${_fmt(v)}'),
+                    onChanged: (v) {
+                      log.add('changed ${_fmt(v)}');
+                      setState(() => values = v);
+                    },
+                  ),
                 ),
               ),
             ),

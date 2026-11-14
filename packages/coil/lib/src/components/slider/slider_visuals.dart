@@ -5,7 +5,6 @@ import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/slider/slider_layout.dart';
 import 'package:coil/src/components/slider/slider_painters.dart';
-import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:coil/src/components/slider/slider_text.dart';
 import 'package:flutter/widgets.dart';
@@ -201,71 +200,6 @@ class SliderPill extends StatelessWidget {
             ),
       track: track(pill),
       value: value,
-    );
-  }
-}
-
-/// The value bubble above the thumb or the hovered position.
-class SliderBubble extends StatelessWidget {
-  const SliderBubble({
-    required this.style,
-    required this.fraction,
-    required this.reach,
-    required this.rtl,
-    required this.opacity,
-    required this.child,
-    super.key,
-  });
-
-  final CoilSliderStyle style;
-  final double fraction;
-  final SliderReach reach;
-  final bool rtl;
-  final double opacity;
-
-  /// The value, styled by the bubble's text style.
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (opacity <= 0) return const SizedBox.shrink();
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: ExcludeSemantics(
-          child: Opacity(
-            key: sliderBubbleKey,
-            opacity: opacity.clamp(0.0, 1.0),
-            child: CustomSingleChildLayout(
-              delegate: SliderBubbleLayout(
-                fraction: fraction.clamp(0.0, 1.0),
-                reach: reach,
-                rtl: rtl,
-                gap: style.bubbleGap!,
-              ),
-              child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: style.bubble,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(style.radius!),
-                  ),
-                ),
-                child: Padding(
-                  padding: style.bubblePadding!,
-                  child: DefaultTextStyle(
-                    maxLines: 1,
-                    softWrap: false,
-                    style: style.bubbleTextStyle!.copyWith(
-                      color: style.bubbleText,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                    child: child,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

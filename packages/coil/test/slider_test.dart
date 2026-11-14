@@ -59,45 +59,47 @@ class _HostState extends State<_Host> {
   @override
   Widget build(BuildContext context) => WidgetsApp(
     color: const Color(0xFF000000),
-    builder: (context, _) => MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(disableAnimations: widget.reduceMotion),
-      child: Directionality(
-        textDirection: widget.textDirection,
-        child: CoilTheme(
-          data: CoilThemeData.light.copyWith(
-            tier: widget.tier,
-            motion: widget.motion,
-            trackMotions: widget.trackMotions,
-          ),
-          child: Overlay.wrap(
-            child: FocusScope(
-              autofocus: true,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: SizedBox(
-                    width: 300,
-                    child: CoilSlider(
-                      key: const ValueKey('slider'),
-                      value: value,
-                      divisions: widget.divisions,
-                      steps: widget.steps,
-                      valueDisplay: widget.valueDisplay,
-                      variant: widget.variant,
-                      label: widget.label,
-                      statesController: widget.states,
-                      motions: widget.motions,
-                      onChangeStart: (v) => log.add('start ${_fmt(v)}'),
-                      onChangeEnd: (v) => log.add('end ${_fmt(v)}'),
-                      onChanged: widget.disabled
-                          ? null
-                          : (v) {
-                              log.add('changed ${_fmt(v)}');
-                              if (!widget.rejects) setState(() => value = v);
-                            },
+    builder: (context, _) => Overlay.wrap(
+      child: MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(disableAnimations: widget.reduceMotion),
+        child: Directionality(
+          textDirection: widget.textDirection,
+          child: CoilTheme(
+            data: CoilThemeData.light.copyWith(
+              tier: widget.tier,
+              motion: widget.motion,
+              trackMotions: widget.trackMotions,
+            ),
+            child: Overlay.wrap(
+              child: FocusScope(
+                autofocus: true,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: SizedBox(
+                      width: 300,
+                      child: CoilSlider(
+                        key: const ValueKey('slider'),
+                        value: value,
+                        divisions: widget.divisions,
+                        steps: widget.steps,
+                        valueDisplay: widget.valueDisplay,
+                        variant: widget.variant,
+                        label: widget.label,
+                        statesController: widget.states,
+                        motions: widget.motions,
+                        onChangeStart: (v) => log.add('start ${_fmt(v)}'),
+                        onChangeEnd: (v) => log.add('end ${_fmt(v)}'),
+                        onChanged: widget.disabled
+                            ? null
+                            : (v) {
+                                log.add('changed ${_fmt(v)}');
+                                if (!widget.rejects) setState(() => value = v);
+                              },
+                      ),
                     ),
                   ),
                 ),
@@ -377,21 +379,23 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => CoilTheme(
-            data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
-            child: StatefulBuilder(
-              builder: (context, setState) => ListView(
-                controller: scroll,
-                children: [
-                  const SizedBox(height: 100),
-                  CoilSlider(
-                    key: const ValueKey('slider'),
-                    value: value,
-                    statesController: states,
-                    onChanged: (v) => setState(() => value = v),
-                  ),
-                  const SizedBox(height: 2000),
-                ],
+          builder: (context, _) => Overlay.wrap(
+            child: CoilTheme(
+              data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
+              child: StatefulBuilder(
+                builder: (context, setState) => ListView(
+                  controller: scroll,
+                  children: [
+                    const SizedBox(height: 100),
+                    CoilSlider(
+                      key: const ValueKey('slider'),
+                      value: value,
+                      statesController: states,
+                      onChanged: (v) => setState(() => value = v),
+                    ),
+                    const SizedBox(height: 2000),
+                  ],
+                ),
               ),
             ),
           ),
@@ -870,23 +874,25 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
-            child: Directionality(
-              textDirection: direction,
-              child: CoilTheme(
-                data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
-                child: Center(
-                  child: SizedBox(
-                    width: width,
-                    child: CoilRangeSlider(
-                      key: const ValueKey('slider'),
-                      label: const Text('Price'),
-                      max: 100,
-                      values: const CoilRangeValues(20, 80),
-                      onChanged: onChanged ?? (_) {},
+          builder: (context, _) => Overlay.wrap(
+            child: MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: Directionality(
+                textDirection: direction,
+                child: CoilTheme(
+                  data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
+                  child: Center(
+                    child: SizedBox(
+                      width: width,
+                      child: CoilRangeSlider(
+                        key: const ValueKey('slider'),
+                        label: const Text('Price'),
+                        max: 100,
+                        values: const CoilRangeValues(20, 80),
+                        onChanged: onChanged ?? (_) {},
+                      ),
                     ),
                   ),
                 ),
@@ -999,17 +1005,19 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => CoilTheme(
-            data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
-            child: Center(
-              child: SizedBox(
-                width: 300,
-                child: CoilRangeSlider(
-                  key: const ValueKey('slider'),
-                  variant: CoilSliderVariant.pillPips,
-                  divisions: 4,
-                  values: const CoilRangeValues(.25, .75),
-                  onChanged: (_) {},
+          builder: (context, _) => Overlay.wrap(
+            child: CoilTheme(
+              data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: CoilRangeSlider(
+                    key: const ValueKey('slider'),
+                    variant: CoilSliderVariant.pillPips,
+                    divisions: 4,
+                    values: const CoilRangeValues(.25, .75),
+                    onChanged: (_) {},
+                  ),
                 ),
               ),
             ),
@@ -1163,17 +1171,19 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => CoilTheme(
-            data: CoilThemeData.light,
-            child: Overlay.wrap(
-              child: Center(
-                child: SizedBox(
-                  width: 300,
-                  child: StatefulBuilder(
-                    builder: (context, setState) => CoilRangeSlider(
-                      values: values,
-                      valueDisplay: CoilSliderValueDisplay.editable,
-                      onChanged: (v) => setState(() => values = v),
+          builder: (context, _) => Overlay.wrap(
+            child: CoilTheme(
+              data: CoilThemeData.light,
+              child: Overlay.wrap(
+                child: Center(
+                  child: SizedBox(
+                    width: 300,
+                    child: StatefulBuilder(
+                      builder: (context, setState) => CoilRangeSlider(
+                        values: values,
+                        valueDisplay: CoilSliderValueDisplay.editable,
+                        onChanged: (v) => setState(() => values = v),
+                      ),
                     ),
                   ),
                 ),
@@ -1208,25 +1218,28 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => CoilTheme(
-            data: CoilThemeData.light,
-            child: Overlay.wrap(
-              child: Center(
-                child: SizedBox(
-                  width: 300,
-                  child: StatefulBuilder(
-                    builder: (context, setState) => CoilSlider(
-                      key: const ValueKey('slider'),
-                      value: value,
-                      valueDisplay: CoilSliderValueDisplay.editable,
-                      valueBuilder: (_, v) => Text('${(v * 100).round()} %'),
-                      semanticFormatter: (v) => '${(v * 100).round()} percent',
-                      editFormatter: (v) => '${(v * 100).round()}',
-                      editParser: (t) => switch (double.tryParse(t)) {
-                        final n? => n / 100,
-                        null => null,
-                      },
-                      onChanged: (v) => setState(() => value = v),
+          builder: (context, _) => Overlay.wrap(
+            child: CoilTheme(
+              data: CoilThemeData.light,
+              child: Overlay.wrap(
+                child: Center(
+                  child: SizedBox(
+                    width: 300,
+                    child: StatefulBuilder(
+                      builder: (context, setState) => CoilSlider(
+                        key: const ValueKey('slider'),
+                        value: value,
+                        valueDisplay: CoilSliderValueDisplay.editable,
+                        valueBuilder: (_, v) => Text('${(v * 100).round()} %'),
+                        semanticFormatter: (v) =>
+                            '${(v * 100).round()} percent',
+                        editFormatter: (v) => '${(v * 100).round()}',
+                        editParser: (t) => switch (double.tryParse(t)) {
+                          final n? => n / 100,
+                          null => null,
+                        },
+                        onChanged: (v) => setState(() => value = v),
+                      ),
                     ),
                   ),
                 ),
@@ -1296,9 +1309,11 @@ void main() {
         await tester.pumpWidget(
           WidgetsApp(
             color: const Color(0xFF000000),
-            builder: (context, _) => CoilTheme(
-              data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
-              child: Center(child: SizedBox(width: 300, child: slider)),
+            builder: (context, _) => Overlay.wrap(
+              child: CoilTheme(
+                data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+                child: Center(child: SizedBox(width: 300, child: slider)),
+              ),
             ),
           ),
         );
@@ -1363,17 +1378,19 @@ void main() {
       await tester.pumpWidget(
         WidgetsApp(
           color: const Color(0xFF000000),
-          builder: (context, _) => CoilTheme(
-            data: CoilThemeData.light,
-            child: FocusScope(
-              autofocus: true,
-              child: Center(
-                child: SizedBox(
-                  width: 300,
-                  child: CoilRangeSlider(
-                    values: const CoilRangeValues(.2, .8),
-                    valueDisplay: CoilSliderValueDisplay.tooltip,
-                    onChanged: (_) {},
+          builder: (context, _) => Overlay.wrap(
+            child: CoilTheme(
+              data: CoilThemeData.light,
+              child: FocusScope(
+                autofocus: true,
+                child: Center(
+                  child: SizedBox(
+                    width: 300,
+                    child: CoilRangeSlider(
+                      values: const CoilRangeValues(.2, .8),
+                      valueDisplay: CoilSliderValueDisplay.tooltip,
+                      onChanged: (_) {},
+                    ),
                   ),
                 ),
               ),

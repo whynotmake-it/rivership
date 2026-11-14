@@ -334,8 +334,8 @@ class SliderPillPaint extends CoilLayerPaint {
   }
 }
 
-/// Places a [width]-wide box centered on a thumb, as tall as the track: the
-/// thumb's focus and semantics node in a range slider.
+/// Places a [width]-wide box centered on a thumb, as tall as the track: a
+/// range thumb's focus and semantics node, or a value bubble's anchor.
 class SliderThumbLayout extends SingleChildLayoutDelegate {
   SliderThumbLayout({
     required this.fraction,
@@ -365,36 +365,4 @@ class SliderThumbLayout extends SingleChildLayoutDelegate {
       old.reach != reach ||
       old.rtl != rtl ||
       old.width != width;
-}
-
-/// Positions the value bubble centered over the thumb, [gap] above the top.
-class SliderBubbleLayout extends SingleChildLayoutDelegate {
-  SliderBubbleLayout({
-    required this.fraction,
-    required this.reach,
-    required this.rtl,
-    required this.gap,
-  });
-
-  final double fraction;
-  final SliderReach reach;
-  final bool rtl;
-  final double gap;
-
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
-      const BoxConstraints();
-
-  @override
-  Offset getPositionForChild(Size size, Size childSize) => Offset(
-    reach.xAt(fraction, size.width, rtl: rtl) - childSize.width / 2,
-    -(gap + childSize.height),
-  );
-
-  @override
-  bool shouldRelayout(SliderBubbleLayout old) =>
-      old.fraction != fraction ||
-      old.reach != reach ||
-      old.rtl != rtl ||
-      old.gap != gap;
 }

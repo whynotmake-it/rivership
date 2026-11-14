@@ -20,10 +20,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.preview,
     this.knob,
     this.knobShadows,
-    this.bubble,
-    this.bubbleText,
     this.textStyle,
-    this.bubbleTextStyle,
     this.radius,
     this.knobSize,
     this.knobBox,
@@ -35,8 +32,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.dotGrowth,
     this.handleWidth,
     this.handleInset,
-    this.bubbleGap,
-    this.bubblePadding,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -79,10 +74,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           spreadRadius: -1,
         ),
       ],
-      bubble: c.foreground,
-      bubbleText: c.background,
       textStyle: theme.typography.style(metrics.body),
-      bubbleTextStyle: theme.typography.style(metrics.caption),
       radius: theme.shape.radii(metrics.tier).item,
       knobSize: touch ? 22 : 16,
       knobBox: touch ? 44 : 20,
@@ -94,8 +86,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
       dotGrowth: 0.25,
       handleWidth: 2,
       handleInset: 8,
-      bubbleGap: 8,
-      bubblePadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
@@ -132,19 +122,10 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// The pill knob's shadows.
   final List<BoxShadow>? knobShadows;
 
-  /// The value bubble's fill.
-  final Color? bubble;
-
-  /// The value bubble's text color.
-  final Color? bubbleText;
-
   /// The label and value text style (color from [label] and [value]).
   final TextStyle? textStyle;
 
-  /// The value bubble's text style.
-  final TextStyle? bubbleTextStyle;
-
-  /// The row's and bubble's corner radius.
+  /// The row's corner radius.
   final double? radius;
 
   /// The pill knob's visual diameter.
@@ -180,12 +161,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// How far the handle line stops short of the row's top and bottom.
   final double? handleInset;
 
-  /// The gap between the value bubble and the track.
-  final double? bubbleGap;
-
-  /// The padding inside the value bubble.
-  final EdgeInsets? bubblePadding;
-
   @override
   CoilSliderStyle merge(CoilSliderStyle? other) => other == null
       ? this
@@ -201,12 +176,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           preview: other.preview ?? preview,
           knob: other.knob ?? knob,
           knobShadows: other.knobShadows ?? knobShadows,
-          bubble: other.bubble ?? bubble,
-          bubbleText: other.bubbleText ?? bubbleText,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
-          bubbleTextStyle:
-              bubbleTextStyle?.merge(other.bubbleTextStyle) ??
-              other.bubbleTextStyle,
           radius: other.radius ?? radius,
           knobSize: other.knobSize ?? knobSize,
           knobBox: other.knobBox ?? knobBox,
@@ -218,8 +188,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           dotGrowth: other.dotGrowth ?? dotGrowth,
           handleWidth: other.handleWidth ?? handleWidth,
           handleInset: other.handleInset ?? handleInset,
-          bubbleGap: other.bubbleGap ?? bubbleGap,
-          bubblePadding: other.bubblePadding ?? bubblePadding,
         );
 
   @override
@@ -235,10 +203,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     preview,
     knob,
     knobShadows,
-    bubble,
-    bubbleText,
     textStyle,
-    bubbleTextStyle,
     radius,
     knobSize,
     knobBox,
@@ -250,7 +215,5 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     dotGrowth,
     handleWidth,
     handleInset,
-    bubbleGap,
-    bubblePadding,
   ];
 }

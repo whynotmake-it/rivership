@@ -10,6 +10,7 @@ import 'package:coil/src/components/slider/slider_shortcuts.dart';
 import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:coil/src/components/slider/slider_text.dart';
 import 'package:coil/src/components/slider/slider_visuals.dart';
+import 'package:coil/tooltip.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -117,6 +118,17 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   /// Which side of the hover the preview was on, to see them cross.
   double? _side;
+
+  /// The value bubbles' presence, 0 hidden to 1 shown, on
+  /// [CoilSliderTrack.bubble]. Pointer, press and focus events drive it.
+  late final _bubble = TrackController(
+    vsync: this,
+    debugLabel: 'CoilSlider.bubble',
+  )..set([CoilSliderTrack.bubble.value(0)]);
+  late final Animation<double> _bubblePresence = _bubble.animationOf(
+    CoilSliderTrack.bubble,
+  );
+  bool _bubbleShown = false;
 
   /// Repaints the track: a thumb or the preview moved.
   late final Listenable _paintMoves = Listenable.merge([..._thumbs, _preview]);
@@ -238,8 +250,55 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _preview
       ..set([CoilSliderTrack.preview.value(_scale.norm(widget.values[0]))])
       ..addListener(_meet);
-    _states.addListener(_forgetHover);
+    _states
+      ..addListener(_forgetHover)
+      ..addListener(_syncBubble);
+    _hover.addListener(_syncBubble);
+    for (final s in _valueStates) {
+      s.addListener(_syncBubble);
+    }
     _editFocus.addListener(_onEditFocus);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncBubble();
+  }
+
+  /// Whether a value bubble shows. Tooltip mode keeps the values over the
+  /// thumbs while the slider is hovered, pressed or keyboard-focused.
+  /// Otherwise one bubble shows the hovered value, or the pressed thumb's
+  /// value under a finger.
+  bool get _wantsBubble {
+    if (!_enabled) return false;
+    final states = _states.value;
+    final hovered = states.contains(WidgetState.hovered);
+    if (_tooltip) {
+      return hovered ||
+          states.contains(WidgetState.pressed) ||
+          states.contains(WidgetState.focused) ||
+          _dragging;
+    }
+    final onValue = _valueStates.any(
+      (s) => s.value.contains(WidgetState.hovered),
+    );
+    final pointed = _hover.value != null && !onValue;
+    return (hovered && pointed) ||
+        ((_pressing || _dragging) && _kind != PointerDeviceKind.mouse);
+  }
+
+  /// Springs the bubbles in or out when [_wantsBubble] changes.
+  void _syncBubble() {
+    final show = _wantsBubble;
+    if (show == _bubbleShown) return;
+    _bubbleShown = show;
+    final motion = _motionFor(CoilSliderTrack.bubble, _tokens);
+    _bubble.animate([
+      CoilSliderTrack.bubble([
+        .to(show ? 1 : 0, motion: show ? motion.enter : motion.exit),
+      ]),
+    ]);
   }
 
   /// Joins the bubble to the preview once the preview reaches the hover or
@@ -276,9 +335,14 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   void didUpdateWidget(SliderCore oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.statesController != widget.statesController) {
-      (oldWidget.statesController ?? _ownStates)?.removeListener(_forgetHover);
-      _states.addListener(_forgetHover);
+      (oldWidget.statesController ?? _ownStates)
+        ?..removeListener(_forgetHover)
+        ..removeListener(_syncBubble);
+      _states
+        ..addListener(_forgetHover)
+        ..addListener(_syncBubble);
     }
+    _syncBubble();
     if (oldWidget.focusNode != widget.focusNode) {
       (oldWidget.focusNode ?? _ownFocus.first).removeListener(_onFocus);
       _focusOf(0).addListener(_onFocus);
@@ -303,7 +367,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _states.removeListener(_forgetHover);
+    _states
+      ..removeListener(_forgetHover)
+      ..removeListener(_syncBubble);
     for (var i = 0; i < _count; i++) {
       _focusOf(i).removeListener(_onFocus);
       _ownFocus[i].dispose();
@@ -315,6 +381,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _editText.dispose();
     _hover.dispose();
     _preview.dispose();
+    _bubble.dispose();
     super.dispose();
   }
 
@@ -359,6 +426,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   void _beginPress() {
     if (_pressing) return;
     setState(() => _pressing = true);
+    _syncBubble();
     _asked = widget.values;
     widget.onChangeStart?.call(widget.values);
   }
@@ -414,8 +482,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   void _endPress() {
     if (_dragging) setState(() => _dragging = false);
-    if (!_pressing) return;
+    if (!_pressing) return _syncBubble();
     setState(() => _pressing = false);
+    _syncBubble();
     widget.onChangeEnd?.call(_asked);
   }
 
@@ -565,7 +634,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     );
 
     final previewOpacity = _motionFor(CoilSliderTrack.previewOpacity, tokens);
-    final bubble = _motionFor(CoilSliderTrack.bubble, tokens);
     final handle = _motionFor(CoilSliderTrack.handle, tokens);
     final emphasis = _motionFor(CoilSliderTrack.emphasis, tokens);
     final dots = _motionFor(CoilSliderTrack.dots, tokens);
@@ -588,27 +656,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       builder: (context, hovering, _) {
         final pointed = hovering != null && !onValue;
         final showPreview = _enabled && hovered && pointed && !onTrack;
-        // Tooltip mode keeps the values over the thumbs while the slider is
-        // in use. Otherwise one bubble shows the hovered value, or the
-        // pressed thumb's value under a finger.
-        final showBubble =
-            _enabled &&
-            (_tooltip
-                ? active
-                : (hovered && pointed) ||
-                      (onTrack && _kind != PointerDeviceKind.mouse));
         return TrackBuilder(
           animations: [
             CoilSliderTrack.previewOpacity([
               .to(
                 showPreview ? 1 : 0,
                 motion: pick(previewOpacity, entering: showPreview),
-              ),
-            ]),
-            CoilSliderTrack.bubble([
-              .to(
-                showBubble ? 1 : 0,
-                motion: pick(bubble, entering: showBubble),
               ),
             ]),
             CoilSliderTrack.dots([
@@ -701,38 +754,29 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                 ),
               ),
             ),
-        // Each bubble is a positioned child of this stack, so it never
-        // sizes the track.
+        // Each bubble's anchor is a thumb-sized box at its fraction, as
+        // tall as the track, so the bubble clears the track. The anchor
+        // follows the thumb in layout; the bubble lives in the overlay.
         if (_tooltip)
           for (var i = 0; i < _count; i++)
-            ListenableBuilder(
-              listenable: _thumbs[i],
-              builder: (context, _) => SliderBubble(
-                style: style,
-                fraction: _at(i),
-                reach: reach,
-                rtl: rtl,
-                opacity: v(CoilSliderTrack.bubble),
-                child: _shown(widget.values[i]),
-              ),
+            _bubbleAnchor(
+              moves: _thumbs[i],
+              fraction: () => _at(i),
+              reach: reach,
+              width: style.knobBox!,
+              value: widget.values[i],
             )
         else
-          ListenableBuilder(
-            listenable: _paintMoves,
-            builder: (context, _) => SliderBubble(
-              style: style,
-              fraction: onTrack
-                  ? _at(_active)
-                  : _joined
-                  ? _previewAt
-                  : _lastHover,
-              reach: reach,
-              rtl: rtl,
-              opacity: v(CoilSliderTrack.bubble),
-              child: _shown(
-                onTrack ? widget.values[_active] : scale.valueAt(_lastHover),
-              ),
-            ),
+          _bubbleAnchor(
+            moves: _paintMoves,
+            fraction: () => onTrack
+                ? _at(_active)
+                : _joined
+                ? _previewAt
+                : _lastHover,
+            reach: reach,
+            width: style.knobBox!,
+            value: onTrack ? widget.values[_active] : scale.valueAt(_lastHover),
           ),
       ],
     );
@@ -812,6 +856,44 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       ),
     );
   }
+
+  /// A value bubble over a [width]-wide box at [fraction] of the track.
+  Widget _bubbleAnchor({
+    required Listenable moves,
+    required ValueGetter<double> fraction,
+    required SliderReach reach,
+    required double width,
+    required double value,
+  }) => Positioned.fill(
+    child: ListenableBuilder(
+      listenable: moves,
+      builder: (context, child) => CustomSingleChildLayout(
+        delegate: SliderThumbLayout(
+          fraction: fraction().clamp(0.0, 1.0),
+          reach: reach,
+          rtl: _rtl,
+          width: width,
+        ),
+        child: child,
+      ),
+      child: CoilTooltipAnchor.controlled(
+        presence: _bubblePresence,
+        content: DefaultTextStyle.merge(
+          style: const TextStyle(
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+          child: _shown(value),
+        ),
+        // The slider's bubble only fades, on `fade` / `fadeExit`.
+        bubble: (context, presence, content) => FadeTransition(
+          key: sliderBubbleKey,
+          opacity: presence,
+          child: CoilTooltipBubble(motion: widget.motion, child: content),
+        ),
+        child: const SizedBox.expand(),
+      ),
+    ),
+  );
 
   /// The value text: one value, or two around a dash. When editable, a tap
   /// on a value turns it into a field.
