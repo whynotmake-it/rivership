@@ -18,44 +18,49 @@ const _enabled = bool.fromEnvironment('SCREENSHOTS');
 const _pages = String.fromEnvironment('PAGES');
 
 void main() {
-  final devices = {
-    'phone': (Devices.ios.iPhone16Pro, CatalogTier.touch),
-    'desktop': (Devices.macOS.macBookPro, CatalogTier.pointer),
-  };
+  // The device (its size, pixel ratio and platform) is set before the app
+  // pumps, as on a real device. Switching it inside `snap` would change the
+  // platform under a running app and rebuild parts of it, such as scroll
+  // views whose `primary` default depends on the platform.
+  final devices = TestDevicesVariant({
+    Devices.ios.iPhone16Pro,
+    Devices.macOS.macBookPro,
+  });
   final pages = _pages.isEmpty
       ? [null, 'button', 'radio-group', 'badge', 'select']
       : _pages.split(',');
 
-  for (final MapEntry(key: name, value: (device, tier)) in devices.entries) {
-    for (final mode in [CatalogThemeMode.light, CatalogThemeMode.dark]) {
-      testWidgets('catalog $name ${mode.name}', skip: !_enabled, (
-        tester,
-      ) async {
-        final settings = CatalogSettings()
-          ..tier = tier
-          ..themeMode = mode;
-        addTearDown(settings.dispose);
-        await tester.pumpWidget(
-          CoilCatalogApp(settings: settings, devTools: false),
-        );
-        await tester.pumpAndSettle();
-        final router = AutoRouter.of(tester.element(find.byType(HomePage)));
-        for (final slug in pages) {
-          if (slug != null) {
-            final entry = catalogEntries.firstWhere((e) => e.slug == slug);
-            unawaited(router.push(NamedRoute(catalogRouteName(entry))));
-            await tester.pumpAndSettle();
-          }
-          await snap(
-            name: '${name}_${mode.name}_${slug ?? 'home'}',
-            device: device,
-          );
-          if (slug != null) {
-            unawaited(router.maybePop());
-            await tester.pumpAndSettle();
-          }
+  for (final mode in [CatalogThemeMode.light, CatalogThemeMode.dark]) {
+    testWidgets('catalog ${mode.name}', variant: devices, skip: !_enabled, (
+      tester,
+    ) async {
+      final (device, _) = devices.currentValue!;
+      final phone = device == Devices.ios.iPhone16Pro;
+      final name = phone ? 'phone' : 'desktop';
+      final settings = CatalogSettings()
+        ..tier = phone ? CatalogTier.touch : CatalogTier.pointer
+        ..themeMode = mode;
+      addTearDown(settings.dispose);
+      await tester.pumpWidget(
+        CoilCatalogApp(settings: settings, devTools: false),
+      );
+      await tester.pumpAndSettle();
+      final router = AutoRouter.of(tester.element(find.byType(HomePage)));
+      for (final slug in pages) {
+        if (slug != null) {
+          final entry = catalogEntries.firstWhere((e) => e.slug == slug);
+          unawaited(router.push(NamedRoute(catalogRouteName(entry))));
+          await tester.pumpAndSettle();
         }
-      });
-    }
+        await snap(
+          name: '${name}_${mode.name}_${slug ?? 'home'}',
+          device: device,
+        );
+        if (slug != null) {
+          unawaited(router.maybePop());
+          await tester.pumpAndSettle();
+        }
+      }
+    });
   }
 }

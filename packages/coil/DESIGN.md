@@ -888,7 +888,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Reveal
 
-- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll.
+- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll. A Reveal that's built anew (a new route, a lazy list building it again) plays again, as a fresh subtree should.
 - **Presets:**
 
   | Preset | Step | Motion (in / out) | Look when hidden |
@@ -977,7 +977,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### InputMessage (chat composer)
 
 - **Anatomy:** a container (hairline, container radius, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
-- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**, swapping the glyph with the blur-fade on `quick`.
+- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates, with the blur-fade on `quick`.
+- **Queue:** while a reply streams, a draft queues instead of sending. Enter or the queue button hands the trimmed text to `onQueue` and clears the field. With an empty field the button is stop. Without `onQueue`, nothing sends until the reply ends. The app owns the queue: it shows it in a QueuedStack and sends the front message when the reply ends.
 - **Behavior:**
   - **Hardware keyboard:** Enter sends, Shift+Enter makes a newline, ↑ in an empty field recalls history.
   - **Touch:** Return inserts a newline; Send is the button.
@@ -1001,9 +1002,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - fan out and fold on `standard` / `standardExit`;
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
   - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
-  - a message queued behind the folded pile makes it recoil 7 px on `gentle`.
+  - a message queued behind the folded pile makes it recoil 7 px on `gentle`. The original uses a one-off spring here (0.42 s, bounce 0.5) that isn't one of its tiers, so coil keeps its own bounciest token.
 - **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action. The gutter reads "3 queued messages".
-- **Layout:** place it over the transcript, right above the composer, and pad the transcript by `CoilQueuedStack.collapsedHeightOf`.
+- **Layout:** pass the transcript as `child`. The stack fills its space, lays the transcript out under the pile, and adds the folded pile's height (from the cards' real layout, plus the 8 gap) to the transcript's bottom `MediaQuery` padding, so a `ListView` keeps its last message clear. Only the pile's own area fans it out on hover.
 - **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.
 
 #### FileThumbnail
