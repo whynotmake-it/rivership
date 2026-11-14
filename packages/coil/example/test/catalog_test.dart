@@ -9,6 +9,7 @@ import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/shell/settings_sheet.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -201,5 +202,58 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Corner radius'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a demo stage outlines itself while keyboard focus is inside', (
+    tester,
+  ) async {
+    CoilInputModality.debugReset();
+    tester.view
+      ..physicalSize = const Size(600, 400)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        builder: (context, _) => CoilTheme(
+          data: CoilThemeData.light,
+          child: FocusScope(
+            autofocus: true,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: DemoStage(
+                child: CoilButton(onPressed: () {}, child: const Text('Save')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Color border() {
+      final box = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byType(DemoStage),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      return ((box.decoration as ShapeDecoration).shape
+              as RoundedSuperellipseBorder)
+          .side
+          .color;
+    }
+
+    final rest = border();
+    expect(rest, CoilThemeData.light.colors.border);
+
+    // A click on the button is pointer input: no outline.
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(border(), rest);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    expect(border(), isNot(rest));
   });
 }

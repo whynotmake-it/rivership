@@ -450,6 +450,8 @@ Every component ships with all of these. They're required to call it done.
 
 1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
+**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1). A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+
 ---
 
 ## 14. Components
@@ -567,6 +569,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** a block in `hover` tint at the item radius (text lines: line-box height × 0.6, full radius).
 - **Motion:** after a 160 ms grace period it fades in over `fade`, then pulses opacity 1 → 0.5 → 1 every 2 s. Reduced motion keeps the grace and the fade, and drops the pulse.
+- **Switching:** `CoilSkeletonSwitcher(loading:)` stacks the skeleton and the content in one cell and cross-fades them (`fade` in, `fadeExit` out), so the space is never empty. Skeletons shown first keep the grace period, so content that lands within it replaces them before they show. Skeletons that replace content on screen show at once. To swap without a fade, set the `swap` track to `Motion.instant()`.
 - **Semantics:** excluded. The loading region carries `Semantics(label: 'Loading', liveRegion)`.
 - **Do:** match the final layout's line count and widths. Text lines vary between 55 and 82 % of the width.
 - **Don't:** shimmer.

@@ -4,6 +4,7 @@ import 'package:coil_example/src/shell/settings_sheet.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Layout values from DESIGN.md §4.3 that the catalog's pages use.
 abstract final class CatalogLayout {
@@ -190,7 +191,8 @@ class DemoSection extends StatelessWidget {
 }
 
 /// A card-like surface (surface 3, hairline, container radius) that holds
-/// live examples.
+/// live examples. Its border darkens while keyboard focus is inside, so you
+/// can see which example takes your keys.
 class DemoStage extends StatelessWidget {
   const DemoStage({required this.child, super.key, this.padding = 16});
 
@@ -199,15 +201,35 @@ class DemoStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
+    final motion = CoilTheme.motionOf(context);
     final radius = CoilTheme.radiiOf(context).container;
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: colors.surface(3),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(radius),
-          side: BorderSide(color: colors.border),
+    final focusedBorder = colors.foreground.withValues(
+      alpha: colors.brightness == Brightness.dark ? 0.7 : 0.65,
+    );
+    return CoilFocusWithin(
+      builder: (context, focused, child) => SingleMotionBuilder(
+        value: focused ? 1 : 0,
+        motion: focused ? motion.fade : motion.fadeExit,
+        debugLabel: 'DemoStage focus',
+        builder: (context, t, child) => DecoratedBox(
+          decoration: ShapeDecoration(
+            color: colors.surface(3),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(radius),
+              side: BorderSide(
+                color: Color.lerp(
+                  colors.border,
+                  focusedBorder,
+                  t.clamp(0, 1),
+                )!,
+              ),
+            ),
+          ),
+          child: child,
         ),
+        child: child,
       ),
       child: Padding(padding: EdgeInsets.all(padding), child: child),
     );

@@ -5,6 +5,7 @@ import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 const skeletonEntry = CatalogEntry(
   slug: 'skeleton',
@@ -23,6 +24,7 @@ class SkeletonPage extends StatefulWidget {
 
 class _SkeletonPageState extends State<SkeletonPage> {
   var _loading = true;
+  var _crossfade = true;
   Timer? _timer;
 
   @override
@@ -48,26 +50,39 @@ class _SkeletonPageState extends State<SkeletonPage> {
     children: [
       DemoSection(
         title: 'Loading a profile',
-        description: 'Reload shows the skeleton for 3 s.',
+        description:
+            'Reload shows the skeleton for 3 s. The two cross-fade; turn '
+            'it off to swap at once.',
         child: DemoColumn(
           children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: CoilButton(
-                variant: CoilButtonVariant.secondary,
-                onPressed: _loading
-                    ? () => setState(() => _loading = false)
-                    : _reload,
-                child: Text(_loading ? 'Finish loading' : 'Reload'),
-              ),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                CoilButton(
+                  variant: CoilButtonVariant.secondary,
+                  onPressed: _loading
+                      ? () => setState(() => _loading = false)
+                      : _reload,
+                  child: Text(_loading ? 'Finish loading' : 'Reload'),
+                ),
+                CoilSwitch(
+                  value: _crossfade,
+                  onChanged: (v) => setState(() => _crossfade = v),
+                  label: const Text('Cross-fade'),
+                ),
+              ],
             ),
-            if (_loading)
-              const CoilSkeletonRegion(
+            CoilSkeletonSwitcher(
+              loading: _loading,
+              motions: _crossfade ? null : {.swap: const Motion.instant()},
+              skeleton: const CoilSkeletonRegion(
                 label: 'Loading profile',
                 child: _ProfileSkeleton(),
-              )
-            else
-              const _Profile(),
+              ),
+              child: const _Profile(),
+            ),
           ],
         ),
       ),
