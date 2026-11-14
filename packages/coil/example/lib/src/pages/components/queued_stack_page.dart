@@ -80,12 +80,11 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
     return CoilQueuedMessage(id: id, semanticLabel: text, child: Text(text));
   }
 
-  void _send(String text) {
-    // While a reply streams, a new message waits its turn.
-    if (_replying) {
+  /// The composer queues while a reply streams.
+  void _queueMessage(String text) =>
       setState(() => _queue = [..._queue, _message(text)]);
-      return;
-    }
+
+  void _send(String text) {
     setState(() {
       _turns = [..._turns, (from: .user, text: text, seeded: false)];
       _replying = true;
@@ -99,19 +98,21 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
     _reply = Timer(_replyTime, _answer);
   }
 
-  /// Ends the reply, then sends the front of the queue.
-  void _answer() {
+  /// Ends the reply (or stops it), then sends the front of the queue.
+  void _answer({bool stopped = false}) {
+    _reply?.cancel();
     final asked = _turns.lastWhere((t) => t.from == CoilChatSender.user);
     setState(() {
       _turns = [
         ..._turns,
         (
           from: .assistant,
-          text: 'Done with “${asked.text}”.',
+          text: stopped ? 'Stopped.' : 'Done with “${asked.text}”.',
           seeded: false,
         ),
       ];
       _replying = false;
+      _paused = false;
     });
     if (_queue.isEmpty) return;
     final next = _queue.first;
@@ -129,10 +130,6 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
 
   @override
   Widget build(BuildContext context) {
-    final stackPadding = CoilQueuedStack.collapsedHeightOf(
-      context,
-      _queue.length,
-    );
     return CatalogPage(
       title: 'QueuedStack',
       summary:
@@ -169,60 +166,56 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
                   spacing: 8,
                   children: [
                     Expanded(
-                      child: Stack(
-                        children: [
-                          ListView(
-                            reverse: true,
-                            padding: EdgeInsets.only(
-                              bottom: stackPadding == 0 ? 0 : stackPadding + 8,
-                            ),
-                            children: [
-                              if (_replying)
-                                const Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: CoilThinkingIndicator(
-                                    words: [
-                                      Text('Thinking'),
-                                      Text('Reading'),
-                                      Text('Drafting'),
-                                    ],
-                                  ),
+                      child: CoilQueuedStack(
+                        messages: _queue,
+                        onChanged: (queue) => setState(() => _queue = queue),
+                        onEdit: _edit,
+                        icon: const CatalogIcon(Glyph.cornerDownRight),
+                        editIcon: const CatalogIcon(Glyph.pencil),
+                        // The list keeps its last message clear of the pile
+                        // through the padding the stack hands it.
+                        child: ListView(
+                          reverse: true,
+                          children: [
+                            if (_replying)
+                              const Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: CoilThinkingIndicator(
+                                  words: [
+                                    Text('Thinking'),
+                                    Text('Reading'),
+                                    Text('Drafting'),
+                                  ],
                                 ),
-                              for (final turn in _turns.reversed)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: CoilChatMessage(
-                                    sender: turn.from,
-                                    entrance: turn.seeded
-                                        ? CoilChatMessageEntrance.none
-                                        : CoilChatMessageEntrance.animated,
-                                    child: Text(turn.text),
-                                  ),
+                              ),
+                            for (final turn in _turns.reversed)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: CoilChatMessage(
+                                  sender: turn.from,
+                                  entrance: turn.seeded
+                                      ? CoilChatMessageEntrance.none
+                                      : CoilChatMessageEntrance.animated,
+                                  child: Text(turn.text),
                                 ),
-                            ],
-                          ),
-                          PositionedDirectional(
-                            start: 0,
-                            end: 0,
-                            bottom: 0,
-                            child: CoilQueuedStack(
-                              messages: _queue,
-                              onChanged: (queue) =>
-                                  setState(() => _queue = queue),
-                              onEdit: _edit,
-                              icon: const CatalogIcon(Glyph.cornerDownRight),
-                              editIcon: const CatalogIcon(Glyph.pencil),
-                            ),
-                          ),
-                        ],
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     CoilInputMessage(
                       controller: _composer,
-                      placeholder: _replying
-                          ? 'Send while I’m replying to queue a message…'
-                          : 'Message…',
+                      placeholder: Text(
+                        _replying
+                            ? 'Send while I’m replying to queue a message…'
+                            : 'Message…',
+                      ),
+                      status: _replying
+                          ? CoilMessageStatus.streaming
+                          : CoilMessageStatus.idle,
                       onSend: _send,
+                      onQueue: _queueMessage,
+                      onStop: () => _answer(stopped: true),
                     ),
                   ],
                 ),

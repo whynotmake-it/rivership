@@ -22,7 +22,7 @@ class _RevealPageState extends State<RevealPage> {
   /// Bumped by Replay: a new key builds the demos again, so they reveal
   /// again.
   var _run = 0;
-  var _loading = true;
+  var _loading = false;
   var _shown = true;
 
   @override

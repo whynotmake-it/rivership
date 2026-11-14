@@ -24,6 +24,8 @@ final _allowed = {
       'what the user typed',
   'components/file_thumbnail/file_thumbnail.dart CoilFileThumbnail.name':
       'the file name: announced, and its extension is the fallback tile',
+  'components/kbd/kbd.dart CoilKbd.keys':
+      'key names the caps are drawn from, also read from a shortcut',
   for (final file in [
     'components/slider/slider.dart CoilSlider',
     'components/slider/range_slider.dart CoilRangeSlider',
@@ -32,19 +34,6 @@ final _allowed = {
     '$file.semanticFormatter': 'the value as screen readers hear it',
     '$file.editFormatter': 'the text the value field edits',
   },
-};
-
-/// Known violations in files other branches are changing right now. Each
-/// entry goes once its file takes widgets.
-const _pending = {
-  'components/sidebar/sidebar.dart CoilSidebarGroup.label',
-  'components/sidebar/sidebar.dart CoilSidebarItem.label',
-  'components/input_message/input_message.dart CoilInputMessage.placeholder',
-  'components/queued_stack/queued_stack.dart CoilQueuedStackLabels.edit',
-  'components/queued_stack/queued_stack.dart CoilQueuedStackLabels.remove',
-  'components/queued_stack/queued_stack.dart CoilQueuedStackLabels.collapse',
-  'components/queued_stack/queued_stack.dart CoilQueuedStackLabels.message',
-  'components/queued_stack/queued_stack.dart CoilQueuedStackLabels.count',
 };
 
 final _class = RegExp(r'^(?:\w+ )*class (\w+)');
@@ -74,9 +63,7 @@ void main() {
           }
           final name = field.group(2)!;
           final key = '$path $owner.$name';
-          if (_namedForItsJob(name) ||
-              _allowed.containsKey(key) ||
-              _pending.contains(key)) {
+          if (_namedForItsJob(name) || _allowed.containsKey(key)) {
             continue;
           }
           violations.add('$key (${field.group(1)})');

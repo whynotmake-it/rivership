@@ -14,8 +14,10 @@ import 'package:flutter/widgets.dart';
 /// * [WidgetState.pressed]: while a pointer is down on [child]. It clears on
 ///   release, on cancel, and when the touch turns into a scroll. A quick tap
 ///   still shows it for `CoilMotion.minPressDuration`.
-/// * [WidgetState.focused]: when [focusNode] has focus and the last input
-///   was the keyboard. Taps and clicks never show it.
+/// * [WidgetState.focused]: when [focusNode] itself has the primary focus
+///   and the last input was the keyboard. Taps and clicks never show it. A
+///   focused descendant doesn't count: a container that shows focus inside
+///   it uses `CoilFocusWithin`.
 /// * [WidgetState.disabled]: when not [enabled].
 ///
 /// Use it for a control that owns its own focus or gestures (a text field,
@@ -44,7 +46,7 @@ class CoilInteractionDetector extends StatefulWidget {
   /// press.
   final bool enabled;
 
-  /// The node whose focus drives [WidgetState.focused], if any.
+  /// The node whose primary focus drives [WidgetState.focused], if any.
   final FocusNode? focusNode;
 
   /// Called on a completed tap.
@@ -111,7 +113,7 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     if (node == null) return;
     widget.states.update(
       WidgetState.focused,
-      node.hasFocus && _modality.value == CoilModality.keyboard,
+      node.hasPrimaryFocus && _modality.value == CoilModality.keyboard,
     );
   }
 

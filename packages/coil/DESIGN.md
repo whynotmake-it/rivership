@@ -507,6 +507,14 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Do:** status and categories.
 - **Don't:** make it tappable; use a Chip-like Button instead.
 
+#### Kbd
+
+- **Anatomy:** one cap per key of a shortcut (`⇧⌘O` → ⇧ ⌘ O; `Ctrl+K` → Ctrl K), 2 apart.
+- **Sizes:** 18 square at least (it scales with text), padding 4, 11 type with tabular figures, radius 3. No touch bump; it isn't interactive.
+- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps suit any surface, the inverted tooltip bubble included.
+- **In a tooltip:** the shortcut slot pins the cap to 16, which fits the caption line, so the bubble stays 24 tall.
+- **Semantics:** the keys read as one label.
+
 #### Checkbox
 
 - **Anatomy:** a box (1.5 px border); when checked, a bare tick with no box (FF's signature); a dash when null.
@@ -586,7 +594,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `horizontal`: label left, control right, `gap`;
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
-- **ChoiceCard:** a checkbox or switch at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+- **ChoiceCard:** a checkbox, switch or radio at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
   - The whole card is the target. Inside it the control drops its own hit-area padding.
   - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
   - Selected: border `foreground` 40 %.
@@ -627,6 +635,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Keyboard:** roving focus, so the selected row is the tab stop. Arrows move *and* select, with wrapping; Home and End jump.
 - **Semantics:** `inMutuallyExclusiveGroup`, `checked`.
 - **API:** generic `CoilRadioGroup<T>(value, onChanged, options)`.
+- **Other layouts** (radio choice cards): `CoilRadioGroup<T>.custom(value, onChanged, child)` with a `CoilRadio(value:)` anywhere in `child`. It is Flutter's `RadioGroup`, so the keyboard model is the rows': the selected radio is the tab stop, arrows select the next enabled radio in reading order with wrapping, and coil adds Home and End. A radio on its own shows its own ring and hover; in a choice card the card takes both.
 - **Don't:** use it for more than 7 options (use Select).
 
 #### ToggleGroup (built)
@@ -888,7 +897,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Reveal
 
-- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll.
+- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll. A Reveal that's built anew (a new route, a lazy list building it again) plays again, as a fresh subtree should.
 - **Presets:**
 
   | Preset | Step | Motion (in / out) | Look when hidden |
@@ -919,25 +928,45 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Sidebar
 
 - **Anatomy:**
-  - header (workspace switcher);
-  - content: groups, each a caption label (32 row, optionally a collapsible toggle), menu rows, and sub-menus (indented 12, rows 28);
-  - footer (user);
-  - rail (pointer only, 8 grab strip);
-  - an inset main area.
+  - a scaffold holding the sidebar and the page (`body`);
+  - the panel: header, scrolling content, footer;
+  - groups: a caption label (32 row; a toggle with a chevron when collapsible) with 1–3 actions, then menu rows;
+  - menu rows, two levels deep (sub-rows indented so their labels line up with the parent's, rows 28);
+  - callouts in the footer, one card or a stacked pile;
+  - the trigger (a ghost icon button in the page) and the rail (pointer only, an 8 grab strip on the inner edge).
 - **Sizes:**
-  - width 256 (resizable 160–360 on pointer; collapses when dragged 56 past the minimum);
+  - width 256, resizable 160–360 by the rail; dragging 56 past the minimum folds it;
   - rows 32 / 28 / 44 / 36, padding 8, icon 16 / 14 / 20 / 16;
-  - trailing badge 24, actions 24 each (gap 4).
-- **Variants:** `sidebar` (flush column with an edge hairline), `floating` (surface card inset 8), `inset` (flush rows; the main area becomes a raised card with an 8 margin).
-- **States:** rows are muted → foreground when lit; **active row** `active` fill with semibold (ghost width), its own glide per level; hover glides across all levels; disabled 50 %.
-- **Row actions:** pointer shows them on hover, focus or while their menu is open; **touch always shows them**, 44 hit.
-- **Pointer behavior:** `[` / `]` or ⌘B toggles it; the open/close width and offset run on `gentle` / `gentleExit`; dragging the rail tracks 1:1; peek (hover the collapsed edge 150 ms, or click) shows a floating card on `standard`.
-- **Touch, < 768:** a **modal drawer** `min(320, 85 % width)` from the leading edge on `standard` (no bounce), with a 40 % scrim.
-  - Dragging it closed follows the finger and releases with velocity.
-  - It **closes on navigation**, and system back closes it.
-  - No edge-swipe open by default (opt-in on root routes only, outside `systemGestureInsets`).
-- **Keyboard:** roving within each menu; Up and Down; Right and Left expand and collapse groups; Enter navigates; the ring travels.
-- **Semantics:** navigation; the active row is `selected`; groups are `expanded`.
+  - **one 24 rhythm:** every action, badge and chevron is a 24 box (16 icon, gap 4), its center 26 from the inner edge, from header to footer; touch hit 44;
+  - the phone drawer `min(320, 85 % width)`.
+- **Variants:** `sidebar` (a flush column with an edge hairline), `floating` (a surface card inset 8), `inset` (flush rows; the page becomes a raised card with an 8 margin that gives way on the sidebar's side as it opens).
+- **Side:** `start` or `end`, following the text direction. The rail, the drawer, the peek edge and the default key follow it.
+- **Folding:** `offcanvas` slides it off the edge and gives the page its width back; `none` is a static column (no rail, shortcut or drawer), as in the settings dialog. **There is no icon-only rail on purpose:** glyphs alone turn navigation into a quiz, and section labels and actions have nowhere to go. Peek brings the real sidebar back instead.
+- **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).
+- **Callouts:** a pile of cards, front first. At rest up to 2 peek 12 behind the front, each 5 % smaller. Inline cards fan out into a list under a hovering mouse (or keyboard focus); banners never fan. Dismissing the front promotes the next on `standard`. Touch never fans.
+- **States:** rows are muted → foreground when lit; the active row has the `active` fill with semibold (ghost width), its own glide per level; hover glides across all levels; disabled 50 %. A group label raises its contrast on hover and reveals its chevron; a folded group keeps the chevron. On touch the chevron always shows.
+- **Row actions:** menu entries (an action, or a submenu such as the overflow ⋯). Pointer shows them as 24 icon buttons on hover, focus or while their menu is open, and the label claims their width only then; a right-click opens all of them as a context menu. **Touch shows only the last one** (the ⋯, rightmost by convention; a lone action shows as is), 44 hit, and a long-press opens all of them as a context menu with the haptic lift, as DataTable does, so the label keeps its width at large text.
+- **Pointer behavior:**
+  - `[` (`]` for a sidebar on the right) or ⌘B / Ctrl+B toggles it while focus is inside the scaffold; the innermost scaffold answers; never while typing in a field. With nothing focused (at launch), the outermost scaffold takes focus, so the key works at once. The scaffold is a focus scope, so focus a folding sidebar drops stays inside and the next press still works.
+  - The open/close width runs on `gentle` / `gentleExit`; a rail drag tracks 1:1, and a fold or reopen during a drag springs on `standard`.
+  - Peek: hovering the folded edge (or the folded trigger) 150 ms, or clicking the edge, floats the sidebar out as a card over the page on `standard`. It holds while the pointer is within 8 of the card (a tooltip or menu over it doesn't count as leaving) and lets go 250 ms after it leaves; Escape or a press elsewhere dismisses it. Peeking never pins it open.
+- **Touch, < 768 (the scaffold's width):** a **modal drawer** from the sidebar's edge on `standard` / `standardExit`, with a 40 % scrim.
+  - It stays a descendant of the scaffold (not a route), so it always shows the app's current state.
+  - Dragging it closed follows the finger and releases with velocity: a fling decides by direction, a slow release by position.
+  - It **closes on navigation** (a row pick), on the scrim, Escape and system back.
+  - Focus moves into it and returns on close.
+  - No edge-swipe open by default.
+- **Persistence:** `CoilSidebarController` holds `open` and `width`. The app saves them and restores them by creating the controller; coil stores nothing. The drawer and peeks never change `open`.
+- **Keyboard:** roving within each menu; Up and Down; Right and Left expand and collapse sub-trees; Enter navigates; the ring travels. Group labels are tab stops that Enter or Space folds. A folded sidebar leaves the focus order.
+- **Semantics:** a navigation landmark when the sidebar has a label (each needs its own); the active row is `selected`; collapsible labels are buttons with `expanded`; the rail offers increase, decrease and tap; the drawer is a named route scope.
+
+#### SettingsDialog
+
+- **Anatomy:** an `xl` dialog frame, `min(640, window − 64)` tall: a static sidebar of sections (208 wide, a 3 % `overlay` tint, no hairline) beside a panel with the section's heading, description and a scrolling body of setting rows.
+- **Setting row:** label (body) and an optional description (caption, muted) at the start, the control at the end, 16 vertical padding, hairlines between rows.
+- **Compact (< 600):** the sidebar hides and a select at the top of the panel picks the section, under the dialog's title.
+- **Touch, phone:** it opens as a sheet, like a form dialog.
+- **Keyboard and semantics:** as the dialog and the sidebar; the title names the route; the close button sits in the corner.
 
 #### Calendar
 
@@ -977,7 +1006,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### InputMessage (chat composer)
 
 - **Anatomy:** a container (hairline, container radius, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
-- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**, swapping the glyph with the blur-fade on `quick`.
+- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates, with the blur-fade on `quick`.
+- **Queue:** while a reply streams, a draft queues instead of sending. Enter or the queue button hands the trimmed text to `onQueue` and clears the field. With an empty field the button is stop. Without `onQueue`, nothing sends until the reply ends. The app owns the queue: it shows it in a QueuedStack and sends the front message when the reply ends.
 - **Behavior:**
   - **Hardware keyboard:** Enter sends, Shift+Enter makes a newline, ↑ in an empty field recalls history.
   - **Touch:** Return inserts a newline; Send is the button.
@@ -1001,9 +1031,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - fan out and fold on `standard` / `standardExit`;
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
   - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
-  - a message queued behind the folded pile makes it recoil 7 px on `gentle`.
+  - a message queued behind the folded pile makes it recoil 7 px on `gentle`. The original uses a one-off spring here (0.42 s, bounce 0.5) that isn't one of its tiers, so coil keeps its own bounciest token.
 - **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action. The gutter reads "3 queued messages".
-- **Layout:** place it over the transcript, right above the composer, and pad the transcript by `CoilQueuedStack.collapsedHeightOf`.
+- **Layout:** pass the transcript as `child`. The stack fills its space, lays the transcript out under the pile, and adds the folded pile's height (from the cards' real layout, plus the 8 gap) to the transcript's bottom `MediaQuery` padding, so a `ListView` keeps its last message clear. Only the pile's own area fans it out on hover.
 - **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.
 
 #### FileThumbnail
@@ -1066,8 +1096,13 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
 - **Deferred:**
+<<<<<<< HEAD
+  - ColorPicker, AskUserQuestions, Reveal and QueuedStack;
+  - Slider range / steps / tooltip mode (v1.x);
+=======
   - ColorPicker and the settings-dialog block;
   - Reveal's scroll-driven reveal (cut, not deferred);
+>>>>>>> coil/main
   - Calendar's 2-month strip animation and stacked layout;
   - DataTable v2;
   - PDF thumbnails beyond the renderer hook.

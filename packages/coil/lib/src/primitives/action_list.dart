@@ -58,6 +58,7 @@ class CoilAction extends CoilMenuEntry {
   const CoilAction({
     required this.label,
     this.searchText,
+    this.semanticLabel,
     this.leading,
     this.shortcut,
     this.onPressed,
@@ -73,6 +74,10 @@ class CoilAction extends CoilMenuEntry {
   /// The row as plain text: typeahead and a search field match it. Without
   /// it, they skip the row.
   final String? searchText;
+
+  /// Names the action where it shows as an icon only, such as a sidebar
+  /// row's action button.
+  final String? semanticLabel;
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? leading;
@@ -105,6 +110,7 @@ class CoilSubmenu extends CoilMenuEntry {
     required this.label,
     required this.entries,
     this.searchText,
+    this.semanticLabel,
     this.leading,
   });
 
@@ -114,6 +120,10 @@ class CoilSubmenu extends CoilMenuEntry {
 
   /// The row as plain text: typeahead and a search field match it.
   final String? searchText;
+
+  /// Names the submenu where it shows as an icon only, such as a sidebar
+  /// row's action button.
+  final String? semanticLabel;
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? leading;

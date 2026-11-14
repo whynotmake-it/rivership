@@ -55,6 +55,7 @@ class QueuedStackCard extends StatelessWidget {
     required this.travelMotion,
     required this.liftMotion,
     required this.onGone,
+    required this.onFocusChange,
     required this.onTap,
     required this.onEdit,
     required this.onRemove,
@@ -85,6 +86,7 @@ class QueuedStackCard extends StatelessWidget {
   final Motion travelMotion;
   final Motion liftMotion;
   final VoidCallback onGone;
+  final ValueChanged<bool> onFocusChange;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onRemove;
@@ -218,14 +220,14 @@ class _CardBodyState extends State<_CardBody> {
           CoilButton.icon(
             variant: CoilButtonVariant.ghost,
             size: CoilSize.compact,
-            semanticLabel: card.labels.edit,
+            semanticLabel: card.labels.editLabel,
             onPressed: edit,
             icon: icon,
           ),
         CoilButton.icon(
           variant: CoilButtonVariant.ghost,
           size: CoilSize.compact,
-          semanticLabel: card.labels.remove,
+          semanticLabel: card.labels.removeLabel,
           onPressed: remove,
           icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
         ),
@@ -351,44 +353,44 @@ class _CardBodyState extends State<_CardBody> {
         },
       },
       child: Focus(
+        // Fires for the card and for a button inside it.
         focusNode: card.focusNode,
-        child: Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onFocusChange: (focused) => setState(() => _focusWithin = focused),
-          child: Semantics(
-            container: true,
-            label: card.semanticLabel,
-            customSemanticsActions: {
-              if (edit != null)
-                CustomSemanticsAction(label: card.labels.edit): edit,
-            },
-            child: GestureDetector(
-              onVerticalDragStart: card.onDragStart == null
-                  ? null
-                  : (_) => card.onDragStart!(context.size!.height),
-              onVerticalDragUpdate: card.onDragStart == null
-                  ? null
-                  : (details) => card.onDragUpdate(details.delta.dy),
-              onVerticalDragEnd: card.onDragStart == null
-                  ? null
-                  : (_) => card.onDragEnd(),
-              onVerticalDragCancel: card.onDragStart == null
-                  ? null
-                  : card.onDragEnd,
-              child: CoilInteractionDetector(
-                states: _states,
-                focusNode: card.focusNode,
-                onTap: card.onTap,
-                trackPress: card.onTap != null,
-                excludeFromSemantics: true,
-                cursor: card.expanded
-                    ? (card.lifted
-                          ? SystemMouseCursors.grabbing
-                          : SystemMouseCursors.grab)
-                    : MouseCursor.defer,
-                child: content,
-              ),
+        onFocusChange: (focused) {
+          setState(() => _focusWithin = focused);
+          card.onFocusChange(focused);
+        },
+        child: Semantics(
+          container: true,
+          label: card.semanticLabel,
+          customSemanticsActions: {
+            if (edit != null)
+              CustomSemanticsAction(label: card.labels.editLabel): edit,
+          },
+          child: GestureDetector(
+            onVerticalDragStart: card.onDragStart == null
+                ? null
+                : (_) => card.onDragStart!(context.size!.height),
+            onVerticalDragUpdate: card.onDragStart == null
+                ? null
+                : (details) => card.onDragUpdate(details.delta.dy),
+            onVerticalDragEnd: card.onDragStart == null
+                ? null
+                : (_) => card.onDragEnd(),
+            onVerticalDragCancel: card.onDragStart == null
+                ? null
+                : card.onDragEnd,
+            child: CoilInteractionDetector(
+              states: _states,
+              focusNode: card.focusNode,
+              onTap: card.onTap,
+              trackPress: card.onTap != null,
+              excludeFromSemantics: true,
+              cursor: card.expanded
+                  ? (card.lifted
+                        ? SystemMouseCursors.grabbing
+                        : SystemMouseCursors.grab)
+                  : MouseCursor.defer,
+              child: content,
             ),
           ),
         ),

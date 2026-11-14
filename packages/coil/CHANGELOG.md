@@ -36,6 +36,34 @@ Milestone M0, unreleased.
     end in `Label` (`navigationLabel`, `userLabel`, `slidesLabel`,
     `sortedAscendingLabel`, `previousPageLabel` and so on).
   - `CoilTypeahead.labels` is `searchTexts`.
+  - `CoilAction` and `CoilSubmenu` gain `semanticLabel`, which names them
+    where they show as an icon only, such as a sidebar row action (else
+    their `searchText`).
+  - `CoilInputMessage.placeholder` is a widget. `CoilQueuedStackLabels`
+    fields end in `Label` (`editLabel`, `removeLabel`, `collapseLabel`,
+    `messageLabel`, `countLabel`). `CoilDrawer.label` is `semanticLabel`.
+- The sidebar is rebuilt to match FF's. `CoilSidebarScaffold` takes a
+  `CoilSidebarController` (open state and width, which the app stores),
+  `side`, `variant` (`sidebar`, `floating`, `inset`), `collapsible`
+  (`offcanvas`, `none`) and `peek` (`hover`, `click`). A rail resizes it
+  between 160 and 360 and folds it, and `[` / `]` or ⌘B toggle it; the
+  outermost scaffold answers from launch. Below 768 it opens as a drawer.
+  New parts: `CoilSidebarTrigger`, `CoilSidebarBar`, `CoilSidebarAction`,
+  `CoilSidebarCalloutStack` and a collapsible `CoilSidebarGroup` with
+  actions. Breaking: `CoilSidebarItem` takes a `label` widget and
+  `leading` (was `icon`), and gains `status`, `actions` (menu entries,
+  also a context menu; touch shows only the last), `children` and
+  `expanded`; `CoilSidebarScaffold.of` returns the controller.
+- `CoilSettingsDialog` and `showCoilSettingsDialog`: settings sections in a
+  sidebar beside a panel, with `CoilSettingsList` and `CoilSettingRow`.
+- `CoilKbd` draws a keyboard shortcut as key caps, from a string or a
+  `ShortcutActivator`, in the ambient text color. In `CoilTooltip`'s
+  `shortcut` slot the caps are 16 tall, so the bubble stays 24.
+- `CoilDialogFrame` is the dialog's surface and close button without its
+  layout; `CoilDialog` builds on it.
+- `CoilDrawer` (primitive) shows a modal side drawer that stays a
+  descendant of its owner, so it shows the app's current state. A drag
+  closes it, and system back, Escape and the scrim do too.
 - `CoilAskUserQuestions` asks an assistant's questions one at a time:
   single choice, multiple choice and typed answers, an optional typed
   "other" row, Back and Skip, and number keys on pointer. The card's height

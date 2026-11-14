@@ -5,13 +5,15 @@ import 'package:coil/primitives.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// Whether a [CoilInputMessage]'s conversation is waiting on a reply.
 enum CoilMessageStatus {
   /// Ready to send.
   idle,
 
-  /// A reply is streaming in: the send button becomes a stop button.
+  /// A reply is streaming in. The send button stops it, or queues the
+  /// draft when there is one and the composer has `onQueue`.
   streaming,
 }
 
@@ -23,8 +25,12 @@ enum CoilMessageStatus {
 /// messaging apps. An Enter that only commits an IME composition never
 /// sends. [onSend] gets the trimmed text, and the field clears.
 ///
-/// While [status] is [CoilMessageStatus.streaming], the button stops the
-/// reply with [onStop] instead, and Enter doesn't send.
+/// While [status] is [CoilMessageStatus.streaming], sending queues: with a
+/// draft, the button becomes a queue button (the same arrow) and Enter
+/// hands the trimmed text to [onQueue], then clears the field. With an
+/// empty field the button stops the reply with [onStop]. Without
+/// [onQueue], nothing sends until the reply ends. Show the queue with a
+/// `CoilQueuedStack`, and send its front message when the reply ends.
 class CoilInputMessage extends StatefulWidget {
   /// Creates a composer.
   const CoilInputMessage({
@@ -32,16 +38,18 @@ class CoilInputMessage extends StatefulWidget {
     super.key,
     this.controller,
     this.focusNode,
-    this.placeholder = 'Message…',
+    this.placeholder = const Text('Message…'),
     this.attachments,
     this.leading,
     this.trailing,
     this.status = CoilMessageStatus.idle,
     this.onStop,
+    this.onQueue,
     this.minLines = 1,
     this.maxLines = 8,
     this.sendLabel = 'Send',
     this.stopLabel = 'Stop',
+    this.queueLabel = 'Queue message',
     this.enabled = true,
     this.size,
     this.motion,
@@ -56,8 +64,8 @@ class CoilInputMessage extends StatefulWidget {
   /// The field's focus node.
   final FocusNode? focusNode;
 
-  /// Shown in the empty field.
-  final String placeholder;
+  /// Shown, muted, in the empty field. Usually a [Text].
+  final Widget placeholder;
 
   /// Shown above the text, such as attached files' thumbnails.
   final Widget? attachments;
@@ -74,6 +82,10 @@ class CoilInputMessage extends StatefulWidget {
   /// Stops a streaming reply.
   final VoidCallback? onStop;
 
+  /// Called with the trimmed text when the user sends while a reply
+  /// streams. Null keeps sending blocked until the reply ends.
+  final ValueChanged<String>? onQueue;
+
   /// How many lines the field starts with.
   final int minLines;
 
@@ -85,6 +97,9 @@ class CoilInputMessage extends StatefulWidget {
 
   /// The stop button's label for screen readers.
   final String stopLabel;
+
+  /// The queue button's label for screen readers.
+  final String queueLabel;
 
   /// Whether the composer accepts input.
   final bool enabled;
@@ -119,10 +134,17 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
     super.dispose();
   }
 
+  /// Sends the draft, or queues it while a reply streams.
   void _send() {
     final text = _controller.text.trim();
-    if (!widget.enabled || _streaming || text.isEmpty) return;
-    widget.onSend(text);
+    if (!widget.enabled || text.isEmpty) return;
+    if (!_streaming) {
+      widget.onSend(text);
+    } else if (widget.onQueue case final queue?) {
+      queue(text);
+    } else {
+      return;
+    }
     _controller.clear();
   }
 
@@ -157,23 +179,38 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
     final radius = BorderRadius.circular(look.multilineRadius!);
     final textStyle = look.textStyle!;
 
+    // Send, queue or stop. Send and queue share the arrow; only the swap
+    // to and from stop animates, with the blur-fade on `quick`.
     final button = ListenableBuilder(
       listenable: _controller,
-      builder: (context, _) => _streaming
-          ? CoilButton.icon(
-              size: CoilSize.compact,
-              onPressed: widget.onStop,
-              semanticLabel: widget.stopLabel,
-              icon: const CoilDrawnGlyph(CoilGlyph.stop),
-            )
-          : CoilButton.icon(
-              size: CoilSize.compact,
-              onPressed: widget.enabled && _controller.text.trim().isNotEmpty
-                  ? _send
-                  : null,
-              semanticLabel: widget.sendLabel,
-              icon: const CoilDrawnGlyph(CoilGlyph.arrowUp),
-            ),
+      builder: (context, _) {
+        final hasText = _controller.text.trim().isNotEmpty;
+        final stop = _streaming && !(hasText && widget.onQueue != null);
+        return CoilButton.icon(
+          size: CoilSize.compact,
+          onPressed: stop
+              ? widget.onStop
+              : widget.enabled && hasText
+              ? _send
+              : null,
+          semanticLabel: stop
+              ? widget.stopLabel
+              : _streaming
+              ? widget.queueLabel
+              : widget.sendLabel,
+          icon: MotionSwitcher(
+            motion: motion.quick,
+            exitMotion: motion.quickExit,
+            transitionBuilder: CoilBlurFade.transition(),
+            child: stop
+                ? const CoilDrawnGlyph(CoilGlyph.stop, key: ValueKey('stop'))
+                : const CoilDrawnGlyph(
+                    CoilGlyph.arrowUp,
+                    key: ValueKey('send'),
+                  ),
+          ),
+        );
+      },
     );
 
     // The composer is the field's chrome: a tap anywhere in it lands in
@@ -240,7 +277,7 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           controller: _controller,
           focusNode: _focus,
           enabled: widget.enabled,
-          placeholder: Text(widget.placeholder),
+          placeholder: widget.placeholder,
           placeholderColor: look.placeholder,
           style: textStyle,
           strutStyle: StrutStyle.fromTextStyle(
