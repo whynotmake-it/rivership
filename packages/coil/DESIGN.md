@@ -450,7 +450,7 @@ Every component ships with all of these. They're required to call it done.
 
 1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
-**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1). A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
 
 ---
 
@@ -584,7 +584,12 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `horizontal`: label left, control right, `gap`;
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
-- **ChoiceCard:** a horizontal Field inside a bordered container at the container radius, padding 12 (10 compact, 16 touch). The whole card is the target. Hover (pointer) is the `hover` fill. Checked: border `foreground` 40 %. Keyboard focus rings the card.
+- **ChoiceCard:** a checkbox or switch at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+  - The whole card is the target. Inside it the control drops its own hit-area padding.
+  - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
+  - Selected: border `foreground` 40 %.
+  - Keyboard focus rings the whole card (1 px, no offset). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
 - **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.

@@ -1,4 +1,5 @@
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/focus_within.dart';
 import 'package:cupertino_ui/cupertino_ui.dart'
     show
         CupertinoColors,
@@ -530,6 +531,8 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       shortcuts: widget.shortcuts,
       child: Actions(actions: _composingAwareActions(), child: editable),
     );
+    // Containers show focus inside a text field however it got there.
+    editable = CoilFocusAlwaysVisible(child: editable);
 
     final placeholder = widget.placeholder;
     final singleLine = widget.maxLines == 1;

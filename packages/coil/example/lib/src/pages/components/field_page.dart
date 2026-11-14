@@ -7,7 +7,9 @@ const fieldEntry = CatalogEntry(
   slug: 'field',
   title: 'Field',
   group: CatalogGroup.groupedControls,
-  summary: 'Label, description and error around one control; FieldSet groups.',
+  summary:
+      'Label, description and error around one control; FieldSet groups; '
+      'choice cards.',
   page: FieldPage.new,
 );
 
@@ -24,6 +26,8 @@ class _FieldPageState extends State<FieldPage> {
   var _invoices = true;
   var _usage = false;
   var _showError = false;
+  var _kubernetes = true;
+  var _vm = false;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
@@ -129,6 +133,34 @@ class _FieldPageState extends State<FieldPage> {
             const CoilField(
               label: Text('Reply-to address'),
               child: CoilInput(placeholder: Text('support@example.com')),
+            ),
+          ],
+        ),
+      ),
+      DemoSection(
+        title: 'Choice card',
+        description:
+            'The whole card is the target. Keyboard focus rings the card, '
+            'not the checkbox.',
+        child: CoilFieldGroup(
+          children: [
+            CoilChoiceCard(
+              selected: _kubernetes,
+              title: const Text('Kubernetes'),
+              description: const Text('Run GPU workloads on a K8s cluster.'),
+              control: CoilCheckbox(
+                value: _kubernetes,
+                onChanged: (v) => setState(() => _kubernetes = v ?? false),
+              ),
+            ),
+            CoilChoiceCard(
+              selected: _vm,
+              title: const Text('Virtual machine'),
+              description: const Text('Access a cluster to run GPU workloads.'),
+              control: CoilCheckbox(
+                value: _vm,
+                onChanged: (v) => setState(() => _vm = v ?? false),
+              ),
             ),
           ],
         ),
