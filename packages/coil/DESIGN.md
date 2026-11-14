@@ -586,7 +586,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `horizontal`: label left, control right, `gap`;
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
-- **ChoiceCard:** a checkbox or switch at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+- **ChoiceCard:** a checkbox, switch or radio at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
   - The whole card is the target. Inside it the control drops its own hit-area padding.
   - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
   - Selected: border `foreground` 40 %.
@@ -627,6 +627,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Keyboard:** roving focus, so the selected row is the tab stop. Arrows move *and* select, with wrapping; Home and End jump.
 - **Semantics:** `inMutuallyExclusiveGroup`, `checked`.
 - **API:** generic `CoilRadioGroup<T>(value, onChanged, options)`.
+- **Other layouts** (radio choice cards): `CoilRadioGroup<T>.custom(value, onChanged, child)` with a `CoilRadio(value:)` anywhere in `child`. It is Flutter's `RadioGroup`, so the keyboard model is the rows': the selected radio is the tab stop, arrows select the next enabled radio in reading order with wrapping, and coil adds Home and End. A radio on its own shows its own ring and hover; in a choice card the card takes both.
 - **Don't:** use it for more than 7 options (use Select).
 
 #### ToggleGroup (built)

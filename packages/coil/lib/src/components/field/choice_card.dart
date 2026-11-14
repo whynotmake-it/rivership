@@ -22,8 +22,8 @@ final class CoilChoiceCardTrack<T extends Object> extends Track<T> {
   );
 }
 
-/// A choice as a bordered card: a [control] (a `CoilCheckbox` or
-/// `CoilSwitch`) at the start, then a [title] and an optional
+/// A choice as a bordered card: a [control] (a `CoilCheckbox`,
+/// `CoilSwitch` or `CoilRadio`) at the start, then a [title] and an optional
 /// [description].
 ///
 /// The whole card is the target: a tap anywhere toggles the control. A
@@ -59,7 +59,8 @@ class CoilChoiceCard extends StatefulWidget {
     this.style,
   });
 
-  /// The control: a `CoilCheckbox` or a `CoilSwitch`.
+  /// The control: a `CoilCheckbox`, a `CoilSwitch` or a `CoilRadio`. Put
+  /// radio cards in a `CoilRadioGroup.custom`.
   final Widget control;
 
   /// Names the choice. Usually a [Text].
