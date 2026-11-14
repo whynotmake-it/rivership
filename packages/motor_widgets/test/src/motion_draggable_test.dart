@@ -176,11 +176,15 @@ class _ScrollBoard extends StatefulWidget {
     this.insertFirst = false,
     this.boardWidth,
     this.transitions,
+    this.handoff = MotionDragHandoff.onEnter,
     super.key,
   });
 
   /// The cards' transitions.
   final MotionDraggableTransitions? transitions;
+
+  /// The cards' hand-off.
+  final MotionDragHandoff handoff;
 
   /// Column B's items.
   final List<String> b;
@@ -214,6 +218,7 @@ class _ScrollBoardState extends State<_ScrollBoard> {
       key: ValueKey(id),
       data: id,
       transitions: widget.transitions,
+      handoff: widget.handoff,
       feedback: const ColoredBox(key: _feedback, color: Color(0xFF000000)),
       child: SizedBox.fromSize(
         key: ValueKey('child-$id'),
@@ -996,6 +1001,59 @@ void main() {
       expect(overlayFrames, everyElement(isTrue));
       await tester.pumpAndSettle();
       expect(_inOverlay(), isFalse);
+    });
+  });
+
+  group('MotionDraggable.handoff', () {
+    // Each drops x at y 150, above B's viewport, which starts at 200; x's
+    // place is at 240.
+    Future<List<bool>> dropAboveViewport(
+      WidgetTester tester,
+      MotionDragHandoff handoff,
+    ) async {
+      await tester.pumpWidget(_app(_ScrollBoard(handoff: handoff)));
+      final gesture = await _drag(tester, const Offset(400, 150));
+      await gesture.up();
+      await tester.pump();
+      final inOverlay = <bool>[];
+      for (var i = 0; i < 100; i++) {
+        await tester.pump(fineFrame);
+        inOverlay.add(_inOverlay());
+      }
+      await tester.pumpAndSettle();
+      expect(_paintedRect(tester, 'x').topLeft, const Offset(400, 240));
+      return inOverlay;
+    }
+
+    testWidgets('onEnter hands off once the card center is in view', (
+      tester,
+    ) async {
+      final inOverlay = await dropAboveViewport(
+        tester,
+        MotionDragHandoff.onEnter,
+      );
+      expect(inOverlay.first, isTrue);
+      expect(inOverlay.last, isFalse);
+    });
+
+    testWidgets('immediate hands off on the frame after the drop', (
+      tester,
+    ) async {
+      final inOverlay = await dropAboveViewport(
+        tester,
+        MotionDragHandoff.immediate,
+      );
+      expect(inOverlay, everyElement(isFalse));
+    });
+
+    testWidgets('never keeps the whole landing in the overlay', (
+      tester,
+    ) async {
+      final inOverlay = await dropAboveViewport(
+        tester,
+        MotionDragHandoff.never,
+      );
+      expect(inOverlay, everyElement(isTrue));
     });
   });
 }

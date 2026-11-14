@@ -423,9 +423,12 @@ class DragFlight {
   }
 
   /// Hands the rest of the landing to the destination's [FlightReceiver]
-  /// and leaves the overlay, as soon as the item is "in" its destination:
-  /// the feedback's center is inside the destination's visible area, and the
-  /// destination's slot is painted there.
+  /// and leaves the overlay, when [MotionDraggable.handoff] allows. With
+  /// [MotionDragHandoff.onEnter], that is as soon as the item is "in" its
+  /// destination: the feedback's center is inside the destination's visible
+  /// area, and the destination's slot is painted there. With
+  /// [MotionDragHandoff.immediate] it is the first tick it can, and with
+  /// [MotionDragHandoff.never] never.
   ///
   /// For most drops that is the first frame after the drop, because the
   /// pointer drops the feedback where the destination can be seen. From then
@@ -455,16 +458,20 @@ class DragFlight {
     final rect = site.globalRect;
     final slot = receiver?.layoutRect;
     if (receiver == null || rect == null || slot == null) return;
+    final handoff = widget.handoff;
+    if (handoff == MotionDragHandoff.never) return;
     final size = controller.value(MotionDraggableTrack.size);
     if ((size.width - rect.width).abs() > 0.5 ||
         (size.height - rect.height).abs() > 0.5) {
       return;
     }
-    final visible = _visibleRect(site);
-    if (visible == null) return;
     final offset = controller.value(MotionDraggableTrack.offset);
-    final center = (rect.topLeft + offset) & rect.size;
-    if (!visible.contains(center.center) || !visible.overlaps(slot)) return;
+    if (handoff == MotionDragHandoff.onEnter) {
+      final visible = _visibleRect(site);
+      if (visible == null) return;
+      final center = (rect.topLeft + offset) & rect.size;
+      if (!visible.contains(center.center) || !visible.overlaps(slot)) return;
+    }
     receiver.receiveFlight(
       offset: offset,
       velocity: controller.velocity(MotionDraggableTrack.offset),
@@ -491,7 +498,11 @@ class DragFlight {
   Rect? _clip() {
     final site = _site;
     final controller = _controller;
-    if (site == null || controller == null || site.visibleRect == null) {
+    if (site == null ||
+        controller == null ||
+        widget.handoff != MotionDragHandoff.onEnter ||
+        site.flightReceiver == null ||
+        site.visibleRect == null) {
       return null;
     }
     final visible = site.visibleRect!;

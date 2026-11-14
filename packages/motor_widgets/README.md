@@ -200,6 +200,17 @@ redirects it. While the destination's slot is scrolled out of view, the
 feedback stays in the overlay, clipped to the destination's scrollables.
 Without a `MotionReorder`, the feedback lands in the overlay.
 
+`handoff` picks when the landing moves into the tree:
+
+| `handoff` | The landing moves into the tree |
+|---|---|
+| `MotionDragHandoff.onEnter` (default) | once the card's center is inside the destination's scrollables |
+| `MotionDragHandoff.immediate` | on the frame after the drop, wherever the card is, so the destination clips it at once |
+| `MotionDragHandoff.never` | never: the whole landing flies in the overlay |
+
+Without a `MotionReorder` above the destination, every value behaves like
+`never`.
+
 ```dart
 MotionDraggable<Task>(
   data: task,

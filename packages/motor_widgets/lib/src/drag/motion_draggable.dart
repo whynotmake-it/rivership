@@ -20,6 +20,28 @@ enum MotionDragPhase {
   rejected,
 }
 
+/// When a [MotionDraggable]'s landing moves from the [Overlay] into the
+/// tree, see [MotionDraggable.handoff].
+///
+/// A landing can only move into the tree when the destination is inside a
+/// [MotionReorder], which then flies the rest of it. Without one, every value
+/// behaves like [never].
+enum MotionDragHandoff {
+  /// As soon as the feedback's center is inside the destination's visible
+  /// area and the destination's slot is in view. For most drops that is the
+  /// frame after the drop. While the slot is out of view, the feedback stays
+  /// in the overlay, clipped to the destination's visible area.
+  onEnter,
+
+  /// On the frame after the drop, wherever the feedback is. From then on the
+  /// destination clips it, so a card dropped outside its column is cut off
+  /// at the column's edge, and one whose slot is out of view isn't painted.
+  immediate,
+
+  /// Never: the whole landing flies in the overlay, above everything.
+  never,
+}
+
 /// The tracks of a [MotionDraggable]'s feedback.
 ///
 /// Use them in [MotionDraggable.transitions] to animate the feedback in each
@@ -284,6 +306,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     this.motions,
     this.transitions,
     this.onLanded,
+    this.handoff = MotionDragHandoff.onEnter,
     this.axis,
     this.affinity,
     this.feedbackOffset = Offset.zero,
@@ -373,6 +396,16 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Defaults to resting while there is a destination, and to shrinking and
   /// fading out when there is none.
   final MotionDraggableTransitions? transitions;
+
+  /// When the landing moves from the [Overlay] into the tree, where the
+  /// destination's scrollables clip it and the widgets around it stack over
+  /// it.
+  ///
+  /// Only a destination inside a [MotionReorder] can take it; without one,
+  /// the landing stays in the overlay whatever this is.
+  ///
+  /// Defaults to [MotionDragHandoff.onEnter].
+  final MotionDragHandoff handoff;
 
   /// Called when the feedback has landed, has finished its exit, or has
   /// handed the rest of its landing to a [MotionReorder].
@@ -469,6 +502,7 @@ class MotionLongPressDraggable<T extends Object> extends MotionDraggable<T> {
     super.motions,
     super.transitions,
     super.onLanded,
+    super.handoff,
     super.axis,
     super.feedbackOffset,
     super.dragAnchorStrategy,
