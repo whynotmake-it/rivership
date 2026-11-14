@@ -29,12 +29,17 @@ Widget _toolbar({List<String>? pressed}) => testApp(
 );
 
 /// One tooltip on a button, opened with Tab.
-Widget _single({required Widget message, String? semanticLabel}) => testApp(
+Widget _single({
+  required Widget message,
+  String? semanticLabel,
+  Widget? shortcut,
+}) => testApp(
   tier: CoilTier.pointer,
   home: Center(
     child: CoilTooltip(
       message: message,
       semanticLabel: semanticLabel,
+      shortcut: shortcut,
       child: CoilButton.icon(
         onPressed: () {},
         semanticLabel: 'Panel edge',
@@ -207,6 +212,34 @@ void main() {
     expect(find.text('Copied!'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('Copied'), findsNothing);
+  });
+
+  testWidgets('a shortcut sits after the message without growing the '
+      'bubble', (tester) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(_single(message: const Text('Close')));
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    final plain = tester.getSize(_bubble('Close')).height;
+
+    // A stand-in for a key cap as tall as the caption line.
+    const cap = SizedBox.square(key: ValueKey('cap'), dimension: 16);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      _single(message: const Text('Close'), shortcut: cap),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    final message = tester.getRect(find.text('Close'));
+    final shortcut = tester.getRect(find.byKey(const ValueKey('cap')));
+    expect(shortcut.left - message.right, 8);
+    expect(shortcut.center.dy, message.center.dy);
+    expect(tester.getSize(_bubble('Close')).height, plain);
+    // In the bubble's colors.
+    final icons = IconTheme.of(
+      tester.element(find.byKey(const ValueKey('cap'))),
+    );
+    expect(icons.color, CoilColors.light.background);
   });
 
   testWidgets('screen readers get the message', (tester) async {
