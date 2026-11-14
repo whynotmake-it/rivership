@@ -42,6 +42,30 @@ Offset _flight(WidgetTester tester, String title) {
       : Offset(translation.x, translation.y);
 }
 
+/// Drags [what] from its center to [to], in a few moves, and drops it.
+Future<void> _drag(WidgetTester tester, Finder what, Offset to) async {
+  final start = tester.getCenter(what);
+  final gesture = await tester.startGesture(
+    start,
+    kind: PointerDeviceKind.mouse,
+  );
+  for (var i = 1; i <= 12; i++) {
+    await gesture.moveTo(Offset.lerp(start, to, i / 12)!);
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
+/// The vertical order of [titles], top first.
+List<String> _topToBottom(WidgetTester tester, List<String> titles) =>
+    [...titles]..sort(
+      (a, b) => tester
+          .getCenter(find.text(a))
+          .dy
+          .compareTo(tester.getCenter(find.text(b)).dy),
+    );
+
 void main() {
   testWidgets('Shuffle flies the cards of its column and they settle', (
     tester,
@@ -114,7 +138,8 @@ void main() {
       await gesture.moveBy(by / 12);
       await tester.pump(const Duration(milliseconds: 16));
     }
-    expect(find.text(title), findsNWidgets(2), reason: 'the lifted copy');
+    // Only the lifted copy: its lane has closed up behind it.
+    expect(find.text(title), findsOneWidget, reason: 'the lifted copy');
     await gesture.up();
     await tester.pumpAndSettle();
 
@@ -133,5 +158,64 @@ void main() {
       find.descendant(of: countBeside('Doing'), matching: find.text('4')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a card dropped between two cards of a column goes there', (
+    tester,
+  ) async {
+    await _pumpPage(tester);
+    const title = 'Write the release notes';
+    const above = 'Ship the dark theme';
+    const below = 'Plan the next sprint';
+    final between = Offset.lerp(
+      tester.getCenter(find.text(above)),
+      tester.getCenter(find.text(below)),
+      0.5,
+    )!;
+    await _drag(tester, find.text(title), between);
+    expect(_topToBottom(tester, [above, title, below]), [above, title, below]);
+    expect(
+      (tester.getCenter(find.text(title)).dx - between.dx).abs(),
+      lessThan(130),
+      reason: 'in the Doing column',
+    );
+    expect(_flight(tester, title), Offset.zero);
+  });
+
+  testWidgets('a card dragged within its column reorders it', (tester) async {
+    await _pumpPage(tester);
+    const first = 'Write the release notes';
+    const second = 'Fix the login redirect';
+    const third = 'Review the color tokens';
+    const fourth = 'Profile the board';
+    final between = Offset.lerp(
+      tester.getCenter(find.text(third)),
+      tester.getCenter(find.text(fourth)),
+      0.5,
+    )!;
+    await _drag(tester, find.text(first), between);
+    expect(_topToBottom(tester, [first, second, third, fourth]), [
+      second,
+      third,
+      first,
+      fourth,
+    ]);
+  });
+
+  testWidgets('a tile dragged in the grid reorders it', (tester) async {
+    await _pumpPage(tester);
+    Finder tile(String text) => find.descendant(
+      of: find.byType(MotionDropZone<int>),
+      matching: find.text(text),
+    );
+    await tester.ensureVisible(tile('12'));
+    await tester.pumpAndSettle();
+    final three = tester.getRect(tile('3'));
+    // The trailing side of tile 3, on tile 1's row.
+    await _drag(tester, tile('1'), three.centerRight + const Offset(20, 0));
+    double x(String text) => tester.getCenter(tile(text)).dx;
+    expect(x('2'), lessThan(x('3')));
+    expect(x('3'), lessThan(x('1')));
+    expect(x('1'), lessThan(x('4')));
   });
 }
