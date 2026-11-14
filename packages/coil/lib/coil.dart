@@ -30,6 +30,7 @@ export 'input_message.dart';
 export 'primitives.dart';
 export 'queued_stack.dart';
 export 'radio_group.dart';
+export 'reveal.dart';
 export 'scroll_area.dart';
 export 'select.dart';
 export 'sidebar.dart';
