@@ -146,8 +146,17 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// The press is on two stacked thumbs; the drag's direction picks one.
   bool _tied = false;
   double _downFraction = 0;
-  int? _trackPointer;
-  bool _tapOnTrack = false;
+
+  /// Whether a press on the track is changing the value. It opens at the
+  /// first change (a tap-down or a drag start) and closes at whichever
+  /// comes first: the tap's up, the drag's end, or the drag's cancel (a
+  /// scroll won, or the pointer lifted). So a press that becomes a drag is
+  /// one change. A quick tap's drag cancel comes before its tap-down,
+  /// which is why the tap's up closes it too.
+  bool _pressing = false;
+
+  /// The values this press last asked for, which its end reports.
+  List<double> _asked = const [];
 
   /// The thumb whose value is being typed, if any.
   int? _editing;
@@ -351,15 +360,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     return 0;
   }
 
-  void _tap() {
-    if (!_tapOnTrack) return;
-    _change(_active, _scale.valueAt(_downFraction));
+  void _beginPress() {
+    if (_pressing) return;
+    _pressing = true;
+    _asked = widget.values;
+    widget.onChangeStart?.call(widget.values);
+  }
+
+  /// A press on the track jumps the nearest thumb there on the way down,
+  /// as native sliders do, so the thumb is under the pointer while pressed.
+  void _pressDown(TapDownDetails d, double width, SliderReach reach) {
+    _beginPress();
+    _dragTo(d.localPosition.dx, width, reach);
   }
 
   void _dragStart(DragStartDetails d, double width, SliderReach reach) {
     _dragging = true;
     setState(() {});
-    widget.onChangeStart?.call(widget.values);
+    _beginPress();
     _dragTo(d.localPosition.dx, width, reach);
   }
 
@@ -371,15 +389,16 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     }
     final value = _limit(_active, _scale.valueAt(f));
     if (value != widget.values[_active]) {
-      widget.onChanged?.call(_with(_active, value));
+      _asked = _with(_active, value);
+      widget.onChanged?.call(_asked);
     }
   }
 
-  void _dragEnd() {
-    if (!_dragging) return;
-    _dragging = false;
-    setState(() {});
-    widget.onChangeEnd?.call(widget.values);
+  void _endPress() {
+    if (_dragging) setState(() => _dragging = false);
+    if (!_pressing) return;
+    _pressing = false;
+    widget.onChangeEnd?.call(_asked);
   }
 
   void _step(int i, SliderStepIntent intent) {
@@ -438,19 +457,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       enabled: _enabled,
       focusNode: _range ? _group : _focusOf(0),
       excludeFromSemantics: true,
-      // A tap on the track jumps the nearest thumb there.
-      onTap: _tap,
       cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      child: Listener(
-        // Runs after the track's own listener: a press that missed the
-        // track (the pill's label, say) jumps nothing.
-        onPointerDown: (e) => _tapOnTrack = e.pointer == _trackPointer,
-        child: Opacity(
-          opacity: _enabled ? 1 : metrics.disabledOpacity,
-          child: ListenableBuilder(
-            listenable: Listenable.merge([_states, ..._valueStates]),
-            builder: (context, _) => _buildVisuals(metrics),
-          ),
+      child: Opacity(
+        opacity: _enabled ? 1 : metrics.disabledOpacity,
+        child: ListenableBuilder(
+          listenable: Listenable.merge([_states, ..._valueStates]),
+          builder: (context, _) => _buildVisuals(metrics),
         ),
       ),
     );
@@ -899,8 +911,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         return Listener(
           onPointerDown: (e) {
             _kind = e.kind;
-            _trackPointer = e.pointer;
-            if (_dragging) return;
+            if (_pressing) return;
             _downFraction = reach.fractionAt(
               e.localPosition.dx,
               width,
@@ -915,14 +926,16 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             excludeFromSemantics: true,
+            onTapDown: _enabled ? (d) => _pressDown(d, width, reach) : null,
+            onTapUp: _enabled ? (_) => _endPress() : null,
             onHorizontalDragStart: _enabled
                 ? (d) => _dragStart(d, width, reach)
                 : null,
             onHorizontalDragUpdate: _enabled
                 ? (d) => _dragTo(d.localPosition.dx, width, reach)
                 : null,
-            onHorizontalDragEnd: _enabled ? (_) => _dragEnd() : null,
-            onHorizontalDragCancel: _enabled ? _dragEnd : null,
+            onHorizontalDragEnd: _enabled ? (_) => _endPress() : null,
+            onHorizontalDragCancel: _enabled ? _endPress : null,
             child: track,
           ),
         );

@@ -289,11 +289,12 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(sliderBubbleKey),
-          matching: find.text('0.8'),
+          matching: find.text('0.75'),
         ),
         findsOneWidget,
-        reason: 'the end thumb is nearer, so it is the one pressed',
+        reason: 'the end thumb is nearer, so the press moved it there',
       );
+      _expectValues(tester, .2, .75);
       await g.up();
       await settle(tester);
       expect(find.byKey(sliderBubbleKey), findsNothing);

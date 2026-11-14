@@ -265,7 +265,11 @@ void main() {
     await g.up();
     await settle(tester);
     expect(knobX(), closeTo(before, 1));
-    expect(_host(tester).log.last, 'end 0.50');
+    expect(
+      _host(tester).log.last,
+      startsWith('end 0.8'),
+      reason: 'the end reports what the drag asked for, as Slider does',
+    );
   });
 
   testWidgets('semantics: one slider node that reads its value once', (
@@ -523,6 +527,71 @@ void main() {
         await settle(tester);
         expect(bubbleX(tester), closeTo(_at(tester, .6).dx, .5));
       });
+    });
+
+    for (final kind in [PointerDeviceKind.mouse, PointerDeviceKind.touch]) {
+      testWidgets('${kind.name}: a held press jumps on the way down', (
+        tester,
+      ) async {
+        await tester.pumpWidget(const _Host(divisions: 10));
+        final g = await tester.createGesture(kind: kind);
+        addTearDown(g.removePointer);
+        if (kind == PointerDeviceKind.mouse) {
+          // A mouse hovers on its way to the press.
+          await g.addPointer(location: _at(tester, .1));
+          await g.moveTo(_at(tester, .8));
+          await tester.pump();
+        }
+        await g.down(_at(tester, .8));
+        // Until a drag or a tap wins, the press shows after kPressTimeout,
+        // as in Flutter's Slider; the value changes at that moment too.
+        await tester.pump(kPressTimeout);
+        await tester.pump();
+        expect(_valueOf(tester), closeTo(.8, 1e-9));
+        await settle(tester);
+        expect(
+          tester.getCenter(bubbleBox()).dx,
+          closeTo(_at(tester, .8).dx, .5),
+        );
+        expect(_host(tester).log, ['start 0.50', 'changed 0.80']);
+        await g.up();
+        await settle(tester);
+        expect(_valueOf(tester), closeTo(.8, 1e-9));
+        expect(_host(tester).log, [
+          'start 0.50',
+          'changed 0.80',
+          'end 0.80',
+        ], reason: 'the release changes nothing more');
+      });
+    }
+
+    testWidgets('a held press that becomes a drag is one change', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host(divisions: 10));
+      final g = await tester.startGesture(_at(tester, .2));
+      await tester.pump(kPressTimeout);
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        await g.moveBy(const Offset(30, 0));
+        await tester.pump();
+      }
+      await g.up();
+      await settle(tester);
+      final log = _host(tester).log;
+      expect(log.where((e) => e.startsWith('start')), hasLength(1));
+      expect(log.where((e) => e.startsWith('end')), hasLength(1));
+      expect(log.first, 'start 0.50');
+      expect(log.last, 'end ${_fmt(_valueOf(tester))}');
+      expect(_valueOf(tester), closeTo(.5, .05));
+    });
+
+    testWidgets("a press on the pill's label jumps nothing", (tester) async {
+      await tester.pumpWidget(const _Host(variant: CoilSliderVariant.pill));
+      await tester.tap(find.text('Volume'));
+      await settle(tester);
+      expect(_valueOf(tester), .5);
+      expect(_host(tester).log, isEmpty);
     });
 
     testWidgets('a stepped drag springs to each step and lands on it', (
