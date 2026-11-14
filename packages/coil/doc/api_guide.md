@@ -74,8 +74,10 @@ Rules:
 | Size step | `size: CoilSize?` | null inherits from `CoilAdaptiveScope` |
 | Visual variant | `variant: Coil<Name>Variant` | enum |
 | Main content of a single-content widget | `child` | |
-| Text identity of an item in a collection | `label: String` | used for typeahead, semantics and the default visual |
-| Visual override of an item | `child: Widget?` on the item | replaces the default `Text(label)` |
+| What an item in a collection shows | `label: Widget` | usually a `Text`; the component styles it and screen readers read it |
+| An item as plain text, for matching | `searchText: String?` | typeahead and filters match it, and a select announces it as its value; without it they skip the item |
+| A name for screen readers | `semanticLabel: String?`, or a name ending in `Label` | only where the visible widget can't name the thing (an icon-only toggle, an announcement) |
+| Text a component builds from data | a builder returning a `Widget`, with a `…Label` string function beside it if screen readers need it | `CoilCalendarLabels.monthTitle` / `.dayLabel`, `CoilDataTableLabels.count` |
 | Leading / trailing slot | `leading`, `trailing` | any `Widget`, styled by `IconTheme` and `DefaultTextStyle` |
 | Icon-only content | `icon` | named constructor `.icon(...)` where a widget can be icon-only |
 | Drawn glyph replacement | `<glyph>Builder` or a `Widget?` slot | e.g. `CoilCheckbox.glyphBuilder`, `CoilSelect.checkmark` |
@@ -307,7 +309,7 @@ Look:
 | 2026-11-13 | No per-kind presentation pin | YAGNI; a component's `presentation:` covers the exceptions |
 | 2026-11-13 | `CoilPopupController`, like `MenuController`; `open()` resolves once with a `CoilPopupCloseReason` (§7) | overlay acceptance tests |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |
-| 2026-11-13 | Collection items carry `label: String` plus optional `child` | typeahead and semantics need text |
+| 2026-11-13 | Collection items carry `label: String` plus optional `child` (replaced 2026-11-14) | typeahead and semantics need text |
 | 2026-11-13 | `CoilTheme.override(transform:)` for subtree changes | root changes still flow through |
 | 2026-11-13 | The brand color is `CoilColors.brand` (was `fluidAccent`) | `accent` already names FF's neutral `--accent` |
 | 2026-11-13 | Groups take `options` (data entries) and `values`; `CoilRadioGroup` takes `value`. All three take `semanticLabel` | data entries use `options`; sets use `values` |
@@ -329,3 +331,4 @@ Look:
 | 2026-11-14 | `CoilRangeSlider` is its own widget taking `values: CoilRangeValues(start, end)`, like Flutter's `RangeSlider` (whose `RangeValues` lives in Material). It shares `CoilSliderTrack` and the pill look | a nullable second value would give one widget two value types; a range on the row puts handle lines in the text |
 | 2026-11-14 | Sliders take `steps: List<double>?` next to `divisions`, never both; `valueDisplay: CoilSliderValueDisplay { text, editable, tooltip }` | a list of allowed values isn't a count; where the value shows is one choice of three, so an enum, not booleans |
 | 2026-11-14 | Text a component styles with `DefaultTextStyle` is a `Widget` parameter, not a `String` (and icons are widgets, not `IconData`). The slider shows its value through `valueBuilder: (context, value) => Widget`; `semanticFormatter` gives screen readers a string, and the value field's text goes through `editFormatter` / `editParser` | user, 2026-11-14: string params are an antipattern; a field and semantics genuinely need strings |
+| 2026-11-14 | Every visible text and icon is a `Widget`. Entries carry `label: Widget`, plus `searchText: String?` where typeahead or a filter matches them and `semanticLabel: String?` where the widget can't name them; the `child` override is gone. Strings a component shows from data become builders returning widgets. A string that both showed and announced splits into a widget and a `…Label` string. `test/architecture/widget_params_test.dart` fails on a new public `String` or `IconData` field unless its name says it's for screen readers (`…Label`) or matching (`searchText`), or it's on the test's allowlist with a reason | user, 2026-11-14: string and `IconData` params are an antipattern; a matched or announced string can't be a widget, so it gets a name that says so |
