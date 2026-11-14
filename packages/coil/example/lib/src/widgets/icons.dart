@@ -129,6 +129,10 @@ class Glyph {
     LucideIcons300.workflow,
     LucideIcons400.workflow,
   );
+  static const cornerDownRight = Glyph(
+    LucideIcons300.cornerDownRightDir,
+    LucideIcons400.cornerDownRightDir,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].

@@ -2,6 +2,7 @@
 
 Milestone M0, unreleased.
 
+<<<<<<< HEAD
 - The sidebar is rebuilt to match FF's. `CoilSidebarScaffold` takes a
   `CoilSidebarController` (open state and width, which the app stores),
   `side`, `variant` (`sidebar`, `floating`, `inset`), `collapsible`
@@ -22,6 +23,13 @@ Milestone M0, unreleased.
 - `CoilDrawer` (primitive) shows a modal side drawer that stays a
   descendant of its owner, so it shows the app's current state. A drag
   closes it, and system back, Escape and the scrim do too.
+=======
+- `CoilAskUserQuestions` asks an assistant's questions one at a time:
+  single choice, multiple choice and typed answers, an optional typed
+  "other" row, Back and Skip, and number keys on pointer. The card's height
+  springs between questions. A `CoilAskUserQuestionsController` holds the
+  step and the answers.
+>>>>>>> coil/main
 - `CoilColors.fromSeed` builds a palette from a brand color and a neutral
   tone (`neutralHue`, `neutralChroma`): every grey takes the tint at its
   default lightness and opacity, and text and status colors keep their

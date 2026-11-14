@@ -213,6 +213,7 @@ Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
 - `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes.
+- `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
 - Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
 Named holds that aren't tokens:
@@ -249,6 +250,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - spatial tokens become `Motion.instant()`;
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
+- `stagger` becomes zero, so revealed siblings fade in together;
 - loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
@@ -450,7 +452,7 @@ Every component ships with all of these. They're required to call it done.
 
 1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
-**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1). A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
 
 ---
 
@@ -591,7 +593,12 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `horizontal`: label left, control right, `gap`;
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
-- **ChoiceCard:** a horizontal Field inside a bordered container at the container radius, padding 12 (10 compact, 16 touch). The whole card is the target. Hover (pointer) is the `hover` fill. Checked: border `foreground` 40 %. Keyboard focus rings the card.
+- **ChoiceCard:** a checkbox or switch at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+  - The whole card is the target. Inside it the control drops its own hit-area padding.
+  - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
+  - Selected: border `foreground` 40 %.
+  - Keyboard focus rings the whole card (1 px, no offset). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
 - **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.
@@ -640,17 +647,30 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Slider (built)
 
+- **Widgets:** `CoilSlider` for one value. `CoilRangeSlider` for two: `values: CoilRangeValues(start, end)`, like Flutter's `RangeSlider`.
+- **Value API:** `label` is a widget. The value shows through `valueBuilder` (a widget, default a plain number up to two decimals), screen readers get `semanticFormatter`, and the value field uses `editFormatter` / `editParser`.
 - **Anatomy:**
-  - **Row** (variants `scrubber`, the default, and `pips`): a full-width bordered row, `controlHeight` tall, with the label at the start and the value at the end (tabular, muted). The fill is `active` and a handle line sits at the value. `pips` adds a 5 px dot per step, left out where the label or value sits. The range spans the row edge to edge: the fill is empty at min and full at max, and the end pips sit under the handle line.
+  - **Row** (variants `scrubber`, the default, and `pips`): a full-width bordered row, `controlHeight` tall, with the label at the start and the value at the end (tabular, muted). The fill is `active` and a handle line sits at the value. `pips` adds a 5 px dot per step, left out where the label or value sits. The range spans the row edge to edge: the fill is empty at min and full at max, and the end pips sit under the handle line. The label takes the free space and ellipsizes; the value keeps its reserved width.
   - **Pill** (variant `pill`): an 18 high pill track with a 1 px `border` and a 16 white knob in a 20 box, between the label and the value; fill `selected` 50 % (dark `accent` 40 %).
+  - **Range:** always the pill, with a knob per thumb and the fill between them. On the row, the two handle lines would land in the label and value text, and the original draws ranges only on the pill. The value text reads `start – end`.
+- **Steps:** `divisions` (equal steps) or `steps` (a list of allowed values at any spacing, between `min` and `max`). Never both. Values snap to the nearest step; a value exactly halfway goes to the lower one. Pips sit at each step.
+- **Value display** (`valueDisplay`):
+  - `text` (default): the value text.
+  - `editable`: a click or tap on a value, or Enter on a focused thumb, turns it into a field (the `field` type role, a 1 px `border` underline, as wide as the widest value). It opens with `editFormatter`'s text (the raw number by default) selected and reads it back with `editParser`. Enter or Done applies it, clamped to the range and snapped to a step; leaving the field applies it too. Esc leaves the value unchanged. Text that isn't a number changes nothing. Enter and Esc return focus to the thumb. While the pointer is on the value, the track shows no hover preview.
+  - `tooltip`: no value text. A bubble rides each thumb while the slider is hovered, pressed or focused with the keyboard.
 - **Sizes:** `size` changes sizes only: the row is `controlHeight` (36 / 28 pointer, 44 / 42 touch) with `controlPaddingX`. On touch the pill's knob is 22 visual, 44 hit.
-- **States:** the label and value turn foreground and semibold (with ghost width) while hovered, pressed or focused. Pips: dots at 30 % muted, the active one foreground. Disabled 50 %.
-- **Pointer extras:** hover shows a preview bar (`accent` 40 %) toward the snapped hover value, plus the value bubble (the touch bubble, shown at the hover value) until a Tooltip exists.
-- **Touch:** no preview. **A value bubble** (tooltip style) sits 8 + 24 above the thumb while pressed and fades on `fade` / `fadeExit`. Tapping the track jumps; dragging sets the value directly with no fling.
-- **Motion:** thumb and fill settle on `standard` after a jump or keyboard step; follow the finger 1:1 while dragging a continuous slider; with divisions they spring to each step and retarget as the pointer crosses steps; handle and color on `fade`; pip growth `standard`.
-- **Keyboard:** arrows ±step; PageUp/PageDown and Shift+arrow ±10 %; Home and End go to min and max. Click-to-edit value (P1): the number becomes a field.
-- **Semantics:** `slider` / adjustable, a formatted `value`, increase and decrease actions; range thumbs are named "minimum" and "maximum".
-- **Scope:** single value in v1; range, step lists, click-to-edit and tooltip mode in v1.x.
+- **States:** the label and value turn foreground and semibold (with ghost width) while hovered, pressed or focused. Pips: dots at 30 % muted, the one at each thumb foreground. Disabled 50 %.
+- **Focus ring:** after keyboard use only. The row rings the whole row, and the focused thumb's handle line goes full foreground. The pill rings the focused knob, as the original does per thumb.
+- **Pointer extras:** hover shows a preview bar (`accent` 40 %) that springs on `quick` from the nearest thumb toward the snapped hover value, plus the value bubble (the touch bubble) with the hover value.
+  - The bubble appears on the hover at once, with no sideways travel; only its fade plays.
+  - Until the preview reaches it, the bubble follows the hover directly while the preview chases.
+  - Once they meet (the preview arrives or crosses it), the bubble rides the preview's spring as the hover moves.
+- **Touch:** no preview. **A value bubble** (tooltip style) sits 8 + 24 above the pressed thumb and fades on `fade` / `fadeExit`. Tapping the track jumps; dragging sets the value directly with no fling.
+- **Range input:** a tap or drag moves the nearest thumb, by touch and by mouse. On two stacked thumbs, the side of the press picks one, and on them the drag's direction does. The thumbs can't cross but may meet.
+- **Motion:** thumbs and fill settle on `standard` after a jump, a key or a typed value; follow the finger 1:1 while dragging a continuous slider; with steps they spring to each step and retarget as the pointer crosses steps. Handle and color on `fade`; pip growth `standard`. `CoilSliderTrack.thumb` moves both thumbs of a range.
+- **Keyboard:** arrows ±step (a step list walks the list); PageUp/PageDown and Shift+arrow ±10 %, at least one step; Home and End go to min and max, or to the other thumb in a range. A range is two tab stops.
+- **Semantics:** `slider` / adjustable, a formatted `value`, increase and decrease actions. A range is a group (the label) with one slider node per thumb, named `startSemanticLabel` and `endSemanticLabel` ("Minimum" and "Maximum" by default). An open value field is its own text-field node.
+- **Not yet:** the tooltip mode draws the slider's own bubble, laid out in the track's box, not `CoilTooltipAnchor`. The anchor opens on its own triggers (it closes on pointer-down) and adds a semantics tooltip, while the slider needs a bubble it shows and hides itself, that follows a moving thumb every frame and stays out of semantics. The pill has no dots for steps, and a value can't sit above or below the track, so at large text a narrow pill row can overflow.
 
 #### Tabs (built)
 
@@ -873,6 +893,25 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.
 
+#### Reveal
+
+- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll.
+- **Presets:**
+
+  | Preset | Step | Motion (in / out) | Look when hidden |
+  |---|---|---|---|
+  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
+  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
+  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 4, scale 0.94, 12 px below |
+
+  `landing` is for the part of a landing page on screen at load.
+- **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.
+- **Hiding:** `visible: false` hides the children with the same stagger, in the same order (as the original's `reveal-out` keeps each child's delay), on the exit motion. `true` reveals them again. A flip halfway turns each child around from where it is. Hidden children stay mounted but take no pointer, focus or semantics.
+- **Loading:** the original's `reveal-swap` is `CoilSkeletonSwitcher`. Put the loaded content in a `CoilReveal` with `.items`, and its rows arrive one by one.
+- **Reduced motion:** `stagger` is zero, and the blur-fade only fades. Every child fades in or out at once, on `fade` / `fadeExit`, `landing` included.
+- **Do:** wrap the main column or a list. Keep headers, sidebars and footers outside, so the frame stays still.
+- **Don't:** reveal on scroll. The landing page's scroll-driven reveal is cut.
+
 #### ScrollArea (built)
 
 - **Physics:** platform physics (§9.2).
@@ -975,6 +1014,25 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Touch:** the tile × and queue × are always visible; swipe a queue row to delete.
 - **Semantics:** textField multiline, labeled "Message"; send is a button whose label follows its mode.
 
+#### QueuedStack
+
+- **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
+- **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×).
+- **Folded:** 2 cards peek out behind the front one, each 12 px higher and 5 % smaller; deeper cards fade out.
+- **Fanned out:** each card sits a card plus 8 above the one in front.
+- **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
+- **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down). Actions always show. Drag to reorder.
+- **Keyboard:** each card is a tab stop. Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
+- **Motion:**
+  - fan out and fold on `standard` / `standardExit`;
+  - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
+  - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
+  - a message queued behind the folded pile makes it recoil 7 px on `gentle`.
+- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action. The gutter reads "3 queued messages".
+- **Layout:** place it over the transcript, right above the composer, and pad the transcript by `CoilQueuedStack.collapsedHeightOf`.
+- **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.
+
 #### FileThumbnail
 
 - **Anatomy:** a square preview (`size` required), radius item (or nested), `muted` background.
@@ -1012,14 +1070,36 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Semantics:** table roles, the header with sort state, rows `selected`.
 - **Title:** display role, aligned past the select column.
 
+#### AskUserQuestions
+
+- **What it is:** an assistant's questions, one at a time, in a card. A question takes one option (picking it moves on), several options (then Continue), or typed text.
+- **Anatomy:** a hairline card (surface 3 light, 2 dark; container radius; max width 520) → "Question 2 of 4" (caption muted) → the question (title role) → option rows, an optional typed "other" row last, or a text field → footer: Back (ghost) at the start; Skip (ghost) and Continue or Finish (primary) at the end. Footer buttons are compact.
+- **Geometry:** rows are inset `popupInset` from the card edge, like a popover, so card radius = item radius + inset. Text starts at `popupInset + controlPaddingX`, and the step line, the question and Back's label all align with it.
+- **Rows:** §13.1 heights (36 / 28 / 44 / 36), padding `controlPaddingX`. The label is foreground at rest (a question's options are content, not a menu) and semibold with a ghost width when picked. A description follows inline in muted body, or sits under the label in caption (`layout: stacked`).
+- **Number keys (pointer only):** each row ends with its number (11/14 micro), or starts with it (`keyPosition: start`). Single choice: a plain number, foreground when picked. Multiple choice: the number in a 20 box (18 compact) with a hairline, filled `foreground` when picked. A lit single-choice row swaps its key for a submit arrow: a `foreground` block 8 larger than the key with a chevron, in on `quick`, out on `quickExit`.
+- **States:** the gliding highlight lights rows; picked rows, and the "other" row once it has text, merge into one `active` block (§8.4); one focus ring travels between rows. The "other" field is quiet at rest; while focused and empty it shows a surface fill and a hairline. A rejected free-text answer shows its message under the field (caption `destructive`, live region) and the field turns invalid.
+- **Touch:** no number keys and no submit arrow. Rows are 44, rest at full foreground, and show the press fill under a finger. A picked multiple-choice row shows a trailing check instead of a filled key. A tap never pulls focus, so the keyboard stays down until the user taps a field.
+- **Motion** (tracks `CoilAskUserQuestionsTrack.height`, `.step`, `.selection`, `.ring`, `.label`, `.hint`, `.press`, `.buttons`): between questions the card's height springs on `standard` while the old question fades out on `fadeExit` (clipped as the card shrinks) and the new one fades in on `fade`. Footer buttons appear and leave with a fade and scale 0.85 on `quick`, and their neighbors slide. Merge/split on `standard`, highlight and ring on `quick`, label weight and key colors on `fade`.
+- **Keyboard:** works while focus is in the card. 1 to 9 pick the row with that number; the number after the options focuses the "other" field. Up and Down move between rows with wrapping and don't pick. Enter or Space picks or toggles the focused row. Ctrl+Enter (⌘+Enter on Apple platforms) continues. Escape or the arrow pointing back returns; the arrow pointing forward skips (both flip in RTL). In a text field, digits and arrows edit text, Enter answers, and Shift+Enter is a newline in a multi-line field (touch: Return is a newline and Continue answers). Up and Down in the one-line "other" field return to the rows. When a question changes and focus was in the card, focus moves to the new question's picked row, its first row, or its field.
+- **Semantics:** the step line is a live region, so each new question is announced. The question is a header. A single-choice question is a radio group labelled by the question, with radio rows; a multiple-choice one is a group of checked rows. Each row reads its label and description. Keys and the arrow are excluded.
+- **API:** `CoilAskUserQuestions<T>(questions:, controller:, onCompleted:, onSkipped:)`. Questions are `CoilQuestion.single`, `.multiple` and `.freeText`; answers are `CoilAnswer<T>` (values, text, skipped) keyed by question id in a `CoilAskUserQuestionsController`. Every visible text (the question, option labels and descriptions, placeholders, button labels, the step line) is a `Widget` the card styles with `DefaultTextStyle`. Strings remain only for screen readers (`semanticLabel`, `otherSemanticLabel`) and for typed answers.
+- **Not ported from the web:** the document-wide digit listener (coil scopes keys to the card's focus; pass `autofocus`); the footer's ← and → and ⌘↵ key caps (coil has no key-cap primitive); a growing multi-line "other" field (it is one line, so the keyboard's action button can submit it).
+- **Do:** keep it to a few short questions.
+- **Don't:** use it for a form the user fills at their own pace (use Field); put more than 9 options in a question (keys stop at 9).
+
 ---
 
 ## 15. Out of scope
 
 - **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
 - **Deferred:**
+<<<<<<< HEAD
   - ColorPicker, AskUserQuestions, Reveal and QueuedStack;
   - Slider range / steps / tooltip mode (v1.x);
+=======
+  - ColorPicker and the settings-dialog block;
+  - Reveal's scroll-driven reveal (cut, not deferred);
+>>>>>>> coil/main
   - Calendar's 2-month strip animation and stacked layout;
   - DataTable v2;
   - PDF thumbnails beyond the renderer hook.

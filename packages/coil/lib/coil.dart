@@ -4,6 +4,7 @@
 library;
 
 export 'accordion.dart';
+export 'ask_user_questions.dart';
 export 'badge.dart';
 export 'banner.dart';
 export 'breadcrumb.dart';
@@ -29,7 +30,9 @@ export 'input_copy.dart';
 export 'input_message.dart';
 export 'kbd.dart';
 export 'primitives.dart';
+export 'queued_stack.dart';
 export 'radio_group.dart';
+export 'reveal.dart';
 export 'scroll_area.dart';
 export 'select.dart';
 export 'settings_dialog.dart';

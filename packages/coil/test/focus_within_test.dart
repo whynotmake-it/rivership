@@ -107,4 +107,24 @@ void main() {
       reason: 'the second stop is Save, not the container',
     );
   });
+
+  testWidgets('a custom field marked always-visible counts like a text '
+      'field', (tester) async {
+    final node = FocusNode(debugLabel: 'custom');
+    addTearDown(node.dispose);
+    await _pump(
+      tester,
+      _panel([
+        CoilFocusAlwaysVisible(
+          child: Focus(
+            focusNode: node,
+            child: const SizedBox.square(dimension: 20),
+          ),
+        ),
+      ]),
+    );
+    node.requestFocus();
+    await tester.pump();
+    expect(find.text('outlined'), findsOneWidget);
+  });
 }

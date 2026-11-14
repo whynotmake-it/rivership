@@ -109,6 +109,7 @@ class CoilCheckbox extends StatelessWidget {
       sizes,
     ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(style);
     final enabled = onChanged != null;
+    final field = CoilFieldScope.maybeOf(context);
     void report() {
       unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
       onChanged!(_next);
@@ -127,15 +128,23 @@ class CoilCheckbox extends StatelessWidget {
           focusNode: focusNode,
           autofocus: autofocus,
           statesController: statesController,
-          minHitTarget: sizes.minHitTarget,
+          // A framing container is the target.
+          minHitTarget: (field?.framed ?? false) ? 0 : sizes.minHitTarget,
           builder: (context, states, _) => Opacity(
             opacity: enabled ? 1 : sizes.disabledOpacity,
             child: CoilFocusRing(
-              visible: states.contains(WidgetState.focused),
+              visible:
+                  states.contains(WidgetState.focused) &&
+                  !(field?.framed ?? false),
               borderRadius: _radiusOf(context, look),
               child: CoilCheckboxIndicator(
                 value: value,
-                states: {if (invalid) WidgetState.error, ...states},
+                states: {
+                  if (invalid) WidgetState.error,
+                  if (enabled && (field?.containerHovered ?? false))
+                    WidgetState.hovered,
+                  ...states,
+                },
                 size: size,
                 motion: motion,
                 motions: motions,

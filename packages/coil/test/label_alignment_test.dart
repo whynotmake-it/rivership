@@ -148,7 +148,7 @@ void main() {
         value: .4,
         onChanged: (_) {},
         label: InkLabel(ink, const Text('HEH')),
-        valueFormatter: (_) => 'HEH',
+        valueBuilder: (_, _) => const Text('HEH'),
       ),
     ),
     'switch/label': (ink) => CoilSwitch(

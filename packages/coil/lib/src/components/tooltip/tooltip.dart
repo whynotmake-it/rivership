@@ -27,6 +27,7 @@ class CoilTooltip extends StatelessWidget {
     required this.child,
     super.key,
     this.semanticLabel,
+    this.shortcut,
     this.motion,
   }) : assert(
          semanticLabel != null || message is Text || message is RichText,
@@ -46,6 +47,13 @@ class CoilTooltip extends StatelessWidget {
   /// [message] when that is a [Text] or [RichText].
   final String? semanticLabel;
 
+  /// A keyboard shortcut drawn after [message], usually a key cap. It
+  /// gets the bubble's inverted colors through [DefaultTextStyle] and
+  /// [IconTheme], 8 px from the message and centered on it.
+  ///
+  /// Screen readers don't hear it unless [semanticLabel] says it.
+  final Widget? shortcut;
+
   /// What the tooltip is for.
   final Widget child;
 
@@ -61,9 +69,24 @@ class CoilTooltip extends StatelessWidget {
         _ => '',
       };
 
+  /// The message with the shortcut after it. Keyed by the message's key,
+  /// so the bubble crossfades when that changes, as for a bare message.
+  Widget get _content => switch (shortcut) {
+    null => message,
+    final shortcut => Row(
+      key: ValueKey(message.key),
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8,
+      children: [
+        Flexible(child: message),
+        shortcut,
+      ],
+    ),
+  };
+
   @override
   Widget build(BuildContext context) => CoilTooltipAnchor(
-    content: message,
+    content: _content,
     semanticLabel: _semanticLabel,
     motion: motion,
     bubble: (context, presence, content) =>
