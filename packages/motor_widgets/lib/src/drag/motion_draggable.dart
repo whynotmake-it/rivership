@@ -6,6 +6,7 @@ import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/drag/flight.dart';
 import 'package:motor_widgets/src/painted_position.dart';
 import 'package:motor_widgets/src/reorder/motion_reorder.dart';
+import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// What happened to a [MotionDraggable]'s drag.
 enum MotionDragPhase {
@@ -217,18 +218,25 @@ typedef MotionDraggableTransitions =
 /// in the layout but hides its child. Grabbing the feedback while it lands
 /// starts a new drag from where it is.
 ///
-/// The feedback flies in the [Overlay], above everything. When the
-/// destination is inside a [MotionReorder], the feedback hands the rest of
-/// the landing to it once it is fully inside the destination's visible area
-/// (within all of its [Scrollable]s, or the overlay when it has none) and its
-/// [MotionDraggableTrack.scale], [MotionDraggableTrack.rotation],
-/// [MotionDraggableTrack.opacity] and size have settled. The item then
-/// finishes in the tree, keeping its velocity: clipped by its scrollables,
-/// stacked like itself, and redirected by a reorder. A drop into the same
-/// viewport hands off as soon as those tracks have settled. From then on
-/// [feedbackBuilder] no longer applies, and the rest of the landing uses the
-/// [MotionReorder]'s motion. Without a [MotionReorder], the feedback lands in
-/// the overlay.
+/// The feedback flies in the [Overlay], above everything, only while it has
+/// to. When the destination is inside a [MotionReorder], the feedback hands
+/// the rest of the landing to it as soon as the feedback's center is inside
+/// the destination's visible area (all of its [Scrollable]s, or the overlay
+/// when it has none) and the destination's slot is in view. For most drops
+/// that is the frame after the drop, since the pointer drops the card where
+/// its column can be seen. The item then finishes in the tree, keeping its
+/// velocity: clipped by its scrollables, stacked like itself, and redirected
+/// by a reorder. The destination continues the
+/// [MotionDraggableTrack.scale], [MotionDraggableTrack.rotation] and
+/// [MotionDraggableTrack.opacity] from where they were, back to rest, on the
+/// same motions. [feedbackBuilder] stops applying, and the position uses the
+/// [MotionReorder]'s motion.
+///
+/// A list doesn't paint an item whose slot is out of view. While the
+/// destination's slot is scrolled out of view, the feedback stays in the
+/// overlay but is clipped to the destination's visible area, as the list
+/// would clip it. Without a [MotionReorder], the feedback lands in the
+/// overlay.
 ///
 /// The feedback is laid out at the child's measured size. A [feedback] that
 /// wants its own size loosens those constraints, for example with [Align].
@@ -492,7 +500,34 @@ class MotionLongPressDraggable<T extends Object> extends MotionDraggable<T> {
 }
 
 class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
+    with FixedTickerProviderStateMixin, WidgetTickerRateMixin
     implements LandingSite {
+  /// Finishes the feedback's scale, rotation and opacity in the tree after a
+  /// landing was handed off here. Created on the first hand-off.
+  TrackController? _visuals;
+
+  @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void receiveVisuals(List<TrackValue<double>> values) {
+    if (!mounted) return;
+    if (_visuals == null) {
+      setState(() {
+        _visuals = TrackController(
+          vsync: this,
+          debugLabel: widget.debugLabel ?? 'MotionDraggable',
+        );
+      });
+    }
+    _visuals!
+      ..set(values)
+      ..animate([
+        for (final track in MotionDraggableTrack.visual)
+          track.toRest(widget.motions?[track] ?? widget.motion),
+      ]);
+  }
+
   LandingRegistry? _registry;
   Object? _registeredTag;
   MultiDragGestureRecognizer? _recognizer;
@@ -520,6 +555,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   @override
   void didUpdateWidget(MotionDraggable<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
     _register();
     for (final flight in _dragging) {
       flight.widget = widget;
@@ -545,6 +581,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   @override
   void dispose() {
     _unregister();
+    _visuals?.dispose();
     super.dispose();
   }
 
@@ -708,9 +745,16 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     // While a flight lands here, the child is hidden and the flight follows
     // where it is painted. The leader sits outside the Visibility, which
     // doesn't paint its child while hidden.
+    final visuals = _visuals;
     final child = LeaderWhile(
       link: landing ? landingLink : null,
-      child: Visibility.maintain(visible: !landing, child: widget.child),
+      child: PaintedVisuals(
+        listenable: visuals,
+        scale: () => visuals?.value(MotionDraggableTrack.scale) ?? 1,
+        turns: () => visuals?.value(MotionDraggableTrack.rotation) ?? 0,
+        opacity: () => visuals?.value(MotionDraggableTrack.opacity) ?? 1,
+        child: Visibility.maintain(visible: !landing, child: widget.child),
+      ),
     );
     final childWhenDragging =
         widget.childWhenDragging ??

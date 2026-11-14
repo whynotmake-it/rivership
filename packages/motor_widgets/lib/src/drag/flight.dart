@@ -28,6 +28,10 @@ abstract interface class LandingSite {
   /// painted rects in global coordinates, or null when it has none.
   Rect? get visibleRect;
 
+  /// Continues a handed-off landing's scale, rotation and opacity in the
+  /// tree, from [values] with their velocities, back to rest.
+  void receiveVisuals(List<TrackValue<double>> values);
+
   /// Called when a flight starts or stops landing on this site's tag, so
   /// that the site hides or shows its child.
   void landingChanged();
@@ -419,19 +423,29 @@ class DragFlight {
   }
 
   /// Hands the rest of the landing to the destination's [FlightReceiver]
-  /// once the feedback looks like the destination and is where the
-  /// destination can be seen, then leaves the overlay.
+  /// and leaves the overlay, as soon as the item is "in" its destination:
+  /// the feedback's center is inside the destination's visible area, and the
+  /// destination's slot is painted there.
+  ///
+  /// For most drops that is the first frame after the drop, because the
+  /// pointer drops the feedback where the destination can be seen. From then
+  /// on the item flies in the tree: clipped by its scrollables, stacked like
+  /// itself, and redirected by a reorder. The receiver takes the position;
+  /// the destination takes the scale, rotation and opacity, each with its
+  /// velocity. Only [MotionDraggable.feedbackBuilder]'s decoration ends.
+  ///
+  /// A list doesn't paint an item whose slot is out of view, so while the
+  /// slot is outside the visible area, the flight stays in the overlay,
+  /// clipped to that area as the list would clip it (see [_clip]), and
+  /// hands off once the slot is in view.
+  ///
+  /// It waits for the size to reach the destination's, within half a pixel,
+  /// since the item in the tree has its own layout.
   ///
   /// It runs on the flight's own tick, during a frame, so the receiver's
   /// spring starts at this frame's time and moves on in the next one
   /// (a ticker started between frames would stand still for a frame). The
-  /// rects it checks are where the last frame painted them. From then on the
-  /// item flies in the tree: clipped by its scrollables and stacked like
-  /// itself.
-  ///
-  /// The receiver only takes position, so the hand-off waits until the
-  /// visual tracks and the size have settled: the destination's child has no
-  /// place for them, and the feedback may differ from it.
+  /// rects it checks are where the last frame painted them.
   void _tryHandOff() {
     final site = _site;
     final controller = _controller;
@@ -439,40 +453,56 @@ class DragFlight {
     if (phase == MotionDragPhase.dragging || !_resolved) return;
     final receiver = site.flightReceiver;
     final rect = site.globalRect;
-    if (receiver == null || rect == null) return;
-    for (final track in [
-      MotionDraggableTrack.size,
-      ...MotionDraggableTrack.visual,
-    ]) {
-      if (controller.animationOf(track).isAnimating) return;
-    }
+    final slot = receiver?.layoutRect;
+    if (receiver == null || rect == null || slot == null) return;
     final size = controller.value(MotionDraggableTrack.size);
     if ((size.width - rect.width).abs() > 0.5 ||
         (size.height - rect.height).abs() > 0.5) {
       return;
     }
+    final visible = _visibleRect(site);
+    if (visible == null) return;
     final offset = controller.value(MotionDraggableTrack.offset);
-    final visible = site.visibleRect ?? _overlayRect();
-    final feedback = (rect.topLeft + offset) & rect.size;
-    if (visible == null || !_contains(visible, feedback)) return;
+    final center = (rect.topLeft + offset) & rect.size;
+    if (!visible.contains(center.center) || !visible.overlaps(slot)) return;
     receiver.receiveFlight(
       offset: offset,
       velocity: controller.velocity(MotionDraggableTrack.offset),
     );
+    site.receiveVisuals([
+      for (final track in MotionDraggableTrack.visual)
+        track.value(
+          controller.value(track),
+          velocity: controller.velocity(track),
+        ),
+    ]);
     _finish(landed: true);
+  }
+
+  /// Where the destination can be seen, in global coordinates.
+  Rect? _visibleRect(LandingSite site) => site.visibleRect ?? _overlayRect();
+
+  /// The rect to clip the feedback to, in global coordinates, or null.
+  ///
+  /// Once the feedback's center is inside the destination's visible area,
+  /// it belongs to the destination, which clips it. The flight is still in
+  /// the overlay only because the destination's slot is out of view, so it
+  /// clips itself to the same area.
+  Rect? _clip() {
+    final site = _site;
+    final controller = _controller;
+    if (site == null || controller == null || site.visibleRect == null) {
+      return null;
+    }
+    final visible = site.visibleRect!;
+    final center = globalTopLeft & controller.value(MotionDraggableTrack.size);
+    return visible.contains(center.center) ? visible : null;
   }
 
   Rect? _overlayRect() {
     final box = overlay.context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return null;
     return box.localToGlobal(Offset.zero) & box.size;
-  }
-
-  static bool _contains(Rect outer, Rect inner) {
-    // Half a pixel of slack, so a card that fills its viewport exactly
-    // still fits.
-    final slack = outer.inflate(0.5);
-    return slack.contains(inner.topLeft) && slack.contains(inner.bottomRight);
   }
 
   void _loseSite(LandingSite site) {
@@ -672,26 +702,48 @@ class _FlightViewState extends State<_FlightView>
 
     final feedback = config.feedback ?? config.child;
     final site = flight._site;
-    return Positioned(
-      left: topLeft.dx,
-      top: topLeft.dy,
-      width: size.width,
-      height: size.height,
-      // While landing, the feedback follows where the destination is painted
-      // when the frame is composited, after it has moved this frame. Until
-      // the destination has painted its leader, and while there is none, it
-      // shows where it is positioned. The follower stays in the tree either
-      // way, so the feedback keeps its state.
-      child: CompositedTransformFollower(
-        link: site?.landingLink ?? flight._unlinked,
-        offset: site == null ? Offset.zero : value(MotionDraggableTrack.offset),
-        child: _buildContent(
-          context,
-          flight: flight,
-          details: details,
-          dragging: dragging,
-          grabbable: grabbable,
-          feedback: feedback,
+    final clip = flight._clip();
+    final localClip = clip == null
+        ? null
+        : overlayBox is RenderBox && overlayBox.hasSize
+        ? overlayBox.globalToLocal(clip.topLeft) & clip.size
+        : clip;
+    // The clip and the stack stay in the tree whether or not they clip, so
+    // the feedback keeps its state.
+    return Positioned.fill(
+      child: ClipRect(
+        clipper: _RectClipper(localClip),
+        clipBehavior: localClip == null ? Clip.none : Clip.hardEdge,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: topLeft.dx,
+              top: topLeft.dy,
+              width: size.width,
+              height: size.height,
+              // While landing, the feedback follows where the destination is
+              // painted when the frame is composited, after it has moved
+              // this frame. Until the destination has painted its leader,
+              // and while there is none, it shows where it is positioned.
+              // The follower stays in the tree either way, so the feedback
+              // keeps its state.
+              child: CompositedTransformFollower(
+                link: site?.landingLink ?? flight._unlinked,
+                offset: site == null
+                    ? Offset.zero
+                    : value(MotionDraggableTrack.offset),
+                child: _buildContent(
+                  context,
+                  flight: flight,
+                  details: details,
+                  dragging: dragging,
+                  grabbable: grabbable,
+                  feedback: feedback,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -738,4 +790,16 @@ class _FlightViewState extends State<_FlightView>
       ),
     );
   }
+}
+
+class _RectClipper extends CustomClipper<Rect> {
+  const _RectClipper(this.rect);
+
+  final Rect? rect;
+
+  @override
+  Rect getClip(Size size) => rect ?? Offset.zero & size;
+
+  @override
+  bool shouldReclip(_RectClipper oldClipper) => oldClipper.rect != rect;
 }

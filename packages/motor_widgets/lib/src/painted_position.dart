@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -104,6 +106,13 @@ abstract interface class FlightReceiver {
   /// Both are relative to the child's current painted position, so a flight
   /// the receiver is already running carries on underneath.
   void receiveFlight({required Offset offset, required Offset velocity});
+
+  /// The receiver's layout rect in global coordinates, without paint
+  /// offsets, or null while it isn't laid out.
+  ///
+  /// A list paints an item only while this rect overlaps its viewport, so a
+  /// flight handed to an item whose slot is out of view isn't seen.
+  Rect? get layoutRect;
 }
 
 /// The nearest [FlightReceiver] above [box] that can take a flight now.
@@ -115,4 +124,134 @@ FlightReceiver? flightReceiverAbove(RenderObject box) {
     }
   }
   return null;
+}
+
+/// Paints its child scaled and rotated around its center, and faded, by
+/// the values [scale], [turns] and [opacity] return, repainting whenever
+/// [listenable] notifies.
+///
+/// Only painting changes: layout and hit testing stay where the child is,
+/// as with a paint offset. At rest (1, 0 and 1) it paints the child as is.
+class PaintedVisuals extends SingleChildRenderObjectWidget {
+  /// Paints [child] with the visuals that [scale], [turns] and [opacity]
+  /// return.
+  const PaintedVisuals({
+    required this.listenable,
+    required this.scale,
+    required this.turns,
+    required this.opacity,
+    super.child,
+    super.key,
+  });
+
+  /// Notifies when the visuals change.
+  final Listenable? listenable;
+
+  /// The scale around the child's center.
+  final ValueGetter<double> scale;
+
+  /// The clockwise rotation around the child's center, in full turns.
+  final ValueGetter<double> turns;
+
+  /// The opacity, clamped to 0 and 1.
+  final ValueGetter<double> opacity;
+
+  @override
+  RenderPaintedVisuals createRenderObject(BuildContext context) =>
+      RenderPaintedVisuals(this);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderPaintedVisuals renderObject,
+  ) {
+    renderObject.widget = this;
+  }
+}
+
+/// The render object of [PaintedVisuals].
+class RenderPaintedVisuals extends RenderProxyBox {
+  /// Paints with [widget]'s visuals.
+  RenderPaintedVisuals(this._widget);
+
+  /// The configuration.
+  PaintedVisuals get widget => _widget;
+  PaintedVisuals _widget;
+  set widget(PaintedVisuals value) {
+    if (identical(value, _widget)) return;
+    final listens = attached && value.listenable != _widget.listenable;
+    if (listens) _widget.listenable?.removeListener(markNeedsPaint);
+    _widget = value;
+    if (listens) _widget.listenable?.addListener(markNeedsPaint);
+    markNeedsPaint();
+  }
+
+  final _transform = LayerHandle<TransformLayer>();
+  final _opacity = LayerHandle<OpacityLayer>();
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _widget.listenable?.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _widget.listenable?.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void dispose() {
+    _transform.layer = null;
+    _opacity.layer = null;
+    super.dispose();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    final scale = _widget.scale();
+    final angle = _widget.turns() * 2 * math.pi;
+    final alpha = (_widget.opacity().clamp(0.0, 1.0) * 255).round();
+    if (alpha == 0) {
+      _transform.layer = null;
+      _opacity.layer = null;
+      return;
+    }
+
+    void paintTransformed(PaintingContext context, Offset offset) {
+      if (scale == 1 && angle == 0) {
+        _transform.layer = null;
+        context.paintChild(child, offset);
+        return;
+      }
+      final center = size.center(Offset.zero);
+      final transform = Matrix4.identity()
+        ..translateByDouble(center.dx, center.dy, 0, 1)
+        ..rotateZ(angle)
+        ..scaleByDouble(scale, scale, 1, 1)
+        ..translateByDouble(-center.dx, -center.dy, 0, 1);
+      _transform.layer = context.pushTransform(
+        needsCompositing,
+        offset,
+        transform,
+        (context, offset) => context.paintChild(child, offset),
+        oldLayer: _transform.layer,
+      );
+    }
+
+    if (alpha == 255) {
+      _opacity.layer = null;
+      paintTransformed(context, offset);
+      return;
+    }
+    _opacity.layer = context.pushOpacity(
+      offset,
+      alpha,
+      paintTransformed,
+      oldLayer: _opacity.layer,
+    );
+  }
 }

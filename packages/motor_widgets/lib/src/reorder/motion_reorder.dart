@@ -349,6 +349,10 @@ class _RenderMotionReorder extends RenderProxyBox
   @override
   bool get canReceiveFlight => _enabled && attached && hasSize;
 
+  @override
+  Rect? get layoutRect =>
+      attached && hasSize ? localToGlobal(Offset.zero) & size : null;
+
   /// Takes over a `MotionDraggable` landing on this item: the child is
   /// painted [offset] further away than it is now, moving [velocity]
   /// faster, and this item's flight springs it home from there.

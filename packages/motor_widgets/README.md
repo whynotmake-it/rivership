@@ -191,12 +191,14 @@ destination is painted, also while that scrolls, resizes or flies in a
 but hides its child. Grabbing the feedback mid-landing drags it on from
 where it is.
 
-The feedback flies in the `Overlay`, above everything. Inside a
-`MotionReorder`, it hands the rest of the landing to it once it is fully
-inside the destination's scrollables and its scale, rotation, opacity and
-size have settled. The item then finishes in the tree with its velocity,
-clipped and stacked like itself, and a reorder redirects it. Without a
-`MotionReorder`, the feedback lands in the overlay.
+The feedback flies in the `Overlay`, above everything, only while it has
+to. Inside a `MotionReorder`, it hands the rest of the landing to it as
+soon as its center is inside the destination's scrollables, usually the
+frame after the drop. The item then finishes in the tree with its velocity,
+scale, rotation and opacity, clipped and stacked like itself, and a reorder
+redirects it. While the destination's slot is scrolled out of view, the
+feedback stays in the overlay, clipped to the destination's scrollables.
+Without a `MotionReorder`, the feedback lands in the overlay.
 
 ```dart
 MotionDraggable<Task>(
