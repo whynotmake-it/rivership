@@ -104,6 +104,16 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
     rest: 1,
   );
 
+  /// The overlay copy fading out after a hand-off to the tree, from 1 to 0.
+  ///
+  /// The draggable owns this track. Its motion defaults to a short smooth
+  /// spring and can be set through [MotionDraggable.motions].
+  static final handoffFade = MotionDraggableTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionDraggable.handoffFade',
+    rest: 1,
+  );
+
   /// The tracks that [MotionDraggable.transitions] may animate.
   static final List<MotionDraggableTrack<double>> visual = [
     scale,
@@ -769,6 +779,9 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   Widget build(BuildContext context) {
     final widget = this.widget;
     final landing = _registry?.isLanding(_tag) ?? false;
+    // After a hand-off, the flight's overlay copy fades out over the child
+    // and keeps following where it is painted.
+    final fading = _registry?.isFading(_tag) ?? false;
     final callbacks = _DraggableCallbacks(
       onDragCompleted: () {
         _ending?.accepted = true;
@@ -781,7 +794,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     // doesn't paint its child while hidden.
     final visuals = _visuals;
     final child = LeaderWhile(
-      link: landing ? landingLink : null,
+      link: landing || fading ? landingLink : null,
       child: PaintedVisuals(
         listenable: visuals,
         scale: () => visuals?.value(MotionDraggableTrack.scale) ?? 1,

@@ -177,8 +177,13 @@ class _ScrollBoard extends StatefulWidget {
     this.boardWidth,
     this.transitions,
     this.handoff = MotionDragHandoff.onEnter,
+    this.handoffFade = const Motion.instant(),
     super.key,
   });
+
+  /// The fade of the overlay copy after a hand-off. Instant by default, so
+  /// the hand-off tests see the flight leave the overlay at once.
+  final Motion handoffFade;
 
   /// The cards' transitions.
   final MotionDraggableTransitions? transitions;
@@ -219,6 +224,7 @@ class _ScrollBoardState extends State<_ScrollBoard> {
       data: id,
       transitions: widget.transitions,
       handoff: widget.handoff,
+      motions: {MotionDraggableTrack.handoffFade: widget.handoffFade},
       feedback: const ColoredBox(key: _feedback, color: Color(0xFF000000)),
       child: SizedBox.fromSize(
         key: ValueKey('child-$id'),
@@ -984,6 +990,46 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(_paintedRect(tester, 'x').topLeft, Offset.zero);
+    });
+
+    testWidgets('after a hand-off, the overlay copy fades out on top', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          const _ScrollBoard(
+            handoffFade: CupertinoMotion.smooth(
+              duration: Duration(milliseconds: 150),
+            ),
+          ),
+        ),
+      );
+
+      final gesture = await _drag(tester, const Offset(20, 100));
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(fineFrame);
+      // Handed off: the card shows in the tree while its copy still sits on
+      // top, fading.
+      expect(_isShown(tester, 'x'), isTrue);
+      expect(_inOverlay(), isTrue);
+      await tester.pump(fineFrame);
+      final opacity = tester
+          .widget<Opacity>(
+            find
+                .ancestor(
+                  of: find.byKey(_feedback),
+                  matching: find.byType(Opacity),
+                )
+                .first,
+          )
+          .opacity;
+      expect(opacity, lessThan(1));
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(_inOverlay(), isFalse);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('without a MotionReorder, the overlay flight lands', (

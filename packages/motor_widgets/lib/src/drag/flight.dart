@@ -61,6 +61,7 @@ class LandingRegistry {
 
   final _sites = <Object, List<LandingSite>>{};
   final _landing = <Object, int>{};
+  final _fading = <Object, int>{};
 
   /// Registers [site] under [tag].
   void add(Object tag, LandingSite site) => (_sites[tag] ??= []).add(site);
@@ -78,6 +79,29 @@ class LandingRegistry {
 
   /// Whether a flight is landing on [tag], so its sites hide their child.
   bool isLanding(Object tag) => _landing.containsKey(tag);
+
+  /// Whether a handed-off flight's overlay copy is fading out over [tag], so
+  /// its sites keep leading the flight without hiding their child.
+  bool isFading(Object tag) => _fading.containsKey(tag);
+
+  /// Marks [tag] as fading until a matching [endFade].
+  void beginFade(Object tag) {
+    final count = _fading[tag] ?? 0;
+    _fading[tag] = count + 1;
+    if (count == 0) _notify(tag);
+  }
+
+  /// Ends one [beginFade] of [tag].
+  void endFade(Object tag) {
+    final count = _fading[tag];
+    if (count == null) return;
+    if (count > 1) {
+      _fading[tag] = count - 1;
+      return;
+    }
+    _fading.remove(tag);
+    _notify(tag);
+  }
 
   /// Marks [tag] as landing until a matching [endLanding].
   void beginLanding(Object tag) {
@@ -198,6 +222,11 @@ class DragFlight {
   /// Whether the destination has been looked up since the drop.
   var _resolved = false;
   var _landingMarked = false;
+
+  /// Whether the flight has handed off to the tree and its overlay copy is
+  /// fading out over the destination.
+  var _fadingOut = false;
+  var _finishScheduled = false;
 
   /// The destination, and its rect as last measured. While there is one,
   /// the offset track holds the distance from its top-left.
@@ -453,6 +482,19 @@ class DragFlight {
     final site = _site;
     final controller = _controller;
     if (_done || site == null || controller == null) return;
+    if (_fadingOut) {
+      // The copy is gone once faded, even if the flight's other springs
+      // are still settling: the destination carries those on. Removing the
+      // entry disposes this controller, so not from inside its own tick.
+      if (controller.value(MotionDraggableTrack.handoffFade) <= 0.01 &&
+          !_finishScheduled) {
+        _finishScheduled = true;
+        SchedulerBinding.instance.addPostFrameCallback(
+          (_) => _finish(landed: true),
+        );
+      }
+      return;
+    }
     if (phase == MotionDragPhase.dragging || !_resolved) return;
     final receiver = site.flightReceiver;
     final rect = site.globalRect;
@@ -483,7 +525,22 @@ class DragFlight {
           velocity: controller.velocity(track),
         ),
     ]);
-    _finish(landed: true);
+    // The overlay copy fades out on top while the destination, now drawn in
+    // the tree, carries on, so the change of layer reads as a transition.
+    // It keeps following where the destination is painted.
+    final fade =
+        widget.motions?[MotionDraggableTrack.handoffFade] ??
+        const CupertinoMotion.smooth(duration: Duration(milliseconds: 150));
+    if (fade == const Motion.instant()) {
+      _finish(landed: true);
+      return;
+    }
+    _fadingOut = true;
+    registry.beginFade(tag);
+    _endLanding();
+    controller.animate([
+      MotionDraggableTrack.handoffFade([TrackStep.to(0, motion: fade)]),
+    ]);
   }
 
   /// Where the destination can be seen, in global coordinates.
@@ -498,6 +555,7 @@ class DragFlight {
   Rect? _clip() {
     final site = _site;
     final controller = _controller;
+    if (_fadingOut) return site?.visibleRect;
     if (site == null ||
         controller == null ||
         widget.handoff != MotionDragHandoff.onEnter ||
@@ -610,10 +668,17 @@ class DragFlight {
     if (_done) return;
     _done = true;
     _endLanding();
+    _endFade();
     _entry
       ..remove()
       ..dispose();
     if (landed) widget.onLanded?.call();
+  }
+
+  void _endFade() {
+    if (!_fadingOut) return;
+    _fadingOut = false;
+    registry.endFade(tag);
   }
 
   void _attach(_FlightViewState view) {
@@ -639,6 +704,7 @@ class DragFlight {
     // The overlay went away while the flight was still in it.
     _done = true;
     _endLanding();
+    _endFade();
   }
 
   void _onStatus(AnimationStatus status) {
@@ -709,7 +775,7 @@ class _FlightViewState extends State<_FlightView>
     final size = value(MotionDraggableTrack.size);
     final details = flight.details;
     final dragging = flight.phase == MotionDragPhase.dragging;
-    final grabbable = !dragging && flight._site != null;
+    final grabbable = !dragging && !flight._fadingOut && flight._site != null;
 
     final feedback = config.feedback ?? config.child;
     final site = flight._site;
@@ -741,7 +807,9 @@ class _FlightViewState extends State<_FlightView>
               // keeps its state.
               child: CompositedTransformFollower(
                 link: site?.landingLink ?? flight._unlinked,
-                offset: site == null
+                // After a hand-off the destination paints the card itself,
+                // so the fading copy sits right on top of it.
+                offset: site == null || flight._fadingOut
                     ? Offset.zero
                     : value(MotionDraggableTrack.offset),
                 child: _buildContent(
@@ -782,7 +850,10 @@ class _FlightViewState extends State<_FlightView>
         child: ExcludeSemantics(
           excluding: config.ignoringFeedbackSemantics,
           child: Opacity(
-            opacity: value(MotionDraggableTrack.opacity).clamp(0, 1),
+            opacity:
+                (value(MotionDraggableTrack.opacity) *
+                        value(MotionDraggableTrack.handoffFade))
+                    .clamp(0, 1),
             child: Transform.rotate(
               angle: value(MotionDraggableTrack.rotation) * 2 * math.pi,
               child: Transform.scale(
