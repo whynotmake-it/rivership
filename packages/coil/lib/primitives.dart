@@ -17,6 +17,7 @@ export 'src/primitives/drawn_glyph.dart';
 export 'src/primitives/edge_fade.dart';
 export 'src/primitives/field_scope.dart';
 export 'src/primitives/focus_ring.dart';
+export 'src/primitives/focus_within.dart';
 export 'src/primitives/hover.dart';
 export 'src/primitives/interaction.dart';
 export 'src/primitives/layer.dart';
