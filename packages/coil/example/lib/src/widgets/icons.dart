@@ -129,6 +129,11 @@ class Glyph {
     LucideIcons300.workflow,
     LucideIcons400.workflow,
   );
+  static const shuffle = Glyph(LucideIcons300.shuffle, LucideIcons400.shuffle);
+  static const sort = Glyph(
+    LucideIcons300.arrowDown01,
+    LucideIcons400.arrowDown01,
+  );
   static const cornerDownRight = Glyph(
     LucideIcons300.cornerDownRightDir,
     LucideIcons400.cornerDownRightDir,
