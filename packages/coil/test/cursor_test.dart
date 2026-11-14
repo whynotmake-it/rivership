@@ -78,8 +78,8 @@ void main() {
       _app(
         CoilBreadcrumb(
           crumbs: [
-            CoilCrumb(label: 'Home', onPressed: () {}),
-            const CoilCrumb(label: 'Docs'),
+            CoilCrumb(label: const Text('Home'), onPressed: () {}),
+            const CoilCrumb(label: Text('Docs')),
           ],
         ),
       ),
