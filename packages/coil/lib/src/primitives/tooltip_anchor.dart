@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:coil/src/foundation/input_modality.dart';
@@ -18,6 +19,33 @@ typedef CoilTooltipBubbleBuilder =
       Animation<double> presence,
       Widget content,
     );
+
+/// The side of its trigger a tooltip bubble prefers. It flips to the
+/// opposite side when there's no room.
+enum CoilTooltipSide {
+  /// Above the trigger.
+  top,
+
+  /// Below the trigger.
+  bottom,
+
+  /// Before the trigger's start: left of it in left-to-right text.
+  start,
+
+  /// Past the trigger's end: right of it in left-to-right text.
+  end,
+}
+
+/// What a tooltip bubble lines up with along its trigger's edge.
+enum CoilTooltipFollow {
+  /// The trigger's center.
+  trigger,
+
+  /// The hovering pointer, following it as it moves, for a long trigger
+  /// such as a resize strip. Without a hovering pointer, the trigger's
+  /// center.
+  pointer,
+}
 
 /// The motion of a bubble's presence: in on `quick`, out on `quickExit`.
 /// Under reduced motion an overlay only fades, so it's `fade` and
@@ -43,9 +71,10 @@ Motion _presenceMotion(
 /// * Touch: on Android a long-press shows it while the finger stays down,
 ///   without firing [child]. iOS shows none.
 ///
-/// The bubble sits [gap] above [child], or below when there's no room
-/// above. Its enter and exit are whatever [bubble] builds from the presence;
-/// coil's tooltip blur-fades and slides in with [CoilTooltipSlide]. Under
+/// The bubble sits [gap] from [child] on its [side], or on the opposite
+/// side when there's no room, lined up as [follow] says. Its enter and
+/// exit are whatever [bubble] builds from the presence; coil's tooltip
+/// blur-fades and slides in with [CoilTooltipSlide]. Under
 /// reduced motion the presence springs on `fade`. It follows [child] every
 /// frame while [child] moves in layout, without rebuilding the bubble.
 ///
@@ -64,6 +93,8 @@ class CoilTooltipAnchor extends StatefulWidget {
     required this.bubble,
     required this.child,
     super.key,
+    this.side = CoilTooltipSide.top,
+    this.follow = CoilTooltipFollow.trigger,
     this.motion,
   }) : presence = null;
 
@@ -81,6 +112,8 @@ class CoilTooltipAnchor extends StatefulWidget {
     required this.bubble,
     required this.child,
     super.key,
+    this.side = CoilTooltipSide.top,
+    this.follow = CoilTooltipFollow.trigger,
   }) : semanticLabel = null,
        motion = null;
 
@@ -99,6 +132,14 @@ class CoilTooltipAnchor extends StatefulWidget {
 
   /// What the tooltip is for.
   final Widget child;
+
+  /// The side of [child] the bubble prefers. Inside a
+  /// [CoilTooltipAnchorGroup], the group's side counts instead.
+  final CoilTooltipSide side;
+
+  /// What the bubble lines up with along [child]'s edge. Inside a
+  /// [CoilTooltipAnchorGroup], the bubble lines up with the trigger.
+  final CoilTooltipFollow follow;
 
   /// Overrides the theme's motion tokens. Unused by a controlled anchor.
   final CoilMotion? motion;
@@ -131,6 +172,10 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
   )..addStatusListener(_onStatus);
   Timer? _delay;
   bool _shown = false;
+
+  /// The hovering pointer in [CoilTooltipAnchor.child]'s coordinates, for
+  /// [CoilTooltipFollow.pointer]. Only the bubble's placement listens.
+  final _pointer = ValueNotifier<Offset?>(null);
 
   /// The group showing this anchor's tooltip, if any.
   _CoilTooltipAnchorGroupState? _group;
@@ -172,6 +217,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     _group?._forget(this);
     widget.presence?.removeStatusListener(_onControlledStatus);
     _presence.dispose();
+    _pointer.dispose();
     super.dispose();
   }
 
@@ -254,10 +300,15 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
             info.childPaintTransform,
             Offset.zero & info.childSize,
           ),
+          side: widget.side,
+          pointer: switch (widget.follow) {
+            CoilTooltipFollow.trigger => null,
+            CoilTooltipFollow.pointer => (_pointer, info.childPaintTransform),
+          },
           child: bubble,
         ),
       ),
-      child: widget.presence == null ? _trigger() : widget.child,
+      child: _tracked(widget.presence == null ? _trigger() : widget.child),
     );
     final semanticLabel = widget.semanticLabel;
     if (semanticLabel == null) return portal;
@@ -275,6 +326,17 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
       ),
     );
   }
+
+  /// [child] with the hovering pointer tracked, for
+  /// [CoilTooltipFollow.pointer].
+  Widget _tracked(Widget child) => switch (widget.follow) {
+    CoilTooltipFollow.trigger => child,
+    CoilTooltipFollow.pointer => MouseRegion(
+      onEnter: (event) => _pointer.value = event.localPosition,
+      onHover: (event) => _pointer.value = event.localPosition,
+      child: child,
+    ),
+  };
 
   /// [CoilTooltipAnchor.child] with the pointer and long-press triggers.
   Widget _trigger() {
@@ -316,8 +378,12 @@ class CoilTooltipAnchorGroup extends StatefulWidget {
     required this.bubble,
     required this.child,
     super.key,
+    this.side = CoilTooltipSide.top,
     this.motion,
   });
+
+  /// The side of each trigger the shared bubble prefers.
+  final CoilTooltipSide side;
 
   /// Builds the shared bubble around the current anchor's content.
   final CoilTooltipBubbleBuilder bubble;
@@ -441,6 +507,7 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
             // Laid out on the anchor it heads for; the glide is painted.
             builder: (context, glide, child) => _BubblePlacement(
               anchor: rect,
+              side: widget.side,
               glide: glide,
               child: child,
             ),
@@ -465,16 +532,28 @@ class _GroupScope extends InheritedWidget {
   bool updateShouldNotify(_GroupScope oldWidget) => oldWidget.group != group;
 }
 
-/// Places the bubble above the trigger, or below when there's no room
-/// above.
+/// Places the bubble on [side] of the trigger, or on the opposite side
+/// when there's no room, lined up with [pointer] when given.
 ///
 /// In a group, [glide] is where the bubble is on its way to [anchor]: the
 /// bubble is drawn there as if it were placed on that rect.
 class _BubblePlacement extends SingleChildRenderObjectWidget {
-  const _BubblePlacement({required this.anchor, this.glide, super.child});
+  const _BubblePlacement({
+    required this.anchor,
+    required this.side,
+    this.pointer,
+    this.glide,
+    super.child,
+  });
 
   /// The trigger's rect in the overlay.
   final Rect anchor;
+
+  final CoilTooltipSide side;
+
+  /// The hovering pointer in the trigger's coordinates, and the trigger's
+  /// transform into the overlay.
+  final (ValueListenable<Offset?>, Matrix4)? pointer;
 
   /// The rect the bubble is drawn on while it glides to [anchor].
   final Rect? glide;
@@ -483,8 +562,11 @@ class _BubblePlacement extends SingleChildRenderObjectWidget {
   _RenderBubblePlacement createRenderObject(BuildContext context) =>
       _RenderBubblePlacement(
         anchor: anchor,
+        side: side,
+        pointer: pointer,
         glide: glide,
-        safeTop: MediaQuery.paddingOf(context).top,
+        textDirection: Directionality.of(context),
+        safeArea: MediaQuery.paddingOf(context),
       );
 
   @override
@@ -494,8 +576,11 @@ class _BubblePlacement extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..anchor = anchor
+      ..side = side
+      ..pointer = pointer
       ..glide = glide
-      ..safeTop = MediaQuery.paddingOf(context).top;
+      ..textDirection = Directionality.of(context)
+      ..safeArea = MediaQuery.paddingOf(context);
   }
 }
 
@@ -507,8 +592,11 @@ class _RenderBubblePlacement extends RenderBox
     with RenderObjectWithChildMixin<RenderBox> {
   _RenderBubblePlacement({
     required this._anchor,
+    required this._side,
+    required this._pointer,
     required this._glide,
-    required this._safeTop,
+    required this._textDirection,
+    required this._safeArea,
   });
 
   static const _edge = 8.0;
@@ -530,6 +618,24 @@ class _RenderBubblePlacement extends RenderBox
     markNeedsLayout();
   }
 
+  CoilTooltipSide get side => _side;
+  CoilTooltipSide _side;
+  set side(CoilTooltipSide value) {
+    if (value == _side) return;
+    _side = value;
+    markNeedsLayout();
+  }
+
+  (ValueListenable<Offset?>, Matrix4)? get pointer => _pointer;
+  (ValueListenable<Offset?>, Matrix4)? _pointer;
+  set pointer((ValueListenable<Offset?>, Matrix4)? value) {
+    if (value == _pointer) return;
+    if (attached) _pointer?.$1.removeListener(markNeedsLayout);
+    _pointer = value;
+    if (attached) _pointer?.$1.addListener(markNeedsLayout);
+    markNeedsLayout();
+  }
+
   Rect? get glide => _glide;
   Rect? _glide;
   set glide(Rect? value) {
@@ -539,19 +645,27 @@ class _RenderBubblePlacement extends RenderBox
     markNeedsPaint();
   }
 
-  double get safeTop => _safeTop;
-  double _safeTop;
-  set safeTop(double value) {
-    if (value == _safeTop) return;
-    _safeTop = value;
+  TextDirection get textDirection => _textDirection;
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  EdgeInsets get safeArea => _safeArea;
+  EdgeInsets _safeArea;
+  set safeArea(EdgeInsets value) {
+    if (value == _safeArea) return;
+    _safeArea = value;
     markNeedsLayout();
   }
 
   Offset _childOffset = Offset.zero;
 
-  /// Whether the bubble sits above its trigger, picked in layout.
-  bool get above => _above;
-  bool _above = true;
+  /// Which way the bubble is from its trigger, picked in layout.
+  AxisDirection get direction => _direction;
+  AxisDirection _direction = AxisDirection.up;
 
   /// Whether the bubble is mid-glide, so painted through a matrix filter.
   bool _gliding = false;
@@ -571,7 +685,14 @@ class _RenderBubblePlacement extends RenderBox
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
+    _pointer?.$1.addListener(markNeedsLayout);
     _gliding = _shouldGlide;
+  }
+
+  @override
+  void detach() {
+    _pointer?.$1.removeListener(markNeedsLayout);
+    super.detach();
   }
 
   @override
@@ -579,6 +700,35 @@ class _RenderBubblePlacement extends RenderBox
 
   @override
   Size computeDryLayout(BoxConstraints constraints) => constraints.biggest;
+
+  /// The preferred side as a direction from the trigger.
+  AxisDirection get _preferred {
+    final ltr = _textDirection == TextDirection.ltr;
+    return switch (_side) {
+      CoilTooltipSide.top => AxisDirection.up,
+      CoilTooltipSide.bottom => AxisDirection.down,
+      CoilTooltipSide.start => ltr ? AxisDirection.left : AxisDirection.right,
+      CoilTooltipSide.end => ltr ? AxisDirection.right : AxisDirection.left,
+    };
+  }
+
+  /// Whether a bubble of [bubble]'s size fits on [direction] of the anchor.
+  bool _fits(AxisDirection direction, Size bubble) {
+    const gap = CoilTooltipAnchor.gap;
+    final room = switch (direction) {
+      AxisDirection.up => _anchor.top - gap - _safeArea.top - _edge,
+      AxisDirection.down =>
+        size.height - _safeArea.bottom - _edge - _anchor.bottom - gap,
+      AxisDirection.left => _anchor.left - gap - _safeArea.left - _edge,
+      AxisDirection.right =>
+        size.width - _safeArea.right - _edge - _anchor.right - gap,
+    };
+    return room >=
+        switch (axisDirectionToAxis(direction)) {
+          Axis.vertical => bubble.height,
+          Axis.horizontal => bubble.width,
+        };
+  }
 
   @override
   void performLayout() {
@@ -588,23 +738,46 @@ class _RenderBubblePlacement extends RenderBox
       BoxConstraints.loose(size).deflate(const EdgeInsets.all(_edge)),
       parentUsesSize: true,
     );
-    final bubble = child.size;
-    final roomAbove = _anchor.top - CoilTooltipAnchor.gap - _safeTop - _edge;
-    _above = roomAbove >= bubble.height;
-    _childOffset = _place(_anchor);
+    final preferred = _preferred;
+    _direction = _fits(preferred, child.size)
+        ? preferred
+        : flipAxisDirection(preferred);
+    _childOffset = _place(_anchor, pointer: _pointerInOverlay);
   }
 
-  /// Where the bubble goes for [anchor], on the side picked in layout.
-  Offset _place(Rect anchor) {
+  /// The hovering pointer in the overlay, if the bubble follows it.
+  Offset? get _pointerInOverlay {
+    final (pointer, transform) = _pointer ?? (null, null);
+    final local = pointer?.value;
+    if (local == null || transform == null) return null;
+    return MatrixUtils.transformPoint(transform, local);
+  }
+
+  /// Where the bubble goes for [anchor] on the side picked in layout,
+  /// lined up with [pointer] if given, else with the anchor's center. It
+  /// stays inside the overlay's edges and safe area.
+  Offset _place(Rect anchor, {Offset? pointer}) {
     final bubble = child!.size;
-    final y = _above
-        ? anchor.top - CoilTooltipAnchor.gap - bubble.height
-        : anchor.bottom + CoilTooltipAnchor.gap;
-    final x = (anchor.center.dx - bubble.width / 2).clamp(
-      _edge,
-      size.width - _edge - bubble.width,
+    const gap = CoilTooltipAnchor.gap;
+    final focus = pointer ?? anchor.center;
+    double within(double value, double min, double max) =>
+        value.clamp(min, math.max(min, max));
+    final x = within(
+      focus.dx - bubble.width / 2,
+      _edge + _safeArea.left,
+      size.width - _edge - _safeArea.right - bubble.width,
     );
-    return Offset(x, y);
+    final y = within(
+      focus.dy - bubble.height / 2,
+      _edge + _safeArea.top,
+      size.height - _edge - _safeArea.bottom - bubble.height,
+    );
+    return switch (_direction) {
+      AxisDirection.up => Offset(x, anchor.top - gap - bubble.height),
+      AxisDirection.down => Offset(x, anchor.bottom + gap),
+      AxisDirection.left => Offset(anchor.left - gap - bubble.width, y),
+      AxisDirection.right => Offset(anchor.right + gap, y),
+    };
   }
 
   /// The glide's remaining way: how far the bubble is drawn from where it's
@@ -672,10 +845,10 @@ ImageFilterLayer _pushTranslation(
   return layer;
 }
 
-/// A tooltip bubble's slide: [child] is drawn [distance] away from the
-/// trigger at [presence] 0 and comes to rest at 1, toward the trigger of
-/// the [CoilTooltipAnchor] whose bubble it's in, on whichever side the
-/// bubble sits. Under reduced motion it doesn't move.
+/// A tooltip bubble's slide: [child] is drawn [distance] closer to the
+/// trigger at [presence] 0 and moves out to rest at 1, away from the
+/// trigger of the [CoilTooltipAnchor] whose bubble it's in, on whichever
+/// side the bubble sits. Under reduced motion it doesn't move.
 ///
 /// Like the rest of an enter transition it belongs in the anchor's bubble
 /// builder, around the bubble:
@@ -777,7 +950,7 @@ class _RenderTooltipSlide extends RenderProxyBox {
     super.detach();
   }
 
-  /// Away from the trigger: up when the bubble is above it, down below.
+  /// Back toward the trigger, on whichever side the bubble sits.
   Offset get _offset {
     if (!_sliding) return Offset.zero;
     final placement = _RenderBubblePlacement.maybeOf(this);
@@ -786,7 +959,12 @@ class _RenderTooltipSlide extends RenderProxyBox {
       'CoilTooltipSlide must be inside a CoilTooltipAnchor bubble.',
     );
     final away = _distance * (1 - _presence.value);
-    return Offset(0, placement?.above ?? true ? -away : away);
+    return switch (placement?.direction ?? AxisDirection.up) {
+      AxisDirection.up => Offset(0, away),
+      AxisDirection.down => Offset(0, -away),
+      AxisDirection.left => Offset(away, 0),
+      AxisDirection.right => Offset(-away, 0),
+    };
   }
 
   @override
