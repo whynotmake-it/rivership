@@ -67,7 +67,8 @@ enum CoilRevealSteps {
 /// set by [preset], starting with the first. After [steps] the rest arrive
 /// together, so a long list doesn't trickle in. A child added later arrives
 /// on its own, at its place's delay. Rebuilds don't replay it, and nothing
-/// moves on scroll.
+/// moves on scroll. A Reveal that's built anew, such as by a lazy list that
+/// builds it again, plays again.
 ///
 /// Set [visible] to false to hide the children with the same stagger, in
 /// the same order, on the exit motions; set it back to reveal them again.

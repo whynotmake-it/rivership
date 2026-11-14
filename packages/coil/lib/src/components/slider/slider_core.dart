@@ -131,9 +131,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   FocusNode _focusOf(int i) =>
       (i == 0 ? widget.focusNode : null) ?? _ownFocus[i];
 
-  /// Has focus whenever a thumb has: a range's focus for its states.
-  final _group = FocusNode(debugLabel: 'CoilRangeSlider');
-
   /// The thumb with focus, if any.
   int? _focused;
 
@@ -314,7 +311,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       _thumbs[i].dispose();
     }
     _ownStates?.dispose();
-    _group.dispose();
     _editFocus.dispose();
     _editText.dispose();
     _hover.dispose();
@@ -479,7 +475,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final content = CoilInteractionDetector(
       states: _states,
       enabled: _enabled,
-      focusNode: _range ? _group : _focusOf(0),
+      // The thumb that has focus, or the first.
+      focusNode: _focusOf(_focused ?? 0),
       excludeFromSemantics: true,
       cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
       // The press shows and the value jumps in the same callback.
@@ -499,13 +496,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     return Semantics(
       container: true,
       label: widget.semanticLabel,
-      child: Focus(
-        focusNode: _group,
-        canRequestFocus: false,
-        skipTraversal: true,
-        includeSemantics: false,
-        child: content,
-      ),
+      child: content,
     );
   }
 

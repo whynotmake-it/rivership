@@ -28,6 +28,7 @@ class _FieldPageState extends State<FieldPage> {
   var _showError = false;
   var _kubernetes = true;
   var _vm = false;
+  var _tier = 'pro';
 
   @override
   Widget build(BuildContext context) => CatalogPage(
@@ -163,6 +164,32 @@ class _FieldPageState extends State<FieldPage> {
               ),
             ),
           ],
+        ),
+      ),
+      DemoSection(
+        title: 'Radio choice card',
+        description:
+            'One choice from cards: a CoilRadio per card in a '
+            'CoilRadioGroup.custom. Arrows move the selection.',
+        child: CoilRadioGroup<String>.custom(
+          value: _tier,
+          onChanged: (v) => setState(() => _tier = v),
+          semanticLabel: 'Plan',
+          child: CoilFieldGroup(
+            children: [
+              for (final (value, title, description) in const [
+                ('hobby', 'Hobby', 'For side projects.'),
+                ('pro', 'Pro', 'For teams that ship every day.'),
+                ('enterprise', 'Enterprise', 'SSO, audit logs and support.'),
+              ])
+                CoilChoiceCard(
+                  selected: _tier == value,
+                  title: Text(title),
+                  description: Text(description),
+                  control: CoilRadio(value: value),
+                ),
+            ],
+          ),
         ),
       ),
     ],
