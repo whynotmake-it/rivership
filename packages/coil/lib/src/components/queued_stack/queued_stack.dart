@@ -60,7 +60,8 @@ final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   );
 
   /// The collapsed stack recoiling when a message is queued behind the
-  /// visible cards. Default motion: `gentle`.
+  /// visible cards. Default motion: `gentle`, coil's bounciest token; the
+  /// original's one-off spring (bounce 0.5) isn't a tier.
   static final bump = CoilQueuedStackTrack<double>._(
     .single,
     initial: 0,
@@ -149,18 +150,21 @@ class CoilQueuedStackLabels {
 /// queue there). A message queued behind the visible cards makes the pile
 /// recoil, so the user feels it land.
 ///
-/// Place it right above the composer, over the transcript, and pad the
-/// transcript by [collapsedHeightOf] so the pile never covers the last
-/// message:
+/// Place it right above the composer and pass the transcript as [child].
+/// The transcript's `ListView` then keeps its last message clear of the
+/// pile on its own:
 ///
 /// ```dart
 /// Column(children: [
-///   Expanded(child: Stack(children: [
-///     transcript,
-///     PositionedDirectional(start: 0, end: 0, bottom: 8,
-///       child: CoilQueuedStack(messages: queue, onChanged: …, onEdit: …)),
-///   ])),
-///   CoilInputMessage(onSend: …),
+///   Expanded(
+///     child: CoilQueuedStack(
+///       messages: queue,
+///       onChanged: …,
+///       onEdit: …,
+///       child: ListView(reverse: true, children: transcript),
+///     ),
+///   ),
+///   CoilInputMessage(onSend: …, onQueue: …),
 /// ])
 /// ```
 class CoilQueuedStack extends StatefulWidget {
@@ -170,6 +174,7 @@ class CoilQueuedStack extends StatefulWidget {
     required this.onChanged,
     required this.onEdit,
     super.key,
+    this.child,
     this.icon,
     this.editIcon,
     this.removeIcon,
@@ -188,6 +193,13 @@ class CoilQueuedStack extends StatefulWidget {
 
   /// Called with a message to move back into the composer.
   final ValueChanged<CoilQueuedMessage> onEdit;
+
+  /// The content the pile floats over, usually the transcript. With a
+  /// child, the stack fills the space it's given, lays the child out under
+  /// the pile, and adds the folded pile's height to the child's bottom
+  /// `MediaQuery` padding, so a `ListView` keeps its last message clear of
+  /// the pile. Null leaves only the pile, as tall as its cards.
+  final Widget? child;
 
   /// The gutter glyph beside the front card, such as an arrow into the
   /// composer. Null leaves only the count.
@@ -215,27 +227,6 @@ class CoilQueuedStack extends StatefulWidget {
   /// Overrides for this stack's look.
   final CoilQueuedStackStyle? style;
 
-  /// The height of the folded pile for [count] messages, at its cards'
-  /// minimum height. Pad the transcript by it so the pile never covers the
-  /// last message. Pass the stack's [size] and [style], if it has them.
-  ///
-  /// Cards grow past their minimum only when large text needs it, so at
-  /// big text scales the pile can be a few pixels taller than this.
-  static double collapsedHeightOf(
-    BuildContext context,
-    int count, {
-    CoilSize? size,
-    CoilQueuedStackStyle? style,
-  }) {
-    if (count == 0) return 0;
-    final card = CoilQueuedStackStyle.fallback(
-      CoilTheme.of(context),
-      CoilTheme.metricsOf(context, size: size),
-    ).merge(CoilTheme.styleOf<CoilQueuedStackStyle>(context)).merge(style);
-    return card.cardMinHeight! +
-        (count - 1).clamp(0, queuedStackMaxPeek) * queuedStackPeek;
-  }
-
   @override
   State<CoilQueuedStack> createState() => _CoilQueuedStackState();
 }
@@ -258,7 +249,9 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
 
   /// Fanned out by a tap, until the collapse button folds it.
   var _pinned = false;
-  var _focusWithin = false;
+
+  /// The cards that hold keyboard focus, or a control inside them.
+  final _focused = <_Entry>{};
 
   /// The card being dragged, and where it is, in places from the front.
   _Entry? _dragging;
@@ -272,7 +265,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
 
   bool get _expanded =>
       _pinned ||
-      _focusWithin ||
+      _focused.isNotEmpty ||
       _dragging != null ||
       _hover.value.contains(WidgetState.hovered);
 
@@ -331,7 +324,10 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
 
   void _gone(_Entry entry) {
     if (!mounted || !_entries.contains(entry)) return;
-    setState(() => _entries.remove(entry));
+    setState(() {
+      _entries.remove(entry);
+      _focused.remove(entry);
+    });
     // A focused card leaves its node behind; drop it after the frame.
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => entry.focusNode.dispose(),
@@ -487,6 +483,9 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       ),
       liftMotion: motionOf(CoilQueuedStackTrack.lift, tokens.quick),
       onGone: () => _gone(entry),
+      onFocusChange: (focused) => setState(
+        () => focused ? _focused.add(entry) : _focused.remove(entry),
+      ),
       onTap: expanded ? null : () => setState(() => _pinned = true),
       onEdit: entry.exiting ? null : () => widget.onEdit(entry.message),
       onRemove: entry.exiting ? null : () => _remove(entry),
@@ -499,53 +498,68 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
     );
 
     final bumpMotion = motionOf(CoilQueuedStackTrack.bump, tokens.gentle);
+    final body = widget.child;
     return MotorInspectionScope(
       group: 'CoilQueuedStack',
-      child: Focus(
-        canRequestFocus: false,
-        skipTraversal: true,
-        onFocusChange: (focused) => setState(() => _focusWithin = focused),
-        child: CoilInteractionDetector(
-          states: _hover,
-          trackPress: false,
-          child: Semantics(
-            container: true,
-            explicitChildNodes: true,
-            child: TrackBuilder(
-              restartTrigger: _bumps,
-              animations: [
-                if (_bumps > 0)
-                  CoilQueuedStackTrack.bump([
-                    .to(0, motion: bumpMotion),
-                  ], from: -7),
-              ],
-              builder: (context, value, child) => Transform.translate(
-                offset: Offset(0, value(CoilQueuedStackTrack.bump)),
-                child: child,
+      child: TrackBuilder(
+        restartTrigger: _bumps,
+        animations: [
+          if (_bumps > 0)
+            CoilQueuedStackTrack.bump([.to(0, motion: bumpMotion)], from: -7),
+        ],
+        builder: (context, bump, _) => SingleMotionBuilder(
+          value: expanded ? 1 : 0,
+          motion: motionOf(
+            CoilQueuedStackTrack.expand,
+            expanded ? tokens.standard : tokens.standardExit,
+          ),
+          debugLabel: 'CoilQueuedStack.expand',
+          builder: (context, expand, _) => QueuedStackLayout(
+            expand: expand,
+            // The gutter's glyph and count grow with the text.
+            gutterWidth: MediaQuery.textScalerOf(
+              context,
+            ).scale(look.gutterWidth!),
+            count: count,
+            bump: bump(CoilQueuedStackTrack.bump),
+            hasBody: body != null,
+            children: [
+              if (body == null) const SizedBox.shrink() else _Body(child: body),
+              CoilInteractionDetector(
+                states: _hover,
+                trackPress: false,
+                child: const SizedBox.expand(),
               ),
-              child: SingleMotionBuilder(
-                value: expanded ? 1 : 0,
-                motion: motionOf(
-                  CoilQueuedStackTrack.expand,
-                  expanded ? tokens.standard : tokens.standardExit,
-                ),
-                debugLabel: 'CoilQueuedStack.expand',
-                builder: (context, expand, _) => QueuedStackLayout(
-                  expand: expand,
-                  // The gutter's glyph and count grow with the text.
-                  gutterWidth: MediaQuery.textScalerOf(
-                    context,
-                  ).scale(look.gutterWidth!),
-                  children: [
-                    if (count > 0) gutter else const SizedBox.shrink(),
-                    for (final entry in _entries) card(entry, expand),
-                  ],
-                ),
-              ),
-            ),
+              if (count > 0) gutter else const SizedBox.shrink(),
+              for (final entry in _entries) card(entry, expand),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The content under the pile, with the folded pile's height added to its
+/// bottom padding.
+class _Body extends StatelessWidget {
+  const _Body({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final extent = (constraints as QueuedStackBodyConstraints).pileExtent;
+      final media = MediaQuery.of(context);
+      return MediaQuery(
+        data: media.copyWith(
+          padding: media.padding.copyWith(
+            bottom: media.padding.bottom + extent,
+          ),
+        ),
+        child: child,
+      );
+    },
+  );
 }

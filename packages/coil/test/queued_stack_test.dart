@@ -546,6 +546,84 @@ void main() {
     });
   });
 
+  group('over a transcript', () {
+    Widget transcript({double scale = 1, int count = 3}) => MediaQuery(
+      data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+      child: SizedBox(
+        height: 400,
+        child: CoilQueuedStack(
+          messages: [_a, _b, _c].take(count).toList(),
+          onChanged: _ignore,
+          onEdit: _ignore,
+          child: ListView(
+            reverse: true,
+            children: const [SizedBox(height: 20, child: Text('last'))],
+          ),
+        ),
+      ),
+    );
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('the last message clears the folded pile at ${scale}x', (
+        tester,
+      ) async {
+        await tester.pumpWidget(_app(transcript(scale: scale)));
+        await tester.pumpAndSettle();
+        final card = tester.getRect(
+          find
+              .ancestor(
+                of: find.text(_a.semanticLabel),
+                matching: find.byType(CoilSurface),
+              )
+              .first,
+        );
+        final last = tester.getRect(find.text('last'));
+        // The front card, two peeks of 12 and the 8 gap, measured from
+        // the cards as they laid out.
+        expect(card.bottom - last.bottom, card.height + 2 * 12 + 8);
+      });
+    }
+
+    testWidgets('an empty queue leaves the transcript unpadded', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(transcript(count: 0)));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('last')).bottom, 400);
+    });
+
+    testWidgets('hovering the transcript leaves the pile folded', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(transcript()));
+      await tester.pumpAndSettle();
+      final folded =
+          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: const Offset(_width / 2, 20));
+      await tester.pumpAndSettle();
+      expect(
+        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        folded,
+      );
+
+      // Over the pile it fans out, and stays out between the cards.
+      await mouse.moveTo(tester.getCenter(find.text(_a.semanticLabel)));
+      await tester.pumpAndSettle();
+      final gap =
+          (tester.getRect(find.text(_a.semanticLabel)).top +
+              tester.getRect(find.text(_b.semanticLabel)).bottom) /
+          2;
+      await mouse.moveTo(Offset(_width / 2, gap));
+      await tester.pumpAndSettle();
+      expect(
+        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        greaterThan(folded + 20),
+      );
+    });
+  });
+
   testWidgets('cards read their place in the queue', (tester) async {
     final semantics = tester.ensureSemantics();
     await _pump(tester, [_a, _b]);
