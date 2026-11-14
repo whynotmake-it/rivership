@@ -22,7 +22,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   factory CoilSidebarStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     return CoilSidebarStyle(
-      background: c.background,
       edgeColor: c.border,
       railColor: CoilColorMix.withTransparent(c.foreground, 0.25),
       inset: 8,
@@ -38,8 +37,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     );
   }
 
-  /// The `sidebar` variant's fill, and the column behind a `floating`
-  /// card.
+  /// The `sidebar` variant's fill. Null leaves it transparent, on
+  /// whatever is behind the scaffold.
   final Color? background;
 
   /// The `sidebar` variant's hairline at its inner edge. Transparent draws

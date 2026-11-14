@@ -1,6 +1,7 @@
 /// The coil sidebar: `CoilSidebarScaffold`, `CoilSidebar` and its parts.
 library;
 
+export 'src/components/sidebar/sidebar_callouts.dart';
 export 'src/components/sidebar/sidebar_controller.dart';
 export 'src/components/sidebar/sidebar_menu.dart';
 export 'src/components/sidebar/sidebar_panel.dart' hide coilSidebarRowHeight;

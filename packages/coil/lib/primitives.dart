@@ -12,6 +12,7 @@ export 'src/primitives/choice_row.dart';
 export 'src/primitives/collapsible.dart';
 export 'src/primitives/context_trigger.dart';
 export 'src/primitives/disclosure_trigger.dart';
+export 'src/primitives/drawer.dart';
 export 'src/primitives/drawn_glyph.dart';
 export 'src/primitives/edge_fade.dart';
 export 'src/primitives/field_scope.dart';

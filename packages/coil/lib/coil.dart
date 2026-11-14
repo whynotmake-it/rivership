@@ -32,6 +32,7 @@ export 'primitives.dart';
 export 'radio_group.dart';
 export 'scroll_area.dart';
 export 'select.dart';
+export 'settings_dialog.dart';
 export 'sidebar.dart';
 export 'skeleton.dart';
 export 'slider.dart';

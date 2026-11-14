@@ -33,8 +33,15 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSidebar.peek',
   );
 
-  /// How far the phone drawer has slid in, 0 to 1. Default motion:
-  /// `standard` in, `standardExit` out. A drag follows the finger.
+  /// A callout pile fanning out, and each card moving to its place in it.
+  /// Default motion: `standard`, and `standardExit` as the pile folds.
+  static final callouts = CoilSidebarTrack<double>._(
+    .single,
+    debugLabel: 'CoilSidebar.callouts',
+  );
+
+  /// The phone drawer sliding in and out. Default motion: `standard` in,
+  /// `standardExit` out. A drag follows the finger.
   static final drawer = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.drawer',
@@ -170,15 +177,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
   bool _pointerWasInPeek = true;
   final _stripStates = WidgetStatesController();
 
-  final _drawerPortal = OverlayPortalController(
-    debugLabel: 'CoilSidebarScaffold.drawer',
-  );
   bool _drawerOpen = false;
-  LocalHistoryEntry? _drawerEntry;
-  FocusNode? _focusBeforeDrawer;
-
-  /// The drawer's presence while a finger drags it, or null.
-  double? _drawerDrag;
 
   @override
   void initState() {
@@ -240,47 +239,10 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   // Drawer -----------------------------------------------------------------
 
-  void _openDrawer() {
-    if (_drawerOpen) return;
-    _focusBeforeDrawer = FocusManager.instance.primaryFocus;
-    // System back closes the drawer, as it does Flutter's Scaffold's.
-    if (ModalRoute.of(context) case final route?) {
-      route.addLocalHistoryEntry(
-        _drawerEntry = LocalHistoryEntry(onRemove: _onDrawerEntryRemoved),
-      );
-    }
-    _drawerPortal.show();
-    setState(() => _drawerOpen = true);
-  }
+  void _openDrawer() => setState(() => _drawerOpen = true);
 
   void _closeDrawer() {
-    if (!_drawerOpen) return;
-    // Removing the entry calls [_onDrawerEntryRemoved], which also covers
-    // system back.
-    final entry = _drawerEntry;
-    if (entry != null) {
-      entry.remove();
-    } else {
-      _onDrawerEntryRemoved();
-    }
-  }
-
-  void _onDrawerEntryRemoved() {
-    _drawerEntry = null;
-    if (!mounted) return;
-    setState(() {
-      _drawerOpen = false;
-      _drawerDrag = null;
-    });
-    final previous = _focusBeforeDrawer;
-    _focusBeforeDrawer = null;
-    if (previous != null && previous.context != null) previous.requestFocus();
-  }
-
-  void _onDrawerSettled(AnimationStatus status) {
-    if (!status.isAnimating && !_drawerOpen && _drawerPortal.isShowing) {
-      _drawerPortal.hide();
-    }
+    if (_drawerOpen) setState(() => _drawerOpen = false);
   }
 
   // Peek -------------------------------------------------------------------
@@ -453,11 +415,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
         }
         var content = !_offcanvas
             ? _static(look)
-            : _withDrawer(
-                look,
-                constraints,
-                compact ? widget.body : _wide(look),
-              );
+            : _withDrawer(look, compact ? widget.body : _wide(look));
         if (_offcanvas) {
           content = Shortcuts(
             shortcuts: {
@@ -472,7 +430,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
         }
         return CoilSidebarScope(
           data: _scope(drawer: false),
-          child: ColoredBox(color: look.background!, child: content),
+          child: content,
         );
       },
     );
@@ -661,59 +619,26 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   /// [child] with the phone drawer above it. The drawer stays put if the
   /// window widens while it is open, until it is closed.
-  Widget _withDrawer(
-    CoilSidebarStyle look,
-    BoxConstraints constraints,
-    Widget child,
-  ) {
+  Widget _withDrawer(CoilSidebarStyle look, Widget child) {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
-    final drawerMotion = _drawerDrag != null
-        ? const Motion.instant()
-        : _motionFor(
-            CoilSidebarTrack.drawer,
-            _drawerOpen ? motion.standard : motion.standardExit,
-          );
-    final target = _drawerDrag ?? (_drawerOpen ? 1.0 : 0.0);
-    final panelWidth = math.min(320, constraints.maxWidth * 0.85).toDouble();
-    return OverlayPortal(
-      controller: _drawerPortal,
-      overlayChildBuilder: (context) => TrackBuilder(
-        initialValues: [CoilSidebarTrack.drawer.value(0)],
-        animations: [
-          CoilSidebarTrack.drawer([.to(target, motion: drawerMotion)]),
-        ],
-        onAnimationStatusChanged: _onDrawerSettled,
-        builder: (context, value, child) => _Drawer(
-          presence: value(CoilSidebarTrack.drawer).clamp(0, 1),
-          open: _drawerOpen,
-          physicalLeft: _physicalLeft,
-          width: panelWidth,
-          label: widget.drawerLabel,
-          onClose: _closeDrawer,
-          onDragUpdate: (delta) => setState(() {
-            final start = _drawerDrag ?? 1.0;
-            final towardEdge = _physicalLeft ? -delta : delta;
-            _drawerDrag = (start - towardEdge / panelWidth).clamp(0, 1);
-          }),
-          onDragEnd: (velocity) {
-            final towardEdge = _physicalLeft ? -velocity : velocity;
-            final position = _drawerDrag ?? 1.0;
-            // A fling decides by direction, a slow release by position.
-            // Motor carries the drag's velocity into the spring.
-            final close =
-                towardEdge > 400 || (towardEdge > -400 && position < 0.5);
-            setState(() => _drawerDrag = null);
-            if (close) _closeDrawer();
-          },
-          child: child!,
-        ),
-        child: CoilSidebarScope(
-          data: _scope(drawer: true),
-          // Wide, the column holds the sidebar's state.
-          child: _compact
-              ? KeyedSubtree(key: _sidebarKey, child: widget.sidebar)
-              : widget.sidebar,
-        ),
+    return CoilDrawer(
+      open: _drawerOpen,
+      onClose: _closeDrawer,
+      edge: widget.side == CoilSidebarSide.start
+          ? CoilDrawerEdge.start
+          : CoilDrawerEdge.end,
+      label: widget.drawerLabel,
+      motion: _motionFor(CoilSidebarTrack.drawer, motion.standard),
+      exitMotion: _motionFor(CoilSidebarTrack.drawer, motion.standardExit),
+      drawer: CoilSidebarScope(
+        data: _scope(drawer: true),
+        // Wide, the column holds the sidebar and its state; a drawer left
+        // open while the window widened shows a second copy until closed.
+        child: _compact
+            ? KeyedSubtree(key: _sidebarKey, child: widget.sidebar)
+            : _drawerOpen
+            ? widget.sidebar
+            : const SizedBox.shrink(),
       ),
       child: child,
     );
@@ -759,19 +684,22 @@ class _Panel extends StatelessWidget {
     final inset = look.inset!;
     final content = child ?? const SizedBox.shrink();
     final Widget panel = switch (variant) {
-      CoilSidebarVariant.sidebar => DecoratedBox(
-        position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          border: Border(
-            right: physicalLeft
-                ? BorderSide(color: look.edgeColor!)
-                : BorderSide.none,
-            left: physicalLeft
-                ? BorderSide.none
-                : BorderSide(color: look.edgeColor!),
+      CoilSidebarVariant.sidebar => ColoredBox(
+        color: look.background ?? const Color(0x00000000),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: Border(
+              right: physicalLeft
+                  ? BorderSide(color: look.edgeColor!)
+                  : BorderSide.none,
+              left: physicalLeft
+                  ? BorderSide.none
+                  : BorderSide(color: look.edgeColor!),
+            ),
           ),
+          child: content,
         ),
-        child: content,
       ),
       CoilSidebarVariant.floating => Padding(
         padding: EdgeInsets.all(inset),
@@ -886,108 +814,6 @@ class _PeekStrip extends StatelessWidget {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-/// The phone drawer: a scrim and a panel sliding in from the sidebar's
-/// edge, in the overlay but built with the scaffold, so it shows the app's
-/// current state.
-class _Drawer extends StatelessWidget {
-  const _Drawer({
-    required this.presence,
-    required this.open,
-    required this.physicalLeft,
-    required this.width,
-    required this.label,
-    required this.onClose,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-    required this.child,
-  });
-
-  final double presence;
-  final bool open;
-  final bool physicalLeft;
-  final double width;
-  final String label;
-  final VoidCallback onClose;
-  final ValueChanged<double> onDragUpdate;
-  final ValueChanged<double> onDragEnd;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final barrier = CoilSheetPanel.barrierColorOf(context);
-    return IgnorePointer(
-      ignoring: !open,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Semantics(
-              label: label,
-              onDismiss: onClose,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onClose,
-                excludeFromSemantics: true,
-                child: ColoredBox(
-                  color: barrier.withValues(alpha: barrier.a * presence),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            bottom: 0,
-            left: physicalLeft ? 0 : null,
-            right: physicalLeft ? null : 0,
-            width: width,
-            child: FractionalTranslation(
-              translation: Offset((1 - presence) * (physicalLeft ? -1 : 1), 0),
-              child: GestureDetector(
-                onHorizontalDragUpdate: (details) =>
-                    onDragUpdate(details.primaryDelta ?? 0),
-                onHorizontalDragEnd: (details) =>
-                    onDragEnd(details.primaryVelocity ?? 0),
-                child: BlockSemantics(
-                  child: Semantics(
-                    scopesRoute: true,
-                    namesRoute: true,
-                    explicitChildNodes: true,
-                    label: label,
-                    child: FocusScope(
-                      autofocus: open,
-                      child: Shortcuts(
-                        shortcuts: const {
-                          SingleActivator(LogicalKeyboardKey.escape):
-                              DismissIntent(),
-                        },
-                        child: Actions(
-                          actions: {
-                            DismissIntent: CallbackAction<DismissIntent>(
-                              onInvoke: (_) {
-                                onClose();
-                                return null;
-                              },
-                            ),
-                          },
-                          child: CoilSurface(
-                            offset: 2,
-                            shadowLevel: 3,
-                            borderRadius: BorderRadius.zero,
-                            child: child,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
