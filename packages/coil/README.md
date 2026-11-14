@@ -36,6 +36,26 @@ single component's library (`package:coil/button.dart`) to depend on less.
 
 Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 
+## Ejecting a component
+
+To edit a component's look, copy it into the app:
+
+```sh
+dart run coil:eject --list
+dart run coil:eject button
+dart run coil:update button   # later: three-way merge of coil's changes
+```
+
+The app then imports its generated `lib/coil.dart` instead of
+`package:coil/coil.dart`. Behavior stays in coil's primitives, so only the
+look and composition are copied. [`SKILL.md`](SKILL.md) covers eject and
+update in full. [`doc/llms.txt`](doc/llms.txt) indexes the per-component
+pages in `doc/components/`, which `tool/generate_docs.dart` builds from
+DESIGN.md.
+
+`test/architecture/eject_test.dart` fails when a component imports another
+component's `src/` or a private primitive, since eject couldn't copy it.
+
 ## Layers
 
 | Layer | Library | Holds |
@@ -101,8 +121,8 @@ Each component's file runs the shared checks from `test/src/`:
 - `matrixGoldenTest` (goldens in `test/goldens/matrix/`): light/dark ×
   pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
   with real Inter at 2x; overlays open as popover and sheet.
-- `expectCoilPattern`: semantics, keyboard and focus-visible, in LTR and
-  RTL.
+- `expectCoilPattern` (public in `package:coil/testing.dart`): semantics,
+  keyboard and focus-visible, in LTR and RTL.
 - `inkCenteringTests`: label ink centered within 1 px at every tier, size
   and text scale.
 

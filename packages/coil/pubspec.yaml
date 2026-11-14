@@ -11,20 +11,25 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
+  args: ^2.7.0
   cupertino_ui: ^1.1.6
   flutter:
+    sdk: flutter
+  flutter_test:
     sdk: flutter
   material_ui: ^1.11.0
   motor:
     path: ../motor
   motor_widgets:
     path: ../motor_widgets
+  package_config: ^2.2.0
+  path: ^1.9.1
   stupid_simple_sheet:
     path: ../stupid_simple_sheet
+  yaml: ^3.1.4
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
+  analyzer: ^13.3.0
   lintervention: ^0.3.1
   snaptest:
     path: ../snaptest

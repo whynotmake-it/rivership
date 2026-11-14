@@ -1,8 +1,8 @@
 import 'package:coil/coil.dart';
+import 'package:coil/testing.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/coil_pattern.dart';
 import 'src/select_harness.dart' show fruits;
 
 /// A host that applies every component's `onChanged`, with a trailing

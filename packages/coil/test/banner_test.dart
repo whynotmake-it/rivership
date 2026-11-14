@@ -1,11 +1,11 @@
 import 'package:coil/coil.dart';
+import 'package:coil/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/coil_pattern.dart';
 import 'src/golden_matrix.dart';
 import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';

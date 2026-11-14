@@ -12,6 +12,16 @@ Milestone M0, unreleased.
   - `CoilDialogKind.presentation` gives a dialog kind's presentation.
   - `showCoilModal` takes a nullable `presentation`; null is the adaptive
     choice above.
+- `dart run coil:eject <component>` copies a component into the app, and
+  `dart run coil:update` merges coil's later changes into the copy with
+  `git merge-file`. See SKILL.md.
+- `expectCoilPattern` and `CoilPattern` are public in
+  `package:coil/testing.dart`, so apps can check their ejected copies.
+- `package:coil/date_picker.dart` re-exports `CoilCalendarLabels` from
+  `calendar.dart` instead of calendar's `src/`.
+- Docs for agents ship in the package: `SKILL.md`, `doc/llms.txt` and a
+  page per component in `doc/components/`.
+
 - Breaking: visible text and icons are `Widget` parameters that the
   component styles. Strings stay only for screen readers (`semanticLabel`
   or a name ending in `Label`) and for matching (`searchText`).

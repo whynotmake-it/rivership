@@ -117,7 +117,7 @@ so wave branches don't conflict.
 - **Ink centering:** call `inkCenteringTests` (`test/src/ink_centering.dart`)
   with each label-bearing variant (±1 px at every tier, size and text
   scale).
-- **Pattern:** call `expectCoilPattern` (`test/src/coil_pattern.dart`) in
+- **Pattern:** call `expectCoilPattern` (`package:coil/testing.dart`) in
   LTR and RTL. Add a `CoilPattern` value if no existing one fits.
 - **No sticky states:** a touch leaves no hover and a click shows no ring.
 - **IME:** components hosting text get composing-guard tests (see
