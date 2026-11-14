@@ -467,17 +467,22 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
     final questions = widget.questions;
     final inset = metrics.popupInset;
 
+    // As wide as it may be, up to the max: the width never follows the
+    // question, so it stays put between questions.
     Widget card(Widget child) => ConstrainedBox(
       constraints: BoxConstraints(maxWidth: look.maxWidth!),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: look.surface,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(look.radius!),
-            side: look.border!,
+      child: SizedBox(
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: look.surface,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(look.radius!),
+              side: look.border!,
+            ),
           ),
+          child: child,
         ),
-        child: child,
       ),
     );
 

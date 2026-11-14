@@ -565,6 +565,16 @@ void main() {
       expect(find.text('Question 1 of 4'), findsOneWidget);
     });
 
+    testWidgets('the card keeps its width between questions', (
+      tester,
+    ) async {
+      await _pump(tester);
+      final width = tester.getSize(_card).width;
+      await tester.tap(_option('Flutter'));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(_card).width, width);
+    });
+
     testWidgets('no questions shows the empty label', (tester) async {
       await _pump(tester, questions: const []);
       expect(find.text('No questions.'), findsOneWidget);
