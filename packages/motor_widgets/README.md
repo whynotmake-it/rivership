@@ -29,6 +29,7 @@ There is no `AnimationController`, `Tween` or curve in this package.
 | rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. |
 | `Draggable`, `LongPressDraggable` | `MotionDraggable`, `MotionLongPressDraggable` | The feedback lands with a spring; plain `DragTarget`s work unchanged. See [Dragging](#dragging). |
 | (none) | `MotionReorder` | Flies an item from its old place to its new one when a list, grid or board reorders. See [Reordering](#reordering). |
+| (none) | `MotionEdgeScroll` | Scrolls the scrollables around it while a drag is near their edges. See [Edge scrolling](#edge-scrolling). |
 
 Each widget takes `motion` where the Flutter widget takes `duration` and
 `curve`. Every widget also takes `tickerRate` and `debugLabel`, like Motor's
@@ -282,6 +283,14 @@ ListView.builder(
 - `scope` (such as a board column) makes a change snap instead of fly.
   `enabled: false` hands the item to another animation, such as a
   `MotionDraggable` landing on it.
+
+### Edge scrolling
+
+`MotionEdgeScroll` scrolls every `Scrollable` around it while a
+`MotionDraggable` is dragged near one of its edges: faster the closer to the
+edge, smoothly, and on for as long as the drag holds still. Put it anywhere
+inside the scrollable; its own size doesn't matter, because the edges are
+the viewport's.
 
 ## Reduced motion
 

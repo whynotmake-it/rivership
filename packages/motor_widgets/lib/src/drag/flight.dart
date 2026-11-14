@@ -153,6 +153,18 @@ final _velocity = Track<Offset>(
 
 const _smoothing = CupertinoMotion(duration: Duration(milliseconds: 100));
 
+/// Learns when any [MotionDraggable]'s drag starts and ends.
+abstract interface class DragFlightObserver {
+  /// [flight] started a drag from [DragFlight.source].
+  void flightStarted(DragFlight flight);
+
+  /// The pointer moved [flight]'s drag.
+  void flightMoved(DragFlight flight);
+
+  /// [flight]'s drag ended, with [DragFlight.phase] set to its outcome.
+  void flightReleased(DragFlight flight);
+}
+
 /// One drag's feedback, from the moment it is picked up until it has landed
 /// or finished its exit.
 ///
@@ -170,6 +182,7 @@ class DragFlight {
     required Offset pointer,
     required Offset anchor,
     required Size size,
+    this.source,
   }) : _widget = widget,
        _pointer = pointer,
        _anchor = anchor,
@@ -183,6 +196,43 @@ class DragFlight {
 
   /// The tag the flight lands on.
   final Object tag;
+
+  /// The site the current drag started from: the draggable, or the
+  /// destination a landing was grabbed from again.
+  LandingSite? source;
+
+  static final _active = <DragFlight>{};
+  static final _observers = <DragFlightObserver>[];
+
+  /// Starts telling [observer] about every drag.
+  static void addObserver(DragFlightObserver observer) =>
+      _observers.add(observer);
+
+  /// Stops telling [observer] about drags.
+  static void removeObserver(DragFlightObserver observer) =>
+      _observers.remove(observer);
+
+  /// The flights that are dragged or landing.
+  static Iterable<DragFlight> get activeFlights => _active;
+
+  void _notifyStarted() {
+    _active.add(this);
+    for (final observer in List.of(_observers)) {
+      observer.flightStarted(this);
+    }
+  }
+
+  void _notifyMoved() {
+    for (final observer in List.of(_observers)) {
+      observer.flightMoved(this);
+    }
+  }
+
+  void _notifyReleased() {
+    for (final observer in List.of(_observers)) {
+      observer.flightReleased(this);
+    }
+  }
 
   /// The draggable the flight was last dragged from.
   MotionDraggable<Object> get widget => _widget;
@@ -243,6 +293,23 @@ class DragFlight {
   var _lossScheduled = false;
   var _resizeScheduled = false;
 
+  /// Whether the pointer is still dragging the feedback.
+  bool get isDragging => !_done && phase == MotionDragPhase.dragging;
+
+  /// Where the pointer is, in global coordinates, restricted to
+  /// [MotionDraggable.axis] like the feedback.
+  Offset get pointer => _pointer;
+
+  /// The feedback's rect in global coordinates, without its scale and
+  /// rotation.
+  Rect get feedbackRect {
+    final controller = _controller;
+    final size = controller == null
+        ? _initialSize
+        : controller.value(MotionDraggableTrack.size);
+    return globalTopLeft & size;
+  }
+
   /// The feedback's top-left in global coordinates.
   Offset get globalTopLeft {
     final controller = _controller;
@@ -277,12 +344,16 @@ class DragFlight {
   };
 
   /// Shows the flight.
-  void start() => overlay.insert(_entry);
+  void start() {
+    overlay.insert(_entry);
+    _notifyStarted();
+  }
 
   /// Moves the feedback with the pointer.
   void moveBy(Offset delta) {
     if (_done || phase != MotionDragPhase.dragging) return;
     _pointer += _restrict(delta);
+    _notifyMoved();
     final controller = _controller;
     if (controller == null) return;
     controller.set([MotionDraggableTrack.offset.value(_pointer - _anchor)]);
@@ -307,6 +378,7 @@ class DragFlight {
     registry.beginLanding(tag);
     _landingMarked = true;
     _coast();
+    _notifyReleased();
     // The drop rebuilds the item in its new place in the next frame. It is
     // laid out after that frame, so look for it then.
     SchedulerBinding.instance
@@ -315,7 +387,12 @@ class DragFlight {
   }
 
   /// Starts a drag of the landing feedback from its destination.
-  void regrab(MotionDraggable<Object> widget, Offset pointer, Offset anchor) {
+  void regrab(
+    MotionDraggable<Object> widget,
+    Offset pointer,
+    Offset anchor, {
+    required LandingSite source,
+  }) {
     final controller = _controller;
     final global = globalTopLeft;
     final velocity = controller?.velocity(MotionDraggableTrack.offset);
@@ -327,7 +404,9 @@ class DragFlight {
     _siteRect = null;
     _pointer = pointer;
     _anchor = anchor;
+    this.source = source;
     _endLanding();
+    _notifyStarted();
     if (controller == null) return;
     controller.set([
       MotionDraggableTrack.offset.value(global, velocity: velocity),
@@ -677,6 +756,7 @@ class DragFlight {
   void _finish({required bool landed}) {
     if (_done) return;
     _done = true;
+    _active.remove(this);
     _endLanding();
     _endFade();
     _entry
@@ -713,6 +793,7 @@ class DragFlight {
     if (_done) return;
     // The overlay went away while the flight was still in it.
     _done = true;
+    _active.remove(this);
     _endLanding();
     _endFade();
   }
