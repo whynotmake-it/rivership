@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 const fileThumbnailEntry = CatalogEntry(
@@ -29,6 +32,48 @@ class FileThumbnailPage extends StatelessWidget {
           ],
         ),
       ),
+      DemoSection(
+        title: 'Images',
+        description:
+            'Pass any ImageProvider as image; it fills the square. Until it '
+            'loads, or if it fails, the tile shows the file type.',
+        child: DemoWrap(
+          children: [
+            CoilFileThumbnail(
+              name: 'dunes.jpg',
+              size: 72,
+              image: const AssetImage('assets/images/dunes.jpg'),
+              onRemove: () {},
+            ),
+            const CoilFileThumbnail(
+              name: 'dunes.jpg',
+              image: AssetImage('assets/images/dunes.jpg'),
+            ),
+            const CoilFileThumbnail(
+              name: 'upload.png',
+              size: 72,
+              image: _StillLoading(),
+            ),
+          ],
+        ),
+      ),
     ],
   );
+}
+
+/// An image that never finishes loading, to show the placeholder a
+/// thumbnail keeps while its image is on its way.
+@immutable
+class _StillLoading extends ImageProvider<_StillLoading> {
+  const _StillLoading();
+
+  @override
+  Future<_StillLoading> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(
+    _StillLoading key,
+    ImageDecoderCallback decode,
+  ) => OneFrameImageStreamCompleter(Completer<ImageInfo>().future);
 }

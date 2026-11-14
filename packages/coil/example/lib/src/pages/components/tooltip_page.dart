@@ -30,7 +30,7 @@ class TooltipPage extends StatelessWidget {
                 ('Close', CoilGlyph.cross),
               ])
                 CoilTooltip(
-                  message: label,
+                  message: Text(label),
                   child: CoilButton.icon(
                     variant: CoilButtonVariant.ghost,
                     onPressed: () {},

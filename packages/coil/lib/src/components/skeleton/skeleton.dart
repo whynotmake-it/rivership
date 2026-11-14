@@ -3,6 +3,7 @@ import 'package:coil/primitives.dart';
 import 'package:coil/src/components/skeleton/skeleton_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilSkeleton].
 final class CoilSkeletonTrack<T extends Object> extends Track<T> {
@@ -17,6 +18,15 @@ final class CoilSkeletonTrack<T extends Object> extends Track<T> {
     .single,
     initial: 0,
     debugLabel: 'CoilSkeleton.appear',
+  );
+
+  /// The cross-fade of a [CoilSkeletonSwitcher] between skeleton and
+  /// content (default motion: `fade` in, `fadeExit` out). Set it to
+  /// `Motion.instant()` to swap without a fade.
+  static final swap = CoilSkeletonTrack<double>._(
+    .single,
+    initial: 1,
+    debugLabel: 'CoilSkeleton.swap',
   );
 
   /// The opacity pulse. Each leg runs on this motion; the default takes 1 s.
@@ -34,6 +44,10 @@ final class CoilSkeletonTrack<T extends Object> extends Track<T> {
 /// every 2 s. Reduced motion keeps the grace and the fade and drops the
 /// pulse. Skeletons are excluded from semantics: wrap the loading region in
 /// [CoilSkeletonRegion].
+///
+/// To switch between skeletons and the loaded content, use
+/// [CoilSkeletonSwitcher]: it cross-fades the two, and skeletons that replace
+/// content on screen show at once instead of waiting out the grace period.
 ///
 /// Match the final layout's line count and widths, and don't shimmer.
 class CoilSkeleton extends StatelessWidget {
@@ -122,6 +136,7 @@ class CoilSkeleton extends StatelessWidget {
       spatial: false,
     );
     final pulsing = !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+    final takesOver = _SkeletonTakeover.of(context);
 
     final Widget block;
     if (_text) {
@@ -166,9 +181,14 @@ class CoilSkeleton extends StatelessWidget {
     return ExcludeSemantics(
       child: TrackBuilder(
         animations: [
-          CoilSkeletonTrack.appear([
-            .to(1, motion: appearMotion),
-          ], delay: grace),
+          // Taking over from content, there is nothing to wait for: waiting
+          // would leave the space empty.
+          if (takesOver)
+            CoilSkeletonTrack.appear([.to(1, motion: appearMotion)], from: 1)
+          else
+            CoilSkeletonTrack.appear([
+              .to(1, motion: appearMotion),
+            ], delay: grace),
         ],
         builder: (context, value, _) => Opacity(
           opacity: value(CoilSkeletonTrack.appear).clamp(0, 1),
@@ -267,4 +287,119 @@ class CoilSkeletonRegion extends StatelessWidget {
     liveRegion: true,
     child: child,
   );
+}
+
+/// Switches between [skeleton] while [loading] and [child] once loaded.
+///
+/// The two cross-fade in one stack, on the [CoilSkeletonTrack.swap] track
+/// (`fade` in, `fadeExit` out), so the space is never empty. Skeletons shown
+/// first still wait out [CoilSkeleton.grace]; content that arrives sooner
+/// replaces them before they ever show. Skeletons that replace content show
+/// at once. Opt out of the fade with `motions: {.swap: const .instant()}`.
+///
+/// ```dart
+/// CoilSkeletonSwitcher(
+///   loading: profile == null,
+///   skeleton: CoilSkeletonRegion(label: 'Loading', child: ProfileSkeleton()),
+///   child: Profile(profile),
+/// )
+/// ```
+class CoilSkeletonSwitcher extends StatefulWidget {
+  /// Creates a skeleton switcher.
+  const CoilSkeletonSwitcher({
+    required this.loading,
+    required this.skeleton,
+    required this.child,
+    super.key,
+    this.motion,
+    this.motions,
+  });
+
+  /// Whether to show [skeleton] instead of [child].
+  final bool loading;
+
+  /// The placeholder: skeletons in a [CoilSkeletonRegion].
+  final Widget skeleton;
+
+  /// The loaded content.
+  final Widget child;
+
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
+
+  /// Overrides single tracks' motions; only [CoilSkeletonTrack.swap] applies
+  /// here.
+  final Map<CoilSkeletonTrack<Object>, Motion>? motions;
+
+  @override
+  State<CoilSkeletonSwitcher> createState() => _CoilSkeletonSwitcherState();
+}
+
+class _CoilSkeletonSwitcherState extends State<CoilSkeletonSwitcher> {
+  /// Whether content has been on screen, so skeletons now replace it.
+  bool _contentShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentShown = !widget.loading;
+  }
+
+  @override
+  void didUpdateWidget(CoilSkeletonSwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.loading) _contentShown = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    Motion swap(Motion token) => CoilTheme.trackMotionOf(
+      context,
+      CoilSkeletonTrack.swap,
+      instance: widget.motions,
+      token: token,
+      spatial: false,
+    );
+    return MotionSwitcher(
+      motion: swap(tokens.fade),
+      exitMotion: swap(tokens.fadeExit),
+      debugLabel: 'CoilSkeletonSwitcher',
+      // Both share one cell, the newest on top. The leaving one is out of
+      // reach and out of the semantics tree.
+      layoutBuilder: (current, previous) => Stack(
+        children: [
+          for (final child in previous)
+            IgnorePointer(child: ExcludeSemantics(child: child)),
+          ?current,
+        ],
+      ),
+      child: widget.loading
+          ? KeyedSubtree(
+              key: const ValueKey(true),
+              child: _SkeletonTakeover(
+                takesOver: _contentShown,
+                child: widget.skeleton,
+              ),
+            )
+          : KeyedSubtree(key: const ValueKey(false), child: widget.child),
+    );
+  }
+}
+
+/// Tells the skeletons below whether they replace content on screen.
+class _SkeletonTakeover extends InheritedWidget {
+  const _SkeletonTakeover({required this.takesOver, required super.child});
+
+  final bool takesOver;
+
+  static bool of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_SkeletonTakeover>()
+          ?.takesOver ??
+      false;
+
+  @override
+  bool updateShouldNotify(_SkeletonTakeover oldWidget) =>
+      oldWidget.takesOver != takesOver;
 }

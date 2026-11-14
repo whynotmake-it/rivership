@@ -8,9 +8,9 @@ Milestone M0, unreleased.
   contrast. The defaults give `CoilColors.light` and `CoilColors.dark`.
   `CoilColorMix` gains `oklch`, `toOklch` and `ensureContrastByLightness`.
 - `CoilTypography.fontFamily` can be null for the platform's UI font
-  (`CoilTypography.platform`). `copyWith` can now clear `fontPackage`, so
-  `copyWith(fontFamily: 'Brand', fontPackage: null)` switches to an app
-  font instead of looking for it inside coil.
+  (`CoilTypography.platform`). Breaking: `CoilTypography.copyWith` is
+  removed, since a new family needs its own package. Use the constructor:
+  `CoilTypography(fontFamily: 'Brand', fontPackage: null)`.
 - `CoilColors.lerp` no longer pins the focus ring color: after a theme
   animation, focus rings still follow `brand`.
 - Breaking: `CoilHoverRegion` only tracks which item is lit. Paint the
