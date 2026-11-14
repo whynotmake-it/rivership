@@ -222,7 +222,18 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
   int? _focused;
 
   @override
+  void initState() {
+    super.initState();
+    // The ring shows only after keyboard use, which can begin after a row
+    // already has focus.
+    CoilInputModality.instance.addListener(_onModality);
+  }
+
+  void _onModality() => setState(() {});
+
+  @override
   void dispose() {
+    CoilInputModality.instance.removeListener(_onModality);
     for (final node in _nodes) {
       node.dispose();
     }
@@ -364,6 +375,7 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
                 ),
             ],
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final entry in entries.where((e) => !e.nested))
@@ -383,6 +395,7 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final children = entries.where((e) => e.parent == entry).toList();
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         row,
@@ -505,6 +518,7 @@ class _SubTree extends StatelessWidget {
             start: metrics.iconSize / 2 + metrics.gap - metrics.itemPaddingX,
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: children,
           ),

@@ -85,6 +85,7 @@ class CoilSidebar extends StatelessWidget {
             Expanded(
               child: CoilScrollArea(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: children,
                 ),
@@ -386,6 +387,7 @@ class _CoilSidebarGroupState extends State<CoilSidebarGroup> {
     return Padding(
       padding: EdgeInsets.all(look.padding!),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ?header,
