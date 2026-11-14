@@ -24,6 +24,7 @@ class _HostState extends State<_Host> {
   int plan = 1;
   Set<int> picked = {0};
   double level = .5;
+  CoilRangeValues range = const CoilRangeValues(.3, .6);
   String? fruit = 'banana';
 
   void update(VoidCallback change) => setState(change);
@@ -113,6 +114,21 @@ void main() {
             onChanged: (v) => s.update(() => s.level = v),
           ),
           CoilPattern.slider,
+        );
+      });
+
+      testWidgets('CoilRangeSlider is a range slider', (tester) async {
+        await check(
+          tester,
+          (s) => SizedBox(
+            width: 300,
+            child: CoilRangeSlider(
+              values: s.range,
+              label: const Text('Price'),
+              onChanged: (v) => s.update(() => s.range = v),
+            ),
+          ),
+          CoilPattern.rangeSlider,
         );
       });
 

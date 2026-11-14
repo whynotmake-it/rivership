@@ -36,6 +36,10 @@ enum CoilPattern {
   /// End change it.
   slider,
 
+  /// A range slider: two adjustable nodes, each a tab stop in order. Each
+  /// one's keys move only its own value, and neither passes the other.
+  rangeSlider,
+
   /// A tab list: one tab stop, arrows move between tabs, Enter selects.
   tabs,
 
@@ -135,6 +139,8 @@ Future<void> expectCoilPattern(
         );
       case CoilPattern.slider:
         await _slider(tester, finder);
+      case CoilPattern.rangeSlider:
+        await _rangeSlider(tester, finder);
       case CoilPattern.tabs:
         await _tabs(tester, finder);
       case CoilPattern.radioGroup:
@@ -519,6 +525,54 @@ Future<void> _select(WidgetTester tester, Finder finder) async {
     isTrue,
     reason: 'select: the returned focus shows its ring after keyboard use',
   );
+}
+
+Future<void> _rangeSlider(WidgetTester tester, Finder finder) async {
+  List<SemanticsData> thumbs() => [
+    for (final d in _nodes(tester, finder))
+      if (d.flagsCollection.isSlider) d,
+  ];
+  double value(int i) => double.parse(thumbs()[i].value);
+  int focused() => thumbs().indexWhere(
+    (d) => d.flagsCollection.isFocused == Tristate.isTrue,
+  );
+  Future<void> press(LogicalKeyboardKey key) async {
+    await tester.sendKeyEvent(key);
+    await tester.pump();
+  }
+
+  expect(thumbs(), hasLength(2), reason: 'one slider node per thumb');
+  for (final d in thumbs()) {
+    expect(d.hasAction(SemanticsAction.increase), isTrue);
+    expect(d.hasAction(SemanticsAction.decrease), isTrue);
+  }
+  expect(focused(), 0, reason: 'Tab reaches the start thumb first');
+
+  final end = value(1);
+  await press(LogicalKeyboardKey.home);
+  final min = value(0);
+  await press(LogicalKeyboardKey.arrowUp);
+  expect(value(0), greaterThan(min), reason: 'arrow up raises the start');
+  await press(LogicalKeyboardKey.end);
+  expect(value(0), end, reason: 'the start stops at the end thumb');
+  expect(value(1), end, reason: 'the start never moves the end');
+  await press(LogicalKeyboardKey.home);
+
+  await press(LogicalKeyboardKey.tab);
+  expect(focused(), 1, reason: 'Tab moves to the end thumb');
+  expect(
+    _focusVisible(tester, finder),
+    isTrue,
+    reason: 'the end thumb shows the focus ring too',
+  );
+  await press(LogicalKeyboardKey.end);
+  final max = value(1);
+  expect(max, greaterThan(end), reason: 'End takes the end thumb to max');
+  await press(LogicalKeyboardKey.home);
+  expect(value(1), value(0), reason: 'the end stops at the start thumb');
+  expect(value(0), min, reason: 'the end never moves the start');
+  await press(LogicalKeyboardKey.arrowUp);
+  expect(value(1), greaterThan(min), reason: 'arrow up raises the end');
 }
 
 Future<void> _slider(WidgetTester tester, Finder finder) async {
