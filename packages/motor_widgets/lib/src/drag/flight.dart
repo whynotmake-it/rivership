@@ -226,6 +226,10 @@ class DragFlight {
   /// Whether the flight has handed off to the tree and its overlay copy is
   /// fading out over the destination.
   var _fadingOut = false;
+
+  /// Whether the landing has entered its destination's visible area, so the
+  /// overlay copy is clipped to it until the landing ends.
+  var _clippedToSite = false;
   var _finishScheduled = false;
 
   /// The destination, and its rect as last measured. While there is one,
@@ -409,6 +413,7 @@ class DragFlight {
     final controller = _controller!;
     final global = globalTopLeft;
     final velocity = controller.velocity(MotionDraggableTrack.offset);
+    if (!identical(site, _site)) _clippedToSite = false;
     _site = site;
     _siteRect = rect;
     controller.animate([
@@ -564,8 +569,13 @@ class DragFlight {
       return null;
     }
     final visible = site.visibleRect!;
+    if (_clippedToSite) return visible;
     final center = globalTopLeft & controller.value(MotionDraggableTrack.size);
-    return visible.contains(center.center) ? visible : null;
+    // Once the card has entered the destination's visible area, it stays
+    // clipped there for the rest of the landing, even as it flies on toward
+    // a slot out of view and its center leaves that area.
+    _clippedToSite = visible.contains(center.center);
+    return _clippedToSite ? visible : null;
   }
 
   Rect? _overlayRect() {
