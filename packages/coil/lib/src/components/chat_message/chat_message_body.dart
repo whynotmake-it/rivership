@@ -1,13 +1,10 @@
-import 'dart:async';
-
 import 'package:coil/button.dart';
+import 'package:coil/context_menu.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/chat_message/chat_message_action.dart';
-import 'package:coil/src/components/chat_message/chat_message_menu.dart';
 import 'package:coil/src/components/chat_message/chat_message_meta.dart';
 import 'package:coil/src/components/chat_message/chat_message_style.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -61,17 +58,13 @@ class ChatMessageBody extends StatefulWidget {
 
 class _ChatMessageBodyState extends State<ChatMessageBody> {
   final _states = WidgetStatesController();
-  final _menu = CoilPopupController();
   bool _focusWithin = false;
 
   @override
   void dispose() {
     _states.dispose();
-    _menu.dispose();
     super.dispose();
   }
-
-  void _openMenu() => unawaited(_menu.open());
 
   @override
   Widget build(BuildContext context) {
@@ -120,11 +113,10 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
             alignment: widget.user ? WrapAlignment.end : WrapAlignment.start,
             children: widget.attachments,
           ),
-        if (body != null)
-          ChatMessageMenu(
-            controller: _menu,
-            minWidth: style.menuMinWidth!,
-            actions: [
+        if (body != null && widget.actions.isNotEmpty)
+          CoilContextMenu(
+            style: CoilDropdownStyle(width: style.menuMinWidth),
+            entries: [
               for (final action in widget.actions)
                 CoilAction(
                   label: action.label,
@@ -133,7 +125,9 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
                 ),
             ],
             child: body,
-          ),
+          )
+        else if (body != null)
+          body,
         if (hasMeta)
           ListenableBuilder(
             listenable: _states,
@@ -169,11 +163,7 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
       child: CoilInteractionDetector(
         states: _states,
         trackPress: false,
-        child: GestureDetector(
-          supportedDevices: const {PointerDeviceKind.touch},
-          onLongPress: widget.actions.isEmpty ? null : _openMenu,
-          child: column,
-        ),
+        child: column,
       ),
     );
   }
