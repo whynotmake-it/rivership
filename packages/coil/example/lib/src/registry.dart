@@ -23,7 +23,9 @@ import 'package:coil_example/src/pages/components/input_copy_page.dart';
 import 'package:coil_example/src/pages/components/input_group_page.dart';
 import 'package:coil_example/src/pages/components/input_message_page.dart';
 import 'package:coil_example/src/pages/components/input_page.dart';
+import 'package:coil_example/src/pages/components/queued_stack_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
+import 'package:coil_example/src/pages/components/reveal_page.dart';
 import 'package:coil_example/src/pages/components/scroll_area_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
 import 'package:coil_example/src/pages/components/sidebar_page.dart';
@@ -132,6 +134,7 @@ const catalogEntries = <CatalogEntry>[
   calendarEntry,
   datePickerEntry,
   inputMessageEntry,
+  queuedStackEntry,
   fileThumbnailEntry,
   dataTableEntry,
   askUserQuestionsEntry,
@@ -144,6 +147,7 @@ const catalogEntries = <CatalogEntry>[
   carouselDotsEntry,
   chatMessageEntry,
   scrollAreaEntry,
+  revealEntry,
 ];
 
 /// Every component DESIGN.md §14 specifies, by group. The home screen lists
@@ -187,12 +191,14 @@ const designComponents = <CatalogGroup, List<String>>{
     'CarouselDots',
     'ChatMessage',
     'ScrollArea',
+    'Reveal',
   ],
   CatalogGroup.shellAndComposites: [
     'Sidebar',
     'Calendar',
     'DatePicker',
     'InputMessage',
+    'QueuedStack',
     'FileThumbnail',
     'DataTable',
     'AskUserQuestions',

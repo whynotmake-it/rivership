@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:motor/motor.dart';
 
-/// coil's motion tokens: Motor springs, plus two durations
-/// ([minPressDuration], [acknowledgeDuration]) that time interactions
-/// rather than animate them. All are runtime theme data.
+/// coil's motion tokens: Motor springs, plus durations
+/// ([minPressDuration], [acknowledgeDuration], [stagger]) that time motion
+/// rather than animate it. All are runtime theme data.
 ///
 /// Every token is a spring, exits included. An exit is a tighter spring
 /// (shorter, never bouncy) rather than a curve, so a transition reversed
@@ -15,6 +15,7 @@ import 'package:motor/motor.dart';
 /// | [standard] | 180 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
 /// | [gentle] | 340 ms, bounce 0.1 | sheets, dialogs, panels |
 /// | [fade] | 120 ms, no bounce | opacity and color |
+/// | [stagger] | 60 ms, a delay | siblings arriving in turn (`CoilReveal`) |
 ///
 /// Durations are [CupertinoMotion] durations: the perceptual length of the
 /// spring, after which it has ended (about 99% of the way); it settles a
@@ -52,6 +53,7 @@ class CoilMotion with Diagnosticable {
     ),
     this.minPressDuration = const Duration(milliseconds: 90),
     this.acknowledgeDuration = const Duration(milliseconds: 300),
+    this.stagger = const Duration(milliseconds: 60),
   });
 
   /// Small travel that should feel immediate: the hover highlight gliding
@@ -92,9 +94,14 @@ class CoilMotion with Diagnosticable {
   /// draw and the selection can land before the list closes.
   final Duration acknowledgeDuration;
 
-  /// These tokens for reduced motion: every spatial token instant, [fade]
-  /// and [fadeExit] kept. Reduced motion is fewer and gentler movements,
-  /// not none.
+  /// The delay between siblings that arrive one after another, such as the
+  /// panels of a screen fading in on first build (`CoilReveal`). Zero
+  /// under reduced motion, so they arrive together.
+  final Duration stagger;
+
+  /// These tokens for reduced motion: every spatial token instant, no
+  /// [stagger], [fade] and [fadeExit] kept. Reduced motion is fewer and
+  /// gentler movements, not none.
   CoilMotion reduced() => copyWith(
     quick: const Motion.instant(),
     quickExit: const Motion.instant(),
@@ -102,6 +109,7 @@ class CoilMotion with Diagnosticable {
     standardExit: const Motion.instant(),
     gentle: const Motion.instant(),
     gentleExit: const Motion.instant(),
+    stagger: Duration.zero,
   );
 
   /// Returns a copy with the given tokens replaced.
@@ -116,6 +124,7 @@ class CoilMotion with Diagnosticable {
     Motion? fadeExit,
     Duration? minPressDuration,
     Duration? acknowledgeDuration,
+    Duration? stagger,
   }) => CoilMotion(
     quick: quick ?? this.quick,
     quickExit: quickExit ?? this.quickExit,
@@ -127,6 +136,7 @@ class CoilMotion with Diagnosticable {
     fadeExit: fadeExit ?? this.fadeExit,
     minPressDuration: minPressDuration ?? this.minPressDuration,
     acknowledgeDuration: acknowledgeDuration ?? this.acknowledgeDuration,
+    stagger: stagger ?? this.stagger,
   );
 
   /// Motions don't interpolate, so this switches at the midpoint, like other
@@ -145,6 +155,7 @@ class CoilMotion with Diagnosticable {
     fadeExit,
     minPressDuration,
     acknowledgeDuration,
+    stagger,
   ];
 
   @override
