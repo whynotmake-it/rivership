@@ -7,7 +7,9 @@ const sliderEntry = CatalogEntry(
   slug: 'slider',
   title: 'Slider',
   group: CatalogGroup.groupedControls,
-  summary: 'One value: scrubber, pips or pill. Drags never coast.',
+  summary:
+      'One value or a range: scrubber, pips or pill, steps, typed values '
+      'and tooltips. Drags never coast.',
   page: SliderPage.new,
 );
 
@@ -24,8 +26,18 @@ class _SliderPageState extends State<SliderPage> {
   var _brightness = 0.4;
   var _price = 120.0;
   var _compact = 0.5;
+  var _range = const CoilRangeValues(80, 320);
+  var _rating = 0.7;
+  var _opacity = 0.75;
+  var _tooltip = 0.3;
+  var _tooltipRange = const CoilRangeValues(.2, .6);
+
+  static const _ratings = [0.1, 0.5, 0.7, 1.1, 1.3];
 
   static String _percent(double v) => '${(v * 100).round()} %';
+
+  static String _qualityName(double v) =>
+      const ['Draft', 'Low', 'Medium', 'High', 'Best'][v.round() - 1];
 
   @override
   Widget build(BuildContext context) => CatalogPage(
@@ -43,7 +55,8 @@ class _SliderPageState extends State<SliderPage> {
             CoilSlider(
               label: const Text('Volume'),
               value: _volume,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _volume = v),
             ),
             CoilSlider(
@@ -51,7 +64,7 @@ class _SliderPageState extends State<SliderPage> {
               max: 500,
               divisions: 50,
               value: _price,
-              valueFormatter: (v) => '€${v.round()}',
+              valueBuilder: (_, v) => Text('€${v.round()}'),
               onChanged: (v) => setState(() => _price = v),
             ),
           ],
@@ -67,8 +80,8 @@ class _SliderPageState extends State<SliderPage> {
           max: 5,
           divisions: 4,
           value: _quality,
-          valueFormatter: (v) =>
-              const ['Draft', 'Low', 'Medium', 'High', 'Best'][v.round() - 1],
+          valueBuilder: (_, v) => Text(_qualityName(v)),
+          semanticFormatter: _qualityName,
           onChanged: (v) => setState(() => _quality = v),
         ),
       ),
@@ -79,8 +92,78 @@ class _SliderPageState extends State<SliderPage> {
           label: const Text('Brightness'),
           variant: CoilSliderVariant.pill,
           value: _brightness,
-          valueFormatter: _percent,
+          valueBuilder: (_, v) => Text(_percent(v)),
+          semanticFormatter: _percent,
           onChanged: (v) => setState(() => _brightness = v),
+        ),
+      ),
+      DemoSection(
+        title: 'Range',
+        description:
+            'Two thumbs that never cross. A tap or a drag moves the nearest '
+            'one; Tab moves between them.',
+        child: CoilRangeSlider(
+          label: const Text('Price'),
+          max: 500,
+          divisions: 50,
+          values: _range,
+          valueBuilder: (_, v) => Text('€${v.round()}'),
+          onChanged: (v) => setState(() => _range = v),
+        ),
+      ),
+      DemoSection(
+        title: 'Step list',
+        description: 'Any allowed values, not only even steps.',
+        child: CoilSlider(
+          label: const Text('Rating'),
+          variant: CoilSliderVariant.pips,
+          min: _ratings.first,
+          max: _ratings.last,
+          steps: _ratings,
+          value: _rating,
+          valueBuilder: (_, v) => Text('$v A'),
+          onChanged: (v) => setState(() => _rating = v),
+        ),
+      ),
+      DemoSection(
+        title: 'Editable value',
+        description:
+            'Click or tap the value, or press Enter, to type one. Enter '
+            'applies it, snapped to a step; Esc cancels.',
+        child: CoilSlider(
+          label: const Text('Opacity'),
+          variant: CoilSliderVariant.pill,
+          valueDisplay: CoilSliderValueDisplay.editable,
+          divisions: 100,
+          value: _opacity,
+          onChanged: (v) => setState(() => _opacity = v),
+        ),
+      ),
+      DemoSection(
+        title: 'Tooltip',
+        description:
+            'The value rides the thumb while the slider is hovered, pressed '
+            'or focused with the keyboard.',
+        child: DemoColumn(
+          children: [
+            CoilSlider(
+              label: const Text('Blur'),
+              variant: CoilSliderVariant.pill,
+              valueDisplay: CoilSliderValueDisplay.tooltip,
+              value: _tooltip,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
+              onChanged: (v) => setState(() => _tooltip = v),
+            ),
+            CoilRangeSlider(
+              label: const Text('Window'),
+              valueDisplay: CoilSliderValueDisplay.tooltip,
+              values: _tooltipRange,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
+              onChanged: (v) => setState(() => _tooltipRange = v),
+            ),
+          ],
         ),
       ),
       DemoSection(
@@ -91,7 +174,8 @@ class _SliderPageState extends State<SliderPage> {
               label: const Text('Zoom'),
               size: CoilSize.compact,
               value: _compact,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _compact = v),
             ),
             const CoilSlider(

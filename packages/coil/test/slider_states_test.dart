@@ -17,7 +17,22 @@ void main() {
           divisions: variant == CoilSliderVariant.pips ? 4 : null,
           variant: variant,
           label: const Text('Level'),
-          valueFormatter: (v) => '${(v * 100).round()}%',
+          valueBuilder: (_, v) => Text('${(v * 100).round()}%'),
+          statesController: states,
+          onChanged: s.isDisabled ? null : (_) {},
+        ),
+      );
+    }
+
+    Widget range(SheetState s) {
+      final states = s.controller();
+      controllers.add(states);
+      return SizedBox(
+        width: 180,
+        child: CoilRangeSlider(
+          values: const CoilRangeValues(.25, .75),
+          label: const Text('Level'),
+          valueBuilder: (_, v) => Text('${(v * 100).round()}'),
           statesController: states,
           onChanged: s.isDisabled ? null : (_) {},
         ),
@@ -34,6 +49,7 @@ void main() {
             SheetRow('scrubber', (s) => slider(s, CoilSliderVariant.scrubber)),
             SheetRow('pips', (s) => slider(s, CoilSliderVariant.pips)),
             SheetRow('pill', (s) => slider(s, CoilSliderVariant.pill)),
+            SheetRow('range', range),
           ],
         ),
       ),
