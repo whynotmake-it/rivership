@@ -17,12 +17,34 @@ abstract interface class PaintOffset {
 
 /// The rect of [box] in global coordinates as it was last painted: its
 /// layout position plus the [PaintOffset] of every ancestor.
-Rect paintedGlobalRect(RenderBox box) {
-  var topLeft = box.localToGlobal(Offset.zero);
+Rect paintedGlobalRect(RenderBox box) =>
+    (box.localToGlobal(Offset.zero) & box.size).shift(paintOffsetAbove(box));
+
+/// The sum of the [PaintOffset]s of [box]'s ancestors: how far from its
+/// layout position it was last painted.
+Offset paintOffsetAbove(RenderObject box) {
+  var offset = Offset.zero;
   for (var node = box.parent; node != null; node = node.parent) {
-    if (node is PaintOffset) topLeft += (node as PaintOffset).paintOffset;
+    if (node is PaintOffset) offset += (node as PaintOffset).paintOffset;
   }
-  return topLeft & box.size;
+  return offset;
+}
+
+/// Where [context] can be seen: the intersection of its [Scrollable]s'
+/// painted rects in global coordinates, or null when it has none.
+Rect? visibleRectOf(BuildContext context) {
+  Rect? visible;
+  for (
+    var scrollable = Scrollable.maybeOf(context);
+    scrollable != null;
+    scrollable = Scrollable.maybeOf(scrollable.context)
+  ) {
+    final box = scrollable.context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+    final rect = paintedGlobalRect(box);
+    visible = visible?.intersect(rect) ?? rect;
+  }
+  return visible;
 }
 
 /// Paints a [LeaderLayer] for [link] around its child while [link] is set,

@@ -648,21 +648,10 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   }
 
   @override
-  Rect? get visibleRect {
-    if (!mounted) return null;
-    Rect? visible;
-    for (
-      var scrollable = Scrollable.maybeOf(context);
-      scrollable != null;
-      scrollable = Scrollable.maybeOf(scrollable.context)
-    ) {
-      final box = scrollable.context.findRenderObject();
-      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
-      final rect = paintedGlobalRect(box);
-      visible = visible?.intersect(rect) ?? rect;
-    }
-    return visible;
-  }
+  Rect? get visibleRect => mounted ? visibleRectOf(context) : null;
+
+  @override
+  bool get holdsLanding => false;
 
   @override
   void landingChanged() {
@@ -743,7 +732,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     _grab = null;
     final DragFlight flight;
     if (grab != null && grab.position == position && !grab.flight.isDone) {
-      flight = grab.flight..regrab(widget, position, _lastAnchor);
+      flight = grab.flight..regrab(widget, position, _lastAnchor, source: this);
     } else {
       final box = context.findRenderObject()! as RenderBox;
       final overlay = Overlay.of(context, rootOverlay: widget.rootOverlay);
@@ -755,6 +744,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
         pointer: position,
         anchor: _lastAnchor,
         size: box.size,
+        source: this,
       )..start();
     }
     _dragging.add(flight);
@@ -875,8 +865,10 @@ class _FlightDrag extends Drag {
 
   @override
   void update(DragUpdateDetails details) {
-    _drag.update(details);
+    // The feedback moves first, so a target that reads where it is, such as
+    // a MotionDropZone, sees this move.
     _flight.moveBy(details.delta);
+    _drag.update(details);
   }
 
   @override

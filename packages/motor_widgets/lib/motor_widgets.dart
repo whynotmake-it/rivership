@@ -5,7 +5,11 @@
 /// one mid-flight keeps its velocity instead of restarting.
 library motor_widgets;
 
+export 'src/drag/motion_drag_probe.dart';
 export 'src/drag/motion_draggable.dart';
+export 'src/drag/motion_edge_scroll.dart'
+    show MotionEdgeScroll, MotionEdgeScrollSettings;
+export 'src/drop/motion_drop_zone.dart';
 export 'src/layout/padding_extended.dart' show PaddingExtended;
 export 'src/motion_align.dart';
 export 'src/motion_container.dart';
