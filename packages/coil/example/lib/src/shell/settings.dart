@@ -251,6 +251,12 @@ class CatalogSettings extends ChangeNotifier {
   bool _boldFocusRing = false;
   set boldFocusRing(bool value) => _set(() => _boldFocusRing = value);
 
+  /// The pointing hand over every control, as on the web. Off shows the
+  /// arrow, the desktop convention; links point either way.
+  bool get pointingCursor => _pointingCursor;
+  bool _pointingCursor = false;
+  set pointingCursor(bool value) => _set(() => _pointingCursor = value);
+
   /// Turns coil's haptics off. On follows the platform's conventions.
   bool get hapticsOff => _hapticsOff;
   bool _hapticsOff = false;
@@ -275,6 +281,9 @@ class CatalogSettings extends ChangeNotifier {
       motion: motion.motion,
       focusRingWidth: boldFocusRing ? 2 : 1,
       haptics: hapticsOff ? CoilHaptics.none : null,
+      controlCursor: pointingCursor
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
     );
   }
 

@@ -211,10 +211,14 @@ class _CoilChoiceCardState extends State<CoilChoiceCard> {
         onTap: _labelTarget.activate,
         // The control carries the action in semantics.
         excludeFromSemantics: true,
-        cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
         child: ListenableBuilder(
           listenable: _states,
-          builder: (context, _) => card(_states.value),
+          builder: (context, _) => card(
+            CoilInteractionDetector.statesFor(
+              _states.value,
+              enabled: widget.enabled,
+            ),
+          ),
         ),
       ),
     );

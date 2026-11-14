@@ -440,14 +440,14 @@ class _OptionRowState extends State<_OptionRow> {
           states: _states,
           enabled: onPressed != null,
           onTap: onPressed,
-          cursor: onPressed != null
-              ? SystemMouseCursors.click
-              : MouseCursor.defer,
           excludeFromSemantics: true,
           child: ListenableBuilder(
             listenable: _states,
             builder: (context, child) {
-              final states = _states.value;
+              final states = CoilInteractionDetector.statesFor(
+                _states.value,
+                enabled: onPressed != null,
+              );
               return MotionBuilder<Color>(
                 // A finger pressing a row gets a fill that ends with the press;
                 // hovering pointers already show the highlight.

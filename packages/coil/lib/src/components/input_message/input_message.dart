@@ -218,10 +218,10 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
     Widget decorate(BuildContext context, Widget field) => ListenableBuilder(
       listenable: _states,
       builder: (context, child) {
-        final states = {
-          ..._states.value,
-          if (!widget.enabled) WidgetState.disabled,
-        };
+        final states = CoilInteractionDetector.statesFor(
+          _states.value,
+          enabled: widget.enabled,
+        );
         return MotionBuilder<Color>(
           value: look.border!.resolve(states)!,
           converter: MotionConverter.colorRgb,

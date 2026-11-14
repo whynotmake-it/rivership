@@ -834,7 +834,6 @@ class _PeekStrip extends StatelessWidget {
         states: states,
         onTap: onPressed,
         excludeFromSemantics: true,
-        cursor: SystemMouseCursors.click,
         child: ValueListenableBuilder(
           valueListenable: states,
           builder: (context, value, _) {

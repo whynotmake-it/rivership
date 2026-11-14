@@ -957,13 +957,16 @@ class _RowState extends State<_Row> {
           states: _states,
           enabled: enabled,
           onTap: widget.onPressed,
-          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
           excludeFromSemantics: true,
           child: ListenableBuilder(
             listenable: _states,
             builder: (context, child) {
+              final raw = CoilInteractionDetector.statesFor(
+                _states.value,
+                enabled: enabled,
+              );
               final states = {
-                ..._states.value,
+                ...raw,
                 if (lit && keyboard) WidgetState.focused,
                 if (lit && !keyboard) WidgetState.hovered,
               };
@@ -983,7 +986,7 @@ class _RowState extends State<_Row> {
               // A finger gets a fill while it presses; a hovering pointer
               // already shows the highlight.
               final fill =
-                  pressed && !_states.value.contains(WidgetState.hovered)
+                  pressed && !raw.contains(WidgetState.hovered)
                   ? widget.pressFill
                   : widget.pressFill.withValues(alpha: 0);
               return MotionBuilder<Color>(

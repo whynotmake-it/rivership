@@ -194,6 +194,11 @@ class SettingsPanel extends StatelessWidget {
                 onChanged: (value) => settings.boldFocusRing = value,
                 label: const Text('Bold focus ring'),
               ),
+              CoilSwitch(
+                value: settings.pointingCursor,
+                onChanged: (value) => settings.pointingCursor = value,
+                label: const Text('Pointing-hand cursor'),
+              ),
             ],
           ),
           const SizedBox(height: 32),

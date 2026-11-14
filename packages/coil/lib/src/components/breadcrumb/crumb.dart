@@ -87,6 +87,8 @@ class CrumbLink extends StatelessWidget {
       child: CoilInteraction(
         onPressed: onPressed,
         focusNode: focusNode,
+        // Links keep the pointing hand whatever the theme's control cursor.
+        mouseCursor: link && enabled ? SystemMouseCursors.click : null,
         minHitTarget: metrics.minHitTarget,
         builder: (context, states, _) {
           final pressed = states.contains(WidgetState.pressed);

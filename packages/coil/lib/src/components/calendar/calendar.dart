@@ -533,7 +533,6 @@ class _DayState extends State<_Day> {
         states: _states,
         enabled: enabled,
         onTap: widget.onPressed,
-        cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
         excludeFromSemantics: true,
         child: Opacity(
           opacity: enabled ? 1 : widget.metrics.disabledOpacity,

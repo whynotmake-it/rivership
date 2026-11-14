@@ -258,6 +258,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       s.addListener(_syncBubble);
     }
     _editFocus.addListener(_onEditFocus);
+    CoilInputModality.instance.addListener(_syncFocused);
   }
 
   @override
@@ -324,6 +325,22 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       if (_focusOf(i).hasFocus) focused = i;
     }
     if (focused != _focused) setState(() => _focused = focused);
+    _syncFocused();
+  }
+
+  /// The slider is focused while either thumb has the primary focus from
+  /// the keyboard, the detector's rule. The slider writes it, not the
+  /// detector: one detector covers both thumbs, and the thumb with focus
+  /// changes on a focus event, not while building.
+  void _syncFocused() {
+    var thumb = false;
+    for (var i = 0; i < _count; i++) {
+      if (_focusOf(i).hasPrimaryFocus) thumb = true;
+    }
+    _states.update(
+      WidgetState.focused,
+      thumb && CoilInputModality.instance.value == CoilModality.keyboard,
+    );
   }
 
   /// Leaving the field commits it, as Done does.
@@ -367,6 +384,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    CoilInputModality.instance.removeListener(_syncFocused);
     _states
       ..removeListener(_forgetHover)
       ..removeListener(_syncBubble);
@@ -544,10 +562,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final content = CoilInteractionDetector(
       states: _states,
       enabled: _enabled,
-      // The thumb that has focus, or the first.
-      focusNode: _focusOf(_focused ?? 0),
       excludeFromSemantics: true,
-      cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
       // The press shows and the value jumps in the same callback.
       onPressDown: _pressDown,
       onTap: _endPress,
@@ -616,7 +631,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   Widget _buildVisuals(CoilMetrics metrics) {
     final theme = CoilTheme.of(context);
     final style = _style(metrics);
-    final states = _states.value;
+    final states = CoilInteractionDetector.statesFor(
+      _states.value,
+      enabled: _enabled,
+    );
     final tokens = _tokens;
     final reach = _reach(style);
     final pressed = states.contains(WidgetState.pressed) || _dragging;

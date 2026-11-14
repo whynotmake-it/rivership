@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -18,7 +19,13 @@ import 'package:flutter/widgets.dart';
 ///   and the last input was the keyboard. Taps and clicks never show it. A
 ///   focused descendant doesn't count: a container that shows focus inside
 ///   it uses `CoilFocusWithin`.
-/// * [WidgetState.disabled]: when not [enabled].
+///
+/// The detector writes [states] only from events: pointers, focus changes
+/// and the input modality. It never writes while building, so a widget that
+/// listens to [states] can sit anywhere, above the detector or below it.
+/// [WidgetState.disabled] is configuration, not an event, so [states] never
+/// holds it: whoever builds the visuals reads `enabled` through
+/// [statesFor].
 ///
 /// Use it for a control that owns its own focus or gestures (a text field,
 /// a list row); otherwise use [CoilInteraction].
@@ -33,7 +40,7 @@ class CoilInteractionDetector extends StatefulWidget {
     this.onTap,
     this.onPressDown,
     this.trackPress = true,
-    this.cursor = MouseCursor.defer,
+    this.cursor,
     this.excludeFromSemantics = false,
   });
 
@@ -43,12 +50,25 @@ class CoilInteractionDetector extends StatefulWidget {
   /// The interactive area.
   final Widget child;
 
-  /// Whether the control is enabled. Disabled controls neither hover nor
-  /// press.
+  /// Whether the control is enabled. A disabled control starts no hover or
+  /// press; [statesFor] hides one it already had.
   final bool enabled;
 
   /// The node whose primary focus drives [WidgetState.focused], if any.
   final FocusNode? focusNode;
+
+  /// The states a control shows: [raw] from its controller, with
+  /// [WidgetState.disabled] when not [enabled]. A disabled control neither
+  /// hovers nor presses, even while a pointer still rests or presses on it.
+  static Set<WidgetState> statesFor(
+    Set<WidgetState> raw, {
+    required bool enabled,
+  }) => enabled
+      ? raw
+      : {
+          ...raw.difference(const {WidgetState.hovered, WidgetState.pressed}),
+          WidgetState.disabled,
+        };
 
   /// Called on a completed tap.
   final VoidCallback? onTap;
@@ -64,8 +84,10 @@ class CoilInteractionDetector extends StatefulWidget {
   /// controls that handle their own gestures (a text field).
   final bool trackPress;
 
-  /// The mouse cursor over [child].
-  final MouseCursor cursor;
+  /// The mouse cursor over [child]. Null gives an enabled detector with an
+  /// [onTap] the theme's `CoilThemeData.controlCursor`, and defers to the
+  /// cursor beneath otherwise.
+  final MouseCursor? cursor;
 
   /// Whether to leave the tap action out of semantics.
   final bool excludeFromSemantics;
@@ -85,7 +107,6 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     super.initState();
     _modality.addListener(_syncFocus);
     widget.focusNode?.addListener(_syncFocus);
-    _syncDisabled();
   }
 
   @override
@@ -94,9 +115,12 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode?.removeListener(_syncFocus);
       widget.focusNode?.addListener(_syncFocus);
-      _syncFocus();
+      // The new node's focus is read after this frame, not while building,
+      // as FocusableActionDetector does when it is enabled or disabled.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncFocus();
+      });
     }
-    _syncDisabled();
   }
 
   @override
@@ -105,15 +129,6 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     _modality.removeListener(_syncFocus);
     widget.focusNode?.removeListener(_syncFocus);
     super.dispose();
-  }
-
-  void _syncDisabled() {
-    widget.states.update(WidgetState.disabled, !widget.enabled);
-    if (!widget.enabled) {
-      widget.states
-        ..update(WidgetState.pressed, false)
-        ..update(WidgetState.hovered, false);
-    }
   }
 
   void _syncFocus() {
@@ -174,7 +189,11 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
       );
     }
     return MouseRegion(
-      cursor: widget.cursor,
+      cursor:
+          widget.cursor ??
+          (widget.enabled && widget.onTap != null
+              ? CoilTheme.of(context).controlCursor
+              : MouseCursor.defer),
       onEnter: (event) => _setHovered(event, true),
       onHover: (event) => _setHovered(event, true),
       onExit: (event) => _setHovered(event, false),
@@ -190,7 +209,9 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
 /// [onPressed] is null. Enter, Numpad Enter and Space activate it. Pressing
 /// doesn't take focus (as on macOS and iOS); Tab does.
 ///
-/// Pass a [statesController] to observe the states.
+/// Pass a [statesController] to observe the states. It holds what events
+/// cause; [builder] also gets [WidgetState.disabled] when [onPressed] is
+/// null (see [CoilInteractionDetector.statesFor]).
 class CoilInteraction extends StatefulWidget {
   /// Creates a pressable.
   const CoilInteraction({
@@ -225,7 +246,8 @@ class CoilInteraction extends StatefulWidget {
   /// Observes, and can force, the interaction states.
   final WidgetStatesController? statesController;
 
-  /// The cursor over the control. Defaults to a click cursor when enabled.
+  /// The cursor over the control. Defaults to the theme's
+  /// `CoilThemeData.controlCursor` when enabled.
   final MouseCursor? mouseCursor;
 
   /// The smallest square the hit area may be. The visual is centered in it.
@@ -291,7 +313,14 @@ class _CoilInteractionState extends State<CoilInteraction> {
     Widget visual = ListenableBuilder(
       listenable: _states,
       builder: (context, child) =>
-          widget.builder(context, _states.value, child),
+          widget.builder(
+            context,
+            CoilInteractionDetector.statesFor(
+              _states.value,
+              enabled: widget.enabled,
+            ),
+            child,
+          ),
       child: widget.child,
     );
     if (widget.minHitTarget > 0) {
@@ -315,9 +344,7 @@ class _CoilInteractionState extends State<CoilInteraction> {
         enabled: widget.enabled,
         focusNode: _focusNode,
         onTap: widget.onPressed,
-        cursor:
-            widget.mouseCursor ??
-            (widget.enabled ? SystemMouseCursors.click : MouseCursor.defer),
+        cursor: widget.mouseCursor,
         excludeFromSemantics: widget.excludeFromSemantics,
         child: visual,
       ),
