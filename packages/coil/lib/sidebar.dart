@@ -2,7 +2,8 @@
 library;
 
 export 'src/components/sidebar/sidebar_callouts.dart';
-export 'src/components/sidebar/sidebar_controller.dart';
+export 'src/components/sidebar/sidebar_controller.dart'
+    hide attachSidebarScaffold;
 export 'src/components/sidebar/sidebar_menu.dart';
 export 'src/components/sidebar/sidebar_panel.dart' hide coilSidebarRowHeight;
 export 'src/components/sidebar/sidebar_rail.dart';
