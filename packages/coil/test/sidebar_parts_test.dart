@@ -363,10 +363,10 @@ void main() {
       expect(pageLeft(tester), 0);
     });
 
-    testWidgets('motions override the width track', (tester) async {
+    testWidgets('motions override the fold track', (tester) async {
       final controller = await pump(
         tester,
-        motions: {CoilSidebarTrack.width: const Motion.instant()},
+        motions: {CoilSidebarTrack.fold: const Motion.instant()},
       );
       controller.open = false;
       await tester.pump();

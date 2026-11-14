@@ -166,6 +166,57 @@ void main() {
       expect(tester.getCenter(find.byType(CoilSidebarTrigger)).dx, 600);
     });
 
+    testWidgets('after folding and reopening, a drag follows the pointer '
+        '1:1 on every frame', (tester) async {
+      final controller = await _pumpWide(tester);
+      // The body's left edge: where the sidebar's space ends.
+      double pageLeft() => tester
+          .getTopLeft(
+            find
+                .ancestor(
+                  of: find.text('Page Inbox'),
+                  matching: find.byType(Column),
+                )
+                .first,
+          )
+          .dx;
+      double sidebarWidth() => tester.getSize(find.byType(CoilSidebar)).width;
+
+      // One drag: fold past the minimum, then pull back out.
+      final gesture = await _grabRail(tester, -200);
+      expect(controller.open, isFalse);
+      for (var i = 0; i < 15; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(controller.open, isTrue);
+      // Hold still while the reopen lands.
+      await tester.pump(const Duration(milliseconds: 500));
+      final page = pageLeft();
+      final width = controller.width;
+      for (var i = 1; i <= 10; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(controller.width, width + 10 * i);
+        expect(pageLeft(), page + 10 * i, reason: 'frame $i');
+        expect(pageLeft(), controller.width, reason: 'frame $i');
+      }
+      await gesture.up();
+
+      // Reopened from the controller, the next drag tracks too.
+      controller.open = false;
+      await tester.pumpAndSettle();
+      controller.open = true;
+      await tester.pumpAndSettle();
+      final next = await _grabRail(tester, 0);
+      for (var i = 0; i < 5; i++) {
+        await next.moveBy(const Offset(-10, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(pageLeft(), controller.width, reason: 'frame $i');
+      }
+      await next.up();
+    });
+
     testWidgets('a click folds the sidebar', (tester) async {
       final controller = await _pumpWide(tester);
       final rail = tester.getCenter(find.byType(CoilSidebarRail));

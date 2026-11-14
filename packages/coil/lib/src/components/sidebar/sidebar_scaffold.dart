@@ -18,9 +18,17 @@ import 'package:motor/motor.dart';
 final class CoilSidebarTrack<T extends Object> extends Track<T> {
   CoilSidebarTrack._(super.converter, {required String super.debugLabel});
 
-  /// The width the sidebar takes beside the page. Default motion:
-  /// `gentle` opening, `gentleExit` closing. A rail drag follows the
-  /// pointer at once.
+  /// How open the sidebar is beside the page, 0 to 1; the space it takes
+  /// is this times its width. Default motion: `gentle` opening,
+  /// `gentleExit` closing, and `standard` / `standardExit` when a rail drag
+  /// folds or reopens it.
+  static final fold = CoilSidebarTrack<double>._(
+    .single,
+    debugLabel: 'CoilSidebar.fold',
+  );
+
+  /// The sidebar's width when the controller sets it. Default motion:
+  /// `gentle`. A rail drag sets it directly, so it follows the pointer.
   static final width = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.width',
@@ -195,10 +203,6 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   bool _resizing = false;
 
-  /// Whether a rail drag flipped the sidebar open or closed, and the width
-  /// hasn't settled since: the flip springs instead of tracking.
-  bool _flipping = false;
-
   bool _peeking = false;
   Timer? _peekTimer;
   bool _pointerWasInPeek = true;
@@ -256,7 +260,6 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final open = _controller.open;
     if (open != _lastOpen) {
       _lastOpen = open;
-      if (_resizing) _flipping = true;
       if (open) _dropPeek();
     }
     setState(() {});
@@ -425,10 +428,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     disarmPeek: _disarmPeek,
     setResizing: (resizing) {
       if (resizing == _resizing) return;
-      setState(() {
-        _resizing = resizing;
-        if (!resizing) _flipping = false;
-      });
+      setState(() => _resizing = resizing);
     },
     minWidth: widget.minWidth,
     maxWidth: widget.maxWidth,
@@ -527,14 +527,18 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final open = _controller.open;
     final width = _controller.width;
-    final widthMotion = _resizing && !_flipping
+    // Opening and closing are one track, the width another: a rail drag
+    // sets the width directly while a fold or reopen during the drag still
+    // springs, and once that lands the sidebar follows the pointer exactly.
+    final foldMotion = _motionFor(
+      CoilSidebarTrack.fold,
+      open
+          ? (_resizing ? motion.standard : motion.gentle)
+          : (_resizing ? motion.standardExit : motion.gentleExit),
+    );
+    final widthMotion = _resizing
         ? const Motion.instant()
-        : _motionFor(
-            CoilSidebarTrack.width,
-            open
-                ? (_resizing ? motion.standard : motion.gentle)
-                : (_resizing ? motion.standardExit : motion.gentleExit),
-          );
+        : _motionFor(CoilSidebarTrack.width, motion.gentle);
     final peekMotion = _motionFor(
       CoilSidebarTrack.peek,
       _peeking ? motion.standard : motion.standardExit,
@@ -543,22 +547,20 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final sidebar = KeyedSubtree(key: _sidebarKey, child: widget.sidebar);
     return TrackBuilder(
       initialValues: [
-        CoilSidebarTrack.width.value(open ? width : 0.0),
+        CoilSidebarTrack.fold.value(open ? 1.0 : 0.0),
+        CoilSidebarTrack.width.value(width),
         CoilSidebarTrack.peek.value(0),
       ],
       animations: [
-        CoilSidebarTrack.width([.to(open ? width : 0.0, motion: widthMotion)]),
+        CoilSidebarTrack.fold([.to(open ? 1.0 : 0.0, motion: foldMotion)]),
+        CoilSidebarTrack.width([.to(width, motion: widthMotion)]),
         CoilSidebarTrack.peek([.to(_peeking ? 1.0 : 0.0, motion: peekMotion)]),
       ],
-      onAnimationStatusChanged: (status) {
-        if (!status.isAnimating && _flipping && !_resizing) {
-          setState(() => _flipping = false);
-        }
-      },
       builder: (context, value, _) {
-        final shown = math.max(0, value(CoilSidebarTrack.width)).toDouble();
+        final progress = math.max(0, value(CoilSidebarTrack.fold)).toDouble();
+        final full = value(CoilSidebarTrack.width);
+        final shown = full * progress;
         final peek = value(CoilSidebarTrack.peek);
-        final progress = width > 0 ? shown / width : 0.0;
         // Folded and settled, the column is gone; peeking, the sidebar
         // lives in the card instead.
         final inColumn = open || shown > 0.5 || !armed;
@@ -577,8 +579,8 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
                         alignment: _physicalLeft
                             ? Alignment.centerRight
                             : Alignment.centerLeft,
-                        minWidth: width,
-                        maxWidth: width,
+                        minWidth: full,
+                        maxWidth: full,
                         child: _Excluded(
                           excluded: !open,
                           child: _Panel(

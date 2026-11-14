@@ -94,7 +94,7 @@ The scaffold owns state and layout, like `Scaffold` owns its drawer. FF's
 | `railTooltipOpen` | dropped | Only FF's docs use it. |
 | `bordered` | `CoilSidebarStyle.edgeColor` | Transparent draws none. |
 | 160–360, slop 56 | `minWidth`, `maxWidth`; `CoilSidebarRail.collapseSlop` | |
-| motion | `motion:` + `motions: Map<CoilSidebarTrack<Object>, Motion>?` | Tracks: `width`, `peek`, `drawer`, `highlight`, `selection`, `expand`, `callouts`. |
+| motion | `motion:` + `motions: Map<CoilSidebarTrack<Object>, Motion>?` | Tracks: `fold` (how open, 0 to 1), `width`, `peek`, `drawer`, `highlight`, `selection`, `expand`, `callouts`. |
 
 `CoilSidebarScaffold.of(context)` returns the controller.
 
