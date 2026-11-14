@@ -8,10 +8,10 @@ import 'package:motor/src/widgets/base_motion_builder.dart';
 ///
 /// ```dart
 /// Widget build(BuildContext context) {
-///   return MotionBuilder(
-///     value: Alignment.center,
-///     motion: SpringMotion(Spring()),
-///     converter: const AlignmentMotionConverter(),
+///   return MotionBuilder<Alignment>(
+///     value: .center,
+///     motion: .smoothSpring(),
+///     converter: .alignment,
 ///     builder: (context, value, child) => Align(
 ///       alignment: value,
 ///       child: child,
@@ -30,10 +30,13 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     required super.motion,
     required super.converter,
     required this.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
+    super.tickerRate,
     super.key,
   });
 
@@ -43,10 +46,13 @@ class MotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
     required super.motionPerDimension,
     required super.converter,
     required this.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
+    super.tickerRate,
     super.key,
   }) : super.motionPerDimension();
 
@@ -81,10 +87,13 @@ class SingleMotionBuilder extends MotionBuilder<double> {
     required super.value,
     required super.motion,
     required super.builder,
+    super.velocityTracking,
     super.active = true,
     super.onAnimationStatusChanged,
     super.from,
     super.child,
+    super.debugLabel,
+    super.tickerRate,
     super.key,
   }) : super(converter: const SingleMotionConverter());
 }

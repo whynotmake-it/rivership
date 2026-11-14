@@ -17,7 +17,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     super.settings,
     this.motion = const CupertinoMotion.smooth(
       duration: Duration(milliseconds: 350),
-      snapToEnd: true,
     ),
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
