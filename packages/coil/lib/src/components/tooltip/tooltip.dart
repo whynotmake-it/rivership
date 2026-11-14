@@ -118,8 +118,7 @@ class CoilTooltipGroup extends StatelessWidget {
   );
 }
 
-/// The inverted bubble: foreground fill, caption text in the background
-/// color.
+/// The bubble's enter and exit around a [CoilTooltipBubble].
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.presence,
@@ -132,41 +131,62 @@ class _Bubble extends StatelessWidget {
   final CoilMotion? motion;
 
   @override
+  Widget build(BuildContext context) => CoilBlurFade(
+    presence: presence,
+    scale: 1,
+    child: CoilTooltipBubble(motion: motion, child: content),
+  );
+}
+
+/// A tooltip's look: an inverted bubble with [child] in the caption style,
+/// for components that show a tooltip of their own through
+/// [CoilTooltipAnchor.controlled], like a slider's value.
+///
+/// The fill is the theme's `foreground`, and [child] gets `background`
+/// through [DefaultTextStyle] and [IconTheme]. When [child] switches (a new
+/// key or type), the bubble resizes to it at once on `quick` while the two
+/// crossfade on `fade`; the old one keeps its layout as it fades. A child
+/// that updates in place resizes the bubble on `quick` too.
+///
+/// It has no enter or exit of its own; wrap it in one, such as
+/// [CoilBlurFade].
+class CoilTooltipBubble extends StatelessWidget {
+  /// Creates a tooltip bubble around [child].
+  const CoilTooltipBubble({required this.child, super.key, this.motion});
+
+  /// What the bubble shows.
+  final Widget child;
+
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
+
+  @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, tier: CoilTier.pointer);
     final motion = CoilTheme.motionOf(context, override: this.motion);
-    return CoilBlurFade(
-      presence: presence,
-      scale: 1,
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: theme.colors.foreground,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(
-              CoilTheme.radiiOf(context).item,
-            ),
-          ),
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: theme.colors.foreground,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(CoilTheme.radiiOf(context).item),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: DefaultTextStyle(
-            style: theme.typography.style(
-              metrics.caption,
-              color: theme.colors.background,
-            ),
-            child: IconTheme.merge(
-              data: IconThemeData(color: theme.colors.background),
-              // When the content changes, the size follows the new content
-              // on `quick` at once while the two crossfade on `fade`. The
-              // old content keeps its layout as it fades.
-              child: MotionSizeSwitcher(
-                motion: motion.fade,
-                exitMotion: motion.fadeExit,
-                sizeMotion: motion.quick,
-                immediateResize: true,
-                child: content,
-              ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: DefaultTextStyle(
+          style: theme.typography.style(
+            metrics.caption,
+            color: theme.colors.background,
+          ),
+          child: IconTheme.merge(
+            data: IconThemeData(color: theme.colors.background),
+            child: MotionSizeSwitcher(
+              motion: motion.fade,
+              exitMotion: motion.fadeExit,
+              sizeMotion: motion.quick,
+              immediateResize: true,
+              child: child,
             ),
           ),
         ),

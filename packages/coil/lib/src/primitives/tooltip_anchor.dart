@@ -45,27 +45,53 @@ Motion _presenceMotion(
 ///
 /// The bubble sits [gap] above [child], or below when there's no room
 /// above, and slides the last 4 px toward it as it appears. Under reduced
-/// motion it only fades, on `fade`. [semanticLabel] merges into [child]'s
-/// semantics as its tooltip.
+/// motion it only fades, on `fade`. It follows [child] every frame while
+/// [child] moves in layout, without rebuilding the bubble.
+///
+/// [semanticLabel] merges into [child]'s semantics as its tooltip; the
+/// bubble itself stays out of the semantics tree, so it's announced once.
 ///
 /// Inside a [CoilTooltipAnchorGroup], the group shows one bubble for all
-/// its anchors.
+/// its anchors. To show and hide the bubble yourself, use
+/// [CoilTooltipAnchor.controlled].
 class CoilTooltipAnchor extends StatefulWidget {
-  /// Creates a tooltip anchor around [child].
+  /// Creates a tooltip anchor around [child] that opens on its own
+  /// triggers.
   const CoilTooltipAnchor({
     required this.content,
-    required this.semanticLabel,
+    required String this.semanticLabel,
     required this.bubble,
     required this.child,
     super.key,
     this.motion,
-  });
+  }) : presence = null;
+
+  /// Creates a tooltip anchor whose bubble shows while [presence] is above
+  /// 0, for a component that decides itself when its bubble shows, like a
+  /// slider's value over a pressed thumb.
+  ///
+  /// It has no triggers, adds nothing to [child]'s semantics and ignores
+  /// any [CoilTooltipAnchorGroup]. [presence] drives the transition the
+  /// [bubble] builds and the slide, so drive it with the spring the
+  /// component wants, from 0 (hidden) to 1 (shown).
+  const CoilTooltipAnchor.controlled({
+    required Animation<double> this.presence,
+    required this.content,
+    required this.bubble,
+    required this.child,
+    super.key,
+  }) : semanticLabel = null,
+       motion = null;
 
   /// What the bubble shows.
   final Widget content;
 
-  /// The tooltip text for screen readers.
-  final String semanticLabel;
+  /// The tooltip text for screen readers, or null for a controlled anchor.
+  final String? semanticLabel;
+
+  /// The bubble's 0→1 presence for a controlled anchor; null for one that
+  /// opens on its own triggers.
+  final Animation<double>? presence;
 
   /// Builds the bubble around [content].
   final CoilTooltipBubbleBuilder bubble;
@@ -73,7 +99,7 @@ class CoilTooltipAnchor extends StatefulWidget {
   /// What the tooltip is for.
   final Widget child;
 
-  /// Overrides the theme's motion tokens.
+  /// Overrides the theme's motion tokens. Unused by a controlled anchor.
   final CoilMotion? motion;
 
   /// How long a pointer hovers before the tooltip opens.
@@ -109,9 +135,33 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
   _CoilTooltipAnchorGroupState? _group;
 
   @override
+  void initState() {
+    super.initState();
+    widget.presence?.addStatusListener(_onControlledStatus);
+    _syncControlled();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _group = context.dependOnInheritedWidgetOfExactType<_GroupScope>()?.group;
+    // A controlled anchor shows its own bubble, never the group's.
+    _group = widget.presence == null
+        ? context.dependOnInheritedWidgetOfExactType<_GroupScope>()?.group
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(CoilTooltipAnchor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(
+      (oldWidget.presence == null) == (widget.presence == null),
+      'A CoilTooltipAnchor cannot switch between controlled and not.',
+    );
+    if (widget.presence != oldWidget.presence) {
+      oldWidget.presence?.removeStatusListener(_onControlledStatus);
+      widget.presence?.addStatusListener(_onControlledStatus);
+      _syncControlled();
+    }
   }
 
   @override
@@ -119,12 +169,26 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     _delay?.cancel();
     if (_shown) _lastClosed = _clock.elapsed;
     _group?._forget(this);
+    widget.presence?.removeStatusListener(_onControlledStatus);
     _presence.dispose();
     super.dispose();
   }
 
   void _onStatus(AnimationStatus status) {
     if (status.isDismissed && !_shown && _portal.isShowing) _portal.hide();
+  }
+
+  void _onControlledStatus(AnimationStatus _) => _syncControlled();
+
+  /// A controlled bubble is in the overlay while its presence isn't 0.
+  void _syncControlled() {
+    final presence = widget.presence;
+    if (presence == null) return;
+    if (presence.isDismissed) {
+      if (_portal.isShowing) _portal.hide();
+    } else if (!_portal.isShowing) {
+      _portal.show();
+    }
   }
 
   void _show() {
@@ -175,6 +239,45 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
 
   @override
   Widget build(BuildContext context) {
+    final presence = widget.presence ?? _presence;
+    // Built here, not in the overlay builder, which runs on every layout
+    // while the anchor moves: then only the placement updates.
+    final bubble = ExcludeSemantics(
+      child: widget.bubble(context, presence, widget.content),
+    );
+    final portal = OverlayPortal.overlayChildLayoutBuilder(
+      controller: _portal,
+      overlayChildBuilder: (context, info) => IgnorePointer(
+        child: _BubblePlacement(
+          anchor: MatrixUtils.transformRect(
+            info.childPaintTransform,
+            Offset.zero & info.childSize,
+          ),
+          presence: presence,
+          child: bubble,
+        ),
+      ),
+      child: widget.presence == null ? _trigger() : widget.child,
+    );
+    final semanticLabel = widget.semanticLabel;
+    if (semanticLabel == null) return portal;
+    // One node: the trigger's label with the tooltip as its hint.
+    return MergeSemantics(
+      child: Semantics(
+        tooltip: semanticLabel,
+        child: Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: _onFocusChange,
+          onKeyEvent: _onKey,
+          child: portal,
+        ),
+      ),
+    );
+  }
+
+  /// [CoilTooltipAnchor.child] with the pointer and long-press triggers.
+  Widget _trigger() {
     final android = defaultTargetPlatform == TargetPlatform.android;
     Widget trigger = Listener(
       onPointerDown: (_) => _hide(),
@@ -194,32 +297,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
         child: trigger,
       );
     }
-    // One node: the trigger's label with the tooltip as its hint.
-    return MergeSemantics(
-      child: Semantics(
-        tooltip: widget.semanticLabel,
-        child: Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onFocusChange: _onFocusChange,
-          onKeyEvent: _onKey,
-          child: OverlayPortal.overlayChildLayoutBuilder(
-            controller: _portal,
-            overlayChildBuilder: (context, info) => IgnorePointer(
-              child: _BubblePlacement(
-                anchor: MatrixUtils.transformRect(
-                  info.childPaintTransform,
-                  Offset.zero & info.childSize,
-                ),
-                presence: _presence,
-                child: widget.bubble(context, _presence, widget.content),
-              ),
-            ),
-            child: trigger,
-          ),
-        ),
-      ),
-    );
+    return trigger;
   }
 }
 
@@ -334,41 +412,49 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal.overlayChildLayoutBuilder(
-    controller: _portal,
-    overlayChildBuilder: (context, info) {
-      final rect = _anchorRect(info);
-      final anchor = _anchor;
-      if (rect == null || anchor == null) return const SizedBox.shrink();
-      return IgnorePointer(
-        child: MotionBuilder<Rect>(
-          key: ValueKey(_session),
-          value: rect,
-          converter: MotionConverter.rect,
-          motion: _tokens.quick,
-          // Laid out on the anchor it heads for; the glide is painted.
-          builder: (context, glide, child) => _BubblePlacement(
-            anchor: rect,
-            glide: glide,
-            presence: _presence,
-            child: child,
-          ),
-          child: widget.bubble(
-            context,
-            _presence,
-            KeyedSubtree(
-              key: ValueKey((anchor, anchor.widget.content.key)),
-              child: anchor.widget.content,
+  Widget build(BuildContext context) {
+    final anchor = _anchor;
+    // Built here, not in the overlay builder, which runs on every layout.
+    final bubble = anchor == null
+        ? null
+        : ExcludeSemantics(
+            child: widget.bubble(
+              context,
+              _presence,
+              KeyedSubtree(
+                key: ValueKey((anchor, anchor.widget.content.key)),
+                child: anchor.widget.content,
+              ),
             ),
+          );
+    return OverlayPortal.overlayChildLayoutBuilder(
+      controller: _portal,
+      overlayChildBuilder: (context, info) {
+        final rect = _anchorRect(info);
+        if (rect == null || bubble == null) return const SizedBox.shrink();
+        return IgnorePointer(
+          child: MotionBuilder<Rect>(
+            key: ValueKey(_session),
+            value: rect,
+            converter: MotionConverter.rect,
+            motion: _tokens.quick,
+            // Laid out on the anchor it heads for; the glide is painted.
+            builder: (context, glide, child) => _BubblePlacement(
+              anchor: rect,
+              glide: glide,
+              presence: _presence,
+              child: child,
+            ),
+            child: bubble,
           ),
-        ),
-      );
-    },
-    child: _GroupScope(
-      group: this,
-      child: KeyedSubtree(key: _area, child: widget.child),
-    ),
-  );
+        );
+      },
+      child: _GroupScope(
+        group: this,
+        child: KeyedSubtree(key: _area, child: widget.child),
+      ),
+    );
+  }
 }
 
 class _GroupScope extends InheritedWidget {
