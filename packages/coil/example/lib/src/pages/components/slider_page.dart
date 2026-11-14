@@ -36,6 +36,9 @@ class _SliderPageState extends State<SliderPage> {
 
   static String _percent(double v) => '${(v * 100).round()} %';
 
+  static String _qualityName(double v) =>
+      const ['Draft', 'Low', 'Medium', 'High', 'Best'][v.round() - 1];
+
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Slider',
@@ -52,7 +55,8 @@ class _SliderPageState extends State<SliderPage> {
             CoilSlider(
               label: const Text('Volume'),
               value: _volume,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _volume = v),
             ),
             CoilSlider(
@@ -60,7 +64,7 @@ class _SliderPageState extends State<SliderPage> {
               max: 500,
               divisions: 50,
               value: _price,
-              valueFormatter: (v) => '€${v.round()}',
+              valueBuilder: (_, v) => Text('€${v.round()}'),
               onChanged: (v) => setState(() => _price = v),
             ),
           ],
@@ -76,8 +80,8 @@ class _SliderPageState extends State<SliderPage> {
           max: 5,
           divisions: 4,
           value: _quality,
-          valueFormatter: (v) =>
-              const ['Draft', 'Low', 'Medium', 'High', 'Best'][v.round() - 1],
+          valueBuilder: (_, v) => Text(_qualityName(v)),
+          semanticFormatter: _qualityName,
           onChanged: (v) => setState(() => _quality = v),
         ),
       ),
@@ -88,7 +92,8 @@ class _SliderPageState extends State<SliderPage> {
           label: const Text('Brightness'),
           variant: CoilSliderVariant.pill,
           value: _brightness,
-          valueFormatter: _percent,
+          valueBuilder: (_, v) => Text(_percent(v)),
+          semanticFormatter: _percent,
           onChanged: (v) => setState(() => _brightness = v),
         ),
       ),
@@ -102,7 +107,7 @@ class _SliderPageState extends State<SliderPage> {
           max: 500,
           divisions: 50,
           values: _range,
-          valueFormatter: (v) => '€${v.round()}',
+          valueBuilder: (_, v) => Text('€${v.round()}'),
           onChanged: (v) => setState(() => _range = v),
         ),
       ),
@@ -116,7 +121,7 @@ class _SliderPageState extends State<SliderPage> {
           max: _ratings.last,
           steps: _ratings,
           value: _rating,
-          valueFormatter: (v) => '$v A',
+          valueBuilder: (_, v) => Text('$v A'),
           onChanged: (v) => setState(() => _rating = v),
         ),
       ),
@@ -146,14 +151,16 @@ class _SliderPageState extends State<SliderPage> {
               variant: CoilSliderVariant.pill,
               valueDisplay: CoilSliderValueDisplay.tooltip,
               value: _tooltip,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _tooltip = v),
             ),
             CoilRangeSlider(
               label: const Text('Window'),
               valueDisplay: CoilSliderValueDisplay.tooltip,
               values: _tooltipRange,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _tooltipRange = v),
             ),
           ],
@@ -167,7 +174,8 @@ class _SliderPageState extends State<SliderPage> {
               label: const Text('Zoom'),
               size: CoilSize.compact,
               value: _compact,
-              valueFormatter: _percent,
+              valueBuilder: (_, v) => Text(_percent(v)),
+              semanticFormatter: _percent,
               onChanged: (v) => setState(() => _compact = v),
             ),
             const CoilSlider(

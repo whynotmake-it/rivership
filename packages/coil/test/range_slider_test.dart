@@ -259,9 +259,10 @@ void main() {
 
   testWidgets('the value reads start – end', (tester) async {
     await tester.pumpWidget(const _Host());
-    expect(find.text('0.2'), findsOneWidget);
-    expect(find.text(' – '), findsOneWidget);
-    expect(find.text('0.8'), findsOneWidget);
+    // The last of each is the visible one; the others reserve the width.
+    double x(String text) => tester.getCenter(find.text(text).last).dx;
+    expect(x('0.2'), lessThan(x(' – ')));
+    expect(x(' – '), lessThan(x('0.8')));
   });
 
   testWidgets('every change reports a start and an end with both values', (

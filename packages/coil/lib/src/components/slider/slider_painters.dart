@@ -24,14 +24,12 @@ class SliderPaintState {
   const SliderPaintState({
     required this.reach,
     required this.rtl,
-    required this.previewFraction,
     required this.previewOpacity,
     required this.previewColor,
   });
 
   final SliderReach reach;
   final bool rtl;
-  final double previewFraction;
   final double previewOpacity;
   final Color previewColor;
 
@@ -40,13 +38,11 @@ class SliderPaintState {
       other is SliderPaintState &&
       other.reach == reach &&
       other.rtl == rtl &&
-      other.previewFraction == previewFraction &&
       other.previewOpacity == previewOpacity &&
       other.previewColor == previewColor;
 
   @override
-  int get hashCode =>
-      Object.hash(reach, rtl, previewFraction, previewOpacity, previewColor);
+  int get hashCode => Object.hash(reach, rtl, previewOpacity, previewColor);
 }
 
 /// How close [at] is to the stop at [index] of [stops]: 1 on it, 0 a full
@@ -72,8 +68,9 @@ double _previewFrom(List<double> edges, double preview) => edges.reduce(
 /// dots behind it, on any surface.
 class SliderRowPaint extends CoilLayerPaint {
   const SliderRowPaint({
-    required Listenable thumbs,
+    required Listenable moves,
     required this.fractions,
+    required this.preview,
     required this.state,
     required this.fill,
     required this.handles,
@@ -85,10 +82,13 @@ class SliderRowPaint extends CoilLayerPaint {
     required this.pipGrowth,
     required this.pip,
     required this.activePip,
-  }) : super(repaint: thumbs);
+  }) : super(repaint: moves);
 
   /// The thumbs' current fractions, read while painting.
   final ValueGetter<List<double>> fractions;
+
+  /// The hover preview's current fraction, read while painting.
+  final ValueGetter<double> preview;
   final SliderPaintState state;
   final Color fill;
 
@@ -180,7 +180,7 @@ class SliderRowPaint extends CoilLayerPaint {
       Paint()..color = fill,
     );
     if (state.previewOpacity > 0) {
-      final p = x(state.previewFraction.clamp(0.0, 1.0));
+      final p = x(preview().clamp(0.0, 1.0));
       canvas.drawRect(
         span(_previewFrom(edges, p), p),
         Paint()
@@ -211,16 +211,20 @@ class SliderRowPaint extends CoilLayerPaint {
 /// from the start; two fill between them.
 class SliderPillPaint extends CoilLayerPaint {
   const SliderPillPaint({
-    required Listenable thumbs,
+    required Listenable moves,
     required this.fractions,
+    required this.preview,
     required this.state,
     required this.fill,
     required this.border,
     required this.height,
-  }) : super(repaint: thumbs);
+  }) : super(repaint: moves);
 
   /// The thumbs' current fractions, read while painting.
   final ValueGetter<List<double>> fractions;
+
+  /// The hover preview's current fraction, read while painting.
+  final ValueGetter<double> preview;
   final SliderPaintState state;
   final Color fill;
   final Color border;
@@ -264,7 +268,7 @@ class SliderPillPaint extends CoilLayerPaint {
         Paint()..color = fill,
       );
     if (state.previewOpacity > 0) {
-      final p = x(state.previewFraction.clamp(0.0, 1.0));
+      final p = x(preview().clamp(0.0, 1.0));
       canvas.drawRect(
         span(_previewFrom(edges, p), p),
         Paint()

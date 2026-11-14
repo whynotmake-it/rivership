@@ -8,12 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// Hidden semibold copies of [reserve]: they give a slot the width of its
-/// widest string, so the slot never changes width as the weight and the
+/// widest value, so the slot never changes width as the weight and the
 /// digits change.
 class SliderReserve extends StatelessWidget {
   const SliderReserve({required this.reserve, required this.style, super.key});
 
-  final Set<String> reserve;
+  final List<Widget> reserve;
   final TextStyle style;
 
   @override
@@ -27,7 +27,12 @@ class SliderReserve extends StatelessWidget {
           for (final r in reserve)
             Opacity(
               opacity: 0,
-              child: Text(r, style: semibold, maxLines: 1, softWrap: false),
+              child: DefaultTextStyle(
+                style: semibold,
+                maxLines: 1,
+                softWrap: false,
+                child: r,
+              ),
             ),
         ],
       ),
@@ -51,7 +56,7 @@ class SliderValueText extends StatelessWidget {
   });
 
   final List<Widget> parts;
-  final Set<String> reserve;
+  final List<Widget> reserve;
   final TextStyle style;
   final Color color;
 
@@ -94,7 +99,7 @@ class SliderValueField extends StatelessWidget {
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final Set<String> reserve;
+  final List<Widget> reserve;
   final TextStyle reserveStyle;
   final TextStyle style;
   final Color underline;

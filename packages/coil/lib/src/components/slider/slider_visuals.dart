@@ -211,7 +211,7 @@ class SliderBubble extends StatelessWidget {
     required this.reach,
     required this.rtl,
     required this.opacity,
-    required this.text,
+    required this.child,
     super.key,
   });
 
@@ -220,7 +220,9 @@ class SliderBubble extends StatelessWidget {
   final SliderReach reach;
   final bool rtl;
   final double opacity;
-  final String text;
+
+  /// The value, styled by the bubble's text style.
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -247,14 +249,14 @@ class SliderBubble extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: style.bubblePadding!,
-                  child: Text(
-                    text,
+                  child: DefaultTextStyle(
                     maxLines: 1,
                     softWrap: false,
                     style: style.bubbleTextStyle!.copyWith(
                       color: style.bubbleText,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
+                    child: child,
                   ),
                 ),
               ),

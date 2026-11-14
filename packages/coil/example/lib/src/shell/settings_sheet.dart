@@ -113,7 +113,7 @@ class SettingsPanel extends StatelessWidget {
                 max: 355,
                 divisions: 71,
                 value: settings.neutralHue,
-                valueFormatter: (v) => '${v.round()}°',
+                valueBuilder: (_, v) => Text('${v.round()}°'),
                 onChanged: (value) => settings.neutralHue = value,
               ),
               CoilSlider(
@@ -121,7 +121,8 @@ class SettingsPanel extends StatelessWidget {
                 max: 0.05,
                 divisions: 50,
                 value: settings.neutralChroma,
-                valueFormatter: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
+                valueBuilder: (_, v) =>
+                    Text(v == 0 ? 'Grey' : v.toStringAsFixed(3)),
                 onChanged: (value) => settings.neutralChroma = value,
               ),
               CoilField(
@@ -154,7 +155,7 @@ class SettingsPanel extends StatelessWidget {
                   max: 20,
                   divisions: 20,
                   value: settings.customRadius,
-                  valueFormatter: (v) => '${v.round()} px',
+                  valueBuilder: (_, v) => Text('${v.round()} px'),
                   onChanged: (value) => settings.customRadius = value,
                 ),
               CoilField(

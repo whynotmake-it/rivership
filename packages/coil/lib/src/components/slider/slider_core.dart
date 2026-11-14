@@ -27,7 +27,10 @@ class SliderCore extends StatefulWidget {
     required this.onChangeEnd,
     required this.scale,
     required this.label,
-    required this.valueFormatter,
+    required this.valueBuilder,
+    required this.semanticFormatter,
+    required this.editFormatter,
+    required this.editParser,
     required this.variant,
     required this.valueDisplay,
     required this.size,
@@ -48,7 +51,10 @@ class SliderCore extends StatefulWidget {
   final ValueChanged<List<double>>? onChangeEnd;
   final SliderScale scale;
   final Widget? label;
-  final String Function(double value)? valueFormatter;
+  final Widget Function(BuildContext context, double value)? valueBuilder;
+  final String Function(double value)? semanticFormatter;
+  final String Function(double value)? editFormatter;
+  final double? Function(String text)? editParser;
   final CoilSliderVariant variant;
   final CoilSliderValueDisplay valueDisplay;
   final CoilSize? size;
@@ -92,6 +98,28 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// none. It follows the pointer during a drag too, so it is current the
   /// moment the drag ends.
   final _hover = ValueNotifier<double?>(null);
+
+  /// Where the hover last was; the bubble stays there while it fades out.
+  double _lastHover = 0;
+
+  /// The hover preview bar's end. It springs from the nearest thumb toward
+  /// the hover, set by pointer events rather than by builds.
+  late final _preview = TrackController(
+    vsync: this,
+    debugLabel: 'CoilSlider.preview',
+  );
+  double get _previewAt => _preview.value(CoilSliderTrack.preview);
+
+  /// Whether the hover bubble has met the preview. A bubble appears on the
+  /// hover at once; until the springing preview reaches it, the bubble
+  /// follows the hover directly. Once they meet, it rides the preview.
+  bool _joined = false;
+
+  /// Which side of the hover the preview was on, to see them cross.
+  double? _side;
+
+  /// Repaints the track: a thumb or the preview moved.
+  late final Listenable _paintMoves = Listenable.merge([..._thumbs, _preview]);
 
   WidgetStatesController? _ownStates;
   WidgetStatesController get _states =>
@@ -170,7 +198,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   CoilMotion get _tokens =>
       CoilTheme.motionOf(context, override: widget.motion);
 
-  String _format(double v) => widget.valueFormatter?.call(v) ?? _plain(v);
+  /// The value as screen readers hear it.
+  String _semantic(double v) => widget.semanticFormatter?.call(v) ?? _plain(v);
+
+  /// The value as the text, the bubbles and the width reserve show it.
+  Widget _shown(double v) =>
+      widget.valueBuilder?.call(context, v) ?? Text(_plain(v));
 
   /// Up to two decimals without trailing zeros, with a `.` decimal mark.
   static String _plain(double v) {
@@ -189,8 +222,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       ]);
       _focusOf(i).addListener(_onFocus);
     }
+    _preview
+      ..set([CoilSliderTrack.preview.value(_scale.norm(widget.values[0]))])
+      ..addListener(_meet);
     _states.addListener(_forgetHover);
     _editFocus.addListener(_onEditFocus);
+  }
+
+  /// Joins the bubble to the preview once the preview reaches the hover or
+  /// crosses it.
+  void _meet() {
+    final hover = _hover.value;
+    if (_joined || hover == null) return;
+    final side = (_previewAt - hover).sign;
+    if (side == 0 || (_side != null && side != _side)) {
+      _joined = true;
+    } else {
+      _side = side;
+    }
   }
 
   void _forgetHover() {
@@ -253,6 +302,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _editFocus.dispose();
     _editText.dispose();
     _hover.dispose();
+    _preview.dispose();
     super.dispose();
   }
 
@@ -339,7 +389,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   void _startEdit(int i) {
     if (!_editable || _editing != null) return;
-    final text = _plain(widget.values[i]);
+    final text = (widget.editFormatter ?? _plain)(widget.values[i]);
     _editText.value = TextEditingValue(
       text: text,
       selection: TextSelection(baseOffset: 0, extentOffset: text.length),
@@ -354,7 +404,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   void _commitEdit({bool refocus = true}) {
     final i = _editing;
     if (i == null) return;
-    final typed = double.tryParse(_editText.text.trim());
+    final text = _editText.text.trim();
+    final typed = widget.editParser?.call(text) ?? double.tryParse(text);
     _endEdit(i, refocus: refocus);
     if (typed != null && typed.isFinite) _change(i, typed);
   }
@@ -422,9 +473,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       slider: true,
       enabled: _enabled,
       label: label,
-      value: _format(value),
-      increasedValue: _format(up),
-      decreasedValue: _format(down),
+      value: _semantic(value),
+      increasedValue: _semantic(up),
+      decreasedValue: _semantic(down),
       onIncrease: _enabled ? () => _step(i, const SliderStepIntent(1)) : null,
       onDecrease: _enabled ? () => _step(i, const SliderStepIntent(-1)) : null,
       child: Shortcuts(
@@ -464,7 +515,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     ).merge(CoilTheme.styleOf<CoilSliderStyle>(context)).merge(widget.style);
     final states = _states.value;
     final tokens = _tokens;
-    final scale = _scale;
     // The row's range spans its full width; the pill's stops half a knob
     // short of each end, so the knob stays inside the track.
     final reach = SliderReach(_compactTrack ? style.knobBox! / 2 : 0);
@@ -479,7 +529,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       (s) => s.value.contains(WidgetState.hovered),
     );
 
-    final preview = _motionFor(CoilSliderTrack.preview, tokens);
     final previewOpacity = _motionFor(CoilSliderTrack.previewOpacity, tokens);
     final bubble = _motionFor(CoilSliderTrack.bubble, tokens);
     final handle = _motionFor(CoilSliderTrack.handle, tokens);
@@ -498,7 +547,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         })!,
     ];
 
-    final thumbAt = scale.norm(widget.values[_active]);
     return ValueListenableBuilder<double?>(
       valueListenable: _hover,
       builder: (context, hovering, _) {
@@ -515,9 +563,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                       (pressed && _kind != PointerDeviceKind.mouse));
         return TrackBuilder(
           animations: [
-            CoilSliderTrack.preview([
-              .to(hovering ?? thumbAt, motion: preview.enter),
-            ]),
             CoilSliderTrack.previewOpacity([
               .to(
                 showPreview ? 1 : 0,
@@ -571,7 +616,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final paint = SliderPaintState(
       reach: reach,
       rtl: rtl,
-      previewFraction: v(CoilSliderTrack.preview),
       previewOpacity: v(CoilSliderTrack.previewOpacity).clamp(0.0, 1.0),
       previewColor: style.preview!,
     );
@@ -630,22 +674,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                 reach: reach,
                 rtl: rtl,
                 opacity: v(CoilSliderTrack.bubble),
-                text: _format(widget.values[i]),
+                child: _shown(widget.values[i]),
               ),
             )
         else
           ListenableBuilder(
-            listenable: _thumbs[_active],
+            listenable: _paintMoves,
             builder: (context, _) => SliderBubble(
               style: style,
-              fraction: pressed ? _at(_active) : paint.previewFraction,
+              fraction: pressed
+                  ? _at(_active)
+                  : _joined
+                  ? _previewAt
+                  : _lastHover,
               reach: reach,
               rtl: rtl,
               opacity: v(CoilSliderTrack.bubble),
-              text: _format(
-                pressed
-                    ? widget.values[_active]
-                    : scale.valueAt(hovering ?? _at(_active)),
+              child: _shown(
+                pressed ? widget.values[_active] : scale.valueAt(_lastHover),
               ),
             ),
           ),
@@ -655,8 +701,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     if (pill) {
       return SliderPill(
         painter: SliderPillPaint(
-          thumbs: _thumbMoves,
+          moves: _paintMoves,
           fractions: _fractions,
+          preview: () => _previewAt,
           state: paint,
           fill: style.pillFill!,
           border: style.border!,
@@ -689,8 +736,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             ),
             child: SliderRow(
               painter: SliderRowPaint(
-                thumbs: _thumbMoves,
+                moves: _paintMoves,
                 fractions: _fractions,
+                preview: () => _previewAt,
                 state: paint,
                 fill: style.fill!,
                 handles: handles,
@@ -729,12 +777,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     Color color,
     double emphasis,
   ) {
-    const dash = ' – ';
+    const dash = ExcludeSemantics(child: Text(' – '));
     final scale = _scale;
-    final low = _format(scale.min);
-    final high = _format(scale.max);
-    final current = [for (final v in widget.values) _format(v)];
-    Set<String> reserveOf(int i) => {low, high, current[i]};
+    List<Widget> reserveOf(int i) => [
+      _shown(scale.min),
+      _shown(scale.max),
+      _shown(widget.values[i]),
+    ];
 
     Widget part(int i) {
       if (_editing == i) {
@@ -755,7 +804,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           onCancel: _cancelEdit,
         );
       }
-      final shown = ExcludeSemantics(child: Text(current[i]));
+      final shown = ExcludeSemantics(child: _shown(widget.values[i]));
       if (!_editable) return shown;
       return CoilInteractionDetector(
         states: _valueStates[i],
@@ -769,13 +818,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     return SliderValueText(
       parts: [
         part(0),
-        if (_range) ...[
-          const ExcludeSemantics(child: Text(dash)),
-          part(1),
-        ],
+        if (_range) ...[dash, part(1)],
       ],
       reserve: _range
-          ? {'$low$dash$low', '$high$dash$high', current.join(dash)}
+          ? [
+              for (final v in [scale.min, scale.max])
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [_shown(v), dash, _shown(v)],
+                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _shown(widget.values[0]),
+                  dash,
+                  _shown(widget.values[1]),
+                ],
+              ),
+            ]
           : reserveOf(0),
       style: text,
       color: color,
@@ -783,12 +843,34 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     );
   }
 
-  /// Puts the hover where a hover-capable pointer is.
+  /// Puts the hover where a hover-capable pointer is, at the snapped value.
+  ///
+  /// A new hover starts the preview at the nearest thumb and puts the bubble
+  /// on the hover, unjoined. Every hover springs the preview toward it.
   void _point(PointerEvent e, double width, SliderReach reach) {
     if (!_enabled || !CoilInputModality.canHover(e.kind)) return;
-    _hover.value = _scale.norm(
+    final to = _scale.norm(
       _scale.valueAt(reach.fractionAt(e.localPosition.dx, width, rtl: _rtl)),
     );
+    if (to == _hover.value) return;
+    if (_hover.value == null) {
+      final thumbs = _fractions();
+      _preview.set([
+        CoilSliderTrack.preview.value(
+          thumbs.reduce((a, b) => (a - to).abs() <= (b - to).abs() ? a : b),
+        ),
+      ]);
+      _joined = false;
+      _side = null;
+    }
+    _lastHover = to;
+    _hover.value = to;
+    _preview.animate([
+      CoilSliderTrack.preview([
+        .to(to, motion: _motionFor(CoilSliderTrack.preview, _tokens).enter),
+      ]),
+    ]);
+    _meet();
   }
 
   /// Maps pointer events on [track] to values.

@@ -22,7 +22,9 @@ final class CoilSliderTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSlider.thumb',
   );
 
-  /// The hover preview following the pointer. Default motion: `quick`.
+  /// The hover preview bar's end, springing from the nearest thumb toward
+  /// the hover. The hover bubble rides it once the two meet. Default
+  /// motion: `quick`.
   static final preview = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.preview',
@@ -114,7 +116,10 @@ class CoilSlider extends StatelessWidget {
     this.onChangeStart,
     this.onChangeEnd,
     this.label,
-    this.valueFormatter,
+    this.valueBuilder,
+    this.semanticFormatter,
+    this.editFormatter,
+    this.editParser,
     this.variant = CoilSliderVariant.scrubber,
     this.valueDisplay = CoilSliderValueDisplay.text,
     this.size,
@@ -174,10 +179,24 @@ class CoilSlider extends StatelessWidget {
   /// safe.
   final Widget? label;
 
-  /// Formats the value for the row, the bubble and screen readers. The
-  /// default shows up to two decimals without trailing zeros, with a `.`
-  /// decimal mark; it isn't localized.
-  final String Function(double value)? valueFormatter;
+  /// Builds the value for the value text and the bubbles, styled by the
+  /// slider's text style. The default is a [Text] with up to two decimals
+  /// and no trailing zeros, with a `.` decimal mark; it isn't localized.
+  final Widget Function(BuildContext context, double value)? valueBuilder;
+
+  /// The value as screen readers announce it. Defaults to the same plain
+  /// number as [valueBuilder]'s default, so set both when the shown value
+  /// isn't that number (a unit, a name).
+  final String Function(double value)? semanticFormatter;
+
+  /// The text a value field opens with, under
+  /// [CoilSliderValueDisplay.editable]. Defaults to the plain number.
+  final String Function(double value)? editFormatter;
+
+  /// Reads a typed value back, under [CoilSliderValueDisplay.editable].
+  /// Null means the text isn't a value, and nothing changes. Defaults to
+  /// [double.tryParse].
+  final double? Function(String text)? editParser;
 
   /// How the track looks.
   final CoilSliderVariant variant;
@@ -229,7 +248,10 @@ class CoilSlider extends StatelessWidget {
         steps: steps,
       ),
       label: label,
-      valueFormatter: valueFormatter,
+      valueBuilder: valueBuilder,
+      semanticFormatter: semanticFormatter,
+      editFormatter: editFormatter,
+      editParser: editParser,
       variant: variant,
       valueDisplay: valueDisplay,
       size: size,

@@ -58,7 +58,10 @@ class CoilRangeSlider extends StatelessWidget {
     this.onChangeStart,
     this.onChangeEnd,
     this.label,
-    this.valueFormatter,
+    this.valueBuilder,
+    this.semanticFormatter,
+    this.editFormatter,
+    this.editParser,
     this.valueDisplay = CoilSliderValueDisplay.text,
     this.size,
     this.autofocus = false,
@@ -108,8 +111,18 @@ class CoilRangeSlider extends StatelessWidget {
   /// The text before the track.
   final Widget? label;
 
-  /// Formats each value; see [CoilSlider.valueFormatter].
-  final String Function(double value)? valueFormatter;
+  /// Builds each value; see [CoilSlider.valueBuilder].
+  final Widget Function(BuildContext context, double value)? valueBuilder;
+
+  /// Each value as screen readers announce it; see
+  /// [CoilSlider.semanticFormatter].
+  final String Function(double value)? semanticFormatter;
+
+  /// The text a value field opens with; see [CoilSlider.editFormatter].
+  final String Function(double value)? editFormatter;
+
+  /// Reads a typed value back; see [CoilSlider.editParser].
+  final double? Function(String text)? editParser;
 
   /// Where the values show, and whether they can be typed.
   final CoilSliderValueDisplay valueDisplay;
@@ -165,7 +178,10 @@ class CoilRangeSlider extends StatelessWidget {
         steps: steps,
       ),
       label: label,
-      valueFormatter: valueFormatter,
+      valueBuilder: valueBuilder,
+      semanticFormatter: semanticFormatter,
+      editFormatter: editFormatter,
+      editParser: editParser,
       variant: CoilSliderVariant.pill,
       valueDisplay: valueDisplay,
       size: size,

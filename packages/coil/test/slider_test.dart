@@ -446,6 +446,85 @@ void main() {
       expect(tester.getCenter(bubbleBox()).dx, closeTo(_at(tester, .8).dx, 1));
     });
 
+    group('the hover bubble and the preview', () {
+      // The preview bar's far end, from the track paint: the fill is drawn
+      // first, then the preview.
+      double previewEnd(WidgetTester tester) {
+        final rects = <Rect>[];
+        expect(
+          tester.renderObject(
+            find.descendant(
+              of: _slider,
+              matching: find.byType(CoilPainterLayer),
+            ),
+          ),
+          paints..everything((method, args) {
+            if (method == #drawRect) rects.add(args.first as Rect);
+            return true;
+          }),
+        );
+        expect(rects, hasLength(2), reason: 'the preview is showing');
+        final origin = tester.getTopLeft(_slider).dx;
+        return origin + rects[1].right;
+      }
+
+      double bubbleX(WidgetTester tester) => tester.getCenter(bubbleBox()).dx;
+
+      Future<TestGesture> hoverAt(WidgetTester tester, double f) async {
+        final mouse = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: const Offset(1, 1));
+        await tester.pump();
+        await mouse.moveTo(_at(tester, f));
+        await tester.pump();
+        return mouse;
+      }
+
+      testWidgets('it appears on the hover while the preview travels', (
+        tester,
+      ) async {
+        await tester.pumpWidget(const _Host(divisions: 10));
+        await hoverAt(tester, .9);
+        // The first frame it shows: on the hover, no travel.
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(bubbleX(tester), closeTo(_at(tester, .9).dx, .5));
+        expect(
+          previewEnd(tester),
+          lessThan(_at(tester, .9).dx - 10),
+          reason: 'the preview is still on its way from the thumb',
+        );
+      });
+
+      testWidgets('until they meet, it follows the hover directly', (
+        tester,
+      ) async {
+        await tester.pumpWidget(const _Host(divisions: 10));
+        final mouse = await hoverAt(tester, .9);
+        await tester.pump(const Duration(milliseconds: 16));
+        await mouse.moveTo(_at(tester, .98));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(bubbleX(tester), closeTo(_at(tester, 1).dx, .5));
+        expect(previewEnd(tester), lessThan(_at(tester, .9).dx));
+      });
+
+      testWidgets('once they meet, it rides the preview', (tester) async {
+        await tester.pumpWidget(const _Host(divisions: 10));
+        final mouse = await hoverAt(tester, .9);
+        await settle(tester);
+        await mouse.moveTo(_at(tester, .6));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        final x = bubbleX(tester);
+        expect(x, greaterThan(_at(tester, .6).dx + 5), reason: 'gliding');
+        expect(x, closeTo(previewEnd(tester), .5));
+        await settle(tester);
+        expect(bubbleX(tester), closeTo(_at(tester, .6).dx, .5));
+      });
+    });
+
     testWidgets('a stepped drag springs to each step and lands on it', (
       tester,
     ) async {
@@ -865,6 +944,56 @@ void main() {
         const CoilRangeValues(.4, .4),
         reason: 'start stops at end',
       );
+    });
+
+    testWidgets('shows, announces and edits through separate callbacks', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      var value = .5;
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => CoilTheme(
+            data: CoilThemeData.light,
+            child: Overlay.wrap(
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: StatefulBuilder(
+                    builder: (context, setState) => CoilSlider(
+                      key: const ValueKey('slider'),
+                      value: value,
+                      valueDisplay: CoilSliderValueDisplay.editable,
+                      valueBuilder: (_, v) => Text('${(v * 100).round()} %'),
+                      semanticFormatter: (v) => '${(v * 100).round()} percent',
+                      editFormatter: (v) => '${(v * 100).round()}',
+                      editParser: (t) => switch (double.tryParse(t)) {
+                        final n? => n / 100,
+                        null => null,
+                      },
+                      onChanged: (v) => setState(() => value = v),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        tester.getSemantics(_slider).getSemanticsData().value,
+        '50 percent',
+      );
+      await tester.tap(_shown('50 %'));
+      await tester.pump();
+      expect(tester.widget<EditableText>(field).controller.text, '50');
+      await tester.enterText(field, '25');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(value, .25);
+      expect(_shown('25 %'), findsOneWidget);
+      handle.dispose();
     });
 
     testWidgets('mouse: the editable value previews no jump', (tester) async {

@@ -17,7 +17,7 @@ void main() {
           divisions: variant == CoilSliderVariant.pips ? 4 : null,
           variant: variant,
           label: const Text('Level'),
-          valueFormatter: (v) => '${(v * 100).round()}%',
+          valueBuilder: (_, v) => Text('${(v * 100).round()}%'),
           statesController: states,
           onChanged: s.isDisabled ? null : (_) {},
         ),
@@ -32,7 +32,7 @@ void main() {
         child: CoilRangeSlider(
           values: const CoilRangeValues(.25, .75),
           label: const Text('Level'),
-          valueFormatter: (v) => '${(v * 100).round()}',
+          valueBuilder: (_, v) => Text('${(v * 100).round()}'),
           statesController: states,
           onChanged: s.isDisabled ? null : (_) {},
         ),

@@ -631,6 +631,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Slider (built)
 
 - **Widgets:** `CoilSlider` for one value. `CoilRangeSlider` for two: `values: CoilRangeValues(start, end)`, like Flutter's `RangeSlider`.
+- **Value API:** `label` is a widget. The value shows through `valueBuilder` (a widget, default a plain number up to two decimals), screen readers get `semanticFormatter`, and the value field uses `editFormatter` / `editParser`.
 - **Anatomy:**
   - **Row** (variants `scrubber`, the default, and `pips`): a full-width bordered row, `controlHeight` tall, with the label at the start and the value at the end (tabular, muted). The fill is `active` and a handle line sits at the value. `pips` adds a 5 px dot per step, left out where the label or value sits. The range spans the row edge to edge: the fill is empty at min and full at max, and the end pips sit under the handle line. The label takes the free space and ellipsizes; the value keeps its reserved width.
   - **Pill** (variant `pill`): an 18 high pill track with a 1 px `border` and a 16 white knob in a 20 box, between the label and the value; fill `selected` 50 % (dark `accent` 40 %).
@@ -638,12 +639,15 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Steps:** `divisions` (equal steps) or `steps` (a list of allowed values at any spacing, between `min` and `max`). Never both. Values snap to the nearest step; a value exactly halfway goes to the lower one. Pips sit at each step.
 - **Value display** (`valueDisplay`):
   - `text` (default): the value text.
-  - `editable`: a click or tap on a value, or Enter on a focused thumb, turns it into a field (the `field` type role, a 1 px `border` underline, as wide as the widest value). It opens with the raw number selected. Enter or Done applies it, clamped to the range and snapped to a step; leaving the field applies it too. Esc leaves the value unchanged. Text that isn't a number changes nothing. Enter and Esc return focus to the thumb. While the pointer is on the value, the track shows no hover preview.
+  - `editable`: a click or tap on a value, or Enter on a focused thumb, turns it into a field (the `field` type role, a 1 px `border` underline, as wide as the widest value). It opens with `editFormatter`'s text (the raw number by default) selected and reads it back with `editParser`. Enter or Done applies it, clamped to the range and snapped to a step; leaving the field applies it too. Esc leaves the value unchanged. Text that isn't a number changes nothing. Enter and Esc return focus to the thumb. While the pointer is on the value, the track shows no hover preview.
   - `tooltip`: no value text. A bubble rides each thumb while the slider is hovered, pressed or focused with the keyboard.
 - **Sizes:** `size` changes sizes only: the row is `controlHeight` (36 / 28 pointer, 44 / 42 touch) with `controlPaddingX`. On touch the pill's knob is 22 visual, 44 hit.
 - **States:** the label and value turn foreground and semibold (with ghost width) while hovered, pressed or focused. Pips: dots at 30 % muted, the one at each thumb foreground. Disabled 50 %.
 - **Focus ring:** after keyboard use only. The row rings the whole row, and the focused thumb's handle line goes full foreground. The pill rings the focused knob, as the original does per thumb.
-- **Pointer extras:** hover shows a preview bar (`accent` 40 %) from the nearest thumb toward the snapped hover value, plus the value bubble (the touch bubble, shown at the hover value).
+- **Pointer extras:** hover shows a preview bar (`accent` 40 %) that springs on `quick` from the nearest thumb toward the snapped hover value, plus the value bubble (the touch bubble) with the hover value.
+  - The bubble appears on the hover at once, with no sideways travel; only its fade plays.
+  - Until the preview reaches it, the bubble follows the hover directly while the preview chases.
+  - Once they meet (the preview arrives or crosses it), the bubble rides the preview's spring as the hover moves.
 - **Touch:** no preview. **A value bubble** (tooltip style) sits 8 + 24 above the pressed thumb and fades on `fade` / `fadeExit`. Tapping the track jumps; dragging sets the value directly with no fling.
 - **Range input:** a tap or drag moves the nearest thumb, by touch and by mouse. On two stacked thumbs, the side of the press picks one, and on them the drag's direction does. The thumbs can't cross but may meet.
 - **Motion:** thumbs and fill settle on `standard` after a jump, a key or a typed value; follow the finger 1:1 while dragging a continuous slider; with steps they spring to each step and retarget as the pointer crosses steps. Handle and color on `fade`; pip growth `standard`. `CoilSliderTrack.thumb` moves both thumbs of a range.
