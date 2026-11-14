@@ -448,6 +448,8 @@ Every component ships with all of these. They're required to call it done.
 
 1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
+**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1). A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+
 ---
 
 ## 14. Components
