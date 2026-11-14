@@ -1,6 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/semantics.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -496,6 +496,52 @@ void main() {
       expect(await _lit(tester, 'selected'), isNotEmpty);
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('after a pick the list ignores the pointer until it closes', (
+      tester,
+    ) async {
+      final picks = <String>[];
+      useScreen(tester, TestScreen.desktop);
+      await tester.pumpWidget(
+        _app(
+          home: SelectDemo(onChanged: picks.add),
+          tier: CoilTier.pointer,
+        ),
+      );
+      Color? colorOf(String label) => tester
+          .renderObject<RenderParagraph>(
+            find.descendant(of: _list, matching: find.text(label)),
+          )
+          .text
+          .style
+          ?.color;
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(_select));
+      await mouse.down(tester.getCenter(_select));
+      await mouse.up();
+      await tester.pumpAndSettle();
+      final resting = colorOf('Orange');
+      await mouse.moveTo(tester.getCenter(find.text('Cherry')));
+      await tester.pumpAndSettle();
+      await mouse.down(tester.getCenter(find.text('Cherry')));
+      await mouse.up();
+      await tester.pump();
+
+      // Held open for the acknowledgement: another row doesn't light, and
+      // a second click picks nothing.
+      final orange = find.descendant(of: _list, matching: find.text('Orange'));
+      await mouse.moveTo(tester.getCenter(orange));
+      // A color change would start on the next frame.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(colorOf('Orange'), resting);
+      await mouse.down(tester.getCenter(orange));
+      await mouse.up();
+      await _settle(tester);
+      expect(picks, ['cherry']);
+      expect(_list, findsNothing);
     });
 
     testWidgets('a mouse still drives the fluid hover highlight', (

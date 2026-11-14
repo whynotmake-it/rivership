@@ -278,6 +278,18 @@ class _CoilActionListState extends State<CoilActionList>
   late List<GlobalKey> _rowKeys = _keysFor(_items.length);
   Timer? _acknowledge;
 
+  /// Whether a pick is being acknowledged: from a checkable row's pick (in
+  /// this list or a submenu) until the menu closes, the list ignores the
+  /// pointer and the keys, so the highlight stays on the picked row and
+  /// nothing else can be picked.
+  bool _frozen = false;
+
+  void _freeze() {
+    if (_frozen) return;
+    setState(() => _frozen = true);
+    _FreezeScope.maybeOf(context)?.call();
+  }
+
   /// The rows of the touch submenus drilled into, from the top.
   final _path = <int>[];
 
@@ -458,7 +470,7 @@ class _CoilActionListState extends State<CoilActionList>
   /// closes once its mark has landed. A submenu row opens its submenu, and
   /// the back row leaves one.
   void _pick(int i) {
-    if (!_enabled(i)) return;
+    if (_frozen || !_enabled(i)) return;
     switch (_items[i]) {
       case null:
         _back();
@@ -469,6 +481,7 @@ class _CoilActionListState extends State<CoilActionList>
         action.onPressed?.call();
       case final CoilAction action:
         action.onPressed?.call();
+        _freeze();
         _acknowledge?.cancel();
         _acknowledge = Timer(
           CoilTheme.motionOf(
@@ -540,6 +553,8 @@ class _CoilActionListState extends State<CoilActionList>
   /// over it, or inside the triangle from where it left the row to the
   /// submenu's near edge. Hover doesn't move off the row meanwhile.
   bool _hold(Offset position) {
+    // An acknowledged pick keeps its row lit.
+    if (_frozen) return true;
     final i = _sub;
     if (i == null) return false;
     final row = _globalRect(_rowKeys[i]);
@@ -610,23 +625,26 @@ class _CoilActionListState extends State<CoilActionList>
       minWidth: 0,
       motion: widget.motion,
       popover: (context) {
-        final list = CoilActionList(
-          key: _subLists.putIfAbsent(
-            i,
-            () => GlobalKey(debugLabel: 'CoilActionList.submenu $i'),
+        final list = _FreezeScope(
+          freeze: _freeze,
+          child: CoilActionList(
+            key: _subLists.putIfAbsent(
+              i,
+              () => GlobalKey(debugLabel: 'CoilActionList.submenu $i'),
+            ),
+            entries: sub.entries,
+            onClose: _subClosed,
+            onBack: _closeSub,
+            metrics: metrics,
+            surface: widget.surface,
+            scrollbar: widget.scrollbar,
+            fadeExtent: widget.fadeExtent,
+            highlight: widget.highlight,
+            pressFill: widget.pressFill,
+            radius: widget.radius,
+            submenu: widget.submenu,
+            motion: widget.motion,
           ),
-          entries: sub.entries,
-          onClose: _subClosed,
-          onBack: _closeSub,
-          metrics: metrics,
-          surface: widget.surface,
-          scrollbar: widget.scrollbar,
-          fadeExtent: widget.fadeExtent,
-          highlight: widget.highlight,
-          pressFill: widget.pressFill,
-          radius: widget.radius,
-          submenu: widget.submenu,
-          motion: widget.motion,
         );
         return widget.submenu?.call(context, list) ?? list;
       },
@@ -693,6 +711,13 @@ class _CoilActionListState extends State<CoilActionList>
       const SingleActivator(LogicalKeyboardKey.tab): () =>
           widget.onClose(CoilPopupCloseReason.dismissed),
     };
+    // While a pick is acknowledged, the list's keys do nothing (and don't
+    // reach anything else).
+    if (_frozen) {
+      for (final key in [...bindings.keys]) {
+        bindings[key] = () {};
+      }
+    }
     final list = Semantics(
       role: SemanticsRole.menu,
       child: CoilScrollEdgeFade.solid(
@@ -743,53 +768,56 @@ class _CoilActionListState extends State<CoilActionList>
                     child: rows!,
                   );
                 },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final (i, entry) in items.indexed)
-                      switch (entry) {
-                        null => row(
-                          i,
-                          CoilAction(
-                            label: _drilled!.label,
-                            leading: const CoilDrawnGlyph(
-                              CoilGlyph.chevronStart,
+                child: IgnorePointer(
+                  ignoring: _frozen,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, entry) in items.indexed)
+                        switch (entry) {
+                          null => row(
+                            i,
+                            CoilAction(
+                              label: _drilled!.label,
+                              leading: const CoilDrawnGlyph(
+                                CoilGlyph.chevronStart,
+                              ),
+                              onPressed: _back,
                             ),
-                            onPressed: _back,
                           ),
-                        ),
-                        final CoilAction action => row(i, action),
-                        final CoilSubmenu sub when _touch => row(
-                          i,
-                          _asAction(sub),
-                          trailing: const CoilDrawnGlyph(
-                            CoilGlyph.chevronEnd,
-                          ),
-                        ),
-                        final CoilSubmenu sub => _subPopover(
-                          i,
-                          sub,
-                          row(
+                          final CoilAction action => row(i, action),
+                          final CoilSubmenu sub when _touch => row(
                             i,
                             _asAction(sub),
                             trailing: const CoilDrawnGlyph(
                               CoilGlyph.chevronEnd,
                             ),
-                            expanded: _sub == i,
                           ),
-                        ),
-                        final CoilMenuLabel label => _GroupLabel(
-                          key: _rowKeys[i],
-                          label: label.label,
-                          metrics: metrics,
-                        ),
-                        CoilMenuSeparator() => _Separator(
-                          key: _rowKeys[i],
-                          inset: metrics.popupInset,
-                        ),
-                      },
-                  ],
+                          final CoilSubmenu sub => _subPopover(
+                            i,
+                            sub,
+                            row(
+                              i,
+                              _asAction(sub),
+                              trailing: const CoilDrawnGlyph(
+                                CoilGlyph.chevronEnd,
+                              ),
+                              expanded: _sub == i,
+                            ),
+                          ),
+                          final CoilMenuLabel label => _GroupLabel(
+                            key: _rowKeys[i],
+                            label: label.label,
+                            metrics: metrics,
+                          ),
+                          CoilMenuSeparator() => _Separator(
+                            key: _rowKeys[i],
+                            inset: metrics.popupInset,
+                          ),
+                        },
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -830,7 +858,7 @@ class _CoilActionListState extends State<CoilActionList>
         builder: (context, child) => CoilTypeahead(
           searchTexts: [for (final entry in items) _searchTextOf(entry)],
           current: _active.index,
-          isEnabled: _enabled,
+          isEnabled: (i) => !_frozen && _enabled(i),
           onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
           child: child!,
         ),
@@ -1134,19 +1162,22 @@ class _Separator extends StatelessWidget {
   final EdgeInsets padding;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: padding,
-    // Negative side padding reaches across the popup's inset.
-    child: PaddingExtended(
-      padding: EdgeInsets.symmetric(horizontal: -inset),
-      child: SizedBox(
-        height: 1,
-        child: ColoredBox(
-          color: CoilTheme.of(context).colors.border.withValues(alpha: 0.6),
+  Widget build(BuildContext context) {
+    // FF's `bg-border/60`: 60 % of the hairline's own alpha (the border
+    // token is foreground at 12 %, 40 % in high contrast).
+    final border = CoilTheme.of(context).colors.border;
+    return Padding(
+      padding: padding,
+      // Negative side padding reaches across the popup's inset.
+      child: PaddingExtended(
+        padding: EdgeInsets.symmetric(horizontal: -inset),
+        child: SizedBox(
+          height: 1,
+          child: ColoredBox(color: border.withValues(alpha: border.a * 0.6)),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// The search field over a filtered list: a borderless line of text that
@@ -1230,4 +1261,18 @@ class _Empty extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Lets a submenu's list freeze the lists it opened from when it
+/// acknowledges a pick, so the whole menu ignores input until it closes.
+class _FreezeScope extends InheritedWidget {
+  const _FreezeScope({required this.freeze, required super.child});
+
+  final VoidCallback freeze;
+
+  static VoidCallback? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_FreezeScope>()?.freeze;
+
+  @override
+  bool updateShouldNotify(_FreezeScope oldWidget) => false;
 }
