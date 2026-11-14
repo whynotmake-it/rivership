@@ -1,12 +1,38 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+
+/// Builds a tooltip's bubble around [content], given the 0→1 presence to
+/// animate it with.
+typedef CoilTooltipBubbleBuilder =
+    Widget Function(
+      BuildContext context,
+      Animation<double> presence,
+      Widget content,
+    );
+
+/// The motion of a bubble's presence: in on `quick`, out on `quickExit`.
+/// Under reduced motion an overlay only fades, so it's `fade` and
+/// `fadeExit` there.
+Motion _presenceMotion(
+  BuildContext context,
+  CoilMotion? override, {
+  required bool show,
+}) {
+  final tokens = CoilTheme.motionOf(context, override: override);
+  if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+    return show ? tokens.fade : tokens.fadeExit;
+  }
+  return show ? tokens.quick : tokens.quickExit;
+}
 
 /// The behavior of a tooltip: when it shows, where, and how it springs in
 /// and out. The look comes from [bubble].
@@ -18,27 +44,31 @@ import 'package:motor/motor.dart';
 ///   without firing [child]. iOS shows none.
 ///
 /// The bubble sits [gap] above [child], or below when there's no room
-/// above, and slides the last 4 px toward it as it appears. [message]
-/// merges into [child]'s semantics as its tooltip.
+/// above, and slides the last 4 px toward it as it appears. Under reduced
+/// motion it only fades, on `fade`. [semanticLabel] merges into [child]'s
+/// semantics as its tooltip.
 ///
 /// Inside a [CoilTooltipAnchorGroup], the group shows one bubble for all
 /// its anchors.
 class CoilTooltipAnchor extends StatefulWidget {
   /// Creates a tooltip anchor around [child].
   const CoilTooltipAnchor({
-    required this.message,
+    required this.content,
+    required this.semanticLabel,
     required this.bubble,
     required this.child,
     super.key,
     this.motion,
   });
 
-  /// The tooltip text for screen readers.
-  final String message;
+  /// What the bubble shows.
+  final Widget content;
 
-  /// Builds the bubble, given the 0→1 presence to animate it with.
-  final Widget Function(BuildContext context, Animation<double> presence)
-  bubble;
+  /// The tooltip text for screen readers.
+  final String semanticLabel;
+
+  /// Builds the bubble around [content].
+  final CoilTooltipBubbleBuilder bubble;
 
   /// What the tooltip is for.
   final Widget child;
@@ -97,9 +127,6 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     if (status.isDismissed && !_shown && _portal.isShowing) _portal.hide();
   }
 
-  CoilMotion get _tokens =>
-      CoilTheme.motionOf(context, override: widget.motion);
-
   void _show() {
     _delay?.cancel();
     if (_shown || !mounted) return;
@@ -107,7 +134,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     if (_group case final group?) return group._show(this);
     if (!_portal.isShowing) _portal.show();
     _presence
-      ..motion = _tokens.quick
+      ..motion = _presenceMotion(context, widget.motion, show: true)
       ..animateTo(1);
   }
 
@@ -118,7 +145,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     _lastClosed = _clock.elapsed;
     if (_group case final group?) return group._hide(this);
     _presence
-      ..motion = _tokens.quickExit
+      ..motion = _presenceMotion(context, widget.motion, show: false)
       ..animateTo(0);
   }
 
@@ -170,7 +197,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     // One node: the trigger's label with the tooltip as its hint.
     return MergeSemantics(
       child: Semantics(
-        tooltip: widget.message,
+        tooltip: widget.semanticLabel,
         child: Focus(
           canRequestFocus: false,
           skipTraversal: true,
@@ -179,16 +206,13 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
           child: OverlayPortal.overlayChildLayoutBuilder(
             controller: _portal,
             overlayChildBuilder: (context, info) => IgnorePointer(
-              child: CustomSingleChildLayout(
-                delegate: _BubbleLayout(
-                  anchor: MatrixUtils.transformRect(
-                    info.childPaintTransform,
-                    Offset.zero & info.childSize,
-                  ),
-                  safeTop: MediaQuery.paddingOf(context).top,
-                  presence: _presence,
+              child: _BubblePlacement(
+                anchor: MatrixUtils.transformRect(
+                  info.childPaintTransform,
+                  Offset.zero & info.childSize,
                 ),
-                child: widget.bubble(context, _presence),
+                presence: _presence,
+                child: widget.bubble(context, _presence, widget.content),
               ),
             ),
             child: trigger,
@@ -203,8 +227,11 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
 /// to the next, it glides there on the theme's `quick` spring instead of
 /// closing and opening again, as in a toolbar.
 ///
-/// [bubble] builds it for the current [CoilTooltipAnchor.message]; let its
-/// width and label follow the message's changes.
+/// [bubble] builds it around the current anchor's
+/// [CoilTooltipAnchor.content]; let its size and content follow changes of
+/// the content. The content it gets is keyed by the anchor and the
+/// content's own key, so a `MotionSwitcher` around it switches when the
+/// bubble moves to another anchor or the content's key changes.
 class CoilTooltipAnchorGroup extends StatefulWidget {
   /// Creates a tooltip group around [child].
   const CoilTooltipAnchorGroup({
@@ -214,13 +241,8 @@ class CoilTooltipAnchorGroup extends StatefulWidget {
     this.motion,
   });
 
-  /// Builds the bubble for a message, given the 0→1 presence.
-  final Widget Function(
-    BuildContext context,
-    Animation<double> presence,
-    String message,
-  )
-  bubble;
+  /// Builds the shared bubble around the current anchor's content.
+  final CoilTooltipBubbleBuilder bubble;
 
   /// The area holding the anchors.
   final Widget child;
@@ -274,7 +296,7 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
     });
     if (!_portal.isShowing) _portal.show();
     _presence
-      ..motion = _tokens.quick
+      ..motion = _presenceMotion(context, widget.motion, show: true)
       ..animateTo(1);
   }
 
@@ -295,7 +317,7 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
     if (_anchor != anchor || !_open) return;
     _open = false;
     _presence
-      ..motion = _tokens.quickExit
+      ..motion = _presenceMotion(context, widget.motion, show: false)
       ..animateTo(0);
   }
 
@@ -324,15 +346,21 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
           value: rect,
           converter: MotionConverter.rect,
           motion: _tokens.quick,
-          builder: (context, rect, child) => CustomSingleChildLayout(
-            delegate: _BubbleLayout(
-              anchor: rect,
-              safeTop: MediaQuery.paddingOf(context).top,
-              presence: _presence,
-            ),
+          // Laid out on the anchor it heads for; the glide is painted.
+          builder: (context, glide, child) => _BubblePlacement(
+            anchor: rect,
+            glide: glide,
+            presence: _presence,
             child: child,
           ),
-          child: widget.bubble(context, _presence, anchor.widget.message),
+          child: widget.bubble(
+            context,
+            _presence,
+            KeyedSubtree(
+              key: ValueKey((anchor, anchor.widget.content.key)),
+              child: anchor.widget.content,
+            ),
+          ),
         ),
       );
     },
@@ -354,43 +382,236 @@ class _GroupScope extends InheritedWidget {
 
 /// Places the bubble above the trigger, or below when there's no room
 /// above, and slides it the last 4 px toward the trigger as it appears.
-class _BubbleLayout extends SingleChildLayoutDelegate {
-  _BubbleLayout({
+/// Under reduced motion it doesn't slide.
+///
+/// In a group, [glide] is where the bubble is on its way to [anchor]: the
+/// bubble is drawn there as if it were placed on that rect.
+class _BubblePlacement extends SingleChildRenderObjectWidget {
+  const _BubblePlacement({
     required this.anchor,
-    required this.safeTop,
     required this.presence,
-  }) : super(relayout: presence);
+    this.glide,
+    super.child,
+  });
 
+  /// The trigger's rect in the overlay.
   final Rect anchor;
-  final double safeTop;
+
+  /// The rect the bubble is drawn on while it glides to [anchor].
+  final Rect? glide;
+
   final Animation<double> presence;
 
-  static const _edge = 8.0;
-
   @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
-      BoxConstraints.loose(constraints.biggest).deflate(
-        const EdgeInsets.all(_edge),
+  _RenderBubblePlacement createRenderObject(BuildContext context) =>
+      _RenderBubblePlacement(
+        anchor: anchor,
+        glide: glide,
+        safeTop: MediaQuery.paddingOf(context).top,
+        presence: presence,
+        slide: !(MediaQuery.maybeDisableAnimationsOf(context) ?? false),
       );
 
   @override
-  Offset getPositionForChild(Size size, Size child) {
-    final roomAbove = anchor.top - CoilTooltipAnchor.gap - safeTop - _edge;
-    final above = roomAbove >= child.height;
-    final slide = 4 * (1 - presence.value.clamp(0.0, 1.0));
-    final y = above
-        ? anchor.top - CoilTooltipAnchor.gap - child.height - slide
-        : anchor.bottom + CoilTooltipAnchor.gap + slide;
-    final x = (anchor.center.dx - child.width / 2).clamp(
+  void updateRenderObject(
+    BuildContext context,
+    _RenderBubblePlacement renderObject,
+  ) {
+    renderObject
+      ..anchor = anchor
+      ..glide = glide
+      ..safeTop = MediaQuery.paddingOf(context).top
+      ..presence = presence
+      ..slide = !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+  }
+}
+
+/// Lays the bubble out at rest on its anchor and paints the slide and the
+/// glide as a resample of it (a matrix image filter), as the popover's grow
+/// does. Moved by layout, the text would snap to the pixel grid on every
+/// frame. While the bubble resizes, its centered content stays put.
+class _RenderBubblePlacement extends RenderBox
+    with RenderObjectWithChildMixin<RenderBox> {
+  _RenderBubblePlacement({
+    required this._anchor,
+    required this._glide,
+    required this._safeTop,
+    required this._presence,
+    required this._slide,
+  });
+
+  static const _edge = 8.0;
+  static const _distance = 4.0;
+
+  Rect get anchor => _anchor;
+  Rect _anchor;
+  set anchor(Rect value) {
+    if (value == _anchor) return;
+    _anchor = value;
+    _updateMoving();
+    markNeedsLayout();
+  }
+
+  Rect? get glide => _glide;
+  Rect? _glide;
+  set glide(Rect? value) {
+    if (value == _glide) return;
+    _glide = value;
+    _updateMoving();
+    markNeedsPaint();
+  }
+
+  double get safeTop => _safeTop;
+  double _safeTop;
+  set safeTop(double value) {
+    if (value == _safeTop) return;
+    _safeTop = value;
+    markNeedsLayout();
+  }
+
+  Animation<double> get presence => _presence;
+  Animation<double> _presence;
+  set presence(Animation<double> value) {
+    if (value == _presence) return;
+    if (attached) _presence.removeListener(_onPresence);
+    _presence = value;
+    if (attached) _presence.addListener(_onPresence);
+    _onPresence();
+  }
+
+  /// Whether the bubble slides in; false under reduced motion.
+  bool get slide => _slide;
+  bool _slide;
+  set slide(bool value) {
+    if (value == _slide) return;
+    _slide = value;
+    _onPresence();
+  }
+
+  Offset _childOffset = Offset.zero;
+  bool _above = true;
+
+  /// Whether the bubble is mid-slide or mid-glide, so painted through a
+  /// matrix filter.
+  bool _moving = false;
+
+  bool get _shouldMove =>
+      (_slide && _presence.value != 1) || (_glide != null && _glide != _anchor);
+
+  void _updateMoving() {
+    final moving = _shouldMove;
+    if (moving == _moving) return;
+    _moving = moving;
+    markNeedsCompositingBitsUpdate();
+  }
+
+  void _onPresence() {
+    _updateMoving();
+    markNeedsPaint();
+  }
+
+  @override
+  bool get alwaysNeedsCompositing => _moving;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _presence.addListener(_onPresence);
+    _moving = _shouldMove;
+  }
+
+  @override
+  void detach() {
+    _presence.removeListener(_onPresence);
+    super.detach();
+  }
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => constraints.biggest;
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) return;
+    child.layout(
+      BoxConstraints.loose(size).deflate(const EdgeInsets.all(_edge)),
+      parentUsesSize: true,
+    );
+    final bubble = child.size;
+    final roomAbove = _anchor.top - CoilTooltipAnchor.gap - _safeTop - _edge;
+    _above = roomAbove >= bubble.height;
+    _childOffset = _place(_anchor);
+  }
+
+  /// Where the bubble goes for [anchor], on the side picked in layout.
+  Offset _place(Rect anchor) {
+    final bubble = child!.size;
+    final y = _above
+        ? anchor.top - CoilTooltipAnchor.gap - bubble.height
+        : anchor.bottom + CoilTooltipAnchor.gap;
+    final x = (anchor.center.dx - bubble.width / 2).clamp(
       _edge,
-      size.width - _edge - child.width,
+      size.width - _edge - bubble.width,
     );
     return Offset(x, y);
   }
 
+  /// How far the bubble is drawn from where it's laid out: the glide's
+  /// remaining way, plus the slide, [_distance] away from the trigger at
+  /// presence 0. A spring's overshoot is kept, so a bouncy one bounces.
+  Offset get _moveOffset {
+    final glide = _glide;
+    final glided = glide == null || child == null
+        ? Offset.zero
+        : _place(glide) - _childOffset;
+    if (!_slide) return glided;
+    final away = _distance * (1 - _presence.value);
+    return glided + Offset(0, _above ? -away : away);
+  }
+
   @override
-  bool shouldRelayout(_BubbleLayout oldDelegate) =>
-      oldDelegate.anchor != anchor ||
-      oldDelegate.safeTop != safeTop ||
-      oldDelegate.presence != presence;
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    final origin = offset + _childOffset;
+    if (!_moving) {
+      layer = null;
+      context.paintChild(child, origin);
+      return;
+    }
+    final move = _moveOffset;
+    final filter = ImageFilter.matrix(
+      Matrix4.translationValues(move.dx, move.dy, 0).storage,
+    );
+    if (layer case final ImageFilterLayer layer) {
+      layer.imageFilter = filter;
+    } else {
+      layer = ImageFilterLayer(imageFilter: filter);
+    }
+    context.pushLayer(
+      layer!,
+      (context, offset) => context.paintChild(child, offset),
+      origin,
+    );
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final at = _childOffset + _moveOffset;
+    transform.translateByDouble(at.dx, at.dy, 0, 1);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) return false;
+    return result.addWithPaintOffset(
+      offset: _childOffset + _moveOffset,
+      position: position,
+      hitTest: (result, position) => child.hitTest(result, position: position),
+    );
+  }
 }
