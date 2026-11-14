@@ -2,16 +2,6 @@ import 'package:coil/foundation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Which surface a [CoilKbd] sits on.
-enum CoilKbdTone {
-  /// A page or popover: a faint foreground fill with muted text.
-  normal,
-
-  /// An inverted surface, such as a tooltip bubble: a faint background
-  /// fill with background-colored text.
-  inverted,
-}
-
 /// Overrides for how a [CoilKbd] looks; unset fields come from
 /// [CoilKbdStyle.fallback].
 class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
@@ -25,30 +15,20 @@ class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
     this.gap,
   });
 
-  /// The defaults for [tone] from [theme]'s tokens.
-  factory CoilKbdStyle.fallback(CoilThemeData theme, CoilKbdTone tone) {
-    final c = theme.colors;
-    final (fill, text) = switch (tone) {
-      CoilKbdTone.normal => (
-        CoilColorMix.withTransparent(c.foreground, 0.08),
-        c.mutedForeground,
-      ),
-      CoilKbdTone.inverted => (
-        CoilColorMix.withTransparent(c.background, 0.15),
-        c.background,
-      ),
-    };
-    return CoilKbdStyle(
-      fill: fill,
-      textStyle: theme.typography
-          .style(const CoilTypeStep(11, 14), color: text)
-          .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-      radius: theme.shape == CoilShape.sharp ? 0 : 3,
-      size: 18,
-      paddingX: 4,
-      gap: 2,
-    );
-  }
+  /// The defaults from [theme]'s tokens, with [text] the ambient text
+  /// color: the keys take it, and the fill is a faint wash of it, so the
+  /// caps fit any surface, an inverted tooltip bubble included.
+  factory CoilKbdStyle.fallback(CoilThemeData theme, Color text) =>
+      CoilKbdStyle(
+        fill: text.withValues(alpha: text.a * 0.15),
+        textStyle: theme.typography
+            .style(const CoilTypeStep(11, 14), color: text)
+            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+        radius: theme.shape == CoilShape.sharp ? 0 : 3,
+        size: 18,
+        paddingX: 4,
+        gap: 2,
+      );
 
   /// The cap's fill.
   final Color? fill;
@@ -90,13 +70,13 @@ class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
 /// Modifier glyphs (⌘ ⇧ ⌥ ⌃) are keys of their own, `+` and spaces
 /// separate the rest, so `'Ctrl+K'` draws Ctrl and K. Use
 /// [CoilKbd.keys] for a key whose name has a space, like `Page Up`.
-/// Screen readers hear the combination as one label.
+/// Screen readers hear the combination as one label. The caps take their
+/// colors from the ambient [DefaultTextStyle], so they suit any surface.
 class CoilKbd extends StatelessWidget {
   /// Shows [combination] split into keys.
   CoilKbd(
     String combination, {
     super.key,
-    this.tone = CoilKbdTone.normal,
     this.style,
   }) : keys = split(combination);
 
@@ -104,7 +84,6 @@ class CoilKbd extends StatelessWidget {
   const CoilKbd.keys(
     this.keys, {
     super.key,
-    this.tone = CoilKbdTone.normal,
     this.style,
   });
 
@@ -114,15 +93,11 @@ class CoilKbd extends StatelessWidget {
   CoilKbd.activator(
     ShortcutActivator activator, {
     super.key,
-    this.tone = CoilKbdTone.normal,
     this.style,
   }) : keys = keysOf(activator);
 
   /// The keys, in order.
   final List<String> keys;
-
-  /// Which surface the caps sit on.
-  final CoilKbdTone tone;
 
   /// Overrides the theme's key style.
   final CoilKbdStyle? style;
@@ -184,7 +159,7 @@ class CoilKbd extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final look = CoilKbdStyle.fallback(
       theme,
-      tone,
+      DefaultTextStyle.of(context).style.color ?? theme.colors.mutedForeground,
     ).merge(CoilTheme.styleOf<CoilKbdStyle>(context)).merge(style);
     final size = MediaQuery.textScalerOf(context).scale(look.size!);
     final shape = RoundedSuperellipseBorder(

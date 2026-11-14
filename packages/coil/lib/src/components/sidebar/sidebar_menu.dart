@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:coil/context_menu.dart';
+import 'package:coil/dropdown.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/sidebar/sidebar_panel.dart';
@@ -32,7 +34,8 @@ enum CoilSidebarDotStyle {
   ring,
 }
 
-/// When a row's actions show on the pointer tier. Touch always shows them.
+/// When a row's actions show on the pointer tier. Touch always shows its
+/// last one.
 enum CoilSidebarActionsVisibility {
   /// While the row is hovered or focused, or one of its menus is open. The
   /// label claims their width only then.
@@ -124,8 +127,15 @@ class CoilSidebarItem {
   /// A badge, such as a count, in a 24 slot at the end.
   final Widget? trailing;
 
-  /// Up to three [CoilSidebarAction]s, before [trailing].
-  final List<Widget> actions;
+  /// Up to three actions, drawn as 24 icon buttons before [trailing]:
+  /// a [CoilAction] (its `leading` is the icon, its label the tooltip) or a
+  /// [CoilSubmenu], whose button opens its entries, usually the last, an
+  /// overflow ⋯.
+  ///
+  /// The same entries open as a context menu on a right-click, and on a
+  /// long press on touch, where only the last action shows (all of them
+  /// when there is one), as in a data table.
+  final List<CoilMenuEntry> actions;
 
   /// When [actions] show on the pointer tier.
   final CoilSidebarActionsVisibility actionsVisibility;
@@ -460,7 +470,7 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
       ),
     );
     // Right and Left open, enter, close and leave sub-trees.
-    return CallbackShortcuts(
+    final keyed = CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
             _horizontal(entry, open: !_rtl(context)),
@@ -469,6 +479,8 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
       },
       child: row,
     );
+    if (item.actions.isEmpty) return keyed;
+    return CoilContextMenu(entries: item.actions, child: keyed);
   }
 
   bool _rtl(BuildContext context) =>
@@ -647,7 +659,13 @@ class _Row extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       spacing: look.actionGap!,
-                      children: item.actions,
+                      children: [
+                        for (final action
+                            in touch
+                                ? item.actions.sublist(item.actions.length - 1)
+                                : item.actions)
+                          _ActionButton(action),
+                      ],
                     ),
                   if (item.trailing case final trailing?)
                     ConstrainedBox(
@@ -701,4 +719,42 @@ class _RevealScopeState extends State<_RevealScope> {
     onFocusChange: (inside) => setState(() => _focusInside = inside),
     child: widget.builder(context, widget.reveal || _focusInside, null),
   );
+}
+
+/// A row action as a 24 icon button: a [CoilAction] runs, a [CoilSubmenu]
+/// opens its entries.
+class _ActionButton extends StatelessWidget {
+  const _ActionButton(this.entry);
+
+  final CoilMenuEntry entry;
+
+  @override
+  Widget build(BuildContext context) => switch (entry) {
+    CoilAction(
+      :final label,
+      :final leading,
+      :final shortcut,
+      :final onPressed,
+    ) =>
+      CoilSidebarAction(
+        icon: leading ?? const SizedBox.shrink(),
+        semanticLabel: label,
+        tooltip: Text(label),
+        shortcut: shortcut,
+        onPressed: onPressed,
+      ),
+    CoilSubmenu(:final label, :final leading, :final entries) => CoilDropdown(
+      entries: entries,
+      builder: (context, menu) => CoilSidebarAction(
+        icon: leading ?? const SizedBox.shrink(),
+        semanticLabel: label,
+        onPressed: menu.open,
+      ),
+    ),
+    _ => throw ArgumentError.value(
+      entry,
+      'actions',
+      'Row actions are CoilActions or CoilSubmenus',
+    ),
+  };
 }

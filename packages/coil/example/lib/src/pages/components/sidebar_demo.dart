@@ -3,7 +3,6 @@
 // signed-in user.
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 const workspaceNav = [
@@ -236,21 +235,21 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
     CoilSidebarStatus.idle,
   ];
 
-  List<Widget> _rowActions(String thread) => [
-    CoilSidebarAction(
-      icon: const CatalogIcon(Glyph.branch),
-      semanticLabel: 'Branch $thread',
-      tooltip: const Text('Branch thread'),
+  List<CoilMenuEntry> _rowActions(String thread) => [
+    CoilAction(
+      label: 'Branch thread',
+      leading: const CatalogIcon(Glyph.branch),
       onPressed: () {},
     ),
-    CoilSidebarAction(
-      icon: const CatalogIcon(Glyph.link),
-      semanticLabel: 'Share $thread',
-      tooltip: const Text('Share thread'),
+    CoilAction(
+      label: 'Share thread',
+      leading: const CatalogIcon(Glyph.link),
       onPressed: () {},
     ),
     // The overflow menu stays rightmost at every count, like FF's.
-    CoilDropdown(
+    CoilSubmenu(
+      label: 'More options',
+      leading: const CatalogIcon(Glyph.more),
       entries: [
         CoilAction(
           label: 'Rename',
@@ -264,11 +263,6 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
           onPressed: () {},
         ),
       ],
-      builder: (context, menu) => CoilSidebarAction(
-        icon: const CatalogIcon(Glyph.more),
-        semanticLabel: 'More options for $thread',
-        onPressed: menu.open,
-      ),
     ),
   ].sublist(3 - widget.rowActions);
 
@@ -282,11 +276,7 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
         icon: const CatalogIcon(Glyph.plus),
         semanticLabel: 'New thread',
         tooltip: const Text('New thread'),
-        shortcut: const SingleActivator(
-          LogicalKeyboardKey.keyO,
-          meta: true,
-          shift: true,
-        ),
+        shortcut: CoilKbd('⇧⌘O'),
         onPressed: () {},
       ),
       CoilSidebarAction(
@@ -360,10 +350,9 @@ class _NestedGroupState extends State<NestedGroup> {
                   selected: page == _current,
                   trailing: _badges[page] == null ? null : Text(_badges[page]!),
                   actions: [
-                    CoilSidebarAction(
-                      icon: const CatalogIcon(Glyph.plus),
-                      semanticLabel: 'New in $page',
-                      tooltip: const Text('New'),
+                    CoilAction(
+                      label: 'New in $page',
+                      leading: const CatalogIcon(Glyph.plus),
                       onPressed: () {},
                     ),
                   ],

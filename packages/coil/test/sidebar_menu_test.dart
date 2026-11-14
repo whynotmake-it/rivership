@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,10 +51,15 @@ class _MenuState extends State<_Menu> {
             status: CoilSidebarStatus.unread,
             trailing: const Text('4'),
             actions: [
-              CoilSidebarAction(
-                icon: const TestIcon(TestGlyph.plus),
-                semanticLabel: 'Branch',
+              CoilAction(
+                label: 'Branch',
+                leading: const TestIcon(TestGlyph.plus),
                 onPressed: widget.onAction,
+              ),
+              CoilSubmenu(
+                label: 'More',
+                leading: const TestIcon(TestGlyph.settings),
+                entries: [CoilAction(label: 'Rename', onPressed: () {})],
               ),
             ],
             onPressed: () => setState(() => page = 'Fix login'),
@@ -69,6 +75,7 @@ Future<void> _pump(
   WidgetTester tester, {
   CoilTier tier = CoilTier.pointer,
   VoidCallback? onAction,
+  double width = 260,
 }) async {
   tester.view
     ..devicePixelRatio = 1
@@ -79,7 +86,10 @@ Future<void> _pump(
       tier: tier,
       home: Align(
         alignment: Alignment.topLeft,
-        child: SizedBox(width: 260, child: _Menu(onAction: onAction)),
+        child: SizedBox(
+          width: width,
+          child: _Menu(onAction: onAction),
+        ),
       ),
     ),
   );
@@ -180,9 +190,44 @@ void main() {
     expect(find.bySemanticsLabel('Branch'), findsNothing);
   });
 
-  testWidgets('touch always shows the actions', (tester) async {
+  testWidgets('touch shows only the last action, and a long press opens '
+      'them all', (tester) async {
     await _pump(tester, tier: CoilTier.touch);
-    expect(find.bySemanticsLabel('Branch'), findsOneWidget);
+    expect(find.bySemanticsLabel('Branch'), findsNothing);
+    expect(find.bySemanticsLabel('More'), findsOneWidget);
+    await tester.longPress(find.text('Fix login'));
+    await tester.pumpAndSettle();
+    expect(find.text('Branch'), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
+  });
+
+  testWidgets('in a drawer at 2x text, the label still fits beside the '
+      'action', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    // The phone drawer's width.
+    await _pump(tester, tier: CoilTier.touch, width: 320);
+    final label = tester.getSize(find.text('Fix login'));
+    final text = tester.renderObject<RenderParagraph>(find.text('Fix login'));
+    // The whole label fits; nothing is cut off.
+    expect(
+      label.width,
+      greaterThanOrEqualTo(text.getMaxIntrinsicWidth(double.infinity)),
+    );
+    expect(text.didExceedMaxLines, isFalse);
+  });
+
+  testWidgets('a right-click opens the actions as a context menu', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await tester.tap(
+      find.text('Fix login'),
+      buttons: kSecondaryButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Branch'), findsOneWidget);
   });
 
   testWidgets('an unread row says so', (

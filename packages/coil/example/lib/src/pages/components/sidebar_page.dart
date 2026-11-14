@@ -5,7 +5,6 @@ import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 const sidebarEntry = CatalogEntry(
@@ -251,21 +250,14 @@ class _HeaderFooter extends StatelessWidget {
                   icon: const CatalogIcon(Glyph.search),
                   semanticLabel: 'Search',
                   tooltip: const Text('Search'),
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyK,
-                    meta: true,
-                  ),
+                  shortcut: CoilKbd('⌘K'),
                   onPressed: () {},
                 ),
                 CoilSidebarAction(
                   icon: const CatalogIcon(Glyph.newThread),
                   semanticLabel: 'New thread',
                   tooltip: const Text('New thread'),
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyO,
-                    meta: true,
-                    shift: true,
-                  ),
+                  shortcut: CoilKbd('⇧⌘O'),
                   onPressed: () {},
                 ),
               ],

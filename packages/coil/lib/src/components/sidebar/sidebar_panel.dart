@@ -1,5 +1,4 @@
 import 'package:coil/foundation.dart';
-import 'package:coil/kbd.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
 import 'package:coil/src/components/sidebar/sidebar_scope.dart';
@@ -175,8 +174,9 @@ class CoilSidebarAction extends StatelessWidget {
   /// The tooltip, usually a [Text].
   final Widget? tooltip;
 
-  /// The keys the tooltip shows, drawn as a `CoilKbd`.
-  final ShortcutActivator? shortcut;
+  /// A shortcut the tooltip shows after [tooltip], usually a `CoilKbd`,
+  /// such as `CoilKbd.activator(activator)`.
+  final Widget? shortcut;
 
   /// The action's focus node.
   final FocusNode? focusNode;
@@ -255,18 +255,8 @@ class CoilSidebarAction extends StatelessWidget {
     if (tooltip case final tooltip?) {
       button = CoilTooltip(
         semanticLabel: semanticLabel,
-        // TODO(coil-sidebar): move the keys to CoilTooltip's shortcut slot
-        // once it lands.
-        message: shortcut == null
-            ? tooltip
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 6,
-                children: [
-                  tooltip,
-                  CoilKbd.activator(shortcut!, tone: CoilKbdTone.inverted),
-                ],
-              ),
+        message: tooltip,
+        shortcut: shortcut,
         child: button,
       );
     }

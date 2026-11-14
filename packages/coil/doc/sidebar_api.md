@@ -132,10 +132,10 @@ navigation landmark; Flutter needs each landmark's label to be unique.
 vertical, `CoilSidebarBar({required Widget primary, List<Widget> actions})`
 for horizontal.
 
-**The 24 rhythm:** `CoilSidebarAction({required icon, required semanticLabel, required onPressed, Widget? tooltip, ShortcutActivator? shortcut})`
+**The 24 rhythm:** `CoilSidebarAction({required icon, required semanticLabel, required onPressed, Widget? tooltip, Widget? shortcut})`
 is the one 24 icon button (16 icon, gap 4; 44 hit on touch) in bars, group
-labels and rows. Its tooltip shows `shortcut` as a `CoilKbd`. A menu
-trigger passes no tooltip.
+labels and rows. `shortcut` goes in the tooltip's shortcut slot, usually
+a `CoilKbd`. A menu trigger passes no tooltip.
 
 `SidebarSeparator` → `CoilSidebarSeparator`. `SidebarInput` → a compact
 `CoilInput` with a `CoilKbd` trailing.
@@ -159,7 +159,7 @@ touch. `actions` (1 to 3) always show. Controlled only.
 | `dot` | `leading: CoilSidebarDot(.filled / .ring)` |
 | `isActive` | `selected` |
 | `SidebarMenuBadge` | `trailing`, a 24 slot that keeps the last place |
-| `SidebarMenuAction(s)` + `showOnHover` | `actions` (up to 3) + `actionsVisibility: { hover, always }`. On pointer, hover shows them while the row is hovered, keyboard-focused or holds focus (an open menu). The label claims their width only then. Touch always shows them. |
+| `SidebarMenuAction(s)` + `showOnHover` | `actions: List<CoilMenuEntry>` (up to 3: `CoilAction`s, or a `CoilSubmenu` for the ⋯) + `actionsVisibility: { hover, always }`. On pointer they are 24 icon buttons, shown while the row is hovered, keyboard-focused or holds focus (an open menu); the label claims their width only then. A right-click opens them all as a context menu. Touch shows only the last one and opens them all on long-press, as DataTable does. Entries, not widgets, so one list drives the buttons and the menu. |
 | `SidebarMenuSub`, `SidebarMenuSubButton` | `children` + `expanded` + `onExpandedChanged`. One level only. A parent with no `onPressed` toggles on press. |
 | `size: "lg"`, `variant: "outline"`, `render`/`asChild` | dropped: heights are minimums, and `label` takes any widget |
 | `SidebarMenuSkeleton` | wrap skeleton rows in `CoilSkeletonRegion` |
@@ -189,8 +189,8 @@ static scaffold (208 wide) whose menu shows focus as the highlight. Under
 
 ## Supporting pieces
 
-- `CoilKbd('⇧⌘O')`, `CoilKbd.keys([...])`, `CoilKbd.activator(activator)`,
-  with `normal` and `inverted` tones.
+- `CoilKbd('⇧⌘O')`, `CoilKbd.keys([...])`, `CoilKbd.activator(activator)`.
+  Its colors come from the ambient text color, so it suits any surface.
 - `CoilDialogFrame({child, onClose, size})`: the dialog's surface and close
   button; `CoilDialog` builds on it.
 
@@ -200,8 +200,6 @@ static scaffold (208 wide) whose menu shows focus as the highlight. Under
   the strip, following the pointer. `CoilTooltip` opens above or below its
   anchor, which doesn't work for a full-height strip, so the rail has no
   tooltip yet.
-- **Tooltip shortcut slot.** The trigger and actions put a `CoilKbd` in the
-  tooltip's message until `CoilTooltip` gains its `shortcut` slot.
 - **Header and footer menu width.** FF sizes those menus to the trigger
   plus 10, so items line up with the rows; `CoilDropdown` has no option
   for that yet.

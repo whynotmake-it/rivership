@@ -26,6 +26,45 @@ void main() {
     });
   });
 
+  testWidgets('a tooltip with a key shortcut stays 24 tall', (tester) async {
+    Future<double> bubbleHeight({Widget? shortcut}) async {
+      await tester.pumpWidget(
+        KeyedSubtree(
+          key: UniqueKey(),
+          child: testApp(
+            tier: CoilTier.pointer,
+            home: Center(
+              child: CoilTooltip(
+                message: const Text('Search'),
+                shortcut: shortcut,
+                child: const SizedBox.square(dimension: 40),
+              ),
+            ),
+          ),
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.byType(SizedBox).last));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      final bubble = find
+          .ancestor(
+            of: find.text('Search'),
+            matching: find.byWidgetPredicate(
+              (w) => w is DecoratedBox && w.decoration is ShapeDecoration,
+            ),
+          )
+          .first;
+      final height = tester.getSize(bubble).height;
+      await mouse.removePointer();
+      return height;
+    }
+
+    expect(await bubbleHeight(shortcut: CoilKbd('⌘K')), 24);
+    expect(await bubbleHeight(), 24);
+  });
+
   group('callout stack', () {
     Widget card(String title, ValueChanged<String> dismissed) => CoilCard(
       key: ValueKey(title),

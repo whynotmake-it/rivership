@@ -84,16 +84,8 @@ class _CoilSidebarTriggerState extends State<CoilSidebarTrigger> {
         '';
     return CoilTooltip(
       semanticLabel: semanticLabel,
-      // TODO(coil-sidebar): move the key to CoilTooltip's shortcut slot once
-      // it lands.
-      message: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 6,
-        children: [
-          label,
-          CoilKbd(scope.shortcutLabel, tone: CoilKbdTone.inverted),
-        ],
-      ),
+      message: label,
+      shortcut: CoilKbd(scope.shortcutLabel),
       child: CoilButton.icon(
         onPressed: scope.toggle,
         icon: widget.icon,

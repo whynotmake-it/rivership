@@ -12,12 +12,14 @@ Milestone M0, unreleased.
   New parts: `CoilSidebarTrigger`, `CoilSidebarBar`, `CoilSidebarAction`,
   `CoilSidebarCalloutStack` and a collapsible `CoilSidebarGroup` with
   actions. Breaking: `CoilSidebarItem` takes a `label` widget and
-  `leading` (was `icon`), and gains `status`, `actions`, `children` and
+  `leading` (was `icon`), and gains `status`, `actions` (menu entries,
+  also a context menu; touch shows only the last), `children` and
   `expanded`; `CoilSidebarScaffold.of` returns the controller.
 - `CoilSettingsDialog` and `showCoilSettingsDialog`: settings sections in a
   sidebar beside a panel, with `CoilSettingsList` and `CoilSettingRow`.
 - `CoilKbd` draws a keyboard shortcut as key caps, from a string or a
-  `ShortcutActivator`.
+  `ShortcutActivator`, in the ambient text color. In `CoilTooltip`'s
+  `shortcut` slot the caps are 16 tall, so the bubble stays 24.
 - `CoilDialogFrame` is the dialog's surface and close button without its
   layout; `CoilDialog` builds on it.
 - `CoilDrawer` (primitive) shows a modal side drawer that stays a

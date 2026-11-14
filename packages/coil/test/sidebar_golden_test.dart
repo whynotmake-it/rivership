@@ -84,8 +84,16 @@ Widget _panel() => SizedBox(
               status: CoilSidebarStatus.unread,
               trailing: const Text('4'),
               actions: [
-                _action(TestGlyph.plus, 'Add'),
-                _action(TestGlyph.x, 'Close'),
+                CoilAction(
+                  label: 'Add',
+                  leading: const TestIcon(TestGlyph.plus),
+                  onPressed: () {},
+                ),
+                CoilAction(
+                  label: 'Close',
+                  leading: const TestIcon(TestGlyph.x),
+                  onPressed: () {},
+                ),
               ],
               actionsVisibility: CoilSidebarActionsVisibility.always,
               onPressed: () {},

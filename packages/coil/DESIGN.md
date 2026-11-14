@@ -511,7 +511,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** one cap per key of a shortcut (`⇧⌘O` → ⇧ ⌘ O; `Ctrl+K` → Ctrl K), 2 apart.
 - **Sizes:** 18 square at least (it scales with text), padding 4, 11 type with tabular figures, radius 3. No touch bump; it isn't interactive.
-- **Tones:** `normal` (foreground 8 % fill, muted text) and `inverted` for tooltips (background 15 % fill, background text).
+- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps suit any surface, the inverted tooltip bubble included.
+- **In a tooltip:** the shortcut slot pins the cap to 16, which fits the caption line, so the bubble stays 24 tall.
 - **Semantics:** the keys read as one label.
 
 #### Checkbox
@@ -943,7 +944,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).
 - **Callouts:** a pile of cards, front first. At rest up to 2 peek 12 behind the front, each 5 % smaller. Inline cards fan out into a list under a hovering mouse (or keyboard focus); banners never fan. Dismissing the front promotes the next on `standard`. Touch never fans.
 - **States:** rows are muted → foreground when lit; the active row has the `active` fill with semibold (ghost width), its own glide per level; hover glides across all levels; disabled 50 %. A group label raises its contrast on hover and reveals its chevron; a folded group keeps the chevron. On touch the chevron always shows.
-- **Row actions:** pointer shows them on hover, focus or while their menu is open, and the label claims their width only then; **touch always shows them**, 44 hit.
+- **Row actions:** menu entries (an action, or a submenu such as the overflow ⋯). Pointer shows them as 24 icon buttons on hover, focus or while their menu is open, and the label claims their width only then; a right-click opens all of them as a context menu. **Touch shows only the last one** (the ⋯, rightmost by convention; a lone action shows as is), 44 hit, and a long-press opens all of them as a context menu with the haptic lift, as DataTable does, so the label keeps its width at large text.
 - **Pointer behavior:**
   - `[` (`]` for a sidebar on the right) or ⌘B / Ctrl+B toggles it while focus is inside the scaffold; the innermost scaffold answers; never while typing in a field. With nothing focused (at launch), the outermost scaffold takes focus, so the key works at once. The scaffold is a focus scope, so focus a folding sidebar drops stays inside and the next press still works.
   - The open/close width runs on `gentle` / `gentleExit`; a rail drag tracks 1:1, and a fold or reopen during a drag springs on `standard`.

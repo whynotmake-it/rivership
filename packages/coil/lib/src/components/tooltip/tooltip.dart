@@ -1,4 +1,5 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/kbd.dart';
 import 'package:coil/primitives.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -79,7 +80,12 @@ class CoilTooltip extends StatelessWidget {
       spacing: 8,
       children: [
         Flexible(child: message),
-        shortcut,
+        // A 16 cap fits the caption line, so the bubble stays 24 tall.
+        CoilTheme.override(
+          transform: (theme) =>
+              theme.withComponentStyle(const CoilKbdStyle(size: 16)),
+          child: shortcut,
+        ),
       ],
     ),
   };
