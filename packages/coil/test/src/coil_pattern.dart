@@ -218,7 +218,9 @@ List<SemanticsData> _nodes(WidgetTester tester, Finder finder) {
   final root = tester.getSemantics(finder);
   final out = <SemanticsData>[];
   void visit(SemanticsNode node) {
-    out.add(node.getSemanticsData());
+    // A node merged into its parent is already in the parent's data; it is
+    // not a node assistive technology sees.
+    if (!node.isMergedIntoParent) out.add(node.getSemanticsData());
     node.visitChildren((child) {
       visit(child);
       return true;
