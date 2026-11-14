@@ -21,6 +21,8 @@ class _Demo extends StatefulWidget {
 class _DemoState extends State<_Demo> {
   String? value;
 
+  void setValue(String v) => setState(() => value = v);
+
   @override
   Widget build(BuildContext context) => Align(
     alignment: const Alignment(0, -0.7),
@@ -122,7 +124,7 @@ void main() {
     expect(find.text('Banana'), findsOneWidget);
   });
 
-  testWidgets('on a phone the field opens a sheet with its own field', (
+  testWidgets('on a phone a trigger opens a sheet with the field', (
     tester,
   ) async {
     useScreen(tester, TestScreen.phone);
@@ -138,7 +140,25 @@ void main() {
     await tester.tap(find.text('Banana'));
     await tester.pumpAndSettle();
     expect(find.byType(CoilSheetPanel), findsNothing);
-    expect(_fieldText(tester), 'Banana');
+    expect(find.text('Banana'), findsOneWidget);
+  });
+
+  testWidgets('a value set from outside while the sheet filters', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.touch, home: const _Demo()),
+    );
+    await tester.tap(find.byType(CoilCombobox<String>));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), 'ap');
+    await tester.pumpAndSettle();
+    tester.state<_DemoState>(find.byType(_Demo)).setValue('banana');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    // The sheet keeps filtering what was typed in it.
+    expect(find.text('Apricot'), findsOneWidget);
   });
 
   multiTests();

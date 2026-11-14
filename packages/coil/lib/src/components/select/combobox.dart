@@ -5,6 +5,7 @@ import 'package:coil/input.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/select/option_list.dart';
 import 'package:coil/src/components/select/select_style.dart';
+import 'package:coil/src/components/select/select_trigger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -262,7 +263,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   @override
   void initState() {
     super.initState();
-    _showPicked();
+    _syncText();
     _focus.addListener(_onFocus);
   }
 
@@ -273,7 +274,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocus);
       _focus.addListener(_onFocus);
     }
-    if (!setEquals(oldWidget.picked, widget.picked)) _showPicked();
+    // Only the page's own field follows here: the list's listenables, which
+    // a sheet route also listens to, change in event handlers only.
+    if (!setEquals(oldWidget.picked, widget.picked)) _syncText();
   }
 
   @override
@@ -304,15 +307,19 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     ];
   }
 
-  /// Puts the picked option's label in the field and stops filtering.
-  void _showPicked() {
+  /// Puts the picked option's label in the page's field.
+  void _syncText() {
     final label = widget.multiple ? '' : _labelOf(widget.picked.firstOrNull);
-    if (_text.text != label) {
-      _text.value = TextEditingValue(
-        text: label,
-        selection: TextSelection.collapsed(offset: label.length),
-      );
-    }
+    _text.value = TextEditingValue(
+      text: label,
+      selection: TextSelection.collapsed(offset: label.length),
+    );
+  }
+
+  /// Shows the picked label again and stops filtering. From event handlers
+  /// only.
+  void _showPicked() {
+    _syncText();
     _query.value = '';
   }
 
@@ -550,6 +557,41 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     );
   }
 
+  /// The phone's trigger: a select-style button that opens the sheet.
+  Widget _trigger(CoilMetrics metrics) {
+    final style = _style(context, metrics);
+    final labels = [
+      for (final option in widget.options)
+        if (widget.picked.contains(option.value)) option.label,
+    ];
+    final value = labels.isEmpty ? null : labels.join(', ');
+    return ListenableBuilder(
+      listenable: _popup,
+      builder: (context, _) => Semantics(
+        button: true,
+        enabled: _enabled,
+        expanded: _popup.isOpen,
+        value: value,
+        hint: value == null ? widget.placeholder : null,
+        child: CoilInteraction(
+          onPressed: _enabled ? _open : null,
+          focusNode: _focus,
+          statesController: _states,
+          excludeFromSemantics: true,
+          builder: (context, states, _) => CoilSelectTrigger(
+            metrics: metrics,
+            style: style,
+            states: {...states, if (_popup.isOpen) WidgetState.selected},
+            label: Text(
+              value ?? widget.placeholder,
+              style: value == null ? TextStyle(color: style.placeholder) : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sheet =
@@ -591,21 +633,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       },
       sheet: (context, content) =>
           CoilSheetPanel(title: widget.sheetTitle, child: content),
-      // On a phone the page's field only opens the sheet.
-      // One tree for both, so the field keeps its state when the window
-      // crosses the phone width.
-      child: Semantics(
-        button: sheet,
-        child: CoilInteractionDetector(
-          states: _states,
-          enabled: _enabled && sheet,
-          onTap: sheet ? _open : null,
-          child: IgnorePointer(
-            ignoring: sheet,
-            child: _pageField(),
-          ),
-        ),
-      ),
+      // On a phone the field would hide under the keyboard with the list:
+      // the page shows a trigger, and the sheet holds the field.
+      child: sheet ? _trigger(metrics) : _pageField(),
     );
   }
 }

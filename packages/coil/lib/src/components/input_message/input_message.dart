@@ -112,6 +112,7 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
 
   @override
   void dispose() {
+    _focus.removeListener(_onFocus);
     _ownController?.dispose();
     _ownFocus?.dispose();
     _states.dispose();
@@ -126,6 +127,24 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+  }
+
+  @override
+  void didUpdateWidget(CoilInputMessage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocus);
+      _focus.addListener(_onFocus);
+      _onFocus();
+    }
+  }
+
+  void _onFocus() => _states.update(WidgetState.focused, _focus.hasFocus);
+
+  @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
@@ -136,30 +155,7 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
     ).merge(CoilTheme.styleOf<CoilInputStyle>(context));
     final pointer = metrics.tier == CoilTier.pointer;
     final radius = BorderRadius.circular(look.multilineRadius!);
-    const clear = WidgetStatePropertyAll<Color?>(Color(0x00000000));
-
-    final field = CoilInput.multiline(
-      controller: _controller,
-      focusNode: _focus,
-      enabled: widget.enabled,
-      placeholder: Text(widget.placeholder),
-      minLines: widget.minLines,
-      maxLines: widget.maxLines,
-      size: widget.size,
-      motion: widget.motion,
-      statesController: _states,
-      // The composer draws the border and fill around everything.
-      style: const CoilInputStyle(border: clear, fill: clear),
-      shortcuts: {
-        if (pointer)
-          const SingleActivator(LogicalKeyboardKey.enter): VoidCallbackIntent(
-            _send,
-          ),
-        if (pointer)
-          const SingleActivator(LogicalKeyboardKey.numpadEnter):
-              VoidCallbackIntent(_send),
-      },
-    );
+    final textStyle = look.textStyle!;
 
     final button = ListenableBuilder(
       listenable: _controller,
@@ -180,7 +176,9 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
             ),
     );
 
-    return ListenableBuilder(
+    // The composer is the field's chrome: a tap anywhere in it lands in
+    // the text, and its border follows the field's focus and hover.
+    Widget decorate(BuildContext context, Widget field) => ListenableBuilder(
       listenable: _states,
       builder: (context, child) {
         final states = {
@@ -212,7 +210,12 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           spacing: metrics.gap,
           children: [
             ?widget.attachments,
-            field,
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.controlPaddingX - metrics.gap,
+              ),
+              child: field,
+            ),
             Row(
               spacing: metrics.gap,
               children: [
@@ -223,6 +226,46 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+
+    return CoilInteractionDetector(
+      states: _states,
+      enabled: widget.enabled,
+      trackPress: false,
+      child: Opacity(
+        opacity: widget.enabled ? 1 : metrics.disabledOpacity,
+        child: CoilTextFieldCore(
+          controller: _controller,
+          focusNode: _focus,
+          enabled: widget.enabled,
+          placeholder: Text(widget.placeholder),
+          placeholderColor: look.placeholder,
+          style: textStyle,
+          strutStyle: StrutStyle.fromTextStyle(
+            textStyle,
+            forceStrutHeight: true,
+          ),
+          cursorColor: look.cursorColor,
+          cursorWidth: look.cursorWidth!,
+          selectionColor: look.selectionColor,
+          keyboardAppearance: theme.brightness,
+          textCapitalization: TextCapitalization.sentences,
+          minLines: widget.minLines,
+          maxLines: widget.maxLines,
+          scrollPadding: const EdgeInsets.all(16),
+          // With a hovering pointer, Enter sends and Shift+Enter is a new
+          // line; on touch, Return is a new line and the button sends.
+          shortcuts: {
+            if (pointer)
+              const SingleActivator(LogicalKeyboardKey.enter):
+                  VoidCallbackIntent(_send),
+            if (pointer)
+              const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                  VoidCallbackIntent(_send),
+          },
+          decorationBuilder: decorate,
         ),
       ),
     );
