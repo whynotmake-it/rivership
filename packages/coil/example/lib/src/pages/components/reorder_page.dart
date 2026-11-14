@@ -10,7 +10,7 @@ const reorderEntry = CatalogEntry(
   slug: 'reorder',
   title: 'Reorder',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Cards fly to their new place; drag them between columns.',
+  summary: 'Cards make room for a dragged card and fly to their new place.',
   page: ReorderPage.new,
 );
 
@@ -27,14 +27,15 @@ class ReorderPage extends StatelessWidget {
       DemoSection(
         title: 'Board',
         description:
-            'Drag a card to another column, or shuffle one. The card lifts, '
-            'lands where it now lives, and the cards around it make room.',
+            'Drag a card within its column or to another one. The cards make '
+            'room where it will go, and it drops into the gap. Near an edge, '
+            'the column or the board scrolls.',
         padding: 0,
         child: _Board(),
       ),
       DemoSection(
         title: 'Grid',
-        description: 'Tiles fly on both axes.',
+        description: 'Drag a tile to reorder; tiles fly on both axes.',
         child: _Grid(),
       ),
     ],
@@ -180,11 +181,13 @@ class _BoardState extends State<_Board> {
     super.dispose();
   }
 
-  void _move(_Task task, _Column to) => setState(() {
+  /// Moves [task] to [index] of [to], from wherever it was. The index
+  /// counts after the task has left its old place.
+  void _insert(_Task task, _Column to, int index) => setState(() {
     for (final column in _columns) {
       column.tasks.remove(task);
     }
-    to.tasks.insert(0, task);
+    to.tasks.insert(index, task);
   });
 
   @override
@@ -217,7 +220,7 @@ class _BoardState extends State<_Board> {
                       child: _Lane(
                         column: column,
                         onShuffle: () => setState(column.tasks.shuffle),
-                        onAccept: (task) => _move(task, column),
+                        onInsert: (task, index) => _insert(task, column, index),
                       ),
                     ),
                 ],
@@ -230,30 +233,32 @@ class _BoardState extends State<_Board> {
   }
 }
 
-/// A column of the board: a header over its cards, and a drop target for
-/// cards from the other columns.
+/// A column of the board: a header over its cards. The whole lane is a drop
+/// zone: a card dragged over it, from this column or another, opens a gap
+/// where it will go, and drops into it.
 class _Lane extends StatelessWidget {
   const _Lane({
     required this.column,
     required this.onShuffle,
-    required this.onAccept,
+    required this.onInsert,
   });
 
   final _Column column;
   final VoidCallback onShuffle;
-  final ValueChanged<_Task> onAccept;
+  final void Function(_Task task, int index) onInsert;
 
   @override
   Widget build(BuildContext context) {
     final board = _BoardMetrics.of(context);
-    return DragTarget<_Task>(
-      // A card can only go to another column: there is no reordering
-      // within a column yet, so a drop on its own column flies back.
-      onWillAcceptWithDetails: (details) =>
-          !column.tasks.contains(details.data),
-      onAcceptWithDetails: (details) => onAccept(details.data),
-      builder: (context, candidates, _) => _DropHighlight(
-        active: candidates.isNotEmpty,
+    final motion = CoilTheme.motionOf(context);
+    return MotionDropZone<_Task>(
+      items: column.tasks,
+      itemKey: (task) => task.id,
+      motion: motion.standard,
+      onInsert: onInsert,
+      placeholderBuilder: (context, size) => _CardSlot(height: size.height),
+      builder: (context, slots) => _DropHighlight(
+        active: slots.candidate != null,
         borderRadius: BorderRadius.circular(board.laneRadius),
         child: Padding(
           padding: EdgeInsets.all(board.inset),
@@ -267,9 +272,7 @@ class _Lane extends StatelessWidget {
                 onShuffle: column.tasks.length > 1 ? onShuffle : null,
               ),
               Expanded(
-                child: column.tasks.isEmpty
-                    ? const _EmptyLane()
-                    : _cards(context),
+                child: slots.length == 0 ? const _EmptyLane() : _cards(slots),
               ),
             ],
           ),
@@ -278,21 +281,46 @@ class _Lane extends StatelessWidget {
     );
   }
 
-  Widget _cards(BuildContext context) => CoilScrollArea.scrollable(
+  Widget _cards(MotionDropSlots<_Task> slots) => CoilScrollArea.scrollable(
     controller: column.controller,
     child: ListView.builder(
       controller: column.controller,
-      itemCount: column.tasks.length,
-      findChildIndexCallback: (key) =>
-          column.indexOfId((key as ValueKey<int>).value),
-      itemBuilder: (context, i) => _DraggableCard(
-        key: ValueKey(column.tasks[i].id),
-        task: column.tasks[i],
-        index: i,
-        column: column,
-      ),
+      itemCount: slots.length,
+      findChildIndexCallback: slots.indexOfKey,
+      itemBuilder: (context, i) =>
+          slots.build(i, (context, task) => _DraggableCard(task: task)),
     ),
   );
+}
+
+/// Where a dragged card will drop: a pressed well the card's height, at the
+/// card's radius, with the card's hairline (DESIGN.md §2.3).
+class _CardSlot extends StatelessWidget {
+  const _CardSlot({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: _BoardMetrics.cardGap),
+      child: SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: colors.active,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(
+                CoilTheme.radiiOf(context).container,
+              ),
+              side: BorderSide(color: colors.border),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Shows that a dragged card can drop here: a `hover` fill under a brand
@@ -424,19 +452,12 @@ class _EmptyLane extends StatelessWidget {
   }
 }
 
-/// A task card that drags to other lanes and flies when its lane
-/// reorders.
+/// A task card that drags within its lane and to other lanes. Its slot in
+/// the lane's drop zone flies it when the lane reorders.
 class _DraggableCard extends StatelessWidget {
-  const _DraggableCard({
-    required this.task,
-    required this.index,
-    required this.column,
-    super.key,
-  });
+  const _DraggableCard({required this.task});
 
   final _Task task;
-  final int index;
-  final _Column column;
 
   @override
   Widget build(BuildContext context) {
@@ -469,17 +490,11 @@ class _DraggableCard extends StatelessWidget {
             feedbackBuilder: feedback,
             child: card,
           );
-    return MotionReorder(
-      flightKey: index,
-      // A card that changes column snaps; MotionDraggable lands it.
-      scope: column,
-      motion: motion.standard,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: index < column.tasks.length - 1 ? _BoardMetrics.cardGap : 0,
-        ),
-        child: draggable,
-      ),
+    // Every card, and the gap, keeps the gap below it, so a card dropped
+    // anywhere takes exactly the gap's place.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: _BoardMetrics.cardGap),
+      child: draggable,
     );
   }
 }
@@ -603,45 +618,94 @@ class _GridState extends State<_Grid> {
             ),
           ],
         ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final (i, item) in _items.indexed)
-              MotionReorder(
-                key: ValueKey(item),
-                flightKey: i,
-                motion: motion.standard,
-                child: SizedBox.square(
-                  dimension: extent,
-                  child: DecoratedBox(
-                    // A quiet fill: tiles are content, not raised surfaces.
-                    decoration: ShapeDecoration(
-                      color: theme.colors.muted,
-                      shape: RoundedSuperellipseBorder(borderRadius: radius),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$item',
-                        style: theme.typography
-                            .style(
-                              metrics.body,
-                              weight: CoilWeight.semibold,
-                              color: theme.colors.foreground,
-                            )
-                            .copyWith(
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                      ),
-                    ),
-                  ),
+        MotionDropZone<int>(
+          items: _items,
+          motion: motion.standard,
+          onInsert: (item, index) => setState(() {
+            _items
+              ..remove(item)
+              ..insert(index, item);
+          }),
+          placeholderBuilder: (context, size) => SizedBox.fromSize(
+            size: size,
+            child: DecoratedBox(
+              // A pressed well where the tile will drop, with a hairline.
+              decoration: ShapeDecoration(
+                color: theme.colors.active,
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: theme.colors.border),
                 ),
               ),
-          ],
+            ),
+          ),
+          builder: (context, slots) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < slots.length; i++)
+                slots.build(
+                  i,
+                  (context, item) => _GridTile(
+                    item: item,
+                    extent: extent,
+                    radius: radius,
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );
+  }
+}
+
+/// A numbered tile of the grid, which drags: at once with a pointer, after a
+/// long press on touch, where the page scrolls.
+class _GridTile extends StatelessWidget {
+  const _GridTile({
+    required this.item,
+    required this.extent,
+    required this.radius,
+  });
+
+  final int item;
+  final double extent;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context);
+    final motion = CoilTheme.motionOf(context);
+    final tile = SizedBox.square(
+      dimension: extent,
+      child: DecoratedBox(
+        // A quiet fill: tiles are content, not raised surfaces.
+        decoration: ShapeDecoration(
+          color: theme.colors.muted,
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
+        ),
+        child: Center(
+          child: Text(
+            '$item',
+            style: theme.typography
+                .style(
+                  metrics.body,
+                  weight: CoilWeight.semibold,
+                  color: theme.colors.foreground,
+                )
+                .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ),
+      ),
+    );
+    return CoilTheme.tierOf(context) == CoilTier.touch
+        ? MotionLongPressDraggable<int>(
+            data: item,
+            motion: motion.gentle,
+            child: tile,
+          )
+        : MotionDraggable<int>(data: item, motion: motion.gentle, child: tile);
   }
 }

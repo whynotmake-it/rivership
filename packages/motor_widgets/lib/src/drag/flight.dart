@@ -9,6 +9,15 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// A mounted [MotionDraggable] that a [DragFlight] can land on.
 abstract interface class LandingSite {
+  /// The site's element.
+  BuildContext get context;
+
+  /// Whether a flight that has reached this site waits there instead of
+  /// ending, because the item it stands in for hasn't arrived yet.
+  ///
+  /// A `MotionDropZone`'s gap holds a landing while its insert is pending.
+  bool get holdsLanding;
+
   /// The site's rect in global coordinates where it was last painted, or
   /// null while it isn't laid out.
   ///
@@ -60,8 +69,25 @@ class LandingRegistry {
   static final _registries = Expando<LandingRegistry>('LandingRegistry');
 
   final _sites = <Object, List<LandingSite>>{};
+  final _reservations = <Object, LandingSite>{};
   final _landing = <Object, int>{};
   final _fading = <Object, int>{};
+
+  /// Reserves [site] as where an accepted drop of [tag] lands, ahead of the
+  /// sites registered under [tag], until [unreserve].
+  ///
+  /// A `MotionDropZone` reserves its gap while its insert is pending, so
+  /// the drop lands where the item will be, not on the source that another
+  /// list still shows.
+  void reserve(Object tag, LandingSite site) => _reservations[tag] = site;
+
+  /// Ends [site]'s reservation of [tag].
+  void unreserve(Object tag, LandingSite site) {
+    if (identical(_reservations[tag], site)) _reservations.remove(tag);
+  }
+
+  /// The site reserved for [tag], or null.
+  LandingSite? reservationFor(Object tag) => _reservations[tag];
 
   /// Registers [site] under [tag].
   void add(Object tag, LandingSite site) => (_sites[tag] ??= []).add(site);
@@ -153,6 +179,18 @@ final _velocity = Track<Offset>(
 
 const _smoothing = CupertinoMotion(duration: Duration(milliseconds: 100));
 
+/// Learns when any [MotionDraggable]'s drag starts and ends.
+abstract interface class DragFlightObserver {
+  /// [flight] started a drag from [DragFlight.source].
+  void flightStarted(DragFlight flight);
+
+  /// The pointer moved [flight]'s drag.
+  void flightMoved(DragFlight flight);
+
+  /// [flight]'s drag ended, with [DragFlight.phase] set to its outcome.
+  void flightReleased(DragFlight flight);
+}
+
 /// One drag's feedback, from the moment it is picked up until it has landed
 /// or finished its exit.
 ///
@@ -170,6 +208,7 @@ class DragFlight {
     required Offset pointer,
     required Offset anchor,
     required Size size,
+    this.source,
   }) : _widget = widget,
        _pointer = pointer,
        _anchor = anchor,
@@ -183,6 +222,52 @@ class DragFlight {
 
   /// The tag the flight lands on.
   final Object tag;
+
+  /// The site the current drag started from: the draggable, or the
+  /// destination a landing was grabbed from again.
+  LandingSite? source;
+
+  static final _active = <DragFlight>{};
+  static final _observers = <DragFlightObserver>[];
+
+  /// Starts telling [observer] about every drag.
+  static void addObserver(DragFlightObserver observer) =>
+      _observers.add(observer);
+
+  /// Stops telling [observer] about drags.
+  static void removeObserver(DragFlightObserver observer) =>
+      _observers.remove(observer);
+
+  /// The flights that are dragged or landing.
+  static Iterable<DragFlight> get activeFlights => _active;
+
+  /// The flight that is being dragged with [data], or null.
+  static DragFlight? draggingWith(Object? data) {
+    DragFlight? found;
+    for (final flight in _active) {
+      if (flight.isDragging && flight.widget.data == data) found = flight;
+    }
+    return found;
+  }
+
+  void _notifyStarted() {
+    _active.add(this);
+    for (final observer in List.of(_observers)) {
+      observer.flightStarted(this);
+    }
+  }
+
+  void _notifyMoved() {
+    for (final observer in List.of(_observers)) {
+      observer.flightMoved(this);
+    }
+  }
+
+  void _notifyReleased() {
+    for (final observer in List.of(_observers)) {
+      observer.flightReleased(this);
+    }
+  }
 
   /// The draggable the flight was last dragged from.
   MotionDraggable<Object> get widget => _widget;
@@ -243,6 +328,23 @@ class DragFlight {
   var _lossScheduled = false;
   var _resizeScheduled = false;
 
+  /// Whether the pointer is still dragging the feedback.
+  bool get isDragging => !_done && phase == MotionDragPhase.dragging;
+
+  /// Where the pointer is, in global coordinates, restricted to
+  /// [MotionDraggable.axis] like the feedback.
+  Offset get pointer => _pointer;
+
+  /// The feedback's rect in global coordinates, without its scale and
+  /// rotation.
+  Rect get feedbackRect {
+    final controller = _controller;
+    final size = controller == null
+        ? _initialSize
+        : controller.value(MotionDraggableTrack.size);
+    return globalTopLeft & size;
+  }
+
   /// The feedback's top-left in global coordinates.
   Offset get globalTopLeft {
     final controller = _controller;
@@ -277,12 +379,16 @@ class DragFlight {
   };
 
   /// Shows the flight.
-  void start() => overlay.insert(_entry);
+  void start() {
+    overlay.insert(_entry);
+    _notifyStarted();
+  }
 
   /// Moves the feedback with the pointer.
   void moveBy(Offset delta) {
     if (_done || phase != MotionDragPhase.dragging) return;
     _pointer += _restrict(delta);
+    _notifyMoved();
     final controller = _controller;
     if (controller == null) return;
     controller.set([MotionDraggableTrack.offset.value(_pointer - _anchor)]);
@@ -307,6 +413,7 @@ class DragFlight {
     registry.beginLanding(tag);
     _landingMarked = true;
     _coast();
+    _notifyReleased();
     // The drop rebuilds the item in its new place in the next frame. It is
     // laid out after that frame, so look for it then.
     SchedulerBinding.instance
@@ -315,7 +422,12 @@ class DragFlight {
   }
 
   /// Starts a drag of the landing feedback from its destination.
-  void regrab(MotionDraggable<Object> widget, Offset pointer, Offset anchor) {
+  void regrab(
+    MotionDraggable<Object> widget,
+    Offset pointer,
+    Offset anchor, {
+    required LandingSite source,
+  }) {
     final controller = _controller;
     final global = globalTopLeft;
     final velocity = controller?.velocity(MotionDraggableTrack.offset);
@@ -327,11 +439,38 @@ class DragFlight {
     _siteRect = null;
     _pointer = pointer;
     _anchor = anchor;
+    this.source = source;
     _endLanding();
+    _notifyStarted();
     if (controller == null) return;
     controller.set([
       MotionDraggableTrack.offset.value(global, velocity: velocity),
     ]);
+    _applyTransitions();
+  }
+
+  /// Looks for where to land again after this frame, because the site it
+  /// lands on is going away, such as a drop zone's gap whose item arrives.
+  ///
+  /// A flight that rests on a site doesn't rebuild, so it wouldn't notice.
+  void relocate() {
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) {
+        final site = _site;
+        if (site != null && !_done) _loseSite(site);
+      })
+      ..scheduleFrame();
+  }
+
+  /// Turns an accepted drop into a rejected one, because the target couldn't
+  /// take the item after all, for example when a `MotionDropZone`'s insert
+  /// failed. The flight then lands back on the item where it still is, or
+  /// plays the rejected exit.
+  void reject() {
+    if (_done || phase != MotionDragPhase.accepted) return;
+    phase = MotionDragPhase.rejected;
+    accepted = false;
+    if (_view == null) return;
     _applyTransitions();
   }
 
@@ -365,6 +504,21 @@ class DragFlight {
       return;
     }
     _resolved = true;
+    if (_findSite() case final found?) _landOn(found.site, found.rect);
+    _applyTransitions();
+    _checkSettled();
+  }
+
+  /// Where to land now: the site reserved for an accepted drop, else the
+  /// nearest site with the tag, or null when there is none.
+  ({LandingSite site, Rect rect})? _findSite() {
+    final controller = _controller!;
+    if (accepted) {
+      final reserved = registry.reservationFor(tag);
+      if (reserved?.globalRect case final rect?) {
+        return (site: reserved!, rect: rect);
+      }
+    }
     final candidates = [
       for (final site in registry.sitesFor(tag))
         if (site.globalRect case final rect?) (site: site, rect: rect),
@@ -393,20 +547,15 @@ class DragFlight {
       }
       return true;
     }(), 'never fails: it only reports duplicate tags');
-    if (candidates.isNotEmpty) {
-      final center =
-          globalTopLeft & controller.value(MotionDraggableTrack.size);
-      final nearest = candidates.reduce(
-        (a, b) =>
-            (a.rect.center - center.center).distanceSquared <=
-                (b.rect.center - center.center).distanceSquared
-            ? a
-            : b,
-      );
-      _landOn(nearest.site, nearest.rect);
-    }
-    _applyTransitions();
-    _checkSettled();
+    if (candidates.isEmpty) return null;
+    final center = globalTopLeft & controller.value(MotionDraggableTrack.size);
+    return candidates.reduce(
+      (a, b) =>
+          (a.rect.center - center.center).distanceSquared <=
+              (b.rect.center - center.center).distanceSquared
+          ? a
+          : b,
+    );
   }
 
   void _landOn(LandingSite site, Rect rect) {
@@ -591,9 +740,20 @@ class DragFlight {
     final global = globalTopLeft;
     final velocity = controller.velocity(MotionDraggableTrack.offset);
     _site = null;
-    controller.set([MotionDraggableTrack.offset.value(global)]);
-    _coast(velocity: velocity);
-    _applyTransitions();
+    controller.set([
+      MotionDraggableTrack.offset.value(global, velocity: velocity),
+    ]);
+    // Another site may have taken over the tag, such as the item that
+    // replaces a drop zone's gap, or a lazy list's rebuilt destination.
+    if (_findSite() case final found?) {
+      _landOn(found.site, found.rect);
+      _applyTransitions();
+    } else {
+      // The exit starts before the coast, which may settle at once when the
+      // flight was at rest, so that it doesn't end the flight first.
+      _applyTransitions();
+      _coast(velocity: velocity);
+    }
     _checkSettled();
   }
 
@@ -665,6 +825,7 @@ class DragFlight {
     if (_done || controller == null) return;
     if (phase == MotionDragPhase.dragging || !_resolved) return;
     if (controller.status.isAnimating) return;
+    if (_site?.holdsLanding ?? false) return;
     _finish(landed: true);
   }
 
@@ -677,6 +838,7 @@ class DragFlight {
   void _finish({required bool landed}) {
     if (_done) return;
     _done = true;
+    _active.remove(this);
     _endLanding();
     _endFade();
     _entry
@@ -713,6 +875,7 @@ class DragFlight {
     if (_done) return;
     // The overlay went away while the flight was still in it.
     _done = true;
+    _active.remove(this);
     _endLanding();
     _endFade();
   }
