@@ -180,7 +180,6 @@ void main() {
                 .first,
           )
           .dx;
-      double sidebarWidth() => tester.getSize(find.byType(CoilSidebar)).width;
 
       // One drag: fold past the minimum, then pull back out.
       final gesture = await _grabRail(tester, -200);
