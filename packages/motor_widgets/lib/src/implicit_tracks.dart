@@ -15,14 +15,10 @@ class ImplicitTrack<T extends Object> {
   /// The value the property animates to, or null when it is unset.
   final T? value;
 
-  TrackAnimation<T>? _animation(Motion motion, {required Object? jumpedTo}) {
-    final value = this.value;
-    if (value == null) return null;
-    return track(
-      [TrackStep.to(value, motion: motion)],
-      from: jumpedTo == value ? value : null,
-    );
-  }
+  TrackAnimation<T> _animation(T value, Motion motion) =>
+      track([TrackStep.to(value, motion: motion)]);
+
+  TrackValue<T> _initial(T value) => track.value(value);
 }
 
 /// Creates [ImplicitTrack]s whose type comes from the track, which a list
@@ -47,11 +43,14 @@ typedef ImplicitTrackWidgetBuilder =
 /// Animates a set of optional properties on one [TrackBuilder], one track per
 /// property, so changing one never disturbs another that is in flight.
 ///
-/// A property that goes from null to a value starts at that value instead of
-/// animating from zero, like Flutter's implicit animations, which also don't
-/// animate a property that was unset. One that goes back to null drops its
-/// track.
-class ImplicitTrackBuilder extends StatefulWidget {
+/// It only maps the set properties to [TrackBuilder]'s `animations` and
+/// `initialValues`, so Motor gives it Flutter's implicit-animation rules:
+/// - a property that is set the first time it is seen, at mount or later,
+///   starts at its value instead of animating in from zero;
+/// - a property that goes back to null drops its track;
+/// - a new text direction jumps every property to its value, as
+///   `AnimatedAlign` does, rather than sending the child across the box.
+class ImplicitTrackBuilder extends StatelessWidget {
   /// Creates an [ImplicitTrackBuilder].
   const ImplicitTrackBuilder({
     required this.tracks,
@@ -93,89 +92,43 @@ class ImplicitTrackBuilder extends StatefulWidget {
   final TickerRate? tickerRate;
 
   @override
-  State<ImplicitTrackBuilder> createState() => _ImplicitTrackBuilderState();
-}
-
-class _ImplicitTrackBuilderState extends State<ImplicitTrackBuilder> {
-  /// The value each property jumped to, until it changes.
-  ///
-  /// The animation of such a property starts `from` that value, so a property
-  /// that was just set, or whose value changed with the text direction, jumps
-  /// there instead of animating.
-  final _jumpedTo = <Track<Object>, Object>{};
-
-  TextDirection? _textDirection;
-
-  @override
-  void initState() {
-    super.initState();
-    _jumpAll();
-  }
-
-  void _jumpAll() {
-    for (final ImplicitTrack(:track, :value) in widget.tracks) {
-      if (value != null) _jumpedTo[track] = value;
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Properties are resolved against the text direction before they
-    // animate. A new direction jumps, as it does in AnimatedAlign, rather
-    // than sending the child across the box.
-    final textDirection = Directionality.maybeOf(context);
-    if (textDirection != _textDirection) {
-      if (_textDirection != null) _jumpAll();
-      _textDirection = textDirection;
-    }
-  }
-
-  @override
-  void didUpdateWidget(ImplicitTrackBuilder oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final tracks = {for (final property in widget.tracks) property.track};
-    _jumpedTo.removeWhere((track, _) => !tracks.contains(track));
-    final oldValues = {
-      for (final ImplicitTrack(:track, :value) in oldWidget.tracks)
-        track: value,
-    };
-    for (final ImplicitTrack(:track, :value) in widget.tracks) {
-      if (value == null) {
-        _jumpedTo.remove(track);
-      } else if (oldValues[track] == null) {
-        _jumpedTo[track] = value;
-      } else if (_jumpedTo[track] != value) {
-        _jumpedTo.remove(track);
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final present = <Track<Object>>{};
     final animations = <TrackAnimation>[];
-    for (final property in widget.tracks) {
-      final animation = property._animation(
-        widget.motions?[property.track] ?? widget.motion,
-        jumpedTo: _jumpedTo[property.track],
-      );
-      if (animation == null) continue;
-      animations.add(animation);
-      present.add(animation.track);
+    final initialValues = <TrackValue>[];
+    for (final property in tracks) {
+      _add(property, animations, initialValues);
     }
+    final present = {for (final animation in animations) animation.track};
     return TrackBuilder(
       animations: animations,
-      debugLabel: widget.debugLabel,
-      tickerRate: widget.tickerRate,
-      onAnimationStatusChanged: onEndListener(widget.onEnd),
-      builder: (context, value, child) => widget.builder(
+      initialValues: initialValues,
+      // Properties are resolved against the text direction before they
+      // animate, so a new direction restarts: every track jumps to its
+      // initial value, which is its target.
+      restartTrigger: Directionality.maybeOf(context),
+      debugLabel: debugLabel,
+      tickerRate: tickerRate,
+      onAnimationStatusChanged: onEndListener(onEnd),
+      builder: (context, value, child) => builder(
         context,
         <T extends Object>(Track<T> track) =>
             present.contains(track) ? value(track) : null,
         child,
       ),
-      child: widget.child,
+      child: child,
     );
+  }
+
+  void _add<T extends Object>(
+    ImplicitTrack<T> property,
+    List<TrackAnimation> animations,
+    List<TrackValue> initialValues,
+  ) {
+    final value = property.value;
+    if (value == null) return;
+    animations.add(
+      property._animation(value, motions?[property.track] ?? motion),
+    );
+    initialValues.add(property._initial(value));
   }
 }
