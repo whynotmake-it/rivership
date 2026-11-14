@@ -40,7 +40,7 @@ class CoilInteractionDetector extends StatefulWidget {
     this.onTap,
     this.onPressDown,
     this.trackPress = true,
-    this.cursor = MouseCursor.defer,
+    this.cursor,
     this.excludeFromSemantics = false,
   });
 
@@ -84,8 +84,10 @@ class CoilInteractionDetector extends StatefulWidget {
   /// controls that handle their own gestures (a text field).
   final bool trackPress;
 
-  /// The mouse cursor over [child].
-  final MouseCursor cursor;
+  /// The mouse cursor over [child]. Null gives an enabled detector with an
+  /// [onTap] the theme's `CoilThemeData.controlCursor`, and defers to the
+  /// cursor beneath otherwise.
+  final MouseCursor? cursor;
 
   /// Whether to leave the tap action out of semantics.
   final bool excludeFromSemantics;
@@ -187,7 +189,11 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
       );
     }
     return MouseRegion(
-      cursor: widget.cursor,
+      cursor:
+          widget.cursor ??
+          (widget.enabled && widget.onTap != null
+              ? CoilTheme.of(context).controlCursor
+              : MouseCursor.defer),
       onEnter: (event) => _setHovered(event, true),
       onHover: (event) => _setHovered(event, true),
       onExit: (event) => _setHovered(event, false),
@@ -240,7 +246,8 @@ class CoilInteraction extends StatefulWidget {
   /// Observes, and can force, the interaction states.
   final WidgetStatesController? statesController;
 
-  /// The cursor over the control. Defaults to a click cursor when enabled.
+  /// The cursor over the control. Defaults to the theme's
+  /// `CoilThemeData.controlCursor` when enabled.
   final MouseCursor? mouseCursor;
 
   /// The smallest square the hit area may be. The visual is centered in it.
@@ -337,9 +344,7 @@ class _CoilInteractionState extends State<CoilInteraction> {
         enabled: widget.enabled,
         focusNode: _focusNode,
         onTap: widget.onPressed,
-        cursor:
-            widget.mouseCursor ??
-            (widget.enabled ? SystemMouseCursors.click : MouseCursor.defer),
+        cursor: widget.mouseCursor,
         excludeFromSemantics: widget.excludeFromSemantics,
         child: visual,
       ),

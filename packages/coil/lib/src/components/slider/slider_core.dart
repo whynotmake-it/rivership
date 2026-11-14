@@ -563,7 +563,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       states: _states,
       enabled: _enabled,
       excludeFromSemantics: true,
-      cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
       // The press shows and the value jumps in the same callback.
       onPressDown: _pressDown,
       onTap: _endPress,

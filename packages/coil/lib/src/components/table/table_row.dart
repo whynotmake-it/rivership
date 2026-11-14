@@ -108,9 +108,6 @@ class _TableBodyRowState<T> extends State<TableBodyRow<T>> {
         states: _states,
         enabled: widget.onPressed != null,
         onTap: widget.onPressed,
-        cursor: widget.onPressed != null
-            ? SystemMouseCursors.click
-            : MouseCursor.defer,
         excludeFromSemantics: true,
         child: ListenableBuilder(
           listenable: _states,

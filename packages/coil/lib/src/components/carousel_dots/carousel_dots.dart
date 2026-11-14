@@ -325,7 +325,6 @@ class _DotTargetState extends State<_DotTarget> {
       trackPress: enabled,
       onTap: widget.onPressed,
       excludeFromSemantics: true,
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
       child: widget.child,
     );
   }

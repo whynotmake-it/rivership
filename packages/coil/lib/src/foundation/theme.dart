@@ -29,6 +29,7 @@ class CoilThemeData with Diagnosticable {
     this.typography = const CoilTypography(),
     this.focusRingWidth = 1,
     this.haptics,
+    this.controlCursor = SystemMouseCursors.basic,
     this.trackMotions = const {},
     this.components = const {},
   });
@@ -66,6 +67,13 @@ class CoilThemeData with Diagnosticable {
   /// Which haptic each event plays, or null for the platform's conventions
   /// ([CoilHaptics.platform]). [CoilHaptics.none] turns them off.
   final CoilHaptics? haptics;
+
+  /// The mouse cursor over an enabled control that acts on a click:
+  /// buttons, rows, toggles, cards. Defaults to the arrow, the desktop
+  /// convention. [SystemMouseCursors.click] gives every control the web's
+  /// pointing hand. Links always use the pointing hand, text the I-beam,
+  /// and disabled controls the cursor beneath them.
+  final MouseCursor controlCursor;
 
   /// Theme-level per-track motions for any component, keyed by the
   /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
@@ -111,6 +119,7 @@ class CoilThemeData with Diagnosticable {
     CoilTypography? typography,
     double? focusRingWidth,
     Object? haptics = _keep,
+    MouseCursor? controlCursor,
     Map<Track<Object>, Motion>? trackMotions,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
@@ -122,6 +131,7 @@ class CoilThemeData with Diagnosticable {
     typography: typography ?? this.typography,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
+    controlCursor: controlCursor ?? this.controlCursor,
     trackMotions: trackMotions ?? this.trackMotions,
     components: components ?? this.components,
   );
@@ -141,6 +151,7 @@ class CoilThemeData with Diagnosticable {
         focusRingWidth:
             a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
         haptics: t < 0.5 ? a.haptics : b.haptics,
+        controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
         trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
         components: t < 0.5 ? a.components : b.components,
       );
@@ -156,6 +167,7 @@ class CoilThemeData with Diagnosticable {
       other.typography == typography &&
       other.focusRingWidth == focusRingWidth &&
       other.haptics == haptics &&
+      other.controlCursor == controlCursor &&
       mapEquals(other.trackMotions, trackMotions) &&
       mapEquals(other.components, components);
 
@@ -169,6 +181,7 @@ class CoilThemeData with Diagnosticable {
     typography,
     focusRingWidth,
     haptics,
+    controlCursor,
     Object.hashAllUnordered(
       trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
     ),
@@ -185,7 +198,14 @@ class CoilThemeData with Diagnosticable {
       ..add(DiagnosticsProperty('shape', shape))
       ..add(EnumProperty('tier', tier, defaultValue: null))
       ..add(DiagnosticsProperty('motion', motion))
-      ..add(DiagnosticsProperty('haptics', haptics, defaultValue: null));
+      ..add(DiagnosticsProperty('haptics', haptics, defaultValue: null))
+      ..add(
+        DiagnosticsProperty(
+          'controlCursor',
+          controlCursor,
+          defaultValue: SystemMouseCursors.basic,
+        ),
+      );
   }
 }
 

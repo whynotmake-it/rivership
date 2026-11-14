@@ -895,7 +895,6 @@ class _RowState extends State<_Row> {
           states: _states,
           enabled: enabled,
           onTap: widget.onPressed,
-          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
           excludeFromSemantics: true,
           child: ListenableBuilder(
             listenable: _states,

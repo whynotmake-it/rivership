@@ -435,9 +435,6 @@ class _OptionRowState extends State<_OptionRow> {
           states: _states,
           enabled: onPressed != null,
           onTap: onPressed,
-          cursor: onPressed != null
-              ? SystemMouseCursors.click
-              : MouseCursor.defer,
           excludeFromSemantics: true,
           child: ListenableBuilder(
             listenable: _states,

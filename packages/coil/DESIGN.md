@@ -270,6 +270,8 @@ Text fields are the exception: they show their focus border (`foreground` @ 40 %
 
 **No sticky states.** Nothing stays lit where a finger lifted.
 
+**Cursor: the arrow over controls.** That's the desktop convention, so buttons, rows, toggles and cards show the arrow. `CoilThemeData.controlCursor` changes it for every control (`SystemMouseCursors.click` for the web's pointing hand). Links (breadcrumb crumbs) always point, text shows the I-beam, and a disabled control keeps the cursor beneath it.
+
 **States come from events.** `CoilInteractionDetector` writes hover, press and focus into its `WidgetStatesController` only from pointer, focus and input-modality events, never while building. So a widget that listens to the controller can sit above the detector. Disabled is configuration, so the controller never holds it. The visuals combine the controller with `enabled` through `CoilInteractionDetector.statesFor`: a disabled control drops a hover it had, and gets it back if it's enabled again under the same pointer.
 
 **Touch rows rest at full foreground.** The muted → foreground fade means "the pointer is here", which a finger can't express.
