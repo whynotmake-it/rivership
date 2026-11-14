@@ -4,6 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/drag/flight.dart';
+import 'package:motor_widgets/src/painted_position.dart';
+import 'package:motor_widgets/src/reorder/motion_reorder.dart';
 
 /// What happened to a [MotionDraggable]'s drag.
 enum MotionDragPhase {
@@ -209,10 +211,24 @@ typedef MotionDraggableTransitions =
 ///   removed the item, it stays at the drop point and plays its exit:
 ///   by default it shrinks and fades out.
 ///
-/// The landing starts with the release velocity and follows the destination
-/// if it scrolls or resizes. While the feedback lands, the destination keeps
-/// its place in the layout but hides its child. Grabbing the feedback while
-/// it lands starts a new drag from where it is.
+/// The landing starts with the release velocity and follows where the
+/// destination is painted, also while it scrolls, resizes or flies in a
+/// [MotionReorder]. While the feedback lands, the destination keeps its place
+/// in the layout but hides its child. Grabbing the feedback while it lands
+/// starts a new drag from where it is.
+///
+/// The feedback flies in the [Overlay], above everything. When the
+/// destination is inside a [MotionReorder], the feedback hands the rest of
+/// the landing to it once it is fully inside the destination's visible area
+/// (within all of its [Scrollable]s, or the overlay when it has none) and its
+/// [MotionDraggableTrack.scale], [MotionDraggableTrack.rotation],
+/// [MotionDraggableTrack.opacity] and size have settled. The item then
+/// finishes in the tree, keeping its velocity: clipped by its scrollables,
+/// stacked like itself, and redirected by a reorder. A drop into the same
+/// viewport hands off as soon as those tracks have settled. From then on
+/// [feedbackBuilder] no longer applies, and the rest of the landing uses the
+/// [MotionReorder]'s motion. Without a [MotionReorder], the feedback lands in
+/// the overlay.
 ///
 /// The feedback is laid out at the child's measured size. A [feedback] that
 /// wants its own size loosens those constraints, for example with [Align].
@@ -350,7 +366,8 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// fading out when there is none.
   final MotionDraggableTransitions? transitions;
 
-  /// Called when the feedback has landed, or has finished its exit.
+  /// Called when the feedback has landed, has finished its exit, or has
+  /// handed the rest of its landing to a [MotionReorder].
   ///
   /// Unlike [onDragEnd], it is also called after this widget has been
   /// removed from the tree. It is not called when the feedback is grabbed
@@ -536,7 +553,34 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     if (!mounted) return null;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
+    return paintedGlobalRect(box);
+  }
+
+  @override
+  final LayerLink landingLink = LayerLink();
+
+  @override
+  FlightReceiver? get flightReceiver {
+    if (!mounted) return null;
+    final box = context.findRenderObject();
+    return box == null || !box.attached ? null : flightReceiverAbove(box);
+  }
+
+  @override
+  Rect? get visibleRect {
+    if (!mounted) return null;
+    Rect? visible;
+    for (
+      var scrollable = Scrollable.maybeOf(context);
+      scrollable != null;
+      scrollable = Scrollable.maybeOf(scrollable.context)
+    ) {
+      final box = scrollable.context.findRenderObject();
+      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+      final rect = paintedGlobalRect(box);
+      visible = visible?.intersect(rect) ?? rect;
+    }
+    return visible;
   }
 
   @override
@@ -661,7 +705,13 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       },
       onDraggableCanceled: widget.onDraggableCanceled,
     );
-    final child = Visibility.maintain(visible: !landing, child: widget.child);
+    // While a flight lands here, the child is hidden and the flight follows
+    // where it is painted. The leader sits outside the Visibility, which
+    // doesn't paint its child while hidden.
+    final child = LeaderWhile(
+      link: landing ? landingLink : null,
+      child: Visibility.maintain(visible: !landing, child: widget.child),
+    );
     final childWhenDragging =
         widget.childWhenDragging ??
         Visibility.maintain(visible: false, child: widget.child);
@@ -739,11 +789,8 @@ class _FlightDrag extends Drag {
   }
 
   @override
-  void end(DragEndDetails details) => _state._endDrag(
-    _flight,
-    () => _drag.end(details),
-    details.velocity,
-  );
+  void end(DragEndDetails details) =>
+      _state._endDrag(_flight, () => _drag.end(details), details.velocity);
 
   @override
   void cancel() => _state._endDrag(_flight, _drag.cancel, Velocity.zero);
