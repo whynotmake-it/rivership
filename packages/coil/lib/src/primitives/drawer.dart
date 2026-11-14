@@ -1,12 +1,20 @@
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/theme.dart';
-import 'package:coil/src/primitives/modal.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+
+/// The side a [CoilDrawer] slides in from, following the text direction.
+enum CoilDrawerEdge {
+  /// The leading edge: left in a left-to-right layout.
+  start,
+
+  /// The trailing edge: right in a left-to-right layout.
+  end,
+}
 
 /// Shows [drawer] as a modal panel sliding in from [edge] over [child]
 /// while [open] is true.

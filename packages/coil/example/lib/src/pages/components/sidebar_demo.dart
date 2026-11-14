@@ -84,8 +84,8 @@ class WorkspaceSwitcher extends StatelessWidget {
     builder: (context, menu) => CoilSidebarMenu(
       items: [
         CoilSidebarItem(
-          label: 'Acme AI',
-          icon: const WorkspaceTile('A'),
+          label: const Text('Acme AI'),
+          leading: const WorkspaceTile('A'),
           trailing: const CatalogIcon(Glyph.chevronsUpDown),
           onPressed: menu.open,
         ),
@@ -133,8 +133,8 @@ class UserMenu extends StatelessWidget {
     builder: (context, menu) => CoilSidebarMenu(
       items: [
         CoilSidebarItem(
-          label: 'Ada Lovelace',
-          icon: const _Avatar(),
+          label: const Text('Ada Lovelace'),
+          leading: const _Avatar(),
           trailing: const CatalogIcon(Glyph.chevronsUpDown),
           onPressed: menu.open,
         ),
@@ -184,15 +184,15 @@ class _WorkspaceGroupState extends State<WorkspaceGroup> {
 
   @override
   Widget build(BuildContext context) => CoilSidebarGroup(
-    label: 'Workspace',
+    label: const Text('Workspace'),
     expanded: _open,
     onExpandedChanged: (open) => setState(() => _open = open),
     child: CoilSidebarMenu(
       items: [
         for (final (label, glyph) in workspaceNav)
           CoilSidebarItem(
-            label: label,
-            icon: CatalogIcon(glyph),
+            label: Text(label),
+            leading: CatalogIcon(glyph),
             selected: label == _current,
             onPressed: () => setState(() => _current = label),
           ),
@@ -216,12 +216,12 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
 
   @override
   Widget build(BuildContext context) => CoilSidebarGroup(
-    label: 'Threads',
+    label: const Text('Threads'),
     actions: [
       CoilSidebarAction(
         icon: const CatalogIcon(Glyph.plus),
         semanticLabel: 'New thread',
-        tooltip: 'New thread',
+        tooltip: const Text('New thread'),
         onPressed: () {},
       ),
     ],
@@ -229,7 +229,7 @@ class _ThreadsGroupState extends State<ThreadsGroup> {
       items: [
         for (final (i, thread) in demoThreads.take(widget.count).indexed)
           CoilSidebarItem(
-            label: thread,
+            label: Text(thread),
             selected: thread == _current,
             trailing: i.isOdd ? Text('${i + 1}') : null,
             onPressed: () => setState(() => _current = thread),

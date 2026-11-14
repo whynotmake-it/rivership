@@ -5,6 +5,7 @@ import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 const sidebarEntry = CatalogEntry(
@@ -152,6 +153,7 @@ class _Shell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CoilSidebarScaffold(
+    autofocus: false,
     variant: variant,
     side: side,
     // The examples share the page with the catalog, so drawers start
@@ -178,6 +180,7 @@ class _RailOnly extends StatelessWidget {
     builder: (context, constraints) {
       if (constraints.maxWidth < 560) return sidebar;
       return CoilSidebarScaffold(
+        autofocus: false,
         collapsible: CoilSidebarCollapsible.none,
         sidebar: sidebar,
         body: const SizedBox.expand(),
@@ -204,8 +207,8 @@ class _HeaderFooter extends StatelessWidget {
                 CoilSidebarMenu(
                   items: [
                     CoilSidebarItem(
-                      label: 'New thread',
-                      icon: const CatalogIcon(Glyph.newThread),
+                      label: const Text('New thread'),
+                      leading: const CatalogIcon(Glyph.newThread),
                       trailing: CoilKbd('⇧⌘O'),
                       onPressed: () {},
                     ),
@@ -219,15 +222,22 @@ class _HeaderFooter extends StatelessWidget {
                 CoilSidebarAction(
                   icon: const CatalogIcon(Glyph.search),
                   semanticLabel: 'Search',
-                  tooltip: 'Search',
-                  shortcut: '⌘K',
+                  tooltip: const Text('Search'),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyK,
+                    meta: true,
+                  ),
                   onPressed: () {},
                 ),
                 CoilSidebarAction(
                   icon: const CatalogIcon(Glyph.newThread),
                   semanticLabel: 'New thread',
-                  tooltip: 'New thread',
-                  shortcut: '⇧⌘O',
+                  tooltip: const Text('New thread'),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyO,
+                    meta: true,
+                    shift: true,
+                  ),
                   onPressed: () {},
                 ),
               ],
@@ -240,13 +250,13 @@ class _HeaderFooter extends StatelessWidget {
                 CoilSidebarMenu(
                   items: [
                     CoilSidebarItem(
-                      label: 'Settings',
-                      icon: const CatalogIcon(Glyph.settings),
+                      label: const Text('Settings'),
+                      leading: const CatalogIcon(Glyph.settings),
                       onPressed: () {},
                     ),
                     CoilSidebarItem(
-                      label: "What's new",
-                      icon: const CatalogIcon(Glyph.lightbulb),
+                      label: const Text("What's new"),
+                      leading: const CatalogIcon(Glyph.lightbulb),
                       onPressed: () {},
                     ),
                   ],
@@ -260,7 +270,7 @@ class _HeaderFooter extends StatelessWidget {
                 CoilSidebarAction(
                   icon: const CatalogIcon(Glyph.settings),
                   semanticLabel: 'Settings',
-                  tooltip: 'Settings',
+                  tooltip: const Text('Settings'),
                   onPressed: () {},
                 ),
               ],
@@ -339,6 +349,7 @@ class _PeekState extends State<_Peek> {
 
   @override
   Widget build(BuildContext context) => CoilSidebarScaffold(
+    autofocus: false,
     controller: _controller,
     variant: CoilSidebarVariant.inset,
     peek: widget.peek,

@@ -1,8 +1,10 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/kbd.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
 import 'package:coil/src/components/sidebar/sidebar_scope.dart';
 import 'package:coil/src/components/sidebar/sidebar_style.dart';
+import 'package:coil/src/components/sidebar/sidebar_text.dart';
 import 'package:coil/tooltip.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
@@ -144,7 +146,8 @@ class CoilSidebarBar extends StatelessWidget {
 /// The sidebar's icon button: a 24 square with a 16 icon, used in bars,
 /// group labels and rows so every action lines up on one rhythm.
 ///
-/// On a touch screen its hit area grows to 44. [tooltip] names it on hover;
+/// On a touch screen its hit area grows to 44. [tooltip] names it on hover,
+/// with [shortcut]'s keys;
 /// leave it null for a button that opens a menu.
 class CoilSidebarAction extends StatelessWidget {
   /// Creates an action.
@@ -168,11 +171,11 @@ class CoilSidebarAction extends StatelessWidget {
   /// Called on tap, Enter or Space. Null disables the action.
   final VoidCallback? onPressed;
 
-  /// The tooltip's text.
-  final String? tooltip;
+  /// The tooltip, usually a [Text].
+  final Widget? tooltip;
 
-  /// A shortcut the tooltip names, such as `⌘K`.
-  final String? shortcut;
+  /// The keys the tooltip shows, drawn as a `CoilKbd`.
+  final ShortcutActivator? shortcut;
 
   /// The action's focus node.
   final FocusNode? focusNode;
@@ -249,10 +252,20 @@ class CoilSidebarAction extends StatelessWidget {
       ),
     );
     if (tooltip case final tooltip?) {
-      // TODO(coil-sidebar): show [shortcut] as a CoilKbd chip once
-      // CoilTooltip takes a shortcut; it is plain text until then.
       button = CoilTooltip(
-        message: shortcut == null ? tooltip : '$tooltip  $shortcut',
+        semanticLabel: semanticLabel,
+        // TODO(coil-sidebar): move the keys to CoilTooltip's shortcut slot
+        // once it lands.
+        message: shortcut == null
+            ? tooltip
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 6,
+                children: [
+                  tooltip,
+                  CoilKbd.activator(shortcut!, tone: CoilKbdTone.inverted),
+                ],
+              ),
         child: button,
       );
     }
@@ -287,6 +300,7 @@ class CoilSidebarGroup extends StatefulWidget {
     required this.child,
     super.key,
     this.label,
+    this.semanticLabel,
     this.actions = const [],
     this.expanded = true,
     this.onExpandedChanged,
@@ -295,7 +309,12 @@ class CoilSidebarGroup extends StatefulWidget {
   });
 
   /// The section's caption.
-  final String? label;
+  /// The section's caption, usually a [Text], styled by [DefaultTextStyle].
+  final Widget? label;
+
+  /// The caption for screen readers. Null reads the text of a [Text]
+  /// [label]; give it for any other widget.
+  final String? semanticLabel;
 
   /// One to three [CoilSidebarAction]s on the label's row, always shown.
   final List<Widget> actions;
@@ -337,6 +356,8 @@ class _CoilSidebarGroupState extends State<CoilSidebarGroup> {
             child: collapsible && label != null
                 ? _GroupToggle(
                     label: label,
+                    semanticLabel:
+                        widget.semanticLabel ?? coilSidebarPlainText(label),
                     expanded: expanded,
                     contentId: _contentId,
                     look: look,
@@ -388,7 +409,7 @@ class _CoilSidebarGroupState extends State<CoilSidebarGroup> {
 class _StaticLabel extends StatelessWidget {
   const _StaticLabel({required this.label, required this.look});
 
-  final String? label;
+  final Widget? label;
   final CoilSidebarStyle look;
 
   @override
@@ -404,13 +425,13 @@ class _StaticLabel extends StatelessWidget {
               ? null
               : Semantics(
                   header: true,
-                  child: Text(
-                    label!,
+                  child: DefaultTextStyle(
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: look.labelStyle!.copyWith(
                       color: look.labelColor!.resolve({}),
                     ),
+                    child: label!,
                   ),
                 ),
         ),
@@ -423,6 +444,7 @@ class _StaticLabel extends StatelessWidget {
 class _GroupToggle extends StatelessWidget {
   const _GroupToggle({
     required this.label,
+    required this.semanticLabel,
     required this.expanded,
     required this.contentId,
     required this.look,
@@ -430,7 +452,8 @@ class _GroupToggle extends StatelessWidget {
     this.motion,
   });
 
-  final String label;
+  final Widget label;
+  final String? semanticLabel;
   final bool expanded;
   final String contentId;
   final CoilSidebarStyle look;
@@ -452,6 +475,7 @@ class _GroupToggle extends StatelessWidget {
       button: true,
       enabled: true,
       expanded: expanded,
+      label: semanticLabel,
       controlsNodes: {contentId},
       child: CoilInteraction(
         onPressed: onPressed,
@@ -477,11 +501,11 @@ class _GroupToggle extends StatelessWidget {
                   spacing: 8,
                   children: [
                     Expanded(
-                      child: Text(
-                        label,
+                      child: DefaultTextStyle(
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: look.labelStyle!.copyWith(color: color),
+                        child: ExcludeSemantics(child: label),
                       ),
                     ),
                     if (chevron)

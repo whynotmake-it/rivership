@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -135,8 +136,8 @@ void main() {
       for (final name in ['General', 'Members'])
         CoilSettingsSection(
           value: name,
-          label: name,
-          description: '$name settings.',
+          label: Text(name),
+          description: Text('$name settings.'),
           builder: (context) => CoilSettingsList(
             children: [
               CoilSettingRow(
@@ -153,7 +154,7 @@ void main() {
         child: CoilButton(
           onPressed: () => showCoilSettingsDialog<String>(
             context: context,
-            title: 'Settings',
+            title: const Text('Settings'),
             sections: sections,
           ),
           child: const Text('Open'),
@@ -202,7 +203,7 @@ void main() {
         testApp(
           tier: tier,
           home: CoilSidebarGroup(
-            label: 'Mail',
+            label: const Text('Mail'),
             onExpandedChanged: (_) {},
             child: const Text('Inbox'),
           ),
@@ -228,7 +229,7 @@ void main() {
               child: StatefulBuilder(
                 builder: (context, setState) => CoilSidebarGroup(
                   key: const ValueKey('target'),
-                  label: 'Mail',
+                  label: const Text('Mail'),
                   expanded: open,
                   onExpandedChanged: (v) => setState(() => open = v),
                   child: const Text('Inbox'),
@@ -338,8 +339,11 @@ void main() {
   testWidgets('style: the instance wins over the theme over the fallback', (
     tester,
   ) async {
-    Widget group({CoilSidebarStyle? style}) =>
-        CoilSidebarGroup(label: 'Mail', style: style, child: const Text('x'));
+    Widget group({CoilSidebarStyle? style}) => CoilSidebarGroup(
+      label: const Text('Mail'),
+      style: style,
+      child: const Text('x'),
+    );
 
     const themed = Color(0xFF00FF00);
     const own = Color(0xFFFF0000);
@@ -372,8 +376,8 @@ void main() {
       ),
     );
     final colors = tester
-        .widgetList<Text>(find.text('Mail'))
-        .map((t) => t.style!.color)
+        .renderObjectList<RenderParagraph>(find.text('Mail'))
+        .map((p) => p.text.style!.color)
         .toList();
     expect(colors, [CoilColors.light.mutedForeground, themed, own]);
   });

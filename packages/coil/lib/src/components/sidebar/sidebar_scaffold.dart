@@ -40,6 +40,26 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSidebar.callouts',
   );
 
+  /// The hover fill gliding between menu rows. Default motion: `quick`.
+  static final highlight = CoilSidebarTrack<double>._(
+    .single,
+    debugLabel: 'CoilSidebar.highlight',
+  );
+
+  /// The selected row's fill gliding when the selection moves. Default
+  /// motion: `standard`.
+  static final selection = CoilSidebarTrack<double>._(
+    .single,
+    debugLabel: 'CoilSidebar.selection',
+  );
+
+  /// A group or a sub-tree folding open or closed. Default motion:
+  /// `standard`, and `standardExit` as it closes.
+  static final expand = CoilSidebarTrack<double>._(
+    .single,
+    debugLabel: 'CoilSidebar.expand',
+  );
+
   /// The phone drawer sliding in and out. Default motion: `standard` in,
   /// `standardExit` out. A drag follows the finger.
   static final drawer = CoilSidebarTrack<double>._(
@@ -73,6 +93,7 @@ class CoilSidebarScaffold extends StatefulWidget {
     this.peek = CoilSidebarPeek.none,
     this.rail = const CoilSidebarRail(),
     this.shortcuts,
+    this.autofocus = true,
     this.drawerBreakpoint = 768,
     this.minWidth = 160,
     this.maxWidth = 360,
@@ -116,6 +137,11 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// (Ctrl+B off Apple platforms). Empty disables them. They do nothing
   /// while focus is in a text field.
   final Set<ShortcutActivator>? shortcuts;
+
+  /// Whether the scaffold takes focus when nothing else has it, so the
+  /// [shortcuts] answer right after launch. A scaffold inside another one
+  /// never does; turn it off where several sit side by side.
+  final bool autofocus;
 
   /// Below this width, the scaffold's own and not the window's, the
   /// sidebar becomes a drawer.
@@ -426,7 +452,15 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
         var content = !_offcanvas
             ? _static(look)
             : _withDrawer(look, compact ? widget.body : _wide(look));
-        content = FocusScope(node: _focusScope, child: content);
+        // With nothing focused yet, the scaffold takes focus itself, so the
+        // shortcuts answer right after launch; when scaffolds nest, the
+        // outermost one does, as on the web.
+        content = FocusScope(
+          node: _focusScope,
+          autofocus:
+              widget.autofocus && CoilSidebarScope.maybeOf(context) == null,
+          child: content,
+        );
         if (_offcanvas) {
           content = Shortcuts(
             shortcuts: {

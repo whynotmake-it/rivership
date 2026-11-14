@@ -1,4 +1,5 @@
 import 'package:coil/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// Which surface a [CoilKbd] sits on.
@@ -107,6 +108,16 @@ class CoilKbd extends StatelessWidget {
     this.style,
   });
 
+  /// Shows the keys that trigger [activator]: a [SingleActivator] or a
+  /// [CharacterActivator]. Modifiers come first, as glyphs on Apple
+  /// platforms (⌃ ⌥ ⇧ ⌘) and as words elsewhere (Ctrl Alt Shift).
+  CoilKbd.activator(
+    ShortcutActivator activator, {
+    super.key,
+    this.tone = CoilKbdTone.normal,
+    this.style,
+  }) : keys = keysOf(activator);
+
   /// The keys, in order.
   final List<String> keys;
 
@@ -117,6 +128,50 @@ class CoilKbd extends StatelessWidget {
   final CoilKbdStyle? style;
 
   static final _keyPattern = RegExp(r'[⌘⇧⌥⌃]|[^⌘⇧⌥⌃+\s]+|\+$');
+
+  /// The key names for [activator], as [CoilKbd.activator] shows them.
+  static List<String> keysOf(ShortcutActivator activator) {
+    final apple = switch (defaultTargetPlatform) {
+      TargetPlatform.macOS || TargetPlatform.iOS => true,
+      _ => false,
+    };
+    List<String> modifiers({
+      required bool control,
+      required bool alt,
+      required bool shift,
+      required bool meta,
+    }) => [
+      if (control) ...[if (apple) '⌃' else 'Ctrl'],
+      if (alt) ...[if (apple) '⌥' else 'Alt'],
+      if (shift) ...[if (apple) '⇧' else 'Shift'],
+      if (meta) ...[if (apple) '⌘' else 'Meta'],
+    ];
+    return switch (activator) {
+      SingleActivator() => [
+        ...modifiers(
+          control: activator.control,
+          alt: activator.alt,
+          shift: activator.shift,
+          meta: activator.meta,
+        ),
+        activator.trigger.keyLabel,
+      ],
+      CharacterActivator() => [
+        ...modifiers(
+          control: activator.control,
+          alt: activator.alt,
+          shift: false,
+          meta: activator.meta,
+        ),
+        activator.character,
+      ],
+      _ => throw ArgumentError.value(
+        activator,
+        'activator',
+        'CoilKbd shows SingleActivator and CharacterActivator',
+      ),
+    };
+  }
 
   /// Splits [combination] into keys: `'⇧⌘O'` is `['⇧', '⌘', 'O']`,
   /// `'Ctrl+K'` is `['Ctrl', 'K']`.

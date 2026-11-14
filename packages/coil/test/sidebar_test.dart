@@ -36,14 +36,14 @@ class _AppState extends State<_App> {
     sidebar: CoilSidebar(
       children: [
         CoilSidebarGroup(
-          label: 'Mail',
+          label: const Text('Mail'),
           expanded: mailOpen,
           onExpandedChanged: (open) => setState(() => mailOpen = open),
           child: CoilSidebarMenu(
             items: [
               for (final label in ['Inbox', 'Sent'])
                 CoilSidebarItem(
-                  label: label,
+                  label: Text(label),
                   selected: page == label,
                   onPressed: () => setState(() => page = label),
                 ),
@@ -197,6 +197,48 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
       await tester.pumpAndSettle();
       expect(controller.open, isTrue);
+    });
+
+    testWidgets('[ toggles right after launch, with nothing focused', (
+      tester,
+    ) async {
+      final controller = await _pumpWide(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+      await tester.pumpAndSettle();
+      expect(controller.open, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+      await tester.pumpAndSettle();
+      expect(controller.open, isTrue);
+    });
+
+    testWidgets('with nothing focused, the outermost scaffold answers', (
+      tester,
+    ) async {
+      _useWide(tester);
+      final outer = CoilSidebarController();
+      final inner = CoilSidebarController();
+      addTearDown(outer.dispose);
+      addTearDown(inner.dispose);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.pointer,
+          home: CoilSidebarScaffold(
+            controller: outer,
+            sidebar: const CoilSidebar(children: [Text('Outer')]),
+            body: CoilSidebarScaffold(
+              controller: inner,
+              drawerBreakpoint: 0,
+              sidebar: const CoilSidebar(children: [Text('Inner')]),
+              body: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+      await tester.pumpAndSettle();
+      expect(outer.open, isFalse);
+      expect(inner.open, isTrue);
     });
 
     testWidgets('a sidebar on the right answers ] instead', (tester) async {

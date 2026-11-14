@@ -13,28 +13,16 @@ enum CoilModalPresentation {
   /// A bottom sheet that can be dragged away.
   sheet,
 
-  /// A full-height panel that slides in from a side edge, like a
+  /// A full-height panel that slides in from the start edge, like a
   /// navigation drawer.
   drawer,
-}
-
-/// The side a [CoilModalPresentation.drawer] slides in from, following the
-/// text direction.
-enum CoilDrawerEdge {
-  /// The leading edge: left in a left-to-right layout.
-  start,
-
-  /// The trailing edge: right in a left-to-right layout.
-  end,
 }
 
 /// Shows [builder] as a modal above the current route, [presentation]
 /// deciding how.
 ///
-/// Centered modals spring in on the theme's `gentle` token and out on
-/// `gentleExit`; sheets use `gentle`. Drawers slide in from [drawerEdge] on
-/// `standard` and out on `standardExit`, which land without overshooting
-/// past the edge. With [dismissible] false, the
+/// Centered modals and drawers spring in on the theme's `gentle` token and
+/// out on `gentleExit`; sheets use `gentle`. With [dismissible] false, the
 /// scrim, Esc, back and dragging don't close it. Themes from [context]
 /// carry over into the modal. The future completes with the value passed
 /// to `Navigator.pop`.
@@ -42,7 +30,6 @@ Future<T?> showCoilModal<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   CoilModalPresentation presentation = CoilModalPresentation.centered,
-  CoilDrawerEdge drawerEdge = CoilDrawerEdge.start,
   bool dismissible = true,
   String? barrierLabel,
   CoilMotion? motion,
@@ -81,20 +68,16 @@ Future<T?> showCoilModal<T>({
     ),
     CoilModalPresentation.drawer => navigator.push(
       _CoilModalRoute<T>(
-        enter: tokens.standard,
-        exit: tokens.standardExit,
+        enter: tokens.gentle,
+        exit: tokens.gentleExit,
         barrierColor: barrierColor,
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
         builder: (context) => themes.wrap(
           Align(
-            alignment: switch (drawerEdge) {
-              CoilDrawerEdge.start => AlignmentDirectional.centerStart,
-              CoilDrawerEdge.end => AlignmentDirectional.centerEnd,
-            },
+            alignment: AlignmentDirectional.centerStart,
             // Slides by the panel's width, not the window's.
-            child: _SlideFromEdge(
-              edge: drawerEdge,
+            child: _SlideFromStart(
               presence: ModalRoute.of(context)!.animation!,
               child: content(context),
             ),
@@ -135,24 +118,17 @@ class _CoilModalRoute<T> extends RawDialogRoute<T> {
       );
 }
 
-/// Slides [child] in from [edge] by its own width as [presence] goes from
-/// 0 to 1.
-class _SlideFromEdge extends StatelessWidget {
-  const _SlideFromEdge({
-    required this.edge,
-    required this.presence,
-    required this.child,
-  });
+/// Slides [child] in from the start edge by its own width as [presence]
+/// goes from 0 to 1.
+class _SlideFromStart extends StatelessWidget {
+  const _SlideFromStart({required this.presence, required this.child});
 
-  final CoilDrawerEdge edge;
   final Animation<double> presence;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final rtl =
-        (Directionality.of(context) == TextDirection.rtl) !=
-        (edge == CoilDrawerEdge.end);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     return ListenableBuilder(
       listenable: presence,
       builder: (context, child) => FractionalTranslation(

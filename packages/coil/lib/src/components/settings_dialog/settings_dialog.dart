@@ -16,6 +16,7 @@ class CoilSettingsSection<T> {
     required this.value,
     required this.label,
     required this.builder,
+    this.semanticLabel,
     this.icon,
     this.description,
   });
@@ -23,14 +24,28 @@ class CoilSettingsSection<T> {
   /// Identifies the section.
   final T value;
 
-  /// The section's name, in the sidebar and as the panel's heading.
-  final String label;
+  /// The section's name, in the sidebar and as the panel's heading;
+  /// usually a [Text].
+  final Widget label;
+
+  /// The section's name as text, for screen readers and the compact
+  /// select. Null reads the text of a [Text] [label]; give it for any
+  /// other widget.
+  final String? semanticLabel;
+
+  String get _text => switch (semanticLabel ?? label) {
+    final String text => text,
+    Text(:final data?) => data,
+    Text(:final textSpan?) => textSpan.toPlainText(),
+    RichText(:final text) => text.toPlainText(),
+    _ => '',
+  };
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? icon;
 
-  /// A line under the panel's heading.
-  final String? description;
+  /// A line under the panel's heading, styled by [DefaultTextStyle].
+  final Widget? description;
 
   /// Builds the panel's content, usually a [CoilSettingsList].
   final WidgetBuilder builder;
@@ -42,7 +57,7 @@ class CoilSettingsSection<T> {
 /// dialog. The future completes when the dialog closes.
 Future<void> showCoilSettingsDialog<T>({
   required BuildContext context,
-  required String title,
+  required Widget title,
   required List<CoilSettingsSection<T>> sections,
   T? initialSection,
   String closeLabel = 'Close',
@@ -77,8 +92,9 @@ class CoilSettingsDialog<T> extends StatefulWidget {
     this.closeLabel = 'Close',
   });
 
-  /// The dialog's title, above the sections.
-  final String title;
+  /// The dialog's title, above the sections; usually a [Text]. It names
+  /// the dialog for screen readers.
+  final Widget title;
 
   /// The sections, in order.
   final List<CoilSettingsSection<T>> sections;
@@ -153,11 +169,13 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
                 children: [
                   CoilSidebarGroup(
                     child: CoilSidebarMenu(
+                      focus: CoilSidebarMenuFocus.highlight,
                       items: [
                         for (final section in widget.sections)
                           CoilSidebarItem(
                             label: section.label,
-                            icon: section.icon,
+                            semanticLabel: section._text,
+                            leading: section.icon,
                             selected: section.value == _section,
                             onPressed: () => _pick(section.value),
                           ),
@@ -179,7 +197,7 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
       for (final section in widget.sections)
         CoilOption(
           value: section.value,
-          label: section.label,
+          label: section._text,
           icon: section.icon,
         ),
     ],
@@ -191,7 +209,7 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
 class _Title extends StatelessWidget {
   const _Title(this.title);
 
-  final String title;
+  final Widget title;
 
   @override
   Widget build(BuildContext context) {
@@ -199,12 +217,12 @@ class _Title extends StatelessWidget {
     return Semantics(
       header: true,
       namesRoute: true,
-      child: Text(
-        title,
+      child: DefaultTextStyle(
         style: theme.typography.style(
           const CoilTypeStep(16, 22),
           color: theme.colors.foreground,
         ),
+        child: title,
       ),
     );
   }
@@ -217,7 +235,7 @@ class _Panel<T> extends StatelessWidget {
 
   final CoilSettingsSection<T> section;
   final Widget? picker;
-  final String? title;
+  final Widget? title;
 
   @override
   Widget build(BuildContext context) {
@@ -239,20 +257,20 @@ class _Panel<T> extends StatelessWidget {
                 const SizedBox(height: 8),
                 ?picker,
               ] else ...[
-                Text(
-                  section.label,
+                DefaultTextStyle(
                   style: theme.typography.style(
                     const CoilTypeStep(16, 22),
                     color: theme.colors.foreground,
                   ),
+                  child: section.label,
                 ),
                 if (description != null)
-                  Text(
-                    description,
+                  DefaultTextStyle(
                     style: theme.typography.style(
                       metrics.body,
                       color: theme.colors.mutedForeground,
                     ),
+                    child: description,
                   ),
               ],
             ],
