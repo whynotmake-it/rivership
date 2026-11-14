@@ -1119,6 +1119,31 @@ void main() {
       expect(_valueOf(tester), closeTo(.51, 1e-9));
     });
 
+    testWidgets('the field is the focus while editing; the ring comes back', (
+      tester,
+    ) async {
+      final states = WidgetStatesController();
+      addTearDown(states.dispose);
+      await tester.pumpWidget(
+        _Host(valueDisplay: CoilSliderValueDisplay.editable, states: states),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(states.value, contains(WidgetState.focused));
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(field, findsOneWidget);
+      expect(
+        states.value,
+        isNot(contains(WidgetState.focused)),
+        reason: 'the field shows its own focus; no second ring',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(field, findsNothing);
+      expect(states.value, contains(WidgetState.focused));
+    });
+
     testWidgets('text that is not a number changes nothing', (tester) async {
       await tester.pumpWidget(
         const _Host(valueDisplay: CoilSliderValueDisplay.editable),
