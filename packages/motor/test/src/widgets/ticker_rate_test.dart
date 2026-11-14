@@ -7,7 +7,6 @@ import 'package:motor/motor.dart';
 
 const _motion = Motion.linear(Duration(seconds: 1));
 const _frame = Duration(milliseconds: 16);
-const _childKey = Key('child');
 final _track = Track<double>(const SingleMotionConverter(), initial: 0);
 
 enum _Phase { a, b }
@@ -153,53 +152,6 @@ void main() {
       });
     });
   }
-
-  group('MotionDraggable', () {
-    Future<bool> returnsOnFixedTicker(
-      WidgetTester tester, {
-      TickerRate? tickerRate,
-    }) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Align(
-            alignment: Alignment.topLeft,
-            child: MotionDraggable<String>(
-              data: 'data',
-              motion: const CupertinoMotion.smooth(),
-              tickerRate: tickerRate,
-              child: const ColoredBox(
-                key: _childKey,
-                color: Color(0xFF000000),
-                child: SizedBox.square(dimension: 10),
-              ),
-            ),
-          ),
-        ),
-      );
-      final gesture =
-          await tester.startGesture(tester.getCenter(find.byKey(_childKey)));
-      await gesture.moveBy(const Offset(50, 50));
-      await tester.pump();
-      await gesture.up();
-      await tester.pump(_frame);
-      await tester.pump(_frame);
-      final fixed = FixedTicker.hasActiveTimers;
-      expect(fixed || tester.binding.hasScheduledFrame, isTrue);
-      await tester.pumpAndSettleFixedTickers();
-      return fixed;
-    }
-
-    testWidgets('returns on a vsync ticker by default', (tester) async {
-      expect(await returnsOnFixedTicker(tester), isFalse);
-    });
-
-    testWidgets('returns at tickerRate', (tester) async {
-      expect(
-        await returnsOnFixedTicker(tester, tickerRate: TickerRate.fps(10)),
-        isTrue,
-      );
-    });
-  });
 
   testWidgets('switching rates keeps the animation running', (tester) async {
     final values = <double>[];

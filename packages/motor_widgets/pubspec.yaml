@@ -19,6 +19,7 @@ dependencies:
   vector_math: ">=2.1.0 <3.0.0"
 
 dev_dependencies:
+  fixed_ticker: ^0.2.0
   flutter_test:
     sdk: flutter
   lintervention: ^0.3.1

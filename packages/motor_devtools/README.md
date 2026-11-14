@@ -69,8 +69,8 @@ SingleMotionBuilder(
 ```
 
 `MotionController`, `SingleMotionController`, `BoundedMotionController`,
-`TrackBuilder`, `PhaseTrackBuilder`, `MotionBuilder`, `VelocityMotionBuilder`
-and `MotionDraggable` all accept `debugLabel` too.
+`TrackBuilder`, `PhaseTrackBuilder`, `MotionBuilder` and `VelocityMotionBuilder`
+all accept `debugLabel` too, as do the widgets in `motor_widgets`.
 
 ## Group or hide controllers
 
