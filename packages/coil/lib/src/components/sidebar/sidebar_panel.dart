@@ -450,6 +450,7 @@ class _GroupToggle extends StatelessWidget {
     return Semantics(
       header: true,
       button: true,
+      enabled: true,
       expanded: expanded,
       controlsNodes: {contentId},
       child: CoilInteraction(

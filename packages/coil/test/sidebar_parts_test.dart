@@ -2,7 +2,9 @@ import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
+import 'src/coil_pattern.dart';
 import 'src/select_harness.dart';
 import 'src/test_icons.dart';
 
@@ -211,5 +213,170 @@ void main() {
 
     expect(await chevrons(CoilTier.pointer), 0);
     expect(await chevrons(CoilTier.touch), 1);
+  });
+
+  group('pattern', () {
+    for (final direction in TextDirection.values) {
+      testWidgets('a collapsible group label is a disclosure '
+          '(${direction.name})', (tester) async {
+        var open = true;
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.pointer,
+            home: Directionality(
+              textDirection: direction,
+              child: StatefulBuilder(
+                builder: (context, setState) => CoilSidebarGroup(
+                  key: const ValueKey('target'),
+                  label: 'Mail',
+                  expanded: open,
+                  onExpandedChanged: (v) => setState(() => open = v),
+                  child: const Text('Inbox'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await expectCoilPattern(
+          tester,
+          find.descendant(
+            of: find.byKey(const ValueKey('target')),
+            matching: find.byType(CoilInteraction),
+          ),
+          CoilPattern.disclosure,
+        );
+      });
+
+      testWidgets('an action is a button (${direction.name})', (tester) async {
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.pointer,
+            home: Directionality(
+              textDirection: direction,
+              child: Center(
+                child: CoilSidebarAction(
+                  key: const ValueKey('target'),
+                  icon: const TestIcon(TestGlyph.plus),
+                  semanticLabel: 'New thread',
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await expectCoilPattern(
+          tester,
+          find.byKey(const ValueKey('target')),
+          CoilPattern.button,
+        );
+      });
+    }
+  });
+
+  group('motion', () {
+    Future<CoilSidebarController> pump(
+      WidgetTester tester, {
+      bool reduced = false,
+      Map<CoilSidebarTrack<Object>, Motion>? motions,
+    }) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(1200, 800);
+      addTearDown(tester.view.reset);
+      final controller = CoilSidebarController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.pointer,
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: const Size(1200, 800),
+              disableAnimations: reduced,
+            ),
+            child: CoilSidebarScaffold(
+              controller: controller,
+              motions: motions,
+              sidebar: const CoilSidebar(children: [Text('Nav')]),
+              body: const SizedBox.expand(key: ValueKey('page')),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
+
+    double pageLeft(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const ValueKey('page'))).dx;
+
+    testWidgets('folding glides, and reduced motion makes it instant', (
+      tester,
+    ) async {
+      var controller = await pump(tester);
+      controller.open = false;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(pageLeft(tester), inExclusiveRange(0, 256));
+
+      controller = await pump(tester, reduced: true);
+      controller.open = false;
+      await tester.pump();
+      await tester.pump();
+      expect(pageLeft(tester), 0);
+    });
+
+    testWidgets('motions override the width track', (tester) async {
+      final controller = await pump(
+        tester,
+        motions: {CoilSidebarTrack.width: const Motion.instant()},
+      );
+      controller.open = false;
+      await tester.pump();
+      await tester.pump();
+      expect(pageLeft(tester), 0);
+    });
+  });
+
+  testWidgets('style: the instance wins over the theme over the fallback', (
+    tester,
+  ) async {
+    Widget group({CoilSidebarStyle? style}) =>
+        CoilSidebarGroup(label: 'Mail', style: style, child: const Text('x'));
+
+    const themed = Color(0xFF00FF00);
+    const own = Color(0xFFFF0000);
+    await tester.pumpWidget(
+      testApp(
+        home: Builder(
+          builder: (context) => Column(
+            children: [
+              group(),
+              CoilTheme(
+                data: CoilTheme.of(context).withComponentStyle(
+                  const CoilSidebarStyle(
+                    labelColor: WidgetStatePropertyAll(themed),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    group(),
+                    group(
+                      style: const CoilSidebarStyle(
+                        labelColor: WidgetStatePropertyAll(own),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final colors = tester
+        .widgetList<Text>(find.text('Mail'))
+        .map((t) => t.style!.color)
+        .toList();
+    expect(colors, [CoilColors.light.mutedForeground, themed, own]);
   });
 }
