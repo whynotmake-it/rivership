@@ -207,7 +207,6 @@ class CoilMotionLayer extends StatefulWidget {
     super.key,
     this.background = const [],
     this.foreground = const [],
-    this.handle,
   });
 
   /// The targets.
@@ -218,9 +217,6 @@ class CoilMotionLayer extends StatefulWidget {
 
   /// Painted in front of [child].
   final List<CoilLayerItem> foreground;
-
-  /// Gives the owning widget access to target rects.
-  final CoilMotionLayerHandle? handle;
 
   @override
   State<CoilMotionLayer> createState() => _CoilMotionLayerState();
@@ -256,7 +252,6 @@ class _CoilMotionLayerState extends State<CoilMotionLayer>
   Widget build(BuildContext context) => CoilPainterLayer(
     background: _background.painters,
     foreground: _foreground.painters,
-    handle: widget.handle,
     child: widget.child,
   );
 }

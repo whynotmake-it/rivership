@@ -1,5 +1,7 @@
 // CoilFocusWithin: a container learns when visible focus is inside it.
 import 'package:coil/coil.dart';
+import 'package:coil/src/primitives/focus_within.dart'
+    show CoilFocusAlwaysVisible;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

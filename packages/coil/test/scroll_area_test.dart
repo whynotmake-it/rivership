@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:coil/src/primitives/scrollbar.dart' show CoilScrollbar;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

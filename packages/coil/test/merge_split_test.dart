@@ -1,4 +1,6 @@
 import 'package:coil/coil.dart';
+import 'package:coil/src/primitives/selection_blocks.dart'
+    show CoilSelectionRuns;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';

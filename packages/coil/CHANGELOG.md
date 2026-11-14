@@ -2,6 +2,15 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `primitives.dart` no longer exports internals.
+  - `CoilMotionLayerHandle` is gone, and so is the `handle` parameter of
+    `CoilMotionLayer`. Nothing used them.
+  - `CoilSelectionRun` and `CoilSelectionRuns` are hidden; they are how
+    `CoilSelectionBlocks` merges runs.
+  - `CoilFocusAlwaysVisible` is hidden; `CoilTextFieldCore` applies it.
+  - `CoilScrollbar` is hidden; `CoilScrollBehavior` and `CoilScrollArea`
+    build it.
+
 - Modals are routes too. `CoilModalRoute<T>` is the route every
   `showCoil…` modal pushes, and `CoilModalPage<T>` shows one from
   `Navigator.pages` or a router. With no `presentation`, it opens as a
