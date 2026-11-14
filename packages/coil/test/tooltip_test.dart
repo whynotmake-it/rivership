@@ -16,7 +16,7 @@ Widget _toolbar({List<String>? pressed}) => testApp(
       children: [
         for (final name in ['Bold', 'Italic'])
           CoilTooltip(
-            message: name,
+            message: Text(name),
             child: CoilButton.icon(
               onPressed: () => pressed?.add(name),
               semanticLabel: '$name button',
@@ -24,6 +24,22 @@ Widget _toolbar({List<String>? pressed}) => testApp(
             ),
           ),
       ],
+    ),
+  ),
+);
+
+/// One tooltip on a button, opened with Tab.
+Widget _single({required Widget message, String? semanticLabel}) => testApp(
+  tier: CoilTier.pointer,
+  home: Center(
+    child: CoilTooltip(
+      message: message,
+      semanticLabel: semanticLabel,
+      child: CoilButton.icon(
+        onPressed: () {},
+        semanticLabel: 'Panel edge',
+        icon: const SizedBox.square(dimension: 16),
+      ),
     ),
   ),
 );
@@ -118,6 +134,81 @@ void main() {
     expect(find.text('Bold'), findsNothing);
   });
 
+  testWidgets('a multi-line message takes the caption style', (tester) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      _single(
+        message: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 4,
+          children: [Text('Drag to resize'), Text('Click to collapse')],
+        ),
+        semanticLabel: 'Drag to resize, click to collapse',
+      ),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    final first = tester.getRect(find.text('Drag to resize'));
+    final second = tester.getRect(find.text('Click to collapse'));
+    expect(second.top, greaterThan(first.bottom));
+    for (final line in ['Drag to resize', 'Click to collapse']) {
+      final text = tester.widget<RichText>(
+        find.descendant(of: find.text(line), matching: find.byType(RichText)),
+      );
+      expect(text.text.style?.color, CoilColors.light.background);
+    }
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel('Panel edge'))
+          .getSemanticsData()
+          .tooltip,
+      'Drag to resize, click to collapse',
+    );
+  });
+
+  testWidgets('a new message crossfades only when its key changes', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    final message = ValueNotifier<Widget>(const Text('Copy'));
+    addTearDown(message.dispose);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: Center(
+          child: ValueListenableBuilder(
+            valueListenable: message,
+            builder: (context, message, _) => CoilTooltip(
+              message: message,
+              semanticLabel: 'Copy',
+              child: CoilButton.icon(
+                onPressed: () {},
+                semanticLabel: 'Copy button',
+                icon: const SizedBox.square(dimension: 16),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+
+    message.value = const Text('Copied');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Copy'), findsNothing, reason: 'updated in place');
+    expect(find.text('Copied'), findsOneWidget);
+
+    message.value = const Text('Copied!', key: ValueKey('done'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Copied'), findsOneWidget, reason: 'fading out');
+    expect(find.text('Copied!'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Copied'), findsNothing);
+  });
+
   testWidgets('screen readers get the message', (tester) async {
     await tester.pumpWidget(_toolbar());
     final node = tester.getSemantics(find.bySemanticsLabel('Bold button'));
@@ -155,7 +246,7 @@ void main() {
   ) async {
     useScreen(tester, TestScreen.desktop);
     Widget button(String label) => CoilTooltip(
-      message: label,
+      message: Text(label),
       child: CoilButton(onPressed: () {}, child: Text('[$label]')),
     );
     await tester.pumpWidget(
@@ -186,7 +277,12 @@ void main() {
     final mid = tester.getCenter(find.byType(MotionSize)).dx;
     expect(mid, greaterThan(tester.getCenter(find.text('[Bold]')).dx));
     expect(mid, lessThan(tester.getCenter(find.text('[Italic]')).dx));
+    // Fully present, so not sliding: the glide itself moves a resampled
+    // image of the bubble, not text snapped to the pixel grid.
+    expect(_bubbleOpacity(tester, 'Italic'), 1);
+    expect(_resampled(tester), isTrue);
     await tester.pumpAndSettle();
+    expect(_resampled(tester), isFalse, reason: 'at rest it paints directly');
     expect(find.text('Bold'), findsNothing);
     expect(find.text('Italic'), findsOneWidget);
     expect(
@@ -201,7 +297,7 @@ void main() {
 /// A tooltip group over two buttons, the first with a long message.
 Widget _group({String long = 'Strikethrough'}) {
   Widget button(String label) => CoilTooltip(
-    message: label,
+    message: Text(label),
     child: CoilButton(onPressed: () {}, child: Text('[$label]')),
   );
   return testApp(
@@ -334,6 +430,63 @@ void _groupWidthTests() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Strikethrough'), findsNothing);
+  });
+
+  testWidgets('in a group the bubble grows to multi-line content', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: Center(
+          child: CoilTooltipGroup(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 40,
+              children: [
+                CoilTooltip(
+                  message: const Text('Bold'),
+                  child: CoilButton(onPressed: () {}, child: const Text('[a]')),
+                ),
+                CoilTooltip(
+                  message: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [Text('Drag to resize'), Text('Click to close')],
+                  ),
+                  semanticLabel: 'Resize or close',
+                  child: CoilButton(onPressed: () {}, child: const Text('[b]')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.text('[a]')));
+    await tester.pump(CoilTooltipAnchor.hoverDelay);
+    await tester.pumpAndSettle();
+    final start = tester.getRect(_bubble('Bold'));
+
+    await mouse.moveTo(tester.getCenter(find.text('[b]')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    // One bubble, mid-glide and mid-resize, with the old label fading.
+    expect(
+      tester.element(_bubble('Bold')),
+      tester.element(_bubble('Drag to resize')),
+    );
+    final mid = tester.getRect(_bubble('Drag to resize'));
+    expect(mid.height, greaterThan(start.height));
+    await tester.pumpAndSettle();
+    expect(find.text('Bold'), findsNothing);
+    final end = tester.getRect(_bubble('Drag to resize'));
+    expect(end.height, greaterThan(mid.height));
+    expect(end.center.dx, greaterThan(mid.center.dx));
+    expect(mid.center.dx, greaterThan(start.center.dx));
   });
 }
 

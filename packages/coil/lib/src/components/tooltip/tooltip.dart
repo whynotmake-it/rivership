@@ -8,20 +8,43 @@ import 'package:motor_widgets/motor_widgets.dart';
 ///
 /// A mouse opens it after a short hover, keyboard focus at once, and an
 /// Android long-press while the finger stays down; iOS shows none. See
-/// [CoilTooltipAnchor] for the timing. [message] is also what screen readers
-/// announce. Don't put required information in a tooltip, and don't tooltip
-/// a labelled button.
+/// [CoilTooltipAnchor] for the timing. Don't put required information in a
+/// tooltip, and don't tooltip a labelled button.
+///
+/// ```dart
+/// CoilTooltip(
+///   message: const Text('Bold'),
+///   child: CoilButton.icon(onPressed: bold, icon: boldIcon),
+/// )
+/// ```
 class CoilTooltip extends StatelessWidget {
   /// Creates a tooltip for [child].
+  ///
+  /// [semanticLabel] is required unless [message] is a [Text] or
+  /// [RichText], whose text screen readers then announce.
   const CoilTooltip({
     required this.message,
     required this.child,
     super.key,
+    this.semanticLabel,
     this.motion,
-  });
+  }) : assert(
+         semanticLabel != null || message is Text || message is RichText,
+         'Give a semanticLabel for a message that is not a Text.',
+       );
 
-  /// The label.
-  final String message;
+  /// What the bubble shows, usually a [Text]. It's styled as the bubble's
+  /// caption through [DefaultTextStyle] and [IconTheme], and may span
+  /// several lines.
+  ///
+  /// The bubble crossfades to a new message when its key or type changes,
+  /// and in a [CoilTooltipGroup] when it moves to another tooltip. Otherwise
+  /// it updates in place.
+  final Widget message;
+
+  /// What screen readers announce as the tooltip. Defaults to the text of
+  /// [message] when that is a [Text] or [RichText].
+  final String? semanticLabel;
 
   /// What the tooltip is for.
   final Widget child;
@@ -29,19 +52,29 @@ class CoilTooltip extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
+  String get _semanticLabel =>
+      semanticLabel ??
+      switch (message) {
+        Text(:final data?) => data,
+        Text(:final textSpan?) => textSpan.toPlainText(),
+        RichText(:final text) => text.toPlainText(),
+        _ => '',
+      };
+
   @override
   Widget build(BuildContext context) => CoilTooltipAnchor(
-    message: message,
+    content: message,
+    semanticLabel: _semanticLabel,
     motion: motion,
-    bubble: (context, presence) =>
-        _Bubble(presence: presence, message: message, motion: motion),
+    bubble: (context, presence, content) =>
+        _Bubble(presence: presence, content: content, motion: motion),
     child: child,
   );
 }
 
 /// Gives the [CoilTooltip]s in [child] one shared bubble, for a toolbar
 /// of icon buttons: moving along it, the bubble glides to the next button
-/// on the theme's `quick` spring, its width follows, and its label
+/// on the theme's `quick` spring, its size follows, and its content
 /// crossfades.
 class CoilTooltipGroup extends StatelessWidget {
   /// Creates a tooltip group around [child].
@@ -56,8 +89,8 @@ class CoilTooltipGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CoilTooltipAnchorGroup(
     motion: motion,
-    bubble: (context, presence, message) =>
-        _Bubble(presence: presence, message: message, motion: motion),
+    bubble: (context, presence, content) =>
+        _Bubble(presence: presence, content: content, motion: motion),
     child: child,
   );
 }
@@ -67,12 +100,12 @@ class CoilTooltipGroup extends StatelessWidget {
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.presence,
-    required this.message,
+    required this.content,
     required this.motion,
   });
 
   final Animation<double> presence;
-  final String message;
+  final Widget content;
   final CoilMotion? motion;
 
   @override
@@ -94,20 +127,22 @@ class _Bubble extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          // In a group the message changes in place: the width follows the
-          // new label on `quick` at once while the labels crossfade on
-          // `fade`. The old label keeps its lines as it fades.
-          child: MotionSizeSwitcher(
-            motion: motion.fade,
-            exitMotion: motion.fadeExit,
-            sizeMotion: motion.quick,
-            immediateResize: true,
-            child: Text(
-              message,
-              key: ValueKey(message),
-              style: theme.typography.style(
-                metrics.caption,
-                color: theme.colors.background,
+          child: DefaultTextStyle(
+            style: theme.typography.style(
+              metrics.caption,
+              color: theme.colors.background,
+            ),
+            child: IconTheme.merge(
+              data: IconThemeData(color: theme.colors.background),
+              // When the content changes, the size follows the new content
+              // on `quick` at once while the two crossfade on `fade`. The
+              // old content keeps its layout as it fades.
+              child: MotionSizeSwitcher(
+                motion: motion.fade,
+                exitMotion: motion.fadeExit,
+                sizeMotion: motion.quick,
+                immediateResize: true,
+                child: content,
               ),
             ),
           ),
