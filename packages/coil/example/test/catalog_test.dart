@@ -5,9 +5,9 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/app.dart';
 import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
+import 'package:coil_example/src/shell/preview_settings.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
-import 'package:coil_example/src/shell/settings_sheet.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -108,7 +108,7 @@ void main() {
     expect(missing, isEmpty);
   });
 
-  testWidgets('the settings sheet changes the page live', (tester) async {
+  testWidgets('the settings dialog changes the page live', (tester) async {
     await _pumpCatalog(tester, tier: CatalogTier.touch);
     final home = tester.element(find.byType(HomePage));
     expect(Directionality.of(home), TextDirection.ltr);
@@ -116,16 +116,17 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Preview settings'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Right to left'),
-      200,
-      scrollable: find.descendant(
-        of: find.byType(SettingsPanel),
-        matching: find.byType(Scrollable),
+    // A phone: a select picks the section.
+    await tester.tap(find.byType(CoilSelect<PreviewSection>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accessibility').last);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(CoilSettingRow, 'Right to left'),
+        matching: find.byType(CoilSwitch),
       ),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Right to left'));
     await tester.pumpAndSettle();
 
     expect(Directionality.of(home), TextDirection.rtl);
@@ -134,6 +135,25 @@ void main() {
       Directionality.of(tester.element(find.text('Right to left'))),
       TextDirection.rtl,
     );
+  });
+
+  testWidgets('on a desktop the sidebar picks the section', (tester) async {
+    final settings = await _pumpCatalog(tester, tier: CatalogTier.pointer);
+    await tester.tap(find.bySemanticsLabel('Preview settings'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSelect<PreviewSection>), findsNothing);
+
+    await tester.tap(find.text('Device'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(CoilSettingRow, 'Haptics'),
+        matching: find.byType(CoilSwitch),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(settings.hapticsOff, isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -195,6 +215,10 @@ void main() {
   ) async {
     final settings = await _pumpCatalog(tester, tier: CatalogTier.touch);
     await tester.tap(find.bySemanticsLabel('Preview settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CoilSelect<PreviewSection>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Shape and spacing').last);
     await tester.pumpAndSettle();
     expect(find.text('Corner radius'), findsNothing);
 
