@@ -8,8 +8,16 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// A mounted [MotionDraggable] that a [DragFlight] can land on.
 abstract interface class LandingSite {
-  /// The site's rect in global coordinates, or null while it isn't laid out.
+  /// The site's rect in global coordinates where it was last painted, or
+  /// null while it isn't laid out.
+  ///
+  /// It includes offsets that only move the painting, such as a
+  /// `MotionReorder` flight, which hit testing and `localToGlobal` leave out.
   Rect? get globalRect;
+
+  /// The link that the site leads while a flight lands on its tag, so the
+  /// flight can follow where the site is painted in every frame.
+  LayerLink get landingLink;
 
   /// Called when a flight starts or stops landing on this site's tag, so
   /// that the site hides or shows its child.
@@ -182,6 +190,10 @@ class DragFlight {
   /// the offset track holds the distance from its top-left.
   LandingSite? _site;
   Rect? _siteRect;
+
+  /// A link no leader ever leads: following it paints the feedback where it
+  /// is laid out, as while dragging or exiting.
+  final _unlinked = LayerLink();
   var _lossScheduled = false;
   var _resizeScheduled = false;
 
@@ -589,36 +601,66 @@ class _FlightViewState extends State<_FlightView>
     final grabbable = !dragging && flight._site != null;
 
     final feedback = config.feedback ?? config.child;
+    final site = flight._site;
     return Positioned(
       left: topLeft.dx,
       top: topLeft.dy,
       width: size.width,
       height: size.height,
-      child: Listener(
-        behavior: grabbable
-            ? HitTestBehavior.opaque
-            : HitTestBehavior.deferToChild,
-        onPointerDown: grabbable ? flight._grab : null,
-        onPointerUp: flight._endGrab,
-        onPointerCancel: flight._endGrab,
-        child: IgnorePointer(
-          ignoring: !dragging || config.ignoringFeedbackPointer,
-          child: ExcludeSemantics(
-            excluding: config.ignoringFeedbackSemantics,
-            child: Opacity(
-              opacity: value(MotionDraggableTrack.opacity).clamp(0, 1),
-              child: Transform.rotate(
-                angle: value(MotionDraggableTrack.rotation) * 2 * math.pi,
-                child: Transform.scale(
-                  scale: value(MotionDraggableTrack.scale),
-                  child:
-                      config.feedbackBuilder?.call(
-                        context,
-                        details,
-                        feedback,
-                      ) ??
+      // While landing, the feedback follows where the destination is painted
+      // when the frame is composited, after it has moved this frame. Until
+      // the destination has painted its leader, and while there is none, it
+      // shows where it is positioned. The follower stays in the tree either
+      // way, so the feedback keeps its state.
+      child: CompositedTransformFollower(
+        link: site?.landingLink ?? flight._unlinked,
+        offset: site == null ? Offset.zero : value(MotionDraggableTrack.offset),
+        child: _buildContent(
+          context,
+          flight: flight,
+          details: details,
+          dragging: dragging,
+          grabbable: grabbable,
+          feedback: feedback,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context, {
+    required DragFlight flight,
+    required MotionDragDetails details,
+    required bool dragging,
+    required bool grabbable,
+    required Widget feedback,
+  }) {
+    final config = flight.widget;
+    final value = _controller.value;
+    return Listener(
+      behavior: grabbable
+          ? HitTestBehavior.opaque
+          : HitTestBehavior.deferToChild,
+      onPointerDown: grabbable ? flight._grab : null,
+      onPointerUp: flight._endGrab,
+      onPointerCancel: flight._endGrab,
+      child: IgnorePointer(
+        ignoring: !dragging || config.ignoringFeedbackPointer,
+        child: ExcludeSemantics(
+          excluding: config.ignoringFeedbackSemantics,
+          child: Opacity(
+            opacity: value(MotionDraggableTrack.opacity).clamp(0, 1),
+            child: Transform.rotate(
+              angle: value(MotionDraggableTrack.rotation) * 2 * math.pi,
+              child: Transform.scale(
+                scale: value(MotionDraggableTrack.scale),
+                child:
+                    config.feedbackBuilder?.call(
+                      context,
+                      details,
                       feedback,
-                ),
+                    ) ??
+                    feedback,
               ),
             ),
           ),

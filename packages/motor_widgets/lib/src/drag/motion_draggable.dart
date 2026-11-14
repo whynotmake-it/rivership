@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/drag/flight.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 
 /// What happened to a [MotionDraggable]'s drag.
 enum MotionDragPhase {
@@ -536,8 +537,11 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     if (!mounted) return null;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
+    return paintedGlobalRect(box);
   }
+
+  @override
+  final LayerLink landingLink = LayerLink();
 
   @override
   void landingChanged() {
@@ -661,7 +665,13 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       },
       onDraggableCanceled: widget.onDraggableCanceled,
     );
-    final child = Visibility.maintain(visible: !landing, child: widget.child);
+    // While a flight lands here, the child is hidden and the flight follows
+    // where it is painted. The leader sits outside the Visibility, which
+    // doesn't paint its child while hidden.
+    final child = LeaderWhile(
+      link: landing ? landingLink : null,
+      child: Visibility.maintain(visible: !landing, child: widget.child),
+    );
     final childWhenDragging =
         widget.childWhenDragging ??
         Visibility.maintain(visible: false, child: widget.child);
@@ -739,11 +749,8 @@ class _FlightDrag extends Drag {
   }
 
   @override
-  void end(DragEndDetails details) => _state._endDrag(
-    _flight,
-    () => _drag.end(details),
-    details.velocity,
-  );
+  void end(DragEndDetails details) =>
+      _state._endDrag(_flight, () => _drag.end(details), details.velocity);
 
   @override
   void cancel() => _state._endDrag(_flight, _drag.cancel, Velocity.zero);

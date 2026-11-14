@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/on_end.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// Springs its child from where it was painted to where layout now puts it,
@@ -271,7 +272,7 @@ class _ReorderLayer extends TransformLayer {}
 /// A flight is resolved after layout: in [updateCompositedLayer] when this
 /// is a repaint boundary, else in [paint]. A flight key change schedules
 /// that step; so does every frame of a flight.
-class _RenderMotionReorder extends RenderProxyBox {
+class _RenderMotionReorder extends RenderProxyBox implements PaintOffset {
   _RenderMotionReorder({
     required TickerProvider vsync,
     required Object flightKey,
@@ -331,6 +332,9 @@ class _RenderMotionReorder extends RenderProxyBox {
   bool _resolving = false;
 
   bool get _inFlight => _controller?.isAnimating ?? false;
+
+  @override
+  Offset get paintOffset => _visual;
 
   @override
   bool get isRepaintBoundary => _repaintBoundary;

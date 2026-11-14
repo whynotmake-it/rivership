@@ -40,6 +40,8 @@ class _Board extends StatefulWidget {
     this.axis,
     this.longPress = false,
     this.tagOf,
+    this.bItems = const [],
+    this.reorderB = false,
     super.key,
   });
 
@@ -52,6 +54,10 @@ class _Board extends StatefulWidget {
   final Axis? axis;
   final bool longPress;
   final Object Function(String id)? tagOf;
+  final List<String> bItems;
+
+  /// Wraps column B's items in [MotionReorder]s keyed by index.
+  final bool reorderB;
 
   @override
   State<_Board> createState() => _BoardState();
@@ -59,11 +65,13 @@ class _Board extends StatefulWidget {
 
 class _BoardState extends State<_Board> {
   late final a = [...widget.items];
-  final b = <String>[];
+  late final b = [...widget.bItems];
   int accepted = 0;
   double bTop = 200;
 
   void moveB(double top) => setState(() => bTop = top);
+
+  void reverseB() => setState(() => b.setAll(0, b.reversed.toList()));
 
   void removeFromA(String id) => setState(() => a.remove(id));
 
@@ -124,7 +132,17 @@ class _BoardState extends State<_Board> {
               padding: EdgeInsets.only(top: bTop),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [for (final id in b) _item(id)],
+                children: [
+                  for (final (index, id) in b.indexed)
+                    if (widget.reorderB)
+                      MotionReorder(
+                        key: ValueKey('reorder-$id'),
+                        flightKey: index,
+                        child: _item(id),
+                      )
+                    else
+                      _item(id),
+                ],
               ),
             ),
           ),
@@ -222,6 +240,47 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(_feedback), findsNothing);
       expect(tester.getTopLeft(_child('x')), const Offset(400, 300));
+    });
+
+    testWidgets('follows where a reordering destination is painted', (
+      tester,
+    ) async {
+      final board = GlobalKey<_BoardState>();
+      await tester.pumpWidget(
+        _app(_Board(key: board, bItems: const ['y'], reorderB: true)),
+      );
+
+      // x lands below y, at 240.
+      final gesture = await _drag(tester, const Offset(400, 280));
+      await gesture.up();
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(fineFrame);
+      }
+
+      // Swap the column while x is still landing: x's layout jumps to the
+      // top at once, while MotionReorder paints it flying there.
+      board.currentState!.reverseB();
+      final tops = <double>[_feedbackRect(tester).top];
+      while (find.byKey(_feedback).evaluate().isNotEmpty) {
+        await tester.pump(fineFrame);
+        if (find.byKey(_feedback).evaluate().isEmpty) break;
+        tops.add(_feedbackRect(tester).top);
+      }
+
+      final steps = [
+        for (var i = 1; i < tops.length; i++) (tops[i] - tops[i - 1]).abs(),
+      ];
+      // An item is 40 px tall: following the layout would jump that far in
+      // one frame.
+      expect(
+        steps.reduce((a, b) => a > b ? a : b),
+        lessThan(5),
+        reason: '$tops',
+      );
+      expect(tops.last, moreOrLessEquals(_inB.dy, epsilon: 0.5));
+      expect(tester.getTopLeft(_child('x')), _inB);
+      expect(_isShown(tester, 'x'), isTrue);
     });
 
     testWidgets('a rejected drop springs back with the release velocity', (
