@@ -222,6 +222,76 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('items mounted below the fold fly on the frame of the '
+        'reorder, unseen, and are at rest when scrolled in', (tester) async {
+      final column = ScrollController();
+      addTearDown(column.dispose);
+      final list = GlobalKey<_ListState>();
+      final ids = [for (var i = 0; i < 40; i++) '$i'];
+      await tester.pumpWidget(
+        _app(
+          _List(
+            key: list,
+            items: ids,
+            layout: (context, items) => _builder(items, controller: column),
+          ),
+        ),
+      );
+      // Show the items further down once, then scroll back. The viewport
+      // shows 15 items; the cache extent keeps more mounted below it,
+      // without painting them.
+      column.jumpTo(160);
+      await tester.pump();
+      column.jumpTo(0);
+      await tester.pump();
+      expect(find.byKey(_key('17'), skipOffstage: false), findsOneWidget);
+
+      list.currentState!.reorder(ids.reversed.toList());
+      await tester.pumpAndSettle();
+      column.jumpTo(400);
+      await tester.pump();
+      for (var i = 0; i < 40; i++) {
+        final finder = find.byKey(_key('$i'));
+        if (finder.evaluate().isEmpty) continue;
+        expect(_flying(tester, '$i'), isFalse, reason: '$i');
+      }
+      expect(tester.binding.transientCallbackCount, 0);
+    });
+
+    testWidgets('an item partly visible at the reorder flies from its first '
+        'frame', (tester) async {
+      final list = GlobalKey<_ListState>();
+      final ids = [for (var i = 0; i < 40; i++) '$i'];
+      await tester.pumpWidget(
+        _app(
+          _List(
+            key: list,
+            items: ids,
+            layout: (context, items) => Padding(
+              padding: const EdgeInsets.only(top: 20),
+              child: _builder(items),
+            ),
+          ),
+        ),
+      );
+      // The viewport is 580 tall, so item 14 is cut off at its middle.
+      final before = _layout(tester, '14');
+      expect(before, const Offset(0, 580));
+
+      list.currentState!.reorder(
+        [...ids]
+          ..remove('14')
+          ..insert(0, '14'),
+      );
+      await tester.pump();
+      expect(_painted(tester, '14'), before);
+      await tester.pump(const Duration(milliseconds: 40));
+      final moving = _painted(tester, '14').dy;
+      expect(moving, lessThan(before.dy));
+      expect(moving, greaterThan(_layout(tester, '14').dy));
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('scrolling a board, its column or both never starts a flight', (
       tester,
     ) async {

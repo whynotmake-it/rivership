@@ -270,7 +270,8 @@ class _ReorderLayer extends TransformLayer {}
 ///
 /// A flight is resolved after layout: in [updateCompositedLayer] when this
 /// is a repaint boundary, else in [paint]. A flight key change schedules
-/// that step; so does every frame of a flight.
+/// that step; so does every frame of a flight. An item that isn't painted
+/// in the frame of a flight key change resolves after that frame instead.
 class _RenderMotionReorder extends RenderProxyBox {
   _RenderMotionReorder({
     required TickerProvider vsync,
@@ -330,6 +331,10 @@ class _RenderMotionReorder extends RenderProxyBox {
   /// schedule another one.
   bool _resolving = false;
 
+  /// Whether a post-frame callback will start a pending flight that no
+  /// paint started.
+  bool _startScheduled = false;
+
   bool get _inFlight => _controller?.isAnimating ?? false;
 
   @override
@@ -381,11 +386,29 @@ class _RenderMotionReorder extends RenderProxyBox {
     if (!keyChanged || !attached || !hasSize) return;
     if (_inFlight) {
       _redirect = true;
-      _scheduleResolve();
+      _scheduleStart();
       return;
     }
     _pendingOrigin ??= _originContent();
-    if (_pendingOrigin != null) _scheduleResolve();
+    if (_pendingOrigin != null) _scheduleStart();
+  }
+
+  /// Makes a pending flight start, or redirect, in this frame.
+  ///
+  /// The paint phase resolves it, so a painted item flies from the frame's
+  /// first picture. Flutter skips painting an item that is mounted but off
+  /// screen, such as one in a list's cache extent, so a post-frame callback
+  /// resolves the flight from this frame's layout if no paint did. Such an
+  /// item flies unseen and is at rest by the time it's scrolled in.
+  void _scheduleStart() {
+    _scheduleResolve();
+    if (_startScheduled) return;
+    _startScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _startScheduled = false;
+      if (!attached || (_pendingOrigin == null && !_redirect)) return;
+      _resolve();
+    }, debugLabel: 'MotionReorder.start');
   }
 
   void _trackScrollables() {
