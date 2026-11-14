@@ -185,10 +185,18 @@ When the drag ends, the feedback flies to where the item now lives. Like a
   gone): it stays where it was dropped and plays its exit, by default
   shrinking and fading out.
 
-The landing starts with the release velocity and follows its destination if
-that scrolls or resizes. While the feedback lands, the destination keeps its
-place but hides its child. Grabbing the feedback mid-landing drags it on
-from where it is.
+The landing starts with the release velocity and follows where its
+destination is painted, also while that scrolls, resizes or flies in a
+`MotionReorder`. While the feedback lands, the destination keeps its place
+but hides its child. Grabbing the feedback mid-landing drags it on from
+where it is.
+
+The feedback flies in the `Overlay`, above everything. Inside a
+`MotionReorder`, it hands the rest of the landing to it once it is fully
+inside the destination's scrollables and its scale, rotation, opacity and
+size have settled. The item then finishes in the tree with its velocity,
+clipped and stacked like itself, and a reorder redirects it. Without a
+`MotionReorder`, the feedback lands in the overlay.
 
 ```dart
 MotionDraggable<Task>(

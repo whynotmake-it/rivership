@@ -67,6 +67,14 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// With [repaintBoundary], each frame of a flight only moves a composited
 /// layer and repaints nothing.
 ///
+/// ## Landing a MotionDraggable
+///
+/// A `MotionDraggable` inside a [MotionReorder] that lands on its item hands
+/// the rest of the landing to the [MotionReorder] once the feedback is
+/// inside the visible area of the item's scrollables. From then on, the
+/// item flies in the tree: it is clipped and stacked like the item, a
+/// reorder redirects it, and it uses [motion].
+///
 /// ## Reduced motion
 ///
 /// Like the other motor_widgets, this widget has no motion policy of its
@@ -107,8 +115,9 @@ class MotionReorder extends StatefulWidget {
   /// Whether flights may run. When false, a running flight ends at once and
   /// [flightKey] changes snap.
   ///
-  /// Turn it off while another animation owns the item's visual, such as a
-  /// `MotionDraggable` landing on it.
+  /// A `MotionDraggable` landing on the item hands the rest of its landing
+  /// to this widget while it is enabled, so there's no need to turn it off
+  /// for that.
   final bool enabled;
 
   /// A stable ancestor to measure positions in, instead of the screen.
@@ -272,7 +281,8 @@ class _ReorderLayer extends TransformLayer {}
 /// A flight is resolved after layout: in [updateCompositedLayer] when this
 /// is a repaint boundary, else in [paint]. A flight key change schedules
 /// that step; so does every frame of a flight.
-class _RenderMotionReorder extends RenderProxyBox implements PaintOffset {
+class _RenderMotionReorder extends RenderProxyBox
+    implements PaintOffset, FlightReceiver {
   _RenderMotionReorder({
     required TickerProvider vsync,
     required Object flightKey,
@@ -335,6 +345,34 @@ class _RenderMotionReorder extends RenderProxyBox implements PaintOffset {
 
   @override
   Offset get paintOffset => _visual;
+
+  @override
+  bool get canReceiveFlight => _enabled && attached && hasSize;
+
+  /// Takes over a `MotionDraggable` landing on this item: the child is
+  /// painted [offset] further away than it is now, moving [velocity]
+  /// faster, and this item's flight springs it home from there.
+  ///
+  /// It only starts a flight; the flight's frames resolve like any other.
+  @override
+  void receiveFlight({required Offset offset, required Offset velocity}) {
+    final controller = _ensureController();
+    final target = _contentPosition();
+    // Where the child is painted now. A running flight may have ticked
+    // already this frame, so read it from the controller.
+    final flying = controller.isAnimating;
+    final painted = flying ? controller.value : target + _visual;
+    final carried = flying ? controller.velocity : Offset.zero;
+    _pendingOrigin = null;
+    _redirect = false;
+    _flightTarget = target;
+    controller.animateTo(
+      target,
+      from: painted + offset,
+      withVelocity: carried + velocity,
+    );
+    _scheduleResolve();
+  }
 
   @override
   bool get isRepaintBoundary => _repaintBoundary;

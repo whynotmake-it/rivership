@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/drag/motion_draggable.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// A mounted [MotionDraggable] that a [DragFlight] can land on.
@@ -18,6 +19,14 @@ abstract interface class LandingSite {
   /// The link that the site leads while a flight lands on its tag, so the
   /// flight can follow where the site is painted in every frame.
   LayerLink get landingLink;
+
+  /// The receiver in the tree that can take the rest of a landing on this
+  /// site, or null when there is none.
+  FlightReceiver? get flightReceiver;
+
+  /// Where the site can be seen: the intersection of its scrollables'
+  /// painted rects in global coordinates, or null when it has none.
+  Rect? get visibleRect;
 
   /// Called when a flight starts or stops landing on this site's tag, so
   /// that the site hides or shows its child.
@@ -409,6 +418,63 @@ class DragFlight {
     _siteRect = rect;
   }
 
+  /// Hands the rest of the landing to the destination's [FlightReceiver]
+  /// once the feedback looks like the destination and is where the
+  /// destination can be seen, then leaves the overlay.
+  ///
+  /// It runs on the flight's own tick, during a frame, so the receiver's
+  /// spring starts at this frame's time and moves on in the next one
+  /// (a ticker started between frames would stand still for a frame). The
+  /// rects it checks are where the last frame painted them. From then on the
+  /// item flies in the tree: clipped by its scrollables and stacked like
+  /// itself.
+  ///
+  /// The receiver only takes position, so the hand-off waits until the
+  /// visual tracks and the size have settled: the destination's child has no
+  /// place for them, and the feedback may differ from it.
+  void _tryHandOff() {
+    final site = _site;
+    final controller = _controller;
+    if (_done || site == null || controller == null) return;
+    if (phase == MotionDragPhase.dragging || !_resolved) return;
+    final receiver = site.flightReceiver;
+    final rect = site.globalRect;
+    if (receiver == null || rect == null) return;
+    for (final track in [
+      MotionDraggableTrack.size,
+      ...MotionDraggableTrack.visual,
+    ]) {
+      if (controller.animationOf(track).isAnimating) return;
+    }
+    final size = controller.value(MotionDraggableTrack.size);
+    if ((size.width - rect.width).abs() > 0.5 ||
+        (size.height - rect.height).abs() > 0.5) {
+      return;
+    }
+    final offset = controller.value(MotionDraggableTrack.offset);
+    final visible = site.visibleRect ?? _overlayRect();
+    final feedback = (rect.topLeft + offset) & rect.size;
+    if (visible == null || !_contains(visible, feedback)) return;
+    receiver.receiveFlight(
+      offset: offset,
+      velocity: controller.velocity(MotionDraggableTrack.offset),
+    );
+    _finish(landed: true);
+  }
+
+  Rect? _overlayRect() {
+    final box = overlay.context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  static bool _contains(Rect outer, Rect inner) {
+    // Half a pixel of slack, so a card that fills its viewport exactly
+    // still fits.
+    final slack = outer.inflate(0.5);
+    return slack.contains(inner.topLeft) && slack.contains(inner.bottomRight);
+  }
+
   void _loseSite(LandingSite site) {
     _lossScheduled = false;
     final controller = _controller;
@@ -511,7 +577,9 @@ class DragFlight {
 
   void _attach(_FlightViewState view) {
     _view = view;
-    view._controller.addStatusListener(_onStatus);
+    view._controller
+      ..addStatusListener(_onStatus)
+      ..addListener(_tryHandOff);
     if (phase == MotionDragPhase.dragging) {
       _applyTransitions();
     } else {
@@ -522,7 +590,9 @@ class DragFlight {
 
   void _detach(_FlightViewState view) {
     if (_view != view) return;
-    view._controller.removeStatusListener(_onStatus);
+    view._controller
+      ..removeStatusListener(_onStatus)
+      ..removeListener(_tryHandOff);
     _view = null;
     if (_done) return;
     // The overlay went away while the flight was still in it.

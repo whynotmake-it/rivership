@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 
 import '../util.dart';
 
@@ -26,6 +27,16 @@ bool _isShown(WidgetTester tester, String id) => tester
 
 Rect _feedbackRect(WidgetTester tester) =>
     tester.getRect(find.byKey(_feedback));
+
+/// Where item [id] is painted: as the feedback while that flies in the
+/// overlay, else as the child, including a MotionReorder's paint offset.
+Rect _paintedRect(WidgetTester tester, String id) {
+  final feedback = find.byKey(_feedback);
+  if (feedback.evaluate().isNotEmpty) return tester.getRect(feedback);
+  return paintedGlobalRect(tester.renderObject<RenderBox>(_child(id)));
+}
+
+bool _inOverlay() => find.byKey(_feedback).evaluate().isNotEmpty;
 
 /// Two columns: A at x 0, B at x 400. B is a plain [DragTarget] that moves
 /// what is dropped on it into B, or removes it when [consume] is set.
@@ -152,6 +163,111 @@ class _BoardState extends State<_Board> {
   }
 }
 
+const _header = Key('header');
+
+/// Column A at x 0 and a scrolling column B at x 400, both in
+/// [MotionReorder]s keyed by index. B's list is the viewport from y 200 to
+/// 320, with a header stacked over its top 20 px. Dropping on B appends.
+class _ScrollBoard extends StatefulWidget {
+  const _ScrollBoard({super.key});
+
+  @override
+  State<_ScrollBoard> createState() => _ScrollBoardState();
+}
+
+class _ScrollBoardState extends State<_ScrollBoard> {
+  final a = ['x'];
+  final b = ['y'];
+  final scroll = ScrollController();
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  Widget _card(String id, int index) => MotionReorder(
+    key: ValueKey('reorder-$id'),
+    flightKey: index,
+    child: MotionDraggable<String>(
+      key: ValueKey(id),
+      data: id,
+      feedback: const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+      child: SizedBox.fromSize(
+        key: ValueKey('child-$id'),
+        size: _itemSize,
+        child: const ColoredBox(color: Color(0xFF888888)),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 200,
+          height: 600,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [for (final (i, id) in a.indexed) _card(id, i)],
+          ),
+        ),
+        const SizedBox(width: 200),
+        SizedBox(
+          width: 200,
+          height: 600,
+          child: DragTarget<String>(
+            onAcceptWithDetails: (details) => setState(() {
+              a.remove(details.data);
+              b.add(details.data);
+            }),
+            builder: (context, candidates, rejected) => Padding(
+              padding: const EdgeInsets.only(top: 200),
+              child: SizedBox(
+                height: 120,
+                child: Stack(
+                  children: [
+                    ListView(
+                      controller: scroll,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final (i, id) in b.indexed)
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: _card(id, i),
+                          ),
+                      ],
+                    ),
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 20,
+                      child: ColoredBox(
+                        key: _header,
+                        color: Color(0xFFFF0000),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The first render box that a pointer at [position] hits.
+RenderObject? _topHit(WidgetTester tester, Offset position) {
+  final result = HitTestResult();
+  tester.binding.hitTestInView(result, position, tester.view.viewId);
+  return result.path.firstOrNull?.target as RenderObject?;
+}
+
 Widget _app(Widget child) => Directionality(
   textDirection: TextDirection.ltr,
   child: Overlay(initialEntries: [OverlayEntry(builder: (_) => child)]),
@@ -261,12 +377,12 @@ void main() {
       // Swap the column while x is still landing: x's layout jumps to the
       // top at once, while MotionReorder paints it flying there.
       board.currentState!.reverseB();
-      final tops = <double>[_feedbackRect(tester).top];
-      while (find.byKey(_feedback).evaluate().isNotEmpty) {
+      final tops = <double>[_paintedRect(tester, 'x').top];
+      for (var i = 0; i < 400; i++) {
         await tester.pump(fineFrame);
-        if (find.byKey(_feedback).evaluate().isEmpty) break;
-        tops.add(_feedbackRect(tester).top);
+        tops.add(_paintedRect(tester, 'x').top);
       }
+      await tester.pumpAndSettle();
 
       final steps = [
         for (var i = 1; i < tops.length; i++) (tops[i] - tops[i - 1]).abs(),
@@ -279,7 +395,7 @@ void main() {
         reason: '$tops',
       );
       expect(tops.last, moreOrLessEquals(_inB.dy, epsilon: 0.5));
-      expect(tester.getTopLeft(_child('x')), _inB);
+      expect(_paintedRect(tester, 'x').topLeft, _inB);
       expect(_isShown(tester, 'x'), isTrue);
     });
 
@@ -619,6 +735,110 @@ void main() {
       // Both children are shown again once it has landed.
       expect(_isShown(tester, 'x'), isTrue);
       expect(_isShown(tester, 'y'), isTrue);
+    });
+  });
+
+  group('MotionDraggable hand-off to MotionReorder', () {
+    testWidgets('leaves the overlay once the card is inside the destination '
+        'viewport, with continuous velocity', (tester) async {
+      await tester.pumpWidget(_app(const _ScrollBoard()));
+
+      // Drop x above B's viewport: the card is at y 150, its place at 240.
+      final gesture = await _drag(tester, const Offset(400, 150));
+      await gesture.up();
+      expect(_feedbackRect(tester).top, 150);
+
+      final tops = <double>[];
+      int? handOff;
+      for (var i = 0; i < 300; i++) {
+        await tester.pump(fineFrame);
+        if (handOff == null && !_inOverlay()) handOff = tops.length;
+        tops.add(_paintedRect(tester, 'x').top);
+      }
+      expect(handOff, isNotNull, reason: 'should hand off');
+      // It flew in the overlay until the card was fully inside the viewport,
+      // which starts at 200, and handed off before it arrived.
+      expect(tops[handOff! - 1], lessThan(200));
+      expect(tops[handOff], greaterThanOrEqualTo(199.5));
+      expect(tops[handOff], lessThan(239));
+      expectContinuousVelocity(tops, retargetAt: handOff);
+
+      await tester.pumpAndSettle();
+      expect(_paintedRect(tester, 'x').topLeft, const Offset(400, 240));
+      expect(_isShown(tester, 'x'), isTrue);
+    });
+
+    testWidgets('in the tree, the card is clipped by its list and painted '
+        'below what is stacked above the list', (tester) async {
+      final board = GlobalKey<_ScrollBoardState>();
+      await tester.pumpWidget(_app(_ScrollBoard(key: board)));
+
+      final gesture = await _drag(tester, const Offset(400, 230));
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(fineFrame);
+      expect(_inOverlay(), isFalse, reason: 'dropped inside the viewport');
+
+      // Scroll x's place half out of the top of the viewport, to 190, while
+      // it still flies.
+      board.currentState!.scroll.jumpTo(50);
+      await tester.pump(fineFrame);
+      expect(tester.getTopLeft(_child('x')).dy, 190);
+      expect(_inOverlay(), isFalse);
+
+      final child = tester.renderObject(_child('x'));
+      bool isCard(RenderObject? hit) {
+        for (var node = hit; node != null; node = node.parent) {
+          if (node == child) return true;
+        }
+        return false;
+      }
+
+      // Above the viewport, the list clips it away; under the header, the
+      // header is on top; below the header, the card is.
+      expect(isCard(_topHit(tester, const Offset(440, 195))), isFalse);
+      expect(
+        _topHit(tester, const Offset(440, 210)),
+        tester.renderObject(find.byKey(_header)),
+      );
+      expect(isCard(_topHit(tester, const Offset(440, 225))), isTrue);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a drop into the same viewport hands off at once', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const _ScrollBoard()));
+
+      // Rejected inside column A, which has no scrollable: the overlay is
+      // its viewport.
+      final gesture = await _drag(tester, const Offset(20, 100));
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(fineFrame);
+      expect(_inOverlay(), isFalse);
+      expect(_isShown(tester, 'x'), isTrue);
+      expect(_paintedRect(tester, 'x').top, greaterThan(50));
+
+      await tester.pumpAndSettle();
+      expect(_paintedRect(tester, 'x').topLeft, Offset.zero);
+    });
+
+    testWidgets('without a MotionReorder, the overlay flight lands', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const _Board()));
+
+      final gesture = await _drag(tester, const Offset(400, 280));
+      await gesture.up();
+      final overlayFrames = <bool>[];
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(frame);
+        overlayFrames.add(_inOverlay());
+      }
+      expect(overlayFrames, everyElement(isTrue));
+      await tester.pumpAndSettle();
+      expect(_inOverlay(), isFalse);
     });
   });
 }

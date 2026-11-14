@@ -88,3 +88,31 @@ class RenderLeaderWhile extends RenderProxyBox {
     context.pushLayer(leader, super.paint, Offset.zero);
   }
 }
+
+/// A render object in the tree that can take over a landing flight from the
+/// overlay, so the rest of it is clipped and stacked like the item itself.
+///
+/// `MotionReorder` is one.
+abstract interface class FlightReceiver {
+  /// Whether it can take a flight now.
+  bool get canReceiveFlight;
+
+  /// Paints the child [offset] away from where it is painted now, moving at
+  /// [velocity] in logical pixels per second, and springs it home from
+  /// there.
+  ///
+  /// Both are relative to the child's current painted position, so a flight
+  /// the receiver is already running carries on underneath.
+  void receiveFlight({required Offset offset, required Offset velocity});
+}
+
+/// The nearest [FlightReceiver] above [box] that can take a flight now.
+FlightReceiver? flightReceiverAbove(RenderObject box) {
+  for (var node = box.parent; node != null; node = node.parent) {
+    if (node is FlightReceiver) {
+      final receiver = node as FlightReceiver;
+      return receiver.canReceiveFlight ? receiver : null;
+    }
+  }
+  return null;
+}
