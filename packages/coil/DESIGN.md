@@ -204,8 +204,8 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 
 | Token | Default (`CupertinoMotion`) | Moves |
 |---|---|---|
-| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight glide, press collapse, focus-ring travel, chevron rotate, tooltip and chip enter, switch squish |
-| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | indicators that must land: tab pill, switch thumb, radio selected fill, merge/split, popover open/close, collapse heights, month paging, drawer, slider thumb settle, list reorder |
+| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight glide, press collapse, focus-ring travel, chevron rotate, tooltip and chip enter, switch squish, popover open/close on the pointer tier |
+| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | indicators that must land: tab pill, switch thumb, radio selected fill, merge/split, popover open/close on the touch tier, collapse heights, month paging, drawer, slider thumb settle, list reorder |
 | `gentle` / `gentleExit` | 340 ms, bounce 0.1 / 260 ms | large surfaces: sheets, dialogs, full-screen pages, sidebar rail open/close, Banner appear |
 | `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity and color: label colors, tints, rings fading, check and dash drawing, scrollbar visibility |
 
@@ -226,6 +226,8 @@ Named holds that aren't tokens:
 - **The bigger the thing, the softer the spring.** Only `gentle` bounces. No component invents a duration.
 - **Exits are tighter springs, never curves**, so a reversed transition keeps its velocity. Enter always outlasts exit.
 - **Overlays enter with the blur-fade** (`CoilBlurFade`): opacity 0 → 1, blur 4 → 0, scale 0.96 → 1, plus a 4 px slide from the resolved side (popovers, tooltips). Exits run it in reverse on the exit token.
+- **Popovers follow the tier.** Pointer popovers open on `quick` and close on `quickExit`, like the original's popups (`spring.fast`). Touch popovers are bigger and open under a finger, so they use `standard` / `standardExit`. The tier comes from `CoilTheme.tierOf`, not the platform.
+- **Scale an image, not the text.** While an overlay scales or slides, its content is drawn at rest size and the result is resampled (a matrix image filter, medium quality). Text drawn under an animated scale is re-rasterized every frame, and Impeller snaps each glyph to the pixel grid on its own, so letters jitter. At rest the content paints directly.
 - **Gestures hand off their velocity:**
   - a sheet drag, drawer drag or switch flick releases into its spring with the fling velocity;
   - a switch decides by the projected position `x + v · 0.1 s`;
@@ -424,7 +426,7 @@ Every component ships with all of these. They're required to call it done.
 - Width ≥ the trigger's (menus default to 288 pointer, `max(trigger, 220)` touch).
 - Max height `min(480, available)` for menus, 300 for pointer selects; touch popovers are uncapped (≤ 8 rows).
 - 6 px from the anchor; flips to the side with room; 8 px from window edges.
-- Enter with the blur-fade on `standard`, from the resolved side; exit on `standardExit`.
+- Enter with the blur-fade from the resolved side: `quick` / `quickExit` on pointer, `standard` / `standardExit` on touch (§7.2).
 - Lists scroll inside a ScrollArea with 32 px edge fades.
 
 ### 13.3 Sheet
@@ -724,7 +726,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **Touch: tap to drill.** In a touch popover the submenu *replaces* the parent in place, with a "‹ Parent" back row; the panel height springs and the page slides on `standard`. In a sheet it's the same push.
 - **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Pointer: autofocused. Touch sheet: not autofocused.
 - **Presentation:** §9.1. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
-- **Motion:** popup blur-fade on `standard` / `standardExit`; highlight `quick`; sub push `standard`.
+- **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
 - **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows, and immediately for actions.
 - **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
 - **Haptic:** iOS `selectionClick` on a pick in a sheet.
@@ -754,7 +756,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Multi:** chips wrap inside the field before the input. A chip is 24 / 20 / 28 / 24 high, padding 8, caption, `hover` fill, item radius (pill → full). Its remove × is 16 visual with the hit box growing to the chip height (44 on touch). The field height springs on `quick` as chips wrap.
 - **Pointer:** the list anchors under the input, at least the input's width, max height 300; the input keeps focus.
 - **Phone:** a **full-height sheet**. The input is on top, focused, with the keyboard up. Chips sit above the input, results below, and Done in the header for multi.
-- **Motion:** chips enter scale 0.9 → 1 + fade on `quick` (growing from the leading edge) and exit on `quickExit`; siblings slide on `standard`; the list blur-fades on `standard`.
+- **Motion:** chips enter scale 0.9 → 1 + fade on `quick` (growing from the leading edge) and exit on `quickExit`; siblings slide on `standard`; the list blur-fades on the tier's popover tokens (§7.2).
 - **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip; Left and Right move between chips.
 - **Semantics:** a combobox textField with `expanded`; rows `selected`; a live result count; the chip toolbar is labeled "Selected".
 - **Do:** use it for long or open-ended option sets.

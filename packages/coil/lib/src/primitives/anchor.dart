@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
+import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
@@ -80,9 +81,10 @@ class CoilPopoverController {
 /// its content right after the anchor, and the rest of the page stays
 /// reachable.
 ///
-/// It springs in on the theme's `standard` tokens, growing from the edge
-/// next to the anchor while it blur-fades. Under reduced motion it only
-/// fades, on `fade`.
+/// It grows from the edge next to the anchor while it blur-fades: on the
+/// theme's `quick` tokens on the pointer tier, and on the softer `standard`
+/// on the touch tier, where it's bigger and opens under a finger. Under
+/// reduced motion it only fades, on `fade`.
 class CoilPopover extends StatefulWidget {
   /// Creates a popover anchored to [child].
   const CoilPopover({
@@ -200,7 +202,12 @@ class _CoilPopoverState extends State<CoilPopover>
       _at = at;
     });
     _presence
-      ..motion = _reduceMotion ? motion.fade : motion.standard
+      ..motion = _reduceMotion
+          ? motion.fade
+          : switch (CoilTheme.tierOf(context)) {
+              CoilTier.pointer => motion.quick,
+              CoilTier.touch => motion.standard,
+            }
       ..animateTo(1);
   }
 
@@ -209,7 +216,12 @@ class _CoilPopoverState extends State<CoilPopover>
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     setState(() => _open = false);
     _presence
-      ..motion = _reduceMotion ? motion.fadeExit : motion.standardExit
+      ..motion = _reduceMotion
+          ? motion.fadeExit
+          : switch (CoilTheme.tierOf(context)) {
+              CoilTier.pointer => motion.quickExit,
+              CoilTier.touch => motion.standardExit,
+            }
       ..animateTo(0);
     if (_scope.hasFocus) _returnFocus?.requestFocus();
     _returnFocus = null;
