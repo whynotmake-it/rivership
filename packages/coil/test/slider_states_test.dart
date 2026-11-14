@@ -11,10 +11,14 @@ void main() {
       final states = s.controller();
       controllers.add(states);
       return SizedBox(
-        width: 180,
+        width: 220,
         child: CoilSlider(
           value: .5,
-          divisions: variant == CoilSliderVariant.pips ? 4 : null,
+          divisions:
+              variant == CoilSliderVariant.pips ||
+                  variant == CoilSliderVariant.pillPips
+              ? 4
+              : null,
           variant: variant,
           label: const Text('Level'),
           valueBuilder: (_, v) => Text('${(v * 100).round()}%'),
@@ -28,7 +32,7 @@ void main() {
       final states = s.controller();
       controllers.add(states);
       return SizedBox(
-        width: 180,
+        width: 220,
         child: CoilRangeSlider(
           values: const CoilRangeValues(.25, .75),
           label: const Text('Level'),
@@ -49,6 +53,10 @@ void main() {
             SheetRow('scrubber', (s) => slider(s, CoilSliderVariant.scrubber)),
             SheetRow('pips', (s) => slider(s, CoilSliderVariant.pips)),
             SheetRow('pill', (s) => slider(s, CoilSliderVariant.pill)),
+            SheetRow(
+              'pill pips',
+              (s) => slider(s, CoilSliderVariant.pillPips),
+            ),
             SheetRow('range', range),
           ],
         ),

@@ -113,16 +113,26 @@ class _SliderPageState extends State<SliderPage> {
       ),
       DemoSection(
         title: 'Step list',
-        description: 'Any allowed values, not only even steps.',
-        child: CoilSlider(
-          label: const Text('Rating'),
-          variant: CoilSliderVariant.pips,
-          min: _ratings.first,
-          max: _ratings.last,
-          steps: _ratings,
-          value: _rating,
-          valueBuilder: (_, v) => Text('$v A'),
-          onChanged: (v) => setState(() => _rating = v),
+        description:
+            'Any allowed values, not only even steps, with a dot at each: '
+            'on the row or on the pill.',
+        child: DemoColumn(
+          children: [
+            for (final variant in [
+              CoilSliderVariant.pips,
+              CoilSliderVariant.pillPips,
+            ])
+              CoilSlider(
+                label: const Text('Rating'),
+                variant: variant,
+                min: _ratings.first,
+                max: _ratings.last,
+                steps: _ratings,
+                value: _rating,
+                valueBuilder: (_, v) => Text('$v A'),
+                onChanged: (v) => setState(() => _rating = v),
+              ),
+          ],
         ),
       ),
       DemoSection(

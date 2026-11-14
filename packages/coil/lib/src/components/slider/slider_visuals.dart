@@ -3,6 +3,7 @@
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/slider/slider_layout.dart';
 import 'package:coil/src/components/slider/slider_painters.dart';
 import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:coil/src/components/slider/slider_style.dart';
@@ -94,7 +95,7 @@ class SliderRow extends StatelessWidget {
 }
 
 /// The pill: a thin track with a knob per thumb, between an optional label
-/// and value.
+/// and value, or below them when the row is too narrow for all three.
 class SliderPill extends StatelessWidget {
   const SliderPill({
     required this.painter,
@@ -183,22 +184,23 @@ class SliderPill extends StatelessWidget {
         ),
       ),
     );
-    return Row(
-      spacing: metrics.gap,
-      children: [
-        if (label != null)
-          DefaultTextStyle(
-            style: text.copyWith(
-              color: labelColor,
-              fontVariations: sliderWeight(emphasis),
+    return SliderPillLayout(
+      gap: metrics.gap,
+      minTrack: style.pillMinTrack!,
+      label: label == null
+          ? null
+          : DefaultTextStyle(
+              style: text.copyWith(
+                color: labelColor,
+                fontVariations: sliderWeight(emphasis),
+              ),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              child: label!,
             ),
-            maxLines: 1,
-            softWrap: false,
-            child: label!,
-          ),
-        Expanded(child: track(pill)),
-        ?value,
-      ],
+      track: track(pill),
+      value: value,
     );
   }
 }

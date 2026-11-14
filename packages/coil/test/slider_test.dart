@@ -790,6 +790,99 @@ void main() {
     });
   });
 
+  group('pill layout', () {
+    Future<({Rect label, Rect track, Rect value})> lay(
+      WidgetTester tester, {
+      required double width,
+      double textScale = 1,
+      TextDirection direction = TextDirection.ltr,
+      ValueChanged<CoilRangeValues>? onChanged,
+    }) async {
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: Directionality(
+              textDirection: direction,
+              child: CoilTheme(
+                data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
+                child: Center(
+                  child: SizedBox(
+                    width: width,
+                    child: CoilRangeSlider(
+                      key: const ValueKey('slider'),
+                      label: const Text('Price'),
+                      max: 100,
+                      values: const CoilRangeValues(20, 80),
+                      onChanged: onChanged ?? (_) {},
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return (
+        label: tester.getRect(find.text('Price')),
+        track: tester.getRect(
+          find.descendant(of: _slider, matching: find.byType(CoilPainterLayer)),
+        ),
+        value: tester.getRect(find.text('80').last),
+      );
+    }
+
+    testWidgets('wide: label, track and value share a line', (tester) async {
+      final r = await lay(tester, width: 400);
+      expect(r.label.center.dy, closeTo(r.track.center.dy, .5));
+      expect(r.label.right, lessThan(r.track.left));
+      expect(r.track.right, lessThan(r.value.left));
+    });
+
+    testWidgets('narrow: label and value move above a full-width track', (
+      tester,
+    ) async {
+      final r = await lay(tester, width: 260, textScale: 2);
+      expect(tester.takeException(), isNull, reason: 'no overflow');
+      final slider = tester.getRect(_slider);
+      expect(r.label.bottom, lessThanOrEqualTo(r.track.top + .5));
+      expect(r.value.bottom, lessThanOrEqualTo(r.track.top + .5));
+      expect(r.track.width, slider.width);
+      expect(r.label.left, slider.left);
+      expect(r.value.right, closeTo(slider.right, .5));
+    });
+
+    testWidgets('narrow RTL: the label is at the right', (tester) async {
+      final r = await lay(
+        tester,
+        width: 260,
+        textScale: 2,
+        direction: TextDirection.rtl,
+      );
+      final slider = tester.getRect(_slider);
+      expect(r.label.right, closeTo(slider.right, .5));
+      expect(r.label.bottom, lessThanOrEqualTo(r.track.top + .5));
+    });
+
+    testWidgets('narrow: the track under the text still takes taps', (
+      tester,
+    ) async {
+      CoilRangeValues? got;
+      final r = await lay(
+        tester,
+        width: 260,
+        textScale: 2,
+        onChanged: (v) => got = v,
+      );
+      await tester.tapAt(Offset(r.track.right - 23, r.track.center.dy));
+      await tester.pump();
+      expect(got?.end, closeTo(100, 1));
+    });
+  });
+
   group('pill step dots', () {
     /// The dots' centers (as fractions of the track) and diameters: the
     /// marks no wider than a grown dot, so not the outline or the knobs.

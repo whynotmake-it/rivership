@@ -190,7 +190,9 @@ final Map<String, WidgetBuilder> _stories = {
         CoilRangeSlider(
           values: const CoilRangeValues(.25, .7),
           steps: const [0, .1, .25, .5, .7, 1],
+          variant: CoilSliderVariant.pillPips,
           onChanged: (_) {},
+          label: const Text('Range'),
           valueBuilder: (_, v) => Text('${(v * 100).round()}'),
         ),
       ],

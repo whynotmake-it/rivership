@@ -28,6 +28,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.knobSize,
     this.knobBox,
     this.pillHeight,
+    this.pillMinTrack,
     this.pipSize,
     this.pipGrowth,
     this.dotSize,
@@ -86,6 +87,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
       knobSize: touch ? 22 : 16,
       knobBox: touch ? 44 : 20,
       pillHeight: 18,
+      pillMinTrack: 96,
       pipSize: 5,
       pipGrowth: 0.4,
       dotSize: 4,
@@ -154,6 +156,11 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// The pill track's height.
   final double? pillHeight;
 
+  /// The narrowest the pill track gets beside the label and the value. A
+  /// row that can't keep it moves the label and value to a line above the
+  /// track.
+  final double? pillMinTrack;
+
   /// A pip's diameter.
   final double? pipSize;
 
@@ -204,6 +211,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           knobSize: other.knobSize ?? knobSize,
           knobBox: other.knobBox ?? knobBox,
           pillHeight: other.pillHeight ?? pillHeight,
+          pillMinTrack: other.pillMinTrack ?? pillMinTrack,
           pipSize: other.pipSize ?? pipSize,
           pipGrowth: other.pipGrowth ?? pipGrowth,
           dotSize: other.dotSize ?? dotSize,
@@ -235,6 +243,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     knobSize,
     knobBox,
     pillHeight,
+    pillMinTrack,
     pipSize,
     pipGrowth,
     dotSize,
