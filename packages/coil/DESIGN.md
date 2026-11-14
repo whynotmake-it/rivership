@@ -1097,13 +1097,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
 - **Deferred:**
-<<<<<<< HEAD
-  - ColorPicker, AskUserQuestions, Reveal and QueuedStack;
-  - Slider range / steps / tooltip mode (v1.x);
-=======
-  - ColorPicker and the settings-dialog block;
+  - ColorPicker;
   - Reveal's scroll-driven reveal (cut, not deferred);
->>>>>>> coil/main
   - Calendar's 2-month strip animation and stacked layout;
   - DataTable v2;
   - PDF thumbnails beyond the renderer hook.
