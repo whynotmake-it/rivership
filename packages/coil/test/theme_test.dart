@@ -70,7 +70,7 @@ void main() {
     );
 
     await pump(
-      const CoilTypography().copyWith(fontFamily: 'Brand', fontPackage: null),
+      const CoilTypography(fontFamily: 'Brand', fontPackage: null),
     );
     expect(style.fontFamily, 'Brand');
 
