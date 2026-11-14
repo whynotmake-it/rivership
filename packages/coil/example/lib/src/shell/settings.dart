@@ -218,6 +218,16 @@ class CatalogSettings extends ChangeNotifier {
   CatalogBrand _brand = CatalogBrand.blue;
   set brand(CatalogBrand value) => _set(() => _brand = value);
 
+  /// The neutral tone's Oklch hue, in degrees.
+  double get neutralHue => _neutralHue;
+  double _neutralHue = 0;
+  set neutralHue(double value) => _set(() => _neutralHue = value);
+
+  /// The neutral tone's Oklch chroma: 0 is pure grey.
+  double get neutralChroma => _neutralChroma;
+  double _neutralChroma = 0;
+  set neutralChroma(double value) => _set(() => _neutralChroma = value);
+
   /// The corner shape family.
   CatalogShape get shape => _shape;
   CatalogShape _shape = CatalogShape.rounded;
@@ -253,7 +263,12 @@ class CatalogSettings extends ChangeNotifier {
         ? CoilThemeData.dark
         : CoilThemeData.light;
     return base.copyWith(
-      colors: base.colors.copyWith(brand: brand.color),
+      colors: CoilColors.fromSeed(
+        brightness: brightness,
+        brand: brand.color,
+        neutralHue: neutralHue,
+        neutralChroma: neutralChroma,
+      ),
       typography: font.typography(platform ?? defaultTargetPlatform),
       shape: _coilShape,
       metrics: spacing.metrics,

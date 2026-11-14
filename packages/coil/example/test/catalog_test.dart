@@ -157,6 +157,8 @@ void main() {
 
     settings
       ..brand = CatalogBrand.violet
+      ..neutralHue = 60
+      ..neutralChroma = 0.02
       ..font = CatalogFont.system
       ..shape = CatalogShape.custom
       ..customRadius = 4
@@ -169,6 +171,15 @@ void main() {
     final theme = CoilTheme.of(home);
     expect(theme.colors.brand, CatalogBrand.violet.color);
     expect(theme.colors.focusRing, CatalogBrand.violet.color);
+    expect(
+      theme.colors,
+      CoilColors.fromSeed(
+        brightness: Brightness.light,
+        brand: CatalogBrand.violet.color,
+        neutralHue: 60,
+        neutralChroma: 0.02,
+      ),
+    );
     expect(DefaultTextStyle.of(home).style.fontFamily, isNull);
     expect(CoilTheme.radiiOf(home).item, 4);
     expect(CoilTheme.radiiOf(home).container, 8);

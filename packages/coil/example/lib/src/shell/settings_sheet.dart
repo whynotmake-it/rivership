@@ -60,8 +60,8 @@ class SettingsPanel extends StatelessWidget {
           CoilFieldSet(
             legend: const Text('Appearance'),
             description: const Text(
-              'The theme an app passes to CoilTheme: colors, font, shape '
-              'and spacing.',
+              'The theme an app passes to CoilTheme. The palette comes from '
+              'CoilColors.fromSeed: a brand color and a neutral tone.',
             ),
             children: [
               CoilField(
@@ -104,6 +104,25 @@ class SettingsPanel extends StatelessWidget {
                       ),
                   ],
                 ),
+              ),
+              CoilSlider(
+                label: _SwatchLabel(
+                  color: CoilColorMix.oklch(0.7, 0.12, settings.neutralHue),
+                  child: const Text('Neutral hue'),
+                ),
+                max: 355,
+                divisions: 71,
+                value: settings.neutralHue,
+                valueFormatter: (v) => '${v.round()}°',
+                onChanged: (value) => settings.neutralHue = value,
+              ),
+              CoilSlider(
+                label: const Text('Neutral tint'),
+                max: 0.05,
+                divisions: 50,
+                value: settings.neutralChroma,
+                valueFormatter: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
+                onChanged: (value) => settings.neutralChroma = value,
               ),
               CoilField(
                 label: const Text('Font'),
@@ -273,4 +292,22 @@ class _Swatch extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A slider label led by a color dot.
+class _SwatchLabel extends StatelessWidget {
+  const _SwatchLabel({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    spacing: 8,
+    children: [
+      _Swatch(color),
+      Flexible(child: child),
+    ],
+  );
 }
