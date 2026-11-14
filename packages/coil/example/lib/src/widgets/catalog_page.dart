@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
-import 'package:coil_example/src/shell/settings_sheet.dart';
+import 'package:coil_example/src/shell/preview_settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
