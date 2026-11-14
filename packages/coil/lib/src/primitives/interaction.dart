@@ -312,15 +312,14 @@ class _CoilInteractionState extends State<CoilInteraction> {
   Widget build(BuildContext context) {
     Widget visual = ListenableBuilder(
       listenable: _states,
-      builder: (context, child) =>
-          widget.builder(
-            context,
-            CoilInteractionDetector.statesFor(
-              _states.value,
-              enabled: widget.enabled,
-            ),
-            child,
-          ),
+      builder: (context, child) => widget.builder(
+        context,
+        CoilInteractionDetector.statesFor(
+          _states.value,
+          enabled: widget.enabled,
+        ),
+        child,
+      ),
       child: widget.child,
     );
     if (widget.minHitTarget > 0) {

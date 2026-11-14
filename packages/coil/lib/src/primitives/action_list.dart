@@ -985,8 +985,7 @@ class _RowState extends State<_Row> {
                   : colors.mutedForeground;
               // A finger gets a fill while it presses; a hovering pointer
               // already shows the highlight.
-              final fill =
-                  pressed && !raw.contains(WidgetState.hovered)
+              final fill = pressed && !raw.contains(WidgetState.hovered)
                   ? widget.pressFill
                   : widget.pressFill.withValues(alpha: 0);
               return MotionBuilder<Color>(

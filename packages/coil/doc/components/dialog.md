@@ -27,5 +27,6 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.
 - **Semantics:** a modal route, `scopesRoute`, title as the route name.
+- **Routes:** `showCoilDialog` pushes a `CoilModalRoute`. Apps that use `Navigator.pages` or a router show the same dialog in a `CoilModalPage`, or return a `CoilModalRoute` from the router's custom route builder. Both paths pick the presentation, scrim, focus and back the same way: the route decides it when it's created, and the dialog reads it with `CoilModalRoute.presentationOf`.
 - **Do:** use it for decisions that block the flow.
 - **Don't:** nest dialogs; open a dialog from a sheet on a phone (push inside the sheet instead).
