@@ -930,6 +930,24 @@ void main() {
         }
       }
       expect(clippedTop, isNotNull, reason: 'should cross the top edge');
+
+      // Its center leaves the column's visible area as it flies on toward
+      // the slot, and it stays clipped.
+      var checkedAbove = false;
+      for (var i = 0; i < 200 && _inOverlay(); i++) {
+        await tester.pump(fineFrame);
+        if (!_inOverlay()) break;
+        final card = _feedbackRect(tester);
+        if (card.center.dy < 195) {
+          expect(
+            _topHit(tester, card.center),
+            isNot(tester.renderObject(find.byKey(_feedback))),
+          );
+          checkedAbove = true;
+          break;
+        }
+      }
+      expect(checkedAbove, isTrue, reason: 'should fly out above the column');
       await tester.pumpAndSettle();
       expect(_inOverlay(), isFalse);
     });
