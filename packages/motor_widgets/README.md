@@ -39,7 +39,13 @@ builders, so it shows up by name in `motor_devtools`.
   `switchInCurve` or `switchOutCurve`; `exitMotion` sets the motion of a
   leaving child and defaults to `motion`.
 - **`MotionSizeSwitcher` has no `layoutBuilder`.** It lays its children out
-  in a `Stack` itself.
+  itself.
+- **`MotionSizeSwitcher(immediateResize: true)` doesn't stretch leaving
+  children.** They keep the constraints they had, so wrapping text doesn't
+  reflow while it fades. They sit by `alignment`, clipped to the new size.
+  `AnimatedSizeSwitcher` lays them out at the new size.
+- **`MotionSizeSwitcher.sizeMotion`** gives the size its own spring, for
+  example a spatial spring while the children fade on `motion`.
 - **Some `MotionContainer` properties change at once:** the border, shadows,
   gradient and image of a `BoxDecoration`, any other kind of `Decoration`,
   and unbounded (infinite) constraints. A `transform` loses perspective and

@@ -409,6 +409,124 @@ void main() {
       );
     });
 
+    group('immediateResize: true, a leaving child', () {
+      Widget immediate(
+        Widget child, {
+        AlignmentGeometry alignment = Alignment.center,
+        TextDirection textDirection = TextDirection.ltr,
+        Motion? sizeMotion,
+      }) => Directionality(
+        textDirection: textDirection,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: MotionSizeSwitcher(
+              motion: _spring,
+              sizeMotion: sizeMotion,
+              alignment: alignment,
+              immediateResize: true,
+              child: child,
+            ),
+          ),
+        ),
+      );
+
+      Text text(String data) => Text(
+        data,
+        key: ValueKey(data),
+        style: const TextStyle(fontSize: 10),
+      );
+
+      testWidgets('keeps its layout while the size shrinks', (tester) async {
+        // A wrapping text: given less width, it would reflow onto more lines.
+        await tester.pumpWidget(immediate(text('aaaa bbbb cccc')));
+        final laidOut = tester.getSize(find.text('aaaa bbbb cccc'));
+        await tester.pumpWidget(immediate(text('a')));
+        var frames = 0;
+        while (find.text('aaaa bbbb cccc').evaluate().isNotEmpty) {
+          expect(tester.getSize(find.text('aaaa bbbb cccc')), laidOut);
+          await tester.pump(frame);
+          frames++;
+        }
+        // The size shrank while the old text was still there.
+        expect(frames, greaterThan(2));
+      });
+
+      for (final (alignment, direction, edge) in [
+        (Alignment.centerRight, TextDirection.ltr, 'right'),
+        (AlignmentDirectional.centerStart, TextDirection.rtl, 'right'),
+        (AlignmentDirectional.centerStart, TextDirection.ltr, 'left'),
+      ]) {
+        testWidgets('sits by $alignment in $direction', (tester) async {
+          const old = SizedBox(key: ValueKey(1), width: 200, height: 40);
+          const next = SizedBox(key: ValueKey(2), width: 100, height: 20);
+          await tester.pumpWidget(
+            immediate(old, alignment: alignment, textDirection: direction),
+          );
+          await tester.pumpWidget(
+            immediate(next, alignment: alignment, textDirection: direction),
+          );
+          await tester.pump(frame * 3);
+          final box = tester.getRect(find.byType(MotionSizeSwitcher));
+          final leaving = tester.getRect(find.byKey(const ValueKey(1)));
+          expect(box.width, inExclusiveRange(100, 200));
+          expect(leaving.size, const Size(200, 40));
+          expect(leaving.center.dy, box.center.dy);
+          if (edge == 'right') {
+            expect(leaving.right, box.right);
+          } else {
+            expect(leaving.left, box.left);
+          }
+        });
+      }
+
+      testWidgets('is clipped to the size', (tester) async {
+        await tester.pumpWidget(
+          immediate(const SizedBox(key: ValueKey(1), width: 200, height: 40)),
+        );
+        await tester.pumpWidget(
+          immediate(const SizedBox(key: ValueKey(2), width: 100, height: 20)),
+        );
+        await tester.pump(frame * 3);
+        final size = tester.getSize(find.byType(MotionSizeSwitcher));
+        expect(
+          tester.renderObject(find.byType(MotionSizeSwitcher)),
+          paints..clipRect(rect: Offset.zero & size),
+        );
+      });
+    });
+
+    testWidgets('sizeMotion drives the size, motion the children', (
+      tester,
+    ) async {
+      Widget build(Widget child) => Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: MotionSizeSwitcher(
+            motion: _spring,
+            sizeMotion: const Motion.instant(),
+            immediateResize: true,
+            child: child,
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        build(const SizedBox(key: ValueKey(1), width: 200, height: 40)),
+      );
+      await tester.pumpWidget(
+        build(const SizedBox(key: ValueKey(2), width: 100, height: 20)),
+      );
+      await tester.pump(frame);
+      expect(
+        tester.getSize(find.byType(MotionSizeSwitcher)),
+        const Size(100, 20),
+      );
+      // The old child is still fading out on motion.
+      expect(find.byKey(const ValueKey(1)), findsOneWidget);
+    });
+
     testWidgets('unmounting mid-resize leaves no ticker running', (
       tester,
     ) async {
