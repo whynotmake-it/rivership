@@ -34,7 +34,7 @@ class CoilTooltip extends StatelessWidget {
     message: message,
     motion: motion,
     bubble: (context, presence) =>
-        _Bubble(presence: presence, message: message),
+        _Bubble(presence: presence, message: message, motion: motion),
     child: child,
   );
 }
@@ -57,7 +57,7 @@ class CoilTooltipGroup extends StatelessWidget {
   Widget build(BuildContext context) => CoilTooltipAnchorGroup(
     motion: motion,
     bubble: (context, presence, message) =>
-        _Bubble(presence: presence, message: message),
+        _Bubble(presence: presence, message: message, motion: motion),
     child: child,
   );
 }
@@ -65,16 +65,21 @@ class CoilTooltipGroup extends StatelessWidget {
 /// The inverted bubble: foreground fill, caption text in the background
 /// color.
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.presence, required this.message});
+  const _Bubble({
+    required this.presence,
+    required this.message,
+    required this.motion,
+  });
 
   final Animation<double> presence;
   final String message;
+  final CoilMotion? motion;
 
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, tier: CoilTier.pointer);
-    final motion = CoilTheme.motionOf(context);
+    final motion = CoilTheme.motionOf(context, override: this.motion);
     return CoilBlurFade(
       presence: presence,
       scale: 1,
@@ -89,18 +94,14 @@ class _Bubble extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          // In a group the message changes in place: the label crossfades
-          // on `fade` while the width follows the new label on `quick` at
-          // once. Only the new label takes space; the old one fades over it.
-          child: MotionSwitcher(
+          // In a group the message changes in place: the width follows the
+          // new label on `quick` at once while the labels crossfade on
+          // `fade`. The old label keeps its lines as it fades.
+          child: MotionSizeSwitcher(
             motion: motion.fade,
             exitMotion: motion.fadeExit,
-            layoutBuilder: (current, previous) => Stack(
-              children: [
-                for (final child in previous) Positioned.fill(child: child),
-                MotionSize(motion: motion.quick, child: current),
-              ],
-            ),
+            sizeMotion: motion.quick,
+            immediateResize: true,
             child: Text(
               message,
               key: ValueKey(message),
