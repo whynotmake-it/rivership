@@ -13,16 +13,27 @@ enum CoilDialogKind {
 
   /// A dialog with fields. On a phone it opens as a sheet that can be dragged
   /// away, with the actions stacked full width.
-  form,
+  form;
+
+  /// The [CoilModalRoute] presentation for this kind: centered for a
+  /// confirmation, null (sheet or centered, by tier and window) for a form.
+  CoilModalPresentation? get presentation => switch (this) {
+    confirmation => CoilModalPresentation.centered,
+    form => null,
+  };
 }
 
-/// Shows [builder]'s [CoilDialog] above the current route.
+/// Shows [builder]'s [CoilDialog] above the current route: pushes a
+/// [CoilModalRoute].
 ///
 /// A [CoilDialogKind.confirmation] is centered on every screen. A
 /// [CoilDialogKind.form] opens as a sheet on the touch tier in a compact
 /// window, and centered elsewhere. With [dismissible] false, the scrim, Esc,
 /// back and dragging don't close it. The future completes with the value
 /// passed to `Navigator.pop`.
+///
+/// To open a dialog from `Navigator.pages` or a router, show it in a
+/// [CoilModalPage] with the same [CoilDialogKind.presentation].
 Future<T?> showCoilDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -30,32 +41,23 @@ Future<T?> showCoilDialog<T>({
   bool dismissible = true,
   String? barrierLabel,
   CoilMotion? motion,
-}) {
-  final sheet =
-      kind == CoilDialogKind.form &&
-      CoilTheme.tierOf(context) == CoilTier.touch &&
-      MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth;
-  return showCoilModal<T>(
-    context: context,
-    presentation: sheet
-        ? CoilModalPresentation.sheet
-        : CoilModalPresentation.centered,
-    dismissible: dismissible,
-    barrierLabel: barrierLabel,
-    motion: motion,
-    builder: (context) => _CoilDialogPresentation(
-      sheet: sheet,
-      child: Builder(builder: builder),
-    ),
-  );
-}
+}) => showCoilModal<T>(
+  context: context,
+  presentation: kind.presentation,
+  dismissible: dismissible,
+  barrierLabel: barrierLabel,
+  motion: motion,
+  builder: builder,
+);
 
 /// A dialog panel: a [title], an optional [description], a [child] body and
 /// [actions] trailing at the bottom.
 ///
-/// Open it with [showCoilDialog], which also decides whether it shows
-/// centered or as a phone sheet. Put Cancel before the primary action in
-/// [actions]. Give [onClose] to show a close button in the corner.
+/// Open it with [showCoilDialog], or in a [CoilModalRoute] or
+/// [CoilModalPage]; the route decides whether it shows centered or as a
+/// phone sheet, and the dialog fits itself to that. Put Cancel before the
+/// primary action in [actions]. Give [onClose] to show a close button in
+/// the corner.
 class CoilDialog extends StatelessWidget {
   /// Creates a dialog.
   const CoilDialog({
@@ -102,7 +104,8 @@ class CoilDialog extends StatelessWidget {
       theme,
       metrics,
     ).merge(CoilTheme.styleOf<CoilDialogStyle>(context)).merge(style);
-    final sheet = _CoilDialogPresentation.isSheet(context);
+    final sheet =
+        CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet;
 
     final titleText = Semantics(
       header: true,
@@ -200,7 +203,7 @@ class CoilDialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_CoilDialogPresentation.isSheet(context)) {
+    if (CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet) {
       return CoilSheetPanel(child: child);
     }
     final look = CoilDialogStyle.fallback(
@@ -245,21 +248,4 @@ class CoilDialogFrame extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Tells a [CoilDialog] whether it shows as a phone sheet.
-class _CoilDialogPresentation extends InheritedWidget {
-  const _CoilDialogPresentation({required this.sheet, required super.child});
-
-  final bool sheet;
-
-  static bool isSheet(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<_CoilDialogPresentation>()
-          ?.sheet ??
-      false;
-
-  @override
-  bool updateShouldNotify(_CoilDialogPresentation oldWidget) =>
-      oldWidget.sheet != sheet;
 }

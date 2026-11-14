@@ -2,6 +2,16 @@
 
 Milestone M0, unreleased.
 
+- Modals are routes too. `CoilModalRoute<T>` is the route every
+  `showCoil…` modal pushes, and `CoilModalPage<T>` shows one from
+  `Navigator.pages` or a router. With no `presentation`, it opens as a
+  sheet on the touch tier in a compact window and centered elsewhere.
+  Content reads its presentation with `CoilModalRoute.presentationOf`.
+  - `CoilCommandMenu` is the command menu's panel, for showing it in a
+    route; `showCoilCommandMenu` still opens it.
+  - `CoilDialogKind.presentation` gives a dialog kind's presentation.
+  - `showCoilModal` takes a nullable `presentation`; null is the adaptive
+    choice above.
 - Breaking: visible text and icons are `Widget` parameters that the
   component styles. Strings stay only for screen readers (`semanticLabel`
   or a name ending in `Label`) and for matching (`searchText`).

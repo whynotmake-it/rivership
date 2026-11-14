@@ -40,40 +40,48 @@ Future<void> showCoilCommandMenu({
   String semanticLabel = 'Type a command or search…',
   Widget empty = const Text('No results'),
   CoilMotion? motion,
-}) {
-  final sheet =
-      CoilTheme.tierOf(context) == CoilTier.touch &&
-      MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth;
-  return showCoilModal<void>(
-    context: context,
-    presentation: sheet
-        ? CoilModalPresentation.sheet
-        : CoilModalPresentation.centered,
+}) => showCoilModal<void>(
+  context: context,
+  presentation: null,
+  motion: motion,
+  builder: (context) => CoilCommandMenu(
+    entries: entries,
+    placeholder: placeholder,
+    semanticLabel: semanticLabel,
+    empty: empty,
     motion: motion,
-    builder: (context) => _CommandMenu(
-      entries: entries,
-      search: CoilMenuSearch(
-        placeholder: placeholder,
-        semanticLabel: semanticLabel,
-        empty: empty,
-      ),
-      sheet: sheet,
-      motion: motion,
-    ),
-  );
-}
+  ),
+);
 
-class _CommandMenu extends StatelessWidget {
-  const _CommandMenu({
+/// The panel [showCoilCommandMenu] opens: a search field over [entries].
+///
+/// Show it in a [CoilModalRoute] or [CoilModalPage] with no presentation,
+/// so it's a sheet on a phone and centered elsewhere. In a sheet it uses
+/// touch rows; centered, it sits a fifth of the way down the window.
+class CoilCommandMenu extends StatelessWidget {
+  /// Creates a command menu panel.
+  const CoilCommandMenu({
     required this.entries,
-    required this.search,
-    required this.sheet,
-    required this.motion,
+    super.key,
+    this.placeholder = const Text('Type a command or search…'),
+    this.semanticLabel = 'Type a command or search…',
+    this.empty = const Text('No results'),
+    this.motion,
   });
 
+  /// The rows and labels. The filter matches each row's `searchText`.
   final List<CoilMenuEntry> entries;
-  final CoilMenuSearch search;
-  final bool sheet;
+
+  /// The search field's hint, shown while it's empty.
+  final Widget placeholder;
+
+  /// The search field's name for screen readers.
+  final String semanticLabel;
+
+  /// What the list shows when nothing matches.
+  final Widget empty;
+
+  /// Motion tokens for the list, instead of the theme's.
   final CoilMotion? motion;
 
   /// The widest the panel gets.
@@ -84,6 +92,13 @@ class _CommandMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sheet =
+        CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet;
+    final search = CoilMenuSearch(
+      placeholder: placeholder,
+      semanticLabel: semanticLabel,
+      empty: empty,
+    );
     final theme = CoilTheme.of(context);
     final metrics = sheet
         ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)

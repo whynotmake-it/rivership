@@ -54,8 +54,8 @@ class CoilSettingsSection<T> {
 
 /// Shows a [CoilSettingsDialog] above the current route.
 ///
-/// On the touch tier in a compact window it opens as a sheet, like a form
-/// dialog. The future completes when the dialog closes.
+/// It's a form dialog: on the touch tier in a compact window it opens as a
+/// sheet. The close button pops it. The future completes when it closes.
 Future<void> showCoilSettingsDialog<T>({
   required BuildContext context,
   required Widget title,
@@ -81,7 +81,8 @@ Future<void> showCoilSettingsDialog<T>({
 ///
 /// The sidebar is a [CoilSidebarScaffold] that doesn't fold. Below 600
 /// wide it hides and a [CoilSelect] at the top of the panel picks the
-/// section instead. Open it with [showCoilSettingsDialog].
+/// section instead. Open it with [showCoilSettingsDialog], or from
+/// `Navigator.pages` in a [CoilModalPage], with [onClose] popping it.
 class CoilSettingsDialog<T> extends StatefulWidget {
   /// Creates a settings dialog.
   const CoilSettingsDialog({
