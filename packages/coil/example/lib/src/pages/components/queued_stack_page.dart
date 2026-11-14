@@ -71,8 +71,14 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
     _paused = true;
   }
 
-  CoilQueuedMessage _message(String text) =>
-      CoilQueuedMessage(id: _ids++, text: text);
+  /// The text of each queued message, by id, for sending and editing.
+  final _texts = <Object, String>{};
+
+  CoilQueuedMessage _message(String text) {
+    final id = _ids++;
+    _texts[id] = text;
+    return CoilQueuedMessage(id: id, semanticLabel: text, child: Text(text));
+  }
 
   void _send(String text) {
     // While a reply streams, a new message waits its turn.
@@ -110,11 +116,11 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
     if (_queue.isEmpty) return;
     final next = _queue.first;
     setState(() => _queue = _queue.sublist(1));
-    _send(next.text);
+    _send(_texts.remove(next.id)!);
   }
 
   void _edit(CoilQueuedMessage message) => setState(() {
-    _composer.text = message.text;
+    _composer.text = _texts.remove(message.id)!;
     _queue = [
       for (final m in _queue)
         if (m.id != message.id) m,

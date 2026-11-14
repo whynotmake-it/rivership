@@ -74,7 +74,8 @@ class CoilQueuedMessage {
   /// Creates a queued message.
   const CoilQueuedMessage({
     required this.id,
-    required this.text,
+    required this.semanticLabel,
+    this.child,
     this.attachments = const [],
   });
 
@@ -82,16 +83,20 @@ class CoilQueuedMessage {
   /// queue changes.
   final Object id;
 
-  /// The message text, shown on one line.
-  final String text;
+  /// The message as screen readers hear it, usually its text.
+  final String semanticLabel;
+
+  /// The message text, usually a [Text]. The card styles it in the subtitle
+  /// role and keeps it to one line with an ellipsis.
+  final Widget? child;
 
   /// Previews of attached files, such as `CoilFileThumbnail`s. The card
   /// shows the first three in small squares and counts the rest.
   final List<Widget> attachments;
 }
 
-/// The words a [CoilQueuedStack] gives screen readers and its buttons. The
-/// defaults are English.
+/// The words a [CoilQueuedStack] gives screen readers. The defaults are
+/// English.
 @immutable
 class CoilQueuedStackLabels {
   /// Creates the labels.
@@ -101,7 +106,6 @@ class CoilQueuedStackLabels {
     this.collapse = 'Collapse queued messages',
     this.message = _message,
     this.count = _count,
-    this.attachments = _attachments,
   });
 
   /// The edit button.
@@ -113,24 +117,18 @@ class CoilQueuedStackLabels {
   /// The collapse button an expanded stack shows on touch.
   final String collapse;
 
-  /// A card: its place in the queue (from 1), the queue's length and its
-  /// text.
-  final String Function(int position, int count, String text) message;
+  /// A card: its place in the queue (from 1), the queue's length and the
+  /// message's [CoilQueuedMessage.semanticLabel].
+  final String Function(int position, int count, String label) message;
 
   /// The gutter: how many messages are queued.
   final String Function(int count) count;
 
-  /// A card without text: how many files it carries.
-  final String Function(int count) attachments;
-
-  static String _message(int position, int count, String text) =>
-      'Queued message $position of $count: $text';
+  static String _message(int position, int count, String label) =>
+      'Queued message $position of $count: $label';
 
   static String _count(int count) =>
       count == 1 ? '1 queued message' : '$count queued messages';
-
-  static String _attachments(int count) =>
-      count == 1 ? '1 attachment' : '$count attachments';
 }
 
 /// Messages queued while a reply streams, as a pile of cards above the
@@ -467,9 +465,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       semanticLabel: widget.labels.message(
         entry.slot + 1,
         count,
-        entry.message.text.isEmpty
-            ? widget.labels.attachments(entry.message.attachments.length)
-            : entry.message.text,
+        entry.message.semanticLabel,
       ),
       labels: widget.labels,
       editIcon: widget.editIcon,

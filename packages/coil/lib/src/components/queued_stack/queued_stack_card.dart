@@ -308,14 +308,13 @@ class _CardBodyState extends State<_CardBody> {
                               ),
                             Expanded(
                               child: ExcludeSemantics(
-                                child: Text(
-                                  message.text.isEmpty
-                                      ? card.labels.attachments(files.length)
-                                      : message.text,
+                                child: DefaultTextStyle.merge(
+                                  style: look.textStyle,
                                   maxLines: 1,
                                   softWrap: false,
                                   overflow: TextOverflow.ellipsis,
-                                  style: look.textStyle,
+                                  child:
+                                      message.child ?? const SizedBox.shrink(),
                                 ),
                               ),
                             ),
