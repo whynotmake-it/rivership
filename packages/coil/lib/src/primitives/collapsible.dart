@@ -138,6 +138,10 @@ class _CoilCollapsibleState extends State<CoilCollapsible> {
       ],
       onAnimationStatusChanged: widget.onEnd == null ? null : _onStatus,
       builder: (context, value, child) => ClipRect(
+        // Only a partly open region needs the clip. Fully open, the content
+        // may paint past its box, such as a focus ring around its first or
+        // last row.
+        clipBehavior: value(_height) >= 1 ? Clip.none : Clip.hardEdge,
         child: Align(
           alignment: AlignmentDirectional.topStart,
           heightFactor: math.max(0, value(_height)),

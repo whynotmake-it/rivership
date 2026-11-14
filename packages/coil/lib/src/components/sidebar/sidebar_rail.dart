@@ -104,9 +104,11 @@ class _CoilSidebarRailState extends State<CoilSidebarRail> {
     ).merge(CoilTheme.styleOf<CoilSidebarStyle>(context));
     final motion = CoilTheme.motionOf(context);
     // TODO(coil-sidebar): FF's rail tooltip ("Drag to resize", "Click to
-    // collapse" with the key) needs a rich CoilTooltip that opens beside the
-    // strip and follows the pointer along it. CoilTooltip only takes a
-    // String and opens above or below.
+    // collapse" with the key) opens beside the strip and follows the
+    // pointer along it. CoilTooltipAnchor only places a bubble above or
+    // below its anchor (_RenderBubblePlacement), which for a full-height
+    // strip lands off screen. It needs a horizontal placement and a
+    // pointer-following anchor in the tooltip primitive.
     return Semantics(
       label: widget.semanticLabel,
       onTap: scope.toggle,

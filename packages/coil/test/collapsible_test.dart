@@ -45,6 +45,25 @@ void main() {
     expect(_height(tester), 0);
   });
 
+  testWidgets('it clips only while partly open, so a focus ring around '
+      'the content shows once open', (tester) async {
+    Clip clip() => tester
+        .widget<ClipRect>(
+          find.descendant(
+            of: find.byType(CoilCollapsible),
+            matching: find.byType(ClipRect),
+          ),
+        )
+        .clipBehavior;
+    await tester.pumpWidget(_app(false));
+    await tester.pumpWidget(_app(true));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(clip(), Clip.hardEdge);
+    await tester.pumpAndSettle();
+    expect(clip(), Clip.none);
+  });
+
   testWidgets('a closed region is out of focus and semantics', (tester) async {
     final node = FocusNode();
     addTearDown(node.dispose);
