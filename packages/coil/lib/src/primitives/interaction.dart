@@ -29,6 +29,7 @@ class CoilInteractionDetector extends StatefulWidget {
     this.enabled = true,
     this.focusNode,
     this.onTap,
+    this.onPressDown,
     this.trackPress = true,
     this.cursor = MouseCursor.defer,
     this.excludeFromSemantics = false,
@@ -49,6 +50,13 @@ class CoilInteractionDetector extends StatefulWidget {
 
   /// Called on a completed tap.
   final VoidCallback? onTap;
+
+  /// Called where a press lands, at the moment the press shows: when the
+  /// tap wins, or once a competing gesture (a scroll) has had
+  /// `kPressTimeout` to win. A press another gesture wins first never calls
+  /// it. For a control that acts on the way down, like a slider jumping to
+  /// the press.
+  final GestureTapDownCallback? onPressDown;
 
   /// Whether to recognize taps and report [WidgetState.pressed]. Off for
   /// controls that handle their own gestures (a text field).
@@ -153,7 +161,10 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
       child = GestureDetector(
         behavior: HitTestBehavior.opaque,
         excludeFromSemantics: widget.excludeFromSemantics,
-        onTapDown: (_) => _setPressed(true),
+        onTapDown: (details) {
+          _setPressed(true);
+          if (widget.enabled) widget.onPressDown?.call(details);
+        },
         onTapUp: (_) => _setPressed(false, completed: true),
         onTapCancel: () => _setPressed(false),
         onTap: widget.enabled ? widget.onTap : null,

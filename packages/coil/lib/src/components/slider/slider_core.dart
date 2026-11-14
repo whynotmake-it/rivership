@@ -149,10 +149,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   /// Whether a press on the track is changing the value. It opens at the
   /// first change (a tap-down or a drag start) and closes at whichever
-  /// comes first: the tap's up, the drag's end, or the drag's cancel (a
-  /// scroll won, or the pointer lifted). So a press that becomes a drag is
-  /// one change. A quick tap's drag cancel comes before its tap-down,
-  /// which is why the tap's up closes it too.
+  /// comes first: the tap, the drag's end, or the drag's cancel (a scroll
+  /// won, or the pointer lifted). So a press that becomes a drag is one
+  /// change. A quick tap's drag cancel comes before its tap-down, which is
+  /// why the tap closes it too.
   bool _pressing = false;
 
   /// The values this press last asked for, which its end reports.
@@ -362,17 +362,39 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   void _beginPress() {
     if (_pressing) return;
-    _pressing = true;
+    setState(() => _pressing = true);
     _asked = widget.values;
     widget.onChangeStart?.call(widget.values);
   }
 
   /// A press on the track jumps the nearest thumb there on the way down,
   /// as native sliders do, so the thumb is under the pointer while pressed.
-  void _pressDown(TapDownDetails d, double width, SliderReach reach) {
+  ///
+  /// A press beside the track, on the pill's label or value, changes
+  /// nothing.
+  void _pressDown(TapDownDetails d) {
+    final track = _trackKey.currentContext?.findRenderObject();
+    if (track is! RenderBox) return;
+    final local = track.globalToLocal(d.globalPosition);
+    if (!(Offset.zero & track.size).contains(local)) return;
     _beginPress();
-    _dragTo(d.localPosition.dx, width, reach);
+    _dragTo(local.dx, track.size.width, _reach(_style(_metrics)));
   }
+
+  /// The track box, for mapping a press to it.
+  final _trackKey = GlobalKey(debugLabel: 'CoilSlider.track');
+
+  CoilMetrics get _metrics => CoilTheme.metricsOf(context, size: widget.size);
+
+  CoilSliderStyle _style(CoilMetrics metrics) => CoilSliderStyle.fallback(
+    CoilTheme.of(context),
+    metrics,
+  ).merge(CoilTheme.styleOf<CoilSliderStyle>(context)).merge(widget.style);
+
+  /// The row's range spans its full width; the pill's stops half a knob
+  /// short of each end, so the knob stays inside the track.
+  SliderReach _reach(CoilSliderStyle style) =>
+      SliderReach(_compactTrack ? style.knobBox! / 2 : 0);
 
   void _dragStart(DragStartDetails d, double width, SliderReach reach) {
     _dragging = true;
@@ -397,7 +419,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   void _endPress() {
     if (_dragging) setState(() => _dragging = false);
     if (!_pressing) return;
-    _pressing = false;
+    setState(() => _pressing = false);
     widget.onChangeEnd?.call(_asked);
   }
 
@@ -452,12 +474,17 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
+    // The detector writes the states the visuals listen to, so it sits
+    // above them; the track alone is where a press changes the value.
     final content = CoilInteractionDetector(
       states: _states,
       enabled: _enabled,
       focusNode: _range ? _group : _focusOf(0),
       excludeFromSemantics: true,
       cursor: _enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      // The press shows and the value jumps in the same callback.
+      onPressDown: _pressDown,
+      onTap: _endPress,
       child: Opacity(
         opacity: _enabled ? 1 : metrics.disabledOpacity,
         child: ListenableBuilder(
@@ -528,16 +555,14 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   Widget _buildVisuals(CoilMetrics metrics) {
     final theme = CoilTheme.of(context);
-    final style = CoilSliderStyle.fallback(
-      theme,
-      metrics,
-    ).merge(CoilTheme.styleOf<CoilSliderStyle>(context)).merge(widget.style);
+    final style = _style(metrics);
     final states = _states.value;
     final tokens = _tokens;
-    // The row's range spans its full width; the pill's stops half a knob
-    // short of each end, so the knob stays inside the track.
-    final reach = SliderReach(_compactTrack ? style.knobBox! / 2 : 0);
+    final reach = _reach(style);
     final pressed = states.contains(WidgetState.pressed) || _dragging;
+    // A press on the track itself: the thumb is under the pointer. A press
+    // on the pill's label or value shows as pressed but moves nothing.
+    final onTrack = _pressing || _dragging;
     final hovered = states.contains(WidgetState.hovered);
     final focused = states.contains(WidgetState.focused);
     final active = hovered || pressed || focused;
@@ -571,7 +596,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       valueListenable: _hover,
       builder: (context, hovering, _) {
         final pointed = hovering != null && !onValue;
-        final showPreview = _enabled && hovered && pointed && !pressed;
+        final showPreview = _enabled && hovered && pointed && !onTrack;
         // Tooltip mode keeps the values over the thumbs while the slider is
         // in use. Otherwise one bubble shows the hovered value, or the
         // pressed thumb's value under a finger.
@@ -580,7 +605,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             (_tooltip
                 ? active
                 : (hovered && pointed) ||
-                      (pressed && _kind != PointerDeviceKind.mouse));
+                      (onTrack && _kind != PointerDeviceKind.mouse));
         return TrackBuilder(
           animations: [
             CoilSliderTrack.previewOpacity([
@@ -613,7 +638,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
               v: v,
               handles: handles,
               hovering: hovering,
-              pressed: pressed,
+              onTrack: onTrack,
               ring: ring,
             ),
           ),
@@ -630,7 +655,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     required TrackValueReader v,
     required List<Color> handles,
     required double? hovering,
-    required bool pressed,
+    required bool onTrack,
     required int? ring,
   }) {
     final rtl = _rtl;
@@ -705,7 +730,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             listenable: _paintMoves,
             builder: (context, _) => SliderBubble(
               style: style,
-              fraction: pressed
+              fraction: onTrack
                   ? _at(_active)
                   : _joined
                   ? _previewAt
@@ -714,7 +739,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
               rtl: rtl,
               opacity: v(CoilSliderTrack.bubble),
               child: _shown(
-                pressed ? widget.values[_active] : scale.valueAt(_lastHover),
+                onTrack ? widget.values[_active] : scale.valueAt(_lastHover),
               ),
             ),
           ),
@@ -908,7 +933,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        return Listener(
+        final gestures = Listener(
+          key: _trackKey,
           onPointerDown: (e) {
             _kind = e.kind;
             if (_pressing) return;
@@ -926,8 +952,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             excludeFromSemantics: true,
-            onTapDown: _enabled ? (d) => _pressDown(d, width, reach) : null,
-            onTapUp: _enabled ? (_) => _endPress() : null,
             onHorizontalDragStart: _enabled
                 ? (d) => _dragStart(d, width, reach)
                 : null,
@@ -939,6 +963,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             child: track,
           ),
         );
+        return gestures;
       },
     );
   }

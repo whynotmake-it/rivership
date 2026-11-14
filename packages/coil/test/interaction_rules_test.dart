@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,6 +47,74 @@ void main() {
     expect(states.value, contains(WidgetState.pressed));
     await tester.pump(const Duration(milliseconds: 100));
     expect(states.value, isNot(contains(WidgetState.pressed)));
+  });
+
+  group('onPressDown', () {
+    Widget detector(
+      WidgetStatesController states,
+      List<Offset> downs, {
+      bool enabled = true,
+    }) => SizedBox(
+      width: 80,
+      height: 40,
+      child: CoilInteractionDetector(
+        states: states,
+        enabled: enabled,
+        onPressDown: (d) => downs.add(d.localPosition),
+        child: const SizedBox.expand(),
+      ),
+    );
+
+    testWidgets('reports where the press lands, as the press shows', (
+      tester,
+    ) async {
+      final states = WidgetStatesController();
+      addTearDown(states.dispose);
+      final downs = <Offset>[];
+      await tester.pumpWidget(_app(detector(states, downs)));
+      final box = tester.getRect(find.byType(CoilInteractionDetector));
+      final g = await tester.startGesture(box.topLeft + const Offset(10, 5));
+      await tester.pump();
+      expect(downs, [const Offset(10, 5)]);
+      expect(states.value, contains(WidgetState.pressed));
+      await g.up();
+    });
+
+    testWidgets('a scroll that wins first never calls it', (tester) async {
+      final states = WidgetStatesController();
+      addTearDown(states.dispose);
+      final downs = <Offset>[];
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: [
+              const SizedBox(height: 100),
+              detector(states, downs),
+              const SizedBox(height: 2000),
+            ],
+          ),
+        ),
+      );
+      final g = await tester.startGesture(
+        tester.getCenter(find.byType(CoilInteractionDetector)),
+      );
+      await g.moveBy(const Offset(0, -40));
+      await tester.pump(kPressTimeout * 2);
+      await g.up();
+      await tester.pump();
+      expect(downs, isEmpty);
+      expect(states.value, isNot(contains(WidgetState.pressed)));
+    });
+
+    testWidgets('a disabled detector never calls it', (tester) async {
+      final states = WidgetStatesController();
+      addTearDown(states.dispose);
+      final downs = <Offset>[];
+      await tester.pumpWidget(_app(detector(states, downs, enabled: false)));
+      await tester.tap(find.byType(CoilInteractionDetector));
+      await tester.pump();
+      expect(downs, isEmpty);
+    });
   });
 
   testWidgets('the focus ring fades in', (tester) async {
