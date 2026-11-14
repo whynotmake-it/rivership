@@ -44,9 +44,6 @@ enum CoilWeight {
   ];
 }
 
-/// Marks a copyWith argument that wasn't passed.
-const Object _keep = Object();
-
 /// One step of the type scale: a font size and a line height in pixels.
 @immutable
 class CoilTypeStep {
@@ -73,9 +70,9 @@ class CoilTypeStep {
 /// (`CoilThemeData.typography`). A theme field, so apps can swap the font
 /// at runtime.
 ///
-/// Apps that swap the font set [fontFamily] and [fontPackage]:
-/// `CoilTypography(fontFamily: 'Brand')` for an app font, or
-/// `CoilTypography(fontFamily: null)` for the platform's UI font. Labels are
+/// Apps that swap the font set [fontFamily] and [fontPackage] together:
+/// `CoilTypography(fontFamily: 'Brand', fontPackage: null)` for an app
+/// font, or [CoilTypography.platform] for the platform's UI font. Labels are
 /// plain text with even leading: for Inter that centers the cap height in
 /// the line box exactly, as CSS `text-box: trim-both cap alphabetic` does.
 ///
@@ -125,20 +122,6 @@ class CoilTypography {
       textBaseline: TextBaseline.alphabetic,
     );
   }
-
-  /// Returns a copy with the given fields replaced. Both are nullable, so
-  /// pass `fontPackage: null` when switching to a font outside a package.
-  CoilTypography copyWith({
-    Object? fontFamily = _keep,
-    Object? fontPackage = _keep,
-  }) => CoilTypography(
-    fontFamily: identical(fontFamily, _keep)
-        ? this.fontFamily
-        : fontFamily as String?,
-    fontPackage: identical(fontPackage, _keep)
-        ? this.fontPackage
-        : fontPackage as String?,
-  );
 
   @override
   bool operator ==(Object other) =>
