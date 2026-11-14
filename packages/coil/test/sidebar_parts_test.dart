@@ -312,14 +312,12 @@ void main() {
     testWidgets('folding glides, and reduced motion makes it instant', (
       tester,
     ) async {
-      var controller = await pump(tester);
-      controller.open = false;
+      (await pump(tester)).open = false;
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(pageLeft(tester), inExclusiveRange(0, 256));
 
-      controller = await pump(tester, reduced: true);
-      controller.open = false;
+      (await pump(tester, reduced: true)).open = false;
       await tester.pump();
       await tester.pump();
       expect(pageLeft(tester), 0);
