@@ -29,9 +29,11 @@ class CoilRangeValues {
   String toString() => 'CoilRangeValues($start, $end)';
 }
 
-/// A slider for a range: two thumbs between [min] and [max].
+/// A slider for a range: two thumbs on a pill track between [min] and
+/// [max].
 ///
-/// It looks and behaves like [CoilSlider], with these differences:
+/// It behaves like a [CoilSlider] with the [CoilSliderVariant.pill] look,
+/// with these differences:
 ///
 /// * The fill runs between the thumbs, and the thumbs can't cross; they may
 ///   meet.
@@ -57,7 +59,6 @@ class CoilRangeSlider extends StatelessWidget {
     this.onChangeEnd,
     this.label,
     this.valueFormatter,
-    this.variant = CoilSliderVariant.scrubber,
     this.valueDisplay = CoilSliderValueDisplay.text,
     this.size,
     this.autofocus = false,
@@ -76,12 +77,6 @@ class CoilRangeSlider extends StatelessWidget {
        assert(
          divisions == null || steps == null,
          'use divisions or steps, not both',
-       ),
-       assert(
-         variant != CoilSliderVariant.pips ||
-             divisions != null ||
-             steps != null,
-         'pips need divisions or steps',
        );
 
   /// The current range, with `start <= end`, between [min] and [max].
@@ -115,9 +110,6 @@ class CoilRangeSlider extends StatelessWidget {
 
   /// Formats each value; see [CoilSlider.valueFormatter].
   final String Function(double value)? valueFormatter;
-
-  /// How the track looks.
-  final CoilSliderVariant variant;
 
   /// Where the values show, and whether they can be typed.
   final CoilSliderValueDisplay valueDisplay;
@@ -174,7 +166,7 @@ class CoilRangeSlider extends StatelessWidget {
       ),
       label: label,
       valueFormatter: valueFormatter,
-      variant: variant,
+      variant: CoilSliderVariant.pill,
       valueDisplay: valueDisplay,
       size: size,
       focusNode: null,

@@ -56,22 +56,31 @@ class SliderRow extends StatelessWidget {
               padding: EdgeInsets.symmetric(
                 horizontal: metrics.controlPaddingX,
               ),
+              // The value keeps its reserved width; the label takes what is
+              // left and ellipsizes when that isn't enough.
               child: Row(
+                spacing: metrics.gap,
                 children: [
-                  if (label != null)
-                    CoilMotionTarget(
-                      index: SliderTarget.label,
-                      child: DefaultTextStyle(
-                        style: text.copyWith(
-                          color: labelColor,
-                          fontVariations: sliderWeight(emphasis),
-                        ),
-                        maxLines: 1,
-                        softWrap: false,
-                        child: label!,
-                      ),
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: label == null
+                          ? null
+                          : CoilMotionTarget(
+                              index: SliderTarget.label,
+                              child: DefaultTextStyle(
+                                style: text.copyWith(
+                                  color: labelColor,
+                                  fontVariations: sliderWeight(emphasis),
+                                ),
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                child: label!,
+                              ),
+                            ),
                     ),
-                  const Spacer(),
+                  ),
                   if (value case final value?)
                     CoilMotionTarget(index: SliderTarget.value, child: value),
                 ],

@@ -24,6 +24,21 @@ void main() {
       );
     }
 
+    Widget range(SheetState s) {
+      final states = s.controller();
+      controllers.add(states);
+      return SizedBox(
+        width: 180,
+        child: CoilRangeSlider(
+          values: const CoilRangeValues(.25, .75),
+          label: const Text('Level'),
+          valueFormatter: (v) => '${(v * 100).round()}',
+          statesController: states,
+          onChanged: s.isDisabled ? null : (_) {},
+        ),
+      );
+    }
+
     final sheet = await pumpSheet(
       tester,
       ThemedPair(
@@ -34,6 +49,7 @@ void main() {
             SheetRow('scrubber', (s) => slider(s, CoilSliderVariant.scrubber)),
             SheetRow('pips', (s) => slider(s, CoilSliderVariant.pips)),
             SheetRow('pill', (s) => slider(s, CoilSliderVariant.pill)),
+            SheetRow('range', range),
           ],
         ),
       ),

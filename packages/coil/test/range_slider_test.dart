@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil/src/components/slider/slider_visuals.dart'
     show sliderBubbleKey, sliderKnobKey;
+import 'package:coil/src/primitives/motion_layer.dart' show CoilPainterLayer;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,6 @@ class _Host extends StatefulWidget {
   const _Host({
     this.initial = const CoilRangeValues(.2, .8),
     this.divisions,
-    this.variant = CoilSliderVariant.scrubber,
     this.tier = CoilTier.pointer,
     this.textDirection = TextDirection.ltr,
     this.motions,
@@ -24,7 +24,6 @@ class _Host extends StatefulWidget {
 
   final CoilRangeValues initial;
   final int? divisions;
-  final CoilSliderVariant variant;
   final CoilTier tier;
   final TextDirection textDirection;
   final Map<CoilSliderTrack<Object>, Motion>? motions;
@@ -59,7 +58,6 @@ class _HostState extends State<_Host> {
                   key: const ValueKey('slider'),
                   values: values,
                   divisions: widget.divisions,
-                  variant: widget.variant,
                   motions: widget.motions,
                   label: const Text('Price'),
                   onChangeStart: (v) => log.add('start ${_fmt(v)}'),
@@ -85,9 +83,21 @@ _HostState _host(WidgetTester tester) =>
 
 CoilRangeValues _values(WidgetTester tester) => _host(tester).values;
 
+/// The point at [fraction] of the range on the pill track: the knob centers
+/// stop half a knob box short of each end.
 Offset _at(WidgetTester tester, double fraction) {
-  final rect = tester.getRect(_slider);
-  return Offset(rect.left + rect.width * fraction, rect.center.dy);
+  final track = tester.getRect(
+    find.descendant(of: _slider, matching: find.byType(CoilPainterLayer)),
+  );
+  final tier = CoilTheme.tierOf(tester.element(_slider));
+  final inset = tier == CoilTier.touch ? 22.0 : 10.0;
+  final x = track.left + inset + (track.width - inset * 2) * fraction;
+  return Offset(
+    Directionality.of(tester.element(_slider)) == TextDirection.rtl
+        ? track.right - (x - track.left)
+        : x,
+    track.center.dy,
+  );
 }
 
 void _expectValues(WidgetTester tester, double start, double end) {
@@ -118,13 +128,24 @@ void main() {
     }
   });
 
-  testWidgets('RTL: the start thumb is on the right', (tester) async {
-    await tester.pumpWidget(
-      const _Host(divisions: 10, textDirection: TextDirection.rtl),
+  testWidgets('RTL: the start thumb is on the right, and moves left', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const _Host(textDirection: TextDirection.rtl));
+    final start = tester.getCenter(
+      find.byKey(const ValueKey((sliderKnobKey, 0))),
     );
-    await tester.tapAt(_at(tester, .7));
-    await tester.pump();
-    _expectValues(tester, .3, .8);
+    final end = tester.getCenter(
+      find.byKey(const ValueKey((sliderKnobKey, 1))),
+    );
+    expect(start.dx, greaterThan(end.dx));
+    final g = await tester.startGesture(start);
+    await g.moveBy(const Offset(-30, 0));
+    await g.moveBy(const Offset(-30, 0));
+    await g.up();
+    await settle(tester);
+    expect(_values(tester).start, greaterThan(.3));
+    expect(_values(tester).end, .8);
   });
 
   testWidgets('the thumbs never cross', (tester) async {
@@ -194,7 +215,7 @@ void main() {
   testWidgets('keyboard focus rings the focused knob, a tap rings none', (
     tester,
   ) async {
-    await tester.pumpWidget(const _Host(variant: CoilSliderVariant.pill));
+    await tester.pumpWidget(const _Host());
     bool ringed(int i) => tester
         .widget<CoilFocusRing>(
           find.ancestor(
@@ -303,7 +324,6 @@ void main() {
     await tester.pumpWidget(
       _Host(
         divisions: 10,
-        variant: CoilSliderVariant.pill,
         motions: {
           CoilSliderTrack.thumb: const Motion.linear(Duration(seconds: 2)),
         },

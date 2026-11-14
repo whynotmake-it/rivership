@@ -187,6 +187,12 @@ final Map<String, WidgetBuilder> _stories = {
           valueFormatter: (v) => '${(v * 100).round()}%',
         ),
         const CoilSlider(value: .3, onChanged: null),
+        CoilRangeSlider(
+          values: const CoilRangeValues(.25, .7),
+          steps: const [0, .1, .25, .5, .7, 1],
+          onChanged: (_) {},
+          valueFormatter: (v) => '${(v * 100).round()}',
+        ),
       ],
     ),
   ),
