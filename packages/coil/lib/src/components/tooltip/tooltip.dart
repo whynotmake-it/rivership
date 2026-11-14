@@ -89,20 +89,24 @@ class _Bubble extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          // In a group the message changes in place: the width follows on
-          // `quick` and the label crossfades on `fade`.
-          child: MotionSize(
-            motion: motion.quick,
-            child: MotionSwitcher(
-              motion: motion.fade,
-              exitMotion: motion.fadeExit,
-              child: Text(
-                message,
-                key: ValueKey(message),
-                style: theme.typography.style(
-                  metrics.caption,
-                  color: theme.colors.background,
-                ),
+          // In a group the message changes in place: the label crossfades
+          // on `fade` while the width follows the new label on `quick` at
+          // once. Only the new label takes space; the old one fades over it.
+          child: MotionSwitcher(
+            motion: motion.fade,
+            exitMotion: motion.fadeExit,
+            layoutBuilder: (current, previous) => Stack(
+              children: [
+                for (final child in previous) Positioned.fill(child: child),
+                MotionSize(motion: motion.quick, child: current),
+              ],
+            ),
+            child: Text(
+              message,
+              key: ValueKey(message),
+              style: theme.typography.style(
+                metrics.caption,
+                color: theme.colors.background,
               ),
             ),
           ),
