@@ -101,7 +101,7 @@ void main() {
     expect(find.text('Bold'), findsNothing);
   });
 
-  testWidgets('it slides 4 px toward the trigger as a resampled image', (
+  testWidgets('it slides 4 px out from the trigger as a resampled image', (
     tester,
   ) async {
     useScreen(tester, TestScreen.desktop);
@@ -113,8 +113,8 @@ void main() {
     expect(_resampled(tester), isTrue);
     await tester.pumpAndSettle();
     final rest = tester.getRect(_bubble('Bold')).top;
-    // Above the trigger, it comes down toward it.
-    expect(rest - sliding, inExclusiveRange(0, 4));
+    // Above the trigger, it starts lower and rises away from it.
+    expect(sliding - rest, inExclusiveRange(0, 4));
     expect(_resampled(tester), isFalse, reason: 'at rest it paints directly');
   });
 

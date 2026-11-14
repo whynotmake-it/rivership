@@ -845,10 +845,10 @@ ImageFilterLayer _pushTranslation(
   return layer;
 }
 
-/// A tooltip bubble's slide: [child] is drawn [distance] away from the
-/// trigger at [presence] 0 and comes to rest at 1, toward the trigger of
-/// the [CoilTooltipAnchor] whose bubble it's in, on whichever side the
-/// bubble sits. Under reduced motion it doesn't move.
+/// A tooltip bubble's slide: [child] is drawn [distance] closer to the
+/// trigger at [presence] 0 and moves out to rest at 1, away from the
+/// trigger of the [CoilTooltipAnchor] whose bubble it's in, on whichever
+/// side the bubble sits. Under reduced motion it doesn't move.
 ///
 /// Like the rest of an enter transition it belongs in the anchor's bubble
 /// builder, around the bubble:
@@ -950,7 +950,7 @@ class _RenderTooltipSlide extends RenderProxyBox {
     super.detach();
   }
 
-  /// Away from the trigger, on whichever side the bubble sits.
+  /// Back toward the trigger, on whichever side the bubble sits.
   Offset get _offset {
     if (!_sliding) return Offset.zero;
     final placement = _RenderBubblePlacement.maybeOf(this);
@@ -960,10 +960,10 @@ class _RenderTooltipSlide extends RenderProxyBox {
     );
     final away = _distance * (1 - _presence.value);
     return switch (placement?.direction ?? AxisDirection.up) {
-      AxisDirection.up => Offset(0, -away),
-      AxisDirection.down => Offset(0, away),
-      AxisDirection.left => Offset(-away, 0),
-      AxisDirection.right => Offset(away, 0),
+      AxisDirection.up => Offset(0, away),
+      AxisDirection.down => Offset(0, -away),
+      AxisDirection.left => Offset(away, 0),
+      AxisDirection.right => Offset(-away, 0),
     };
   }
 

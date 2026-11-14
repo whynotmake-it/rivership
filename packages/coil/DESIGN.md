@@ -745,7 +745,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Android: long-press on icon-only buttons shows it above the finger (8 + 24), held while pressed and faded on release. It never fires the button.
   - iOS: none by default.
   - If the element has a context menu, long-press opens the menu instead.
-- **Motion:** blur-fade + a 4 px slide toward the trigger on `quick`, out on `quickExit`.
+- **Motion:** blur-fade + a 4 px slide out from the trigger (it starts 4 px closer and moves away) on `quick`, out on `quickExit`.
 - **Semantics:** the text is also `Semantics(tooltip:)`.
 - **Don't:** put required information in a tooltip; tooltip a labeled button.
 

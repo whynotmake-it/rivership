@@ -146,7 +146,7 @@ class CoilTooltipGroup extends StatelessWidget {
 }
 
 /// The tooltip's enter and exit around a [CoilTooltipBubble]: a blur-fade
-/// and a 4 px slide toward the trigger.
+/// and a 4 px slide out from the trigger.
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.presence,

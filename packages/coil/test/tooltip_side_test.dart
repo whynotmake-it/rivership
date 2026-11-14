@@ -77,7 +77,7 @@ void main() {
     expect(bubble.center.dy, closeTo(trigger.center.dy, 0.01));
   });
 
-  testWidgets('it slides toward the trigger from its side', (tester) async {
+  testWidgets('it slides out from the trigger on its side', (tester) async {
     useScreen(tester, TestScreen.desktop);
     await tester.pumpWidget(_button(side: CoilTooltipSide.end));
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -86,7 +86,8 @@ void main() {
     final sliding = _bubble(tester);
     await tester.pumpAndSettle();
     final rest = _bubble(tester);
-    expect(sliding.left - rest.left, inExclusiveRange(0, 4));
+    // Past the trigger's end, it starts nearer and moves right.
+    expect(rest.left - sliding.left, inExclusiveRange(0, 4));
     expect(sliding.top, rest.top);
   });
 

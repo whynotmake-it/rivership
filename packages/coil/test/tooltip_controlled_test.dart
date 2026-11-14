@@ -193,7 +193,7 @@ void main() {
     expect(tester.getRect(_bubble), rest);
   });
 
-  testWidgets('below its trigger, the tooltip slides up toward it', (
+  testWidgets('below its trigger, the tooltip slides down away from it', (
     tester,
   ) async {
     useScreen(tester, TestScreen.desktop);
@@ -224,6 +224,6 @@ void main() {
     await tester.pumpAndSettle();
     final rest = tester.getRect(bubble).top;
     expect(rest, greaterThan(tester.getRect(find.byType(CoilButton)).bottom));
-    expect(sliding - rest, inExclusiveRange(0, 4));
+    expect(rest - sliding, inExclusiveRange(0, 4));
   });
 }
