@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:coil_example/src/pages/components/dialog_page.dart';
 import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/catalog_shell.dart';
@@ -22,6 +23,7 @@ final List<AutoRoute> coilCatalogRoutes = [
       type: const RouteType.cupertino(),
       builder: (context, data) => entry.page(),
     ),
+  dialogRouteDef,
 ];
 
 /// The whole catalog as one route with its pages nested, for apps that

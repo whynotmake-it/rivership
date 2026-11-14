@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/app.dart';
+import 'package:coil_example/src/pages/components/dialog_page.dart';
 import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/preview_settings.dart';
@@ -107,6 +108,32 @@ void main() {
     ];
     expect(missing, isEmpty);
   });
+
+  for (final (tier, presentation) in [
+    (CatalogTier.touch, CoilModalPresentation.sheet),
+    (CatalogTier.pointer, CoilModalPresentation.centered),
+  ]) {
+    testWidgets('the routed dialog opens as a ${presentation.name} on '
+        '${tier.name} and back closes it', (tester) async {
+      await _pumpCatalog(tester, tier: tier);
+      final router = AutoRouter.of(tester.element(find.byType(HomePage)));
+      unawaited(router.push(NamedRoute(catalogRouteName(dialogEntry))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
+      await tester.pumpAndSettle();
+      final title = find.text('Rename project');
+      expect(
+        CoilModalRoute.presentationOf(tester.element(title)),
+        presentation,
+      );
+      expect(router.currentPath, endsWith('/dialog/rename'));
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(title, findsNothing);
+      expect(router.currentPath, endsWith('/dialog'));
+    });
+  }
 
   testWidgets('the settings dialog changes the page live', (tester) async {
     await _pumpCatalog(tester, tier: CatalogTier.touch);
