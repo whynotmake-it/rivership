@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil/src/components/slider/slider_visuals.dart'
     show sliderBubbleKey, sliderKnobKey;
+import 'package:coil/src/primitives/motion_layer.dart' show CoilPainterLayer;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -393,6 +394,138 @@ void main() {
       expect(value, .5);
       expect(scroll.offset, greaterThan(0));
     });
+  });
+
+  group('pointer and geometry', () {
+    Finder bubbleBox() => find.descendant(
+      of: find.byKey(sliderBubbleKey),
+      matching: find.byType(DecoratedBox),
+    );
+
+    testWidgets('the hover follows the pointer through a mouse drag', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host());
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: _at(tester, .2));
+      await mouse.moveTo(_at(tester, .2));
+      await tester.pump();
+      await mouse.down(_at(tester, .2));
+      for (final f in [.4, .6, .8]) {
+        await mouse.moveTo(_at(tester, f));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await mouse.up();
+      await settle(tester);
+      expect(_valueOf(tester), closeTo(.8, .01));
+      expect(
+        find.descendant(
+          of: find.byKey(sliderBubbleKey),
+          matching: find.text('0.8'),
+        ),
+        findsOneWidget,
+        reason: 'the hover is where the pointer let go, not where it began',
+      );
+      expect(tester.getCenter(bubbleBox()).dx, closeTo(_at(tester, .8).dx, 1));
+    });
+
+    testWidgets('a stepped drag springs to each step and lands on it', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const _Host(variant: CoilSliderVariant.pill, divisions: 4),
+      );
+      final knob = find.byKey(sliderKnobKey);
+      final start = tester.getCenter(knob);
+      final g = await tester.startGesture(start);
+      await g.moveBy(const Offset(4, 0));
+      await g.moveBy(const Offset(4, 0));
+      await tester.pump();
+      await g.moveTo(Offset(tester.getRect(_slider).right, start.dy));
+      await tester.pump();
+      expect(_valueOf(tester), 1);
+      await tester.pump(const Duration(milliseconds: 16));
+      final mid = tester.getCenter(knob).dx;
+      await g.up();
+      await settle(tester);
+      final end = tester.getCenter(knob).dx;
+      expect(mid, greaterThan(start.dx));
+      expect(mid, lessThan(end), reason: 'springs, does not jump');
+      expect(_valueOf(tester), 1);
+    });
+
+    testWidgets(
+      'pips: the fill spans the whole row, end pips sit at the ends',
+      (tester) async {
+        await tester.pumpWidget(
+          const _Host(
+            variant: CoilSliderVariant.pips,
+            divisions: 4,
+            label: null,
+          ),
+        );
+        final width = tester.getSize(_slider).width;
+        final layer = find.descendant(
+          of: _slider,
+          matching: find.byType(CoilPainterLayer),
+        );
+        // Paint calls in order: pips, fill, handle line.
+        Future<({List<Rect> rects, List<Rect> marks})> painted() async {
+          await settle(tester);
+          final rects = <Rect>[];
+          final marks = <Rect>[];
+          expect(
+            tester.renderObject(layer),
+            paints..everything((method, args) {
+              if (method == #drawRect) rects.add(args.first as Rect);
+              if (method == #drawRSuperellipse) {
+                marks.add((args.first as RSuperellipse).outerRect);
+              }
+              return true;
+            }),
+          );
+          return (rects: rects, marks: marks);
+        }
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.end);
+        final atMax = await painted();
+        expect(atMax.rects.first.left, 0);
+        expect(atMax.rects.first.right, closeTo(width, .01));
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.home);
+        final atMin = await painted();
+        expect(atMin.rects.first.width, 0);
+        final firstPip = atMin.marks.first.center.dx;
+        final handle = atMin.marks.last.center.dx;
+        expect(firstPip, handle, reason: 'the min pip sits under the handle');
+        expect(firstPip, lessThan(width / 4 / 2), reason: 'at the row start');
+      },
+    );
+
+    for (final (name, key) in [
+      ('min', LogicalKeyboardKey.home),
+      ('max', LogicalKeyboardKey.end),
+    ]) {
+      testWidgets('pill: at $name the bubble sits over the knob', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const _Host(variant: CoilSliderVariant.pill, tier: CoilTier.touch),
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(key);
+        await settle(tester);
+        final knob = tester.getCenter(find.byKey(sliderKnobKey));
+        final g = await tester.startGesture(knob);
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(tester.getCenter(bubbleBox()).dx, closeTo(knob.dx, .5));
+        await g.up();
+        await settle(tester);
+      });
+    }
   });
 
   group('motion', () {

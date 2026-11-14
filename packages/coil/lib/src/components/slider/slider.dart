@@ -16,8 +16,9 @@ import 'package:motor/motor.dart';
 final class CoilSliderTrack<T extends Object> extends Track<T> {
   CoilSliderTrack._(super.converter, {required String super.debugLabel});
 
-  /// The thumb and fill settling after a jump, a key or a release. While
-  /// dragging they follow the value directly. Default motion: `standard`.
+  /// The thumb and fill moving to a new value. While dragging a continuous
+  /// slider they follow the pointer directly; with divisions they spring to
+  /// each step. Default motion: `standard`.
   static final thumb = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.thumb',
@@ -189,7 +190,9 @@ class _CoilSliderState extends State<CoilSlider>
   /// The thumb's fraction, read by the track paint while painting.
   double _thumbFraction() => _controller.value(CoilSliderTrack.thumb);
 
-  /// The fraction under a hovering pointer, null when there is none.
+  /// The snapped fraction under a hover-capable pointer, null when there is
+  /// none. It follows the pointer during a drag too, so it is current the
+  /// moment the drag ends.
   final _hover = ValueNotifier<double?>(null);
 
   WidgetStatesController? _ownStates;
@@ -274,9 +277,10 @@ class _CoilSliderState extends State<CoilSlider>
     }
     final to = _scale.norm(widget.value);
     if (_controller.value(CoilSliderTrack.thumb) == to) return;
-    if (_dragging) {
-      // The thumb shows the value, which the pointer changed through the
-      // parent: follow it directly.
+    if (_dragging && widget.divisions == null) {
+      // A continuous drag: the thumb follows the pointer directly. A stepped
+      // value jumps from step to step, so it springs below and retargets as
+      // the pointer crosses steps.
       _controller.set([CoilSliderTrack.thumb.value(to)]);
     } else {
       _controller.animate([
@@ -353,11 +357,11 @@ class _CoilSliderState extends State<CoilSlider>
     final rtl = _rtl;
     final scale = _scale;
     final value = widget.value.clamp(widget.min, widget.max);
-    final reach = SliderReach(switch (widget.variant) {
-      CoilSliderVariant.scrubber => 0,
-      CoilSliderVariant.pips => metrics.controlPaddingX,
-      CoilSliderVariant.pill => style.knobBox! / 2,
-    });
+    // The row's range spans its full width; the pill's stops half a knob
+    // short of each end, so the knob stays inside the track.
+    final reach = SliderReach(
+      _compactTrack ? style.knobBox! / 2 : 0,
+    );
 
     return Semantics(
       container: true,
@@ -528,59 +532,12 @@ class _CoilSliderState extends State<CoilSlider>
             final radius = pill
                 ? BorderRadius.circular(style.pillHeight! / 2)
                 : BorderRadius.circular(style.radius!);
-            final Widget body = pill
-                ? SliderPill(
-                    painter: pillPaint!,
-                    style: style,
-                    metrics: metrics,
-                    label: widget.label,
-                    valueText: _format(value),
-                    reserve: reserve,
-                    labelColor: labelColor,
-                    valueColor: valueColor,
-                    emphasis: e,
-                    thumb: _controller,
-                    thumbFraction: () =>
-                        _controller.value(CoilSliderTrack.thumb),
-                    track: (track) => CoilFocusRing(
-                      visible: states.contains(WidgetState.focused),
-                      borderRadius: radius,
-                      offset: 2,
-                      child: _gestures(track, reach),
-                    ),
-                  )
-                : CoilFocusRing(
-                    visible: states.contains(WidgetState.focused),
-                    borderRadius: radius,
-                    offset: 2,
-                    child: _gestures(
-                      DecoratedBox(
-                        decoration: ShapeDecoration(
-                          shape: RoundedSuperellipseBorder(
-                            borderRadius: radius,
-                            side: BorderSide(color: style.border!),
-                          ),
-                        ),
-                        child: SliderRow(
-                          painter: rowPaint!,
-                          style: style,
-                          metrics: metrics,
-                          label: widget.label,
-                          valueText: _format(value),
-                          reserve: reserve,
-                          labelColor: labelColor,
-                          valueColor: valueColor,
-                          emphasis: e,
-                        ),
-                      ),
-                      reach,
-                    ),
-                  );
-            return Stack(
+            // The bubble maps the thumb's fraction to an x, so it lives in
+            // the track's own box: the whole row, or only the pill.
+            Widget withBubble(Widget track) => Stack(
               clipBehavior: Clip.none,
               children: [
-                body,
-                // The bubble tracks the thumb while it moves.
+                track,
                 ListenableBuilder(
                   listenable: _controller,
                   builder: (context, _) => SliderBubble(
@@ -596,9 +553,69 @@ class _CoilSliderState extends State<CoilSlider>
                 ),
               ],
             );
+            if (pill) {
+              return SliderPill(
+                painter: pillPaint!,
+                style: style,
+                metrics: metrics,
+                label: widget.label,
+                valueText: _format(value),
+                reserve: reserve,
+                labelColor: labelColor,
+                valueColor: valueColor,
+                emphasis: e,
+                thumb: _controller,
+                thumbFraction: () => _controller.value(CoilSliderTrack.thumb),
+                track: (track) => withBubble(
+                  CoilFocusRing(
+                    visible: states.contains(WidgetState.focused),
+                    borderRadius: radius,
+                    offset: 2,
+                    child: _gestures(track, reach),
+                  ),
+                ),
+              );
+            }
+            return withBubble(
+              CoilFocusRing(
+                visible: states.contains(WidgetState.focused),
+                borderRadius: radius,
+                offset: 2,
+                child: _gestures(
+                  DecoratedBox(
+                    decoration: ShapeDecoration(
+                      shape: RoundedSuperellipseBorder(
+                        borderRadius: radius,
+                        side: BorderSide(color: style.border!),
+                      ),
+                    ),
+                    child: SliderRow(
+                      painter: rowPaint!,
+                      style: style,
+                      metrics: metrics,
+                      label: widget.label,
+                      valueText: _format(value),
+                      reserve: reserve,
+                      labelColor: labelColor,
+                      valueColor: valueColor,
+                      emphasis: e,
+                    ),
+                  ),
+                  reach,
+                ),
+              ),
+            );
           },
         );
       },
+    );
+  }
+
+  /// Puts the hover where a hover-capable pointer is.
+  void _point(PointerEvent e, double width, SliderReach reach) {
+    if (!_enabled || !CoilInputModality.canHover(e.kind)) return;
+    _hover.value = _scale.norm(
+      _scale.valueAt(reach.fractionAt(e.localPosition.dx, width, rtl: _rtl)),
     );
   }
 
@@ -616,14 +633,10 @@ class _CoilSliderState extends State<CoilSlider>
               rtl: _rtl,
             );
           },
-          onPointerHover: (e) {
-            if (!_enabled || !CoilInputModality.canHover(e.kind)) return;
-            _hover.value = _scale.norm(
-              _scale.valueAt(
-                reach.fractionAt(e.localPosition.dx, width, rtl: _rtl),
-              ),
-            );
-          },
+          // Moves with a button down are pointer moves, not hovers; both
+          // place the hover, so it never lags behind a drag.
+          onPointerHover: (e) => _point(e, width, reach),
+          onPointerMove: (e) => _point(e, width, reach),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             excludeFromSemantics: true,

@@ -113,13 +113,21 @@ class SliderRowPaint extends CoilLayerPaint {
     );
 
     final divisions = this.divisions;
+    final half = handleWidth / 2;
+    final widest = divisions == null ? half : pipSize * (1 + pipGrowth) / 2;
+    // The handle line and the pips are marks at a fraction. The fill runs
+    // edge to edge, but a mark at either end stays a little inside the row,
+    // so the end pips sit under the handle line at min and max.
+    final margin = (half > widest ? half : widest) + 3;
+    double mark(double x) => x.clamp(margin, w - margin);
+
     if (divisions != null) {
       final label = geometry.rectOf(SliderTarget.label);
       final value = geometry.rectOf(SliderTarget.value);
       final clear = pipSize * 2;
       for (var i = 0; i <= divisions; i++) {
         final f = i / divisions;
-        final cx = x(f);
+        final cx = mark(x(f));
         final cy = row.height / 2;
         bool under(Rect? r) =>
             r != null && r.inflate(clear).contains(Offset(cx, cy));
@@ -153,8 +161,7 @@ class SliderRowPaint extends CoilLayerPaint {
     }
 
     final inset = handleInset - emphasis;
-    final half = handleWidth / 2;
-    final line = edge.clamp(half + 3, w - half - 3);
+    final line = mark(edge);
     canvas.drawRSuperellipse(
       RSuperellipse.fromLTRBR(
         offset.dx + line - half,

@@ -61,7 +61,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
       value: WidgetStateProperty.resolveWith(
         (s) => s.isEmpty ? c.mutedForeground : c.foreground,
       ),
-      preview: c.brand.withValues(alpha: 0.4),
+      preview: c.accent.withValues(alpha: 0.4),
       knob: const Color(0xFFFFFFFF),
       knobShadows: const [
         BoxShadow(
