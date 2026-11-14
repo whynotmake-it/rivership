@@ -150,7 +150,6 @@ class _SwitchesState extends State<_Switches> {
           description: Text(line),
           trailing: CoilSwitch(
             value: _on[i],
-            semanticLabel: label,
             onChanged: (value) => setState(() => _on[i] = value),
           ),
         ),
