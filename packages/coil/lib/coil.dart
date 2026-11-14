@@ -27,6 +27,7 @@ export 'foundation.dart';
 export 'input.dart';
 export 'input_copy.dart';
 export 'input_message.dart';
+export 'kbd.dart';
 export 'primitives.dart';
 export 'radio_group.dart';
 export 'scroll_area.dart';

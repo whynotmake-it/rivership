@@ -153,6 +153,60 @@ class CoilDialog extends StatelessWidget {
       );
     }
 
+    return CoilDialogFrame(
+      onClose: onClose,
+      closeLabel: closeLabel,
+      size: size,
+      style: style,
+      child: Padding(padding: EdgeInsets.all(look.padding!), child: body),
+    );
+  }
+}
+
+/// The panel a [CoilDialog] sits in, without its layout: the raised
+/// surface, the width for [size], and a close button in the corner when
+/// [onClose] is given.
+///
+/// Use it with [showCoilDialog] for a dialog whose content isn't a title,
+/// a body and actions, such as a settings dialog with its own navigation.
+/// [child] fills the panel edge to edge. Where [showCoilDialog] opens a
+/// phone sheet, the frame is the sheet's panel instead, and [child] lays
+/// out below the grabber.
+class CoilDialogFrame extends StatelessWidget {
+  /// Creates a dialog frame.
+  const CoilDialogFrame({
+    required this.child,
+    super.key,
+    this.onClose,
+    this.closeLabel = 'Close',
+    this.size = CoilDialogSize.sm,
+    this.style,
+  });
+
+  /// The content, edge to edge.
+  final Widget child;
+
+  /// Shows a close button that calls this.
+  final VoidCallback? onClose;
+
+  /// The close button's label for screen readers.
+  final String closeLabel;
+
+  /// How wide the frame gets.
+  final CoilDialogSize size;
+
+  /// Overrides the theme's dialog style.
+  final CoilDialogStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_CoilDialogPresentation.isSheet(context)) {
+      return CoilSheetPanel(child: child);
+    }
+    final look = CoilDialogStyle.fallback(
+      CoilTheme.of(context),
+      CoilTheme.metricsOf(context),
+    ).merge(CoilTheme.styleOf<CoilDialogStyle>(context)).merge(style);
     final radius = BorderRadius.circular(look.radius!);
     final window = MediaQuery.sizeOf(context);
     final width = math.min(
@@ -170,7 +224,7 @@ class CoilDialog extends StatelessWidget {
               borderRadius: radius,
               child: Stack(
                 children: [
-                  Padding(padding: EdgeInsets.all(look.padding!), child: body),
+                  child,
                   if (onClose case final onClose?)
                     PositionedDirectional(
                       top: 12,
