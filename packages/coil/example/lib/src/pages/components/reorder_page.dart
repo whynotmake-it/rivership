@@ -1,7 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
+import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -27,26 +27,91 @@ class ReorderPage extends StatelessWidget {
       DemoSection(
         title: 'Board',
         description:
-            'Shuffle a column, or drag a card to another column. The '
-            'card lands with MotionDraggable; the cards around it make room.',
-        child: SizedBox(height: 460, child: _Board()),
+            'Drag a card to another column, or shuffle one. The card lifts, '
+            'lands where it now lives, and the cards around it make room.',
+        padding: 0,
+        child: _Board(),
       ),
       DemoSection(
         title: 'Grid',
-        description: 'Items fly on both axes.',
+        description: 'Tiles fly on both axes.',
         child: _Grid(),
       ),
     ],
   );
 }
 
+/// The numbers that lay out the board for the tier.
+///
+/// A lane is inset around its cards as a popover is around its rows, so its
+/// radius is the card's plus that inset (DESIGN.md §5), and a card's text
+/// lines up with the lane title.
+@immutable
+class _BoardMetrics {
+  factory _BoardMetrics.of(BuildContext context) {
+    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final touch = metrics.tier == CoilTier.touch;
+    final card = CoilTheme.radiiOf(context).container;
+    final inset = metrics.popupInset;
+    return _BoardMetrics._(
+      inset: inset,
+      laneRadius: card + inset,
+      laneWidth: touch ? 296 : 272,
+      // The cards' edges sit 16 from the frame, the card padding.
+      edge: 16 - inset,
+      height: touch ? 560 : 480,
+    );
+  }
+
+  const _BoardMetrics._({
+    required this.inset,
+    required this.laneRadius,
+    required this.laneWidth,
+    required this.edge,
+    required this.height,
+  });
+
+  /// Between a lane's edge and its cards.
+  final double inset;
+  final double laneRadius;
+  final double laneWidth;
+
+  /// Between the frame and the lanes.
+  final double edge;
+  final double height;
+
+  /// Between two cards, as in a separated card group.
+  static const cardGap = 8.0;
+
+  /// Between two lanes. With their insets, card columns are 20 (pointer)
+  /// or 24 (touch) apart.
+  static const laneGap = 12.0;
+
+  /// A card's padding, compact (DESIGN.md §14.4 Card).
+  static const cardPadding = 12.0;
+}
+
+enum _Tag {
+  bug('Bug', CoilBadgeColor.red),
+  design('Design', CoilBadgeColor.gray),
+  docs('Docs', CoilBadgeColor.gray);
+
+  const _Tag(this.label, this.color);
+
+  final String label;
+
+  /// Only a bug spends a hue; the rest stay neutral.
+  final CoilBadgeColor color;
+}
+
 @immutable
 class _Task {
-  const _Task(this.id, this.title, this.owner);
+  const _Task(this.id, this.title, this.owner, [this.tag]);
 
   final int id;
   final String title;
   final String owner;
+  final _Tag? tag;
 }
 
 class _Column {
@@ -62,22 +127,22 @@ class _Column {
   }
 }
 
-const _titles = [
-  'Write the release notes',
-  'Fix the login redirect',
-  'Review the color tokens',
-  'Profile the board',
-  'Update the onboarding copy',
-  'Triage new issues',
-  'Ship the dark theme',
-  'Plan the next sprint',
-  'Audit the focus order',
-  'Draft the migration guide',
-  'Reply to design feedback',
-  'Record the demo',
-  'Tune the landing spring',
-  'Remove the old flags',
-  'Clean up the issue labels',
+const _tasks = [
+  ('Write the release notes', _Tag.docs),
+  ('Fix the login redirect', _Tag.bug),
+  ('Review the color tokens', _Tag.design),
+  ('Profile the board', null),
+  ('Update the onboarding copy', _Tag.docs),
+  ('Triage new issues', null),
+  ('Ship the dark theme', _Tag.design),
+  ('Plan the next sprint', null),
+  ('Audit the focus order', _Tag.bug),
+  ('Draft the migration guide', _Tag.docs),
+  ('Reply to design feedback', _Tag.design),
+  ('Record the demo', null),
+  ('Tune the landing spring', null),
+  ('Remove the old flags', null),
+  ('Clean up the issue labels', null),
 ];
 
 const _owners = ['Ada', 'Grace', 'Linus', 'Margaret', 'Ken'];
@@ -93,11 +158,8 @@ class _BoardState extends State<_Board> {
   late final List<_Column> _columns = () {
     var id = 0;
     _Task next() {
-      final task = _Task(
-        id,
-        _titles[id % _titles.length],
-        _owners[id % _owners.length],
-      );
+      final (title, tag) = _tasks[id % _tasks.length];
+      final task = _Task(id, title, _owners[id % _owners.length], tag);
       id++;
       return task;
     }
@@ -126,29 +188,52 @@ class _BoardState extends State<_Board> {
   });
 
   @override
-  Widget build(BuildContext context) => CoilScrollArea(
-    axis: Axis.horizontal,
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final (i, column) in _columns.indexed) ...[
-          if (i > 0) const SizedBox(width: 12),
-          SizedBox(
-            width: 260,
-            child: _ColumnView(
-              column: column,
-              onShuffle: () => setState(column.tasks.shuffle),
-              onAccept: (task) => _move(task, column),
+  Widget build(BuildContext context) {
+    final board = _BoardMetrics.of(context);
+    final colors = CoilTheme.of(context).colors;
+    // The board is a screen of its own: it sits on the page background,
+    // where cards have their designed contrast, as the Sidebar frames do.
+    // Inside the stage's hairline, which it would otherwise cover.
+    return Padding(
+      padding: const EdgeInsets.all(1),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(
+          CoilShape.nested(CoilTheme.radiiOf(context).container, 1),
+        ),
+        child: ColoredBox(
+          color: colors.background,
+          child: SizedBox(
+            height: board.height,
+            child: CoilScrollArea(
+              axis: Axis.horizontal,
+              padding: EdgeInsets.all(board.edge),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: _BoardMetrics.laneGap,
+                children: [
+                  for (final column in _columns)
+                    SizedBox(
+                      width: board.laneWidth,
+                      child: _Lane(
+                        column: column,
+                        onShuffle: () => setState(column.tasks.shuffle),
+                        onAccept: (task) => _move(task, column),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ],
-      ],
-    ),
-  );
+        ),
+      ),
+    );
+  }
 }
 
-class _ColumnView extends StatelessWidget {
-  const _ColumnView({
+/// A column of the board: a header over its cards, and a drop target for
+/// cards from the other columns.
+class _Lane extends StatelessWidget {
+  const _Lane({
     required this.column,
     required this.onShuffle,
     required this.onAccept,
@@ -160,54 +245,31 @@ class _ColumnView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final radii = CoilTheme.radiiOf(context);
+    final board = _BoardMetrics.of(context);
     return DragTarget<_Task>(
       // A card can only go to another column: there is no reordering
       // within a column yet, so a drop on its own column flies back.
       onWillAcceptWithDetails: (details) =>
           !column.tasks.contains(details.data),
       onAcceptWithDetails: (details) => onAccept(details.data),
-      builder: (context, candidates, _) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: candidates.isEmpty ? theme.colors.muted : theme.colors.tint,
-          borderRadius: BorderRadius.circular(radii.container),
-        ),
+      builder: (context, candidates, _) => _DropHighlight(
+        active: candidates.isNotEmpty,
+        borderRadius: BorderRadius.circular(board.laneRadius),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(board.inset),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: board.inset,
             children: [
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8),
-                child: Row(
-                  children: [
-                    RoleText(column.title, role: TypeRole.title),
-                    const SizedBox(width: 8),
-                    CoilBadge(child: Text('${column.tasks.length}')),
-                    const Spacer(),
-                    CoilButton(
-                      variant: CoilButtonVariant.ghost,
-                      size: CoilSize.compact,
-                      onPressed: onShuffle,
-                      child: const Text('Shuffle'),
-                    ),
-                  ],
-                ),
+              _LaneHeader(
+                title: Text(column.title),
+                count: column.tasks.length,
+                onShuffle: column.tasks.length > 1 ? onShuffle : null,
               ),
-              const SizedBox(height: 8),
               Expanded(
-                child: CoilScrollArea.scrollable(
-                  controller: column.controller,
-                  child: ListView.builder(
-                    controller: column.controller,
-                    itemCount: column.tasks.length,
-                    findChildIndexCallback: (key) =>
-                        column.indexOfId((key as ValueKey<int>).value),
-                    itemBuilder: (context, i) =>
-                        _card(context, column.tasks[i], i),
-                  ),
-                ),
+                child: column.tasks.isEmpty
+                    ? const _EmptyLane()
+                    : _cards(context),
               ),
             ],
           ),
@@ -216,57 +278,273 @@ class _ColumnView extends StatelessWidget {
     );
   }
 
-  Widget _card(BuildContext context, _Task task, int index) {
+  Widget _cards(BuildContext context) => CoilScrollArea.scrollable(
+    controller: column.controller,
+    child: ListView.builder(
+      controller: column.controller,
+      itemCount: column.tasks.length,
+      findChildIndexCallback: (key) =>
+          column.indexOfId((key as ValueKey<int>).value),
+      itemBuilder: (context, i) => _DraggableCard(
+        key: ValueKey(column.tasks[i].id),
+        task: column.tasks[i],
+        index: i,
+        column: column,
+      ),
+    ),
+  );
+}
+
+/// Shows that a dragged card can drop here: a `hover` fill under a brand
+/// ring, inset as in a clipping parent (DESIGN.md §2.3, §13.4). FF marks
+/// its file drop the same way, with an accent ring in place of the edge.
+class _DropHighlight extends StatelessWidget {
+  const _DropHighlight({
+    required this.active,
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final bool active;
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final motion = CoilTheme.motionOf(context);
-    final radii = CoilTheme.radiiOf(context);
-    final card = Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: CoilCard(
-        title: Text(task.title),
-        description: Text(task.owner),
+    return CoilFocusRing(
+      visible: active,
+      color: theme.colors.brand,
+      borderRadius: borderRadius,
+      offset: -theme.focusRingWidth,
+      child: MotionBuilder<Color>(
+        value: active
+            ? theme.colors.hover
+            : theme.colors.hover.withValues(alpha: 0),
+        converter: MotionConverter.colorRgb,
+        motion: active ? motion.fade : motion.fadeExit,
+        debugLabel: 'Lane drop fill',
+        builder: (context, color, child) => DecoratedBox(
+          decoration: ShapeDecoration(
+            color: color,
+            shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+          ),
+          child: child,
+        ),
+        child: child,
       ),
     );
-    List<TrackAnimation<Object>> transitions(MotionDragDetails drag) => [
-      if (drag.phase == MotionDragPhase.dragging)
-        MotionDraggableTrack.scale(const [TrackStep.to(1.03)]),
-    ];
-    Widget feedback(BuildContext context, MotionDragDetails drag, Widget f) =>
-        DecoratedBox(
-          // The lifted card's shadow. coil has no "lifted" step yet, so
-          // this uses the highest elevation.
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radii.container),
-            boxShadow: drag.phase == MotionDragPhase.dragging
-                ? theme.colors.shadow(6)
-                : null,
+  }
+}
+
+/// The lane's title and count, and a quiet shuffle at the trailing edge.
+class _LaneHeader extends StatelessWidget {
+  const _LaneHeader({
+    required this.title,
+    required this.count,
+    required this.onShuffle,
+  });
+
+  final Widget title;
+  final int count;
+  final VoidCallback? onShuffle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: metrics.controlHeight),
+      child: Row(
+        children: [
+          // The title starts where the cards' text does.
+          const SizedBox(width: _BoardMetrics.cardPadding),
+          Flexible(
+            child: Semantics(
+              header: true,
+              child: DefaultTextStyle(
+                style: theme.typography.style(
+                  metrics.body,
+                  weight: CoilWeight.semibold,
+                  color: theme.colors.foreground,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                child: title,
+              ),
+            ),
           ),
-          child: f,
-        );
-    // The vertical list scrolls on touch, so a card lifts on a long press
-    // there and at once with a pointer.
+          SizedBox(width: metrics.gap),
+          CoilBadge(
+            size: CoilSize.compact,
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          const Spacer(),
+          CoilButton(
+            variant: CoilButtonVariant.ghost,
+            size: CoilSize.compact,
+            onPressed: onShuffle,
+            leading: const CatalogIcon(Glyph.shuffle),
+            child: const Text('Shuffle'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What an empty lane shows until a card is dropped in it.
+class _EmptyLane extends StatelessWidget {
+  const _EmptyLane();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _BoardMetrics.cardPadding,
+        vertical: 24,
+      ),
+      child: Text(
+        'Drop a card here',
+        textAlign: TextAlign.center,
+        style: theme.typography.style(
+          metrics.caption,
+          color: theme.colors.mutedForeground,
+        ),
+      ),
+    );
+  }
+}
+
+/// A task card that drags to other lanes and flies when its lane
+/// reorders.
+class _DraggableCard extends StatelessWidget {
+  const _DraggableCard({
+    required this.task,
+    required this.index,
+    required this.column,
+    super.key,
+  });
+
+  final _Task task;
+  final int index;
+  final _Column column;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context);
+    final card = _TaskCard(task: task);
+    // The feedback is the same card, lifted while it is dragged. It settles
+    // back on `gentle` as it lands, the landing's own spring.
+    Widget feedback(BuildContext context, MotionDragDetails drag, Widget _) =>
+        _TaskCard(task: task, lifted: drag.phase == MotionDragPhase.dragging);
+    // The lane scrolls on touch, so a card lifts on a long press there, and
+    // at once with a pointer.
     final draggable = CoilTheme.tierOf(context) == CoilTier.touch
         ? MotionLongPressDraggable<_Task>(
             data: task,
             motion: motion.gentle,
-            transitions: transitions,
             feedbackBuilder: feedback,
             child: card,
           )
         : MotionDraggable<_Task>(
             data: task,
             motion: motion.gentle,
-            transitions: transitions,
             feedbackBuilder: feedback,
             child: card,
           );
     return MotionReorder(
-      key: ValueKey(task.id),
       flightKey: index,
       // A card that changes column snaps; MotionDraggable lands it.
       scope: column,
       motion: motion.standard,
-      child: draggable,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: index < column.tasks.length - 1 ? _BoardMetrics.cardGap : 0,
+        ),
+        child: draggable,
+      ),
+    );
+  }
+}
+
+/// A task: its title, then who owns it and its tag.
+///
+/// Lifted, it rises two surface levels, as a popover opened from it would
+/// (DESIGN.md §2.1, §6): that level's shadow, and in dark mode its lighter
+/// fill. It rises on `quick`; it settles on `gentle`, the landing's spring,
+/// so it is down when it lands. Built lifted, it is seen being picked up.
+class _TaskCard extends StatelessWidget {
+  const _TaskCard({required this.task, this.lifted = false});
+
+  final _Task task;
+  final bool lifted;
+
+  @override
+  Widget build(BuildContext context) {
+    final tag = task.tag;
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
+    final motion = CoilTheme.motionOf(context);
+    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    // The card's own levels: 3 with its shadow in light, 2 with a hairline
+    // in dark (CoilCardStyle.fallback).
+    final light = colors.brightness == Brightness.light;
+    final rest = light ? 3 : 2;
+    final up = rest + 2;
+    final restShadows = light ? colors.shadow(rest) : const <BoxShadow>[];
+    final description = Row(
+      spacing: metrics.gap,
+      children: [
+        Flexible(child: Text(task.owner, maxLines: 1)),
+        if (tag != null)
+          CoilBadge(
+            variant: CoilBadgeVariant.dot,
+            color: tag.color,
+            size: CoilSize.compact,
+            child: Text(tag.label),
+          ),
+      ],
+    );
+    return SingleMotionBuilder(
+      value: lifted ? 1 : 0,
+      from: 0,
+      motion: lifted ? motion.quick : motion.gentle,
+      debugLabel: 'Task card lift',
+      builder: (context, lift, _) {
+        // `gentle` overshoots a little; the surface doesn't.
+        final t = lift.clamp(0.0, 1.0);
+        return CoilCard(
+          // Pinned, because the feedback flies in the overlay, outside any
+          // scope the board could set.
+          size: CoilSize.compact,
+          // At rest the card keeps its own style.
+          style: t == 0
+              ? null
+              : CoilCardStyle(
+                  surface: Color.lerp(
+                    colors.surface(rest),
+                    colors.surface(up),
+                    t,
+                  ),
+                  shadows: BoxShadow.lerpList(
+                    restShadows,
+                    colors.shadow(up),
+                    t,
+                  ),
+                ),
+          title: Text(task.title),
+          description: description,
+        );
+      },
     );
   }
 }
@@ -281,20 +559,42 @@ class _Grid extends StatefulWidget {
 class _GridState extends State<_Grid> {
   final _items = List.generate(12, (i) => i + 1);
 
+  bool get _sorted {
+    for (var i = 1; i < _items.length; i++) {
+      if (_items[i - 1] > _items[i]) return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final radii = CoilTheme.radiiOf(context);
+    final metrics = CoilTheme.metricsOf(context);
     final motion = CoilTheme.motionOf(context);
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item);
+    // Two control heights: a tile reads as a token, not a button.
+    final extent = metrics.controlHeight * 1.5;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 16,
       children: [
-        CoilButton(
-          variant: CoilButtonVariant.secondary,
-          onPressed: () => setState(_items.shuffle),
-          child: const Text('Shuffle'),
+        Row(
+          spacing: metrics.buttonGap,
+          children: [
+            CoilButton(
+              variant: CoilButtonVariant.secondary,
+              onPressed: () => setState(_items.shuffle),
+              leading: const CatalogIcon(Glyph.shuffle),
+              child: const Text('Shuffle'),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              onPressed: _sorted ? null : () => setState(_items.sort),
+              leading: const CatalogIcon(Glyph.sort),
+              child: const Text('Sort'),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -305,15 +605,28 @@ class _GridState extends State<_Grid> {
                 flightKey: i,
                 motion: motion.standard,
                 child: SizedBox.square(
-                  dimension: 64,
+                  dimension: extent,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: theme.colors.surface(4),
-                      borderRadius: BorderRadius.circular(radii.item),
-                      boxShadow: theme.colors.shadow(2),
+                    // A quiet fill: tiles are content, not raised surfaces.
+                    decoration: ShapeDecoration(
+                      color: theme.colors.muted,
+                      shape: RoundedSuperellipseBorder(borderRadius: radius),
                     ),
                     child: Center(
-                      child: RoleText('$item', role: TypeRole.title),
+                      child: Text(
+                        '$item',
+                        style: theme.typography
+                            .style(
+                              metrics.body,
+                              weight: CoilWeight.semibold,
+                              color: theme.colors.foreground,
+                            )
+                            .copyWith(
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                      ),
                     ),
                   ),
                 ),

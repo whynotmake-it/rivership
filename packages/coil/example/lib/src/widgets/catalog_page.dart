@@ -159,11 +159,15 @@ class DemoSection extends StatelessWidget {
     required this.child,
     super.key,
     this.description,
+    this.padding = 16,
   });
 
   final String title;
   final String? description;
   final Widget child;
+
+  /// The stage's padding; 0 lets the example meet the stage's edges.
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +188,7 @@ class DemoSection extends StatelessWidget {
           RoleText(description, role: TypeRole.caption, muted: true),
         ],
         const SizedBox(height: 12),
-        DemoStage(child: child),
+        DemoStage(padding: padding, child: child),
       ],
     );
   }
