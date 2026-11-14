@@ -28,6 +28,7 @@ There is no `AnimationController`, `Tween` or curve in this package.
 | `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder`, fed by a presence spring per child. |
 | rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. |
 | `Draggable`, `LongPressDraggable` | `MotionDraggable`, `MotionLongPressDraggable` | The feedback lands with a spring; plain `DragTarget`s work unchanged. See [Dragging](#dragging). |
+| (none) | `MotionReorder` | Flies an item from its old place to its new one when a list, grid or board reorders. See [Reordering](#reordering). |
 
 Each widget takes `motion` where the Flutter widget takes `duration` and
 `curve`. Every widget also takes `tickerRate` and `debugLabel`, like Motor's
@@ -227,6 +228,39 @@ Differences from `Draggable`:
   computes, not the transformed feedback's.
 - `createRecognizer` isn't overridable: `MotionLongPressDraggable` covers
   the long press.
+
+### Reordering
+
+`MotionReorder` flies an item from where it was painted to where layout puts
+it, whenever its `flightKey` changes. Give it the item's identity as its
+`key` and its index as its `flightKey`:
+
+```dart
+ListView.builder(
+  itemCount: tasks.length,
+  // Without it, the list matches items by index and nothing flies.
+  findChildIndexCallback: (key) => indexOfTask(key),
+  itemBuilder: (context, i) => MotionReorder(
+    key: ValueKey(tasks[i].id),
+    flightKey: i,
+    child: TaskTile(tasks[i]),
+  ),
+)
+```
+
+- Only a `flightKey` change starts a flight. Scrolling, a sibling resizing
+  or the window resizing move the item with layout, at once.
+- Flights run in content coordinates, the position plus the offset of every
+  enclosing scrollable, on both axes. Scrolling mid-flight carries the flight
+  along, so this works in nested scrollables such as a board of scrolling
+  columns.
+- A new `flightKey` mid-flight redirects the flight with its velocity. A
+  change of layout alone mid-flight moves the whole flight instead, so it
+  never bends toward a layout shift.
+- Hit testing and semantics stay at the layout position.
+- `scope` (such as a board column) makes a change snap instead of fly.
+  `enabled: false` hands the item to another animation, such as a
+  `MotionDraggable` landing on it.
 
 ## Reduced motion
 
