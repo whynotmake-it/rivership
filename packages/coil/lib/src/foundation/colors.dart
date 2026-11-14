@@ -226,7 +226,11 @@ class CoilColors with Diagnosticable {
       redLabel: c(a.redLabel, b.redLabel),
       shadowColor: c(a.shadowColor, b.shadowColor),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
-      focusRingColor: c(a.focusRing, b.focusRing),
+      // Stays null when neither side overrides it, so the ring keeps
+      // following the brand color.
+      focusRingColor: a.focusRingColor == null && b.focusRingColor == null
+          ? null
+          : c(a.focusRing, b.focusRing),
     );
   }
 

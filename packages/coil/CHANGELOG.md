@@ -2,6 +2,12 @@
 
 Milestone M0, unreleased.
 
+- `CoilTypography.fontFamily` can be null for the platform's UI font
+  (`CoilTypography.platform`). `copyWith` can now clear `fontPackage`, so
+  `copyWith(fontFamily: 'Brand', fontPackage: null)` switches to an app
+  font instead of looking for it inside coil.
+- `CoilColors.lerp` no longer pins the focus ring color: after a theme
+  animation, focus rings still follow `brand`.
 - Breaking: `CoilHoverRegion` only tracks which item is lit. Paint the
   default highlight with `CoilHoverHighlight`, or read
   `CoilHoverRegion.maybeOf` and drive your own painters. `background`,

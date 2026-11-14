@@ -52,4 +52,35 @@ void main() {
     );
     expect(radii.item, 12);
   });
+
+  testWidgets('an app can set its own font, or the platform font', (
+    tester,
+  ) async {
+    late TextStyle style;
+    Future<void> pump(CoilTypography typography) => tester.pumpWidget(
+      CoilTheme(
+        data: CoilThemeData.light.copyWith(typography: typography),
+        child: Builder(
+          builder: (context) {
+            style = DefaultTextStyle.of(context).style;
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    await pump(
+      const CoilTypography().copyWith(fontFamily: 'Brand', fontPackage: null),
+    );
+    expect(style.fontFamily, 'Brand');
+
+    await pump(CoilTypography.platform);
+    expect(style.fontFamily, isNull);
+  });
+
+  test('focus rings keep following the brand after a theme lerp', () {
+    final colors = CoilColors.lerp(CoilColors.light, CoilColors.dark, 1);
+    const violet = Color(0xFF8B5CF6);
+    expect(colors.copyWith(brand: violet).focusRing, violet);
+  });
 }

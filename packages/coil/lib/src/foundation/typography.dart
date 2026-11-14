@@ -44,6 +44,9 @@ enum CoilWeight {
   ];
 }
 
+/// Marks a copyWith argument that wasn't passed.
+const Object _keep = Object();
+
 /// One step of the type scale: a font size and a line height in pixels.
 @immutable
 class CoilTypeStep {
@@ -70,21 +73,32 @@ class CoilTypeStep {
 /// (`CoilThemeData.typography`). A theme field, so apps can swap the font
 /// at runtime.
 ///
-/// Apps that swap the font set [fontFamily] (and [fontPackage]). Labels are
+/// Apps that swap the font set [fontFamily] and [fontPackage]:
+/// `CoilTypography(fontFamily: 'Brand')` for an app font, or
+/// `CoilTypography(fontFamily: null)` for the platform's UI font. Labels are
 /// plain text with even leading: for Inter that centers the cap height in
 /// the line box exactly, as CSS `text-box: trim-both cap alphabetic` does.
+///
+/// Weights are `wght` variations ([CoilWeight]), so a font without a `wght`
+/// axis draws every weight at its regular weight.
 @immutable
 class CoilTypography {
-  /// Creates typography theme data. Defaults to the bundled Inter.
+  /// Creates typography theme data. Defaults to the bundled Inter; a
+  /// different [fontFamily] needs its own [fontPackage] (null for a font
+  /// the app bundles or the platform has).
   const CoilTypography({
     this.fontFamily = 'Inter',
     this.fontPackage = 'coil',
   });
 
-  /// The font family.
-  final String fontFamily;
+  /// The platform's UI font (San Francisco on Apple platforms, Roboto on
+  /// Android).
+  static const platform = CoilTypography(fontFamily: null, fontPackage: null);
 
-  /// The package bundling [fontFamily], or null for an app font.
+  /// The font family, or null for the platform's UI font.
+  final String? fontFamily;
+
+  /// The package bundling [fontFamily], or null for an app or platform font.
   final String? fontPackage;
 
   /// A text style for [step] at [weight] in [color].
@@ -112,13 +126,18 @@ class CoilTypography {
     );
   }
 
-  /// Returns a copy with the given fields replaced.
+  /// Returns a copy with the given fields replaced. Both are nullable, so
+  /// pass `fontPackage: null` when switching to a font outside a package.
   CoilTypography copyWith({
-    String? fontFamily,
-    String? fontPackage,
+    Object? fontFamily = _keep,
+    Object? fontPackage = _keep,
   }) => CoilTypography(
-    fontFamily: fontFamily ?? this.fontFamily,
-    fontPackage: fontPackage ?? this.fontPackage,
+    fontFamily: identical(fontFamily, _keep)
+        ? this.fontFamily
+        : fontFamily as String?,
+    fontPackage: identical(fontPackage, _keep)
+        ? this.fontPackage
+        : fontPackage as String?,
   );
 
   @override
