@@ -29,6 +29,7 @@ There is no `AnimationController`, `Tween` or curve in this package.
 | rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. |
 | `Draggable`, `LongPressDraggable` | `MotionDraggable`, `MotionLongPressDraggable` | The feedback lands with a spring; plain `DragTarget`s work unchanged. See [Dragging](#dragging). |
 | (none) | `MotionReorder` | Flies an item from its old place to its new one when a list, grid or board reorders. See [Reordering](#reordering). |
+| `ReorderableListView` | `MotionDropZone` | Makes room for an item dragged over any list, grid or wrap, and takes the drop there. See [Drop zones](#drop-zones). |
 | (none) | `MotionEdgeScroll` | Scrolls the scrollables around it while a drag is near their edges. See [Edge scrolling](#edge-scrolling). |
 
 Each widget takes `motion` where the Flutter widget takes `duration` and
@@ -284,13 +285,58 @@ ListView.builder(
   `enabled: false` hands the item to another animation, such as a
   `MotionDraggable` landing on it.
 
+### Drop zones
+
+`MotionDropZone` is one `DragTarget` around a list, grid or wrap. While a
+compatible item hovers over it, the zone opens a gap where the item would
+go, and the items after the gap fly aside on their `MotionReorder` springs.
+A drop calls `onInsert` with the gap's index, and the feedback flies into
+the gap. The app owns the data and lays the slots out with any list widget:
+
+```dart
+MotionDropZone<Task>(
+  items: tasks,
+  // The index counts after the task has left its old place, so this is
+  // the whole job for a reorder within the list.
+  onInsert: (task, index) => setState(() {
+    tasks
+      ..remove(task)
+      ..insert(index, task);
+  }),
+  builder: (context, slots) => ListView.builder(
+    itemCount: slots.length,
+    findChildIndexCallback: slots.indexOfKey,
+    itemBuilder: (context, i) => slots.build(
+      i,
+      (context, task) => MotionDraggable<Task>(
+        data: task,
+        child: TaskTile(task),
+      ),
+    ),
+  ),
+)
+```
+
+- The gap goes before the first item whose painted center is past the
+  pointer, within the pointer's row for a grid or a wrap. It holds still
+  within a few pixels of a center, so it doesn't flicker. `probe:
+  .feedbackCenter` places it by the card instead of the finger.
+- The gap is as large as the dragged item. `placeholderBuilder` draws it
+  and can pick its own size.
+- Dragging an item of the zone turns its slot into the gap. One callback,
+  `onInsert`, covers drops from this list, from other lists, and moves by a
+  screen reader.
+- When `onInsert` returns a `Future`, the gap stays open and the feedback
+  waits on it until the future completes. If it throws, or completes
+  without the item in `items`, the drop counts as rejected.
+
 ### Edge scrolling
 
 `MotionEdgeScroll` scrolls every `Scrollable` around it while a
 `MotionDraggable` is dragged near one of its edges: faster the closer to the
 edge, smoothly, and on for as long as the drag holds still. Put it anywhere
 inside the scrollable; its own size doesn't matter, because the edges are
-the viewport's.
+the viewport's. A `MotionDropZone` includes one.
 
 ## Reduced motion
 

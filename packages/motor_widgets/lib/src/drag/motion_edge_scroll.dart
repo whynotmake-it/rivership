@@ -91,10 +91,12 @@ class MotionEdgeScrollSettings {
 /// once when the drag ends.
 ///
 /// Several edge scrolls inside one scrollable scroll it once; the first
-/// one's settings apply.
+/// one's settings apply. A `MotionDropZone` includes one, which an edge
+/// scroll of your own overrides.
 ///
 /// Only [MotionDraggable] drags are seen, because Flutter's [Draggable]
-/// doesn't tell anyone where it is.
+/// doesn't tell anyone where it is. A `MotionDropZone` also scrolls for a
+/// plain [Draggable] while it hovers over the zone.
 class MotionEdgeScroll extends StatefulWidget {
   /// Scrolls the scrollables around [child] while a drag is near their
   /// edges.

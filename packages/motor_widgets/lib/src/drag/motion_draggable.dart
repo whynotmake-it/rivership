@@ -651,6 +651,9 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   Rect? get visibleRect => mounted ? visibleRectOf(context) : null;
 
   @override
+  bool get holdsLanding => false;
+
+  @override
   void landingChanged() {
     if (mounted) setState(() {});
   }

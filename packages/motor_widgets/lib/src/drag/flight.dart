@@ -9,6 +9,15 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// A mounted [MotionDraggable] that a [DragFlight] can land on.
 abstract interface class LandingSite {
+  /// The site's element.
+  BuildContext get context;
+
+  /// Whether a flight that has reached this site waits there instead of
+  /// ending, because the item it stands in for hasn't arrived yet.
+  ///
+  /// A `MotionDropZone`'s gap holds a landing while its insert is pending.
+  bool get holdsLanding;
+
   /// The site's rect in global coordinates where it was last painted, or
   /// null while it isn't laid out.
   ///
@@ -60,8 +69,25 @@ class LandingRegistry {
   static final _registries = Expando<LandingRegistry>('LandingRegistry');
 
   final _sites = <Object, List<LandingSite>>{};
+  final _reservations = <Object, LandingSite>{};
   final _landing = <Object, int>{};
   final _fading = <Object, int>{};
+
+  /// Reserves [site] as where an accepted drop of [tag] lands, ahead of the
+  /// sites registered under [tag], until [unreserve].
+  ///
+  /// A `MotionDropZone` reserves its gap while its insert is pending, so
+  /// the drop lands where the item will be, not on the source that another
+  /// list still shows.
+  void reserve(Object tag, LandingSite site) => _reservations[tag] = site;
+
+  /// Ends [site]'s reservation of [tag].
+  void unreserve(Object tag, LandingSite site) {
+    if (identical(_reservations[tag], site)) _reservations.remove(tag);
+  }
+
+  /// The site reserved for [tag], or null.
+  LandingSite? reservationFor(Object tag) => _reservations[tag];
 
   /// Registers [site] under [tag].
   void add(Object tag, LandingSite site) => (_sites[tag] ??= []).add(site);
@@ -214,6 +240,15 @@ class DragFlight {
 
   /// The flights that are dragged or landing.
   static Iterable<DragFlight> get activeFlights => _active;
+
+  /// The flight that is being dragged with [data], or null.
+  static DragFlight? draggingWith(Object? data) {
+    DragFlight? found;
+    for (final flight in _active) {
+      if (flight.isDragging && flight.widget.data == data) found = flight;
+    }
+    return found;
+  }
 
   void _notifyStarted() {
     _active.add(this);
@@ -414,6 +449,31 @@ class DragFlight {
     _applyTransitions();
   }
 
+  /// Looks for where to land again after this frame, because the site it
+  /// lands on is going away, such as a drop zone's gap whose item arrives.
+  ///
+  /// A flight that rests on a site doesn't rebuild, so it wouldn't notice.
+  void relocate() {
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) {
+        final site = _site;
+        if (site != null && !_done) _loseSite(site);
+      })
+      ..scheduleFrame();
+  }
+
+  /// Turns an accepted drop into a rejected one, because the target couldn't
+  /// take the item after all, for example when a `MotionDropZone`'s insert
+  /// failed. The flight then lands back on the item where it still is, or
+  /// plays the rejected exit.
+  void reject() {
+    if (_done || phase != MotionDragPhase.accepted) return;
+    phase = MotionDragPhase.rejected;
+    accepted = false;
+    if (_view == null) return;
+    _applyTransitions();
+  }
+
   /// Lets the feedback carry on from the release while the destination
   /// isn't known, and while it exits without one.
   void _coast({Offset? velocity}) {
@@ -444,6 +504,21 @@ class DragFlight {
       return;
     }
     _resolved = true;
+    if (_findSite() case final found?) _landOn(found.site, found.rect);
+    _applyTransitions();
+    _checkSettled();
+  }
+
+  /// Where to land now: the site reserved for an accepted drop, else the
+  /// nearest site with the tag, or null when there is none.
+  ({LandingSite site, Rect rect})? _findSite() {
+    final controller = _controller!;
+    if (accepted) {
+      final reserved = registry.reservationFor(tag);
+      if (reserved?.globalRect case final rect?) {
+        return (site: reserved!, rect: rect);
+      }
+    }
     final candidates = [
       for (final site in registry.sitesFor(tag))
         if (site.globalRect case final rect?) (site: site, rect: rect),
@@ -472,20 +547,15 @@ class DragFlight {
       }
       return true;
     }(), 'never fails: it only reports duplicate tags');
-    if (candidates.isNotEmpty) {
-      final center =
-          globalTopLeft & controller.value(MotionDraggableTrack.size);
-      final nearest = candidates.reduce(
-        (a, b) =>
-            (a.rect.center - center.center).distanceSquared <=
-                (b.rect.center - center.center).distanceSquared
-            ? a
-            : b,
-      );
-      _landOn(nearest.site, nearest.rect);
-    }
-    _applyTransitions();
-    _checkSettled();
+    if (candidates.isEmpty) return null;
+    final center = globalTopLeft & controller.value(MotionDraggableTrack.size);
+    return candidates.reduce(
+      (a, b) =>
+          (a.rect.center - center.center).distanceSquared <=
+              (b.rect.center - center.center).distanceSquared
+          ? a
+          : b,
+    );
   }
 
   void _landOn(LandingSite site, Rect rect) {
@@ -670,9 +740,20 @@ class DragFlight {
     final global = globalTopLeft;
     final velocity = controller.velocity(MotionDraggableTrack.offset);
     _site = null;
-    controller.set([MotionDraggableTrack.offset.value(global)]);
-    _coast(velocity: velocity);
-    _applyTransitions();
+    controller.set([
+      MotionDraggableTrack.offset.value(global, velocity: velocity),
+    ]);
+    // Another site may have taken over the tag, such as the item that
+    // replaces a drop zone's gap, or a lazy list's rebuilt destination.
+    if (_findSite() case final found?) {
+      _landOn(found.site, found.rect);
+      _applyTransitions();
+    } else {
+      // The exit starts before the coast, which may settle at once when the
+      // flight was at rest, so that it doesn't end the flight first.
+      _applyTransitions();
+      _coast(velocity: velocity);
+    }
     _checkSettled();
   }
 
@@ -744,6 +825,7 @@ class DragFlight {
     if (_done || controller == null) return;
     if (phase == MotionDragPhase.dragging || !_resolved) return;
     if (controller.status.isAnimating) return;
+    if (_site?.holdsLanding ?? false) return;
     _finish(landed: true);
   }
 
