@@ -29,6 +29,7 @@ import 'package:coil_example/src/pages/components/sidebar_page.dart';
 import 'package:coil_example/src/pages/components/skeleton_page.dart';
 import 'package:coil_example/src/pages/components/slider_page.dart';
 import 'package:coil_example/src/pages/components/switch_page.dart';
+import 'package:coil_example/src/pages/components/table_page.dart';
 import 'package:coil_example/src/pages/components/tabs_page.dart';
 import 'package:coil_example/src/pages/components/textarea_page.dart';
 import 'package:coil_example/src/pages/components/thinking_steps_page.dart';
@@ -134,6 +135,7 @@ const catalogEntries = <CatalogEntry>[
   dataTableEntry,
   accordionEntry,
   cardEntry,
+  tableEntry,
   bannerEntry,
   breadcrumbEntry,
   thinkingStepsEntry,

@@ -97,18 +97,13 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('planned components are listed but do not open', (tester) async {
-    await _pumpCatalog(tester, tier: CatalogTier.pointer);
+  test('every component DESIGN.md specifies has a page', () {
     final built = {for (final entry in catalogEntries) entry.title};
-    final name = designComponents.values
-        .expand((names) => names)
-        .firstWhere((name) => !built.contains(name));
-    final planned = find.text(name);
-    await tester.ensureVisible(planned);
-    await tester.pumpAndSettle();
-    await tester.tap(planned);
-    await tester.pumpAndSettle();
-    expect(find.byType(HomePage), findsOneWidget);
+    final missing = [
+      for (final name in designComponents.values.expand((names) => names))
+        if (!built.contains(name)) name,
+    ];
+    expect(missing, isEmpty);
   });
 
   testWidgets('the settings sheet changes the page live', (tester) async {
