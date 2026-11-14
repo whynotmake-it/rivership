@@ -2,6 +2,17 @@
 
 Milestone M0, unreleased.
 
+- `CoilColors.fromSeed` builds a palette from a brand color and a neutral
+  tone (`neutralHue`, `neutralChroma`): every grey takes the tint at its
+  default lightness and opacity, and text and status colors keep their
+  contrast. The defaults give `CoilColors.light` and `CoilColors.dark`.
+  `CoilColorMix` gains `oklch`, `toOklch` and `ensureContrastByLightness`.
+- `CoilTypography.fontFamily` can be null for the platform's UI font
+  (`CoilTypography.platform`). `copyWith` can now clear `fontPackage`, so
+  `copyWith(fontFamily: 'Brand', fontPackage: null)` switches to an app
+  font instead of looking for it inside coil.
+- `CoilColors.lerp` no longer pins the focus ring color: after a theme
+  animation, focus rings still follow `brand`.
 - Breaking: `CoilHoverRegion` only tracks which item is lit. Paint the
   default highlight with `CoilHoverHighlight`, or read
   `CoilHoverRegion.maybeOf` and drive your own painters. `background`,

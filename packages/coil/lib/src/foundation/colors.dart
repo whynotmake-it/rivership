@@ -40,6 +40,86 @@ class CoilColors with Diagnosticable {
     this.focusRingColor,
   });
 
+  /// A full palette from a [brand] color and a neutral tone, for
+  /// [brightness].
+  ///
+  /// The neutral tone tints every grey: surfaces, text, fills and borders
+  /// take [neutralHue] (an Oklch hue in degrees: about 60 is warm, 250 is
+  /// cool) at [neutralChroma] (Oklch chroma: 0 is pure grey, 0.01 a hint,
+  /// 0.03 clearly tinted). Each token keeps the lightness and opacity it has
+  /// in [CoilColors.light] or [CoilColors.dark], so the palette keeps its
+  /// contrast and surface order. Where a color can't hold the chroma (white,
+  /// black, the lightest surfaces), it gets as much as fits.
+  ///
+  /// Text and status colors keep the contrast they have against the default
+  /// background: if the tint lowers it, they get lighter or darker, never a
+  /// different hue.
+  ///
+  /// [brand] is used as given (the default is coil's blue). The focus ring
+  /// follows it; [highContrast] darkens it to 3 : 1 against the background.
+  ///
+  /// With the defaults this is [CoilColors.light] or [CoilColors.dark].
+  ///
+  /// ```dart
+  /// CoilThemeData(
+  ///   colors: CoilColors.fromSeed(
+  ///     brightness: Brightness.light,
+  ///     brand: const Color(0xFF14B8A6),
+  ///     neutralHue: 60,
+  ///     neutralChroma: 0.01,
+  ///   ),
+  /// )
+  /// ```
+  factory CoilColors.fromSeed({
+    required Brightness brightness,
+    Color? brand,
+    double neutralHue = 0,
+    double neutralChroma = 0,
+  }) {
+    // The recipe: every token's lightness and alpha, read from the default
+    // palette for this brightness.
+    final base = brightness == Brightness.dark ? dark : light;
+    Color neutral(Color token) => CoilColorMix.oklch(
+      CoilColorMix.toOklch(token).l,
+      neutralChroma,
+      neutralHue,
+      alpha: token.a,
+    );
+    final surfaces = [for (final surface in base.surfaces) neutral(surface)];
+    final background = surfaces[0];
+    // Keeps the contrast [token] has against the default background.
+    Color legible(Color token, Color generated) =>
+        CoilColorMix.ensureContrastByLightness(
+          generated,
+          background,
+          CoilColorMix.contrastRatio(token, base.background),
+        );
+    Color text(Color token) => legible(token, neutral(token));
+    Color status(Color token) => legible(token, token);
+    return base.copyWith(
+      surfaces: surfaces,
+      foreground: text(base.foreground),
+      muted: neutral(base.muted),
+      mutedForeground: text(base.mutedForeground),
+      accent: neutral(base.accent),
+      selected: neutral(base.selected),
+      input: neutral(base.input),
+      destructive: status(base.destructive),
+      info: status(base.info),
+      success: status(base.success),
+      warning: status(base.warning),
+      brand: brand,
+      overlay: neutral(base.overlay),
+      hover: neutral(base.hover),
+      active: neutral(base.active),
+      tint: neutral(base.tint),
+      tintHover: neutral(base.tintHover),
+      red: status(base.red),
+      redLabel: status(base.redLabel),
+      shadowColor: neutral(base.shadowColor),
+    );
+  }
+
   /// The light theme (`light-dark()` first arguments).
   static const light = CoilColors(
     brightness: Brightness.light,
@@ -226,7 +306,11 @@ class CoilColors with Diagnosticable {
       redLabel: c(a.redLabel, b.redLabel),
       shadowColor: c(a.shadowColor, b.shadowColor),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
-      focusRingColor: c(a.focusRing, b.focusRing),
+      // Stays null when neither side overrides it, so the ring keeps
+      // following the brand color.
+      focusRingColor: a.focusRingColor == null && b.focusRingColor == null
+          ? null
+          : c(a.focusRing, b.focusRing),
     );
   }
 
