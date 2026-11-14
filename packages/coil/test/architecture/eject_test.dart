@@ -6,11 +6,8 @@ library;
 
 import 'dart:io';
 
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:coil/src/eject/coil_source.dart';
 import 'package:coil/src/eject/component_docs.dart';
-import 'package:coil/src/eject/dart_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -38,18 +35,7 @@ void main() {
 
   for (final component in coil.components.values) {
     test('${component.name} ejects with public imports only', () {
-      final files = coil.ejectedFiles(component);
-      for (final MapEntry(key: path, value: source) in files.entries) {
-        for (final directive in directivesOf(source)) {
-          for (final uri in directive.uris) {
-            expect(
-              uri,
-              isNot(startsWith('package:coil/src/')),
-              reason: '$path keeps a private coil import',
-            );
-          }
-        }
-      }
+      expect(coil.problemsOf(component), isEmpty);
       expect(coil.exportedNames(component), isNotEmpty);
     });
   }
@@ -74,35 +60,4 @@ void main() {
       unorderedEquals(docs.keys.where((k) => k.startsWith('doc/components'))),
     );
   });
-
-  test('the name scanner finds what the analyzer finds', () {
-    // The app library hides these names from package:coil/coil.dart, so a
-    // missed name would make the ejected copy clash with coil's.
-    for (final component in coil.components.values) {
-      for (final file in component.sources) {
-        final source = File('lib/$file').readAsStringSync();
-        final unit = parseString(content: source).unit;
-        final expected = {
-          for (final member in unit.declarations)
-            for (final name in _names(member))
-              if (!name.startsWith('_')) name,
-        };
-        expect(declaredNames(source), expected, reason: file);
-      }
-    }
-  });
 }
-
-Iterable<String> _names(CompilationUnitMember member) => switch (member) {
-  TopLevelVariableDeclaration(:final variables) => [
-    for (final v in variables.variables) v.name.lexeme,
-  ],
-  ClassDeclaration(:final namePart) ||
-  EnumDeclaration(:final namePart) ||
-  ExtensionTypeDeclaration(:final namePart) => [namePart.typeName.lexeme],
-  MixinDeclaration(:final name) ||
-  FunctionDeclaration(:final name) ||
-  TypeAlias(:final name) => [name.lexeme],
-  ExtensionDeclaration(:final name) => [?name?.lexeme],
-  _ => throw UnsupportedError('${member.runtimeType}'),
-};

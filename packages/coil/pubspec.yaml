@@ -11,6 +11,7 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
+  analyzer: ^13.3.0
   args: ^2.7.0
   cupertino_ui: ^1.1.6
   flutter:
@@ -29,7 +30,6 @@ dependencies:
   yaml: ^3.1.4
 
 dev_dependencies:
-  analyzer: ^13.3.0
   lintervention: ^0.3.1
   snaptest:
     path: ../snaptest

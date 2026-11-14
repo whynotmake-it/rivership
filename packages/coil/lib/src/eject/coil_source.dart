@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:coil/src/eject/dart_source.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -83,10 +84,9 @@ class CoilSource {
         continue;
       }
       final owners = {
-        for (final d in directivesOf(_read(name)))
-          for (final uri in d.uris)
-            if (RegExp(r'^src/components/(\w+)/').firstMatch(uri) case final m?)
-              m.group(1)!,
+        for (final (_, uri) in directiveUris(unit(name)))
+          if (RegExp(r'^src/components/(\w+)/').firstMatch(uri) case final m?)
+            m.group(1)!,
       };
       if (owners.length != 1) {
         throw EjectException(
@@ -125,25 +125,40 @@ class CoilSource {
     );
   }
 
+  final _units = <String, CompilationUnit>{};
+
+  /// The parsed coil file at [libPath] (relative to `lib/`).
+  CompilationUnit unit(String libPath) =>
+      _units[libPath] ??= parse(_read(libPath));
+
+  /// The absolute path of the coil file at [libPath].
+  String pathOf(String libPath) => p.join(_lib, libPath);
+
   /// The public names [component]'s libraries export, which the app library
   /// hides from `package:coil/coil.dart`.
   Set<String> exportedNames(CoilComponent component) => {
     for (final library in component.libraries) ..._exports(library, component),
   };
 
+  /// Every public top-level name [component]'s files declare, exported or
+  /// not. A prefix renames all of them.
+  Set<String> declaredNamesOf(CoilComponent component) => {
+    for (final file in component.sources) ...declaredNames(unit(file)),
+  };
+
   Set<String> _exports(String libPath, CoilComponent component) {
     final names = {
-      if (component.sources.contains(libPath)) ...declaredNames(_read(libPath)),
+      if (component.sources.contains(libPath)) ...declaredNames(unit(libPath)),
     };
-    for (final d in directivesOf(_read(libPath))) {
-      if (d.keyword != 'export') continue;
-      final target = _resolve(libPath, d.uris.first);
+    for (final (d, uri) in directiveUris(unit(libPath))) {
+      if (d is! ExportDirective) continue;
+      final target = targetOf(libPath, uri);
       if (target == null || !component.files.contains(target)) continue;
-      final exported = _exports(target, component);
-      final shown = d.shown;
+      final shown = shownNames(d);
+      final hidden = hiddenNames(d);
       names.addAll(
-        exported.where(
-          (n) => (shown == null || shown.contains(n)) && !d.hidden.contains(n),
+        _exports(target, component).where(
+          (n) => (shown == null || shown.contains(n)) && !hidden.contains(n),
         ),
       );
     }
@@ -152,7 +167,7 @@ class CoilSource {
 
   /// [uri] from the coil file [from], as a path relative to `lib/`, or null
   /// if it points outside coil.
-  String? _resolve(String from, String uri) {
+  String? targetOf(String from, String uri) {
     if (uri.startsWith('package:coil/')) {
       return uri.substring('package:coil/'.length);
     }
@@ -161,80 +176,62 @@ class CoilSource {
     return path.startsWith('../') ? null : path;
   }
 
-  /// The shared library that exports all of the foundation or primitive
-  /// file at [libPath], if any. A file exported with `show` or `hide` has
-  /// private parts, so importing it directly is not ejectable.
-  String? _sharedLibraryFor(String libPath) {
+  /// The component whose public library is [libPath], if any.
+  CoilComponent? ownerOfLibrary(String libPath) {
+    for (final component in components.values) {
+      if (component.libraries.contains(libPath)) return component;
+    }
+    return null;
+  }
+
+  /// The public URI that stands for the coil file [target] in ejected code:
+  /// a public library as itself, a foundation or primitive file as the
+  /// shared library that exports all of it. Null if there is none.
+  String? publicUriFor(String target) {
+    if (!target.startsWith('src/')) {
+      return _exists(target) ? 'package:coil/$target' : null;
+    }
     for (final library in sharedLibraries) {
-      for (final d in directivesOf(_read(library))) {
-        if (d.keyword == 'export' &&
-            _resolve(library, d.uris.first) == libPath &&
-            d.shown == null &&
-            d.hidden.isEmpty) {
-          return library;
+      for (final (d, uri) in directiveUris(unit(library))) {
+        // A file exported with `show` or `hide` has private parts, so
+        // importing it directly is not ejectable.
+        if (d is ExportDirective &&
+            targetOf(library, uri) == target &&
+            d.combinators.isEmpty) {
+          return 'package:coil/$library';
         }
       }
     }
     return null;
   }
 
-  /// [component]'s files as they look once ejected, keyed by their path
-  /// inside the ejected folder. Imports of the component's own files become
-  /// relative, everything else in coil goes through a public library.
-  ///
-  /// Throws an [EjectException] listing every import that has no public
-  /// equivalent: another component's `src/`, or a primitive that
-  /// `primitives.dart` doesn't export.
-  Map<String, String> ejectedFiles(CoilComponent component) {
-    final problems = <String>[];
-    final files = <String, String>{};
-    for (final file in component.files) {
-      final out = component.ejectedPath(file);
-      String rewrite(String uri) {
-        final target = _resolve(file, uri);
-        if (target == null) return uri;
-        if (component.files.contains(target)) {
-          return p.posix.relative(
-            component.ejectedPath(target),
-            from: p.posix.dirname(out),
-          );
-        }
-        if (!target.startsWith('src/')) return 'package:coil/$target';
-        if (!_exists(target)) {
-          problems.add('lib/$file: $uri does not exist');
-          return uri;
-        }
-        if (_sharedLibraryFor(target) case final library?) {
-          return 'package:coil/$library';
-        }
-        problems.add(
-          target.startsWith('src/components/')
-              ? 'lib/$file reaches into another component: $uri. '
-                    "Import that component's public library instead."
-              : 'lib/$file imports $uri, which no public library fully '
-                    'exports.',
-        );
-        return uri;
-      }
+  /// Why [component] can't be ejected as it is: imports of another
+  /// component's `src/`, of private primitives, or `part` files. Empty when
+  /// it can.
+  List<String> problemsOf(CoilComponent component) => [
+    for (final file in component.files)
+      for (final (d, uri) in directiveUris(unit(file)))
+        if (d is PartDirective || d is PartOfDirective)
+          'lib/$file uses `part`, which eject cannot copy.'
+        else if (targetOf(file, uri) case final target?
+            when !component.files.contains(target) &&
+                publicUriFor(target) == null)
+          _problem(file, uri, target),
+  ];
 
-      final source = _read(file);
-      for (final d in directivesOf(source)) {
-        if (d.keyword == 'part') {
-          problems.add('lib/$file uses `part`, which eject cannot copy.');
-        }
-      }
-      files[out] =
-          '// Ejected from coil (${component.name}). Edit freely; '
-          'merge upstream changes with\n'
-          '// `dart run coil:update ${component.name}`.\n'
-          '${rewriteDirectives(source, rewrite)}';
-    }
-    if (problems.isNotEmpty) {
-      throw EjectException(
-        'coil ${component.name} cannot be ejected as-is. This is a bug in '
-        'coil; please report it:\n${problems.map((e) => '  - $e').join('\n')}',
-      );
-    }
-    return files;
+  static String _problem(String file, String uri, String target) =>
+      target.startsWith('src/components/')
+      ? 'lib/$file reaches into another component: $uri. '
+            "Import that component's public library instead."
+      : 'lib/$file imports $uri, which no public library fully exports.';
+
+  /// Throws an [EjectException] listing [component]'s [problemsOf].
+  void checkEjectable(CoilComponent component) {
+    final problems = problemsOf(component);
+    if (problems.isEmpty) return;
+    throw EjectException(
+      'coil ${component.name} cannot be ejected as-is. This is a bug in '
+      'coil; please report it:\n${problems.map((e) => '  - $e').join('\n')}',
+    );
   }
 }

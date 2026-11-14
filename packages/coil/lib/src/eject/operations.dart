@@ -3,59 +3,188 @@ import 'dart:io';
 
 import 'package:coil/src/eject/coil_source.dart';
 import 'package:coil/src/eject/manifest.dart';
+import 'package:coil/src/eject/naming.dart';
+import 'package:coil/src/eject/transform.dart';
 import 'package:path/path.dart' as p;
 
-/// Copies [name] from [coil] into the app at [appRoot], under
-/// `<into>/<component>/`, and records the pristine copy as the base for
-/// later updates. Returns the component's name.
+/// App-wide eject settings, fixed by the first eject.
+class EjectOptions {
+  /// Settings for an eject; null fields keep what the manifest has.
+  const EjectOptions({
+    this.into,
+    this.library,
+    this.prefix,
+    this.renames = const {},
+    this.force = false,
+  });
+
+  /// The folder the component folders go in, relative to the app root.
+  /// Defaults to `lib/<library>`.
+  final String? into;
+
+  /// The app library's name (`acme` for `lib/acme.dart`). Defaults to the
+  /// prefix in snake case, or `coil`.
+  final String? library;
+
+  /// Replaces `Coil` in names and leads file names.
+  final String? prefix;
+
+  /// Explicit renames, `CoilButton` → `AcmeButton`.
+  final Map<String, String> renames;
+
+  /// Whether to replace an earlier eject of the same component.
+  final bool force;
+}
+
+/// Copies [names] from coil into the app and records the
+/// pristine copies as the base for later updates. Returns the components'
+/// names.
 ///
-/// Refuses to replace an earlier eject of the same component unless
-/// [force] is set.
-String eject(
-  CoilSource coil,
-  String appRoot,
-  String name, {
-  String into = 'lib/coil',
-  bool force = false,
-}) {
-  final component = coil.component(name);
-  final files = coil.ejectedFiles(component);
+/// Components ejected together, or ejected earlier, refer to each other's
+/// copies: an ejected Dialog builds the ejected Button. Copies ejected
+/// earlier are re-pointed at the new ones, base included. Refuses to
+/// replace an earlier eject of the same component unless forced.
+Future<List<String>> eject(
+  EjectWorkspace workspace,
+  Iterable<String> names, {
+  EjectOptions options = const EjectOptions(),
+}) async {
+  await workspace.refresh();
+  final coil = workspace.coil;
+  final appRoot = workspace.appRoot;
   final manifest = Manifest.read(appRoot);
-  final path = p.posix.join(into, component.name);
-  final previous = manifest.components[component.name];
-  final target = Directory(p.join(appRoot, previous?.path ?? path));
-  if (!force && (previous != null || target.existsSync())) {
-    throw EjectException(
-      '${component.name} is already ejected to '
-      '${p.relative(target.path, from: appRoot)}. '
-      'Run `dart run coil:update ${component.name}` to merge upstream '
-      'changes, or eject with --force to replace your copy.',
-    );
+  final components = {for (final name in names) coil.component(name)};
+  if (components.isEmpty) throw EjectException('Name a component to eject.');
+
+  final library = manifest.library;
+  final naming = manifest.naming;
+  if (manifest.components.isNotEmpty || library != null) {
+    if (options.prefix != null && options.prefix != naming.prefix) {
+      throw EjectException(
+        'This app ejects with prefix ${naming.prefix ?? '(none)'}; the '
+        'prefix is fixed by the first eject.',
+      );
+    }
+    if (options.library != null &&
+        'lib/${options.library}.dart' != manifest.library) {
+      throw EjectException(
+        'The app library is ${manifest.library}; it is fixed by the first '
+        'eject.',
+      );
+    }
+  } else {
+    manifest.naming = Naming(prefix: options.prefix);
+    final name =
+        options.library ??
+        (options.prefix == null ? 'coil' : snakeCase(options.prefix!));
+    if (!RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(name)) {
+      throw EjectException('--library must be snake_case, like acme.');
+    }
+    manifest.library = 'lib/$name.dart';
   }
-  for (final dir in [
-    target,
-    Directory(p.join(appRoot, '.coil', 'base', component.name)),
-  ]) {
-    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  final into = options.into ?? p.posix.withoutExtension(manifest.library!);
+
+  final added = <String>{};
+  for (final component in components) {
+    final previous = manifest.components[component.name];
+    final target = previous?.path ?? p.posix.join(into, component.name);
+    if (!options.force &&
+        (previous != null || Directory(p.join(appRoot, target)).existsSync())) {
+      throw EjectException(
+        '${component.name} is already ejected to $target. Run '
+        '`dart run coil:update ${component.name}` to merge upstream changes, '
+        'or eject with --force to replace your copy.',
+      );
+    }
+    added.add(component.name);
   }
-  manifest.components[component.name] = EjectedComponent(
-    path: path,
-    files: {for (final file in files.keys) file: coil.version},
+
+  final everything = {...manifest.components.keys, ...added};
+  manifest.naming.addNames(
+    {
+      for (final name in everything)
+        ...coil.declaredNamesOf(coil.components[name]!),
+    },
+    explicit: options.renames,
   );
-  for (final MapEntry(key: file, value: source) in files.entries) {
-    for (final out in [
-      manifest.copy(component.name, file),
-      manifest.base(component.name, file),
+  final plan = EjectPlan(
+    naming: manifest.naming,
+    paths: {
+      for (final name in everything)
+        name: manifest.components[name]?.path ?? p.posix.join(into, name),
+    },
+  );
+
+  // Point the copies already in the app at the new ones, base included,
+  // before anything is written, so a failure leaves the app as it was.
+  final repointed = <File, String>{};
+  final linked = <String, Set<String>>{};
+  for (final MapEntry(key: name, value: ejected)
+      in manifest.components.entries) {
+    if (added.contains(name)) continue;
+    for (final file in ejected.files.values) {
+      final copyPath = p.posix.join(ejected.path, file.path);
+      for (final path in [
+        manifest.copy(name, file.path),
+        manifest.base(name, file.path),
+      ]) {
+        if (!path.existsSync()) continue;
+        final result = await workspace.repoint(
+          path.path,
+          copyPath,
+          plan,
+          added,
+        );
+        if (result.content case final content?) repointed[path] = content;
+        (linked[name] ??= {}).addAll(result.uses);
+      }
+    }
+  }
+  final transformed = {
+    for (final component in components)
+      component.name: await workspace.transform(component, plan),
+  };
+
+  for (final MapEntry(key: file, value: content) in repointed.entries) {
+    file.writeAsStringSync(content);
+  }
+  for (final MapEntry(key: name, value: uses) in linked.entries) {
+    manifest.components[name]!.uses.addAll(uses);
+  }
+  for (final name in added) {
+    final result = transformed[name]!;
+    for (final dir in [
+      Directory(p.join(appRoot, plan.paths[name])),
+      Directory(p.join(appRoot, '.coil', 'base', name)),
     ]) {
-      out
-        ..createSync(recursive: true)
-        ..writeAsStringSync(source);
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    }
+    manifest.components[name] = EjectedComponent(
+      path: plan.paths[name]!,
+      uses: result.uses,
+      files: {
+        for (final MapEntry(key: from, value: file) in result.files.entries)
+          from: EjectedFile(path: file.path, version: coil.version),
+      },
+    );
+    for (final file in result.files.values) {
+      for (final out in [
+        manifest.copy(name, file.path),
+        manifest.base(name, file.path),
+      ]) {
+        out
+          ..createSync(recursive: true)
+          ..writeAsStringSync(file.content);
+      }
     }
   }
   manifest
     ..write()
-    ..writeLibrary(coil);
-  return component.name;
+    ..writeLibrary(
+      coil,
+      manifest.naming.prefix == null ? null : await workspace.foundation(),
+    );
+  return [for (final component in components) component.name];
 }
 
 /// What an update did, or would do, to one file.
@@ -85,7 +214,14 @@ enum FileUpdate {
 
 /// The result of updating one component.
 class UpdateResult {
-  UpdateResult._(this.component, this.from, this.to, this.files, this.diff);
+  UpdateResult._(
+    this.component,
+    this.from,
+    this.to,
+    this.files,
+    this.paths,
+    this.diff,
+  );
 
   /// The component's name.
   final String component;
@@ -96,8 +232,13 @@ class UpdateResult {
   /// The installed coil version.
   final String to;
 
-  /// Each file's outcome, by path inside the ejected folder.
+  /// Each file's outcome, by its path in coil's component
+  /// (`src/button.dart`).
   final Map<String, FileUpdate> files;
+
+  /// Each file's path in the app, relative to the app root, by its path in
+  /// coil's component.
+  final Map<String, String> paths;
 
   /// For a dry run, a unified diff of the app's copy before and after.
   final String diff;
@@ -119,13 +260,14 @@ class UpdateResult {
 /// conflicting one gets git's conflict markers and keeps its old base, so
 /// the next update merges against the same base. With [dryRun] nothing is
 /// written and [UpdateResult.diff] shows the change.
-UpdateResult update(
-  CoilSource coil,
-  String appRoot,
+Future<UpdateResult> update(
+  EjectWorkspace workspace,
   String name, {
   bool dryRun = false,
-}) {
-  final manifest = Manifest.read(appRoot);
+}) async {
+  await workspace.refresh();
+  final coil = workspace.coil;
+  final manifest = Manifest.read(workspace.appRoot);
   final component = coil.components[name];
   final ejected = manifest.components[name];
   if (ejected == null) {
@@ -141,42 +283,57 @@ UpdateResult update(
     );
   }
   final git = _git();
-  final upstream = coil.ejectedFiles(component);
-  final from = ejected.files.values.toSet();
+  // New upstream names get the app's names the same way the old ones did.
+  manifest.naming.addNames(coil.declaredNamesOf(component));
+  final plan = EjectPlan(
+    naming: manifest.naming,
+    paths: {
+      for (final MapEntry(:key, :value) in manifest.components.entries)
+        key: value.path,
+    },
+  );
+  final transformed = await workspace.transform(component, plan);
+  final upstream = transformed.files;
+  final from = {for (final file in ejected.files.values) file.version};
   final outcomes = <String, FileUpdate>{};
   final writes = <String, String?>{};
   final bases = <String, String?>{};
   final temp = Directory.systemTemp.createTempSync('coil_update');
   try {
-    for (final file in {
-      ...ejected.files.keys,
-      ...upstream.keys,
-    }.toList()..sort()) {
+    final fromOf = <String, String>{};
+    final paths = {
+      for (final MapEntry(key: from, value: file) in ejected.files.entries)
+        from: file.path,
+      for (final MapEntry(key: from, value: file) in upstream.entries)
+        from: ejected.files[from]?.path ?? file.path,
+    };
+    for (final from in paths.keys.toList()..sort()) {
+      final file = paths[from]!;
       final baseFile = manifest.base(name, file);
       final copyFile = manifest.copy(name, file);
-      final base = ejected.files.containsKey(file) && baseFile.existsSync()
+      final base = ejected.files.containsKey(from) && baseFile.existsSync()
           ? baseFile.readAsStringSync()
           : null;
       final ours = copyFile.existsSync() ? copyFile.readAsStringSync() : null;
-      final theirs = upstream[file];
+      final theirs = upstream[from]?.content;
 
       if (base == theirs) {
-        outcomes[file] = FileUpdate.unchanged;
+        outcomes[from] = FileUpdate.unchanged;
       } else if (theirs == null) {
         if (ours == null || ours == base) {
-          outcomes[file] = FileUpdate.removed;
+          outcomes[from] = FileUpdate.removed;
           writes[file] = null;
           bases[file] = null;
         } else {
-          outcomes[file] = FileUpdate.removedButEdited;
+          outcomes[from] = FileUpdate.removedButEdited;
         }
       } else if (ours == null) {
         if (base == null) {
-          outcomes[file] = FileUpdate.added;
+          outcomes[from] = FileUpdate.added;
           writes[file] = theirs;
           bases[file] = theirs;
         } else {
-          outcomes[file] = FileUpdate.deletedButChanged;
+          outcomes[from] = FileUpdate.deletedButChanged;
         }
       } else {
         final (merged, clean) = _merge(
@@ -187,12 +344,13 @@ UpdateResult update(
           theirs: theirs,
           labels: ['app', 'base', 'coil ${coil.version}'],
         );
-        outcomes[file] = clean
+        outcomes[from] = clean
             ? (base == null ? FileUpdate.added : FileUpdate.merged)
             : FileUpdate.conflict;
         if (merged != ours) writes[file] = merged;
         if (clean) bases[file] = theirs;
       }
+      fromOf[file] = from;
     }
     final diff = dryRun ? _diff(git, temp, manifest, name, writes) : '';
     if (!dryRun) {
@@ -210,19 +368,29 @@ UpdateResult update(
         final out = manifest.base(name, file);
         if (content == null) {
           if (out.existsSync()) out.deleteSync();
-          ejected.files.remove(file);
+          ejected.files.remove(fromOf[file]);
         } else {
           out
             ..createSync(recursive: true)
             ..writeAsStringSync(content);
-          ejected.files[file] = coil.version;
+          ejected.files[fromOf[file]!] = EjectedFile(
+            path: file,
+            version: coil.version,
+          );
         }
       }
+      ejected.uses.addAll(transformed.uses);
       manifest
         ..write()
-        ..writeLibrary(coil);
+        ..writeLibrary(
+          coil,
+          manifest.naming.prefix == null ? null : await workspace.foundation(),
+        );
     }
-    return UpdateResult._(name, from, coil.version, outcomes, diff);
+    return UpdateResult._(name, from, coil.version, outcomes, {
+      for (final MapEntry(key: from, value: file) in paths.entries)
+        from: p.posix.join(ejected.path, file),
+    }, diff);
   } finally {
     temp.deleteSync(recursive: true);
   }
