@@ -333,15 +333,8 @@ class _CoilCardState extends State<CoilCard> {
     // In a group the group paints the surface, under its highlight.
     if (slot == null) {
       card = DecoratedBox(
-        decoration: ShapeDecoration(
-          color: style.surface,
-          shadows: style.shadows,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: radius,
-            side: style.border!,
-          ),
-        ),
-        child: card,
+        decoration: cardSurface(context, style),
+        child: CoilSurface.scope(offset: cardOffset(theme.colors), child: card),
       );
     }
 

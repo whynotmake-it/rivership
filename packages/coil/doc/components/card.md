@@ -12,7 +12,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## Card
 
-- **Anatomy:** a container (surface 3 in light, 2 + hairline in dark; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
+- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
 - **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
 - **Padding:** 16 (compact 12). Content and footer 12 below the header.
 - **Groups:** one divided block with hairlines between cards, or `separated` (gap 8).

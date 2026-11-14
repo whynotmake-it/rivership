@@ -1,6 +1,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/card/card.dart';
+import 'package:coil/src/components/card/card_body.dart';
 import 'package:coil/src/components/card/card_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -73,14 +74,7 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
     final rowCount = (count / columns).ceil();
     final gap = separated ? style.spacing! : 0.0;
     final radius = BorderRadius.circular(style.radius!);
-    final surface = ShapeDecoration(
-      color: style.surface,
-      shadows: style.shadows,
-      shape: RoundedSuperellipseBorder(
-        borderRadius: radius,
-        side: style.border!,
-      ),
-    );
+    final surface = cardSurface(context, style);
     final surfaces = _Surfaces(
       separated ? surface : null,
       count,
@@ -152,6 +146,8 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
         child: ClipRSuperellipse(borderRadius: radius, child: grid),
       );
     }
+    // The cards' content sits on their level.
+    grid = CoilSurface.scope(offset: cardOffset(theme.colors), child: grid);
     return CoilAdaptiveScope(size: widget.size, child: grid);
   }
 }

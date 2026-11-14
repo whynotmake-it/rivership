@@ -2,6 +2,20 @@
 
 Milestone M0, unreleased.
 
+- Surfaces follow the surface scope. A card, a dropdown or breadcrumb
+  menu and the command menu take their level from the surface they sit
+  on, so a card on a raised surface is lighter than it, and a menu opened
+  from a card or a dialog opens above it. On the page nothing changes.
+  - A card tells its content its level, and `CoilSurface.scope` does the
+    same for any widget that paints its own surface.
+  - `CoilCardStyle.surface` and `.shadows`, `CoilDropdownStyle.surface`
+    and `CoilBreadcrumbStyle.surface` default to null, which follows the
+    level. Set them to pin a color.
+  - `CoilActionList.surface` is optional. Null fades the list's edges
+    into the surface it sits on.
+  - A submenu sits on its menu's level plus two (5 on the page); it used
+    to share the menu's fill.
+
 - `coil_cli:eject` takes several components or `--all`, and names copies
   after the app with `--prefix`, `--rename` and `--library`. The
   analyzer renames declarations, references, doc links and files; update

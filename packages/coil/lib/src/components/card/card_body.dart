@@ -16,6 +16,27 @@ enum CoilCardVariant {
   inline,
 }
 
+/// How many steps above the surface it sits on a card is: two, with that
+/// level's shadow, in light; one, with a hairline, in dark.
+int cardOffset(CoilColors colors) =>
+    colors.brightness == Brightness.light ? 2 : 1;
+
+/// The fill, shadow and outline of a card whose ambient surface is
+/// [context]'s.
+ShapeDecoration cardSurface(BuildContext context, CoilCardStyle style) {
+  final colors = CoilTheme.of(context).colors;
+  final level = CoilSurface.levelOf(context) + cardOffset(colors);
+  final light = colors.brightness == Brightness.light;
+  return ShapeDecoration(
+    color: style.surface ?? colors.surface(level),
+    shadows: style.shadows ?? (light ? colors.shadow(level) : const []),
+    shape: RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.circular(style.radius!),
+      side: style.border!,
+    ),
+  );
+}
+
 /// A card's slots, laid out for its variant.
 class CardBody extends StatelessWidget {
   /// Lays out a card's slots.

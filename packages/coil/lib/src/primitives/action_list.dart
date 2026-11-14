@@ -15,6 +15,7 @@ import 'package:coil/src/primitives/interaction.dart';
 import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/scrollbar.dart';
+import 'package:coil/src/primitives/surface.dart';
 import 'package:coil/src/primitives/text_field_core.dart';
 import 'package:coil/src/primitives/typeahead.dart';
 import 'package:flutter/semantics.dart';
@@ -196,7 +197,7 @@ class CoilMenuSeparator extends CoilMenuEntry {
 /// With [search], a field above the rows filters them.
 ///
 /// The rows scroll when the list is taller than its room, with edges that
-/// fade into [surface].
+/// fade into [surface], or by default into the surface the list sits on.
 ///
 /// A [CoilSubmenu] row opens its list beside this one for a pointer: on a
 /// 100 ms hover, a click, Enter, Space or the arrow toward its side. The
@@ -209,9 +210,9 @@ class CoilActionList extends StatefulWidget {
     required this.entries,
     required this.onClose,
     required this.metrics,
-    required this.surface,
     required this.scrollbar,
     super.key,
+    this.surface,
     this.fadeExtent = 32,
     this.highlight,
     this.pressFill,
@@ -244,8 +245,9 @@ class CoilActionList extends StatefulWidget {
   /// The row sizes, and the tier that picks the rows' resting emphasis.
   final CoilMetrics metrics;
 
-  /// The color behind the list, which the scroll edges fade into.
-  final Color surface;
+  /// The color behind the list, which the scroll edges fade into. Null is
+  /// the color of the `CoilSurface` level the list sits on.
+  final Color? surface;
 
   /// How the scrollbar looks.
   final CoilScrollbarLook scrollbar;
@@ -721,7 +723,9 @@ class _CoilActionListState extends State<CoilActionList>
     final list = Semantics(
       role: SemanticsRole.menu,
       child: CoilScrollEdgeFade.solid(
-        color: widget.surface,
+        color:
+            widget.surface ??
+            theme.colors.surface(CoilSurface.levelOf(context)),
         extent: widget.fadeExtent,
         child: ScrollConfiguration(
           behavior: CoilScrollBehavior(

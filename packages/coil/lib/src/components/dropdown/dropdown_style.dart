@@ -21,7 +21,6 @@ class CoilDropdownStyle extends CoilComponentStyle<CoilDropdownStyle> {
   ) {
     final pointer = metrics.tier == CoilTier.pointer;
     return CoilDropdownStyle(
-      surface: theme.colors.surface(3),
       highlight: theme.colors.hover,
       pressFill: theme.colors.active,
       radius: theme.shape.radii(metrics.tier).item,
@@ -30,7 +29,8 @@ class CoilDropdownStyle extends CoilComponentStyle<CoilDropdownStyle> {
     );
   }
 
-  /// The popup's fill.
+  /// The popup's fill. Null is the color of its level: two above the
+  /// surface it opens from (3 on the page).
   final Color? surface;
 
   /// The hover highlight behind a row.

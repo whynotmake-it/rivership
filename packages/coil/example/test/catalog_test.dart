@@ -285,7 +285,12 @@ void main() {
         find
             .descendant(
               of: find.byType(DemoStage),
-              matching: find.byType(DecoratedBox),
+              // The outline is painted over the stage's surface.
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is DecoratedBox &&
+                    widget.position == DecorationPosition.foreground,
+              ),
             )
             .first,
       );

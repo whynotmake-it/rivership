@@ -153,7 +153,10 @@ class _ShapeRow extends StatelessWidget {
             width: 72,
             height: 56,
             radius: radii.container,
-            color: colors.surface(3),
+            // A popover's fill, above the stage it sits on.
+            color: colors.surface(
+              CoilSurface.levelOf(context) + CoilSurface.popoverOffset,
+            ),
             border: colors.border,
           ),
         ],

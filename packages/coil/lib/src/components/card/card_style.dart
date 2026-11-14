@@ -33,17 +33,14 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     this.contentStyle,
   });
 
-  /// The defaults from the theme's tokens: surface 3 with its shadow in
-  /// light, surface 2 with a hairline in dark.
+  /// The defaults from the theme's tokens. The fill and shadow are left
+  /// null: a card takes them from the level it sits on.
   factory CoilCardStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     final light = c.brightness == Brightness.light;
     final typography = theme.typography;
     return CoilCardStyle(
-      // TODO(surface-scope): take the elevation from the surface scope.
-      surface: c.surface(light ? 3 : 2),
       border: light ? BorderSide.none : BorderSide(color: c.border),
-      shadows: light ? c.shadow(3) : const [],
       radius: theme.shape.radii(metrics.tier).container,
       padding: metrics.size == CoilSize.compact ? 12 : 16,
       overlay: WidgetStateProperty.fromMap({
@@ -84,13 +81,15 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
         (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(16, 22),
       };
 
-  /// The card's fill.
+  /// The card's fill. Null is the color of the card's level: two above
+  /// the surface it sits on in light (3 on the page), one in dark (2).
   final Color? surface;
 
   /// The card's outline (a hairline in dark, none in light).
   final BorderSide? border;
 
-  /// The card's shadow.
+  /// The card's shadow. Null is its level's shadow in light and none in
+  /// dark.
   final List<BoxShadow>? shadows;
 
   /// The corner radius of cards, group blocks and the group highlight.

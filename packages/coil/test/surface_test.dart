@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
+import 'src/paint_probe.dart';
 import 'src/select_harness.dart';
 
 /// Shows the level a [CoilSurface] gave it.
@@ -28,6 +29,8 @@ Widget _panel(int offset, Widget child, {int? shadowLevel}) => CoilSurface(
 );
 
 void main() {
+  group('components follow the surface scope', _surfaceScopeTests);
+
   group('shadow recipes', () {
     for (final colors in [CoilColors.light, CoilColors.dark]) {
       test('${colors.brightness.name}: drops blur like their CSS recipes', () {
@@ -286,4 +289,147 @@ void main() {
     );
     await expectSheetGolden(tester, sheet, 'goldens/surface.png');
   });
+}
+
+/// What sits on a stage two levels up, or on the page.
+Widget _on({required bool stage, required Widget child}) {
+  final padded = Padding(padding: const EdgeInsets.all(40), child: child);
+  return Align(
+    alignment: Alignment.topLeft,
+    child: stage
+        ? CoilSurface(offset: CoilSurface.popoverOffset, child: padded)
+        : padded,
+  );
+}
+
+void _surfaceScopeTests() {
+  const card = CoilCard(title: Text('Deploy preview'));
+
+  Future<Rect> pumpCard(
+    WidgetTester tester, {
+    required CoilColors colors,
+    required bool stage,
+  }) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      // A fresh app per pump: the route would keep the first home.
+      KeyedSubtree(
+        key: ValueKey(stage),
+        child: testApp(
+          colors: colors,
+          home: _on(
+            stage: stage,
+            child: const SizedBox(width: 240, child: card),
+          ),
+        ),
+      ),
+    );
+    return tester.getRect(find.byType(CoilCard));
+  }
+
+  Future<Color> fillOf(WidgetTester tester, Rect card) => colorAt(
+    tester,
+    find.byKey(appBoundary),
+    card.centerRight - const Offset(6, 0),
+  );
+
+  testWidgets('dark: a card on a raised surface is lighter than the surface', (
+    tester,
+  ) async {
+    const colors = CoilColors.dark;
+    final onPage = await fillOf(
+      tester,
+      await pumpCard(tester, colors: colors, stage: false),
+    );
+    final onStage = await fillOf(
+      tester,
+      await pumpCard(tester, colors: colors, stage: true),
+    );
+    // On the page it keeps its look; on surface 3 it is surface 4, not 2.
+    expect(isNear(onPage, colors.surface(2), tolerance: 1), isTrue);
+    expect(isNear(onStage, colors.surface(4), tolerance: 1), isTrue);
+    expect(
+      onStage.computeLuminance(),
+      greaterThan(colors.surface(3).computeLuminance()),
+    );
+  });
+
+  testWidgets("light: a card on a raised surface casts its level's shadow", (
+    tester,
+  ) async {
+    const colors = CoilColors.light;
+    Future<Color> below({required bool stage}) async {
+      final rect = await pumpCard(tester, colors: colors, stage: stage);
+      return colorAt(
+        tester,
+        find.byKey(appBoundary),
+        rect.bottomCenter + const Offset(0, 4),
+      );
+    }
+
+    // Shadow 3 ends within 4 px of the card; shadow 5 still darkens there.
+    expect(
+      isNear(await below(stage: false), colors.background, tolerance: 1),
+      isTrue,
+    );
+    final stageShadow = await below(stage: true);
+    expect(
+      stageShadow.computeLuminance(),
+      lessThan(colors.surface(3).computeLuminance() - 0.05),
+    );
+  });
+
+  for (final (name, host) in <(String, Widget Function(Widget))>[
+    ('a card', (child) => CoilCard(child: child)),
+    (
+      'a dialog',
+      (child) => CoilSurface(
+        offset: CoilSurface.dialogOffset,
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
+      ),
+    ),
+  ]) {
+    testWidgets('a dropdown opened from $name opens above it, and its list '
+        'fades into its surface', (tester) async {
+      const colors = CoilColors.dark;
+      useScreen(tester, TestScreen.desktop);
+      await tester.pumpWidget(
+        testApp(
+          colors: colors,
+          home: Align(
+            alignment: Alignment.topCenter,
+            child: host(
+              CoilDropdown(
+                entries: [
+                  for (var i = 0; i < 30; i++)
+                    CoilAction(label: Text('Row $i'), onPressed: () {}),
+                ],
+                builder: (context, menu) => CoilButton(
+                  onPressed: menu.open,
+                  child: const Text('Actions'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final hostLevel = CoilSurface.levelOf(
+        tester.element(find.text('Actions')),
+      );
+      expect(hostLevel, greaterThan(1));
+      await tester.tap(find.text('Actions'));
+      await tester.pumpAndSettle();
+
+      final level = CoilSurface.levelOf(tester.element(find.text('Row 0')));
+      expect(level, hostLevel + CoilSurface.popoverOffset);
+      // The rows scroll, so the bottom edge fades: into the menu's own fill.
+      final list = tester.getRect(find.byType(CoilActionList));
+      final edge = await colorAt(
+        tester,
+        find.byKey(appBoundary),
+        list.bottomCenter - const Offset(0, 2),
+      );
+      expect(isNear(edge, colors.surface(level), tolerance: 1), isTrue);
+    });
+  }
 }
