@@ -14,12 +14,17 @@ import 'package:snaptest/snaptest.dart';
 
 const _enabled = bool.fromEnvironment('SCREENSHOTS');
 
+/// Page slugs to capture, comma-separated; the default set when empty.
+const _pages = String.fromEnvironment('PAGES');
+
 void main() {
   final devices = {
     'phone': (Devices.ios.iPhone16Pro, CatalogTier.touch),
     'desktop': (Devices.macOS.macBookPro, CatalogTier.pointer),
   };
-  final pages = [null, 'button', 'radio-group', 'badge', 'select'];
+  final pages = _pages.isEmpty
+      ? [null, 'button', 'radio-group', 'badge', 'select']
+      : _pages.split(',');
 
   for (final MapEntry(key: name, value: (device, tier)) in devices.entries) {
     for (final mode in [CatalogThemeMode.light, CatalogThemeMode.dark]) {

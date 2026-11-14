@@ -104,13 +104,16 @@ class CoilFileThumbnail extends StatelessWidget {
     );
     final onRemove = this.onRemove;
     if (onRemove == null) return tile;
+    // The dot's center sits 4 inside the corner; a finger's larger target
+    // grows around it.
+    final target = metrics.tier == CoilTier.touch ? 44.0 : 20.0;
     return Stack(
       clipBehavior: Clip.none,
       children: [
         tile,
         PositionedDirectional(
-          top: -6,
-          end: -6,
+          top: 4 - target / 2,
+          end: 4 - target / 2,
           child: _RemoveButton(onPressed: onRemove, label: removeLabel),
         ),
       ],

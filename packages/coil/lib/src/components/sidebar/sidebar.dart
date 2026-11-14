@@ -59,8 +59,10 @@ class CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
   /// Whether the sidebar shows beside the body in a wide window.
   bool get expanded => _expanded;
 
-  bool get _compact =>
-      MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth;
+  /// Whether the scaffold was narrower than [CoilAdaptivePopup.compactWidth]
+  /// at its last layout: its own width, not the window's, since it can sit
+  /// in a pane.
+  bool _compact = false;
 
   /// Folds or unfolds the sidebar, or in a narrow window opens it as a
   /// drawer.
@@ -92,6 +94,19 @@ class CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final apple =
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.iOS;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _compact = constraints.maxWidth < CoilAdaptivePopup.compactWidth;
+        return _layout(context, motion: motion, apple: apple);
+      },
+    );
+  }
+
+  Widget _layout(
+    BuildContext context, {
+    required CoilMotion motion,
+    required bool apple,
+  }) {
     final shown = _expanded && !_compact;
     return CallbackShortcuts(
       bindings: {

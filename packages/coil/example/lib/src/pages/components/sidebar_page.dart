@@ -54,7 +54,7 @@ class _SidebarPageState extends State<SidebarPage> {
                 child: CoilButton(
                   variant: CoilButtonVariant.secondary,
                   onPressed: CoilSidebarScaffold.of(context).toggle,
-                  child: Text('$_page · toggle sidebar'),
+                  child: const Text('Toggle'),
                 ),
               ),
             ),

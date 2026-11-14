@@ -19,7 +19,7 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  DateTime? _day = DateTime.now();
+  DateTime? _day;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
