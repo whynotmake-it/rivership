@@ -20,6 +20,9 @@ import 'package:motor/motor.dart';
 /// The bubble sits [gap] above [child], or below when there's no room
 /// above, and slides the last 4 px toward it as it appears. [message]
 /// merges into [child]'s semantics as its tooltip.
+///
+/// Inside a [CoilTooltipAnchorGroup], the group shows one bubble for all
+/// its anchors.
 class CoilTooltipAnchor extends StatefulWidget {
   /// Creates a tooltip anchor around [child].
   const CoilTooltipAnchor({
@@ -72,10 +75,20 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
   Timer? _delay;
   bool _shown = false;
 
+  /// The group showing this anchor's tooltip, if any.
+  _CoilTooltipAnchorGroupState? _group;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _group = context.dependOnInheritedWidgetOfExactType<_GroupScope>()?.group;
+  }
+
   @override
   void dispose() {
     _delay?.cancel();
     if (_shown) _lastClosed = _clock.elapsed;
+    _group?._forget(this);
     _presence.dispose();
     super.dispose();
   }
@@ -91,6 +104,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     _delay?.cancel();
     if (_shown || !mounted) return;
     _shown = true;
+    if (_group case final group?) return group._show(this);
     if (!_portal.isShowing) _portal.show();
     _presence
       ..motion = _tokens.quick
@@ -102,6 +116,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     if (!_shown) return;
     _shown = false;
     _lastClosed = _clock.elapsed;
+    if (_group case final group?) return group._hide(this);
     _presence
       ..motion = _tokens.quickExit
       ..animateTo(0);
@@ -182,6 +197,159 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
       ),
     );
   }
+}
+
+/// Gives the [CoilTooltipAnchor]s below one shared bubble: moving from one
+/// to the next, it glides there on the theme's `quick` spring instead of
+/// closing and opening again, as in a toolbar.
+///
+/// [bubble] builds it for the current [CoilTooltipAnchor.message]; let its
+/// width and label follow the message's changes.
+class CoilTooltipAnchorGroup extends StatefulWidget {
+  /// Creates a tooltip group around [child].
+  const CoilTooltipAnchorGroup({
+    required this.bubble,
+    required this.child,
+    super.key,
+    this.motion,
+  });
+
+  /// Builds the bubble for a message, given the 0→1 presence.
+  final Widget Function(
+    BuildContext context,
+    Animation<double> presence,
+    String message,
+  )
+  bubble;
+
+  /// The area holding the anchors.
+  final Widget child;
+
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
+
+  @override
+  State<CoilTooltipAnchorGroup> createState() => _CoilTooltipAnchorGroupState();
+}
+
+class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
+    with SingleTickerProviderStateMixin {
+  final _portal = OverlayPortalController(debugLabel: 'CoilTooltipGroup');
+  final _area = GlobalKey(debugLabel: 'CoilTooltipGroup.area');
+  late final _presence = SingleMotionController(
+    motion: const Motion.instant(),
+    vsync: this,
+    velocityTracking: const VelocityTracking.off(),
+    debugLabel: 'CoilTooltipGroup.presence',
+  )..addStatusListener(_onStatus);
+
+  /// The anchor the bubble is on, also while it springs out.
+  _CoilTooltipAnchorState? _anchor;
+
+  /// Whether the bubble is wanted.
+  bool _open = false;
+
+  /// Bumps when the bubble appears from nothing, so it starts on its anchor
+  /// instead of gliding from where it last was.
+  int _session = 0;
+
+  CoilMotion get _tokens =>
+      CoilTheme.motionOf(context, override: widget.motion);
+
+  @override
+  void dispose() {
+    _presence.dispose();
+    super.dispose();
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status.isDismissed && !_open && _portal.isShowing) _portal.hide();
+  }
+
+  void _show(_CoilTooltipAnchorState anchor) {
+    setState(() {
+      if (_presence.value == 0) _session++;
+      _anchor = anchor;
+      _open = true;
+    });
+    if (!_portal.isShowing) _portal.show();
+    _presence
+      ..motion = _tokens.quick
+      ..animateTo(1);
+  }
+
+  /// An anchor left the tree: the bubble has nothing to point at. The tree
+  /// is locked while it disposes, so the bubble goes after the frame.
+  void _forget(_CoilTooltipAnchorState anchor) {
+    if (_anchor != anchor) return;
+    _anchor = null;
+    _open = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _open) return;
+      _presence.value = 0;
+      if (_portal.isShowing) _portal.hide();
+    });
+  }
+
+  void _hide(_CoilTooltipAnchorState anchor) {
+    if (_anchor != anchor || !_open) return;
+    _open = false;
+    _presence
+      ..motion = _tokens.quickExit
+      ..animateTo(0);
+  }
+
+  /// The anchor's rect in the overlay, from the area's place in it.
+  Rect? _anchorRect(OverlayChildLayoutInfo info) {
+    final anchor = _anchor?.context.findRenderObject();
+    final area = _area.currentContext?.findRenderObject();
+    if (anchor is! RenderBox || area is! RenderBox || !anchor.attached) {
+      return null;
+    }
+    final transform = info.childPaintTransform.clone()
+      ..multiply(anchor.getTransformTo(area));
+    return MatrixUtils.transformRect(transform, Offset.zero & anchor.size);
+  }
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal.overlayChildLayoutBuilder(
+    controller: _portal,
+    overlayChildBuilder: (context, info) {
+      final rect = _anchorRect(info);
+      final anchor = _anchor;
+      if (rect == null || anchor == null) return const SizedBox.shrink();
+      return IgnorePointer(
+        child: MotionBuilder<Rect>(
+          key: ValueKey(_session),
+          value: rect,
+          converter: MotionConverter.rect,
+          motion: _tokens.quick,
+          builder: (context, rect, child) => CustomSingleChildLayout(
+            delegate: _BubbleLayout(
+              anchor: rect,
+              safeTop: MediaQuery.paddingOf(context).top,
+              presence: _presence,
+            ),
+            child: child,
+          ),
+          child: widget.bubble(context, _presence, anchor.widget.message),
+        ),
+      );
+    },
+    child: _GroupScope(
+      group: this,
+      child: KeyedSubtree(key: _area, child: widget.child),
+    ),
+  );
+}
+
+class _GroupScope extends InheritedWidget {
+  const _GroupScope({required this.group, required super.child});
+
+  final _CoilTooltipAnchorGroupState group;
+
+  @override
+  bool updateShouldNotify(_GroupScope oldWidget) => oldWidget.group != group;
 }
 
 /// Places the bubble above the trigger, or below when there's no room

@@ -17,27 +17,29 @@ class TooltipPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Tooltip',
-    summary: 'Hover one, then slide to the next: the second opens at once.',
+    summary: 'In a group, one bubble glides from button to button.',
     children: [
       DemoSection(
-        title: 'Icon buttons',
-        child: DemoWrap(
-          children: [
-            for (final (label, glyph) in const [
-              ('Previous', CoilGlyph.chevronStart),
-              ('Next', CoilGlyph.chevronEnd),
-              ('Close', CoilGlyph.cross),
-            ])
-              CoilTooltip(
-                message: label,
-                child: CoilButton.icon(
-                  variant: CoilButtonVariant.ghost,
-                  onPressed: () {},
-                  semanticLabel: label,
-                  icon: CoilDrawnGlyph(glyph),
+        title: 'Toolbar',
+        child: CoilTooltipGroup(
+          child: DemoWrap(
+            children: [
+              for (final (label, glyph) in const [
+                ('Previous', CoilGlyph.chevronStart),
+                ('Next', CoilGlyph.chevronEnd),
+                ('Close', CoilGlyph.cross),
+              ])
+                CoilTooltip(
+                  message: label,
+                  child: CoilButton.icon(
+                    variant: CoilButtonVariant.ghost,
+                    onPressed: () {},
+                    semanticLabel: label,
+                    icon: CoilDrawnGlyph(glyph),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     ],

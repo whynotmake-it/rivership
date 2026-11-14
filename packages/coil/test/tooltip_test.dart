@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 import 'src/select_harness.dart';
 
@@ -109,4 +110,49 @@ void main() {
       TargetPlatform.iOS,
     }),
   );
+
+  testWidgets('in a group one bubble glides to the next button', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    Widget button(String label) => CoilTooltip(
+      message: label,
+      child: CoilButton(onPressed: () {}, child: Text('[$label]')),
+    );
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: Center(
+          child: CoilTooltipGroup(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 40,
+              children: [button('Bold'), button('Italic')],
+            ),
+          ),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.text('[Bold]')));
+    await tester.pump(CoilTooltipAnchor.hoverDelay);
+    await tester.pumpAndSettle();
+    expect(find.text('Bold'), findsOneWidget);
+
+    await mouse.moveTo(tester.getCenter(find.text('[Italic]')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    // Mid-glide the bubble is between the buttons, not reopening.
+    final mid = tester.getCenter(find.byType(MotionSize)).dx;
+    expect(mid, greaterThan(tester.getCenter(find.text('[Bold]')).dx));
+    expect(mid, lessThan(tester.getCenter(find.text('[Italic]')).dx));
+    await tester.pumpAndSettle();
+    expect(find.text('Bold'), findsNothing);
+    expect(find.text('Italic'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Italic')).dx,
+      closeTo(tester.getCenter(find.text('[Italic]')).dx, 1),
+    );
+  });
 }

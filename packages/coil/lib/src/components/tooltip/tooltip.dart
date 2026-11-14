@@ -1,6 +1,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// A short label that appears next to [child]: an inverted bubble that
 /// names an icon-only control.
@@ -38,6 +39,29 @@ class CoilTooltip extends StatelessWidget {
   );
 }
 
+/// Gives the [CoilTooltip]s in [child] one shared bubble, for a toolbar
+/// of icon buttons: moving along it, the bubble glides to the next button
+/// on the theme's `quick` spring, its width follows, and its label
+/// crossfades.
+class CoilTooltipGroup extends StatelessWidget {
+  /// Creates a tooltip group around [child].
+  const CoilTooltipGroup({required this.child, super.key, this.motion});
+
+  /// The area holding the tooltips.
+  final Widget child;
+
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
+
+  @override
+  Widget build(BuildContext context) => CoilTooltipAnchorGroup(
+    motion: motion,
+    bubble: (context, presence, message) =>
+        _Bubble(presence: presence, message: message),
+    child: child,
+  );
+}
+
 /// The inverted bubble: foreground fill, caption text in the background
 /// color.
 class _Bubble extends StatelessWidget {
@@ -50,6 +74,7 @@ class _Bubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, tier: CoilTier.pointer);
+    final motion = CoilTheme.motionOf(context);
     return CoilBlurFade(
       presence: presence,
       scale: 1,
@@ -64,11 +89,21 @@ class _Bubble extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Text(
-            message,
-            style: theme.typography.style(
-              metrics.caption,
-              color: theme.colors.background,
+          // In a group the message changes in place: the width follows on
+          // `quick` and the label crossfades on `fade`.
+          child: MotionSize(
+            motion: motion.quick,
+            child: MotionSwitcher(
+              motion: motion.fade,
+              exitMotion: motion.fadeExit,
+              child: Text(
+                message,
+                key: ValueKey(message),
+                style: theme.typography.style(
+                  metrics.caption,
+                  color: theme.colors.background,
+                ),
+              ),
             ),
           ),
         ),
