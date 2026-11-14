@@ -107,11 +107,12 @@ class CoilCommandMenu extends StatelessWidget {
       theme,
       metrics,
     ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
-    Widget list(Color surface) => CoilActionList(
+    // The list sits on the sheet's or the dialog's surface and fades into
+    // it.
+    final list = CoilActionList(
       entries: entries,
       search: search,
       metrics: metrics,
-      surface: surface,
       scrollbar: scroll.scrollbarLook,
       fadeExtent: scroll.fadeExtent!,
       motion: motion,
@@ -119,14 +120,13 @@ class CoilCommandMenu extends StatelessWidget {
     );
 
     if (sheet) {
-      return CoilSheetPanel(child: list(theme.colors.surface(3)));
+      return CoilSheetPanel(child: list);
     }
 
     final window = MediaQuery.sizeOf(context);
     final radius = BorderRadius.circular(
       theme.shape.radii(metrics.tier).container,
     );
-    final level = CoilSurface.levelOf(context) + CoilSurface.dialogOffset;
     return SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
@@ -146,7 +146,7 @@ class CoilCommandMenu extends StatelessWidget {
                 borderRadius: radius,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: maxListHeight),
-                  child: list(theme.colors.surface(level)),
+                  child: list,
                 ),
               ),
             ),

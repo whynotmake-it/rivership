@@ -100,9 +100,11 @@ class CoilMenuPopup extends StatelessWidget {
           entries: entries,
           onClose: popup.close,
           metrics: metrics,
+          // The sheet paints its own surface; the popover may take the
+          // style's.
           surface: popup.presentation == CoilPresentation.sheet
-              ? theme.colors.surface(3)
-              : look.surface!,
+              ? null
+              : look.surface,
           scrollbar: scroll.scrollbarLook,
           fadeExtent: scroll.fadeExtent!,
           highlight: look.highlight,

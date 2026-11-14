@@ -37,7 +37,7 @@ Contents: [1 Principles](#1-principles) · [2 Color](#2-color) · [3 Type](#3-ty
 | `background` = `surface(1)` | `#FAFAFA` | `#171717` | page |
 | `surface(2)` | `#FCFCFC` | `#1E1E1E` | inset panels, sidebar `inset` card |
 | `surface(3)` | `#FFFFFF` | `#252525` | popovers, sheets, cards |
-| `surface(4)` | `#FFFFFF` | `#2C2C2C` | nested popover (submenu) |
+| `surface(4)` | `#FFFFFF` | `#2C2C2C` | nested surfaces, such as a card on a popover |
 | `surface(5)` | `#FFFFFF` | `#333333` | dialogs |
 | `surface(6..8)` | `#FFFFFF` | `#3A3A3A` · `#414141` · `#484848` | rare stacking |
 | `foreground` | `#171717` | `#F5F5F5` | text, primary button fill |
@@ -193,8 +193,9 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
   - Light: a 1 px `shadowColor` ring plus stacked drops (1, 3, 6, 12, 24, 48, 96 px; spread = −offset / 2) at black 6 %. Surfaces are white from level 3.
   - Dark: an outer black ring from level 3 (12 % + 2 % per level) and drops at black 18 %. Inside the shape, `insetRing(n)` draws a white ring at 2 % (levels 1–3), 4 % (4–5) or 6 % (6–8), and `topHighlight(n)` a 1 px white line along the top edge at 1 % (level 2), 2 % (3–4), 4 % (5–6) or 6 % (7–8). Don't skip them; they separate dark surfaces.
   - **Blur:** the recipes use CSS blur. A CSS blur of `B` has sigma `B / 2`, so `shadow()` converts it for Flutter's `BoxShadow` (the 1 px drop becomes a hard edge).
-- **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level.
-- **Uses:** popover and sheet surface 3 / shadow 3; submenu 4 / 4; dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
+- **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level. `CoilSurface.scope` sets the level without painting, for a widget that paints its own surface, such as a card.
+- **Every surface takes its level from the one it sits on.** Never hard-code a level: the numbers below are what each surface gets on the page.
+- **Uses:** popover and sheet surface 3 / shadow 3; submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
 - **Scrim** behind sheets, dialogs and drawers: black 40 % (light) / 50 % (dark).
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
@@ -827,7 +828,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Card (built)
 
-- **Anatomy:** a container (surface 3 in light, 2 + hairline in dark; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
+- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
 - **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
 - **Padding:** 16 (compact 12). Content and footer 12 below the header.
 - **Groups:** one divided block with hairlines between cards, or `separated` (gap 8).

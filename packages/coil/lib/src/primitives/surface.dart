@@ -30,7 +30,23 @@ class CoilSurface extends StatelessWidget {
     this.borderRadius,
     this.shadowLevel,
     this.color,
-  }) : assert(offset >= 0, 'a surface sits at or above its substrate');
+  }) : _paints = true,
+       assert(offset >= 0, 'a surface sits at or above its substrate');
+
+  /// Tells [child] it sits [offset] steps above the ambient surface,
+  /// without painting anything.
+  ///
+  /// Use it for a widget that paints its own surface, such as a card, so
+  /// that what opens from inside it opens above it.
+  const CoilSurface.scope({
+    required this.offset,
+    required this.child,
+    super.key,
+  }) : borderRadius = null,
+       shadowLevel = null,
+       color = null,
+       _paints = false,
+       assert(offset >= 0, 'a surface sits at or above its substrate');
 
   /// The offset of popovers, menus and sheets.
   static const popoverOffset = 2;
@@ -54,14 +70,17 @@ class CoilSurface extends StatelessWidget {
   /// The content, which sits on this surface's level.
   final Widget child;
 
+  final bool _paints;
+
   /// The surface level [context] sits on, 1 (the page) to 8.
   static int levelOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_SurfaceLevel>()?.level ?? 1;
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
     final level = math.min(levelOf(context) + offset, 8);
+    if (!_paints) return _SurfaceLevel(level: level, child: child);
+    final colors = CoilTheme.of(context).colors;
     final radius =
         borderRadius ??
         BorderRadius.circular(CoilTheme.radiiOf(context).container);

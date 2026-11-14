@@ -236,9 +236,11 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
               ],
               onClose: popup.close,
               metrics: metrics,
+              // The sheet paints its own surface; the popover may take
+              // the style's.
               surface: popup.presentation == CoilPresentation.sheet
-                  ? theme.colors.surface(3)
-                  : style.surface!,
+                  ? null
+                  : style.surface,
               scrollbar: scroll.scrollbarLook,
               fadeExtent: scroll.fadeExtent!,
               highlight: style.highlight,

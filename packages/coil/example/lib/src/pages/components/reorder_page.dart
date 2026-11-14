@@ -443,9 +443,17 @@ class _DraggableCard extends StatelessWidget {
     final motion = CoilTheme.motionOf(context);
     final card = _TaskCard(task: task);
     // The feedback is the same card, lifted while it is dragged. It settles
-    // back on `gentle` as it lands, the landing's own spring.
+    // back on `gentle` as it lands, the landing's own spring. It flies in
+    // the overlay, so it takes the board's themes along, among them the
+    // surface level it lifts from.
+    final themes = InheritedTheme.capture(
+      from: context,
+      to: Overlay.of(context).context,
+    );
     Widget feedback(BuildContext context, MotionDragDetails drag, Widget _) =>
-        _TaskCard(task: task, lifted: drag.phase == MotionDragPhase.dragging);
+        themes.wrap(
+          _TaskCard(task: task, lifted: drag.phase == MotionDragPhase.dragging),
+        );
     // The lane scrolls on touch, so a card lifts on a long press there, and
     // at once with a pointer.
     final draggable = CoilTheme.tierOf(context) == CoilTier.touch
@@ -495,10 +503,10 @@ class _TaskCard extends StatelessWidget {
     final colors = theme.colors;
     final motion = CoilTheme.motionOf(context);
     final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
-    // The card's own levels: 3 with its shadow in light, 2 with a hairline
-    // in dark (CoilCardStyle.fallback).
+    // The card's own level: two above the board in light, with its shadow,
+    // one in dark, with a hairline (CoilCardStyle.surface).
     final light = colors.brightness == Brightness.light;
-    final rest = light ? 3 : 2;
+    final rest = CoilSurface.levelOf(context) + (light ? 2 : 1);
     final up = rest + 2;
     final restShadows = light ? colors.shadow(rest) : const <BoxShadow>[];
     final description = Row(

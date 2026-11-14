@@ -45,8 +45,6 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
       separatorSize: 14,
       highlight: c.hover,
       pressFill: c.active,
-      // TODO(surface-scope): take the elevation from the surface scope.
-      surface: c.surface(3),
       radius: theme.shape.radii(metrics.tier).item,
       textStyle: theme.typography.style(metrics.body),
       minHeight: metrics.controlHeight,
@@ -72,7 +70,8 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// The fill under a crumb or menu row while a finger presses it.
   final Color? pressFill;
 
-  /// The "…" popover's surface.
+  /// The "…" popover's fill. Null is the color of its level: two above
+  /// the surface it opens from (3 on the page).
   final Color? surface;
 
   /// The corner radius of crumbs, rows and their fills.
