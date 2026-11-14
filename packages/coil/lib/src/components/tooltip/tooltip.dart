@@ -29,6 +29,8 @@ class CoilTooltip extends StatelessWidget {
     super.key,
     this.semanticLabel,
     this.shortcut,
+    this.side = CoilTooltipSide.top,
+    this.follow = CoilTooltipFollow.trigger,
     this.motion,
   }) : assert(
          semanticLabel != null || message is Text || message is RichText,
@@ -57,6 +59,14 @@ class CoilTooltip extends StatelessWidget {
 
   /// What the tooltip is for.
   final Widget child;
+
+  /// The side of [child] the bubble prefers; it flips when there's no room.
+  /// Inside a [CoilTooltipGroup], the group's side counts instead.
+  final CoilTooltipSide side;
+
+  /// What the bubble lines up with along [child]'s edge: its center, or
+  /// the hovering pointer for a long trigger such as a resize strip.
+  final CoilTooltipFollow follow;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
@@ -94,6 +104,8 @@ class CoilTooltip extends StatelessWidget {
   Widget build(BuildContext context) => CoilTooltipAnchor(
     content: _content,
     semanticLabel: _semanticLabel,
+    side: side,
+    follow: follow,
     motion: motion,
     bubble: (context, presence, content) =>
         _Bubble(presence: presence, content: content, motion: motion),
@@ -107,16 +119,25 @@ class CoilTooltip extends StatelessWidget {
 /// crossfades.
 class CoilTooltipGroup extends StatelessWidget {
   /// Creates a tooltip group around [child].
-  const CoilTooltipGroup({required this.child, super.key, this.motion});
+  const CoilTooltipGroup({
+    required this.child,
+    super.key,
+    this.side = CoilTooltipSide.top,
+    this.motion,
+  });
 
   /// The area holding the tooltips.
   final Widget child;
+
+  /// The side of each trigger the shared bubble prefers.
+  final CoilTooltipSide side;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
   @override
   Widget build(BuildContext context) => CoilTooltipAnchorGroup(
+    side: side,
     motion: motion,
     bubble: (context, presence, content) =>
         _Bubble(presence: presence, content: content, motion: motion),
