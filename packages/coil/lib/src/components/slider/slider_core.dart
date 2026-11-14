@@ -167,6 +167,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// The values this press last asked for, which its end reports.
   List<double> _asked = const [];
 
+  /// The value under the pointer while the track is pressed: the snapped
+  /// press or drag position, kept from crossing the other thumb. The value
+  /// bubble belongs to the pointer, so it sits here while the thumb springs
+  /// to meet it, and it doesn't move when the parent refuses the change.
+  double _pressValue = 0;
+
   /// The thumb whose value is being typed, if any.
   int? _editing;
   final _editText = TextEditingController();
@@ -492,6 +498,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       _active = f > _downFraction ? 1 : 0;
     }
     final value = _limit(_active, _scale.valueAt(f));
+    if (value != _pressValue) setState(() => _pressValue = value);
     if (value != widget.values[_active]) {
       _asked = _with(_active, value);
       widget.onChanged?.call(_asked);
@@ -788,13 +795,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           _bubbleAnchor(
             moves: _paintMoves,
             fraction: () => onTrack
-                ? _at(_active)
+                ? scale.norm(_pressValue)
                 : _joined
                 ? _previewAt
                 : _lastHover,
             reach: reach,
             width: style.knobBox!,
-            value: onTrack ? widget.values[_active] : scale.valueAt(_lastHover),
+            value: onTrack ? _pressValue : scale.valueAt(_lastHover),
           ),
       ],
     );

@@ -569,6 +569,50 @@ void main() {
       });
     }
 
+    for (final kind in [PointerDeviceKind.mouse, PointerDeviceKind.touch]) {
+      testWidgets('${kind.name}: the bubble stays with the press while the '
+          'thumb springs to it', (tester) async {
+        await tester.pumpWidget(
+          const _Host(divisions: 10, variant: CoilSliderVariant.pill),
+        );
+        double bubbleX() => tester.getCenter(bubbleBox()).dx;
+        // Well inside a step, not on the boundary between two.
+        final press = _at(tester, .8);
+        final g = await tester.createGesture(kind: kind);
+        addTearDown(g.removePointer);
+        double? hovered;
+        if (kind == PointerDeviceKind.mouse) {
+          await g.addPointer(location: _at(tester, .1));
+          await g.moveTo(press);
+          await settle(tester);
+          hovered = bubbleX();
+        }
+        await g.down(press);
+        // The press shows, and the value jumps, once a drag can't win.
+        await tester.pump(kPressTimeout);
+        await tester.pump();
+        final bubbles = <double>[];
+        final knobs = <double>[];
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          bubbles.add(bubbleX());
+          knobs.add(tester.getCenter(_knob()).dx);
+        }
+        await g.up();
+        await settle(tester);
+        // The snapped press position: where the thumb lands.
+        final landed = tester.getCenter(_knob()).dx;
+        expect(knobs.first, lessThan(landed - 5), reason: 'the thumb springs');
+        for (final (i, x) in bubbles.indexed) {
+          expect(x, closeTo(landed, .5), reason: 'frame $i: with the press');
+        }
+        if (hovered != null) {
+          expect(hovered, closeTo(landed, .5), reason: 'no jump on press');
+          expect(bubbleX(), closeTo(landed, .5), reason: 'none on release');
+        }
+      });
+    }
+
     testWidgets('a held press that becomes a drag is one change', (
       tester,
     ) async {
