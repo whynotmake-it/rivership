@@ -1,4 +1,5 @@
 import 'package:coil_example/src/pages/components/accordion_page.dart';
+import 'package:coil_example/src/pages/components/ask_user_questions_page.dart';
 import 'package:coil_example/src/pages/components/badge_page.dart';
 import 'package:coil_example/src/pages/components/banner_page.dart';
 import 'package:coil_example/src/pages/components/breadcrumb_page.dart';
@@ -133,6 +134,7 @@ const catalogEntries = <CatalogEntry>[
   inputMessageEntry,
   fileThumbnailEntry,
   dataTableEntry,
+  askUserQuestionsEntry,
   accordionEntry,
   cardEntry,
   tableEntry,
@@ -193,5 +195,6 @@ const designComponents = <CatalogGroup, List<String>>{
     'InputMessage',
     'FileThumbnail',
     'DataTable',
+    'AskUserQuestions',
   ],
 };

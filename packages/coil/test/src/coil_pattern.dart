@@ -15,6 +15,7 @@ import 'patterns/card.dart';
 import 'patterns/disclosure.dart';
 import 'patterns/live_region.dart';
 import 'patterns/navigation.dart';
+import 'patterns/question.dart';
 import 'patterns/table.dart';
 
 /// The interaction patterns coil components implement. Each one is a
@@ -79,6 +80,10 @@ enum CoilPattern {
 
   /// A card with an action: one focusable target for the whole card.
   card,
+
+  /// A question with option rows (AskUserQuestions): one tab stop, arrows
+  /// move focus without picking, Space picks.
+  question,
 }
 
 /// Checks that the widget at [finder] implements [pattern]:
@@ -154,6 +159,8 @@ Future<void> expectCoilPattern(
         await expectLiveRegionPattern(tester, finder);
       case CoilPattern.card:
         await expectCardPattern(tester, finder);
+      case CoilPattern.question:
+        await expectQuestionPattern(tester, finder);
     }
     // A text field keeps its focus border while editing, however it was
     // focused (as `:focus-visible` does for inputs); a select opens.

@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- `CoilAskUserQuestions` asks an assistant's questions one at a time:
+  single choice, multiple choice and typed answers, an optional typed
+  "other" row, Back and Skip, and number keys on pointer. The card's height
+  springs between questions. A `CoilAskUserQuestionsController` holds the
+  step and the answers.
 - `CoilColors.fromSeed` builds a palette from a brand color and a neutral
   tone (`neutralHue`, `neutralChroma`): every grey takes the tint at its
   default lightness and opacity, and text and status colors keep their
