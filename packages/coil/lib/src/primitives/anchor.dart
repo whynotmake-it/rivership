@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
+import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
@@ -79,9 +81,10 @@ class CoilPopoverController {
 /// its content right after the anchor, and the rest of the page stays
 /// reachable.
 ///
-/// It springs in on the theme's `standard` tokens, growing from the edge
-/// next to the anchor while it blur-fades. Under reduced motion it only
-/// fades, on `fade`.
+/// It grows from the edge next to the anchor while it blur-fades: on the
+/// theme's `quick` tokens on the pointer tier, and on the softer `standard`
+/// on the touch tier, where it's bigger and opens under a finger. Under
+/// reduced motion it only fades, on `fade`.
 class CoilPopover extends StatefulWidget {
   /// Creates a popover anchored to [child].
   const CoilPopover({
@@ -199,7 +202,12 @@ class _CoilPopoverState extends State<CoilPopover>
       _at = at;
     });
     _presence
-      ..motion = _reduceMotion ? motion.fade : motion.standard
+      ..motion = _reduceMotion
+          ? motion.fade
+          : switch (CoilTheme.tierOf(context)) {
+              CoilTier.pointer => motion.quick,
+              CoilTier.touch => motion.standard,
+            }
       ..animateTo(1);
   }
 
@@ -208,7 +216,12 @@ class _CoilPopoverState extends State<CoilPopover>
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     setState(() => _open = false);
     _presence
-      ..motion = _reduceMotion ? motion.fadeExit : motion.standardExit
+      ..motion = _reduceMotion
+          ? motion.fadeExit
+          : switch (CoilTheme.tierOf(context)) {
+              CoilTier.pointer => motion.quickExit,
+              CoilTier.touch => motion.standardExit,
+            }
       ..animateTo(0);
     if (_scope.hasFocus) _returnFocus?.requestFocus();
     _returnFocus = null;
@@ -475,6 +488,7 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
   set grow(bool value) {
     if (value == _grow) return;
     _grow = value;
+    _updateGrowing();
     markNeedsPaint();
   }
 
@@ -529,15 +543,31 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
   CoilPopoverSide _side = CoilPopoverSide.bottom;
   Offset _childOffset = Offset.zero;
 
+  /// Whether the child is mid-grow, so painted through [_growFilter].
+  bool _growing = false;
+
+  void _updateGrowing() {
+    final growing = _grow && _presence.value != 1;
+    if (growing == _growing) return;
+    _growing = growing;
+    markNeedsCompositingBitsUpdate();
+  }
+
   void _onPresence() {
     // Only the grow depends on presence.
-    if (_grow) markNeedsPaint();
+    if (!_grow) return;
+    _updateGrowing();
+    markNeedsPaint();
   }
+
+  @override
+  bool get alwaysNeedsCompositing => _growing;
 
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
     _presence.addListener(_onPresence);
+    _updateGrowing();
   }
 
   @override
@@ -640,16 +670,11 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
     _childOffset = Offset(x.toDouble(), y.toDouble());
   }
 
-  /// Where the child is drawn: at its offset and, while growing, scaled
-  /// 0.96 and slid 4 px toward the anchor at presence 0.
-  Matrix4 get _childTransform {
-    final transform = Matrix4.translationValues(
-      _childOffset.dx,
-      _childOffset.dy,
-      0,
-    );
-    if (!_grow) return transform;
+  /// The grow around the child's own origin: scaled 0.96 and slid 4 px
+  /// toward the anchor at presence 0, identity at rest.
+  Matrix4 get _growTransform {
     final away = 1 - _presence.value;
+    if (!_grow || away == 0) return Matrix4.identity();
     final size = child!.size;
     final (origin, slide) = switch (_side) {
       CoilPopoverSide.bottom => (
@@ -664,23 +689,52 @@ class _RenderCoilPopoverPlacement extends RenderProxyBox {
       CoilPopoverSide.left => (Offset(size.width, 0), const Offset(4, 0)),
     };
     final scale = 1 - 0.04 * away;
-    return transform
-      ..translateByDouble(slide.dx * away, slide.dy * away, 0, 1)
+    return Matrix4.translationValues(slide.dx * away, slide.dy * away, 0)
       ..translateByDouble(origin.dx, origin.dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1)
       ..translateByDouble(-origin.dx, -origin.dy, 0, 1);
   }
 
+  /// Where the child is drawn: at its offset, then grown.
+  Matrix4 get _childTransform =>
+      Matrix4.translationValues(_childOffset.dx, _childOffset.dy, 0)
+        ..multiply(_growTransform);
+
+  /// Paints the grow as a resample of the child drawn at rest.
+  ///
+  /// Drawn under a scaling transform, text is re-rasterized every frame,
+  /// and Impeller snaps each glyph to the pixel grid separately: the
+  /// letters jitter against each other and the surface while the popover
+  /// grows. A matrix filter draws the child at its rest size and scales
+  /// that image (with linear, mipmapped sampling, the matrix filter's default
+  /// medium quality), so everything moves as one piece.
+  ImageFilter _growFilter(Offset origin) => ImageFilter.matrix(
+    (Matrix4.translationValues(origin.dx, origin.dy, 0)
+          ..multiply(_growTransform)
+          ..translateByDouble(-origin.dx, -origin.dy, 0, 1))
+        .storage,
+  );
+
   @override
   void paint(PaintingContext context, Offset offset) {
     final child = this.child;
     if (child == null) return;
-    layer = context.pushTransform(
-      needsCompositing,
-      offset,
-      _childTransform,
+    final origin = offset + _childOffset;
+    if (!_growing) {
+      layer = null;
+      context.paintChild(child, origin);
+      return;
+    }
+    final filter = _growFilter(origin);
+    if (layer case final ImageFilterLayer layer) {
+      layer.imageFilter = filter;
+    } else {
+      layer = ImageFilterLayer(imageFilter: filter);
+    }
+    context.pushLayer(
+      layer!,
       (context, offset) => context.paintChild(child, offset),
-      oldLayer: layer is TransformLayer ? layer! as TransformLayer : null,
+      origin,
     );
   }
 

@@ -1,6 +1,8 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 final _anchor = find.byKey(const ValueKey('anchor'));
 final _content = find.byKey(const ValueKey('content'));
@@ -14,6 +16,8 @@ Widget _app({
   bool reduceMotion = false,
   bool openOnLongPress = false,
   String? anchorLabel,
+  CoilTier tier = CoilTier.pointer,
+  CoilMotion? motion,
 }) => MediaQuery(
   data: MediaQueryData(
     size: const Size(400, 600),
@@ -21,8 +25,10 @@ Widget _app({
   ),
   child: WidgetsApp(
     color: const Color(0xFF000000),
-    builder: (context, navigator) =>
-        CoilTheme(data: CoilThemeData.light, child: navigator!),
+    builder: (context, navigator) => CoilTheme(
+      data: CoilThemeData.light,
+      child: CoilAdaptiveScope(tier: tier, child: navigator!),
+    ),
     onGenerateRoute: (_) => PageRouteBuilder<void>(
       pageBuilder: (context, _, _) => Stack(
         children: [
@@ -32,6 +38,7 @@ Widget _app({
             child: CoilAdaptivePopup(
               controller: _controller,
               presentation: CoilPresentation.popover,
+              motion: motion,
               traits: () => const CoilOverlayTraits(
                 kind: CoilOverlayKind.actionMenu,
                 itemCount: 1,
@@ -124,6 +131,75 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  group("opens and closes on the tier's tokens", () {
+    // Far apart, so the tier's choice shows in the timing.
+    const motion = CoilMotion(
+      quickExit: CupertinoMotion(duration: Duration(milliseconds: 100)),
+      standard: CupertinoMotion(duration: Duration(milliseconds: 800)),
+      standardExit: CupertinoMotion(duration: Duration(milliseconds: 800)),
+    );
+
+    Future<bool> openAfter300ms(WidgetTester tester, CoilTier tier) async {
+      await tester.pumpWidget(
+        _app(anchorTop: 40, tier: tier, motion: motion),
+      );
+      await tester.tap(_anchor);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final grown = tester.getRect(_content).width == 160;
+      await tester.pumpAndSettle();
+      return grown;
+    }
+
+    Future<bool> goneAfter300ms(WidgetTester tester, CoilTier tier) async {
+      await tester.pumpWidget(
+        _app(anchorTop: 40, tier: tier, motion: motion),
+      );
+      await _open(tester);
+      _controller.close();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final gone = _content.evaluate().isEmpty;
+      await tester.pumpAndSettle();
+      return gone;
+    }
+
+    for (final (tier, settled) in [
+      (CoilTier.pointer, true),
+      (CoilTier.touch, false),
+    ]) {
+      testWidgets('${tier.name}: in 300 ms it is ${settled ? '' : 'not '}'
+          'fully in', (tester) async {
+        expect(await openAfter300ms(tester, tier), settled);
+      });
+
+      testWidgets('${tier.name}: in 300 ms it is ${settled ? '' : 'not '}'
+          'gone', (tester) async {
+        expect(await goneAfter300ms(tester, tier), settled);
+      });
+    }
+  });
+
+  testWidgets('scales an image of its content while it grows, not the text', (
+    tester,
+  ) async {
+    // Text drawn under an animated scale is re-rasterized every frame and
+    // its glyphs snap to the pixel grid one by one, so they jitter.
+    bool resampled() => _layers(tester.layers.first).any(
+      (layer) =>
+          layer is ImageFilterLayer &&
+          layer.imageFilter.toString().startsWith('ImageFilter.matrix'),
+    );
+    await tester.pumpWidget(_app(anchorTop: 40));
+    await tester.tap(_anchor);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(tester.getRect(_content).width, lessThan(160));
+    expect(resampled(), isTrue);
+    await tester.pumpAndSettle();
+    expect(resampled(), isFalse, reason: 'at rest it paints directly');
+  });
+
   testWidgets('a long press that opens it lifts without closing it', (
     tester,
   ) async {
@@ -150,4 +226,17 @@ void main() {
     expect(order.indexOf('Content'), order.indexOf('Anchor') + 1);
     semantics.dispose();
   });
+}
+
+Iterable<Layer> _layers(Layer layer) sync* {
+  yield layer;
+  if (layer is ContainerLayer) {
+    for (
+      var child = layer.firstChild;
+      child != null;
+      child = child.nextSibling
+    ) {
+      yield* _layers(child);
+    }
+  }
 }

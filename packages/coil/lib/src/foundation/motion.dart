@@ -11,8 +11,8 @@ import 'package:motor/motor.dart';
 ///
 /// | Token | Default | Moves |
 /// |---|---|---|
-/// | [quick] | 100 ms, no bounce | the hover highlight, press collapse |
-/// | [standard] | 180 ms, no bounce | tab pill, switch thumb, merge/split, popovers |
+/// | [quick] | 100 ms, no bounce | hover highlight, press, pointer popovers |
+/// | [standard] | 180 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
 /// | [gentle] | 340 ms, bounce 0.1 | sheets, dialogs, panels |
 /// | [fade] | 120 ms, no bounce | opacity and color |
 ///
@@ -55,17 +55,19 @@ class CoilMotion with Diagnosticable {
   });
 
   /// Small travel that should feel immediate: the hover highlight gliding
-  /// between rows, a button's press collapse, a thumb squishing.
+  /// between rows, a button's press collapse, a thumb squishing, a
+  /// popover opening on the pointer tier.
   final Motion quick;
 
-  /// The exit of [quick]: a highlight leaving, a press releasing.
+  /// The exit of [quick]: a highlight leaving, a press releasing, a
+  /// pointer popover closing.
   final Motion quickExit;
 
   /// Indicators that must land exactly: the tab pill, the switch thumb,
-  /// merge/split selection, popovers opening.
+  /// merge/split selection, popovers opening on the touch tier.
   final Motion standard;
 
-  /// The exit of [standard]: a popover closing, an indicator leaving.
+  /// The exit of [standard]: a touch popover closing, an indicator leaving.
   final Motion standardExit;
 
   /// Large surfaces: sheets, dialogs, side panels. The only token with a

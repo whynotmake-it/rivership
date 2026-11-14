@@ -82,18 +82,26 @@ class CoilBlurFade extends StatelessWidget {
         final p = presence.value;
         final away = 1 - p;
         final sigma = (blur * away).clamp(0.0, blur);
+        // The scale and slide resample the child drawn at rest (a matrix
+        // filter), so text moves as one image instead of re-rasterizing
+        // each frame with every glyph snapped to the pixel grid. At rest
+        // there's nothing to resample.
+        final s = scale + (1 - scale) * p;
+        final moving = s != 1 || (offset * away) != Offset.zero;
         return Opacity(
           opacity: p.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: offset * away,
-            child: Transform.scale(
-              scale: scale + (1 - scale) * p,
-              alignment: alignment,
-              child: ImageFiltered(
-                enabled: sigma > 0.01,
-                imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-                child: child,
-              ),
+          child: Transform(
+            transform: Matrix4.translationValues(
+              offset.dx * away,
+              offset.dy * away,
+              0,
+            )..scaleByDouble(s, s, 1, 1),
+            alignment: alignment,
+            filterQuality: moving ? FilterQuality.medium : null,
+            child: ImageFiltered(
+              enabled: sigma > 0.01,
+              imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+              child: child,
             ),
           ),
         );
