@@ -216,6 +216,32 @@ void main() {
       await next.up();
     });
 
+    testWidgets('hovering shows its tooltip beside it, following the '
+        'pointer, and a press hides it', (tester) async {
+      await _pumpWide(tester);
+      final rail = tester.getRect(find.byType(CoilSidebarRail));
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: const Offset(800, 400));
+      await mouse.moveTo(Offset(rail.center.dx, 200));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      final hint = find.textContaining('to resize');
+      expect(hint, findsOneWidget);
+      expect(find.text('['), findsOneWidget);
+      // Beside the strip, on the page's side.
+      expect(tester.getRect(hint).left, greaterThan(rail.right));
+      final high = tester.getCenter(hint).dy;
+      await mouse.moveTo(Offset(rail.center.dx, 500));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(hint).dy, greaterThan(high + 200));
+
+      await mouse.down(Offset(rail.center.dx, 500));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('to resize'), findsNothing);
+      await mouse.up();
+    });
+
     testWidgets('a click folds the sidebar', (tester) async {
       final controller = await _pumpWide(tester);
       final rail = tester.getCenter(find.byType(CoilSidebarRail));

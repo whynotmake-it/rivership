@@ -1,7 +1,10 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/kbd.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/sidebar/sidebar_scope.dart';
 import 'package:coil/src/components/sidebar/sidebar_style.dart';
+import 'package:coil/src/components/sidebar/sidebar_text.dart';
+import 'package:coil/tooltip.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -11,7 +14,9 @@ import 'package:motor/motor.dart';
 /// Dragging it resizes the sidebar between the scaffold's `minWidth` and
 /// `maxWidth`, following the pointer. Dragging 56 past the minimum folds
 /// the sidebar away, and pulling back before release opens it again.
-/// Clicking it folds the sidebar. Hovering brightens the edge.
+/// Clicking it folds the sidebar. Hovering brightens the edge and shows a
+/// tooltip beside the strip that follows the pointer: [resizeHint] and
+/// [collapseHint] with the toggle key.
 ///
 /// It isn't a tab stop: the keyboard toggles with the scaffold's shortcuts.
 /// Screen readers get increase and decrease actions that resize in steps
@@ -21,10 +26,19 @@ class CoilSidebarRail extends StatefulWidget {
   const CoilSidebarRail({
     super.key,
     this.semanticLabel = 'Resize or collapse sidebar',
+    this.resizeHint,
+    this.collapseHint,
   });
 
   /// The rail's name for screen readers.
   final String semanticLabel;
+
+  /// The tooltip's first line. Null is "**Drag** to resize".
+  final Widget? resizeHint;
+
+  /// The tooltip's second line, before the key. Null is "**Click** to
+  /// collapse".
+  final Widget? collapseHint;
 
   /// How far past the minimum a drag folds the sidebar.
   static const collapseSlop = 56.0;
@@ -103,13 +117,18 @@ class _CoilSidebarRailState extends State<CoilSidebarRail> {
       CoilTheme.metricsOf(context),
     ).merge(CoilTheme.styleOf<CoilSidebarStyle>(context));
     final motion = CoilTheme.motionOf(context);
-    // TODO(coil-sidebar): FF's rail tooltip ("Drag to resize", "Click to
-    // collapse" with the key) opens beside the strip and follows the
-    // pointer along it. CoilTooltipAnchor only places a bubble above or
-    // below its anchor (_RenderBubblePlacement), which for a full-height
-    // strip lands off screen. It needs a horizontal placement and a
-    // pointer-following anchor in the tooltip primitive.
-    return Semantics(
+    Widget hint(String verb, String rest) => Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: verb,
+            style: TextStyle(fontVariations: CoilWeight.semibold.variations),
+          ),
+          TextSpan(text: rest),
+        ],
+      ),
+    );
+    final rail = Semantics(
       label: widget.semanticLabel,
       onTap: scope.toggle,
       onIncrease: () => _resizeBy(scope, 16),
@@ -155,6 +174,41 @@ class _CoilSidebarRailState extends State<CoilSidebarRail> {
           ),
         ),
       ),
+    );
+    // As FF: two lines beside the strip, the key after the second, and the
+    // bubble following the pointer along the strip. A press hides it, so it
+    // stays away while dragging.
+    final resize = widget.resizeHint ?? hint('Drag', ' to resize');
+    final collapse = widget.collapseHint ?? hint('Click', ' to collapse');
+    return CoilTooltip(
+      semanticLabel: [
+        coilSidebarPlainText(resize),
+        coilSidebarPlainText(collapse),
+      ].nonNulls.join(', '),
+      side: scope.side == CoilSidebarSide.start
+          ? CoilTooltipSide.end
+          : CoilTooltipSide.start,
+      follow: CoilTooltipFollow.pointer,
+      message: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: [
+          resize,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              collapse,
+              CoilKbd(
+                scope.shortcutLabel,
+                style: const CoilKbdStyle(size: 16),
+              ),
+            ],
+          ),
+        ],
+      ),
+      child: rail,
     );
   }
 }
