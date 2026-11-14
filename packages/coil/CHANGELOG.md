@@ -2,6 +2,26 @@
 
 Milestone M0, unreleased.
 
+- The sidebar is rebuilt to match FF's. `CoilSidebarScaffold` takes a
+  `CoilSidebarController` (open state and width, which the app stores),
+  `side`, `variant` (`sidebar`, `floating`, `inset`), `collapsible`
+  (`offcanvas`, `none`) and `peek` (`hover`, `click`). A rail resizes it
+  between 160 and 360 and folds it, and `[` / `]` or ⌘B toggle it; the
+  outermost scaffold answers from launch. Below 768 it opens as a drawer.
+  New parts: `CoilSidebarTrigger`, `CoilSidebarBar`, `CoilSidebarAction`,
+  `CoilSidebarCalloutStack` and a collapsible `CoilSidebarGroup` with
+  actions. Breaking: `CoilSidebarItem` takes a `label` widget and
+  `leading` (was `icon`), and gains `status`, `actions`, `children` and
+  `expanded`; `CoilSidebarScaffold.of` returns the controller.
+- `CoilSettingsDialog` and `showCoilSettingsDialog`: settings sections in a
+  sidebar beside a panel, with `CoilSettingsList` and `CoilSettingRow`.
+- `CoilKbd` draws a keyboard shortcut as key caps, from a string or a
+  `ShortcutActivator`.
+- `CoilDialogFrame` is the dialog's surface and close button without its
+  layout; `CoilDialog` builds on it.
+- `CoilDrawer` (primitive) shows a modal side drawer that stays a
+  descendant of its owner, so it shows the app's current state. A drag
+  closes it, and system back, Escape and the scrim do too.
 - `CoilColors.fromSeed` builds a palette from a brand color and a neutral
   tone (`neutralHue`, `neutralChroma`): every grey takes the tint at its
   default lightness and opacity, and text and status colors keep their
