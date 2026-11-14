@@ -213,6 +213,7 @@ Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
 - `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes.
+- `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
 - Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
 Named holds that aren't tokens:
@@ -249,6 +250,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - spatial tokens become `Motion.instant()`;
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
+- `stagger` becomes zero, so revealed siblings fade in together;
 - loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
@@ -863,6 +865,16 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.
 
+#### Reveal
+
+- **What it is:** a screen settling in. `CoilReveal` fades its children in one after another on first build; nothing moves on scroll, and rebuilds don't replay it.
+- **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.
+- **Pace:** `regular` is one `stagger` apart (60 ms); `subtle` is two thirds of it (40 ms).
+- **Motion:** opacity only, on `fade` (`CoilRevealTrack.opacity`). No rise and no scale, as in the original's product presets.
+- **Reduced motion:** every child fades in at once.
+- **Do:** wrap the main column or a list. Keep headers, sidebars and footers outside, so the frame stays still.
+- **Don't:** reveal on scroll. The landing page's scroll-driven reveal is out of scope.
+
 #### ScrollArea (built)
 
 - **Physics:** platform physics (§9.2).
@@ -945,6 +957,25 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Touch:** the tile × and queue × are always visible; swipe a queue row to delete.
 - **Semantics:** textField multiline, labeled "Message"; send is a button whose label follows its mode.
 
+#### QueuedStack
+
+- **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
+- **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. Text is the subtitle role in `mutedForeground`, one line with an ellipsis. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×).
+- **Folded:** 2 cards peek out behind the front one, each 12 px higher and 5 % smaller; deeper cards fade out.
+- **Fanned out:** each card sits a card plus 8 above the one in front.
+- **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
+- **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down). Actions always show. Drag to reorder.
+- **Keyboard:** each card is a tab stop. Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
+- **Motion:**
+  - fan out and fold on `standard` / `standardExit`;
+  - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
+  - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
+  - a message queued behind the folded pile makes it recoil 7 px on `gentle`.
+- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action. The gutter reads "3 queued messages".
+- **Layout:** place it over the transcript, right above the composer, and pad the transcript by `CoilQueuedStack.collapsedHeightOf`.
+- **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.
+
 #### FileThumbnail
 
 - **Anatomy:** a square preview (`size` required), radius item (or nested), `muted` background.
@@ -988,7 +1019,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
 - **Deferred:**
-  - ColorPicker, AskUserQuestions, Reveal, QueuedStack and the settings-dialog block;
+  - ColorPicker, AskUserQuestions and the settings-dialog block;
+  - Reveal's landing presets, its scroll-driven reveal, and the skeleton swap until it builds on Skeleton's loaded transition;
   - Slider range / steps / tooltip mode (v1.x);
   - Calendar's 2-month strip animation and stacked layout;
   - DataTable v2;
