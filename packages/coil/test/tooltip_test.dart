@@ -155,4 +155,88 @@ void main() {
       closeTo(tester.getCenter(find.text('[Italic]')).dx, 1),
     );
   });
+
+  _groupWidthTests();
+}
+
+/// A tooltip group over two buttons, the first with a long message.
+Widget _group() {
+  Widget button(String label) => CoilTooltip(
+    message: label,
+    child: CoilButton(onPressed: () {}, child: Text('[$label]')),
+  );
+  return testApp(
+    tier: CoilTier.pointer,
+    home: Center(
+      child: CoilTooltipGroup(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 40,
+          children: [button('Strikethrough'), button('Bold')],
+        ),
+      ),
+    ),
+  );
+}
+
+/// The bubble around the visible [message].
+Finder _bubble(String message) => find
+    .ancestor(of: find.text(message), matching: find.byType(DecoratedBox))
+    .first;
+
+/// Hovers `[from]` until its bubble is open, then moves to `[to]` and
+/// pumps one frame.
+Future<double> _glide(WidgetTester tester, String from, String to) async {
+  useScreen(tester, TestScreen.desktop);
+  await tester.pumpWidget(_group());
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  addTearDown(mouse.removePointer);
+  await mouse.addPointer(location: Offset.zero);
+  await mouse.moveTo(tester.getCenter(find.text('[$from]')));
+  await tester.pump(CoilTooltipAnchor.hoverDelay);
+  await tester.pumpAndSettle();
+  final start = tester.getSize(_bubble(from)).width;
+  await mouse.moveTo(tester.getCenter(find.text('[$to]')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 16));
+  return start;
+}
+
+void _groupWidthTests() {
+  testWidgets('in a group the bubble narrows while the old label fades', (
+    tester,
+  ) async {
+    final start = await _glide(tester, 'Strikethrough', 'Bold');
+    // The old label is still fading out, and the width already follows the
+    // shorter one.
+    expect(find.text('Strikethrough'), findsOneWidget);
+    expect(tester.getSize(_bubble('Bold')).width, lessThan(start));
+    await tester.pumpAndSettle();
+    expect(find.text('Strikethrough'), findsNothing);
+    expect(tester.getSize(_bubble('Bold')).width, lessThan(start));
+  });
+
+  testWidgets('in a group the bubble widens for a longer label', (
+    tester,
+  ) async {
+    final start = await _glide(tester, 'Bold', 'Strikethrough');
+    final mid = tester.getSize(_bubble('Strikethrough')).width;
+    expect(mid, greaterThan(start));
+    await tester.pumpAndSettle();
+    expect(find.text('Bold'), findsNothing);
+    expect(tester.getSize(_bubble('Strikethrough')).width, greaterThan(mid));
+  });
+
+  testWidgets('with reduced motion the bubble fits the new label at once', (
+    tester,
+  ) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    final start = await _glide(tester, 'Strikethrough', 'Bold');
+    final first = tester.getSize(_bubble('Bold')).width;
+    expect(first, lessThan(start));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(_bubble('Bold')).width, first);
+  });
 }
