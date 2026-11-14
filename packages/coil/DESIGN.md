@@ -870,13 +870,22 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Reveal
 
-- **What it is:** a screen settling in. `CoilReveal` fades its children in one after another on first build; nothing moves on scroll, and rebuilds don't replay it.
+- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll.
+- **Presets:**
+
+  | Preset | Step | Motion (in / out) | Look when hidden |
+  |---|---|---|---|
+  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
+  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
+  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 4, scale 0.94, 12 px below |
+
+  `landing` is for the part of a landing page on screen at load.
 - **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.
-- **Pace:** `regular` is one `stagger` apart (60 ms); `subtle` is two thirds of it (40 ms).
-- **Motion:** opacity only, on `fade` (`CoilRevealTrack.opacity`). No rise and no scale, as in the original's product presets.
-- **Reduced motion:** every child fades in at once.
+- **Hiding:** `visible: false` hides the children with the same stagger, in the same order (as the original's `reveal-out` keeps each child's delay), on the exit motion. `true` reveals them again. A flip halfway turns each child around from where it is. Hidden children stay mounted but take no pointer, focus or semantics.
+- **Loading:** the original's `reveal-swap` is `CoilSkeletonSwitcher`. Put the loaded content in a `CoilReveal` with `.items`, and its rows arrive one by one.
+- **Reduced motion:** `stagger` is zero, and the blur-fade only fades. Every child fades in or out at once, on `fade` / `fadeExit`, `landing` included.
 - **Do:** wrap the main column or a list. Keep headers, sidebars and footers outside, so the frame stays still.
-- **Don't:** reveal on scroll. The landing page's scroll-driven reveal is out of scope.
+- **Don't:** reveal on scroll. The landing page's scroll-driven reveal is cut.
 
 #### ScrollArea (built)
 
@@ -964,7 +973,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
 - **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
-- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. Text is the subtitle role in `mutedForeground`, one line with an ellipsis. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×).
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×).
 - **Folded:** 2 cards peek out behind the front one, each 12 px higher and 5 % smaller; deeper cards fade out.
 - **Fanned out:** each card sits a card plus 8 above the one in front.
 - **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
@@ -1023,7 +1032,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
 - **Deferred:**
   - ColorPicker, AskUserQuestions and the settings-dialog block;
-  - Reveal's landing presets, its scroll-driven reveal, and the skeleton swap until it builds on Skeleton's loaded transition;
+  - Reveal's scroll-driven reveal (cut, not deferred);
   - Slider range / steps / tooltip mode (v1.x);
   - Calendar's 2-month strip animation and stacked layout;
   - DataTable v2;
