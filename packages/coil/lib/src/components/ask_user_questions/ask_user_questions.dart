@@ -78,44 +78,45 @@ final class CoilAskUserQuestionsTrack<T extends Object> extends Track<T> {
   );
 }
 
-/// The words a [CoilAskUserQuestions] shows and announces. The defaults
-/// are English.
+/// The words a [CoilAskUserQuestions] shows, as widgets it styles (usually
+/// [Text]). The defaults are English.
 @immutable
 class CoilAskUserQuestionsLabels {
   /// Creates the labels.
   const CoilAskUserQuestionsLabels({
-    this.back = 'Back',
-    this.skip = 'Skip',
-    this.next = 'Continue',
-    this.finish = 'Finish',
-    this.freeText = 'Type your answer',
-    this.empty = 'No questions.',
+    this.back = const Text('Back'),
+    this.skip = const Text('Skip'),
+    this.next = const Text('Continue'),
+    this.finish = const Text('Finish'),
+    this.freeText = const Text('Type your answer'),
+    this.empty = const Text('No questions.'),
     this.step = _step,
   });
 
   /// The button that returns to the previous question.
-  final String back;
+  final Widget back;
 
   /// The button that skips a question.
-  final String skip;
+  final Widget skip;
 
   /// The button that answers a question that isn't the last.
-  final String next;
+  final Widget next;
 
   /// The button that answers the last question.
-  final String finish;
+  final Widget finish;
 
   /// A free-text field's placeholder when its question sets none.
-  final String freeText;
+  final Widget freeText;
 
   /// Shown when there are no questions.
-  final String empty;
+  final Widget empty;
 
-  /// The progress line, from the question's number (from 1) and the count.
-  /// It's announced as the questions change.
-  final String Function(int number, int count) step;
+  /// Builds the progress line from the question's number (from 1) and the
+  /// count. It's a live region, so each new question is announced.
+  final Widget Function(int number, int count) step;
 
-  static String _step(int number, int count) => 'Question $number of $count';
+  static Widget _step(int number, int count) =>
+      Text('Question $number of $count');
 
   @override
   bool operator ==(Object other) =>
@@ -222,7 +223,7 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
 
   /// A free-text answer's validation message, for the question with
   /// [_errorFor].
-  String? _error;
+  Widget? _error;
   Object? _errorFor;
 
   CoilAskUserQuestionsController<T> get _controller =>
@@ -490,9 +491,9 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
       return card(
         Padding(
           padding: EdgeInsets.all(inset + metrics.controlPaddingX),
-          child: Text(
-            labels.empty,
+          child: DefaultTextStyle(
             style: look.labelStyle!.copyWith(color: look.description),
+            child: labels.empty,
           ),
         ),
       );
@@ -558,7 +559,7 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
                   variant: CoilButtonVariant.ghost,
                   size: CoilSize.compact,
                   onPressed: _back,
-                  child: Text(labels.back),
+                  child: labels.back,
                 )
               : null,
         ),
@@ -572,7 +573,7 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
                       variant: CoilButtonVariant.ghost,
                       size: CoilSize.compact,
                       onPressed: _skip,
-                      child: Text(labels.skip),
+                      child: labels.skip,
                     )
                   : null,
             ),
@@ -587,10 +588,9 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
                       child: CoilButton(
                         size: CoilSize.compact,
                         onPressed: _canNext ? _next : null,
-                        child: Text(
-                          question.nextLabel ??
-                              (_isLast ? labels.finish : labels.next),
-                        ),
+                        child:
+                            question.nextLabel ??
+                            (_isLast ? labels.finish : labels.next),
                       ),
                     ),
             ),
@@ -645,9 +645,9 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
                       child: Semantics(
                         container: true,
                         liveRegion: true,
-                        child: Text(
-                          labels.step(_index + 1, questions.length),
-                          style: look.stepStyle,
+                        child: DefaultTextStyle(
+                          style: look.stepStyle!,
+                          child: labels.step(_index + 1, questions.length),
                         ),
                       ),
                     ),

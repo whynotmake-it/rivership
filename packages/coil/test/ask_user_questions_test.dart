@@ -13,52 +13,55 @@ import 'src/ink_centering.dart';
 
 const _stack = CoilQuestion<String>.single(
   id: 'stack',
-  title: 'Which stack should the app use?',
+  title: Text('Which stack should the app use?'),
+  semanticLabel: 'Which stack should the app use?',
   options: [
-    CoilQuestionOption(value: 'flutter', label: 'Flutter'),
-    CoilQuestionOption(value: 'swift', label: 'SwiftUI'),
-    CoilQuestionOption(value: 'kotlin', label: 'Jetpack Compose'),
+    CoilQuestionOption(value: 'flutter', label: Text('Flutter')),
+    CoilQuestionOption(value: 'swift', label: Text('SwiftUI')),
+    CoilQuestionOption(value: 'kotlin', label: Text('Jetpack Compose')),
   ],
-  otherPlaceholder: 'Something else',
+  otherPlaceholder: Text('Something else'),
+  otherSemanticLabel: 'Something else',
 );
 
 const _platforms = CoilQuestion<String>.multiple(
   id: 'platforms',
-  title: 'Which platforms ship first?',
+  title: Text('Which platforms ship first?'),
   options: [
-    CoilQuestionOption(value: 'ios', label: 'iOS'),
-    CoilQuestionOption(value: 'android', label: 'Android'),
-    CoilQuestionOption(value: 'web', label: 'Web'),
-    CoilQuestionOption(value: 'macos', label: 'macOS'),
+    CoilQuestionOption(value: 'ios', label: Text('iOS')),
+    CoilQuestionOption(value: 'android', label: Text('Android')),
+    CoilQuestionOption(value: 'web', label: Text('Web')),
+    CoilQuestionOption(value: 'macos', label: Text('macOS')),
   ],
-  otherPlaceholder: 'Another platform',
+  otherPlaceholder: Text('Another platform'),
+  otherSemanticLabel: 'Another platform',
 );
 
 const _tone = CoilQuestion<String>.single(
   id: 'tone',
-  title: 'How should replies sound?',
+  title: Text('How should replies sound?'),
   layout: CoilQuestionLayout.stacked,
   options: [
     CoilQuestionOption(
       value: 'brief',
-      label: 'Brief',
-      description: 'Short answers, no small talk.',
+      label: Text('Brief'),
+      description: Text('Short answers, no small talk.'),
     ),
     CoilQuestionOption(
       value: 'warm',
-      label: 'Warm',
-      description: 'Friendly, with a little context for each step.',
+      label: Text('Warm'),
+      description: Text('Friendly, with a little context for each step.'),
     ),
   ],
 );
 
-String? _nameRule(String text) =>
-    text.length < 3 ? 'Use at least 3 characters' : null;
+Widget? _nameRule(String text) =>
+    text.length < 3 ? const Text('Use at least 3 characters') : null;
 
 const _name = CoilQuestion<String>.freeText(
   id: 'name',
-  title: 'What should we call the project?',
-  placeholder: 'Project name',
+  title: Text('What should we call the project?'),
+  placeholder: Text('Project name'),
   lines: 1,
   validator: _nameRule,
 );
@@ -275,19 +278,27 @@ void main() {
         card(
           const CoilQuestion.single(
             id: 'keys-start',
-            title: 'Keys at the start',
+            title: Text('Keys at the start'),
             keyPosition: CoilQuestionKeyPosition.start,
-            otherPlaceholder: 'Something else',
+            otherPlaceholder: Text('Something else'),
+            otherSemanticLabel: 'Something else',
             options: [
-              CoilQuestionOption(value: 'a', label: 'First'),
-              CoilQuestionOption(value: 'b', label: 'Second'),
+              CoilQuestionOption(value: 'a', label: Text('First')),
+              CoilQuestionOption(
+                value: 'b',
+                label: Text('Second'),
+                description: Text('with an inline description'),
+              ),
             ],
           ),
           const CoilAnswer(text: 'Typed instead'),
         ),
         card(_name, const CoilAnswer(text: 'Atlas')),
         card(
-          const CoilQuestion.freeText(id: 'notes', title: 'Anything else?'),
+          const CoilQuestion.freeText(
+            id: 'notes',
+            title: Text('Anything else?'),
+          ),
           const CoilAnswer(),
         ),
       ],
@@ -383,16 +394,16 @@ void main() {
         'single',
         const CoilQuestion<String>.single(
           id: 'q',
-          title: 'Q',
-          options: [CoilQuestionOption(value: 'a', label: 'HEH')],
+          title: Text('Q'),
+          options: [CoilQuestionOption(value: 'a', label: Text('HEH'))],
         ),
       ),
       (
         'multiple',
         const CoilQuestion<String>.multiple(
           id: 'q',
-          title: 'Q',
-          options: [CoilQuestionOption(value: 'a', label: 'HEH')],
+          title: Text('Q'),
+          options: [CoilQuestionOption(value: 'a', label: Text('HEH'))],
         ),
       ),
     ]) {
@@ -806,7 +817,10 @@ void main() {
       await _pump(tester);
       expect(
         tester.getSemantics(find.text('Question 1 of 4')),
-        matchesSemantics(label: 'Question 1 of 4', isLiveRegion: true),
+        matchesSemantics(
+          label: 'Question 1 of 4',
+          isLiveRegion: true,
+        ),
       );
       expect(
         tester.getSemantics(find.text('Which stack should the app use?')),
@@ -839,7 +853,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.getSemantics(find.text('Question 2 of 4')),
-        matchesSemantics(label: 'Question 2 of 4', isLiveRegion: true),
+        matchesSemantics(
+          label: 'Question 2 of 4',
+          isLiveRegion: true,
+        ),
       );
       handle.dispose();
     });
@@ -850,7 +867,7 @@ void main() {
       final handle = tester.ensureSemantics();
       await _pump(tester, controller: CoilAskUserQuestionsController(step: 2));
       expect(
-        find.bySemanticsLabel('Brief, Short answers, no small talk.'),
+        find.bySemanticsLabel('Brief\nShort answers, no small talk.'),
         findsOneWidget,
       );
       handle.dispose();
@@ -972,8 +989,7 @@ Future<void> _expectRowCentered(
       options: [
         CoilQuestionOption(
           value: 'a',
-          label: 'HEH',
-          child: ValueListenableBuilder(
+          label: ValueListenableBuilder(
             valueListenable: ink,
             builder: (_, visible, _) => InkLabel(visible, const Text('HEH')),
           ),
@@ -986,8 +1002,7 @@ Future<void> _expectRowCentered(
       options: [
         CoilQuestionOption(
           value: 'a',
-          label: 'HEH',
-          child: ValueListenableBuilder(
+          label: ValueListenableBuilder(
             valueListenable: ink,
             builder: (_, visible, _) => InkLabel(visible, const Text('HEH')),
           ),

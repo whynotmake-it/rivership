@@ -14,53 +14,55 @@ const askUserQuestionsEntry = CatalogEntry(
 const _questions = <CoilQuestion<String>>[
   CoilQuestion.single(
     id: 'stack',
-    title: 'Which stack should the app use?',
+    title: Text('Which stack should the app use?'),
     options: [
-      CoilQuestionOption(value: 'flutter', label: 'Flutter'),
-      CoilQuestionOption(value: 'swift', label: 'SwiftUI'),
-      CoilQuestionOption(value: 'kotlin', label: 'Jetpack Compose'),
+      CoilQuestionOption(value: 'flutter', label: Text('Flutter')),
+      CoilQuestionOption(value: 'swift', label: Text('SwiftUI')),
+      CoilQuestionOption(value: 'kotlin', label: Text('Jetpack Compose')),
     ],
-    otherPlaceholder: 'Something else',
+    otherPlaceholder: Text('Something else'),
+    otherSemanticLabel: 'Something else',
   ),
   CoilQuestion.multiple(
     id: 'platforms',
-    title: 'Which platforms ship first?',
+    title: Text('Which platforms ship first?'),
     options: [
-      CoilQuestionOption(value: 'ios', label: 'iOS'),
-      CoilQuestionOption(value: 'android', label: 'Android'),
-      CoilQuestionOption(value: 'web', label: 'Web'),
-      CoilQuestionOption(value: 'macos', label: 'macOS'),
+      CoilQuestionOption(value: 'ios', label: Text('iOS')),
+      CoilQuestionOption(value: 'android', label: Text('Android')),
+      CoilQuestionOption(value: 'web', label: Text('Web')),
+      CoilQuestionOption(value: 'macos', label: Text('macOS')),
     ],
-    otherPlaceholder: 'Another platform',
+    otherPlaceholder: Text('Another platform'),
+    otherSemanticLabel: 'Another platform',
   ),
   CoilQuestion.single(
     id: 'tone',
-    title: 'How should replies sound?',
+    title: Text('How should replies sound?'),
     layout: CoilQuestionLayout.stacked,
     options: [
       CoilQuestionOption(
         value: 'brief',
-        label: 'Brief',
-        description: 'Short answers, no small talk.',
+        label: Text('Brief'),
+        description: Text('Short answers, no small talk.'),
       ),
       CoilQuestionOption(
         value: 'warm',
-        label: 'Warm',
-        description: 'Friendly, with a little context for each step.',
+        label: Text('Warm'),
+        description: Text('Friendly, with a little context for each step.'),
       ),
     ],
   ),
   CoilQuestion.freeText(
     id: 'name',
-    title: 'What should we call the project?',
-    placeholder: 'Project name',
+    title: Text('What should we call the project?'),
+    placeholder: Text('Project name'),
     lines: 1,
     validator: _nameRule,
   ),
 ];
 
-String? _nameRule(String text) =>
-    text.length < 3 ? 'Use at least 3 characters' : null;
+Widget? _nameRule(String text) =>
+    text.length < 3 ? const Text('Use at least 3 characters') : null;
 
 class AskUserQuestionsPage extends StatefulWidget {
   const AskUserQuestionsPage({super.key});
@@ -133,12 +135,12 @@ class _AskUserQuestionsPageState extends State<AskUserQuestionsPage> {
           questions: [
             CoilQuestion.multiple(
               id: 'checks',
-              title: 'Which checks should run?',
+              title: Text('Which checks should run?'),
               keyPosition: CoilQuestionKeyPosition.start,
               options: [
-                CoilQuestionOption(value: 'lint', label: 'Lint'),
-                CoilQuestionOption(value: 'test', label: 'Unit tests'),
-                CoilQuestionOption(value: 'golden', label: 'Goldens'),
+                CoilQuestionOption(value: 'lint', label: Text('Lint')),
+                CoilQuestionOption(value: 'test', label: Text('Unit tests')),
+                CoilQuestionOption(value: 'golden', label: Text('Goldens')),
               ],
             ),
           ],

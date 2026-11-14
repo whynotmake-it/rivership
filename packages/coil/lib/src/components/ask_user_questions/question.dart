@@ -41,21 +41,18 @@ class CoilQuestionOption<T> {
     required this.value,
     required this.label,
     this.description,
-    this.child,
   });
 
   /// What picking this option reports in [CoilAnswer.values].
   final T value;
 
-  /// The option's text, also read by screen readers.
-  final String label;
-
-  /// More detail, muted. Where it goes depends on [CoilQuestion.layout].
-  final String? description;
-
-  /// Replaces the `Text(label)` in the row. [label] still names the row for
+  /// The option, usually a [Text]. The row styles it and reads it to
   /// screen readers.
-  final Widget? child;
+  final Widget label;
+
+  /// More detail, muted, usually a [Text]. Where it goes depends on
+  /// [CoilQuestion.layout].
+  final Widget? description;
 }
 
 /// One step of a `CoilAskUserQuestions`.
@@ -70,7 +67,9 @@ class CoilQuestion<T> {
     required this.id,
     required this.title,
     required this.options,
+    this.semanticLabel,
     this.otherPlaceholder,
+    this.otherSemanticLabel,
     this.skippable = true,
     this.nextLabel,
     this.layout = CoilQuestionLayout.inline,
@@ -88,7 +87,9 @@ class CoilQuestion<T> {
     required this.id,
     required this.title,
     required this.options,
+    this.semanticLabel,
     this.otherPlaceholder,
+    this.otherSemanticLabel,
     this.skippable = true,
     this.nextLabel,
     this.layout = CoilQuestionLayout.inline,
@@ -106,6 +107,7 @@ class CoilQuestion<T> {
   const CoilQuestion.freeText({
     required this.id,
     required this.title,
+    this.semanticLabel,
     this.placeholder,
     this.lines = 3,
     this.validator,
@@ -115,14 +117,20 @@ class CoilQuestion<T> {
        kind = CoilQuestionKind.freeText,
        options = const [],
        otherPlaceholder = null,
+       otherSemanticLabel = null,
        layout = CoilQuestionLayout.inline,
        keyPosition = CoilQuestionKeyPosition.end;
 
   /// Identifies the question in the answers. Unique within a flow.
   final Object id;
 
-  /// The question.
-  final String title;
+  /// The question, usually a [Text]. It's styled in the title role and is
+  /// a header for screen readers.
+  final Widget title;
+
+  /// The question as plain text, which names the option group and the
+  /// free-text field for screen readers.
+  final String? semanticLabel;
 
   /// What kind of answer it takes.
   final CoilQuestionKind kind;
@@ -130,15 +138,20 @@ class CoilQuestion<T> {
   /// The choices. Empty for [CoilQuestionKind.freeText].
   final List<CoilQuestionOption<T>> options;
 
-  /// The placeholder of the typed "other" row. Null: no such row.
-  final String? otherPlaceholder;
+  /// The placeholder of the typed "other" row, usually a [Text]. Null: no
+  /// such row.
+  final Widget? otherPlaceholder;
+
+  /// Names the "other" field for screen readers, which don't read the
+  /// placeholder.
+  final String? otherSemanticLabel;
 
   /// Whether Skip is offered.
   final bool skippable;
 
   /// The label of the button that answers the question. Null: "Continue",
   /// or "Finish" on the last question.
-  final String? nextLabel;
+  final Widget? nextLabel;
 
   /// How option rows lay out their descriptions.
   final CoilQuestionLayout layout;
@@ -146,14 +159,15 @@ class CoilQuestion<T> {
   /// Which edge the option rows' number keys sit on.
   final CoilQuestionKeyPosition keyPosition;
 
-  /// The free-text field's placeholder.
-  final String? placeholder;
+  /// The free-text field's placeholder, usually a [Text].
+  final Widget? placeholder;
 
   /// How tall the free-text field starts, in lines. 1 makes it single-line.
   final int lines;
 
-  /// Checks a free-text answer when it's submitted.
-  final String? Function(String text)? validator;
+  /// Checks a free-text answer when it's submitted. It returns a message
+  /// (usually a [Text]) that blocks the submit, or null to allow it.
+  final Widget? Function(String text)? validator;
 }
 
 /// The answer to one [CoilQuestion].

@@ -103,10 +103,6 @@ class QuestionOptionRow<T> extends StatelessWidget {
     // A lit single-choice row offers its submit arrow (pointer only: a
     // finger never lights a row).
     final hint = single && showKeys && lit;
-    final description = option.description;
-    final semanticLabel = description == null
-        ? option.label
-        : '${option.label}, $description';
     final stacked = layout == CoilQuestionLayout.stacked;
     // On touch a single-choice row has no key slot at all.
     final hasKey = showKeys || !single;
@@ -127,7 +123,6 @@ class QuestionOptionRow<T> extends StatelessWidget {
       enabled: true,
       inMutuallyExclusiveGroup: single,
       checked: selected,
-      label: semanticLabel,
       child: CoilChoiceItem(
         size: size,
         onPressed: onPressed,
@@ -155,15 +150,14 @@ class QuestionOptionRow<T> extends StatelessWidget {
                 if (hasKey && keyPosition == CoilQuestionKeyPosition.start)
                   keySlot(withHint: false),
                 Expanded(
-                  child: ExcludeSemantics(
-                    child: _Body(
-                      option: option,
-                      selected: selected,
-                      stacked: stacked,
-                      look: look,
-                      metrics: metrics,
-                      motion: motions.label,
-                    ),
+                  // The row node reads the label and description.
+                  child: _Body(
+                    option: option,
+                    selected: selected,
+                    stacked: stacked,
+                    look: look,
+                    metrics: metrics,
+                    motion: motions.label,
                   ),
                 ),
                 if (hasKey && keyPosition == CoilQuestionKeyPosition.end)
@@ -219,90 +213,70 @@ class _Body<T> extends StatelessWidget {
           ],
         );
         final ghost = base.copyWith(fontVariations: _semibold.variations);
-        Widget label(TextStyle style, {required bool wrap}) => DefaultTextStyle(
-          style: style,
-          maxLines: wrap ? null : 1,
-          overflow: wrap ? TextOverflow.clip : TextOverflow.ellipsis,
-          child: option.child ?? Text(option.label),
+        final lines = stacked ? null : 1;
+        // A hidden semibold copy holds the label's semibold width (and its
+        // widest wrap), so picking a row never reflows it. At opacity 0 it
+        // isn't read.
+        final label = Stack(
+          children: [
+            Opacity(
+              opacity: 0,
+              child: DefaultTextStyle(
+                style: ghost,
+                maxLines: lines,
+                overflow: TextOverflow.ellipsis,
+                child: option.label,
+              ),
+            ),
+            DefaultTextStyle(
+              style: weighted,
+              maxLines: lines,
+              overflow: TextOverflow.ellipsis,
+              child: option.label,
+            ),
+          ],
         );
         if (stacked) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 2,
             children: [
-              // A hidden semibold copy holds the label's widest wrap, so
-              // picking a row never reflows it.
-              Stack(
-                children: [
-                  Opacity(opacity: 0, child: label(ghost, wrap: true)),
-                  label(weighted, wrap: true),
-                ],
-              ),
+              label,
               if (description != null)
-                Text(
-                  description,
+                DefaultTextStyle(
                   style: CoilTheme.of(
                     context,
                   ).typography.style(metrics.caption, color: look.description),
+                  child: description,
                 ),
             ],
           );
         }
-        if (option.child != null) {
-          // A custom label can't join a text span: the description follows
-          // it on the same baseline.
-          return Row(
+        if (description == null) return label;
+        // Inline: the description follows the label on its baseline and gets
+        // the room the label leaves; the label is capped at the row's width.
+        return LayoutBuilder(
+          builder: (context, constraints) => Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
+            spacing: 4,
             children: [
-              Flexible(
-                child: Stack(
-                  children: [
-                    Opacity(opacity: 0, child: label(ghost, wrap: false)),
-                    label(weighted, wrap: false),
-                  ],
-                ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                child: label,
               ),
-              if (description != null)
-                Flexible(
-                  child: Text(
-                    ' $description',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: look.descriptionStyle!.copyWith(
-                      color: look.description,
-                    ),
+              Expanded(
+                child: DefaultTextStyle(
+                  style: look.descriptionStyle!.copyWith(
+                    color: look.description,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  child: description,
                 ),
+              ),
             ],
-          );
-        }
-        InlineSpan line(TextStyle label) => TextSpan(
-          children: [
-            TextSpan(text: option.label, style: label),
-            if (description != null)
-              TextSpan(
-                text: ' $description',
-                style: look.descriptionStyle!.copyWith(color: look.description),
-              ),
-          ],
-        );
-        return Stack(
-          children: [
-            Opacity(
-              opacity: 0,
-              child: Text.rich(
-                line(ghost),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Text.rich(
-              line(weighted),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         );
       },
     );

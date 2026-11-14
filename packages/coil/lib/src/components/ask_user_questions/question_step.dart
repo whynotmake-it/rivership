@@ -86,10 +86,10 @@ class QuestionStep<T> extends StatefulWidget {
   final VoidCallback onSubmitText;
 
   /// The free-text field's placeholder when the question has none.
-  final String freeTextPlaceholder;
+  final Widget freeTextPlaceholder;
 
   /// A free-text validation message, shown as the field's invalid state.
-  final String? error;
+  final Widget? error;
 
   /// Pins the step to one size step.
   final CoilSize? size;
@@ -204,7 +204,10 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
           child: Semantics(
             container: true,
             header: true,
-            child: Text(_question.title, style: look.titleStyle),
+            child: DefaultTextStyle(
+              style: look.titleStyle!,
+              child: _question.title,
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -224,7 +227,7 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
               child: Semantics(
                 container: true,
                 liveRegion: true,
-                child: Text(error, style: look.errorStyle),
+                child: DefaultTextStyle(style: look.errorStyle!, child: error),
               ),
             ),
         ] else
@@ -234,9 +237,7 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
   }
 
   Widget _freeText(CoilMetrics metrics) {
-    final placeholder = Text(
-      _question.placeholder ?? widget.freeTextPlaceholder,
-    );
+    final placeholder = _question.placeholder ?? widget.freeTextPlaceholder;
     final pointer = metrics.tier == CoilTier.pointer;
     if (_question.lines == 1) {
       return CoilInput(
@@ -246,7 +247,7 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
         invalid: widget.error != null,
         size: widget.size,
         textInputAction: TextInputAction.done,
-        semanticLabel: _question.title,
+        semanticLabel: _question.semanticLabel,
         onChanged: widget.onTextChanged,
         onSubmitted: (_) => widget.onSubmitText(),
       );
@@ -259,7 +260,7 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
       maxLines: _question.lines < 10 ? 10 : _question.lines,
       invalid: widget.error != null,
       size: widget.size,
-      semanticLabel: _question.title,
+      semanticLabel: _question.semanticLabel,
       onChanged: widget.onTextChanged,
       // With a hardware keyboard, Enter answers and Shift+Enter is a new
       // line; on touch, Return is a new line and Continue answers (as in
@@ -346,7 +347,7 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
       container: true,
       explicitChildNodes: true,
       role: single ? SemanticsRole.radioGroup : null,
-      label: question.title,
+      label: question.semanticLabel,
       child: CoilRovingFocus(
         nodes: _rows,
         axis: Axis.vertical,
@@ -414,8 +415,8 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
       controller: _text,
       focusNode: _field,
       size: widget.size,
-      placeholder: Text(placeholder),
-      semanticLabel: placeholder,
+      placeholder: placeholder,
+      semanticLabel: question.otherSemanticLabel,
       textInputAction: TextInputAction.done,
       style: CoilInputStyle(
         radius: look.itemRadius,
