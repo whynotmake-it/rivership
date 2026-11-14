@@ -54,7 +54,8 @@ class CoilSidebar extends StatelessWidget {
   /// Below the scrolling content, such as callouts and the signed-in user.
   final Widget? footer;
 
-  /// Names the navigation region for screen readers.
+  /// Names the sidebar for screen readers and makes it a navigation
+  /// landmark. Each sidebar on screen needs its own name.
   final String? semanticLabel;
 
   /// Overrides the theme's sidebar style.
@@ -67,7 +68,7 @@ class CoilSidebar extends StatelessWidget {
     final left = scope?.physicalLeft ?? true;
     final padding = EdgeInsets.all(look.padding!);
     return Semantics(
-      role: SemanticsRole.navigation,
+      role: semanticLabel == null ? null : SemanticsRole.navigation,
       label: semanticLabel,
       container: true,
       explicitChildNodes: true,

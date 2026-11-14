@@ -25,6 +25,7 @@ import 'package:coil_example/src/pages/components/input_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
 import 'package:coil_example/src/pages/components/scroll_area_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
+import 'package:coil_example/src/pages/components/settings_dialog_page.dart';
 import 'package:coil_example/src/pages/components/sidebar_page.dart';
 import 'package:coil_example/src/pages/components/skeleton_page.dart';
 import 'package:coil_example/src/pages/components/slider_page.dart';
@@ -128,6 +129,7 @@ const catalogEntries = <CatalogEntry>[
   comboboxEntry,
   commandMenuEntry,
   sidebarEntry,
+  settingsDialogEntry,
   calendarEntry,
   datePickerEntry,
   inputMessageEntry,
@@ -188,6 +190,7 @@ const designComponents = <CatalogGroup, List<String>>{
   ],
   CatalogGroup.shellAndComposites: [
     'Sidebar',
+    'SettingsDialog',
     'Calendar',
     'DatePicker',
     'InputMessage',

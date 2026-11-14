@@ -70,6 +70,65 @@ class Glyph {
   static const key = Glyph(LucideIcons300.keyRound, LucideIcons400.keyRound);
   static const play = Glyph(LucideIcons300.play, LucideIcons400.play);
   static const copy = Glyph(LucideIcons300.copy, LucideIcons400.copy);
+  static const panelLeft = Glyph(
+    LucideIcons300.panelLeft,
+    LucideIcons400.panelLeft,
+  );
+  static const panelRight = Glyph(
+    LucideIcons300.panelRight,
+    LucideIcons400.panelRight,
+  );
+  static const brain = Glyph(LucideIcons300.brain, LucideIcons400.brain);
+  static const bot = Glyph(LucideIcons300.bot, LucideIcons400.bot);
+  static const book = Glyph(LucideIcons300.bookOpen, LucideIcons400.bookOpen);
+  static const flask = Glyph(
+    LucideIcons300.flaskConical,
+    LucideIcons400.flaskConical,
+  );
+  static const folder = Glyph(LucideIcons300.folder, LucideIcons400.folder);
+  static const message = Glyph(
+    LucideIcons300.messageSquare,
+    LucideIcons400.messageSquare,
+  );
+  static const pencil = Glyph(LucideIcons300.pencil, LucideIcons400.pencil);
+  static const more = Glyph(
+    LucideIcons300.ellipsisVertical,
+    LucideIcons400.ellipsisVertical,
+  );
+  static const sliders = Glyph(
+    LucideIcons300.slidersHorizontal,
+    LucideIcons400.slidersHorizontal,
+  );
+  static const bell = Glyph(LucideIcons300.bell, LucideIcons400.bell);
+  static const palette = Glyph(LucideIcons300.palette, LucideIcons400.palette);
+  static const shield = Glyph(LucideIcons300.shield, LucideIcons400.shield);
+  static const users = Glyph(LucideIcons300.users, LucideIcons400.users);
+  static const chevronsUpDown = Glyph(
+    LucideIcons300.chevronsUpDown,
+    LucideIcons400.chevronsUpDown,
+  );
+  static const lightbulb = Glyph(
+    LucideIcons300.lightbulb,
+    LucideIcons400.lightbulb,
+  );
+  static const branch = Glyph(
+    LucideIcons300.gitBranch,
+    LucideIcons400.gitBranch,
+  );
+  static const link = Glyph(LucideIcons300.link, LucideIcons400.link);
+  static const sparkles = Glyph(
+    LucideIcons300.sparkles,
+    LucideIcons400.sparkles,
+  );
+  static const logOut = Glyph(LucideIcons300.logOut, LucideIcons400.logOut);
+  static const newThread = Glyph(
+    LucideIcons300.squarePen,
+    LucideIcons400.squarePen,
+  );
+  static const workflow = Glyph(
+    LucideIcons300.workflow,
+    LucideIcons400.workflow,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].

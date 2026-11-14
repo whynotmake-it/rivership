@@ -109,7 +109,8 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// Null shows none; the trigger and the shortcuts still toggle.
   final Widget? rail;
 
-  /// The keys that toggle the sidebar while focus is inside the scaffold.
+  /// The keys that toggle the sidebar while focus is inside the scaffold,
+  /// the innermost one when scaffolds nest.
   ///
   /// Null is `[` for a sidebar on the left, `]` on the right, and ⌘B
   /// (Ctrl+B off Apple platforms). Empty disables them. They do nothing
@@ -179,6 +180,14 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   bool _drawerOpen = false;
 
+  /// The scaffold is a focus scope, so focus that a folding sidebar drops
+  /// lands on the scaffold and the shortcuts keep answering. Tab still
+  /// flows on past its edges.
+  final _focusScope = FocusScopeNode(
+    debugLabel: 'CoilSidebarScaffold',
+    traversalEdgeBehavior: TraversalEdgeBehavior.parentScope,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -211,6 +220,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       ..removeListener(_onController);
     _ownController?.dispose();
     _stripStates.dispose();
+    _focusScope.dispose();
     super.dispose();
   }
 
@@ -416,6 +426,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
         var content = !_offcanvas
             ? _static(look)
             : _withDrawer(look, compact ? widget.body : _wide(look));
+        content = FocusScope(node: _focusScope, child: content);
         if (_offcanvas) {
           content = Shortcuts(
             shortcuts: {

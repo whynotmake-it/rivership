@@ -112,7 +112,6 @@ class _CoilDrawerState extends State<CoilDrawer> {
     _focusBefore = FocusManager.instance.primaryFocus;
     _drag = null;
     _settledClosed = false;
-    _scope.requestFocus();
   }
 
   void _closed() {
@@ -135,6 +134,9 @@ class _CoilDrawerState extends State<CoilDrawer> {
   void _onStatus(AnimationStatus status) {
     // Back closes the drawer through the route it sits in, as it does
     // Scaffold's. Like Scaffold's, the entry joins once the drawer moves.
+    // The panel takes focus once it can: it is no longer excluded by the
+    // time it moves.
+    if (widget.open && !_scope.hasFocus) _scope.requestFocus();
     if (widget.open && _entry == null) {
       if (ModalRoute.of(context) case final route?) {
         route.addLocalHistoryEntry(
@@ -270,13 +272,15 @@ class _Layer extends StatelessWidget {
                         namesRoute: true,
                         explicitChildNodes: true,
                         label: label,
-                        child: FocusScope(
-                          node: scope,
-                          child: CallbackShortcuts(
-                            bindings: {
-                              const SingleActivator(LogicalKeyboardKey.escape):
-                                  onClose,
-                            },
+                        // Above the scope, so Escape also works while
+                        // the scope itself holds focus.
+                        child: CallbackShortcuts(
+                          bindings: {
+                            const SingleActivator(LogicalKeyboardKey.escape):
+                                onClose,
+                          },
+                          child: FocusScope(
+                            node: scope,
                             child: CoilSurface(
                               offset: 2,
                               shadowLevel: 3,

@@ -1,0 +1,342 @@
+// The pieces the sidebar examples share: an AI workspace like FF's demos,
+// with a workspace switcher, search, navigation, threads, callouts and the
+// signed-in user.
+import 'package:coil/coil.dart';
+import 'package:coil_example/src/widgets/icons.dart';
+import 'package:flutter/widgets.dart';
+
+const workspaceNav = [
+  ('Chat', Glyph.message),
+  ('Agents', Glyph.bot),
+  ('Knowledge', Glyph.book),
+  ('Runs', Glyph.workflow),
+  ('Evals', Glyph.flask),
+];
+
+const demoThreads = [
+  'Sidebar API review',
+  'Fix login redirect',
+  'Quarterly roadmap',
+  'Onboarding emails',
+  'Pricing page copy',
+];
+
+/// A 20 tile with a letter, for workspaces.
+class WorkspaceTile extends StatelessWidget {
+  const WorkspaceTile(this.letter, {super.key});
+
+  final String letter;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    return SizedBox.square(
+      dimension: 20,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: theme.colors.brand,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(5),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            letter,
+            style: theme.typography.style(
+              const CoilTypeStep(11, 14),
+              weight: CoilWeight.semibold,
+              color: const Color(0xFFFFFFFF),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The header's brand row: the workspace switcher.
+class WorkspaceSwitcher extends StatelessWidget {
+  const WorkspaceSwitcher({super.key});
+
+  @override
+  Widget build(BuildContext context) => CoilDropdown(
+    entries: [
+      const CoilMenuLabel('Workspaces'),
+      CoilAction(
+        label: 'Acme AI',
+        leading: const WorkspaceTile('A'),
+        selected: true,
+        mark: CoilActionMark.check,
+        onPressed: () {},
+      ),
+      CoilAction(
+        label: 'Side project',
+        leading: const WorkspaceTile('S'),
+        onPressed: () {},
+      ),
+      const CoilMenuSeparator(),
+      CoilAction(
+        label: 'New workspace',
+        leading: const CatalogIcon(Glyph.plus),
+        onPressed: () {},
+      ),
+    ],
+    builder: (context, menu) => CoilSidebarMenu(
+      items: [
+        CoilSidebarItem(
+          label: 'Acme AI',
+          icon: const WorkspaceTile('A'),
+          trailing: const CatalogIcon(Glyph.chevronsUpDown),
+          onPressed: menu.open,
+        ),
+      ],
+    ),
+  );
+}
+
+/// The header's search field, with its shortcut.
+class SidebarSearch extends StatelessWidget {
+  const SidebarSearch({super.key});
+
+  @override
+  Widget build(BuildContext context) => CoilInput(
+    size: CoilSize.compact,
+    leading: const CatalogIcon(Glyph.search),
+    placeholder: const Text('Search'),
+    trailing: CoilKbd('⌘K'),
+  );
+}
+
+/// The signed-in user, opening their menu.
+class UserMenu extends StatelessWidget {
+  const UserMenu({super.key});
+
+  @override
+  Widget build(BuildContext context) => CoilDropdown(
+    entries: [
+      CoilAction(
+        label: 'Profile',
+        leading: const CatalogIcon(Glyph.user),
+        onPressed: () {},
+      ),
+      CoilAction(
+        label: 'Settings',
+        leading: const CatalogIcon(Glyph.settings),
+        onPressed: () {},
+      ),
+      CoilAction(
+        label: 'Log out',
+        leading: const CatalogIcon(Glyph.logOut),
+        onPressed: () {},
+      ),
+    ],
+    builder: (context, menu) => CoilSidebarMenu(
+      items: [
+        CoilSidebarItem(
+          label: 'Ada Lovelace',
+          icon: const _Avatar(),
+          trailing: const CatalogIcon(Glyph.chevronsUpDown),
+          onPressed: menu.open,
+        ),
+      ],
+    ),
+  );
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    return SizedBox.square(
+      dimension: 20,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: colors.accent,
+          shape: const CircleBorder(),
+        ),
+        child: Center(
+          child: Text(
+            'A',
+            style: CoilTheme.of(context).typography.style(
+              const CoilTypeStep(10, 12),
+              color: colors.foreground,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The product's top-level navigation under a collapsible label.
+class WorkspaceGroup extends StatefulWidget {
+  const WorkspaceGroup({super.key});
+
+  @override
+  State<WorkspaceGroup> createState() => _WorkspaceGroupState();
+}
+
+class _WorkspaceGroupState extends State<WorkspaceGroup> {
+  var _current = 'Chat';
+  var _open = true;
+
+  @override
+  Widget build(BuildContext context) => CoilSidebarGroup(
+    label: 'Workspace',
+    expanded: _open,
+    onExpandedChanged: (open) => setState(() => _open = open),
+    child: CoilSidebarMenu(
+      items: [
+        for (final (label, glyph) in workspaceNav)
+          CoilSidebarItem(
+            label: label,
+            icon: CatalogIcon(glyph),
+            selected: label == _current,
+            onPressed: () => setState(() => _current = label),
+          ),
+      ],
+    ),
+  );
+}
+
+/// Recent threads, with a count of new messages.
+class ThreadsGroup extends StatefulWidget {
+  const ThreadsGroup({super.key, this.count = 5});
+
+  final int count;
+
+  @override
+  State<ThreadsGroup> createState() => _ThreadsGroupState();
+}
+
+class _ThreadsGroupState extends State<ThreadsGroup> {
+  var _current = demoThreads.first;
+
+  @override
+  Widget build(BuildContext context) => CoilSidebarGroup(
+    label: 'Threads',
+    actions: [
+      CoilSidebarAction(
+        icon: const CatalogIcon(Glyph.plus),
+        semanticLabel: 'New thread',
+        tooltip: 'New thread',
+        onPressed: () {},
+      ),
+    ],
+    child: CoilSidebarMenu(
+      items: [
+        for (final (i, thread) in demoThreads.take(widget.count).indexed)
+          CoilSidebarItem(
+            label: thread,
+            selected: thread == _current,
+            trailing: i.isOdd ? Text('${i + 1}') : null,
+            onPressed: () => setState(() => _current = thread),
+          ),
+      ],
+    ),
+  );
+}
+
+/// The header most examples share: the switcher above search.
+class DemoHeader extends StatelessWidget {
+  const DemoHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: 8,
+    children: [WorkspaceSwitcher(), SidebarSearch()],
+  );
+}
+
+/// The page beside the sidebar: a top bar with the trigger and a title.
+class DemoPage extends StatelessWidget {
+  const DemoPage({
+    super.key,
+    this.title = 'Chat',
+    this.side = CoilSidebarSide.start,
+  });
+
+  final String title;
+  final CoilSidebarSide side;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final trigger = CoilSidebarTrigger(
+      icon: CatalogIcon(
+        side == CoilSidebarSide.start ? Glyph.panelLeft : Glyph.panelRight,
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            spacing: 8,
+            children: [
+              if (side == CoilSidebarSide.start) trigger,
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.typography.style(
+                    CoilTheme.metricsOf(context).body,
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
+              ),
+              if (side == CoilSidebarSide.end) trigger,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The callouts the footer examples pile up.
+List<Widget> demoCallouts({
+  required bool banner,
+  required void Function(String id) onDismissed,
+}) => [
+  for (final (id, title, line, glyph) in const [
+    ('agents', 'Agents are here', 'Automate the busywork.', Glyph.sparkles),
+    ('evals', 'Evals beta', 'Score every run.', Glyph.flask),
+    ('docs', 'New docs', 'Guides for every part.', Glyph.book),
+  ])
+    CoilCard(
+      key: ValueKey(id),
+      variant: banner ? CoilCardVariant.stacked : CoilCardVariant.inline,
+      size: CoilSize.compact,
+      title: Text(title),
+      description: Text(line),
+      icon: banner ? null : CatalogIcon(glyph),
+      media: banner ? const _BannerArt() : null,
+      onPressed: () {},
+      onDismissed: () => onDismissed(id),
+    ),
+];
+
+class _BannerArt extends StatelessWidget {
+  const _BannerArt();
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = CoilTheme.of(context).colors.brand;
+    return AspectRatio(
+      aspectRatio: 2.4,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [brand, brand.withValues(alpha: 0.35)],
+          ),
+        ),
+      ),
+    );
+  }
+}
