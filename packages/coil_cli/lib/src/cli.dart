@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/manifest.dart';
-import 'package:coil/src/eject/operations.dart';
-import 'package:coil/src/eject/transform.dart';
+import 'package:coil_cli/src/coil_source.dart';
+import 'package:coil_cli/src/manifest.dart';
+import 'package:coil_cli/src/operations.dart';
+import 'package:coil_cli/src/transform.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
-/// `dart run coil:eject`. Returns the exit code.
+/// `dart run coil_cli:eject`. Returns the exit code.
 Future<int> ejectCommand(
   List<String> arguments, {
   String? appRoot,
@@ -53,9 +53,9 @@ Future<int> ejectCommand(
     o
       ..writeln('Copies coil components into your app to edit them.')
       ..writeln()
-      ..writeln('Usage: dart run coil:eject <component>... [options]')
-      ..writeln('       dart run coil:eject --all [options]')
-      ..writeln('       dart run coil:eject --list')
+      ..writeln('Usage: dart run coil_cli:eject <component>... [options]')
+      ..writeln('       dart run coil_cli:eject --all [options]')
+      ..writeln('       dart run coil_cli:eject --list')
       ..writeln()
       ..writeln(parser.usage);
     return args.flag('help') ? 0 : 64;
@@ -110,12 +110,12 @@ Future<int> ejectCommand(
   o.writeln(
     'Import $library '
     'instead of package:coil/coil.dart. Commit ${Manifest.path} and '
-    '.coil/base/: they are the base for `dart run coil:update`.',
+    '.coil/base/: they are the base for `dart run coil_cli:update`.',
   );
   return 0;
 });
 
-/// `dart run coil:update`. Returns the exit code: 0 when everything merged,
+/// `dart run coil_cli:update`. Returns the exit code: 0 when everything merged,
 /// 1 when files need attention.
 Future<int> updateCommand(
   List<String> arguments, {
@@ -140,7 +140,7 @@ Future<int> updateCommand(
         '(all of them if none are named).',
       )
       ..writeln()
-      ..writeln('Usage: dart run coil:update [<component>...] [options]')
+      ..writeln('Usage: dart run coil_cli:update [<component>...] [options]')
       ..writeln()
       ..writeln(parser.usage);
     return 0;
@@ -175,8 +175,8 @@ Future<int> updateCommand(
       attention = true;
       if (!dryRun) {
         o.writeln(
-          '  Resolve the conflict markers, then run coil:update again. These '
-          'files keep their old base until they merge cleanly.',
+          '  Resolve the conflict markers, then run coil_cli:update again. '
+          'These files keep their old base until they merge cleanly.',
         );
       }
     }

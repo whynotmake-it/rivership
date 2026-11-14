@@ -8,7 +8,7 @@ import 'package:coil/badge.dart';
 
 Exports `CoilBadge`, `CoilBadgeColor`, `CoilBadgeStyle`, `CoilBadgeVariant`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject badge` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject badge` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Badge
 

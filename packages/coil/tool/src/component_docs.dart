@@ -1,4 +1,4 @@
-import 'package:coil/src/eject/coil_source.dart';
+import 'package:coil_cli/coil_cli.dart';
 
 /// The generated docs, keyed by path relative to the package root:
 /// `doc/llms.txt` and one `doc/components/<name>.md` per component, built
@@ -40,7 +40,7 @@ Map<String, String> generatedDocs(CoilSource coil, String design) {
       ..writeln()
       ..writeln(
         'To change its look or composition, eject a copy into your app '
-        'with `dart run coil:eject ${component.name}` (see '
+        'with `dart run coil_cli:eject ${component.name}` (see '
         '[SKILL.md](../../SKILL.md)). The full spec, including the tokens '
         'and rules these sections cite, is in '
         '[DESIGN.md](../../DESIGN.md).',

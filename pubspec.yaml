@@ -27,6 +27,7 @@ workspace:
   - packages/snaptest
   - packages/coil
   - packages/coil/example
+  - packages/coil_cli
   
 dev_dependencies:
   lintervention: ^0.3.1

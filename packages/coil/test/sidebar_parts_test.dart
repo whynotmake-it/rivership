@@ -1,5 +1,5 @@
 import 'package:coil/coil.dart';
-import 'package:coil/testing.dart';
+import 'package:coil_cli/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';

@@ -2,12 +2,17 @@
 
 Milestone M0, unreleased.
 
-- `coil:eject` takes several components or `--all`, and names copies
+- `coil_cli:eject` takes several components or `--all`, and names copies
   after the app with `--prefix`, `--rename` and `--library`. The
   analyzer renames declarations, references, doc links and files; update
   renames coil's new version the same way before merging. Components
   ejected together, or later, use each other's copies, and copies come
-  out with their imports sorted. coil now depends on `analyzer`.
+  out with their imports sorted.
+- Breaking: the eject tools and `expectCoilPattern` moved to the
+  `coil_cli` package, a dev dependency (`dart run coil_cli:eject`,
+  `package:coil_cli/testing.dart`). coil depends only on what it needs at
+  runtime; `flutter_test` and the tools' packages are gone from its
+  dependencies.
 - `CoilSidebarController.attach` is gone; the scaffold attaches through
   a function `sidebar.dart` hides, so an ejected sidebar has no
   `@internal` member outside `lib/src/`.
@@ -30,11 +35,9 @@ Milestone M0, unreleased.
   - `CoilDialogKind.presentation` gives a dialog kind's presentation.
   - `showCoilModal` takes a nullable `presentation`; null is the adaptive
     choice above.
-- `dart run coil:eject <component>` copies a component into the app, and
-  `dart run coil:update` merges coil's later changes into the copy with
+- `dart run coil_cli:eject <component>` copies a component into the app, and
+  `dart run coil_cli:update` merges coil's later changes into the copy with
   `git merge-file`. See SKILL.md.
-- `expectCoilPattern` and `CoilPattern` are public in
-  `package:coil/testing.dart`, so apps can check their ejected copies.
 - `package:coil/date_picker.dart` re-exports `CoilCalendarLabels` from
   `calendar.dart` instead of calendar's `src/`.
 - Docs for agents ship in the package: `SKILL.md`, `doc/llms.txt` and a

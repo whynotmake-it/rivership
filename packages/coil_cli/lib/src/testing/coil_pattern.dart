@@ -1,13 +1,13 @@
 import 'dart:ui' show CheckedState, SemanticsRole, Tristate;
 
 import 'package:coil/primitives.dart';
-import 'package:coil/src/testing/patterns/adjustable.dart';
-import 'package:coil/src/testing/patterns/card.dart';
-import 'package:coil/src/testing/patterns/disclosure.dart';
-import 'package:coil/src/testing/patterns/live_region.dart';
-import 'package:coil/src/testing/patterns/navigation.dart';
-import 'package:coil/src/testing/patterns/question.dart';
-import 'package:coil/src/testing/patterns/table.dart';
+import 'package:coil_cli/src/testing/patterns/adjustable.dart';
+import 'package:coil_cli/src/testing/patterns/card.dart';
+import 'package:coil_cli/src/testing/patterns/disclosure.dart';
+import 'package:coil_cli/src/testing/patterns/live_region.dart';
+import 'package:coil_cli/src/testing/patterns/navigation.dart';
+import 'package:coil_cli/src/testing/patterns/question.dart';
+import 'package:coil_cli/src/testing/patterns/table.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';

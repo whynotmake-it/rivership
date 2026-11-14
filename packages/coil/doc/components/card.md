@@ -8,7 +8,7 @@ import 'package:coil/card.dart';
 
 Exports `CoilCard`, `CoilCardGroup`, `CoilCardGroupLayout`, `CoilCardStyle`, `CoilCardTrack`, `CoilCardVariant`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject card` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject card` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Card
 

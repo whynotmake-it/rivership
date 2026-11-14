@@ -6,9 +6,9 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/dart_source.dart';
-import 'package:coil/src/eject/naming.dart';
+import 'package:coil_cli/src/coil_source.dart';
+import 'package:coil_cli/src/dart_source.dart';
+import 'package:coil_cli/src/naming.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -150,7 +150,7 @@ class EjectWorkspace {
         content:
             "// Ejected from coil's ${component.name}. Edit freely; merge "
             "coil's\n"
-            '// changes with `dart run coil:update ${component.name}`.\n'
+            '// changes with `dart run coil_cli:update ${component.name}`.\n'
             '$rewritten',
       );
     }

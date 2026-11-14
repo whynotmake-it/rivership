@@ -1,4 +1,4 @@
-import 'package:coil/src/eject/coil_source.dart';
+import 'package:coil_cli/src/coil_source.dart';
 import 'package:path/path.dart' as p;
 
 /// How ejected copies are named in the app: an optional prefix that

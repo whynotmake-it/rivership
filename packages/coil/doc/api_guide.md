@@ -303,7 +303,7 @@ Look:
 | 2026-11-13 | `CoilCheckbox` takes `value: bool?` + `tristate`, like `Checkbox`; null is the dash | no contradicting booleans |
 | 2026-11-13 | Icons and glyphs scale with text (§8) | user review of M0 |
 | 2026-11-13 | Superellipses only (§8) | user review of M0 |
-| 2026-11-14 | `expectCoilPattern` and `CoilPattern` are public in `package:coil/testing.dart`, not a `coil_test` package; `coil.dart` doesn't export it | apps check ejected copies with it; supersedes the 2026-11-13 "internal" entry |
+| 2026-11-14 | `expectCoilPattern` and `CoilPattern` are public in `package:coil_cli/testing.dart`; coil_cli is a dev dependency that also holds the eject tools | apps check ejected copies with it, and coil keeps `flutter_test` out of its dependencies; supersedes the 2026-11-13 "internal" entry |
 | 2026-11-13 | Every component has a style class (§6) | landed together before the waves |
 | 2026-11-13 | Tabs and groups are generic in `T`; choices are `CoilOption<T>` (§7) | indexes leak layout into app state |
 | 2026-11-13 | Theme-level track motions stay one flat `trackMotions` map | tracks are unique objects; revisit only if per-type styles need it |

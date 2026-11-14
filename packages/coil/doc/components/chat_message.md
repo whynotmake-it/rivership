@@ -8,7 +8,7 @@ import 'package:coil/chat_message.dart';
 
 Exports `CoilChatMessage`, `CoilChatMessageAction`, `CoilChatMessageEntrance`, `CoilChatMessageLabels`, `CoilChatMessageStyle`, `CoilChatMessageTrack`, `CoilChatSender`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject chat_message` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject chat_message` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## ChatMessage
 

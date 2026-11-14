@@ -8,7 +8,7 @@ import 'package:coil/input_copy.dart';
 
 Exports `CoilInputCopy`, `CoilInputCopyAlign`, `CoilInputCopyLabels`, `CoilInputCopyStyle`, `CoilInputCopyTrack`, `CoilInputCopyVariant`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject input_copy` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject input_copy` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## InputCopy
 

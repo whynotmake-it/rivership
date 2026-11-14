@@ -8,7 +8,7 @@ import 'package:coil/file_thumbnail.dart';
 
 Exports `CoilFileThumbnail`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject file_thumbnail` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject file_thumbnail` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## FileThumbnail
 

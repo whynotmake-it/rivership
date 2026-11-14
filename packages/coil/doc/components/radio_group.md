@@ -8,7 +8,7 @@ import 'package:coil/radio_group.dart';
 
 Exports `CoilRadio`, `CoilRadioGroup`, `CoilRadioGroupStyle`, `CoilRadioGroupTrack`, `CoilRadioIndicator`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject radio_group` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject radio_group` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## RadioGroup
 

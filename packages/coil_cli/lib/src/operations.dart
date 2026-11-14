@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/manifest.dart';
-import 'package:coil/src/eject/naming.dart';
-import 'package:coil/src/eject/transform.dart';
+import 'package:coil_cli/src/coil_source.dart';
+import 'package:coil_cli/src/manifest.dart';
+import 'package:coil_cli/src/naming.dart';
+import 'package:coil_cli/src/transform.dart';
 import 'package:path/path.dart' as p;
 
 /// App-wide eject settings, fixed by the first eject.
@@ -92,8 +92,8 @@ Future<List<String>> eject(
         (previous != null || Directory(p.join(appRoot, target)).existsSync())) {
       throw EjectException(
         '${component.name} is already ejected to $target. Run '
-        '`dart run coil:update ${component.name}` to merge upstream changes, '
-        'or eject with --force to replace your copy.',
+        '`dart run coil_cli:update ${component.name}` to merge upstream '
+        'changes, or eject with --force to replace your copy.',
       );
     }
     added.add(component.name);
@@ -404,7 +404,7 @@ String _git() {
     // Reported below.
   }
   throw EjectException(
-    'coil:update needs git on your PATH for its three-way merge '
+    'coil_cli:update needs git on your PATH for its three-way merge '
     '(`git merge-file`). Install git and run it again.',
   );
 }

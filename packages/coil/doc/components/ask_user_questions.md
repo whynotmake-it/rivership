@@ -8,7 +8,7 @@ import 'package:coil/ask_user_questions.dart';
 
 Exports `CoilAnswer`, `CoilAskUserQuestions`, `CoilAskUserQuestionsController`, `CoilAskUserQuestionsLabels`, `CoilAskUserQuestionsStyle`, `CoilAskUserQuestionsTrack`, `CoilQuestion`, `CoilQuestionKeyPosition`, `CoilQuestionKind`, `CoilQuestionLayout`, `CoilQuestionOption`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject ask_user_questions` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject ask_user_questions` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## AskUserQuestions
 

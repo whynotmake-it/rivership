@@ -1,25 +1,27 @@
-// coil:eject and coil:update on a temp app, against a copy of coil that the
-// tests change to play "upstream". Needs git for the merges.
+// coil_cli:eject and coil_cli:update on a temp app, against a copy of coil
+// that the tests change to play "upstream". Needs git for the merges.
 @TestOn('vm')
 @Timeout(Duration(minutes: 3))
 library;
 
 import 'dart:io';
 
-import 'package:coil/src/eject/cli.dart';
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/manifest.dart';
-import 'package:coil/src/eject/operations.dart';
-import 'package:coil/src/eject/transform.dart';
+import 'package:coil_cli/src/cli.dart';
+import 'package:coil_cli/src/coil_source.dart';
+import 'package:coil_cli/src/manifest.dart';
+import 'package:coil_cli/src/operations.dart';
+import 'package:coil_cli/src/transform.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-import '../../tool/src/temp_app.dart';
+import '../src/coil_root.dart';
+import '../src/temp_app.dart';
 
 const _line = '  /// The surface color. Default motion: `fade`.';
 const _acme = EjectOptions(prefix: 'Acme');
 
 void main() {
+  final coil = coilRoot();
   late Directory temp;
   late String upstream;
   late String app;
@@ -46,15 +48,17 @@ void main() {
   setUpAll(() async {
     temp = Directory.systemTemp.createTempSync('coil_update');
     upstream = p.join(temp.path, 'coil');
-    for (final file in Directory('lib').listSync(recursive: true)) {
+    for (final file in Directory(p.join(coil, 'lib')).listSync(
+      recursive: true,
+    )) {
       if (file is! File) continue;
-      final out = File(p.join(upstream, file.path));
+      final out = File(p.join(upstream, p.relative(file.path, from: coil)));
       out.parent.createSync(recursive: true);
       file.copySync(out.path);
     }
     final appDir = await createTempApp(coilRoot: upstream);
     app = appDir.path;
-    workspace = await EjectWorkspace.open(CoilSource('.'), app);
+    workspace = await EjectWorkspace.open(CoilSource(coil), app);
   });
 
   setUp(() {
@@ -64,9 +68,11 @@ void main() {
         Directory(p.join(app, dir)).deleteSync(recursive: true);
       }
     }
-    for (final file in Directory('lib').listSync(recursive: true)) {
+    for (final file in Directory(p.join(coil, 'lib')).listSync(
+      recursive: true,
+    )) {
       if (file is File) {
-        file.copySync(p.join(upstream, file.path));
+        file.copySync(p.join(upstream, p.relative(file.path, from: coil)));
       }
     }
     File(
@@ -359,7 +365,9 @@ void main() {
     final out = StringBuffer();
     expect(await ejectCommand(['--list'], appRoot: '.', out: out), 0);
     final components = [
-      for (final dir in Directory('lib/src/components').listSync())
+      for (final dir in Directory(
+        p.join(coil, 'lib/src/components'),
+      ).listSync())
         if (dir is Directory) p.basename(dir.path),
     ];
     final listed = [

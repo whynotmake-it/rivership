@@ -2,8 +2,8 @@
 // Run from the package root: dart run tool/generate_docs.dart
 import 'dart:io';
 
-import 'package:coil/src/eject/coil_source.dart';
-import 'package:coil/src/eject/component_docs.dart';
+import 'package:coil_cli/coil_cli.dart';
+import 'src/component_docs.dart';
 
 void main() {
   final docs = generatedDocs(

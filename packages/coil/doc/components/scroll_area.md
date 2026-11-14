@@ -8,7 +8,7 @@ import 'package:coil/scroll_area.dart';
 
 Exports `CoilEdgeFades`, `CoilScrollArea`, `CoilScrollAreaStyle`, `CoilScrollAreaTrack`, `CoilScrollbarVisibility`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject scroll_area` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject scroll_area` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## ScrollArea
 

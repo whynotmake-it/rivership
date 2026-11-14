@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
+import '../src/coil_root.dart';
+
 void main() {
   late Directory app;
   late String flutter;
@@ -55,10 +57,12 @@ environment:
   sdk: ">=3.12.0 <4.0.0"
 dependencies:
   coil:
-    path: ${Directory.current.absolute.path}
+    path: ${coilRoot()}
   flutter:
     sdk: flutter
 dev_dependencies:
+  coil_cli:
+    path: ${Directory.current.absolute.path}
   flutter_test:
     sdk: flutter
 dependency_overrides:
@@ -75,7 +79,7 @@ ${overrides.join('\n')}
   test('an app ejects everything as Acme, analyzes and renders it', () async {
     final eject = await run(dart, [
       'run',
-      'coil:eject',
+      'coil_cli:eject',
       '--all',
       '--prefix',
       'Acme',
@@ -97,7 +101,7 @@ final _exists = predicate<File>((f) => f.existsSync(), 'exists');
 /// copy, not coil's, and it is still a button.
 const _buttonTest = '''
 import 'package:coil/button.dart' as coil;
-import 'package:coil/testing.dart';
+import 'package:coil_cli/testing.dart';
 import 'package:fixture_app/acme.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';

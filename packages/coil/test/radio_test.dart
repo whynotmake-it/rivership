@@ -1,7 +1,7 @@
 // CoilRadio under CoilRadioGroup.custom: the rows' keyboard model for any
 // layout, and radio choice cards.
 import 'package:coil/coil.dart';
-import 'package:coil/testing.dart';
+import 'package:coil_cli/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

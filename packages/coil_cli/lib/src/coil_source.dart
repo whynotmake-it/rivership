@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:coil/src/eject/dart_source.dart';
+import 'package:coil_cli/src/dart_source.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -65,7 +65,7 @@ class CoilSource {
   /// importing from the package.
   static const sharedLibraries = ['foundation.dart', 'primitives.dart'];
 
-  static const _notComponents = {'coil.dart', 'testing.dart'};
+  static const _notComponents = {'coil.dart'};
 
   String _read(String libPath) =>
       File(p.join(_lib, libPath)).readAsStringSync();
@@ -121,7 +121,7 @@ class CoilSource {
       if (component.libraries.contains('$name.dart')) return component;
     }
     throw EjectException(
-      'coil has no component "$name". See `dart run coil:eject --list`.',
+      'coil has no component "$name". See `dart run coil_cli:eject --list`.',
     );
   }
 

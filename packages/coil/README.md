@@ -38,12 +38,14 @@ Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
 
 ## Ejecting a component
 
-To edit a component's look, copy it into the app:
+To edit a component's look, copy it into the app with `coil_cli`, a dev
+dependency:
 
 ```sh
-dart run coil:eject --list
-dart run coil:eject button
-dart run coil:update button   # later: three-way merge of coil's changes
+flutter pub add dev:coil_cli
+dart run coil_cli:eject --list
+dart run coil_cli:eject button
+dart run coil_cli:update button   # later: three-way merge of coil's changes
 ```
 
 The app then imports its generated `lib/coil.dart` instead of
@@ -52,17 +54,20 @@ look and composition are copied. Components ejected together, or one
 after another, use each other's copies.
 
 The first eject can give the copies the app's names:
-`dart run coil:eject --all --prefix Acme` turns `CoilButton` into
+`dart run coil_cli:eject --all --prefix Acme` turns `CoilButton` into
 `AcmeButton` in `acme_button.dart`, exported from `lib/acme.dart`.
 `--rename CoilButton=PrimaryButton` renames a single name. The analyzer
-does the renaming, and `coil:update` renames coil's new version the same
-way before merging, so renamed copies merge as cleanly as plain ones. [`SKILL.md`](SKILL.md) covers eject and
-update in full. [`doc/llms.txt`](doc/llms.txt) indexes the per-component
-pages in `doc/components/`, which `tool/generate_docs.dart` builds from
-DESIGN.md.
+does the renaming, and `coil_cli:update` renames coil's new version the
+same way before merging, so renamed copies merge as cleanly as plain
+ones.
 
-`test/architecture/eject_test.dart` fails when a component imports another
-component's `src/` or a private primitive, since eject couldn't copy it.
+[`SKILL.md`](SKILL.md) covers eject and update in full.
+[`doc/llms.txt`](doc/llms.txt) indexes the per-component pages in
+`doc/components/`, which `tool/generate_docs.dart` builds from DESIGN.md.
+
+coil_cli's `test/ejectable_test.dart` fails when a component imports
+another component's `src/` or a private primitive, since eject couldn't
+copy it.
 
 ## Layers
 
@@ -129,7 +134,7 @@ Each component's file runs the shared checks from `test/src/`:
 - `matrixGoldenTest` (goldens in `test/goldens/matrix/`): light/dark ×
   pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
   with real Inter at 2x; overlays open as popover and sheet.
-- `expectCoilPattern` (public in `package:coil/testing.dart`): semantics,
+- `expectCoilPattern` (public in `package:coil_cli/testing.dart`): semantics,
   keyboard and focus-visible, in LTR and RTL.
 - `inkCenteringTests`: label ink centered within 1 px at every tier, size
   and text scale.

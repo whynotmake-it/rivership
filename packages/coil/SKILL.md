@@ -37,11 +37,17 @@ Change things here before ejecting. Every layer below wraps a subtree.
 
 Eject copies a component's source into the app so you can change its look or composition. Hover, press, focus, keyboard and overlay behavior stay in coil's primitives, so fixes to them still arrive through `pub upgrade`.
 
+The tools live in `coil_cli`, a dev dependency, so the app ships without them:
+
 ```sh
-dart run coil:eject --list          # every component; * marks ejected ones
-dart run coil:eject button dialog   # copy Button and Dialog to lib/coil/
-dart run coil:eject --all           # copy every component
-dart run coil:eject button --force  # replace the copy, discarding edits
+flutter pub add dev:coil_cli
+```
+
+```sh
+dart run coil_cli:eject --list          # every component; * marks ejected ones
+dart run coil_cli:eject button dialog   # copy Button and Dialog to lib/coil/
+dart run coil_cli:eject --all           # copy every component
+dart run coil_cli:eject button --force  # replace the copy, discarding edits
 ```
 
 Eject writes:
@@ -63,9 +69,9 @@ After ejecting:
 The first eject can name the copies after your app. These settings stay fixed for later ejects and updates.
 
 ```sh
-dart run coil:eject --all --prefix Acme
-dart run coil:eject button --rename CoilButton=PrimaryButton
-dart run coil:eject button --library ui   # lib/ui.dart and lib/ui/
+dart run coil_cli:eject --all --prefix Acme
+dart run coil_cli:eject button --rename CoilButton=PrimaryButton
+dart run coil_cli:eject button --library ui   # lib/ui.dart and lib/ui/
 ```
 
 - `--prefix Acme` replaces `Coil` in every public name the copies declare (`CoilButton` becomes `AcmeButton`, `showCoilDialog` becomes `showAcmeDialog`) and leads their file names (`acme_button.dart`). The app library is `lib/acme.dart`, and it adds aliases for the foundation's types, such as `typedef AcmeTheme = CoilTheme;`.
@@ -77,8 +83,8 @@ The rename uses the analyzer. It renames declarations, references and `[Name]` d
 ## Update
 
 ```sh
-dart run coil:update button --dry-run   # what would change, as a diff
-dart run coil:update button             # or no name: every ejected component
+dart run coil_cli:update button --dry-run  # what would change, as a diff
+dart run coil_cli:update button            # or no name: every ejected component
 ```
 
 Update needs `git` on PATH. It runs `git merge-file` per file, with the base from `.coil/base/`, coil's new version, and the app's copy:
@@ -91,9 +97,9 @@ Update needs `git` on PATH. It runs `git merge-file` per file, with the base fro
 ## Test an ejected copy
 
 ```dart
-import 'package:coil/testing.dart';
+import 'package:coil_cli/testing.dart';
 
 await expectCoilPattern(tester, find.byType(CoilButton), CoilPattern.button);
 ```
 
-`expectCoilPattern` checks semantics, keyboard and focus for one `CoilPattern`. It checks the copy, so run it after editing. Import `testing.dart` only from tests.
+`expectCoilPattern` checks semantics, keyboard and focus for one `CoilPattern`. It checks the copy, so run it after editing. It comes with the `coil_cli` dev dependency, so only tests can import it.

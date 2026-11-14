@@ -8,7 +8,7 @@ import 'package:coil/tabs.dart';
 
 Exports `CoilTab`, `CoilTabLabels`, `CoilTabs`, `CoilTabsStyle`, `CoilTabsTrack`.
 
-To change its look or composition, eject a copy into your app with `dart run coil:eject tabs` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
+To change its look or composition, eject a copy into your app with `dart run coil_cli:eject tabs` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
 ## Tabs
 
