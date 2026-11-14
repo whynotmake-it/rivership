@@ -9,8 +9,9 @@ import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:coil/src/components/slider/slider_text.dart';
 import 'package:flutter/widgets.dart';
 
-/// Finds the pill's knob in tests.
-const sliderKnobKey = ValueKey<String>('CoilSlider.knob');
+/// Finds the pill's knobs in tests: knob `i` is keyed
+/// `ValueKey((sliderKnobKey, i))`.
+const sliderKnobKey = 'CoilSlider.knob';
 
 /// Finds the value bubble in tests.
 const sliderBubbleKey = ValueKey<String>('CoilSlider.bubble');
@@ -22,10 +23,8 @@ class SliderRow extends StatelessWidget {
     required this.style,
     required this.metrics,
     required this.label,
-    required this.valueText,
-    required this.reserve,
+    required this.value,
     required this.labelColor,
-    required this.valueColor,
     required this.emphasis,
     super.key,
   });
@@ -34,10 +33,10 @@ class SliderRow extends StatelessWidget {
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;
-  final String valueText;
-  final Set<String> reserve;
+
+  /// The value text, or null when the value shows in a tooltip.
+  final Widget? value;
   final Color labelColor;
-  final Color valueColor;
   final double emphasis;
 
   @override
@@ -73,16 +72,8 @@ class SliderRow extends StatelessWidget {
                       ),
                     ),
                   const Spacer(),
-                  CoilMotionTarget(
-                    index: SliderTarget.value,
-                    child: SliderValueText(
-                      text: valueText,
-                      reserve: reserve,
-                      style: text,
-                      color: valueColor,
-                      emphasis: emphasis,
-                    ),
-                  ),
+                  if (value case final value?)
+                    CoilMotionTarget(index: SliderTarget.value, child: value),
                 ],
               ),
             ),
@@ -93,20 +84,20 @@ class SliderRow extends StatelessWidget {
   }
 }
 
-/// The pill: a thin track with a knob, between an optional label and value.
+/// The pill: a thin track with a knob per thumb, between an optional label
+/// and value.
 class SliderPill extends StatelessWidget {
   const SliderPill({
     required this.painter,
     required this.style,
     required this.metrics,
     required this.label,
-    required this.valueText,
-    required this.reserve,
+    required this.value,
     required this.labelColor,
-    required this.valueColor,
     required this.emphasis,
-    required this.thumb,
-    required this.thumbFraction,
+    required this.thumbs,
+    required this.fractions,
+    required this.ring,
     required this.track,
     super.key,
   });
@@ -115,15 +106,18 @@ class SliderPill extends StatelessWidget {
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;
-  final String valueText;
-  final Set<String> reserve;
+
+  /// The value text, or null when the value shows in a tooltip.
+  final Widget? value;
   final Color labelColor;
-  final Color valueColor;
   final double emphasis;
 
-  /// Notifies when the thumb moves, and its fraction of the range.
-  final Listenable thumb;
-  final ValueGetter<double> thumbFraction;
+  /// Notifies when a thumb moves, and the thumbs' fractions of the range.
+  final Listenable thumbs;
+  final ValueGetter<List<double>> fractions;
+
+  /// The knob that shows the focus ring, if any.
+  final int? ring;
 
   /// Wraps the pill track with the slider's gestures.
   final Widget Function(Widget track) track;
@@ -149,22 +143,32 @@ class SliderPill extends StatelessWidget {
         child: SizedBox(
           height: box,
           child: ListenableBuilder(
-            listenable: thumb,
-            builder: (context, _) => Align(
-              alignment: AlignmentDirectional(
-                thumbFraction().clamp(0.0, 1.0) * 2 - 1,
-                0,
-              ),
-              child: SizedBox.square(
-                dimension: box,
-                child: Center(
-                  child: DecoratedBox(
-                    key: sliderKnobKey,
-                    decoration: knobDecoration,
-                    child: SizedBox.square(dimension: knob),
+            listenable: thumbs,
+            builder: (context, _) => Stack(
+              children: [
+                for (final (i, f) in fractions().indexed)
+                  Align(
+                    alignment: AlignmentDirectional(
+                      f.clamp(0.0, 1.0) * 2 - 1,
+                      0,
+                    ),
+                    child: SizedBox.square(
+                      dimension: box,
+                      child: Center(
+                        child: CoilFocusRing(
+                          visible: ring == i,
+                          borderRadius: BorderRadius.circular(knob / 2),
+                          offset: 2,
+                          child: DecoratedBox(
+                            key: ValueKey((sliderKnobKey, i)),
+                            decoration: knobDecoration,
+                            child: SizedBox.square(dimension: knob),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+              ],
             ),
           ),
         ),
@@ -184,13 +188,7 @@ class SliderPill extends StatelessWidget {
             child: label!,
           ),
         Expanded(child: track(pill)),
-        SliderValueText(
-          text: valueText,
-          reserve: reserve,
-          style: text,
-          color: valueColor,
-          emphasis: emphasis,
-        ),
+        ?value,
       ],
     );
   }
