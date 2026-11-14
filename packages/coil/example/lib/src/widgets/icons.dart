@@ -70,6 +70,11 @@ class Glyph {
   static const key = Glyph(LucideIcons300.keyRound, LucideIcons400.keyRound);
   static const play = Glyph(LucideIcons300.play, LucideIcons400.play);
   static const copy = Glyph(LucideIcons300.copy, LucideIcons400.copy);
+  static const pencil = Glyph(LucideIcons300.pencil, LucideIcons400.pencil);
+  static const cornerDownRight = Glyph(
+    LucideIcons300.cornerDownRightDir,
+    LucideIcons400.cornerDownRightDir,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].

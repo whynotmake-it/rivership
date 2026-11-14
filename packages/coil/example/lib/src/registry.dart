@@ -22,6 +22,7 @@ import 'package:coil_example/src/pages/components/input_copy_page.dart';
 import 'package:coil_example/src/pages/components/input_group_page.dart';
 import 'package:coil_example/src/pages/components/input_message_page.dart';
 import 'package:coil_example/src/pages/components/input_page.dart';
+import 'package:coil_example/src/pages/components/queued_stack_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
 import 'package:coil_example/src/pages/components/scroll_area_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
@@ -131,6 +132,7 @@ const catalogEntries = <CatalogEntry>[
   calendarEntry,
   datePickerEntry,
   inputMessageEntry,
+  queuedStackEntry,
   fileThumbnailEntry,
   dataTableEntry,
   accordionEntry,
@@ -191,6 +193,7 @@ const designComponents = <CatalogGroup, List<String>>{
     'Calendar',
     'DatePicker',
     'InputMessage',
+    'QueuedStack',
     'FileThumbnail',
     'DataTable',
   ],
