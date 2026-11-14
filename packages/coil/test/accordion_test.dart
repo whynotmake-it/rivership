@@ -375,7 +375,14 @@ void main() {
       await tester.tap(_trigger('Returns'));
       await tester.pumpAndSettle();
       expect(_isOpen(tester, 'Returns'), isFalse);
-      expect(_states(tester, 'Returns'), contains(WidgetState.disabled));
+      expect(
+        tester
+            .getSemantics(_trigger('Returns'))
+            .getSemanticsData()
+            .flagsCollection
+            .isEnabled,
+        Tristate.isFalse,
+      );
     });
   });
 

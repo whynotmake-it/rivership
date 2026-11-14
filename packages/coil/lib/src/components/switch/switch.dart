@@ -190,6 +190,8 @@ class _CoilSwitchState extends State<CoilSwitch>
       _states.addListener(_onStates);
     }
     if (oldWidget.value != widget.value && !_dragging) _settle();
+    // A press held while the switch is disabled lets go.
+    if (oldWidget.onChanged != null && !_enabled) _onStates();
   }
 
   @override
@@ -200,8 +202,7 @@ class _CoilSwitchState extends State<CoilSwitch>
     super.dispose();
   }
 
-  void _onStates() =>
-      _press(_dragging || _states.value.contains(WidgetState.pressed));
+  void _onStates() => _press(_dragging || _pressedNow);
 
   late double _squishTarget = _controller.value(_squish);
 
@@ -231,7 +232,8 @@ class _CoilSwitchState extends State<CoilSwitch>
     ]);
   }
 
-  bool get _pressedNow => _states.value.contains(WidgetState.pressed);
+  bool get _pressedNow =>
+      _enabled && _states.value.contains(WidgetState.pressed);
 
   void _toggle() {
     if (_dragDecided) {

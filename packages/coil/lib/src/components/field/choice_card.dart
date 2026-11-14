@@ -214,7 +214,12 @@ class _CoilChoiceCardState extends State<CoilChoiceCard> {
         cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
         child: ListenableBuilder(
           listenable: _states,
-          builder: (context, _) => card(_states.value),
+          builder: (context, _) => card(
+            CoilInteractionDetector.statesFor(
+              _states.value,
+              enabled: widget.enabled,
+            ),
+          ),
         ),
       ),
     );
