@@ -497,6 +497,15 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
     final landing = _registry?.isLanding(id) ?? false;
     final fading = _registry?.isFading(id) ?? false;
     final outside = group._outside;
+    final scrollables = [
+      for (final scrollable in _scrollablesOf(context))
+        if (!outside.contains(scrollable)) scrollable,
+    ];
+    // Their offsets are recorded after every frame from now on, so they
+    // are there for the first read after a scroll.
+    for (final scrollable in scrollables) {
+      _ScrollHistory.of(scrollable.position);
+    }
     final visuals = _visuals;
     return _ItemBox(
       group: group,
@@ -504,10 +513,7 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
       enabled: widget.enabled,
       landing: landing,
       motion: widget.motion ?? group.widget.motion,
-      scrollables: [
-        for (final scrollable in _scrollablesOf(context))
-          if (!outside.contains(scrollable)) scrollable,
-      ],
+      scrollables: scrollables,
       // While a flight lands here, the child is hidden and the flight
       // follows where it is painted. The leader sits outside the
       // Visibility, which doesn't paint its child while hidden.
@@ -618,8 +624,17 @@ class _RenderItem extends RenderProxyBox
     return (oldLayer ?? _ItemLayer())..visual = _resolve();
   }
 
+  /// How far from its layout position the child is painted: from the
+  /// flight as it is now, also while the item isn't painted, such as in a
+  /// list's cache extent, where the last painted offset would be stale.
   @override
-  Offset get paintOffset => _visual;
+  Offset get paintOffset {
+    if (!group.mounted) return Offset.zero;
+    final record = group._records[id];
+    final target = record?.target;
+    if (record == null || target == null || !record.flying) return Offset.zero;
+    return record.controller!.value - target;
+  }
 
   @override
   void attach(PipelineOwner owner) {

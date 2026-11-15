@@ -461,7 +461,11 @@ class _MotionReorderableState<T extends Object>
       _hover = _Hover(data, details.offset, DragFlight.draggingWith(data));
       _index = null;
     }
-    _update();
+    // Flutter's drag reaches this before a MotionDraggable's flight starts,
+    // and tells only where its own feedback is. The ticker places the drop
+    // on the next tick, by the flight's point once there is one, before
+    // that frame is built.
+    if (_hover!.flight != null) _update();
     setState(() {});
     _wake();
     return true;
@@ -703,7 +707,9 @@ class _MotionReorderableState<T extends Object>
     if (hover == null || index == null) return null;
     final order = _order(hover.data);
     final i = index.clamp(0, order.length);
-    final flight = hover.flight;
+    // Flutter's drag reaches this before its flight starts, so the flight
+    // is looked up once the drop is built, when it has the size.
+    final flight = hover.flight ??= DragFlight.draggingWith(hover.data);
     return MotionDrop<T>._(
       after: i > 0 ? order[i - 1] : null,
       before: i < order.length ? order[i] : null,

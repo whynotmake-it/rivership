@@ -576,5 +576,45 @@ void main() {
       expect(_painted(tester, 'a'), midway);
       await tester.pumpAndSettle();
     });
+
+    testWidgets('an item scrolled out of view mid-flight reports where it '
+        'would be painted, and rests there', (tester) async {
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+      var ids = [for (var i = 0; i < 30; i++) '$i'];
+      await _pumpHost(
+        tester,
+        (_) => SizedBox(
+          width: 200,
+          height: 400,
+          child: MotionLayoutGroup(
+            child: ListView.builder(
+              controller: controller,
+              itemCount: ids.length,
+              itemBuilder: (context, i) => _item(ids[i]),
+            ),
+          ),
+        ),
+      );
+      // '1' flies from 40 to 320, in view.
+      _update(
+        () => ids = [...ids]
+          ..remove('1')
+          ..insert(8, '1'),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        (_box(tester, '1') as PaintOffset).paintOffset,
+        isNot(Offset.zero),
+      );
+      // Scrolled above the viewport, into the cache extent, it isn't
+      // painted while the flight ends.
+      controller.jumpTo(400);
+      await tester.pumpAndSettle();
+      final box = tester.renderObject(_find('1')) as PaintOffset;
+      expect(box.paintOffset, Offset.zero);
+    });
   });
 }
