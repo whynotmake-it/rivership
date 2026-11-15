@@ -1,0 +1,5 @@
+tags:
+  showcase:
+    # Records the README's images and videos into ../doc. Needs FFmpeg:
+    #   flutter test --run-skipped -t showcase && ../tool/showcase_gifs.sh
+    skip: "Records docs media, run it on demand."
