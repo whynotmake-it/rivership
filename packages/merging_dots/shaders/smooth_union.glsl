@@ -14,21 +14,29 @@
 struct SmoothUnion {
   float m;
   float s;
+  // The gradient, scaled like s: the weighted sum of each term's unit
+  // direction. Near merges the union's slope drops below 1, and dividing
+  // by it keeps the anti-aliased edge one pixel wide.
+  vec2 g;
 };
 
 SmoothUnion smoothUnionStart() {
-  return SmoothUnion(1e4, 0.0);
+  return SmoothUnion(1e4, 0.0, vec2(0.0));
 }
 
 SmoothUnion smoothUnionAdd(
     SmoothUnion u,
     float d,
+    vec2 direction,
     float radius,
     float distance,
     float window,
     float k) {
   if (k <= 0.0) {
-    u.m = min(u.m, d);
+    if (d < u.m) {
+      u.m = d;
+      u.g = direction;
+    }
     u.s = 1.0;
     return u;
   }
@@ -38,10 +46,14 @@ SmoothUnion smoothUnionAdd(
     return u;
   }
   if (d < u.m) {
-    u.s = u.s * exp((d - u.m) / k) + w;
+    float scale = exp((d - u.m) / k);
+    u.s = u.s * scale + w;
+    u.g = u.g * scale + w * direction;
     u.m = d;
   } else {
-    u.s += w * exp((u.m - d) / k);
+    float term = w * exp((u.m - d) / k);
+    u.s += term;
+    u.g += term * direction;
   }
   return u;
 }
@@ -50,8 +62,8 @@ float smoothUnionDistance(SmoothUnion u, float k) {
   if (u.s <= 0.0) {
     return 1e4;
   }
-  if (k <= 0.0) {
-    return u.m;
-  }
-  return u.m - k * log(u.s);
+  float d = k <= 0.0 ? u.m : u.m - k * log(u.s);
+  // Turn the field into a distance estimate by its slope.
+  float slope = length(u.g) / u.s;
+  return d / max(slope, 0.5);
 }

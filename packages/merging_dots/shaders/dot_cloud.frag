@@ -84,8 +84,10 @@ void main() {
         vec4 b = texture(uDots, dataUv(vec2(column + 1.0, row), uDotsSize));
         vec2 center = uOrigin + vec2(unpack(a.r, a.g), unpack(a.b, b.r));
         float r = unpack(b.g, b.b);
-        float distance = length(p - center);
-        u = smoothUnionAdd(u, distance - r, r, distance, uTile, uBlend);
+        vec2 delta = p - center;
+        float distance = length(delta);
+        vec2 direction = distance > 0.0 ? delta / distance : vec2(0.0);
+        u = smoothUnionAdd(u, distance - r, direction, r, distance, uTile, uBlend);
       }
     }
   }
