@@ -281,4 +281,46 @@ void main() {
     expect(area.position.pixels, 0);
     expect(text.selection.baseOffset, greaterThan(0));
   });
+
+  testWidgets('content that shrinks while scrolled to the end rebuilds the '
+      'area after the frame', (tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    // Six rows of 32 in an area 160 tall scroll by 32.
+    var count = 6;
+    late StateSetter setState;
+    await tester.pumpWidget(
+      _app(
+        StatefulBuilder(
+          builder: (context, set) {
+            setState = set;
+            return CoilScrollArea.scrollable(
+              controller: controller,
+              // Physics that leave the offset past the new end, so the
+              // list springs back, and the spring starts during layout.
+              child: ScrollConfiguration(
+                behavior: const ScrollBehavior().copyWith(
+                  physics: const BouncingScrollPhysics(),
+                ),
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: count,
+                  itemBuilder: (context, i) =>
+                      SizedBox(height: 32, child: Text('Row $i')),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+
+    // Five fit, so it no longer scrolls.
+    setState(() => count = 5);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(_offsetOf(tester), 0);
+  });
 }

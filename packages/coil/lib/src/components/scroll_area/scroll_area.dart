@@ -246,14 +246,14 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
     Widget area = ScrollConfiguration(
       behavior: behavior,
       child: fade(
+        // Whether it scrolls changes only with its extents, which this
+        // reports after the frame. A scroll notification can come during
+        // layout, when the area can't rebuild.
         NotificationListener<ScrollMetricsNotification>(
           onNotification: (n) => _onMetrics(n.metrics, n.depth),
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (n) => _onMetrics(n.metrics, n.depth),
-            child: PrimaryScrollController(
-              controller: _controller,
-              child: scrollable,
-            ),
+          child: PrimaryScrollController(
+            controller: _controller,
+            child: scrollable,
           ),
         ),
       ),

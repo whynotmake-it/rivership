@@ -80,9 +80,12 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
   @override
   Widget build(BuildContext context) {
     final motion = CoilTheme.motionOf(context);
+    // The metrics change as it scrolls, and as its extents change, which
+    // is reported after the frame. Other scroll notifications can come
+    // during layout, when this can't rebuild, and change nothing.
     final child = NotificationListener<ScrollMetricsNotification>(
       onNotification: (n) => _onMetrics(n.metrics, n.depth),
-      child: NotificationListener<ScrollNotification>(
+      child: NotificationListener<ScrollUpdateNotification>(
         onNotification: (n) => _onMetrics(n.metrics, n.depth),
         child: widget.child,
       ),

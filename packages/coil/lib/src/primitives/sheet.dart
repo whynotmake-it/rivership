@@ -183,9 +183,11 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
                         ),
                         child: child,
                       ),
+                      // Scroll updates and extent changes; other scroll
+                      // notifications can come during layout.
                       child: NotificationListener<ScrollMetricsNotification>(
                         onNotification: (n) => _onScroll(n.metrics, n.depth),
-                        child: NotificationListener<ScrollNotification>(
+                        child: NotificationListener<ScrollUpdateNotification>(
                           onNotification: (n) => _onScroll(n.metrics, n.depth),
                           child: widget.child,
                         ),

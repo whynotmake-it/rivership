@@ -567,9 +567,11 @@ class _TabStripState extends State<_TabStrip> {
     final overflow = widget.overflow;
     final onMetrics = widget.onMetrics;
     final direction = Directionality.of(context);
+    // Scroll updates and extent changes; other scroll notifications can
+    // come during layout, when the overflow can't rebuild.
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: (n) => onMetrics(n.metrics),
-      child: NotificationListener<ScrollNotification>(
+      child: NotificationListener<ScrollUpdateNotification>(
         onNotification: (n) => onMetrics(n.metrics),
         child: ValueListenableBuilder<_Overflow>(
           valueListenable: overflow,
