@@ -20,7 +20,9 @@ Future<void> reviewLoader(
   List<double> steps = const [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1],
   double size = 96,
 }) async {
-  await DotShaders.precache();
+  // Load outside the fake clock: a future cached inside one test's clock
+  // would never complete in the next test.
+  await tester.runAsync(DotShaders.precache);
   tester.view
     ..physicalSize = Size(size, size)
     ..devicePixelRatio = 1;
