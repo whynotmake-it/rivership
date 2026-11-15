@@ -196,7 +196,7 @@ class _MergingDotsEditorState extends State<MergingDotsEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 5, child: _stage()),
+          Expanded(child: _stage()),
           const SizedBox(height: 8),
           Segmented(
             value: _narrowTab,
@@ -204,8 +204,8 @@ class _MergingDotsEditorState extends State<MergingDotsEditor> {
             onChanged: (tab) => setState(() => _narrowTab = tab),
           ),
           const SizedBox(height: 8),
-          Expanded(
-            flex: 4,
+          SizedBox(
+            height: 280,
             child: Panel(
               child: _narrowTab == 0
                   ? FramesPanel(controller: controller)

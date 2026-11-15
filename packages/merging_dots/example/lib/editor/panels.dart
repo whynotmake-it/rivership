@@ -248,11 +248,14 @@ class SettingsPanel extends StatelessWidget {
                     },
                     onChanged: controller.setLoop,
                   ),
-                  CoilSwitch(
-                    value: controller.onionSkin,
-                    label: const Text('Onion skin'),
-                    onChanged: (enabled) =>
-                        controller.setOnionSkin(enabled: enabled),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CoilSwitch(
+                      value: controller.onionSkin,
+                      label: const Text('Onion skin'),
+                      onChanged: (enabled) =>
+                          controller.setOnionSkin(enabled: enabled),
+                    ),
                   ),
                 ],
               ),
@@ -528,11 +531,14 @@ class SettingsPanel extends StatelessWidget {
             ),
           ),
         if (stagger case RadialDotStagger(:final inward))
-          CoilSwitch(
-            value: inward,
-            label: const Text('Inward'),
-            onChanged: (inward) => controller.setStagger(
-              DotStagger.radial(duration: duration, inward: inward),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: CoilSwitch(
+              value: inward,
+              label: const Text('Inward'),
+              onChanged: (inward) => controller.setStagger(
+                DotStagger.radial(duration: duration, inward: inward),
+              ),
             ),
           ),
       ],
