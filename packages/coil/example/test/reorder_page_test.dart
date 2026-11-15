@@ -77,7 +77,7 @@ List<String> _topToBottom(WidgetTester tester, List<String> titles) =>
 
 /// The board's cards fully on screen, by their centers.
 List<Offset> _visibleCards(WidgetTester tester) => [
-  for (final element in find.byType(MotionLayoutItem).evaluate())
+  for (final element in _inBoard(find.byType(MotionLayoutItem)).evaluate())
     if (element.renderObject case final RenderBox box
         when box.attached && box.size.width < 320)
       if (box.localToGlobal(Offset.zero) & box.size case final rect
@@ -89,7 +89,7 @@ List<Offset> _visibleCards(WidgetTester tester) => [
 List<ScrollPosition> _lanes(WidgetTester tester) {
   final lanes = [
     for (final state in tester.stateList<ScrollableState>(
-      find.byType(Scrollable),
+      _inBoard(find.byType(Scrollable)),
     ))
       if (state.axisDirection == AxisDirection.down &&
           (state.context.findRenderObject()! as RenderBox).size.width < 320)
@@ -106,7 +106,7 @@ List<ScrollPosition> _lanes(WidgetTester tester) {
 /// How far each card on screen is painted from its place, for those that
 /// are away from it.
 List<Offset> _flyingCards(WidgetTester tester) => [
-  for (final element in find.byType(MotionLayoutItem).evaluate())
+  for (final element in _inBoard(find.byType(MotionLayoutItem)).evaluate())
     if (element.renderObject case final RenderBox box
         when box.attached && box.size.width < 320)
       if ((box as PaintOffset).paintOffset case final offset
@@ -333,10 +333,11 @@ void main() {
   testWidgets('a tile dragged in the grid reorders it', (tester) async {
     await _pumpPage(tester);
     Finder tile(String text) => find.descendant(
-      of: find.byType(MotionDropZone<int>),
+      of: find.byType(MotionReorderable<int>),
       matching: find.text(text),
     );
-    await tester.ensureVisible(tile('12'));
+    // The grid's first row in the middle of the screen.
+    await Scrollable.ensureVisible(tester.element(tile('1')), alignment: 0.5);
     await tester.pumpAndSettle();
     final three = tester.getRect(tile('3'));
     // The trailing side of tile 3, on tile 1's row.
@@ -347,7 +348,7 @@ void main() {
     expect(x('1'), lessThan(x('4')));
   });
 
-  for (final seed in [0, 3]) {
+  for (final seed in [0, 1, 3, 5]) {
     testWidgets('after random shuffles, scrolls and moves, a card dropped '
         'where it was moves no other card (seed $seed)', (tester) async {
       await _pumpPage(tester);
