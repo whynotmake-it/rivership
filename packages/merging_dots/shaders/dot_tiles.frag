@@ -120,7 +120,7 @@ void main() {
   } else {
     // An empty cell: the nearest ink of its neighbors, plus the fillet
     // when two orthogonal neighbors are filled, plus its own growing dot.
-    d = length(aq) - self;
+    d = self > 0.0 ? length(aq) - self : 1.0;
     if (H) {
       d = min(d, neighborInk(aq, vec2(1.0, 0.0), V || D));
     }
