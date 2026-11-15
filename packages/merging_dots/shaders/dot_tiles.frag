@@ -50,90 +50,134 @@ float valueAt(vec2 cell) {
   return texture(uData, uv).r * 1.275;
 }
 
-// Distance to a box of half size 0.5 centered at `center`, with the corner
-// that faces the origin's quadrant rounded by `radius`. Positive outside.
-float cornerBox(vec2 p, vec2 center, float radius) {
-  vec2 q = abs(p - center) - vec2(0.5 - radius);
+// A rounded box of half size `extent` centered at `center`, its corners
+// rounded by `radius`. Positive outside.
+float roundedBox(vec2 p, vec2 center, vec2 extent, float radius) {
+  vec2 q = abs(p - center) - (extent - radius);
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-// Distance to the free corner of the cell at the origin: square up to the
-// corner, rounded by `radius`. `p` is in the quadrant toward +x, +y.
-float freeCorner(vec2 p, float radius) {
-  vec2 q = p - vec2(0.5 - radius);
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
-}
-
-// Distance to the ink of a filled cell centered at `center`, near the
-// corner at (0.5, 0.5). Its corner is square when `joined`, else rounded.
-float neighborInk(vec2 p, vec2 center, bool joined) {
-  vec2 q = abs(p - center) - vec2(0.5);
-  float box = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-  if (joined) {
-    return box;
+// The union of two distances with a circular fillet of radius `r` in every
+// concave corner between them.
+float filletUnion(float a, float b, float r) {
+  if (r <= 0.0) {
+    return min(a, b);
   }
-  // Only the corner toward (0.5, 0.5) is free.
-  vec2 toCorner = vec2(0.5) - center;
-  vec2 local = (p - center) * sign(toCorner);
-  return freeCorner(local, uCornerRadius);
+  vec2 u = max(vec2(r - a, r - b), 0.0);
+  return max(r, min(a, b)) - length(u);
+}
+
+// The polynomial smooth union of two distances, bulging by up to k / 4
+// where they meet.
+float gooUnion(float a, float b, float k) {
+  if (k <= 0.0) {
+    return min(a, b);
+  }
+  float h = max(k - abs(a - b), 0.0) / k;
+  return min(a, b) - h * h * k * 0.25;
+}
+
+// How much a neighbor of value `v` squares off the corner it shares with a
+// cell: not at all until it is half filled, completely once it is full.
+float squaring(float v) {
+  return smoothstep(0.5, 1.0, v);
+}
+
+// A cell at `center` with value `v`, its horizontal neighbor toward the
+// shared corner `beside`, its vertical one `above`, and the diagonal one
+// `diagonal`: a dot that grows into its rounded
+// square. Its corner toward the shared corner at (0.5, 0.5) squares off
+// while any of the other three cells around that corner fill, so filled
+// neighbors meet flush and diagonal ones in a neck. The corner only ever
+// shows in this cell's quarter toward the shared corner, where it is
+// computed, so neighboring pixels agree.
+float cellBody(
+    vec2 p,
+    vec2 center,
+    float v,
+    float beside,
+    float above,
+    float diagonal) {
+  if (v <= 0.002) {
+    return 1e4;
+  }
+  float extent = 0.5 * v;
+  float filled = squaring(min(v, 1.0));
+  float joined =
+      max(squaring(beside), max(squaring(above), squaring(diagonal)));
+  float radius = min(uCornerRadius * v, extent) * (1.0 - filled * joined);
+  // Toward a neighbor that is there, a filling cell stretches to their
+  // shared edge, so it reads as flowing out of that neighbor. It reaches a
+  // hair past the edge, so two full cells overlap instead of leaving a
+  // seam where they touch. Each axis only depends on the neighbor on that
+  // side, which every pixel sharing that side agrees on.
+  float stretch = smoothstep(0.2, 0.8, min(v, 1.0));
+  vec2 toward = vec2(smoothstep(0.3, 0.8, beside), smoothstep(0.3, 0.8, above));
+  vec2 extents = vec2(extent) + (vec2(0.52) - extent) * toward * stretch;
+  return roundedBox(p, center, max(extents, vec2(extent)), radius);
+}
+
+// Orthogonal neighbors melt together like goo while the smaller of the two
+// fills. The blend peaks halfway and vanishes at both ends, so the cells
+// are separate when one is empty and flush when both are full.
+float gooPair(float bodyA, float bodyB, float va, float vb) {
+  float m = min(min(va, 1.0), min(vb, 1.0));
+  if (m <= 0.002) {
+    return 1e4;
+  }
+  // The goo also fades out as the facing corners square off, so it never
+  // bulges the straight edge of a join that is about to settle.
+  return gooUnion(
+    bodyA,
+    bodyB,
+    2.4 * m * (1.0 - m) * (1.0 - smoothstep(0.75, 1.0, m)));
 }
 
 void main() {
   vec2 p = (FlutterFragCoord().xy - uOrigin) / uCell - 0.5;
   vec2 cell = floor(p + 0.5);
   vec2 local = p - cell;
-  // Mirror into the quadrant toward the nearest cell corner.
+  // Mirror into the quadrant toward the nearest cell corner. The shape there
+  // only depends on the four cells around that corner: this one at the
+  // origin, its side neighbor h, the one above or below v, the diagonal dg.
   vec2 s = vec2(local.x < 0.0 ? -1.0 : 1.0, local.y < 0.0 ? -1.0 : 1.0);
-  vec2 aq = local * s;
+  vec2 q = local * s;
 
-  float self = valueAt(cell);
-  float h = valueAt(cell + vec2(s.x, 0.0));
-  float v = valueAt(cell + vec2(0.0, s.y));
-  float dg = valueAt(cell + s);
-  bool C = self >= 0.5;
-  bool H = h >= 0.5;
-  bool V = v >= 0.5;
-  bool D = dg >= 0.5;
+  float a = max(valueAt(cell), 0.0);
+  float h = max(valueAt(cell + vec2(s.x, 0.0)), 0.0);
+  float v = max(valueAt(cell + vec2(0.0, s.y)), 0.0);
+  float dg = max(valueAt(cell + s), 0.0);
 
-  float d;
-  if (C) {
-    // The paper of an empty side or diagonal cell, its corner toward ours
-    // rounded by the inner radius.
-    float hPaper = -cornerBox(aq, vec2(1.0, 0.0), uInnerRadius);
-    float vPaper = -cornerBox(aq, vec2(0.0, 1.0), uInnerRadius);
-    float dPaper = -cornerBox(aq, vec2(1.0, 1.0), uInnerRadius);
-    if (H && V) {
-      d = D ? -1.0 : dPaper;
-    } else if (H) {
-      d = D ? vPaper : aq.y - 0.5;
-    } else if (V) {
-      d = D ? hPaper : aq.x - 0.5;
-    } else if (D) {
-      // Only diagonal: a neck, square at the shared corner.
-      d = max(hPaper, vPaper);
-    } else {
-      d = freeCorner(aq, uCornerRadius);
-      // A cell filling in grows from its inscribed disc to its full shape.
-      float grow = clamp((self - 0.5) * 2.0, 0.0, 1.0);
-      d = max(d, length(aq) - mix(0.5, 0.75, grow));
-    }
-  } else {
-    // An empty cell: the nearest ink of its neighbors, plus the fillet
-    // when two orthogonal neighbors are filled, plus its own growing dot.
-    d = self > 0.0 ? length(aq) - self : 1.0;
-    if (H) {
-      d = min(d, neighborInk(aq, vec2(1.0, 0.0), V || D));
-    }
-    if (V) {
-      d = min(d, neighborInk(aq, vec2(0.0, 1.0), H || D));
-    }
-    if (D) {
-      d = min(d, neighborInk(aq, vec2(1.0, 1.0), H || V));
-    }
-    if (H && V) {
-      d = min(d, -cornerBox(aq, vec2(0.0), uInnerRadius));
-    }
-  }
+  const vec2 pa = vec2(0.0, 0.0);
+  const vec2 ph = vec2(1.0, 0.0);
+  const vec2 pv = vec2(0.0, 1.0);
+  const vec2 pd = vec2(1.0, 1.0);
+
+  // Every piece grows continuously with the values, so cells, joins,
+  // corners and fillets all morph instead of switching at a threshold. At
+  // rest, with values of 0 and 1, the result is exactly the tile shape:
+  // full cells, straight joins, round free corners, and fillets of the
+  // inner radius in concave corners, holes and diagonal necks.
+  //
+  // Each cell's body knows the other three cells around the shared corner.
+  float bodyA = cellBody(q, pa, a, h, v, dg);
+  float bodyH = cellBody(q, ph, h, a, dg, v);
+  float bodyV = cellBody(q, pv, v, dg, a, h);
+  float bodyD = cellBody(q, pd, dg, v, h, a);
+  float joinH = gooPair(bodyA, bodyH, a, h);
+  float joinV = gooPair(bodyA, bodyV, a, v);
+  float joinHD = gooPair(bodyH, bodyD, h, dg);
+  float joinVD = gooPair(bodyV, bodyD, v, dg);
+  float r = uInnerRadius;
+  float d = min(min(bodyA, bodyH), min(bodyV, bodyD));
+  d = min(d, min(min(joinH, joinV), min(joinHD, joinVD)));
+  // Concave corners at rest, holes and diagonal necks all form between
+  // diagonally opposite cells meeting at the shared corner, so only those
+  // get a fillet of the inner radius. They are filleted body to body: a
+  // join with a cell they share would put that cell on both sides and
+  // bulge the fillet around it.
+  d = min(d, filletUnion(bodyH, bodyV, r));
+  d = min(d, filletUnion(bodyA, bodyD, r));
 
   d = (d + uPadding) * uCell;
   float alpha = clamp(0.5 - d / uAa, 0.0, 1.0);
