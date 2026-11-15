@@ -1,0 +1,12 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - macos/**
+include: package:lintervention/analysis_options.yaml
+
+linter:
+  rules:
+    public_member_api_docs: false

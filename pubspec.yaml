@@ -27,6 +27,9 @@ workspace:
   - packages/fixed_ticker
   - packages/fixed_ticker/example
   - packages/snaptest
+  - packages/coil
+  - packages/coil/example
+  - packages/coil_cli
   
 dev_dependencies:
   lintervention: ^0.3.1

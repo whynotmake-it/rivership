@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:coil_example/coil_example.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
 import 'package:merging_dots_example/main.dart';
@@ -35,6 +36,7 @@ void main() async {
         type: RouteType.cupertino(),
         builder: (context, state) => const MergingDotsEditor(),
       ),
+      coilCatalogRoute(path: '/coil'),
       NamedRouteDef.shell(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
@@ -84,6 +86,10 @@ class Home extends StatelessWidget {
           CupertinoButton.filled(
             onPressed: () => context.navigateTo(NamedRoute('Motor')),
             child: const Text('Motor'),
+          ),
+          CupertinoButton.filled(
+            onPressed: () => context.navigateTo(NamedRoute('Coil')),
+            child: const Text('coil'),
           ),
           CupertinoButton.filled(
             onPressed: () =>

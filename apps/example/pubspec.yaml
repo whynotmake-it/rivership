@@ -11,6 +11,8 @@ environment:
   sdk: ^3.5.4
 
 dependencies:
+  coil_example:
+    path: ../../packages/coil/example
   cupertino_icons: ^1.0.8
   figma_squircle_updated: ^1.0.1
   flutter:
