@@ -191,4 +191,38 @@ void main() {
     // And they did merge.
     expect(forwards.where((v) => v == 255).length, greaterThan(1000));
   });
+
+  testWidgets('tiles fuse full cells and carve round holes', (tester) async {
+    final image = await capture(
+      tester,
+      DotGridView(
+        grid: DotGrid.parse('''
+          ###
+          #.#
+          ###
+          #..
+        '''),
+        style: const DotGridStyle.tiles(
+          color: Color(0xFFFF0000),
+          cellSize: 20,
+        ),
+      ),
+    );
+    final alpha = await alphaReader(tester, image);
+    // Cells are 20 pixels, plus 10 pixels of padding.
+    // The join between two filled cells is solid.
+    expect(alpha(30, 20), 255);
+    // The empty middle cell is a round hole: empty at its center, ink in
+    // its corners.
+    expect(alpha(40, 40), 0);
+    expect(alpha(31, 31), 255);
+    // A free corner is rounded: its very tip is paper.
+    expect(alpha(11, 11), 0);
+    expect(alpha(20, 20), 255);
+    // The empty bottom right cells stay empty next to the filled edge.
+    expect(alpha(50, 80), 0);
+    // An edge between a filled and an empty cell is straight.
+    expect(alpha(49, 62), 255);
+    expect(alpha(49, 71), 0);
+  });
 }

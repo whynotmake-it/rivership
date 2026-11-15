@@ -283,6 +283,9 @@ class _DotGridRenderWidget extends LeafRenderObjectWidget {
     blend: style.blend,
     offsetRange: style.offsetRange,
     cellSize: style.cellSize,
+    shape: style.shape,
+    cornerRadius: style.cornerRadius,
+    innerRadius: style.innerRadius,
   );
 
   @override
@@ -294,7 +297,10 @@ class _DotGridRenderWidget extends LeafRenderObjectWidget {
       ..dotSize = style.dotSize
       ..blend = style.blend
       ..offsetRange = style.offsetRange
-      ..cellSize = style.cellSize;
+      ..cellSize = style.cellSize
+      ..shape = style.shape
+      ..cornerRadius = style.cornerRadius
+      ..innerRadius = style.innerRadius;
   }
 }
 

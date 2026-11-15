@@ -2,20 +2,39 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 
+/// How the dots of a `DotGridView` join.
+enum DotGridShape {
+  /// Round dots that melt into each other like liquid. [DotGridStyle.blend]
+  /// sets how gooey.
+  goo,
+
+  /// Cells that fuse into rounded letterforms: full cells join their
+  /// neighbors with straight edges, free corners are rounded by
+  /// [DotGridStyle.cornerRadius], and empty cells wedged between two
+  /// filled ones get a concave fillet of [DotGridStyle.innerRadius].
+  ///
+  /// A cell counts as filled from a value of `0.5`. Below that it shows as
+  /// a growing dot; above it, its free corners grow out to their shape.
+  tiles,
+}
+
 /// How a `DotGridView` draws its dots.
 ///
 /// Sizes are fractions of the distance between two cells, so a style looks
 /// the same at any size.
 @immutable
 class DotGridStyle {
-  /// Creates a grid style.
+  /// Creates a style of gooey dots, see [DotGridShape.goo].
   const DotGridStyle({
     this.color,
     this.dotSize = 0.8,
     this.blend = 0.6,
     this.offsetRange = 0.5,
     this.cellSize = 10,
-  }) : assert(dotSize >= 0, 'dotSize must not be negative.'),
+  }) : shape = DotGridShape.goo,
+       cornerRadius = 1,
+       innerRadius = 1,
+       assert(dotSize >= 0, 'dotSize must not be negative.'),
        assert(
          blend >= 0 && blend <= 1.4,
          'blend must be between 0 and 1.4: the renderer only looks at the '
@@ -26,14 +45,64 @@ class DotGridStyle {
          'offsetRange must be between 0 and 1.',
        );
 
+  /// Creates a style of fused cells, see [DotGridShape.tiles].
+  ///
+  /// [dotSize] is the size of a filled cell: at `1` neighbors touch, below
+  /// it every shape shrinks by the same amount and above it they fatten.
+  const DotGridStyle.tiles({
+    this.color,
+    this.dotSize = 1,
+    this.cornerRadius = 1,
+    this.innerRadius = 1,
+    this.cellSize = 10,
+  }) : shape = DotGridShape.tiles,
+       blend = 0,
+       offsetRange = 0,
+       assert(
+         dotSize >= 0.4 && dotSize <= 1.6,
+         'dotSize must be between 0.4 and 1.6 for tiles.',
+       ),
+       assert(
+         cornerRadius >= 0 && cornerRadius <= 1,
+         'cornerRadius must be between 0 and 1.',
+       ),
+       assert(
+         innerRadius >= 0 && innerRadius <= 1,
+         'innerRadius must be between 0 and 1.',
+       );
+
   /// Reads a style written by [toJson].
-  factory DotGridStyle.fromJson(Map<String, Object?> json) => DotGridStyle(
-    color: json['color'] == null ? null : Color(json['color']! as int),
-    dotSize: (json['dotSize'] as num? ?? 0.8).toDouble(),
-    blend: (json['blend'] as num? ?? 0.6).toDouble(),
-    offsetRange: (json['offsetRange'] as num? ?? 0.5).toDouble(),
-    cellSize: (json['cellSize'] as num? ?? 10).toDouble(),
-  );
+  factory DotGridStyle.fromJson(Map<String, Object?> json) {
+    final color = json['color'] == null ? null : Color(json['color']! as int);
+    final cellSize = (json['cellSize'] as num? ?? 10).toDouble();
+    if (json['shape'] == DotGridShape.tiles.name) {
+      return DotGridStyle.tiles(
+        color: color,
+        dotSize: (json['dotSize'] as num? ?? 1).toDouble(),
+        cornerRadius: (json['cornerRadius'] as num? ?? 1).toDouble(),
+        innerRadius: (json['innerRadius'] as num? ?? 1).toDouble(),
+        cellSize: cellSize,
+      );
+    }
+    return DotGridStyle(
+      color: color,
+      dotSize: (json['dotSize'] as num? ?? 0.8).toDouble(),
+      blend: (json['blend'] as num? ?? 0.6).toDouble(),
+      offsetRange: (json['offsetRange'] as num? ?? 0.5).toDouble(),
+      cellSize: cellSize,
+    );
+  }
+
+  /// How the dots join.
+  final DotGridShape shape;
+
+  /// How round free corners of [DotGridShape.tiles] are: `0` is square,
+  /// `1` a quarter circle as wide as half a cell.
+  final double cornerRadius;
+
+  /// How round the concave corners of [DotGridShape.tiles] are: `0` is
+  /// square, `1` a quarter circle, so empty cells show as round holes.
+  final double innerRadius;
 
   /// The color of the dots. Defaults to the ambient `IconTheme` color, so
   /// a dot grid can stand in for an icon.
@@ -60,32 +129,54 @@ class DotGridStyle {
   final double cellSize;
 
   /// A copy with the given fields replaced.
+  ///
+  /// Fields that don't apply to [shape] are ignored.
   DotGridStyle copyWith({
     Color? color,
     double? dotSize,
     double? blend,
     double? offsetRange,
     double? cellSize,
-  }) => DotGridStyle(
-    color: color ?? this.color,
-    dotSize: dotSize ?? this.dotSize,
-    blend: blend ?? this.blend,
-    offsetRange: offsetRange ?? this.offsetRange,
-    cellSize: cellSize ?? this.cellSize,
-  );
+    double? cornerRadius,
+    double? innerRadius,
+  }) => switch (shape) {
+    DotGridShape.goo => DotGridStyle(
+      color: color ?? this.color,
+      dotSize: dotSize ?? this.dotSize,
+      blend: blend ?? this.blend,
+      offsetRange: offsetRange ?? this.offsetRange,
+      cellSize: cellSize ?? this.cellSize,
+    ),
+    DotGridShape.tiles => DotGridStyle.tiles(
+      color: color ?? this.color,
+      dotSize: dotSize ?? this.dotSize,
+      cornerRadius: cornerRadius ?? this.cornerRadius,
+      innerRadius: innerRadius ?? this.innerRadius,
+      cellSize: cellSize ?? this.cellSize,
+    ),
+  };
 
   /// A JSON representation, read by [DotGridStyle.fromJson].
   Map<String, Object?> toJson() => {
+    'shape': shape.name,
     if (color case final color?) 'color': color.toARGB32(),
     'dotSize': dotSize,
-    'blend': blend,
-    'offsetRange': offsetRange,
     'cellSize': cellSize,
+    ...switch (shape) {
+      DotGridShape.goo => {'blend': blend, 'offsetRange': offsetRange},
+      DotGridShape.tiles => {
+        'cornerRadius': cornerRadius,
+        'innerRadius': innerRadius,
+      },
+    },
   };
 
   @override
   bool operator ==(Object other) =>
       other is DotGridStyle &&
+      other.shape == shape &&
+      other.cornerRadius == cornerRadius &&
+      other.innerRadius == innerRadius &&
       other.color == color &&
       other.dotSize == dotSize &&
       other.blend == blend &&
@@ -93,7 +184,16 @@ class DotGridStyle {
       other.cellSize == cellSize;
 
   @override
-  int get hashCode => Object.hash(color, dotSize, blend, offsetRange, cellSize);
+  int get hashCode => Object.hash(
+    shape,
+    color,
+    dotSize,
+    blend,
+    offsetRange,
+    cellSize,
+    cornerRadius,
+    innerRadius,
+  );
 }
 
 /// How a `DotCloudView` draws its dots.

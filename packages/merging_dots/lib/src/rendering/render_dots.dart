@@ -9,6 +9,7 @@ import 'package:merging_dots/src/model/dot_grid.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
 import 'package:merging_dots/src/rendering/data_texture.dart';
 import 'package:merging_dots/src/rendering/dot_shaders.dart';
+import 'package:merging_dots/src/rendering/dot_styles.dart';
 
 const _stride = DotState.stride;
 
@@ -68,6 +69,7 @@ abstract class RenderDots<T extends DotState> extends RenderBox {
   }
 
   ui.FragmentShader? _shader;
+  ui.FragmentProgram? _shaderProgram;
 
   Object? _lastLayoutKey;
 
@@ -120,9 +122,11 @@ abstract class RenderDots<T extends DotState> extends RenderBox {
 
   /// The shader to paint with, or null to draw the fallback.
   ui.FragmentShader? obtainShader() {
-    if (_shader != null) return _shader;
     final program = this.program;
     if (program == null) return null;
+    if (_shader != null && identical(program, _shaderProgram)) return _shader;
+    _shader?.dispose();
+    _shaderProgram = program;
     return _shader = program.fragmentShader();
   }
 
@@ -179,10 +183,47 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     required double blend,
     required double offsetRange,
     required double cellSize,
+    DotGridShape shape = DotGridShape.goo,
+    double cornerRadius = 1,
+    double innerRadius = 1,
   }) : _dotSize = dotSize,
        _blend = blend,
        _offsetRange = offsetRange,
-       _cellSize = cellSize;
+       _cellSize = cellSize,
+       _shape = shape,
+       _cornerRadius = cornerRadius,
+       _innerRadius = innerRadius;
+
+  DotGridShape _shape;
+
+  /// How the dots join.
+  DotGridShape get shape => _shape;
+  set shape(DotGridShape value) {
+    if (value == _shape) return;
+    _shape = value;
+    _bounds = null;
+    markNeedsPaint();
+  }
+
+  double _cornerRadius;
+
+  /// How round free corners of tiles are, from `0` to `1`.
+  double get cornerRadius => _cornerRadius;
+  set cornerRadius(double value) {
+    if (value == _cornerRadius) return;
+    _cornerRadius = value;
+    markNeedsPaint();
+  }
+
+  double _innerRadius;
+
+  /// How round concave corners of tiles are, from `0` to `1`.
+  double get innerRadius => _innerRadius;
+  set innerRadius(double value) {
+    if (value == _innerRadius) return;
+    _innerRadius = value;
+    markNeedsPaint();
+  }
 
   double _dotSize;
 
@@ -236,7 +277,10 @@ class RenderDotGrid extends RenderDots<DotGrid> {
   Rect? _bounds;
 
   @override
-  ui.FragmentProgram? get program => DotShaders.grid;
+  ui.FragmentProgram? get program => switch (_shape) {
+    DotGridShape.goo => DotShaders.grid,
+    DotGridShape.tiles => DotShaders.tiles,
+  };
 
   @override
   Object layoutKey(DotGrid target) => (target.columns, target.rows);
@@ -332,6 +376,16 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     if (cells == null) return null;
     if (_bounds != null) return _bounds;
     final (left, top, right, bottom) = cells;
+    if (_shape == DotGridShape.tiles) {
+      // Ink stays inside filled cells and the fillets of their neighbors.
+      final reach = spacing * (1 + math.max(0, _dotSize - 1)) + 2;
+      return _bounds = Rect.fromLTRB(
+        origin.dx + left * spacing - reach,
+        origin.dy + top * spacing - reach,
+        origin.dx + right * spacing + reach,
+        origin.dy + bottom * spacing + reach,
+      ).intersect(Offset.zero & size);
+    }
     final reach =
         spacing * (_dotSize / 2 * kMaxGridValue + _blend * 1.2 + _offsetRange) +
         2;
@@ -364,6 +418,24 @@ class RenderDotGrid extends RenderDots<DotGrid> {
       ..save()
       ..translate(offset.dx, offset.dy);
     setColor(shader);
+    if (_shape == DotGridShape.tiles) {
+      shader
+        ..setFloat(4, origin.dx - spacing / 2)
+        ..setFloat(5, origin.dy - spacing / 2)
+        ..setFloat(6, grid.columns.toDouble())
+        ..setFloat(7, grid.rows.toDouble())
+        ..setFloat(8, spacing)
+        ..setFloat(9, _cornerRadius * 0.5)
+        ..setFloat(10, _innerRadius * 0.5)
+        ..setFloat(11, (1 - _dotSize) / 2)
+        ..setFloat(12, pixelWidth(canvas))
+        ..setFloat(13, _data.isRendered ? 1 : 0)
+        ..setImageSampler(0, _data.image!);
+      canvas
+        ..drawRect(bounds, Paint()..shader = shader)
+        ..restore();
+      return;
+    }
     shader
       ..setFloat(4, origin.dx)
       ..setFloat(5, origin.dy)

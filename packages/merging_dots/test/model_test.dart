@@ -125,4 +125,21 @@ void main() {
       }
     });
   });
+
+  group('DotGridStyle', () {
+    test('round trips through JSON', () {
+      for (final style in const [
+        DotGridStyle(color: Color(0xFF123456), blend: 1.2, dotSize: 0.7),
+        DotGridStyle.tiles(cornerRadius: 0.4, innerRadius: 0, dotSize: 0.9),
+      ]) {
+        expect(DotGridStyle.fromJson(style.toJson()), style);
+      }
+    });
+
+    test('copyWith keeps the shape', () {
+      const tiles = DotGridStyle.tiles();
+      expect(tiles.copyWith(cornerRadius: 0.5).shape, DotGridShape.tiles);
+      expect(tiles.copyWith(cornerRadius: 0.5).cornerRadius, 0.5);
+    });
+  });
 }
