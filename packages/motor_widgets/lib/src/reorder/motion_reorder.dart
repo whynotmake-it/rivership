@@ -687,10 +687,19 @@ class _RenderMotionReorder extends RenderProxyBox
 /// layers still show the last frame. Reading where an item was on screen in
 /// content coordinates needs the scroll offset of that same frame, which
 /// this keeps, one per position.
+///
+/// It is recorded after every frame, not from the position's listeners: a
+/// scroll view corrects its offset during layout without notifying them,
+/// for example when its content shrinks.
 final class _ScrollHistory {
   _ScrollHistory._(this._position)
     : composited = _position.hasPixels ? _position.pixels : 0 {
-    _position.addListener(_changed);
+    _all.add(WeakReference(this));
+    if (_recording) return;
+    _recording = true;
+    // Persistent callbacks run in the order they were added, so this one
+    // runs after the frame's layout, paint and compositing.
+    SchedulerBinding.instance.addPersistentFrameCallback((_) => _recordAll());
   }
 
   factory _ScrollHistory.of(ScrollPosition position) =>
@@ -698,19 +707,21 @@ final class _ScrollHistory {
 
   static final _histories = Expando<_ScrollHistory>('ScrollHistory');
 
+  /// Every live history, held weakly: a history lives as long as its
+  /// position.
+  static final _all = <WeakReference<_ScrollHistory>>[];
+  static bool _recording = false;
+
+  static void _recordAll() => _all.removeWhere((reference) {
+    final history = reference.target;
+    if (history == null) return true;
+    final position = history._position;
+    if (position.hasPixels) history.composited = position.pixels;
+    return false;
+  });
+
   final ScrollPosition _position;
 
   /// The pixels of the last composited frame.
   double composited;
-
-  bool _scheduled = false;
-
-  void _changed() {
-    if (_scheduled) return;
-    _scheduled = true;
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _scheduled = false;
-      if (_position.hasPixels) composited = _position.pixels;
-    }, debugLabel: 'MotionReorder.scrollHistory');
-  }
 }

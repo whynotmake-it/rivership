@@ -301,6 +301,59 @@ void main() {
       }
     });
 
+    testWidgets('after the scroll offset is clamped, a new flight key flies '
+        'nothing that stayed', (tester) async {
+      final column = ScrollController();
+      addTearDown(column.dispose);
+      var ids = [for (var i = 0; i < 30; i++) '$i'];
+      var generation = 0;
+      late StateSetter setState;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return ListView.builder(
+                controller: column,
+                physics: const ClampingScrollPhysics(),
+                itemCount: ids.length,
+                findChildIndexCallback: (key) {
+                  final index = ids.indexOf((key as ValueKey<String>).value);
+                  return index < 0 ? null : index;
+                },
+                itemBuilder: (context, i) => MotionReorder(
+                  key: _key(ids[i]),
+                  flightKey: (i, generation),
+                  child: SizedBox.fromSize(size: _tile),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      column.jumpTo(column.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      // The content shrinks, so layout clamps the offset, without telling
+      // the position's listeners.
+      final before = column.offset;
+      setState(() => ids = ids.sublist(0, 25));
+      await tester.pumpAndSettle();
+      expect(column.offset, lessThan(before));
+
+      // Every item gets a new flight key, and none of them moved.
+      setState(() => generation++);
+      await tester.pump();
+      for (final id in ids) {
+        final finder = find.byKey(_key(id), skipOffstage: false);
+        if (finder.evaluate().isEmpty) continue;
+        final offset = (tester.renderObject(finder) as PaintOffset).paintOffset;
+        expect(offset, Offset.zero, reason: id);
+        if (find.byKey(_key(id)).evaluate().isNotEmpty) {
+          expect(_flying(tester, id), isFalse, reason: id);
+        }
+      }
+    });
+
     testWidgets('an item partly visible at the reorder flies from its first '
         'frame', (tester) async {
       final list = GlobalKey<_ListState>();
