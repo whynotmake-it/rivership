@@ -342,9 +342,11 @@ class _RenderMotionReorder extends RenderProxyBox
   /// schedule another one.
   bool _resolving = false;
 
-  /// Whether a post-frame callback will start a pending flight that no
-  /// paint started.
-  bool _startScheduled = false;
+  /// Whether a resolve is due that no paint has run yet.
+  bool _resolveDue = false;
+
+  /// Whether a post-frame callback will run a due resolve.
+  bool _resolveScheduled = false;
 
   bool get _inFlight => _controller?.isAnimating ?? false;
 
@@ -440,22 +442,7 @@ class _RenderMotionReorder extends RenderProxyBox
   }
 
   /// Makes a pending flight start, or redirect, in this frame.
-  ///
-  /// The paint phase resolves it, so a painted item flies from the frame's
-  /// first picture. Flutter skips painting an item that is mounted but off
-  /// screen, such as one in a list's cache extent, so a post-frame callback
-  /// resolves the flight from this frame's layout if no paint did. Such an
-  /// item flies unseen and is at rest by the time it's scrolled in.
-  void _scheduleStart() {
-    _scheduleResolve();
-    if (_startScheduled) return;
-    _startScheduled = true;
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _startScheduled = false;
-      if (!attached || (_pendingOrigin == null && !_redirect)) return;
-      _resolve();
-    }, debugLabel: 'MotionReorder.start');
-  }
+  void _scheduleStart() => _scheduleResolve();
 
   void _trackScrollables() {
     for (final scrollable in _scrollables) {
@@ -472,10 +459,26 @@ class _RenderMotionReorder extends RenderProxyBox
     _scheduleResolve();
   }
 
+  /// Resolves the flight in this frame: starts or redirects it, follows
+  /// layout, and updates [paintOffset].
+  ///
+  /// The paint phase resolves it, so a painted item flies from the frame's
+  /// first picture. Flutter skips painting an item that is mounted but off
+  /// screen, such as one in a list's cache extent, so a post-frame callback
+  /// resolves it from this frame's layout if no paint did. Such an item
+  /// flies unseen, its [paintOffset] stays where it would be painted, and
+  /// it is at rest by the time it's scrolled in.
   void _scheduleResolve() {
     if (_resolving) return;
+    _resolveDue = true;
     // Falls back to markNeedsPaint while this isn't a repaint boundary.
     markNeedsCompositedLayerUpdate();
+    if (_resolveScheduled) return;
+    _resolveScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _resolveScheduled = false;
+      if (attached && _resolveDue) _resolve();
+    }, debugLabel: 'MotionReorder.resolve');
   }
 
   MotionController<Offset> _ensureController() {
@@ -604,6 +607,7 @@ class _RenderMotionReorder extends RenderProxyBox
   /// painted offset.
   Offset _resolve() {
     if (!hasSize) return Offset.zero;
+    _resolveDue = false;
     _resolving = true;
     try {
       final target = _contentPosition();

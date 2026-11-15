@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 
 import '../util.dart';
 
@@ -256,6 +257,48 @@ void main() {
         expect(_flying(tester, '$i'), isFalse, reason: '$i');
       }
       expect(tester.binding.transientCallbackCount, 0);
+    });
+
+    testWidgets('items mounted above the fold fly unseen and report where '
+        'they would be painted', (tester) async {
+      final column = ScrollController();
+      addTearDown(column.dispose);
+      final list = GlobalKey<_ListState>();
+      final ids = [for (var i = 0; i < 40; i++) '$i'];
+      await tester.pumpWidget(
+        _app(
+          _List(
+            key: list,
+            items: ids,
+            layout: (context, items) => _builder(items, controller: column),
+          ),
+        ),
+      );
+      // Items 10 to 14 scroll above the viewport, into the cache extent.
+      column.jumpTo(600);
+      await tester.pump();
+      expect(find.byKey(_key('12'), skipOffstage: false), findsOneWidget);
+      expect(find.byKey(_key('12')), findsNothing);
+
+      // Neighbors swap, so every mounted item flies 40 at most.
+      list.currentState!.reorder([
+        for (var i = 0; i < 40; i += 2) ...['${i + 1}', '$i'],
+      ]);
+      await tester.pump();
+      await tester.pump(frame);
+      await tester.pump(const Duration(milliseconds: 50));
+      Offset offsetOf(String id) =>
+          (tester.renderObject(find.byKey(_key(id), skipOffstage: false))
+                  as PaintOffset)
+              .paintOffset;
+      expect(offsetOf('12').dy, inExclusiveRange(-40, 0));
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 40; i++) {
+        if (find.byKey(_key('$i'), skipOffstage: false).evaluate().isEmpty) {
+          continue;
+        }
+        expect(offsetOf('$i'), Offset.zero, reason: '$i');
+      }
     });
 
     testWidgets('an item partly visible at the reorder flies from its first '
