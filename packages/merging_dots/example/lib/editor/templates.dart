@@ -5,12 +5,49 @@ import 'package:merging_dots_example/editor/project.dart';
 /// Projects to start from.
 final List<Project> templates = [
   _project(
+    'Dots',
+    grid: DotSequence(
+      [
+        for (final letter in _letters)
+          DotKeyframe(letter, hold: const Duration(milliseconds: 700)),
+      ],
+      motion: const CupertinoMotion(
+        duration: Duration(milliseconds: 380),
+        bounce: 0.2,
+      ),
+      stagger: const DotStagger.directional(
+        duration: Duration(milliseconds: 260),
+        angle: 0.6,
+      ),
+    ),
+    gridStyle: const DotGridStyle.tiles(),
+  ),
+  _project(
+    'Icon morph',
+    grid: DotSequence(
+      [
+        for (final icon in [_heart, _bolt, _smiley, _plus, _spark])
+          DotKeyframe(icon, hold: const Duration(milliseconds: 900)),
+      ],
+      motion: const CupertinoMotion(
+        duration: Duration(milliseconds: 420),
+        bounce: 0.25,
+      ),
+      stagger: const DotStagger.radial(duration: Duration(milliseconds: 360)),
+    ),
+    gridStyle: const DotGridStyle.tiles(),
+  ),
+  _project('Heart', grid: DotSequence.single(_heart), gridStyle: _tiles),
+  _project('Bolt', grid: DotSequence.single(_bolt), gridStyle: _tiles),
+  _project('Arrow', grid: DotSequence.single(_arrow), gridStyle: _tiles),
+  _project('Smiley', grid: DotSequence.single(_smiley), gridStyle: _tiles),
+  _project(
     'Heart beat',
     grid: DotSequence(
       [
-        DotKeyframe(_heart, hold: const Duration(milliseconds: 260)),
+        DotKeyframe(_heartBeat, hold: const Duration(milliseconds: 260)),
         DotKeyframe(
-          _heart.map((_, _, v) => v * 5 / 9),
+          _heartBeat.map((_, _, v) => v * 5 / 9),
           hold: const Duration(milliseconds: 80),
         ),
       ],
@@ -110,7 +147,9 @@ final List<Project> templates = [
   ),
 ];
 
-final _heart = DotGrid.parse('''
+const _tiles = DotGridStyle.tiles();
+
+final _heartBeat = DotGrid.parse('''
   .........
   .##...##.
   ####.####
@@ -122,12 +161,106 @@ final _heart = DotGrid.parse('''
   ....#....
 ''');
 
+final _heart = DotGrid.parse('''
+  .##.##.
+  #######
+  #######
+  #######
+  .#####.
+  ..###..
+  ...#...
+''');
+
+final _bolt = DotGrid.parse('''
+  ...###.
+  ..###..
+  .###...
+  #######
+  ...###.
+  ..###..
+  .###...
+''');
+
+final _arrow = DotGrid.parse('''
+  ...#...
+  ....#..
+  .....#.
+  #######
+  .....#.
+  ....#..
+  ...#...
+''');
+
+final _smiley = DotGrid.parse('''
+  .#####.
+  #######
+  ##.#.##
+  #######
+  #.###.#
+  ##...##
+  .#####.
+''');
+
+final _plus = DotGrid.parse('''
+  ..###..
+  ..###..
+  #######
+  #######
+  #######
+  ..###..
+  ..###..
+''');
+
+final _spark = DotGrid.parse('''
+  ...#...
+  ...#...
+  ..###..
+  #######
+  ..###..
+  ...#...
+  ...#...
+''');
+
+final _letters = [
+  for (final letter in [
+    '''
+      ####.
+      #...#
+      #...#
+      #...#
+      ####.
+    ''',
+    '''
+      .###.
+      #...#
+      #...#
+      #...#
+      .###.
+    ''',
+    '''
+      #####
+      ..#..
+      ..#..
+      ..#..
+      ..#..
+    ''',
+    '''
+      .####
+      #....
+      .###.
+      ....#
+      ####.
+    ''',
+  ])
+    DotGrid.parse(letter),
+];
+
 Project _project(
   String name, {
   DotSequence<DotGrid>? grid,
   DotSequence<DotCloud>? cloud,
-  DotGridStyle gridStyle = const DotGridStyle(color: Color(0xFFF4F4F5)),
-  DotCloudStyle cloudStyle = const DotCloudStyle(color: Color(0xFFF4F4F5)),
+  DotGridStyle gridStyle = const DotGridStyle(),
+  DotCloudStyle cloudStyle = const DotCloudStyle(),
 }) {
   final blank = Project.blank(name: name);
   return Project(

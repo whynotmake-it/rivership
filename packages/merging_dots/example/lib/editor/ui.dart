@@ -1,62 +1,89 @@
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 
-/// The editor's dark palette.
-abstract final class EditorColors {
-  static const canvas = Color(0xFF0C0C0E);
-  static const surface = Color(0xFF161619);
-  static const raised = Color(0xFF1F1F23);
-  static const control = Color(0xFF2A2A2F);
-  static const border = Color(0xFF2C2C31);
-  static const text = Color(0xFFF4F4F5);
-  static const textSecondary = Color(0xFFA1A1AA);
-  static const textTertiary = Color(0xFF6B6B74);
-  static const accent = Color(0xFFB4FF39);
-  static const onAccent = Color(0xFF0C0C0E);
+/// Text in one of coil's type roles.
+class RoleText extends StatelessWidget {
+  const RoleText(
+    this.text, {
+    super.key,
+    this.step = const CoilTypeStep(13, 20),
+    this.weight = CoilWeight.normal,
+    this.muted = false,
+    this.maxLines,
+    this.align,
+  });
 
-  /// Colors offered for the dots.
-  static const swatches = [
-    Color(0xFFF4F4F5),
-    Color(0xFFB4FF39),
-    Color(0xFFFF5C39),
-    Color(0xFFFFC53D),
-    Color(0xFF3DD9FF),
-    Color(0xFF8A7CFF),
-    Color(0xFFFF6FD8),
-  ];
+  /// Body text.
+  const RoleText.body(String text, {Key? key, bool muted = false})
+    : this(text, key: key, muted: muted);
+
+  /// Captions and descriptions.
+  const RoleText.caption(String text, {Key? key, bool muted = true})
+    : this(text, key: key, step: const CoilTypeStep(12, 16), muted: muted);
+
+  /// Section titles.
+  const RoleText.title(String text, {Key? key})
+    : this(
+        text,
+        key: key,
+        step: const CoilTypeStep(14, 20),
+        weight: CoilWeight.semibold,
+      );
+
+  final String text;
+  final CoilTypeStep step;
+  final CoilWeight weight;
+  final bool muted;
+  final int? maxLines;
+  final TextAlign? align;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    return Text(
+      text,
+      maxLines: maxLines,
+      textAlign: align,
+      overflow: maxLines == null ? null : TextOverflow.ellipsis,
+      style: theme.typography.style(
+        step,
+        weight: weight,
+        color: muted ? theme.colors.mutedForeground : theme.colors.foreground,
+      ),
+    );
+  }
 }
 
-/// Text styles of the editor.
-abstract final class EditorText {
-  static const title = TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    color: EditorColors.text,
-    letterSpacing: -0.2,
-  );
-  static const label = TextStyle(
-    fontSize: 12,
-    color: EditorColors.textSecondary,
-  );
-  static const section = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: EditorColors.textTertiary,
-    letterSpacing: 0.8,
-  );
-  static const value = TextStyle(
-    fontSize: 12,
-    color: EditorColors.text,
-    fontFeatures: [FontFeature.tabularFigures()],
-  );
-  static const code = TextStyle(
-    fontSize: 12,
-    height: 1.45,
-    color: EditorColors.text,
-    fontFamily: 'JetBrains Mono',
-  );
+/// A raised panel on coil's surface ladder.
+class Panel extends StatelessWidget {
+  const Panel({required this.child, super.key, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).container);
+    final colors = CoilTheme.of(context).colors;
+    return CoilSurface(
+      offset: CoilSurface.popoverOffset,
+      shadowLevel: 1,
+      borderRadius: radius,
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: ShapeDecoration(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: radius,
+            side: BorderSide(color: colors.border),
+          ),
+        ),
+        child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
+      ),
+    );
+  }
 }
 
-/// A titled group of controls.
+/// A titled group of controls in a panel.
 class Section extends StatelessWidget {
   const Section({required this.title, required this.children, super.key});
 
@@ -70,26 +97,29 @@ class Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title.toUpperCase(), style: EditorText.section),
-          const SizedBox(height: 10),
-          ...children,
+          RoleText.caption(title),
+          const SizedBox(height: 8),
+          for (final (i, child) in children.indexed) ...[
+            if (i > 0) const SizedBox(height: 8),
+            child,
+          ],
         ],
       ),
     );
   }
 }
 
-/// A slider with a label and its value.
-class LabeledSlider extends StatelessWidget {
-  const LabeledSlider({
+/// A slider row with a label and a formatted value.
+class PropertySlider extends StatelessWidget {
+  const PropertySlider({
     required this.label,
     required this.value,
     required this.min,
     required this.max,
     required this.onChanged,
+    super.key,
     this.format,
     this.divisions,
-    super.key,
   });
 
   final String label;
@@ -102,106 +132,22 @@ class LabeledSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(label, style: EditorText.label)),
-              Text(
-                format?.call(value) ?? value.toStringAsFixed(2),
-                style: EditorText.value,
-              ),
-            ],
-          ),
-          SizedBox(
-            height: 30,
-            child: CupertinoSlider(
-              value: value.clamp(min, max),
-              min: min,
-              max: max,
-              divisions: divisions,
-              activeColor: EditorColors.accent,
-              thumbColor: EditorColors.text,
-              onChanged: onChanged,
-            ),
-          ),
-        ],
-      ),
+    return CoilSlider(
+      value: value.clamp(min, max),
+      min: min,
+      max: max,
+      divisions: divisions,
+      label: Text(label),
+      valueBuilder: (context, value) =>
+          Text(format?.call(value) ?? value.toStringAsFixed(2)),
+      onChanged: onChanged,
     );
   }
 }
 
-/// A compact button with an icon and an optional label.
-class ToolButton extends StatelessWidget {
-  const ToolButton({
-    required this.onPressed,
-    this.icon,
-    this.label,
-    this.selected = false,
-    this.tooltip,
-    this.prominent = false,
-    super.key,
-  });
-
-  final VoidCallback? onPressed;
-  final IconData? icon;
-  final String? label;
-  final bool selected;
-  final bool prominent;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final highlighted = selected || prominent;
-    final foreground = onPressed == null
-        ? EditorColors.textTertiary
-        : highlighted
-        ? EditorColors.onAccent
-        : EditorColors.text;
-    final button = GestureDetector(
-      onTap: onPressed,
-      child: MouseRegion(
-        cursor: onPressed == null
-            ? MouseCursor.defer
-            : SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 32,
-          padding: EdgeInsets.symmetric(horizontal: label == null ? 8 : 12),
-          decoration: BoxDecoration(
-            color: highlighted ? EditorColors.accent : EditorColors.control,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) Icon(icon, size: 16, color: foreground),
-              if (icon != null && label != null) const SizedBox(width: 6),
-              if (label != null)
-                Text(
-                  label!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: foreground,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (tooltip == null) return button;
-    return Semantics(label: tooltip, button: true, child: button);
-  }
-}
-
-/// A row of mutually exclusive options.
-class Choice<T> extends StatelessWidget {
-  const Choice({
+/// One choice out of a few, as coil tabs.
+class Segmented<T extends Object> extends StatelessWidget {
+  const Segmented({
     required this.value,
     required this.options,
     required this.onChanged,
@@ -214,87 +160,71 @@ class Choice<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: CoilTabs<T>(
+        value: value,
+        size: CoilSize.compact,
+        tabs: [
           for (final MapEntry(:key, value: label) in options.entries)
-            ToolButton(
-              label: label,
-              selected: key == value,
-              onPressed: () => onChanged(key),
-            ),
+            CoilTab(value: key, label: Text(label)),
         ],
+        onChanged: onChanged,
       ),
     );
   }
 }
 
-/// A number with buttons to step it.
-class Stepper extends StatelessWidget {
-  const Stepper({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.min = 1,
-    this.max = 64,
-    super.key,
-  });
+/// Colors offered for the dots. Null follows the theme's ink.
+const swatches = <Color?>[
+  null,
+  Color(0xFFE5533D),
+  Color(0xFFF5A524),
+  Color(0xFF3AAA6B),
+  Color(0xFF3D8BE5),
+  Color(0xFF8A6CF0),
+  Color(0xFFE85DAF),
+];
 
-  final String label;
-  final int value;
-  final int min;
-  final int max;
-  final ValueChanged<int> onChanged;
+/// Round color buttons; the first is the theme's ink.
+class SwatchPicker extends StatelessWidget {
+  const SwatchPicker({required this.value, required this.onChanged, super.key});
+
+  final Color? value;
+  final ValueChanged<Color?> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: EditorText.label)),
-          ToolButton(
-            icon: CupertinoIcons.minus,
-            onPressed: value > min ? () => onChanged(value - 1) : null,
-          ),
-          SizedBox(
-            width: 36,
-            child: Text(
-              '$value',
-              textAlign: TextAlign.center,
-              style: EditorText.value,
+    final colors = CoilTheme.of(context).colors;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final swatch in swatches)
+          Semantics(
+            button: true,
+            selected: swatch == value,
+            label: swatch == null ? 'Ink' : 'Color',
+            child: GestureDetector(
+              onTap: () => onChanged(swatch),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: swatch ?? colors.foreground,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: swatch == value ? colors.brand : colors.border,
+                      width: swatch == value ? 2 : 1,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          ToolButton(
-            icon: CupertinoIcons.plus,
-            onPressed: value < max ? () => onChanged(value + 1) : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A rounded panel.
-class Panel extends StatelessWidget {
-  const Panel({required this.child, this.padding, super.key});
-
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: EditorColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EditorColors.border),
-      ),
-      child: child,
+      ],
     );
   }
 }

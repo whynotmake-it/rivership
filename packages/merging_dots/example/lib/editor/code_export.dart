@@ -184,11 +184,20 @@ abstract final class CodeExport {
     };
   }
 
-  static String _gridStyle(DotGridStyle style) =>
-      'DotGridStyle('
-      '${style.color == null ? '' : 'color: ${_color(style.color!)}, '}'
-      'dotSize: ${_number(style.dotSize)}, '
-      'blend: ${_number(style.blend)})';
+  static String _gridStyle(DotGridStyle style) {
+    final color = style.color == null ? '' : 'color: ${_color(style.color!)}, ';
+    return switch (style.shape) {
+      DotGridShape.goo =>
+        'DotGridStyle($color'
+            'dotSize: ${_number(style.dotSize)}, '
+            'blend: ${_number(style.blend)})',
+      DotGridShape.tiles =>
+        'DotGridStyle.tiles($color'
+            'dotSize: ${_number(style.dotSize)}, '
+            'cornerRadius: ${_number(style.cornerRadius)}, '
+            'innerRadius: ${_number(style.innerRadius)})',
+    };
+  }
 
   static String _cloudStyle(DotCloudStyle style) =>
       'DotCloudStyle('

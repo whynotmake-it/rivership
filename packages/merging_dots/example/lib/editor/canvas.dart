@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:merging_dots/merging_dots.dart';
 import 'package:merging_dots_example/editor/editor_controller.dart';
 import 'package:merging_dots_example/editor/project.dart';
-import 'package:merging_dots_example/editor/ui.dart';
 
 /// The editing stage: the edited frame, or the playing animation.
 class EditorCanvas extends StatelessWidget {
@@ -17,12 +17,16 @@ class EditorCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: controller,
-      builder: (context, _) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: switch (controller.project.mode) {
-          DotMode.grid => _GridCanvas(controller: controller),
-          DotMode.cloud => _CloudCanvas(controller: controller),
-        },
+      builder: (context, _) => IconTheme.merge(
+        // Dots without a color of their own take the theme's ink.
+        data: IconThemeData(color: CoilTheme.of(context).colors.foreground),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: switch (controller.project.mode) {
+            DotMode.grid => _GridCanvas(controller: controller),
+            DotMode.cloud => _CloudCanvas(controller: controller),
+          },
+        ),
       ),
     );
   }
@@ -66,12 +70,7 @@ class _GridCanvasState extends State<_GridCanvas> {
     final cell = _cellAt(globalPosition);
     if (cell == null || controller.playing) return;
     final (column, row) = cell;
-    final current = controller.currentGrid.valueAt(column, row);
-    // Starting on a cell that already has the brush erases instead.
-    _strokeValue =
-        (current - controller.brush).abs() < 1e-3 && controller.brush > 0
-        ? 0
-        : controller.brush;
+    _strokeValue = controller.strokeValue(column, row);
     controller
       ..checkpoint()
       ..paintCell(column, row, _strokeValue!);
@@ -89,6 +88,8 @@ class _GridCanvasState extends State<_GridCanvas> {
     final project = controller.project;
     final grid = controller.currentGrid;
     final style = project.gridStyle;
+    final colors = CoilTheme.of(context).colors;
+    final ink = style.color ?? colors.foreground;
     final previous = controller.previousFrame;
     final playing = controller.playing;
 
@@ -114,7 +115,8 @@ class _GridCanvasState extends State<_GridCanvas> {
                   painter: _GridGuidesPainter(
                     columns: grid.columns,
                     rows: grid.rows,
-                    dotSize: style.dotSize,
+                    line: colors.foreground.withValues(alpha: 0.16),
+                    highlight: colors.brand,
                     hover: _hover,
                     playing: playing,
                   ),
@@ -123,11 +125,7 @@ class _GridCanvasState extends State<_GridCanvas> {
                   IgnorePointer(
                     child: DotGridView(
                       grid: project.grid.frames[previous].state,
-                      style: style.copyWith(
-                        color: (style.color ?? EditorColors.text).withValues(
-                          alpha: 0.16,
-                        ),
-                      ),
+                      style: style.copyWith(color: ink.withValues(alpha: 0.12)),
                     ),
                   ),
                 if (playing)
@@ -157,31 +155,52 @@ class _GridGuidesPainter extends CustomPainter {
   _GridGuidesPainter({
     required this.columns,
     required this.rows,
-    required this.dotSize,
+    required this.line,
+    required this.highlight,
     required this.hover,
     required this.playing,
   }) : super(repaint: hover);
 
   final int columns;
   final int rows;
-  final double dotSize;
+  final Color line;
+  final Color highlight;
   final ValueNotifier<(int, int)?> hover;
   final bool playing;
 
   @override
   void paint(Canvas canvas, Size size) {
     final spacing = math.min(size.width / columns, size.height / rows);
-    final origin = Offset(
-      (size.width - spacing * columns) / 2 + spacing / 2,
-      (size.height - spacing * rows) / 2 + spacing / 2,
+    final topLeft = Offset(
+      (size.width - spacing * columns) / 2,
+      (size.height - spacing * rows) / 2,
     );
-    final radius = spacing * dotSize / 2;
-    final paint = Paint()..color = EditorColors.control;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.75
+      ..color = line;
+    // Hairline cells, each with its inscribed circle.
+    for (var column = 0; column <= columns; column++) {
+      final x = topLeft.dx + column * spacing;
+      canvas.drawLine(
+        Offset(x, topLeft.dy),
+        Offset(x, topLeft.dy + rows * spacing),
+        paint,
+      );
+    }
+    for (var row = 0; row <= rows; row++) {
+      final y = topLeft.dy + row * spacing;
+      canvas.drawLine(
+        Offset(topLeft.dx, y),
+        Offset(topLeft.dx + columns * spacing, y),
+        paint,
+      );
+    }
     for (var row = 0; row < rows; row++) {
       for (var column = 0; column < columns; column++) {
         canvas.drawCircle(
-          origin + Offset(column * spacing, row * spacing),
-          math.max(1.5, radius * 0.18),
+          topLeft + Offset((column + 0.5) * spacing, (row + 0.5) * spacing),
+          spacing / 2,
           paint,
         );
       }
@@ -189,12 +208,12 @@ class _GridGuidesPainter extends CustomPainter {
     final cell = hover.value;
     if (cell != null && !playing) {
       canvas.drawCircle(
-        origin + Offset(cell.$1 * spacing, cell.$2 * spacing),
-        radius,
+        topLeft + Offset((cell.$1 + 0.5) * spacing, (cell.$2 + 0.5) * spacing),
+        spacing / 2 - 1,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..color = EditorColors.accent,
+          ..color = highlight,
       );
     }
   }
@@ -203,7 +222,8 @@ class _GridGuidesPainter extends CustomPainter {
   bool shouldRepaint(_GridGuidesPainter old) =>
       old.columns != columns ||
       old.rows != rows ||
-      old.dotSize != dotSize ||
+      old.line != line ||
+      old.highlight != highlight ||
       old.playing != playing;
 }
 
@@ -294,6 +314,8 @@ class _CloudCanvasState extends State<_CloudCanvas> {
     final project = controller.project;
     final cloud = controller.currentCloud;
     final style = project.cloudStyle;
+    final colors = CoilTheme.of(context).colors;
+    final ink = style.color ?? colors.foreground;
     final previous = controller.previousFrame;
     final playing = controller.playing;
 
@@ -311,19 +333,17 @@ class _CloudCanvasState extends State<_CloudCanvas> {
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
-                  border: Border.all(color: EditorColors.border),
-                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                  borderRadius: BorderRadius.circular(
+                    CoilTheme.radiiOf(context).container,
+                  ),
                 ),
               ),
               if (!playing && controller.onionSkin && previous != null)
                 IgnorePointer(
                   child: DotCloudView(
                     cloud: project.cloud.frames[previous].state,
-                    style: style.copyWith(
-                      color: (style.color ?? EditorColors.text).withValues(
-                        alpha: 0.16,
-                      ),
-                    ),
+                    style: style.copyWith(color: ink.withValues(alpha: 0.12)),
                   ),
                 ),
               if (playing)
@@ -346,6 +366,9 @@ class _CloudCanvasState extends State<_CloudCanvas> {
                     painter: _CloudHandlesPainter(
                       cloud: cloud,
                       selected: controller.selectedDot,
+                      outline: colors.mutedForeground,
+                      highlight: colors.brand,
+                      center: colors.background,
                     ),
                   ),
                 ),
@@ -358,10 +381,19 @@ class _CloudCanvasState extends State<_CloudCanvas> {
 }
 
 class _CloudHandlesPainter extends CustomPainter {
-  _CloudHandlesPainter({required this.cloud, required this.selected});
+  _CloudHandlesPainter({
+    required this.cloud,
+    required this.selected,
+    required this.outline,
+    required this.highlight,
+    required this.center,
+  });
 
   final DotCloud cloud;
   final int? selected;
+  final Color outline;
+  final Color highlight;
+  final Color center;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -373,28 +405,32 @@ class _CloudHandlesPainter extends CustomPainter {
       (size.width - cloud.size.width * scale) / 2,
       (size.height - cloud.size.height * scale) / 2,
     );
-    final outline = Paint()
+    final outlinePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = EditorColors.textTertiary;
-    final highlight = Paint()
+      ..color = outline;
+    final highlightPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = EditorColors.accent;
+      ..color = highlight;
+    final centerPaint = Paint()..color = center;
     for (var i = 0; i < cloud.dots.length; i++) {
       final dot = cloud.dots[i];
-      final center = origin + dot.center * scale;
+      final position = origin + dot.center * scale;
       final radius = math.max(dot.radius * scale, 3).toDouble();
       if (i == selected) {
-        canvas.drawCircle(center, radius + 4, highlight);
+        canvas.drawCircle(position, radius + 4, highlightPaint);
       } else if (dot.radius * scale < 4) {
-        canvas.drawCircle(center, radius, outline);
+        canvas.drawCircle(position, radius, outlinePaint);
       }
-      canvas.drawCircle(center, 1.5, Paint()..color = EditorColors.onAccent);
+      canvas.drawCircle(position, 1.5, centerPaint);
     }
   }
 
   @override
   bool shouldRepaint(_CloudHandlesPainter old) =>
-      old.cloud != cloud || old.selected != selected;
+      old.cloud != cloud ||
+      old.selected != selected ||
+      old.outline != outline ||
+      old.highlight != highlight;
 }
