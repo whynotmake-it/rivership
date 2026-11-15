@@ -20,7 +20,6 @@ class Toolbar extends StatelessWidget {
       builder: (context, _) {
         final project = controller.project;
         final grid = project.mode == DotMode.grid;
-        final current = controller.currentGrid;
         return Panel(
           padding: const EdgeInsets.all(4),
           child: CoilTooltipGroup(
@@ -100,7 +99,8 @@ class Toolbar extends StatelessWidget {
                     SizedBox(
                       width: 48,
                       child: RoleText(
-                        '${current.columns}×${current.rows}',
+                        '${controller.currentGrid.columns}×'
+                        '${controller.currentGrid.rows}',
                         align: TextAlign.center,
                         muted: true,
                       ),
