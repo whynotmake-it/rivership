@@ -64,8 +64,10 @@ void main() {
         continue;
       }
       vec2 offset = (t.gb * 255.0 - 128.0) / 127.0 * uOffset;
-      float distance = length(p - (uOrigin + c * uSpacing + offset));
-      u = smoothUnionAdd(u, distance - r, r, distance, window, uBlend);
+      vec2 delta = p - (uOrigin + c * uSpacing + offset);
+      float distance = length(delta);
+      vec2 direction = distance > 0.0 ? delta / distance : vec2(0.0);
+      u = smoothUnionAdd(u, distance - r, direction, r, distance, window, uBlend);
     }
   }
 
