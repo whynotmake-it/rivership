@@ -1,0 +1,32 @@
+name: merging_dots_example
+description: "An editor for merging dots: draw grids and clouds, animate them, and export them for your app."
+
+# Prevent accidental publishing to pub.dev.
+publish_to: 'none'
+
+version: 1.0.0+1
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+  flutter: ^3.38.0
+
+dependencies:
+  cupertino_icons: ^1.0.8
+  flutter:
+    sdk: flutter
+  merging_dots:
+    path: ../
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: false
+
+  fonts:
+    - family: JetBrains Mono
+      fonts:
+        - asset: lib/assets/JetBrainsMono-VariableFont_wght.ttf
