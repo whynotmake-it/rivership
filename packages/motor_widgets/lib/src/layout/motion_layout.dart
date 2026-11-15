@@ -555,15 +555,19 @@ class _ItemBox extends SingleChildRenderObjectWidget {
 
   @override
   void updateRenderObject(BuildContext context, _RenderItem renderObject) {
+    // A child of a list without keys is reused for another item, so it may
+    // get another id: it then flies from where that item was.
+    if (renderObject.id != id) {
+      renderObject.reassign(id);
+    } else {
+      renderObject.rebuilt();
+    }
     renderObject
       ..group = group
-      ..id = id
       ..enabled = enabled
       ..landing = landing
       ..motion = motion
-      ..scrollables = scrollables
-      // Rebuilt: the widgets around it may have put it somewhere else.
-      ..rebuilt();
+      ..scrollables = scrollables;
   }
 }
 
@@ -636,7 +640,28 @@ class _RenderItem extends RenderProxyBox
     super.detach();
   }
 
-  /// Called when the item is rebuilt.
+  /// Gives this item [newId], which another item may have had: it flies
+  /// from where that item was painted.
+  void reassign(Object newId) {
+    if (!attached) {
+      id = newId;
+      return;
+    }
+    group._release(id, this);
+    id = newId;
+    final record = group._recordFor(newId);
+    final previous = record.owner;
+    group._checkDuplicates(newId, this);
+    record.owner = this;
+    if (previous != null && !identical(previous, this)) {
+      _arm(previous._lastPainted());
+    } else {
+      _origin = null;
+    }
+  }
+
+  /// Called when the item is rebuilt: the widgets around it may have put it
+  /// somewhere else.
   void rebuilt() {
     if (!attached) return;
     _arm(_lastPainted());

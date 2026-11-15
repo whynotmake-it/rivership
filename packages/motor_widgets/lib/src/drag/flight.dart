@@ -16,7 +16,7 @@ abstract interface class LandingSite {
   /// Whether a flight that has reached this site waits there instead of
   /// ending, because the item it stands in for hasn't arrived yet.
   ///
-  /// A `MotionDropZone`'s gap holds a landing while its insert is pending:
+  /// A `MotionReorderable`'s gap holds a landing while its insert is pending:
   /// see [LandingHold].
   bool get holdsLanding;
 
@@ -61,7 +61,7 @@ abstract interface class LandingSite {
 /// over them in the overlay, and keeps waiting after it arrives, until a
 /// site that doesn't hold takes the id over.
 ///
-/// A `MotionDropZone`'s gap holds the landing of a drop whose insert is
+/// A `MotionReorderable`'s gap holds the landing of a drop whose insert is
 /// pending, and gives way to the item once it arrives.
 class LandingHold extends InheritedWidget {
   /// Makes the items below hold landings while [holds].
@@ -77,28 +77,6 @@ class LandingHold extends InheritedWidget {
 
   @override
   bool updateShouldNotify(LandingHold oldWidget) => holds != oldWidget.holds;
-}
-
-/// The item of a `MotionDropZone` slot, which a [MotionDraggable] inside it
-/// drags unless it has data and an id of its own.
-class DraggableSlot extends InheritedWidget {
-  /// Provides [item] and its [id] to the draggables below.
-  const DraggableSlot({
-    required this.item,
-    required this.id,
-    required super.child,
-    super.key,
-  });
-
-  /// The slot's item.
-  final Object item;
-
-  /// The item's id.
-  final Object id;
-
-  @override
-  bool updateShouldNotify(DraggableSlot oldWidget) =>
-      item != oldWidget.item || id != oldWidget.id;
 }
 
 /// The box of a landing scope: an accepted drop over it lands in its
@@ -297,7 +275,7 @@ class DragFlight {
   /// The registry the flight looks up its destination in.
   ///
   /// While dragging, the scope it was dragged from. An accepted drop lands
-  /// in the scope the target names with [landIn], as a `MotionDropZone`
+  /// in the scope the target names with [landIn], as a `MotionReorderable`
   /// does, else in the innermost scope under the pointer, else where it
   /// came from. A rejected drop lands where it came from.
   LandingRegistry registry;
@@ -489,6 +467,7 @@ class DragFlight {
       velocity: phase == MotionDragPhase.dragging
           ? controller.value(_velocity)
           : controller.velocity(MotionDraggableTrack.offset),
+      size: controller.value(MotionDraggableTrack.size),
       values: controller.value,
     );
   }
@@ -582,11 +561,17 @@ class DragFlight {
     _applyTransitions();
   }
 
+  /// Where an accepted drop lands and waits, until [relocate], while the
+  /// item it stands for isn't there yet: a `MotionReorderable`'s gap while
+  /// its move is pending.
+  LandingSite? hold;
+
   /// Looks for where to land again after this frame, because the site it
   /// lands on is going away, such as a drop zone's gap whose item arrives.
   ///
   /// A flight that rests on a site doesn't rebuild, so it wouldn't notice.
   void relocate() {
+    hold = null;
     SchedulerBinding.instance
       ..addPostFrameCallback((_) {
         final site = _site;
@@ -596,7 +581,7 @@ class DragFlight {
   }
 
   /// Turns an accepted drop into a rejected one, because the target couldn't
-  /// take the item after all, for example when a `MotionDropZone`'s insert
+  /// take the item after all, for example when a `MotionReorderable`'s insert
   /// failed. The flight then lands back on the item where it still is, or
   /// plays the rejected exit.
   void reject() {
@@ -647,6 +632,9 @@ class DragFlight {
   /// none.
   ({LandingSite site, Rect rect})? _findSite() {
     final controller = _controller!;
+    if (hold case final site? when accepted) {
+      if (site.globalRect case final rect?) return (site: site, rect: rect);
+    }
     final candidates = [
       for (final site in registry.sitesFor(id))
         if (site.globalRect case final rect?) (site: site, rect: rect),
@@ -746,7 +734,7 @@ class DragFlight {
   /// on the item flies in the tree: clipped by its scrollables, stacked like
   /// itself, and redirected by a reorder. The receiver takes the position;
   /// the destination takes the scale, rotation and opacity, each with its
-  /// velocity. Only [MotionDraggable.feedbackBuilder]'s decoration ends.
+  /// velocity. Only [MotionDraggable.feedback]'s decoration ends.
   ///
   /// A list doesn't paint an item whose slot is out of view, so while the
   /// slot is outside the visible area, the flight stays in the overlay,
@@ -787,6 +775,13 @@ class DragFlight {
     final size = controller.value(MotionDraggableTrack.size);
     if ((size.width - rect.width).abs() > 0.5 ||
         (size.height - rect.height).abs() > 0.5) {
+      return;
+    }
+    // A feedback of its own hands off once it has turned into what it
+    // lands on, so the item in the tree looks the same.
+    if (widget.feedback != null &&
+        phase == MotionDragPhase.accepted &&
+        controller.value(MotionDraggableTrack.morph) < 0.99) {
       return;
     }
     final offset = controller.value(MotionDraggableTrack.offset);
@@ -919,6 +914,14 @@ class DragFlight {
           },
       for (final track in MotionDraggableTrack.visual)
         if (!mentioned.contains(track)) track.toRest(_motionFor(track)),
+      // It turns into what it lands on after an accepted drop, and back
+      // into itself otherwise.
+      MotionDraggableTrack.morph([
+        TrackStep.to(
+          phase == MotionDragPhase.accepted && _site != null ? 1.0 : 0.0,
+          motion: _motionFor(MotionDraggableTrack.morph),
+        ),
+      ]),
     ];
     controller.animate(resolved);
   }
@@ -1080,7 +1083,7 @@ class _FlightViewState extends State<_FlightView>
     final dragging = flight.phase == MotionDragPhase.dragging;
     final grabbable = !dragging && !flight._fadingOut && flight._site != null;
 
-    final feedback = config.feedback ?? config.child;
+    final feedback = config.child;
     final site = flight._site;
     final clip = flight._clip();
     final localClip = clip == null
@@ -1161,13 +1164,7 @@ class _FlightViewState extends State<_FlightView>
               angle: value(MotionDraggableTrack.rotation) * 2 * math.pi,
               child: Transform.scale(
                 scale: value(MotionDraggableTrack.scale),
-                child:
-                    config.feedbackBuilder?.call(
-                      context,
-                      details,
-                      feedback,
-                    ) ??
-                    feedback,
+                child: config.feedback?.call(context, details) ?? feedback,
               ),
             ),
           ),

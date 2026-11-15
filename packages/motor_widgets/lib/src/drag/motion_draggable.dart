@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -40,6 +41,20 @@ enum MotionDragHandoff {
 
   /// Never: the whole landing flies in the overlay, above everything.
   never,
+}
+
+/// When a [MotionDraggable]'s drag starts.
+enum MotionDragStart {
+  /// As soon as the pointer moves, like [Draggable].
+  immediate,
+
+  /// After a long press, like [LongPressDraggable], so that a drag doesn't
+  /// take the pointer from a scroll.
+  longPress,
+
+  /// After a long press on touch platforms, where content scrolls under
+  /// the finger, and at once elsewhere.
+  platform,
 }
 
 /// The tracks of a [MotionDraggable]'s feedback.
@@ -114,6 +129,20 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
     rest: 1,
   );
 
+  /// How far the feedback has turned into its destination, from 0 to 1.
+  ///
+  /// The draggable owns this track: it springs to 1 after a drop that has
+  /// a destination, and back to 0 when the drop has none or is rejected,
+  /// on the motion that [MotionDraggable.motions] sets. A
+  /// [MotionDraggable.feedback] reads it with [MotionDragDetails.morph] to
+  /// turn into the destination, such as a button into a card. The landing
+  /// stays in the overlay until it reaches 1.
+  static final morph = MotionDraggableTrack<double>._(
+    MotionConverter.single,
+    debugLabel: 'MotionDraggable.morph',
+    rest: 0,
+  );
+
   /// The tracks that [MotionDraggable.transitions] may animate.
   static final List<MotionDraggableTrack<double>> visual = [
     scale,
@@ -167,7 +196,7 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
 }
 
 /// The live state of a [MotionDraggable]'s feedback, passed to
-/// [MotionDraggable.feedbackBuilder] and [MotionDraggable.transitions].
+/// [MotionDraggable.feedback] and [MotionDraggable.transitions].
 @immutable
 final class MotionDragDetails {
   /// Creates a snapshot of a drag.
@@ -175,8 +204,17 @@ final class MotionDragDetails {
     required this.phase,
     required this.destination,
     required this.velocity,
+    required this.size,
     required TrackValueReader values,
   }) : _values = values;
+
+  /// The feedback's animated size: the child's measured size while
+  /// dragging, then the destination's.
+  final Size size;
+
+  /// How far the feedback has turned into its destination, from 0 to 1.
+  /// See [MotionDraggableTrack.morph].
+  double get morph => _values(MotionDraggableTrack.morph);
 
   /// What happened to the drag.
   final MotionDragPhase phase;
@@ -208,17 +246,14 @@ final class MotionDragDetails {
   T value<T extends Object>(Track<T> track) => _values(track);
 }
 
-/// Builds a [MotionDraggable]'s feedback from the live drag.
-///
-/// The [feedback] is already laid out at the animated size, and it already
-/// has the [MotionDraggableTrack.scale], [MotionDraggableTrack.rotation] and
-/// [MotionDraggableTrack.opacity] applied around it.
+/// Builds a [MotionDraggable]'s feedback from the live [drag].
 typedef MotionDraggableFeedbackBuilder =
-    Widget Function(
-      BuildContext context,
-      MotionDragDetails drag,
-      Widget feedback,
-    );
+    Widget Function(BuildContext context, MotionDragDetails drag);
+
+/// Builds what a [MotionDraggable] shows in its place while it is dragged,
+/// from its measured [size].
+typedef MotionDraggableChildWhenDragging =
+    Widget Function(BuildContext context, Size size);
 
 /// The animations a [MotionDraggable]'s feedback plays when its drag
 /// changes, see [MotionDraggable.transitions].
@@ -263,22 +298,20 @@ typedef MotionDraggableTransitions =
 /// stacked like itself, and redirected when its layout moves it. It
 /// continues the [MotionDraggableTrack.scale],
 /// [MotionDraggableTrack.rotation] and [MotionDraggableTrack.opacity] from
-/// where they were, back to rest. [feedbackBuilder] stops applying, and the
+/// where they were, back to rest. [feedback] stops applying, and the
 /// position uses the item's motion.
 ///
 /// A list doesn't paint an item whose slot is out of view. While the
 /// destination's slot is scrolled out of view, the feedback stays in the
 /// overlay but is clipped to the destination's visible area, as the list
 /// would clip it.
-///
-/// Inside a `MotionDropZone`, [data] and [id] default to the item of the
-/// slot it is in.
+
 ///
 /// The feedback is laid out at the child's measured size. A [feedback] that
 /// wants its own size loosens those constraints, for example with [Align].
 ///
 /// [transitions] animates the feedback's [MotionDraggableTrack]s in each
-/// [MotionDragPhase], and [feedbackBuilder] builds on the live
+/// [MotionDragPhase], and [feedback] builds on the live
 /// [MotionDragDetails], such as the drag's velocity:
 ///
 /// ```dart
@@ -292,9 +325,9 @@ typedef MotionDraggableTransitions =
 ///     ],
 ///     _ => const [],
 ///   },
-///   feedbackBuilder: (context, drag, feedback) => Transform.rotate(
+///   feedback: (context, drag) => Transform.rotate(
 ///     angle: (drag.velocity.dx / 3000).clamp(-0.12, 0.12),
-///     child: feedback,
+///     child: TaskCard(task),
 ///   ),
 ///   child: TaskCard(task),
 /// )
@@ -302,7 +335,7 @@ typedef MotionDraggableTransitions =
 ///
 /// See also:
 ///
-/// * [MotionLongPressDraggable], which starts the drag after a long press.
+/// * [MotionDragHandle], which starts the drag from a part of the child.
 /// * [Draggable] and [DragTarget].
 class MotionDraggable<T extends Object> extends StatefulWidget {
   /// Creates a widget that can be dragged to a [DragTarget], and whose
@@ -313,8 +346,9 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
     required this.child,
     this.data,
     this.id,
+    this.start = MotionDragStart.immediate,
+    this.handleOnly = false,
     this.feedback,
-    this.feedbackBuilder,
     this.childWhenDragging,
     this.motion = const CupertinoMotion.smooth(),
     this.motions,
@@ -345,15 +379,12 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
        );
 
   /// The data that will be dropped by this draggable.
-  ///
-  /// Inside a `MotionDropZone`, defaults to the item of the slot.
   final T? data;
 
   /// The identity of the item: the feedback lands on the
   /// `MotionLayoutItem` with this id, compared with `==` like [Hero.tag].
   ///
-  /// Inside a `MotionDropZone`, defaults to the slot's id. Elsewhere it
-  /// defaults to [data], and when both are null, the feedback lands back on
+  /// Defaults to [data]. When both are null, the feedback lands back on
   /// this draggable.
   ///
   /// Within one [Overlay], only one landing site should have a given id at
@@ -368,21 +399,31 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
-  /// The widget to show instead of [child] while this widget is dragged.
+  /// When the drag starts.
   ///
-  /// Defaults to [child], hidden but keeping its place in the layout.
-  final Widget? childWhenDragging;
+  /// Defaults to [MotionDragStart.immediate], like [Draggable].
+  final MotionDragStart start;
 
-  /// The widget that flies under the pointer and lands. Defaults to [child].
+  /// Whether only a pointer that goes down on a [MotionDragHandle] inside
+  /// [child] starts the drag. The whole draggable flies either way.
+  final bool handleOnly;
+
+  /// Builds what this widget shows in its place while it is dragged, from
+  /// [child]'s measured size.
   ///
-  /// It gets tight constraints at the animated size: the child's measured
-  /// size while dragging, then the destination's. Wrap it in an [Align] to
-  /// give it its own size.
-  final Widget? feedback;
+  /// `(context, size) => const SizedBox.shrink()` takes it out of the
+  /// layout, so a gap can open in its place. Defaults to [child], hidden
+  /// but keeping its room, so nothing around it moves.
+  final MotionDraggableChildWhenDragging? childWhenDragging;
 
-  /// Wraps the [feedback] using the live drag, for example to tilt it with
-  /// the velocity.
-  final MotionDraggableFeedbackBuilder? feedbackBuilder;
+  /// Builds the widget that flies under the pointer and lands, from the
+  /// live drag. Defaults to [child].
+  ///
+  /// It gets tight constraints at [MotionDragDetails.size]: the child's
+  /// measured size while dragging, then the destination's. Wrap it in an
+  /// [Align] to give it its own size. To turn into a destination that
+  /// looks different, read [MotionDragDetails.morph].
+  final MotionDraggableFeedbackBuilder? feedback;
 
   /// The motion the feedback lands with, and the motion of every track that
   /// [motions] has no entry for.
@@ -401,7 +442,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   ///
   /// It may animate [MotionDraggableTrack.scale],
   /// [MotionDraggableTrack.rotation] and [MotionDraggableTrack.opacity], and
-  /// tracks of your own that [feedbackBuilder] reads with
+  /// tracks of your own that [feedback] reads with
   /// [MotionDragDetails.value]. Each redirect keeps the track's velocity. A
   /// step on one of the draggable's tracks without a motion uses [motions]
   /// or [motion]; your own tracks use their own motion. The draggable's
@@ -504,52 +545,6 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   State<MotionDraggable<T>> createState() => _MotionDraggableState<T>();
 }
 
-/// A [MotionDraggable] that starts its drag after a long press, like
-/// [LongPressDraggable].
-class MotionLongPressDraggable<T extends Object> extends MotionDraggable<T> {
-  /// Creates a widget that can be dragged after a long press.
-  const MotionLongPressDraggable({
-    required super.child,
-    super.data,
-    super.id,
-    super.feedback,
-    super.feedbackBuilder,
-    super.childWhenDragging,
-    super.motion,
-    super.motions,
-    super.transitions,
-    super.onLanded,
-    super.handoff,
-    super.axis,
-    super.feedbackOffset,
-    super.dragAnchorStrategy,
-    super.ignoringFeedbackSemantics,
-    super.ignoringFeedbackPointer,
-    super.maxSimultaneousDrags,
-    super.onDragStarted,
-    super.onDragUpdate,
-    super.onDraggableCanceled,
-    super.onDragCompleted,
-    super.onDragEnd,
-    super.rootOverlay,
-    super.hitTestBehavior,
-    super.allowedButtonsFilter,
-    super.debugLabel,
-    super.tickerRate,
-    this.hapticFeedbackOnStart = true,
-    this.delay = kLongPressTimeout,
-    super.key,
-  });
-
-  /// Whether haptic feedback plays when the drag starts, like
-  /// [LongPressDraggable.hapticFeedbackOnStart].
-  final bool hapticFeedbackOnStart;
-
-  /// How long the pointer must be down before the drag starts, like
-  /// [LongPressDraggable.delay].
-  final Duration delay;
-}
-
 class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     with FixedTickerProviderStateMixin, WidgetTickerRateMixin
     implements LandingSite {
@@ -589,31 +584,30 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   /// The anchor that the last [_anchor] call returned.
   Offset _lastAnchor = Offset.zero;
 
+  /// The size the child had when the drag started.
+  Size? _size;
+
+  /// The pointer that last went down on a [MotionDragHandle] of this
+  /// draggable.
+  int? _handlePointer;
+
   /// A landing flight that was grabbed and is waiting for its drag to start.
   ({DragFlight flight, Offset position})? _grab;
 
   /// The flight whose drag is ending, while Flutter reports the outcome.
   DragFlight? _ending;
 
-  DraggableSlot? _slot;
-
   /// The item the drag lands on, when this draggable is inside the
   /// `MotionLayoutItem` with its id.
   MotionLayoutItemState? _item;
 
-  T? get _data =>
-      widget.data ??
-      switch (_slot?.item) {
-        final T item => item,
-        _ => null,
-      };
+  T? get _data => widget.data;
 
-  Object get _id => widget.id ?? _slot?.id ?? widget.data ?? this;
+  Object get _id => widget.id ?? widget.data ?? this;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _slot = context.dependOnInheritedWidgetOfExactType<DraggableSlot>();
     _register();
   }
 
@@ -696,6 +690,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     final max = widget.maxSimultaneousDrags;
     if (max != null && _dragging.length >= max) return false;
     _grab = (flight: flight, position: event.position);
+    _handlePointer = event.pointer;
     recognizer.addPointer(event);
     return true;
   }
@@ -728,39 +723,51 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       return _FlightDrag(this, drag, _startFlight(position));
     }
 
-    // The same recognizers as Draggable and LongPressDraggable.
+    // The same recognizers as Draggable and LongPressDraggable, which
+    // only take pointers that went down on a handle when it needs one.
     final widget = this.widget;
     final filter = widget.allowedButtonsFilter;
-    return _recognizer = switch (widget) {
-      MotionLongPressDraggable(:final delay, :final hapticFeedbackOnStart) =>
-        DelayedMultiDragGestureRecognizer(
-            delay: delay,
-            allowedButtonsFilter: filter,
-          )
-          ..onStart = (position) {
-            final drag = start(position);
-            if (drag != null && hapticFeedbackOnStart) {
-              HapticFeedback.selectionClick();
-            }
-            return drag;
-          },
-      _ => switch (widget.affinity) {
-        Axis.horizontal => HorizontalMultiDragGestureRecognizer(
-          allowedButtonsFilter: filter,
-        ),
-        Axis.vertical => VerticalMultiDragGestureRecognizer(
-          allowedButtonsFilter: filter,
-        ),
-        null => ImmediateMultiDragGestureRecognizer(
-          allowedButtonsFilter: filter,
-        ),
-      }..onStart = start,
+    bool allows(PointerDownEvent event) =>
+        !widget.handleOnly || event.pointer == _handlePointer;
+    final longPress = switch (widget.start) {
+      MotionDragStart.immediate => false,
+      MotionDragStart.longPress => true,
+      MotionDragStart.platform => switch (defaultTargetPlatform) {
+        TargetPlatform.android ||
+        TargetPlatform.iOS ||
+        TargetPlatform.fuchsia => true,
+        _ => false,
+      },
     };
+    if (longPress) {
+      return _recognizer =
+          _DelayedRecognizer(allows, allowedButtonsFilter: filter)
+            ..onStart = (position) {
+              final drag = start(position);
+              if (drag != null) HapticFeedback.selectionClick();
+              return drag;
+            };
+    }
+    return _recognizer = switch (widget.affinity) {
+      Axis.horizontal => _HorizontalRecognizer(
+        allows,
+        allowedButtonsFilter: filter,
+      ),
+      Axis.vertical => _VerticalRecognizer(
+        allows,
+        allowedButtonsFilter: filter,
+      ),
+      null => _ImmediateRecognizer(allows, allowedButtonsFilter: filter),
+    }..onStart = start;
   }
 
   DragFlight _startFlight(Offset position) {
     final grab = _grab;
     _grab = null;
+    // What shows in its place is built from the size it had.
+    if (context.findRenderObject() case final RenderBox box when box.hasSize) {
+      setState(() => _size = box.size);
+    }
     final DragFlight flight;
     // It lands in the scope it is dragged from, unless a target sets
     // another.
@@ -842,9 +849,13 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
         child: Visibility.maintain(visible: !landing, child: widget.child),
       ),
     );
-    final childWhenDragging =
-        widget.childWhenDragging ??
-        Visibility.maintain(visible: false, child: widget.child);
+    final size = _size;
+    final childWhenDragging = switch (widget.childWhenDragging) {
+      final build? when size != null => Builder(
+        builder: (context) => build(context, size),
+      ),
+      _ => Visibility.maintain(visible: false, child: widget.child),
+    };
     return _InnerDraggable<T>(
       state: this,
       callbacks: callbacks,
@@ -921,7 +932,7 @@ class _FlightDrag extends Drag {
   @override
   void update(DragUpdateDetails details) {
     // The feedback moves first, so a target that reads where it is, such as
-    // a MotionDropZone, sees this move.
+    // a MotionReorderable, sees this move.
     _flight.moveBy(details.delta);
     _drag.update(details);
   }
@@ -932,4 +943,71 @@ class _FlightDrag extends Drag {
 
   @override
   void cancel() => _state._endDrag(_flight, _drag.cancel, Velocity.zero);
+}
+
+/// Starts the drag of the [MotionDraggable] around it when a pointer goes
+/// down on [child], also when the draggable has
+/// [MotionDraggable.handleOnly] set. The whole draggable flies.
+class MotionDragHandle extends StatelessWidget {
+  /// Makes [child] start the drag of the draggable around it.
+  const MotionDragHandle({required this.child, super.key});
+
+  /// The widget below this widget in the tree.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final draggable = context
+        .findAncestorStateOfType<_MotionDraggableState<Object>>();
+    assert(
+      draggable != null,
+      'A MotionDragHandle must be inside a MotionDraggable.',
+    );
+    // A pointer reaches the handle before the draggable around it, which
+    // then lets it start the drag.
+    return Listener(
+      onPointerDown: (event) => draggable?._handlePointer = event.pointer,
+      child: child,
+    );
+  }
+}
+
+/// A recognizer that only takes the pointers [_allows] lets through.
+mixin _Gated on MultiDragGestureRecognizer {
+  bool Function(PointerDownEvent event) get _allows;
+
+  @override
+  bool isPointerAllowed(PointerDownEvent event) =>
+      _allows(event) && super.isPointerAllowed(event);
+}
+
+class _ImmediateRecognizer extends ImmediateMultiDragGestureRecognizer
+    with _Gated {
+  _ImmediateRecognizer(this._allows, {super.allowedButtonsFilter});
+
+  @override
+  final bool Function(PointerDownEvent event) _allows;
+}
+
+class _HorizontalRecognizer extends HorizontalMultiDragGestureRecognizer
+    with _Gated {
+  _HorizontalRecognizer(this._allows, {super.allowedButtonsFilter});
+
+  @override
+  final bool Function(PointerDownEvent event) _allows;
+}
+
+class _VerticalRecognizer extends VerticalMultiDragGestureRecognizer
+    with _Gated {
+  _VerticalRecognizer(this._allows, {super.allowedButtonsFilter});
+
+  @override
+  final bool Function(PointerDownEvent event) _allows;
+}
+
+class _DelayedRecognizer extends DelayedMultiDragGestureRecognizer with _Gated {
+  _DelayedRecognizer(this._allows, {super.allowedButtonsFilter});
+
+  @override
+  final bool Function(PointerDownEvent event) _allows;
 }

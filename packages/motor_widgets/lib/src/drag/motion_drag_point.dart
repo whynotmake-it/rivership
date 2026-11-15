@@ -1,8 +1,6 @@
-import 'package:motor_widgets/src/drag/motion_draggable.dart';
-
-/// The point of a [MotionDraggable]'s drag that a drop zone or an edge
-/// scroll reacts to.
-enum MotionDragProbe {
+/// The point of a drag that a `MotionReorderable` places the drop by, and
+/// that a `MotionDragToScroll` scrolls by.
+enum MotionDragPoint {
   /// The pointer: the finger on a touch screen.
   pointer,
 
