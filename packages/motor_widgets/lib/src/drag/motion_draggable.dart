@@ -950,6 +950,9 @@ class _FlightDrag extends Drag {
 /// Starts the drag of the [MotionDraggable] around it when a pointer goes
 /// down on [child], also when the draggable has
 /// [MotionDraggable.handleOnly] set. The whole draggable flies.
+///
+/// Outside a draggable, such as in the copy of it that flies, it only shows
+/// [child].
 class MotionDragHandle extends StatelessWidget {
   /// Makes [child] start the drag of the draggable around it.
   const MotionDragHandle({required this.child, super.key});
@@ -961,14 +964,11 @@ class MotionDragHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     final draggable = context
         .findAncestorStateOfType<_MotionDraggableState<Object>>();
-    assert(
-      draggable != null,
-      'A MotionDragHandle must be inside a MotionDraggable.',
-    );
+    if (draggable == null) return child;
     // A pointer reaches the handle before the draggable around it, which
     // then lets it start the drag.
     return Listener(
-      onPointerDown: (event) => draggable?._handlePointer = event.pointer,
+      onPointerDown: (event) => draggable._handlePointer = event.pointer,
       child: child,
     );
   }

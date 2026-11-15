@@ -75,11 +75,11 @@ class MotionDragToScroll extends StatefulWidget {
 
   /// Whether a drag outside the viewport keeps scrolling it.
   ///
-  /// When true, a drag past an edge scrolls at [maxSpeed] however far it
-  /// goes, and a viewport that is already scrolling keeps scrolling while
-  /// the drag stays past the edge it scrolls toward, also beside the
-  /// viewport. A drag beside a viewport that isn't scrolling never starts
-  /// it.
+  /// When true, a viewport that is already scrolling keeps scrolling at
+  /// [maxSpeed] while the drag stays past the edge it scrolls toward,
+  /// however far, also beside the viewport. Either way, a drag only starts
+  /// scrolling over the viewport or within one band of its ends, so a drag
+  /// elsewhere on the page never starts it.
   ///
   /// When false, it scrolls only while the drag is over the viewport, or
   /// at most one band past its ends, and stops once the drag leaves.
@@ -272,19 +272,15 @@ class _MotionDragToScrollState extends State<MotionDragToScroll>
       final (along, cross) = vertical
           ? (point.dy, point.dx)
           : (point.dx, point.dy);
-      // A drag over this viewport scrolls it, also past its ends: however
-      // far when it scrolls outside, else up to one band. Outside, once it
-      // scrolls, a drag past the edge it scrolls toward keeps it scrolling
-      // even when it leaves the viewport sideways.
-      if (cross < crossStart || cross > crossEnd) {
-        final keeps =
-            widget.outside &&
-            ((along > end && current > 0) || (along < start && current < 0));
-        if (!keeps) continue;
-      }
-      if (!widget.outside && (along < start - band || along > end + band)) {
-        continue;
-      }
+      // A drag starts scrolling only over the viewport or within one band
+      // of its ends. Outside, once it scrolls, it keeps scrolling while the
+      // drag stays past the edge it scrolls toward, also beside it.
+      final keeps =
+          widget.outside &&
+          ((along > end && current > 0) || (along < start && current < 0));
+      final beside = cross < crossStart || cross > crossEnd;
+      final beyond = along < start - band || along > end + band;
+      if ((beside || beyond) && !keeps) continue;
       final double screen;
       if (along < start + band) {
         screen = -_speedAt((start + band - along) / band);

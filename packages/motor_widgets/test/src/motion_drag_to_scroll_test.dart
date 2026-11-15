@@ -183,8 +183,10 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(_list(controller));
-    // The list ends at y 400; the drag is 150 below it.
-    final gesture = await _dragTo(tester, const Offset(300, 550));
+    // The list ends at y 400: it starts at the edge, then goes 150 below.
+    final gesture = await _dragTo(tester, const Offset(300, 398));
+    await _scrolled(tester, controller);
+    await gesture.moveTo(const Offset(300, 550));
     await _scrolled(tester, controller);
     final far = await _scrolled(tester, controller);
     expect(far, greaterThan(0));
@@ -468,6 +470,18 @@ void main() {
     await tester.pump(frame);
     expect(controller.offset, 0);
     expect(tester.binding.hasScheduledFrame, isFalse);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a drag far past the end of a resting list does not start it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_list(controller));
+    // Below the list, in line with it, as when dragging toward something
+    // else on the page.
+    final gesture = await _dragTo(tester, const Offset(300, 560));
+    expect(await _scrolled(tester, controller), 0);
     await gesture.up();
     await tester.pumpAndSettle();
   });

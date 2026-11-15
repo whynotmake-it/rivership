@@ -1179,8 +1179,7 @@ void main() {
               data: 'x',
               handleOnly: true,
               onDragStarted: () => started++,
-              feedback: (context, drag) =>
-                  const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+              // The default feedback: the child flies, handle and all.
               child: const SizedBox(
                 width: 80,
                 height: 40,
@@ -1213,7 +1212,9 @@ void main() {
       await gesture.moveBy(const Offset(0, 60));
       await tester.pump(frame);
       expect(started, 1);
-      expect(_feedbackRect(tester).size, const Size(80, 40));
+      expect(tester.takeException(), isNull);
+      // The child in its place and the one that flies.
+      expect(find.byType(MotionDragHandle), findsNWidgets(2));
       await gesture.up();
       await tester.pumpAndSettle();
     });
