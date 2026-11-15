@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
@@ -260,37 +262,54 @@ class _Lane extends StatelessWidget {
       builder: (context, slots) => _DropHighlight(
         active: slots.candidate != null,
         borderRadius: BorderRadius.circular(board.laneRadius),
-        child: Padding(
-          padding: EdgeInsets.all(board.inset),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: board.inset,
-            children: [
-              _LaneHeader(
+        // The cards scroll in the whole lane below the header.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                board.inset,
+                board.inset,
+                board.inset,
+                0,
+              ),
+              child: _LaneHeader(
                 title: Text(column.title),
                 count: column.tasks.length,
                 onShuffle: column.tasks.length > 1 ? onShuffle : null,
               ),
-              Expanded(
-                child: slots.length == 0 ? const _EmptyLane() : _cards(slots),
-              ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: slots.length == 0
+                  ? const _EmptyLane()
+                  : _cards(slots, board.inset),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _cards(MotionDropSlots<_Task> slots) => CoilScrollArea.scrollable(
-    controller: column.controller,
-    child: ListView.builder(
-      controller: column.controller,
-      itemCount: slots.length,
-      findChildIndexCallback: slots.indexOfKey,
-      itemBuilder: (context, i) =>
-          slots.build(i, (context, task) => _DraggableCard(task: task)),
-    ),
-  );
+  Widget _cards(MotionDropSlots<_Task> slots, double inset) =>
+      CoilScrollArea.scrollable(
+        controller: column.controller,
+        child: ListView.builder(
+          controller: column.controller,
+          // The lane's inset is inside the viewport, which clips the cards,
+          // so outlines and shadows have room at its edges. Below the last
+          // card, its own gap stands in for the inset.
+          padding: EdgeInsets.fromLTRB(
+            inset,
+            inset,
+            inset,
+            math.max(0, inset - _BoardMetrics.cardGap),
+          ),
+          itemCount: slots.length,
+          findChildIndexCallback: slots.indexOfKey,
+          itemBuilder: (context, i) =>
+              slots.build(i, (context, task) => _DraggableCard(task: task)),
+        ),
+      );
 }
 
 /// Where a dragged card will drop: a pressed well the card's height, at the
@@ -452,6 +471,23 @@ class _EmptyLane extends StatelessWidget {
   }
 }
 
+/// Tilts the card a little while it is dragged, and straightens it as it
+/// lands. With nowhere to land, it shrinks and fades as by default.
+List<TrackAnimation<Object>> _tilt(MotionDragDetails drag) =>
+    switch ((drag.phase, drag.destination)) {
+      (MotionDragPhase.dragging, _) => [
+        MotionDraggableTrack.rotation([const TrackStep.to(_tiltTurns)]),
+      ],
+      (_, null) => [
+        MotionDraggableTrack.scale([const TrackStep.to(0)]),
+        MotionDraggableTrack.opacity([const TrackStep.to(0)]),
+      ],
+      _ => const [],
+    };
+
+/// Five degrees, clockwise.
+const _tiltTurns = 5 / 360;
+
 /// A task card that drags within its lane and to other lanes. Its slot in
 /// the lane's drop zone flies it when the lane reorders.
 class _DraggableCard extends StatelessWidget {
@@ -481,12 +517,16 @@ class _DraggableCard extends StatelessWidget {
         ? MotionLongPressDraggable<_Task>(
             data: task,
             motion: motion.gentle,
+            motions: {MotionDraggableTrack.rotation: motion.quick},
+            transitions: _tilt,
             feedbackBuilder: feedback,
             child: card,
           )
         : MotionDraggable<_Task>(
             data: task,
             motion: motion.gentle,
+            motions: {MotionDraggableTrack.rotation: motion.quick},
+            transitions: _tilt,
             feedbackBuilder: feedback,
             child: card,
           );
@@ -501,10 +541,12 @@ class _DraggableCard extends StatelessWidget {
 
 /// A task: its title, then who owns it and its tag.
 ///
-/// Lifted, it rises two surface levels, as a popover opened from it would
-/// (DESIGN.md §2.1, §6): that level's shadow, and in dark mode its lighter
-/// fill. It rises on `quick`; it settles on `gentle`, the landing's spring,
-/// so it is down when it lands. Built lifted, it is seen being picked up.
+/// At rest it sits one surface level above the board, without a drop
+/// shadow. Lifted, it rises two levels more, as a popover opened from it
+/// would (DESIGN.md §2.1, §6): that level's shadow, and in dark mode its
+/// lighter fill. It rises on `quick`; it settles on `gentle`, the
+/// landing's spring, so it is down when it lands. Built lifted, it is seen
+/// being picked up.
 class _TaskCard extends StatelessWidget {
   const _TaskCard({required this.task, this.lifted = false});
 
@@ -518,12 +560,14 @@ class _TaskCard extends StatelessWidget {
     final colors = theme.colors;
     final motion = CoilTheme.motionOf(context);
     final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
-    // The card's own level: two above the board in light, with its shadow,
-    // one in dark, with a hairline (CoilCardStyle.surface).
+    // At rest the card sits one level above the board, with no drop
+    // shadow: only the outline of `--shadow-1` in light, and the card's
+    // hairline in dark. Lifted, it rises two levels more, with their
+    // shadow.
     final light = colors.brightness == Brightness.light;
-    final rest = CoilSurface.levelOf(context) + (light ? 2 : 1);
+    final rest = CoilSurface.levelOf(context) + 1;
     final up = rest + 2;
-    final restShadows = light ? colors.shadow(rest) : const <BoxShadow>[];
+    final restShadows = light ? colors.shadow(1) : const <BoxShadow>[];
     final description = Row(
       spacing: metrics.gap,
       children: [
@@ -549,21 +593,18 @@ class _TaskCard extends StatelessWidget {
           // Pinned, because the feedback flies in the overlay, outside any
           // scope the board could set.
           size: CoilSize.compact,
-          // At rest the card keeps its own style.
-          style: t == 0
-              ? null
-              : CoilCardStyle(
-                  surface: Color.lerp(
-                    colors.surface(rest),
-                    colors.surface(up),
-                    t,
-                  ),
-                  shadows: BoxShadow.lerpList(
-                    restShadows,
-                    colors.shadow(up),
-                    t,
-                  ),
-                ),
+          style: CoilCardStyle(
+            surface: Color.lerp(
+              colors.surface(rest),
+              colors.surface(up),
+              t,
+            ),
+            shadows: BoxShadow.lerpList(
+              restShadows,
+              colors.shadow(up),
+              t,
+            ),
+          ),
           title: Text(task.title),
           description: description,
         );
