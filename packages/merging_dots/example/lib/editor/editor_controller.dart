@@ -109,8 +109,18 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  DotGrid get currentGrid => _project.grid.frames[frame].state;
-  DotCloud get currentCloud => _project.cloud.frames[frame].state;
+  /// The edited frame of the grid animation. Each mode keeps its own
+  /// frames, so the index is clamped to the grid's.
+  DotGrid get currentGrid {
+    final frames = _project.grid.frames;
+    return frames[_frame.clamp(0, frames.length - 1)].state;
+  }
+
+  /// The edited frame of the cloud animation, clamped like [currentGrid].
+  DotCloud get currentCloud {
+    final frames = _project.cloud.frames;
+    return frames[_frame.clamp(0, frames.length - 1)].state;
+  }
 
   /// The frame before the edited one, for the onion skin.
   int? get previousFrame {
