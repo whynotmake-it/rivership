@@ -8,11 +8,12 @@ import 'package:coil_example/src/pages/components/reorder_page.dart';
 import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
+import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_widgets/motor_widgets.dart';
+import 'package:motor_widgets/src/painted_position.dart';
 
 Future<void> _pumpPage(WidgetTester tester) async {
   tester.view
@@ -26,22 +27,29 @@ Future<void> _pumpPage(WidgetTester tester) async {
   final router = AutoRouter.of(tester.element(find.byType(HomePage)));
   unawaited(router.push(NamedRoute(catalogRouteName(reorderEntry))));
   await tester.pumpAndSettle();
+  // The board, at the top of the page.
+  await Scrollable.ensureVisible(tester.element(find.text('Backlog')));
+  await tester.pumpAndSettle();
 }
 
-/// The [MotionReorder] around the card titled [title].
-Finder _reorderOf(String title) => find
-    .ancestor(of: find.text(title), matching: find.byType(MotionReorder))
+/// [finder] within the board's section.
+Finder _inBoard(Finder finder) => find.descendant(
+  of: find
+      .ancestor(of: find.text('Backlog'), matching: find.byType(DemoSection))
+      .first,
+  matching: finder,
+);
+
+/// The [MotionLayoutItem] around the card titled [title].
+Finder _itemOf(String title) => find
+    .ancestor(of: find.text(title), matching: find.byType(MotionLayoutItem))
     .first;
 
 /// How far the card titled [title] is painted from its layout position.
-Offset _flight(WidgetTester tester, String title) {
-  final box = tester.renderObject<RenderBox>(_reorderOf(title));
-  final translation = (box.debugLayer as TransformLayer?)?.transform
-      ?.getTranslation();
-  return translation == null
-      ? Offset.zero
-      : Offset(translation.x, translation.y);
-}
+Offset _flight(WidgetTester tester, String title) =>
+    tester.renderObject<RenderObject>(_itemOf(title)) is PaintOffset
+    ? (tester.renderObject(_itemOf(title)) as PaintOffset).paintOffset
+    : Offset.zero;
 
 /// Drags [what] from its center to [to], in a few moves, and drops it.
 Future<void> _drag(WidgetTester tester, Finder what, Offset to) async {
@@ -69,7 +77,7 @@ List<String> _topToBottom(WidgetTester tester, List<String> titles) =>
 
 /// The board's cards fully on screen, by their centers.
 List<Offset> _visibleCards(WidgetTester tester) => [
-  for (final element in find.byType(MotionReorder).evaluate())
+  for (final element in find.byType(MotionLayoutItem).evaluate())
     if (element.renderObject case final RenderBox box
         when box.attached && box.size.width < 320)
       if (box.localToGlobal(Offset.zero) & box.size case final rect
@@ -98,19 +106,19 @@ List<ScrollPosition> _lanes(WidgetTester tester) {
 /// How far each card on screen is painted from its place, for those that
 /// are away from it.
 List<Offset> _flyingCards(WidgetTester tester) => [
-  for (final element in find.byType(MotionReorder).evaluate())
+  for (final element in find.byType(MotionLayoutItem).evaluate())
     if (element.renderObject case final RenderBox box
         when box.attached && box.size.width < 320)
-      if ((box.debugLayer as TransformLayer?)?.transform?.getTranslation()
-          case final t? when Offset(t.x, t.y).distance > 1)
-        Offset(t.x, t.y),
+      if ((box as PaintOffset).paintOffset case final offset
+          when offset.distance > 1)
+        offset,
 ];
 
 /// Shuffles, scrolls and moves cards at random, and after each step drops
 /// a card back where it was picked up, which must move no other card.
 Future<void> _shakeBoard(WidgetTester tester, int seed) async {
   final random = math.Random(seed);
-  final shuffles = find.text('Shuffle');
+  final shuffles = _inBoard(find.text('Shuffle'));
   final log = <String>[];
   for (var step = 0; step < 40; step++) {
     final lanes = _lanes(tester);
@@ -191,7 +199,7 @@ void main() {
     tester,
   ) async {
     await _pumpPage(tester);
-    await tester.tap(find.text('Shuffle').first);
+    await tester.tap(_inBoard(find.text('Shuffle')).first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 30));
     final backlog = [

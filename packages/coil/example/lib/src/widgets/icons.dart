@@ -134,6 +134,10 @@ class Glyph {
     LucideIcons300.arrowDown01,
     LucideIcons400.arrowDown01,
   );
+  static const grip = Glyph(
+    LucideIcons300.gripVertical,
+    LucideIcons400.gripVertical,
+  );
   static const cornerDownRight = Glyph(
     LucideIcons300.cornerDownRightDir,
     LucideIcons400.cornerDownRightDir,

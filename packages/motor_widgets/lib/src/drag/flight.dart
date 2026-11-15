@@ -70,9 +70,10 @@ class LandingHold extends InheritedWidget {
   /// Whether the items below hold landings.
   final bool holds;
 
-  /// Whether the items at [context] hold landings.
+  /// Whether the items at [context] hold landings. Read by flights, outside
+  /// a build, so it doesn't make [context] depend on the hold.
   static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<LandingHold>()?.holds ?? false;
+      context.getInheritedWidgetOfExactType<LandingHold>()?.holds ?? false;
 
   @override
   bool updateShouldNotify(LandingHold oldWidget) => holds != oldWidget.holds;
@@ -100,19 +101,61 @@ class DraggableSlot extends InheritedWidget {
       item != oldWidget.item || id != oldWidget.id;
 }
 
-/// The [LandingSite]s of one [Overlay], by id, and the ids that flights are
+/// The box of a landing scope: an accepted drop over it lands in its
+/// [landingRegistry], unless the target named another.
+///
+/// A `MotionLayoutGroup`'s render object is one, and is in [mounted] while
+/// it is attached.
+abstract interface class LandingScopeBox implements RenderBox {
+  /// The registry of the scope.
+  LandingRegistry get landingRegistry;
+
+  /// The scope boxes that are attached.
+  static final Set<LandingScopeBox> mounted = {};
+}
+
+/// Gives the widgets below it their own [LandingRegistry], so ids only need
+/// to be unique below it.
+///
+/// Every `MotionLayoutGroup` is one.
+class LandingScope extends InheritedWidget {
+  /// Scopes the landings below to [registry].
+  const LandingScope({required this.registry, required super.child, super.key});
+
+  /// The registry of the scope.
+  final LandingRegistry registry;
+
+  @override
+  bool updateShouldNotify(LandingScope oldWidget) =>
+      !identical(registry, oldWidget.registry);
+}
+
+/// The [LandingSite]s of one scope, by id, and the ids that flights are
 /// landing on.
 ///
-/// It is kept per [OverlayState], which is where the flights fly, so no
-/// widget has to provide it.
+/// A scope is the nearest [LandingScope], such as a `MotionLayoutGroup`, or
+/// else the [Overlay] the flights fly in.
 class LandingRegistry {
-  /// The registry of [overlay].
-  factory LandingRegistry.of(OverlayState overlay) =>
-      _registries[overlay] ??= LandingRegistry._();
+  /// An empty registry, for a [LandingScope].
+  LandingRegistry();
 
-  LandingRegistry._();
+  static final _overlays = Expando<LandingRegistry>('LandingRegistry');
 
-  static final _registries = Expando<LandingRegistry>('LandingRegistry');
+  /// The registry of [context]'s scope, or null when it has none.
+  ///
+  /// With [listen], [context] rebuilds when the scope changes.
+  static LandingRegistry? maybeOf(
+    BuildContext context, {
+    bool listen = true,
+    bool rootOverlay = false,
+  }) {
+    final scope = listen
+        ? context.dependOnInheritedWidgetOfExactType<LandingScope>()
+        : context.getInheritedWidgetOfExactType<LandingScope>();
+    if (scope != null) return scope.registry;
+    final overlay = Overlay.maybeOf(context, rootOverlay: rootOverlay);
+    return overlay == null ? null : _overlays[overlay] ??= LandingRegistry();
+  }
 
   final _sites = <Object, List<LandingSite>>{};
   final _landing = <Object, int>{};
@@ -237,6 +280,7 @@ class DragFlight {
     required this.overlay,
     required this.registry,
     required this.id,
+    required this.data,
     required MotionDraggable<Object> widget,
     required Offset pointer,
     required Offset anchor,
@@ -251,7 +295,36 @@ class DragFlight {
   final OverlayState overlay;
 
   /// The registry the flight looks up its destination in.
-  final LandingRegistry registry;
+  ///
+  /// While dragging, the scope it was dragged from. An accepted drop lands
+  /// in the scope the target names with [landIn], as a `MotionDropZone`
+  /// does, else in the innermost scope under the pointer, else where it
+  /// came from. A rejected drop lands where it came from.
+  LandingRegistry registry;
+  bool _registryNamed = false;
+
+  /// Makes an accepted drop land in [registry]. Called by the target while
+  /// it accepts the drop.
+  void landIn(LandingRegistry registry) {
+    this.registry = registry;
+    _registryNamed = true;
+  }
+
+  /// The registry of the innermost landing scope whose box contains
+  /// [position], or null.
+  static LandingRegistry? _registryUnder(Offset position) {
+    LandingScopeBox? innermost;
+    for (final box in LandingScopeBox.mounted) {
+      if (!box.attached || !box.hasSize) continue;
+      final rect = box.localToGlobal(Offset.zero) & box.size;
+      if (!rect.contains(position)) continue;
+      if (innermost == null || box.depth > innermost.depth) innermost = box;
+    }
+    return innermost?.landingRegistry;
+  }
+
+  /// The data the drag drops: the draggable's, or its slot's item.
+  Object? data;
 
   /// The id the flight lands on.
   final Object id;
@@ -278,7 +351,7 @@ class DragFlight {
   static DragFlight? draggingWith(Object? data) {
     DragFlight? found;
     for (final flight in _active) {
-      if (flight.isDragging && flight.widget.data == data) found = flight;
+      if (flight.isDragging && flight.data == data) found = flight;
     }
     return found;
   }
@@ -460,6 +533,10 @@ class DragFlight {
   void release(Offset velocity) {
     if (_done) return;
     phase = accepted ? MotionDragPhase.accepted : MotionDragPhase.rejected;
+    if (accepted && !_registryNamed) {
+      registry = _registryUnder(_pointer) ?? registry;
+    }
+    _registryNamed = false;
     _releaseVelocity = _restrict(velocity);
     registry.beginLanding(id);
     _landingMarked = true;
@@ -478,10 +555,14 @@ class DragFlight {
     Offset pointer,
     Offset anchor, {
     required LandingSite source,
+    required LandingRegistry registry,
+    required Object? data,
   }) {
     final controller = _controller;
     final global = globalTopLeft;
     final velocity = controller?.velocity(MotionDraggableTrack.offset);
+    // Ends the landing in the scope it was marked in.
+    _endLanding();
     _widget = widget;
     phase = MotionDragPhase.dragging;
     accepted = false;
@@ -491,7 +572,8 @@ class DragFlight {
     _pointer = pointer;
     _anchor = anchor;
     this.source = source;
-    _endLanding();
+    this.registry = registry;
+    this.data = data;
     _notifyStarted();
     if (controller == null) return;
     controller.set([

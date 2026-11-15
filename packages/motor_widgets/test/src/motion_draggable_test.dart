@@ -136,15 +136,17 @@ class _BoardState extends State<_Board> {
         SizedBox(
           width: 200,
           height: 600,
-          child: DragTarget<String>(
-            onAcceptWithDetails: (details) => setState(() {
-              a.remove(details.data);
-              if (!widget.consume) b.add(details.data);
-            }),
-            builder: (context, candidates, rejected) => Padding(
-              padding: EdgeInsets.only(top: bTop),
-              child: MotionLayoutGroup(
-                enabled: widget.reorderB,
+          // The group covers the whole target, so a drop anywhere on it
+          // lands in it.
+          child: MotionLayoutGroup(
+            enabled: widget.reorderB,
+            child: DragTarget<String>(
+              onAcceptWithDetails: (details) => setState(() {
+                a.remove(details.data);
+                if (!widget.consume) b.add(details.data);
+              }),
+              builder: (context, candidates, rejected) => Padding(
+                padding: EdgeInsets.only(top: bTop),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

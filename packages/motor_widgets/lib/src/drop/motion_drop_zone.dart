@@ -382,7 +382,7 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   void flightStarted(DragFlight flight) {
     if (!mounted) return;
     final hover = _hover;
-    if (hover != null && flight.widget.data == hover.data) {
+    if (hover != null && flight.data == hover.data) {
       hover.flight = flight;
       _gapSize = flight.feedbackRect.size;
     }
@@ -689,6 +689,8 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
           _shownWithout(item).length,
         );
     final flight = _hover?.flight ?? DragFlight.draggingWith(item);
+    // The item goes into this zone's group, so the flight lands there.
+    if (_landings() case final registry?) flight?.landIn(registry);
     _endHover();
     final result = widget.onInsert?.call(item, index);
     if (result is! Future<void>) {
@@ -717,6 +719,17 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
         _settle(pending, threw: true);
       },
     );
+  }
+
+  /// The landing registry of the zone's group, found from a slot, or null
+  /// before any is laid out.
+  LandingRegistry? _landings() {
+    for (final slot in _slots) {
+      if (slot.element.mounted) {
+        return LandingRegistry.maybeOf(slot.element, listen: false);
+      }
+    }
+    return null;
   }
 
   List<T> _shownWithout(T item) => [

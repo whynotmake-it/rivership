@@ -778,6 +778,67 @@ void main() {
     }
   });
 
+  testWidgets('two zones may share ids: each drop lands in its own group', (
+    tester,
+  ) async {
+    final lists = [
+      ['a', 'b', 'c'],
+      ['a', 'b', 'c'],
+    ];
+    final errors = <FlutterErrorDetails>[];
+    final onError = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = onError);
+    late StateSetter setState;
+    Widget zone(List<String> items) => SizedBox(
+      width: 200,
+      height: 600,
+      child: MotionDropZone<String>(
+        items: items,
+        onInsert: (id, index) => setState(() {
+          items
+            ..remove(id)
+            ..insert(index, id);
+        }),
+        itemBuilder: (context, id) => _card(id),
+        builder: (context, slots) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: slots.children,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        StatefulBuilder(
+          builder: (context, set) {
+            setState = set;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                zone(lists[0]),
+                const SizedBox(width: 200),
+                zone(lists[1]),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+    // The first zone's a, below its b.
+    final gesture = await _pickUp(tester, const Offset(50, 20));
+    await _moveTo(tester, gesture, const Offset(50, 20), const Offset(50, 70));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    FlutterError.onError = onError;
+    expect(errors, isEmpty);
+    expect(lists, [
+      ['b', 'a', 'c'],
+      ['a', 'b', 'c'],
+    ]);
+    expect(_inOverlay(), isFalse);
+    expect(tester.getTopLeft(_child('a').first), const Offset(0, 40));
+  });
+
   group('MotionDropZone in a wrap', () {
     Widget wrap(List<String> items, {required ValueChanged<int?> gap}) =>
         SizedBox(

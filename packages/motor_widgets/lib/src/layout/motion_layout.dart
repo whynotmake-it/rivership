@@ -151,6 +151,9 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
     with FixedTickerProviderStateMixin, WidgetTickerRateMixin {
   final _records = <Object, _Record>{};
 
+  /// The landing sites of the group's items: ids are unique within it.
+  final _landings = LandingRegistry();
+
   /// Counts the frames in which the group was composited.
   int _frame = 0;
 
@@ -251,9 +254,12 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
   @override
   Widget build(BuildContext context) {
     _outside = _scrollablesOf(context);
-    return _GroupScope(
-      state: this,
-      child: _GroupBox(state: this, child: widget.child),
+    return LandingScope(
+      registry: _landings,
+      child: _GroupScope(
+        state: this,
+        child: _GroupBox(state: this, child: widget.child),
+      ),
     );
   }
 }
@@ -292,11 +298,26 @@ class _GroupBox extends SingleChildRenderObjectWidget {
 }
 
 /// The group's repaint boundary, whose layer its items measure themselves
-/// against.
-class _RenderGroup extends RenderProxyBox {
+/// against, and the landing scope of a drop over it.
+class _RenderGroup extends RenderProxyBox implements LandingScopeBox {
   _RenderGroup(this.state);
 
   _MotionLayoutGroupState state;
+
+  @override
+  LandingRegistry get landingRegistry => state._landings;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    LandingScopeBox.mounted.add(this);
+  }
+
+  @override
+  void detach() {
+    LandingScopeBox.mounted.remove(this);
+    super.detach();
+  }
 
   @override
   bool get isRepaintBoundary => true;
@@ -352,8 +373,7 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   }
 
   void _register() {
-    final overlay = Overlay.maybeOf(context);
-    final registry = overlay == null ? null : LandingRegistry.of(overlay);
+    final registry = LandingRegistry.maybeOf(context);
     final id = widget.id;
     if (registry == _registry && id == _registeredId) return;
     _unregister();
@@ -383,7 +403,7 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   // Landing.
 
   @override
-  bool get holdsLanding => LandingHold.of(context);
+  bool get holdsLanding => mounted && LandingHold.of(context);
 
   @override
   Rect? get globalRect {

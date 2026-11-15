@@ -637,10 +637,9 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       if (identical(_item?.grabber, this)) _item?.grabber = null;
       _item = owner?..grabber = this;
     }
-    final overlay = Overlay.maybeOf(context, rootOverlay: widget.rootOverlay);
-    final registry = owner != null || overlay == null
+    final registry = owner != null
         ? null
-        : LandingRegistry.of(overlay);
+        : LandingRegistry.maybeOf(context, rootOverlay: widget.rootOverlay);
     if (registry == _registry && id == _registeredId) return;
     _unregister();
     _registry = registry?..add(id, this);
@@ -763,15 +762,31 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     final grab = _grab;
     _grab = null;
     final DragFlight flight;
+    // It lands in the scope it is dragged from, unless a target sets
+    // another.
+    final registry = LandingRegistry.maybeOf(
+      context,
+      listen: false,
+      rootOverlay: widget.rootOverlay,
+    )!;
     if (grab != null && grab.position == position && !grab.flight.isDone) {
-      flight = grab.flight..regrab(widget, position, _lastAnchor, source: this);
+      flight = grab.flight
+        ..regrab(
+          widget,
+          position,
+          _lastAnchor,
+          source: this,
+          registry: registry,
+          data: _data,
+        );
     } else {
       final box = context.findRenderObject()! as RenderBox;
       final overlay = Overlay.of(context, rootOverlay: widget.rootOverlay);
       flight = DragFlight(
         overlay: overlay,
-        registry: LandingRegistry.of(overlay),
+        registry: registry,
         id: _id,
+        data: _data,
         widget: widget,
         pointer: position,
         anchor: _lastAnchor,

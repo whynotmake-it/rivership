@@ -23,22 +23,50 @@ class ReorderPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Reorder',
     summary:
-        'MotionReorder flies each item to its new place when its list '
-        'reorders. Scrolling never moves anything on its own.',
+        'Items in a MotionLayoutGroup fly to their new place whenever the '
+        'layout moves them. MotionDropZone and MotionDraggable add drag and '
+        'drop on top. Scrolling never moves anything on its own.',
     children: [
+      DemoSection(
+        title: 'Layout group',
+        description:
+            'Each card is a MotionLayoutItem. Shuffle, add or remove cards, '
+            'or tap one to open it: whatever the layout moves flies there. '
+            'New cards appear in place.',
+        child: _LayoutDemo(),
+      ),
+      DemoSection(
+        title: 'Between containers',
+        description:
+            'Both lists are in one group, so an item that moves to the other '
+            'list flies there, with no drag involved. Check an item to move '
+            'it.',
+        child: _ChecklistDemo(),
+      ),
       DemoSection(
         title: 'Board',
         description:
-            'Drag a card within its column or to another one. The cards make '
-            'room where it will go, and it drops into the gap. Near an edge, '
-            'the column or the board scrolls.',
+            'Each column is a MotionDropZone. Drag a card within its column '
+            'or to another one: the cards make room where it will go, and it '
+            'drops into the gap. Near an edge, the column or the board '
+            'scrolls.',
         padding: 0,
         child: _Board(),
       ),
       DemoSection(
         title: 'Grid',
-        description: 'Drag a tile to reorder; tiles fly on both axes.',
+        description:
+            'A MotionDropZone laid out by a Wrap. Drag a tile to reorder; '
+            'tiles fly on both axes.',
         child: _Grid(),
+      ),
+      DemoSection(
+        title: "Flutter's drag and drop",
+        description:
+            "A plain Draggable drops into a MotionDropZone, and a card drops "
+            "on a plain DragTarget. Drag the new task into the list, or a "
+            "card onto the trash: with nowhere to land, it shrinks away.",
+        child: _InteropDemo(),
       ),
     ],
   );
@@ -212,20 +240,25 @@ class _BoardState extends State<_Board> {
             child: CoilScrollArea(
               axis: Axis.horizontal,
               padding: EdgeInsets.all(board.edge),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: _BoardMetrics.laneGap,
-                children: [
-                  for (final column in _columns)
-                    SizedBox(
-                      width: board.laneWidth,
-                      child: _Lane(
-                        column: column,
-                        onShuffle: () => setState(column.tasks.shuffle),
-                        onInsert: (task, index) => _insert(task, column, index),
+              // One group for the board, so the lanes share it.
+              child: MotionLayoutGroup(
+                motion: CoilTheme.motionOf(context).standard,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: _BoardMetrics.laneGap,
+                  children: [
+                    for (final column in _columns)
+                      SizedBox(
+                        width: board.laneWidth,
+                        child: _Lane(
+                          column: column,
+                          onShuffle: () => setState(column.tasks.shuffle),
+                          onInsert: (task, index) =>
+                              _insert(task, column, index),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -252,13 +285,11 @@ class _Lane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final board = _BoardMetrics.of(context);
-    final motion = CoilTheme.motionOf(context);
     return MotionDropZone<_Task>(
       items: column.tasks,
-      itemKey: (task) => task.id,
-      motion: motion.standard,
       onInsert: onInsert,
       placeholderBuilder: (context, size) => _CardSlot(height: size.height),
+      itemBuilder: (context, task) => _DraggableCard(task: task),
       builder: (context, slots) => _DropHighlight(
         active: slots.candidate != null,
         borderRadius: BorderRadius.circular(board.laneRadius),
@@ -305,9 +336,7 @@ class _Lane extends StatelessWidget {
             math.max(0, inset - _BoardMetrics.cardGap),
           ),
           itemCount: slots.length,
-          findChildIndexCallback: slots.indexOfKey,
-          itemBuilder: (context, i) =>
-              slots.build(i, (context, task) => _DraggableCard(task: task)),
+          itemBuilder: (context, i) => slots[i],
         ),
       );
 }
@@ -488,8 +517,8 @@ List<TrackAnimation<Object>> _tilt(MotionDragDetails drag) =>
 /// Five degrees, clockwise.
 const _tiltTurns = 5 / 360;
 
-/// A task card that drags within its lane and to other lanes. Its slot in
-/// the lane's drop zone flies it when the lane reorders.
+/// A task card that drags within its lane and to other lanes. It drags the
+/// item of the drop zone slot it is in.
 class _DraggableCard extends StatelessWidget {
   const _DraggableCard({required this.task});
 
@@ -515,7 +544,6 @@ class _DraggableCard extends StatelessWidget {
     // at once with a pointer.
     final draggable = CoilTheme.tierOf(context) == CoilTier.touch
         ? MotionLongPressDraggable<_Task>(
-            data: task,
             motion: motion.gentle,
             motions: {MotionDraggableTrack.rotation: motion.quick},
             transitions: _tilt,
@@ -523,7 +551,6 @@ class _DraggableCard extends StatelessWidget {
             child: card,
           )
         : MotionDraggable<_Task>(
-            data: task,
             motion: motion.gentle,
             motions: {MotionDraggableTrack.rotation: motion.quick},
             transitions: _tilt,
@@ -680,21 +707,10 @@ class _GridState extends State<_Grid> {
               ),
             ),
           ),
-          builder: (context, slots) => Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var i = 0; i < slots.length; i++)
-                slots.build(
-                  i,
-                  (context, item) => _GridTile(
-                    item: item,
-                    extent: extent,
-                    radius: radius,
-                  ),
-                ),
-            ],
-          ),
+          itemBuilder: (context, item) =>
+              _GridTile(item: item, extent: extent, radius: radius),
+          builder: (context, slots) =>
+              Wrap(spacing: 8, runSpacing: 8, children: slots.children),
         ),
       ],
     );
@@ -742,11 +758,330 @@ class _GridTile extends StatelessWidget {
       ),
     );
     return CoilTheme.tierOf(context) == CoilTier.touch
-        ? MotionLongPressDraggable<int>(
-            data: item,
-            motion: motion.gentle,
-            child: tile,
-          )
-        : MotionDraggable<int>(data: item, motion: motion.gentle, child: tile);
+        ? MotionLongPressDraggable<int>(motion: motion.gentle, child: tile)
+        : MotionDraggable<int>(motion: motion.gentle, child: tile);
+  }
+}
+
+/// Makes a demo's tasks from its [titles], each a new object: tasks are
+/// their own ids.
+class _TaskMaker {
+  _TaskMaker(this.titles);
+
+  final List<String> titles;
+  int _next = 0;
+
+  _Task next() {
+    final task = _Task(
+      _next,
+      titles[_next % titles.length],
+      _owners[_next % _owners.length],
+    );
+    _next++;
+    return task;
+  }
+}
+
+/// Cards whose layout changes: shuffled, added at the top, removed from the
+/// top, or opened to show more.
+class _LayoutDemo extends StatefulWidget {
+  const _LayoutDemo();
+
+  @override
+  State<_LayoutDemo> createState() => _LayoutDemoState();
+}
+
+class _LayoutDemoState extends State<_LayoutDemo> {
+  final _maker = _TaskMaker(const [
+    'Pick a venue',
+    'Send the invites',
+    'Order the cake',
+    'Book the band',
+    'Print the menus',
+    'Plan the seating',
+    'Hire a photographer',
+  ]);
+  late final _list = [for (var i = 0; i < 4; i++) _maker.next()];
+  final _open = <_Task>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = CoilTheme.metricsOf(context);
+    final motion = CoilTheme.motionOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 16,
+      children: [
+        Wrap(
+          spacing: metrics.buttonGap,
+          runSpacing: metrics.buttonGap,
+          children: [
+            CoilButton(
+              variant: CoilButtonVariant.secondary,
+              onPressed: _list.length > 1
+                  ? () => setState(_list.shuffle)
+                  : null,
+              leading: const CatalogIcon(Glyph.shuffle),
+              child: const Text('Shuffle'),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              onPressed: () => setState(() => _list.insert(0, _maker.next())),
+              leading: const CatalogIcon(Glyph.plus),
+              child: const Text('Add'),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              onPressed: _list.isEmpty
+                  ? null
+                  : () => setState(() => _open.remove(_list.removeAt(0))),
+              leading: const CatalogIcon(Glyph.trash),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: MotionLayoutGroup(
+            motion: motion.standard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: _BoardMetrics.cardGap,
+              children: [
+                for (final task in _list)
+                  MotionLayoutItem(
+                    key: ValueKey(task),
+                    id: task,
+                    child: CoilCard(
+                      size: CoilSize.compact,
+                      onPressed: () => setState(() {
+                        if (!_open.remove(task)) _open.add(task);
+                      }),
+                      title: Text(task.title),
+                      description: _open.contains(task)
+                          ? Text('${task.owner} owns this. Tap to close.')
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Two lists in one group: checking an item moves it to the other list,
+/// and it flies there.
+class _ChecklistDemo extends StatefulWidget {
+  const _ChecklistDemo();
+
+  @override
+  State<_ChecklistDemo> createState() => _ChecklistDemoState();
+}
+
+class _ChecklistDemoState extends State<_ChecklistDemo> {
+  final _maker = _TaskMaker(const [
+    'Pack the charger',
+    'Water the plants',
+    'Empty the fridge',
+    'Lock the windows',
+  ]);
+  late final _todo = [for (var i = 0; i < 4; i++) _maker.next()];
+  final _done = <_Task>[];
+
+  void _check(_Task task, {required bool done}) => setState(() {
+    _todo.remove(task);
+    _done.remove(task);
+    done ? _done.insert(0, task) : _todo.add(task);
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context);
+    return MotionLayoutGroup(
+      motion: motion.standard,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 24,
+        children: [
+          Expanded(child: _list(context, 'To do', _todo, done: false)),
+          Expanded(child: _list(context, 'Done', _done, done: true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _list(
+    BuildContext context,
+    String title,
+    List<_Task> tasks, {
+    required bool done,
+  }) {
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: metrics.controlHeight),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: theme.typography.style(
+                  metrics.body,
+                  weight: CoilWeight.semibold,
+                  color: theme.colors.foreground,
+                ),
+              ),
+            ),
+          ),
+        ),
+        for (final task in tasks)
+          MotionLayoutItem(
+            key: ValueKey(task),
+            id: task,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: metrics.controlHeight),
+              child: Row(
+                spacing: metrics.gap,
+                children: [
+                  CoilCheckbox(
+                    value: done,
+                    onChanged: (value) => _check(task, done: value ?? false),
+                    semanticLabel: task.title,
+                  ),
+                  Expanded(
+                    child: Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.typography.style(
+                        metrics.body,
+                        color: done
+                            ? theme.colors.mutedForeground
+                            : theme.colors.foreground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A drop zone next to Flutter's own Draggable and DragTarget: a new task
+/// that drops into the list, and a trash that takes cards out of it.
+class _InteropDemo extends StatefulWidget {
+  const _InteropDemo();
+
+  @override
+  State<_InteropDemo> createState() => _InteropDemoState();
+}
+
+class _InteropDemoState extends State<_InteropDemo> {
+  final _maker = _TaskMaker(const [
+    'Draft the agenda',
+    'Share the notes',
+    'Book a room',
+    'Follow up with the team',
+    'Collect the feedback',
+  ]);
+  late final _list = [for (var i = 0; i < 3; i++) _maker.next()];
+  late _Task _new = _maker.next();
+
+  void _insert(_Task task, int index) => setState(() {
+    _list
+      ..remove(task)
+      ..insert(index, task);
+    if (identical(task, _new)) _new = _maker.next();
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final board = _BoardMetrics.of(context);
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final themes = InheritedTheme.capture(
+      from: context,
+      to: Overlay.of(context).context,
+    );
+    final newTask = CoilBadge(
+      size: CoilSize.compact,
+      child: Text('New task: ${_new.title}'),
+    );
+    return Wrap(
+      spacing: 24,
+      runSpacing: 16,
+      children: [
+        SizedBox(
+          width: board.laneWidth,
+          child: MotionDropZone<_Task>(
+            items: _list,
+            onInsert: _insert,
+            // A plain Draggable doesn't tell the zone its size, so its gap
+            // has a card's height.
+            placeholderBuilder: (context, size) => _CardSlot(
+              height: size.isEmpty ? metrics.controlHeight * 2 : size.height,
+            ),
+            itemBuilder: (context, task) => _DraggableCard(task: task),
+            builder: (context, slots) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: slots.children,
+            ),
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 16,
+          children: [
+            Draggable<_Task>(
+              data: _new,
+              feedback: themes.wrap(newTask),
+              childWhenDragging: Opacity(opacity: 0.4, child: newTask),
+              child: newTask,
+            ),
+            DragTarget<_Task>(
+              onAcceptWithDetails: (details) =>
+                  setState(() => _list.remove(details.data)),
+              builder: (context, candidates, _) => _DropHighlight(
+                active: candidates.isNotEmpty,
+                borderRadius: BorderRadius.circular(board.laneRadius),
+                child: SizedBox(
+                  width: 160,
+                  height: 96,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: metrics.gap,
+                    children: [
+                      IconTheme.merge(
+                        data: IconThemeData(
+                          color: theme.colors.mutedForeground,
+                        ),
+                        child: const CatalogIcon(Glyph.trash),
+                      ),
+                      Text(
+                        'Trash',
+                        style: theme.typography.style(
+                          metrics.caption,
+                          color: theme.colors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
