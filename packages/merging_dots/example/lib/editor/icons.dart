@@ -47,6 +47,11 @@ class Glyph {
     LucideIcons400.squareDashed,
   );
   static const close = Glyph(LucideIcons300.x, LucideIcons400.x);
+  static const gauge = Glyph(LucideIcons300.gauge, LucideIcons400.gauge);
+  static const loaders = Glyph(
+    LucideIcons300.loaderCircle,
+    LucideIcons400.loaderCircle,
+  );
   static const left = Glyph(
     LucideIcons300.chevronLeft,
     LucideIcons400.chevronLeft,
