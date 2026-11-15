@@ -1377,6 +1377,8 @@ class _NewTaskButton extends StatelessWidget {
       start: CoilTheme.tierOf(context) == CoilTier.touch
           ? MotionDragStart.longPress
           : MotionDragStart.immediate,
+      // The whole morph plays in the overlay, then the card takes over.
+      handoff: MotionDragHandoff.never,
       motion: motion.gentle,
       motions: {MotionDraggableTrack.morph: motion.standard},
       // The button stays where it is, faded, while its task is dragged.
