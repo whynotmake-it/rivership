@@ -115,8 +115,9 @@ class _DotGridViewState extends _DotsViewState<DotGridView, DotGrid> {
 /// [DotCloudView.sequence], like a spinner.
 ///
 /// The cloud's canvas is scaled to fit and centered. Up to
-/// [DotCloud.maxDots] dots are drawn. Each pixel evaluates every dot, so
-/// for dot-matrix art with many dots prefer a [DotGridView].
+/// [DotCloud.maxDots] dots are drawn, and each pixel only looks at the dots
+/// near it. Dots on a regular lattice are still cheaper as a [DotGridView],
+/// which skips sorting them every frame.
 class DotCloudView extends StatefulWidget {
   /// Shows [cloud], animating to it whenever it changes.
   const DotCloudView({

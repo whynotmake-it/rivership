@@ -7,6 +7,7 @@ import 'package:merging_dots/src/animation/dot_animator.dart';
 import 'package:merging_dots/src/model/dot_cloud.dart';
 import 'package:merging_dots/src/model/dot_grid.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
+import 'package:merging_dots/src/rendering/data_texture.dart';
 import 'package:merging_dots/src/rendering/dot_shaders.dart';
 
 const _stride = DotState.stride;
@@ -14,6 +15,12 @@ const _stride = DotState.stride;
 /// The largest value a grid dot can show: its data texture stores
 /// `value * 200` in a byte.
 const double kMaxGridValue = 255 / 200;
+
+/// Converts a `blend` distance to the smoothing distance of the shaders'
+/// exponential union: `1 / (4 * ln 2)`. With it, two touching dots bulge
+/// just as far as with a polynomial union of radius `blend`, and dots bridge
+/// once their gap is under half of `blend`.
+const double _blendToSmoothing = 0.36067376;
 
 /// Shared plumbing of the dot render objects: listens to a [DotAnimator]
 /// and repaints, without layout, whenever its values change.
@@ -159,8 +166,8 @@ abstract class RenderDots<T extends DotState> extends RenderBox {
 /// Renders a [DotGrid] from a [DotAnimator] with the grid shader.
 ///
 /// Every frame the dots change, their values are uploaded as a texture with
-/// one texel per cell, rendered on the GPU from a single draw of vertices.
-/// The shader then reads only the 5x5 cells around every pixel.
+/// one texel per cell (see [DotDataTexture]). The shader then reads only the
+/// 5x5 cells around every pixel.
 class RenderDotGrid extends RenderDots<DotGrid> {
   /// Creates a render object for a grid. See `DotGridStyle` for the
   /// meaning of the sizes.
@@ -220,16 +227,9 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     markNeedsLayout();
   }
 
-  ui.Image? _data;
+  final _data = DotDataTexture();
   int _dataRevision = -1;
   Object? _dataKey;
-
-  // Geometry of the data texture, cached per grid size.
-  int _meshColumns = 0;
-  int _meshRows = 0;
-  Float32List _positions = Float32List(0);
-  Uint16List _indices = Uint16List(0);
-  Int32List _colors = Int32List(0);
 
   /// The cells that hold a visible dot: left, top, right, bottom.
   (int, int, int, int)? _cells;
@@ -247,8 +247,7 @@ class RenderDotGrid extends RenderDots<DotGrid> {
 
   @override
   void dispose() {
-    _data?.dispose();
-    _data = null;
+    _data.dispose();
     super.dispose();
   }
 
@@ -279,32 +278,11 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     return (column, row);
   }
 
-  void _ensureMesh(int columns, int rows) {
-    if (columns == _meshColumns && rows == _meshRows) return;
-    assert(
-      columns * rows * 4 <= 65536,
-      'A dot grid can have at most 16384 cells.',
-    );
-    _meshColumns = columns;
-    _meshRows = rows;
-    final cells = columns * rows;
-    _positions = Float32List(cells * 8);
-    _indices = Uint16List(cells * 6);
-    _colors = Int32List(cells * 4);
-    for (var i = 0; i < cells; i++) {
-      final x = (i % columns).toDouble();
-      final y = (i ~/ columns).toDouble();
-      _positions.setAll(i * 8, [x, y, x + 1, y, x + 1, y + 1, x, y + 1]);
-      final v = i * 4;
-      _indices.setAll(i * 6, [v, v + 1, v + 2, v, v + 2, v + 3]);
-    }
-  }
-
   /// Uploads the animator's values to the data texture.
   void _updateData() {
     final grid = animator.target;
     final key = (grid.columns, grid.rows);
-    if (_data != null &&
+    if (_data.image != null &&
         _dataRevision == animator.revision &&
         _dataKey == key) {
       return;
@@ -314,26 +292,27 @@ class RenderDotGrid extends RenderDots<DotGrid> {
 
     final columns = grid.columns;
     final rows = grid.rows;
-    _ensureMesh(columns, rows);
     final values = animator.values;
-    final colors = _colors;
     final count = math.min(animator.dotCount, columns * rows);
+    final rgba = Uint8List(columns * rows * 4);
 
     var left = columns;
     var top = rows;
     var right = -1;
     var bottom = -1;
-    for (var i = 0; i < count; i++) {
+    for (var i = 0; i < columns * rows; i++) {
       final o = i * _stride;
+      final p = i * 4;
+      rgba[p + 3] = 255;
+      if (i >= count) {
+        rgba[p + 1] = 128;
+        rgba[p + 2] = 128;
+        continue;
+      }
       final r = (values[o] * 200).round().clamp(0, 255);
-      final g = (values[o + 1] * 127).round().clamp(-127, 127) + 128;
-      final b = (values[o + 2] * 127).round().clamp(-127, 127) + 128;
-      final argb = 0xFF000000 | (r << 16) | (g << 8) | b;
-      final c = i * 4;
-      colors[c] = argb;
-      colors[c + 1] = argb;
-      colors[c + 2] = argb;
-      colors[c + 3] = argb;
+      rgba[p] = r;
+      rgba[p + 1] = (values[o + 1] * 127).round().clamp(-127, 127) + 128;
+      rgba[p + 2] = (values[o + 2] * 127).round().clamp(-127, 127) + 128;
       if (r > 0) {
         final column = i % columns;
         final row = i ~/ columns;
@@ -345,22 +324,7 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     }
     _cells = right < 0 ? null : (left, top, right, bottom);
     _bounds = null;
-
-    final recorder = ui.PictureRecorder();
-    Canvas(recorder).drawVertices(
-      ui.Vertices.raw(
-        VertexMode.triangles,
-        _positions,
-        colors: colors,
-        indices: _indices,
-      ),
-      BlendMode.dst,
-      Paint(),
-    );
-    final picture = recorder.endRecording();
-    _data?.dispose();
-    _data = picture.toImageSync(columns, rows);
-    picture.dispose();
+    _data.upload(rgba, columns, rows);
   }
 
   Rect? _contentBounds(double spacing, Offset origin) {
@@ -369,7 +333,7 @@ class RenderDotGrid extends RenderDots<DotGrid> {
     if (_bounds != null) return _bounds;
     final (left, top, right, bottom) = cells;
     final reach =
-        spacing * (_dotSize / 2 * kMaxGridValue + _blend / 4 + _offsetRange) +
+        spacing * (_dotSize / 2 * kMaxGridValue + _blend * 1.2 + _offsetRange) +
         2;
     return _bounds = Rect.fromLTRB(
       origin.dx + left * spacing - reach,
@@ -408,9 +372,10 @@ class RenderDotGrid extends RenderDots<DotGrid> {
       ..setFloat(8, spacing)
       ..setFloat(9, spacing * _dotSize / 2)
       ..setFloat(10, spacing * _offsetRange)
-      ..setFloat(11, spacing * _blend)
+      ..setFloat(11, spacing * _blend * _blendToSmoothing)
       ..setFloat(12, pixelWidth(canvas))
-      ..setImageSampler(0, _data!);
+      ..setFloat(13, _data.isRendered ? 1 : 0)
+      ..setImageSampler(0, _data.image!);
     canvas
       ..drawRect(bounds, Paint()..shader = shader)
       ..restore();
@@ -442,7 +407,13 @@ class RenderDotGrid extends RenderDots<DotGrid> {
 /// Renders a [DotCloud] from a [DotAnimator] with the cloud shader.
 ///
 /// The cloud's canvas is scaled to fit and centered, like an SVG view box.
-/// Only the area around the dots is shaded.
+///
+/// Every frame the dots change, they are sorted into square tiles at least
+/// as large as a dot's reach, and two small textures are uploaded (see
+/// [DotDataTexture]): the dots, ordered by tile, and where each tile's dots
+/// start. Each pixel then only reads the dots of the 3x3 tiles around it, so
+/// a cloud can hold [DotCloud.maxDots] dots. Only the area around the dots
+/// is shaded.
 class RenderDotCloud extends RenderDots<DotCloud> {
   /// Creates a render object for a cloud, with [blend] in canvas units.
   RenderDotCloud({
@@ -451,6 +422,15 @@ class RenderDotCloud extends RenderDots<DotCloud> {
     required super.devicePixelRatio,
     required double blend,
   }) : _blend = blend;
+
+  /// The most dots a single tile holds. Matches the shader.
+  static const _maxDotsPerTile = 64;
+
+  /// The width of the dot texture, in texels: 128 dots per row.
+  static const _dotsWidth = 256;
+
+  /// The most tiles per axis.
+  static const _maxTiles = 128;
 
   double _blend;
 
@@ -462,6 +442,12 @@ class RenderDotCloud extends RenderDots<DotCloud> {
     markNeedsPaint();
   }
 
+  final _tiles = DotDataTexture();
+  final _dots = DotDataTexture();
+  int _dataRevision = -1;
+  Object? _dataKey;
+  _CloudLayout? _layout;
+
   @override
   ui.FragmentProgram? get program => DotShaders.cloud;
 
@@ -470,6 +456,13 @@ class RenderDotCloud extends RenderDots<DotCloud> {
 
   @override
   Size naturalSize(DotCloud target) => target.size;
+
+  @override
+  void dispose() {
+    _tiles.dispose();
+    _dots.dispose();
+    super.dispose();
+  }
 
   /// The scale from the cloud's canvas to local coordinates and the local
   /// position of the canvas' origin.
@@ -495,6 +488,151 @@ class RenderDotCloud extends RenderDots<DotCloud> {
     return (localPosition - origin) / scale;
   }
 
+  /// Sorts the dots into tiles and uploads them. Returns null when no dot
+  /// is visible.
+  _CloudLayout? _updateData(double scale, Offset origin, double smoothing) {
+    final key = (scale, origin, smoothing, size);
+    if (_dataRevision == animator.revision && _dataKey == key) {
+      return _layout;
+    }
+    _dataRevision = animator.revision;
+    _dataKey = key;
+
+    final values = animator.values;
+    final count = math.min(animator.dotCount, DotCloud.maxDots);
+
+    // Where the visible dots are, in local pixels.
+    final xs = Float64List(count);
+    final ys = Float64List(count);
+    final rs = Float64List(count);
+    var visible = 0;
+    var maxRadius = 0.0;
+    var left = double.infinity;
+    var top = double.infinity;
+    var right = double.negativeInfinity;
+    var bottom = double.negativeInfinity;
+    for (var i = 0; i < count; i++) {
+      final o = i * _stride;
+      final r = values[o + 2] * scale;
+      if (r <= 0) continue;
+      final x = origin.dx + values[o] * scale;
+      final y = origin.dy + values[o + 1] * scale;
+      xs[visible] = x;
+      ys[visible] = y;
+      rs[visible] = r;
+      visible++;
+      maxRadius = math.max(maxRadius, r);
+      left = math.min(left, x);
+      top = math.min(top, y);
+      right = math.max(right, x);
+      bottom = math.max(bottom, y);
+    }
+    if (visible == 0) return _layout = null;
+
+    // A tile must be at least a dot's reach, so every dot that touches a
+    // pixel is in the pixel's tile or a neighbor.
+    final reach = maxRadius + smoothing * 3.5 + 2;
+    var tile = math.max<double>(reach, 8);
+    final contentLeft = left - reach;
+    final contentTop = top - reach;
+    final contentWidth = right - left + reach * 2;
+    final contentHeight = bottom - top + reach * 2;
+    while (contentWidth / tile > _maxTiles ||
+        contentHeight / tile > _maxTiles) {
+      tile *= 2;
+    }
+    final columns = math.max(1, (contentWidth / tile).ceil());
+    final rows = math.max(1, (contentHeight / tile).ceil());
+
+    // Counting sort by tile.
+    final tileOf = Int32List(visible);
+    final counts = Int32List(columns * rows);
+    for (var i = 0; i < visible; i++) {
+      final column = ((xs[i] - contentLeft) / tile).floor().clamp(
+        0,
+        columns - 1,
+      );
+      final row = ((ys[i] - contentTop) / tile).floor().clamp(0, rows - 1);
+      final t = row * columns + column;
+      tileOf[i] = t;
+      counts[t]++;
+    }
+    final starts = Int32List(columns * rows);
+    var next = 0;
+    for (var t = 0; t < columns * rows; t++) {
+      starts[t] = next;
+      next += counts[t];
+    }
+    final order = Int32List(visible);
+    final cursor = Int32List.fromList(starts);
+    for (var i = 0; i < visible; i++) {
+      order[cursor[tileOf[i]]++] = i;
+    }
+
+    assert(() {
+      final crowded = counts.where((c) => c > _maxDotsPerTile).length;
+      if (crowded > 0) {
+        debugPrint(
+          'merging_dots: $crowded tiles hold more than $_maxDotsPerTile dots. '
+          'Dots past that are not drawn. Spread the dots out or make them '
+          'smaller.',
+        );
+      }
+      return true;
+    }(), 'Only reports crowded tiles.');
+
+    final tileData = Uint8List(columns * rows * 4);
+    for (var t = 0; t < columns * rows; t++) {
+      final p = t * 4;
+      tileData[p] = starts[t] >> 8;
+      tileData[p + 1] = starts[t] & 0xFF;
+      tileData[p + 2] = math.min(counts[t], _maxDotsPerTile);
+      tileData[p + 3] = 255;
+    }
+
+    // Positions and radii as 16 bit fractions of the content's span.
+    final span = math.max(math.max(contentWidth, contentHeight), maxRadius);
+    final dotRows = math.max(1, (visible * 2 / _dotsWidth).ceil());
+    final dotData = Uint8List(_dotsWidth * dotRows * 4);
+    int quantize(double v) => (v / span * 65535).round().clamp(0, 65535);
+    for (var n = 0; n < visible; n++) {
+      final i = order[n];
+      final x = quantize(xs[i] - contentLeft);
+      final y = quantize(ys[i] - contentTop);
+      final r = quantize(rs[i]);
+      final p = n * 8;
+      dotData
+        ..[p] = x >> 8
+        ..[p + 1] = x & 0xFF
+        ..[p + 2] = y >> 8
+        ..[p + 3] = 255
+        ..[p + 4] = y & 0xFF
+        ..[p + 5] = r >> 8
+        ..[p + 6] = r & 0xFF
+        ..[p + 7] = 255;
+    }
+    for (var p = visible * 8 + 3; p < dotData.length; p += 4) {
+      dotData[p] = 255;
+    }
+
+    _tiles.upload(tileData, columns, rows);
+    _dots.upload(dotData, _dotsWidth, dotRows);
+    return _layout = _CloudLayout(
+      origin: Offset(contentLeft, contentTop),
+      tile: tile,
+      columns: columns,
+      rows: rows,
+      dotRows: dotRows,
+      span: span,
+      bounds: Rect.fromLTRB(
+        left - reach,
+        top - reach,
+        right + reach,
+        bottom + reach,
+      ),
+    );
+  }
+
   @override
   void paint(PaintingContext context, Offset offset) {
     final (scale, origin) = transform;
@@ -518,43 +656,54 @@ class RenderDotCloud extends RenderDots<DotCloud> {
       return;
     }
 
-    final blend = _blend * scale;
-    var left = double.infinity;
-    var top = double.infinity;
-    var right = double.negativeInfinity;
-    var bottom = double.negativeInfinity;
-    setColor(shader);
-    for (var i = 0; i < count; i++) {
-      final o = i * _stride;
-      final x = origin.dx + values[o] * scale;
-      final y = origin.dy + values[o + 1] * scale;
-      final r = values[o + 2] * scale;
-      final u = 4 + i * 4;
-      shader
-        ..setFloat(u, x)
-        ..setFloat(u + 1, y)
-        ..setFloat(u + 2, r);
-      if (r <= 0) continue;
-      final reach = r + blend / 4 + 2;
-      left = math.min(left, x - reach);
-      top = math.min(top, y - reach);
-      right = math.max(right, x + reach);
-      bottom = math.max(bottom, y + reach);
-    }
-    if (right < left) return;
+    final smoothing = _blend * scale * _blendToSmoothing;
+    final layout = _updateData(scale, origin, smoothing);
+    if (layout == null) return;
 
     canvas
       ..save()
       ..translate(offset.dx, offset.dy);
+    setColor(shader);
     shader
-      ..setFloat(260, count.toDouble())
-      ..setFloat(261, blend)
-      ..setFloat(262, pixelWidth(canvas));
+      ..setFloat(4, layout.origin.dx)
+      ..setFloat(5, layout.origin.dy)
+      ..setFloat(6, layout.columns.toDouble())
+      ..setFloat(7, layout.rows.toDouble())
+      ..setFloat(8, _dotsWidth.toDouble())
+      ..setFloat(9, layout.dotRows.toDouble())
+      ..setFloat(10, layout.tile)
+      ..setFloat(11, layout.span)
+      ..setFloat(12, smoothing)
+      ..setFloat(13, pixelWidth(canvas))
+      ..setFloat(14, _tiles.isRendered ? 1 : 0)
+      ..setImageSampler(0, _tiles.image!)
+      ..setImageSampler(1, _dots.image!);
     canvas
       ..drawRect(
-        Rect.fromLTRB(left, top, right, bottom),
+        layout.bounds.intersect(Offset.zero & size),
         Paint()..shader = shader,
       )
       ..restore();
   }
+}
+
+/// Where a cloud's tiles are, for the shader.
+class _CloudLayout {
+  const _CloudLayout({
+    required this.origin,
+    required this.tile,
+    required this.columns,
+    required this.rows,
+    required this.dotRows,
+    required this.span,
+    required this.bounds,
+  });
+
+  final Offset origin;
+  final double tile;
+  final int columns;
+  final int rows;
+  final int dotRows;
+  final double span;
+  final Rect bounds;
 }

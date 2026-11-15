@@ -71,7 +71,10 @@ class DotCloud implements DotState {
   }
 
   /// The most dots a cloud can render.
-  static const int maxDots = 64;
+  ///
+  /// Each pixel only looks at the dots near it, so large clouds stay cheap
+  /// as long as dots don't pile up: one spot can merge up to 64 dots.
+  static const int maxDots = 16384;
 
   /// The dots, in the order they are matched when animating.
   final List<Dot> dots;

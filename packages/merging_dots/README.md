@@ -7,11 +7,12 @@ with [motor](../motor) and rendered by fragment shaders. Made for loading
 indicators and dot-matrix icons that morph.
 
 - 🫧 **Merging** - dots are signed distance fields joined with a smooth
-  union, so neighbors melt together. `blend` sets how gooey.
+  union, so neighbors melt together. `blend` sets how gooey, and the shape
+  never depends on the order of the dots.
 - 🔲 **Grid renderer** - dot-matrix art up to 128 x 128. Every pixel looks
   at its 5 x 5 nearest cells, so the cost doesn't grow with the grid.
-- ✳️ **Freeform renderer** - up to 64 freely placed dots on a scalable
-  canvas, for spinners and blobs.
+- ✳️ **Freeform renderer** - thousands of freely placed dots on a scalable
+  canvas, for spinners, blobs and particles.
 - 🌀 **Motor-powered motion** - any `Motion`: springs keep their momentum
   when retargeted, and staggers sweep, ripple or chase across the dots.
 - 🎞️ **Sequences** - keyframes with holds, looping or ping-ponging.
@@ -124,14 +125,18 @@ animated icons:
   simulation, shifted in time for staggers. A spring is linear in its start
   conditions, so retargeted dots keep their velocity with a second shared
   simulation instead of one per dot. Dots that don't move cost nothing.
-- **Constant work per pixel on grids.** The grid's values are uploaded as a
-  texture with one texel per cell, drawn on the GPU from a single vertices
-  call. The shader reads only the 5 x 5 cells around each pixel.
+- **Constant work per pixel on grids.** The grid's values live in a
+  texture with one texel per cell. The shader reads only the 5 x 5 cells
+  around each pixel.
+- **Tiles for freeform dots.** Every frame the dots are sorted into tiles
+  at least as large as a dot's reach, so each pixel reads only the dots of
+  the 3 x 3 tiles around it. One spot can merge up to 64 dots.
+- **Direct uploads on Impeller.** The per-frame data is uploaded with
+  `decodeImageFromPixelsSync`. Skia and the web don't support it, so there
+  the data is drawn into a texture on the GPU instead, which costs one extra
+  render pass.
 - **Only the dots are shaded.** Both renderers shade the bounding box of the
   visible dots, not the whole widget.
-
-The freeform shader evaluates every dot per pixel, so keep clouds small (it
-renders up to 64 dots) and use a grid for dot-matrix art.
 
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40
