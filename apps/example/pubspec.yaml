@@ -17,6 +17,8 @@ dependencies:
     sdk: flutter
   heroine_example:
     path: ../../packages/heroine/example
+  merging_dots_example:
+    path: ../../packages/merging_dots/example
   motor_devtools:
     path: ../../packages/motor_devtools
   motor_example:

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
+import 'package:merging_dots_example/main.dart';
 import 'package:motor_devtools/motor_devtools.dart';
 import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/main.dart';
@@ -27,6 +28,12 @@ void main() async {
         name: 'Motor',
         path: '/motor',
         children: motorRoutes,
+      ),
+      NamedRouteDef(
+        name: 'Merging Dots',
+        path: '/merging_dots',
+        type: RouteType.cupertino(),
+        builder: (context, state) => const MergingDotsEditor(),
       ),
       NamedRouteDef.shell(
         name: 'Stupid Simple Sheet',
@@ -82,6 +89,10 @@ class Home extends StatelessWidget {
             onPressed: () =>
                 context.navigateTo(NamedRoute('Stupid Simple Sheet')),
             child: const Text('Stupid Simple Sheet'),
+          ),
+          CupertinoButton.filled(
+            onPressed: () => context.navigateTo(NamedRoute('Merging Dots')),
+            child: const Text('Merging Dots'),
           ),
         ],
       ),
