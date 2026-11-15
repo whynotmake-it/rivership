@@ -10,6 +10,7 @@ export 'src/drag/motion_draggable.dart';
 export 'src/drag/motion_edge_scroll.dart'
     show MotionEdgeScroll, MotionEdgeScrollSettings;
 export 'src/drop/motion_drop_zone.dart';
+export 'src/layout/motion_layout.dart' show MotionLayoutGroup, MotionLayoutItem;
 export 'src/layout/padding_extended.dart' show PaddingExtended;
 export 'src/motion_align.dart';
 export 'src/motion_container.dart';
@@ -22,4 +23,3 @@ export 'src/motion_size.dart';
 export 'src/motion_size_switcher.dart';
 export 'src/motion_slide.dart';
 export 'src/motion_switcher.dart';
-export 'src/reorder/motion_reorder.dart';

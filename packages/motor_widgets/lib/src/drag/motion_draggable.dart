@@ -4,8 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/converters.dart';
 import 'package:motor_widgets/src/drag/flight.dart';
+import 'package:motor_widgets/src/layout/motion_layout.dart';
 import 'package:motor_widgets/src/painted_position.dart';
-import 'package:motor_widgets/src/reorder/motion_reorder.dart';
 import 'package:motor_widgets/src/ticker_rate.dart';
 
 /// What happened to a [MotionDraggable]'s drag.
@@ -23,9 +23,9 @@ enum MotionDragPhase {
 /// When a [MotionDraggable]'s landing moves from the [Overlay] into the
 /// tree, see [MotionDraggable.handoff].
 ///
-/// A landing can only move into the tree when the destination is inside a
-/// [MotionReorder], which then flies the rest of it. Without one, every value
-/// behaves like [never].
+/// A landing can only move into the tree when the destination is a
+/// [MotionLayoutItem], which then flies the rest of it. On a draggable
+/// that is its own landing site, every value behaves like [never].
 enum MotionDragHandoff {
   /// As soon as the feedback's center is inside the destination's visible
   /// area and the destination's slot is in view. For most drops that is the
@@ -185,9 +185,9 @@ final class MotionDragDetails {
   /// nowhere to land.
   ///
   /// It is null while dragging. After a drop it is the rect of the mounted
-  /// [MotionDraggable] whose [MotionDraggable.tag] matches, measured after
-  /// the drop has been laid out. It becomes null if that draggable unmounts
-  /// mid-flight.
+  /// `MotionLayoutItem` with the draggable's [MotionDraggable.id], measured
+  /// after the drop has been laid out. It becomes null if that item
+  /// unmounts mid-flight.
   final Rect? destination;
 
   /// How fast the feedback moves, in logical pixels per second, in global
@@ -234,41 +234,45 @@ typedef MotionDraggableTransitions =
 /// unchanged: they receive the same data and callbacks.
 ///
 /// When the drag ends, the feedback flies to where the item now lives. Like
-/// a [Hero], it looks for a mounted [MotionDraggable] with the same [tag] in
-/// the same [Overlay] once the drop has been laid out:
+/// a [Hero], it looks for the `MotionLayoutItem` with the same [id] in the
+/// same [Overlay] once the drop has been laid out:
 ///
 /// * After an accepted drop that moved the item, for example from one
 ///   column to another, it flies to the item's new place.
 /// * After a rejected or canceled drop, it springs back to the source.
-/// * When there is no such draggable, for example because the target
-///   removed the item, it stays at the drop point and plays its exit:
-///   by default it shrinks and fades out.
+/// * When there is no such item, for example because the target removed
+///   it, it stays at the drop point and plays its exit: by default it
+///   shrinks and fades out.
+///
+/// A draggable that isn't inside a `MotionLayoutItem` with its id is a
+/// landing site itself, so a rejected drop still flies back to it.
 ///
 /// The landing starts with the release velocity and follows where the
-/// destination is painted, also while it scrolls, resizes or flies in a
-/// [MotionReorder]. While the feedback lands, the destination keeps its place
-/// in the layout but hides its child. Grabbing the feedback while it lands
-/// starts a new drag from where it is.
+/// destination is painted, also while it scrolls, resizes or flies. While
+/// the feedback lands, the destination keeps its place in the layout but
+/// hides its child. Grabbing the feedback while it lands starts a new drag
+/// from where it is.
 ///
 /// The feedback flies in the [Overlay], above everything, only while it has
-/// to. When the destination is inside a [MotionReorder], the feedback hands
-/// the rest of the landing to it as soon as the feedback's center is inside
-/// the destination's visible area (all of its [Scrollable]s, or the overlay
-/// when it has none) and the destination's slot is in view. For most drops
-/// that is the frame after the drop, since the pointer drops the card where
-/// its column can be seen. The item then finishes in the tree, keeping its
-/// velocity: clipped by its scrollables, stacked like itself, and redirected
-/// by a reorder. The destination continues the
-/// [MotionDraggableTrack.scale], [MotionDraggableTrack.rotation] and
-/// [MotionDraggableTrack.opacity] from where they were, back to rest, on the
-/// same motions. [feedbackBuilder] stops applying, and the position uses the
-/// [MotionReorder]'s motion.
+/// to. It hands the rest of the landing to the `MotionLayoutItem` as soon as
+/// the feedback's center is inside the item's visible area (all of its
+/// [Scrollable]s, or the overlay when it has none) and the item's slot is
+/// in view. For most drops that is the frame after the drop, since the
+/// pointer drops the card where its column can be seen. The item then
+/// finishes in the tree, keeping its velocity: clipped by its scrollables,
+/// stacked like itself, and redirected when its layout moves it. It
+/// continues the [MotionDraggableTrack.scale],
+/// [MotionDraggableTrack.rotation] and [MotionDraggableTrack.opacity] from
+/// where they were, back to rest. [feedbackBuilder] stops applying, and the
+/// position uses the item's motion.
 ///
 /// A list doesn't paint an item whose slot is out of view. While the
 /// destination's slot is scrolled out of view, the feedback stays in the
 /// overlay but is clipped to the destination's visible area, as the list
-/// would clip it. Without a [MotionReorder], the feedback lands in the
-/// overlay.
+/// would clip it.
+///
+/// Inside a `MotionDropZone`, [data] and [id] default to the item of the
+/// slot it is in.
 ///
 /// The feedback is laid out at the child's measured size. A [feedback] that
 /// wants its own size loosens those constraints, for example with [Align].
@@ -308,7 +312,7 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   const MotionDraggable({
     required this.child,
     this.data,
-    this.tag,
+    this.id,
     this.feedback,
     this.feedbackBuilder,
     this.childWhenDragging,
@@ -341,17 +345,20 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
        );
 
   /// The data that will be dropped by this draggable.
+  ///
+  /// Inside a `MotionDropZone`, defaults to the item of the slot.
   final T? data;
 
-  /// The identity of the item, which the feedback uses to find where to
-  /// land, compared with `==` like [Hero.tag].
+  /// The identity of the item: the feedback lands on the
+  /// `MotionLayoutItem` with this id, compared with `==` like [Hero.tag].
   ///
-  /// Defaults to [data]. When both are null, the feedback lands back on
+  /// Inside a `MotionDropZone`, defaults to the slot's id. Elsewhere it
+  /// defaults to [data], and when both are null, the feedback lands back on
   /// this draggable.
   ///
-  /// Within one [Overlay], only one mounted [MotionDraggable] should have a
-  /// given tag at a time.
-  final Object? tag;
+  /// Within one [Overlay], only one landing site should have a given id at
+  /// a time.
+  final Object? id;
 
   /// The widget below this widget in the tree.
   ///
@@ -411,14 +418,14 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// destination's scrollables clip it and the widgets around it stack over
   /// it.
   ///
-  /// Only a destination inside a [MotionReorder] can take it; without one,
-  /// the landing stays in the overlay whatever this is.
+  /// Only a `MotionLayoutItem` can take it; a draggable that lands on
+  /// itself stays in the overlay whatever this is.
   ///
   /// Defaults to [MotionDragHandoff.onEnter].
   final MotionDragHandoff handoff;
 
   /// Called when the feedback has landed, has finished its exit, or has
-  /// handed the rest of its landing to a [MotionReorder].
+  /// handed the rest of its landing to a `MotionLayoutItem`.
   ///
   /// Unlike [onDragEnd], it is also called after this widget has been
   /// removed from the tree. It is not called when the feedback is grabbed
@@ -504,7 +511,7 @@ class MotionLongPressDraggable<T extends Object> extends MotionDraggable<T> {
   const MotionLongPressDraggable({
     required super.child,
     super.data,
-    super.tag,
+    super.id,
     super.feedback,
     super.feedbackBuilder,
     super.childWhenDragging,
@@ -573,7 +580,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   }
 
   LandingRegistry? _registry;
-  Object? _registeredTag;
+  Object? _registeredId;
   MultiDragGestureRecognizer? _recognizer;
 
   /// The flights started from this draggable that are still dragged.
@@ -588,11 +595,25 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   /// The flight whose drag is ending, while Flutter reports the outcome.
   DragFlight? _ending;
 
-  Object get _tag => widget.tag ?? widget.data ?? this;
+  DraggableSlot? _slot;
+
+  /// The item the drag lands on, when this draggable is inside the
+  /// `MotionLayoutItem` with its id.
+  MotionLayoutItemState? _item;
+
+  T? get _data =>
+      widget.data ??
+      switch (_slot?.item) {
+        final T item => item,
+        _ => null,
+      };
+
+  Object get _id => widget.id ?? _slot?.id ?? widget.data ?? this;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _slot = context.dependOnInheritedWidgetOfExactType<DraggableSlot>();
     _register();
   }
 
@@ -606,25 +627,36 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     }
   }
 
+  /// Registers as the landing site of its id, unless the item around it
+  /// has the id: then the item is the site, and passes grabs on to this.
   void _register() {
+    final id = _id;
+    final item = context.findAncestorStateOfType<MotionLayoutItemState>();
+    final owner = item != null && item.widget.id == id ? item : null;
+    if (!identical(owner, _item)) {
+      if (identical(_item?.grabber, this)) _item?.grabber = null;
+      _item = owner?..grabber = this;
+    }
     final overlay = Overlay.maybeOf(context, rootOverlay: widget.rootOverlay);
-    final registry = overlay == null ? null : LandingRegistry.of(overlay);
-    final tag = _tag;
-    if (registry == _registry && tag == _registeredTag) return;
+    final registry = owner != null || overlay == null
+        ? null
+        : LandingRegistry.of(overlay);
+    if (registry == _registry && id == _registeredId) return;
     _unregister();
-    _registry = registry?..add(tag, this);
-    _registeredTag = tag;
+    _registry = registry?..add(id, this);
+    _registeredId = registry == null ? null : id;
   }
 
   void _unregister() {
-    if (_registeredTag case final tag?) _registry?.remove(tag, this);
+    if (_registeredId case final id?) _registry?.remove(id, this);
     _registry = null;
-    _registeredTag = null;
+    _registeredId = null;
   }
 
   @override
   void dispose() {
     _unregister();
+    if (identical(_item?.grabber, this)) _item?.grabber = null;
     _visuals?.dispose();
     super.dispose();
   }
@@ -739,7 +771,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
       flight = DragFlight(
         overlay: overlay,
         registry: LandingRegistry.of(overlay),
-        tag: _tag,
+        id: _id,
         widget: widget,
         pointer: position,
         anchor: _lastAnchor,
@@ -768,10 +800,12 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
   @override
   Widget build(BuildContext context) {
     final widget = this.widget;
-    final landing = _registry?.isLanding(_tag) ?? false;
+    // Only a draggable that is its own landing site hides while landed on.
+    final id = _registeredId;
+    final landing = id != null && (_registry?.isLanding(id) ?? false);
     // After a hand-off, the flight's overlay copy fades out over the child
     // and keeps following where it is painted.
-    final fading = _registry?.isFading(_tag) ?? false;
+    final fading = id != null && (_registry?.isFading(id) ?? false);
     final callbacks = _DraggableCallbacks(
       onDragCompleted: () {
         _ending?.accepted = true;
@@ -799,7 +833,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     return _InnerDraggable<T>(
       state: this,
       callbacks: callbacks,
-      data: widget.data,
+      data: _data,
       childWhenDragging: childWhenDragging,
       child: child,
     );
@@ -857,7 +891,13 @@ class _InnerDraggable<T extends Object> extends Draggable<T> {
 /// It keeps working after the draggable has been removed from the tree,
 /// unlike [Draggable.onDragUpdate].
 class _FlightDrag extends Drag {
-  _FlightDrag(this._state, this._drag, this._flight);
+  _FlightDrag(this._state, this._drag, this._flight) {
+    // Flutter's drag looks for its target only when the pointer moves. A
+    // move of no distance makes it look again where the pointer is.
+    _flight.retarget = () => _drag.update(
+      DragUpdateDetails(globalPosition: _flight.pointer),
+    );
+  }
 
   final _MotionDraggableState<Object> _state;
   final Drag _drag;

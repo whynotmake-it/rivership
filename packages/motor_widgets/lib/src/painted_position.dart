@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 /// without telling hit testing, so `localToGlobal` doesn't include the
 /// offset.
 ///
-/// `MotionReorder` is one: while it flies, it paints the item at an offset
+/// `MotionLayoutItem` is one: while it flies, it paints the item at an offset
 /// but hit-tests it at its layout position.
 abstract interface class PaintOffset {
   /// How far from its layout position the child was last painted, in the
@@ -116,7 +116,7 @@ class RenderLeaderWhile extends RenderProxyBox {
 /// A render object in the tree that can take over a landing flight from the
 /// overlay, so the rest of it is clipped and stacked like the item itself.
 ///
-/// `MotionReorder` is one.
+/// `MotionLayoutItem` is one.
 abstract interface class FlightReceiver {
   /// Whether it can take a flight now.
   bool get canReceiveFlight;

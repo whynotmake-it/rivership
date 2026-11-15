@@ -320,6 +320,13 @@ abstract final class EdgeScroller {
     // While nothing scrolls, a move of the drag wakes the next frame.
     if (_scrolling.isNotEmpty) {
       _wake();
+      // The content moved under the pointer. Once it is laid out, each held
+      // drag looks again for the target under it, which may now be another.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        for (final flight in flights) {
+          flight.nudge();
+        }
+      });
     } else {
       _lastFrame = null;
     }
@@ -455,4 +462,7 @@ class _FlightObserver implements DragFlightObserver {
 
   @override
   void flightReleased(DragFlight flight) => EdgeScroller._wake();
+
+  @override
+  void flightFinished(DragFlight flight) {}
 }

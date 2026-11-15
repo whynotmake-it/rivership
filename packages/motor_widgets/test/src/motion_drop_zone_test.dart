@@ -25,7 +25,7 @@ Rect _layout(WidgetTester tester, String id) {
   return box.localToGlobal(Offset.zero) & box.size;
 }
 
-/// Where item [id] is painted, including its MotionReorder's flight.
+/// Where item [id] is painted, including its MotionLayoutItem's flight.
 Rect _painted(WidgetTester tester, String id) =>
     paintedGlobalRect(tester.renderObject<RenderBox>(_child(id)));
 
@@ -107,6 +107,7 @@ class _BoardState extends State<_Board> {
         }
         insert(items, id, index);
       },
+      itemBuilder: (context, id) => _card(id, size: sizes[id] ?? _size),
       builder: (context, slots) {
         if (name == 'A') {
           gapA = slots.gapIndex;
@@ -115,13 +116,7 @@ class _BoardState extends State<_Board> {
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < slots.length; i++)
-              slots.build(
-                i,
-                (context, id) => _card(id, size: sizes[id] ?? _size),
-              ),
-          ],
+          children: slots.children,
         );
       },
     ),
@@ -677,19 +672,16 @@ void main() {
                 height: 400,
                 child: MotionDropZone<String>(
                   items: items,
+                  itemBuilder: (context, id) => SizedBox.fromSize(
+                    key: ValueKey('child-$id'),
+                    size: _size,
+                  ),
                   builder: (context, slots) {
                     gap = slots.gapIndex;
                     return ListView.builder(
                       controller: controller,
                       itemCount: slots.length,
-                      findChildIndexCallback: slots.indexOfKey,
-                      itemBuilder: (context, i) => slots.build(
-                        i,
-                        (context, id) => SizedBox.fromSize(
-                          key: ValueKey('child-$id'),
-                          size: _size,
-                        ),
-                      ),
+                      itemBuilder: (context, i) => slots[i],
                     );
                   },
                 ),
@@ -751,14 +743,13 @@ void main() {
                       ..remove(id)
                       ..insert(index, id);
                   }),
+                  itemBuilder: (context, id) => _card(id),
                   builder: (context, slots) {
                     gap = slots.gapIndex;
                     return ListView.builder(
                       controller: controller,
                       itemCount: slots.length,
-                      findChildIndexCallback: slots.indexOfKey,
-                      itemBuilder: (context, i) =>
-                          slots.build(i, (context, id) => _card(id)),
+                      itemBuilder: (context, i) => slots[i],
                     );
                   },
                 );
@@ -793,14 +784,10 @@ void main() {
           width: 300,
           child: MotionDropZone<String>(
             items: items,
+            itemBuilder: (context, id) => _card(id),
             builder: (context, slots) {
               gap(slots.gapIndex);
-              return Wrap(
-                children: [
-                  for (var i = 0; i < slots.length; i++)
-                    slots.build(i, (context, id) => _card(id)),
-                ],
-              );
+              return Wrap(children: slots.children);
             },
           ),
         );
@@ -874,18 +861,11 @@ void main() {
               child: MotionDropZone<String>(
                 items: const ['b0', 'b1'],
                 onInsert: (id, index) => inserted = '$id@$index',
+                itemBuilder: (context, id) =>
+                    SizedBox.fromSize(key: ValueKey(id), size: _size),
                 builder: (context, slots) {
                   gap = slots.gapIndex;
-                  return Column(
-                    children: [
-                      for (var i = 0; i < slots.length; i++)
-                        slots.build(
-                          i,
-                          (context, id) =>
-                              SizedBox.fromSize(key: ValueKey(id), size: _size),
-                        ),
-                    ],
-                  );
+                  return Column(children: slots.children);
                 },
               ),
             ),

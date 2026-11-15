@@ -31,7 +31,7 @@ Rect _feedbackRect(WidgetTester tester) =>
     tester.getRect(find.byKey(_feedback));
 
 /// Where item [id] is painted: as the feedback while that flies in the
-/// overlay, else as the child, including a MotionReorder's paint offset.
+/// overlay, else as the child, including a MotionLayoutItem's flight.
 Rect _paintedRect(WidgetTester tester, String id) {
   final feedback = find.byKey(_feedback);
   if (feedback.evaluate().isNotEmpty) return tester.getRect(feedback);
@@ -69,7 +69,7 @@ class _Board extends StatefulWidget {
   final Object Function(String id)? tagOf;
   final List<String> bItems;
 
-  /// Wraps column B's items in [MotionReorder]s keyed by index.
+  /// Puts column B's items in [MotionLayoutItem]s of a [MotionLayoutGroup].
   final bool reorderB;
 
   @override
@@ -107,7 +107,7 @@ class _BoardState extends State<_Board> {
         : MotionDraggable<String>(
             key: ValueKey(id),
             data: id,
-            tag: widget.tagOf?.call(id),
+            id: widget.tagOf?.call(id),
             axis: widget.axis,
             feedback: feedback,
             transitions: widget.transitions,
@@ -143,19 +143,22 @@ class _BoardState extends State<_Board> {
             }),
             builder: (context, candidates, rejected) => Padding(
               padding: EdgeInsets.only(top: bTop),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final (index, id) in b.indexed)
-                    if (widget.reorderB)
-                      MotionReorder(
-                        key: ValueKey('reorder-$id'),
-                        flightKey: index,
-                        child: _item(id),
-                      )
-                    else
-                      _item(id),
-                ],
+              child: MotionLayoutGroup(
+                enabled: widget.reorderB,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final id in b)
+                      if (widget.reorderB)
+                        MotionLayoutItem(
+                          key: ValueKey('reorder-$id'),
+                          id: id,
+                          child: _item(id),
+                        )
+                      else
+                        _item(id),
+                  ],
+                ),
               ),
             ),
           ),
@@ -167,9 +170,10 @@ class _BoardState extends State<_Board> {
 
 const _header = Key('header');
 
-/// Column A at x 0 and a scrolling column B at x 400, both in
-/// [MotionReorder]s keyed by index. B's list is the viewport from y 200 to
-/// 320, with a header stacked over its top 20 px. Dropping on B appends.
+/// Column A at x 0 and a scrolling column B at x 400, whose cards are
+/// [MotionLayoutItem]s of one [MotionLayoutGroup]. B's list is the viewport
+/// from y 200 to 320, with a header stacked over its top 20 px. Dropping on
+/// B appends.
 class _ScrollBoard extends StatefulWidget {
   const _ScrollBoard({
     this.b = const ['y'],
@@ -216,9 +220,9 @@ class _ScrollBoardState extends State<_ScrollBoard> {
     super.dispose();
   }
 
-  Widget _card(String id, int index) => MotionReorder(
+  Widget _card(String id, int index) => MotionLayoutItem(
     key: ValueKey('reorder-$id'),
-    flightKey: index,
+    id: id,
     child: MotionDraggable<String>(
       key: ValueKey(id),
       data: id,
@@ -299,7 +303,7 @@ class _ScrollBoardState extends State<_ScrollBoard> {
       ],
     );
     final width = widget.boardWidth;
-    if (width == null) return board;
+    if (width == null) return MotionLayoutGroup(child: board);
     return Align(
       alignment: Alignment.topLeft,
       child: SizedBox(
@@ -307,7 +311,7 @@ class _ScrollBoardState extends State<_ScrollBoard> {
         height: 600,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: SizedBox(width: 600, child: board),
+          child: SizedBox(width: 600, child: MotionLayoutGroup(child: board)),
         ),
       ),
     );
@@ -428,7 +432,7 @@ void main() {
       }
 
       // Swap the column while x is still landing: x's layout jumps to the
-      // top at once, while MotionReorder paints it flying there.
+      // top at once, while MotionLayoutItem paints it flying there.
       board.currentState!.reverseB();
       final tops = <double>[_paintedRect(tester, 'x').top];
       for (var i = 0; i < 400; i++) {
@@ -768,7 +772,7 @@ void main() {
       expect(landed, 0);
     });
 
-    testWidgets('reports duplicate tags and lands on the nearest', (
+    testWidgets('reports duplicate ids and lands on the nearest', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -781,7 +785,7 @@ void main() {
       await tester.pump();
       final error = tester.takeException();
       expect(error, isA<FlutterError>());
-      expect('$error', contains('2 MotionDraggables have the tag same'));
+      expect('$error', contains('2 landing sites have the id same'));
 
       await tester.pumpAndSettle();
       expect(find.byKey(_feedback), findsNothing);
@@ -791,7 +795,7 @@ void main() {
     });
   });
 
-  group('MotionDraggable hand-off to MotionReorder', () {
+  group('MotionDraggable hand-off to MotionLayoutItem', () {
     testWidgets('leaves the overlay once the card center is inside the '
         'destination viewport, with continuous velocity', (tester) async {
       await tester.pumpWidget(_app(const _ScrollBoard()));
@@ -967,10 +971,13 @@ void main() {
       );
       double treeScale() => tester
           .renderObject<RenderPaintedVisuals>(
-            find.ancestor(
-              of: _child('x'),
-              matching: find.byType(PaintedVisuals),
-            ),
+            // The item's, around the draggable's own.
+            find
+                .ancestor(
+                  of: _child('x'),
+                  matching: find.byType(PaintedVisuals),
+                )
+                .last,
           )
           .widget
           .scale();
@@ -1050,7 +1057,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('without a MotionReorder, the overlay flight lands', (
+    testWidgets('without a MotionLayoutItem, the overlay flight lands', (
       tester,
     ) async {
       await tester.pumpWidget(_app(const _Board()));

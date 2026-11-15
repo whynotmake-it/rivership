@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
-
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -11,10 +10,10 @@ import 'package:motor_widgets/src/drag/flight.dart';
 import 'package:motor_widgets/src/drag/motion_drag_probe.dart';
 import 'package:motor_widgets/src/drag/motion_draggable.dart';
 import 'package:motor_widgets/src/drag/motion_edge_scroll.dart';
+import 'package:motor_widgets/src/layout/motion_layout.dart';
 import 'package:motor_widgets/src/painted_position.dart';
-import 'package:motor_widgets/src/reorder/motion_reorder.dart';
 
-/// Builds a [MotionDropZone]'s list from its [slots].
+/// Lays out a [MotionDropZone]'s [slots].
 typedef MotionDropZoneBuilder<T extends Object> =
     Widget Function(BuildContext context, MotionDropSlots<T> slots);
 
@@ -34,63 +33,56 @@ typedef MotionDropInsertCallback<T extends Object> =
 /// A list, grid or wrap that makes room for an item dragged over it, and
 /// takes the drop at that place.
 ///
-/// The zone is one [DragTarget] for the whole list. While a compatible
-/// [MotionDraggable] hovers over it, the zone opens a gap where the item
-/// would go: the items after the gap fly aside on their [MotionReorder]
-/// springs, and each move of the gap redirects them with their velocity.
-/// Leaving the zone closes the gap. A drop calls [onInsert] with the gap's
-/// index, and the item takes the gap's place: the feedback flies into the
-/// open gap and hands off to the item on the next frame.
-///
-/// The zone doesn't lay anything out. [builder] gets the [MotionDropSlots]
-/// and lays them out with any list widget, building each one with
-/// [MotionDropSlots.build]:
+/// The zone builds each item with [itemBuilder], and [builder] lays the
+/// [MotionDropSlots] out with any list widget:
 ///
 /// ```dart
 /// MotionDropZone<Song>(
 ///   items: songs,
+///   id: (song) => song.id,
 ///   onInsert: (song, index) => setState(() {
 ///     songs
 ///       ..remove(song)
 ///       ..insert(index, song);
 ///   }),
+///   itemBuilder: (context, song) =>
+///       MotionDraggable<Song>(child: SongTile(song)),
 ///   builder: (context, slots) => ListView.builder(
 ///     itemCount: slots.length,
-///     findChildIndexCallback: slots.indexOfKey,
-///     itemBuilder: (context, i) => slots.build(
-///       i,
-///       (context, song) => MotionDraggable<Song>(
-///         data: song,
-///         child: SongTile(song),
-///       ),
-///     ),
+///     itemBuilder: (context, i) => slots[i],
 ///   ),
 /// )
 /// ```
 ///
-/// A `Column` or `Wrap` uses `[for (var i = 0; i < slots.length; i++)
-/// slots.build(i, …)]` as its children.
+/// A `Column`, `Row` or `Wrap` takes [MotionDropSlots.children].
+///
+/// A [MotionDraggable] inside an item drags that item: its data and id
+/// default to the item's. Wrap the whole item to drag it anywhere, or only
+/// a handle. Plain [Draggable]s are accepted too.
+///
+/// Every slot is a [MotionLayoutItem], so items fly whenever the zone's
+/// layout moves them: when the gap opens, moves or closes, on a drop, and
+/// when [items] changes. The zone uses the [MotionLayoutGroup] around it,
+/// or else its own. Put one group around several zones, such as the
+/// columns of a board, to make moves between them fly without a drag too.
 ///
 /// ## The gap
 ///
-/// The gap goes before the first item whose painted center is past the
-/// probe point (see [probe]). For a grid or a wrap, that is within the row
-/// the probe is in. The zone learns the layout from the items, so rows,
-/// reversed lists and right-to-left rows need no setting. To move the gap
-/// past an item, the probe has to pass the item's center by a few pixels,
-/// so the gap holds still at a boundary.
+/// While a compatible draggable hovers over the zone, the zone opens a gap
+/// where the item would go: before the first item whose painted center is
+/// past the probe point (see [probe]), within the row the probe is in for a
+/// grid or a wrap. The zone learns the layout from where the items are, so
+/// rows, reversed lists and right-to-left rows need no setting. To move the
+/// gap past an item, the probe has to pass the item's center by a few
+/// pixels, so the gap holds still at a boundary.
 ///
-/// The gap is laid out at full size at once, and the items around it fly.
-/// It is as large as the dragged item, which [MotionDraggable] measures,
-/// unless [placeholderBuilder] draws it and picks its own size.
-///
-/// ## Items of this zone
+/// The gap is as large as the dragged item, unless [placeholderBuilder]
+/// draws it and picks its own size.
 ///
 /// Dragging an item of this zone turns its slot into the gap, so nothing
-/// moves until the drag does. Leaving the zone closes the gap behind the
-/// item; a drop back on the zone reorders it; a rejected drop brings it
-/// back, and the feedback lands on it. The item's widget is left out while
-/// it is dragged, so it loses its state.
+/// moves until the drag does. The item stays out of the zone until its
+/// drag is over, unless the drop is rejected: then it comes back, and the
+/// feedback lands on it.
 ///
 /// ## The drop
 ///
@@ -102,33 +94,26 @@ typedef MotionDropInsertCallback<T extends Object> =
 /// index until it completes, and the feedback lands on it and waits there.
 /// Update [items] before the future completes: the item then takes the
 /// gap's place, and the landing hands off to it. If the future throws, or
-/// completes without the item in [items], the drop counts as rejected: the
-/// gap closes, and the feedback flies back to the item where it still is,
-/// or plays its rejected exit when there is none. A future that never
-/// completes keeps the gap open.
+/// completes without the item in [items], the drop counts as rejected.
 ///
 /// ## Scrolling and accessibility
 ///
 /// While an item is dragged near an edge of a [Scrollable] around the
-/// items, the zone scrolls it like a [MotionEdgeScroll], faster the closer
-/// it gets to the edge, and the gap follows the content. Each item gets the
-/// screen-reader actions to move up, down, to the start and to the end, or
-/// left and right in a row, which call [onInsert].
-///
-/// A plain [Draggable] also works, but the zone can only place the gap by
-/// [DragTargetDetails.offset], the gap is empty unless [placeholderBuilder]
-/// sizes it, and nothing lands.
+/// items, the zone scrolls it like a [MotionEdgeScroll], and a drag held
+/// still finds its target again as the content moves. Each item gets the
+/// screen-reader actions to move it, which call [onInsert].
 class MotionDropZone<T extends Object> extends StatefulWidget {
   /// Creates a zone that previews drops into [items].
   const MotionDropZone({
     required this.items,
+    required this.itemBuilder,
     required this.builder,
+    this.id,
     this.onInsert,
     this.onWillAcceptWithDetails,
     this.placeholderBuilder,
-    this.itemKey,
     this.probe = MotionDragProbe.pointer,
-    this.motion = MotionReorder.defaultMotion,
+    this.motion,
     this.autoScroll = const MotionEdgeScrollSettings(),
     this.debugLabel,
     this.tickerRate,
@@ -137,6 +122,15 @@ class MotionDropZone<T extends Object> extends StatefulWidget {
 
   /// The items, in order. The zone never changes this list.
   final List<T> items;
+
+  /// The identity of an item, compared with `==`: the id of its
+  /// [MotionLayoutItem], and of the [MotionDraggable]s inside it.
+  ///
+  /// Defaults to the item itself.
+  final Object Function(T item)? id;
+
+  /// Builds an item.
+  final MotionDropItemBuilder<T> itemBuilder;
 
   /// Lays out the slots: the items, minus one of them while it is dragged,
   /// plus the gap while an item hovers.
@@ -158,14 +152,9 @@ class MotionDropZone<T extends Object> extends StatefulWidget {
   /// Builds the gap from the dragged item's measured size.
   ///
   /// The gap is laid out under the list's constraints, so it can pick its
-  /// own size, such as a thin insertion line. In a list, only the main axis
-  /// of the size counts, since the cross axis is tight. Defaults to empty
-  /// space of that size.
+  /// own size, such as a thin insertion line. Defaults to empty space of
+  /// that size.
   final MotionDropPlaceholderBuilder? placeholderBuilder;
-
-  /// The identity of an item for its slot's key, compared with `==`.
-  /// Defaults to the item itself.
-  final Object Function(T item)? itemKey;
 
   /// The point of a hovering [MotionDraggable] that places the gap and
   /// drives [autoScroll].
@@ -175,13 +164,11 @@ class MotionDropZone<T extends Object> extends StatefulWidget {
   /// which differs when the card was grabbed near an edge.
   final MotionDragProbe probe;
 
-  /// The motion of every slot's [MotionReorder].
-  final Motion motion;
+  /// The motion of the items. Defaults to their [MotionLayoutGroup]'s.
+  final Motion? motion;
 
   /// How a drag near an edge of a [Scrollable] around the items scrolls
   /// it, as a [MotionEdgeScroll] would, or null not to scroll.
-  ///
-  /// A [MotionEdgeScroll] of your own inside the list overrides it.
   final MotionEdgeScrollSettings? autoScroll;
 
   /// {@macro motor_widgets.debugLabel}
@@ -213,24 +200,27 @@ final class MotionDropSlots<T extends Object> {
   /// How many slots to lay out.
   int get length => _items.length + (gapIndex == null ? 0 : 1);
 
-  /// Builds slot [index]: an item, with [item], or the gap.
-  ///
-  /// Each slot comes keyed and inside a [MotionReorder] whose flight key is
-  /// its index, so it must be the list's direct child.
-  Widget build(int index, MotionDropItemBuilder<T> item) {
+  /// Slot [index]: an item, or the gap.
+  Widget operator [](int index) {
     final gap = gapIndex;
-    if (index == gap) return _zone._buildGap(index);
+    if (index == gap) return _zone._buildGap();
     final itemIndex = gap != null && index > gap ? index - 1 : index;
-    return _zone._buildItem(this, index, itemIndex, _items[itemIndex], item);
+    return _zone._buildItem(_items[itemIndex], itemIndex);
   }
 
-  /// The slot index of the child with [key], for the
-  /// `findChildIndexCallback` of [ListView.builder] and [GridView.builder].
+  /// Every slot, in order, for a `Column`, `Row` or `Wrap`.
+  List<Widget> get children => [for (var i = 0; i < length; i++) this[i]];
+
+  /// The slot index of the child with [key].
+  ///
+  /// The items fly without it. As the `findChildIndexCallback` of
+  /// [ListView.builder] or [GridView.builder], it also keeps an item's
+  /// widget state when the item moves.
   int? indexOfKey(Key key) {
-    if (key is! _DropSlotKey || !identical(key.zone, _zone)) return null;
+    if (key is! _SlotKey || !identical(key.zone, _zone)) return null;
     if (identical(key.value, _zone._gapToken)) return gapIndex;
     final indices = _indices ??= {
-      for (final (i, item) in _items.indexed) _zone._keyOf(item): i,
+      for (final (i, item) in _items.indexed) _zone._idOf(item): i,
     };
     final itemIndex = indices[key.value];
     if (itemIndex == null) return null;
@@ -239,19 +229,17 @@ final class MotionDropSlots<T extends Object> {
   }
 }
 
-/// The key of a slot: the zone and the item's key, so that it never equals
+/// The key of a slot: the zone and the item's id, so that it never equals
 /// a key the app uses itself.
-class _DropSlotKey extends LocalKey {
-  const _DropSlotKey(this.zone, this.value);
+class _SlotKey extends LocalKey {
+  const _SlotKey(this.zone, this.value);
 
   final Object zone;
   final Object value;
 
   @override
   bool operator ==(Object other) =>
-      other is _DropSlotKey &&
-      identical(other.zone, zone) &&
-      other.value == value;
+      other is _SlotKey && identical(other.zone, zone) && other.value == value;
 
   @override
   int get hashCode => Object.hash(identityHashCode(zone), value);
@@ -304,6 +292,9 @@ typedef _Measured = ({_RenderDropSlot slot, Rect layout, Rect painted});
 /// The distance past an item's center that moves the gap past it.
 double _band(double extent) => math.min(8, extent / 4);
 
+bool _overlaps((double, double) a, (double, double) b) =>
+    math.min(a.$2, b.$2) - math.max(a.$1, b.$1) > 0.5;
+
 class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     with SingleTickerProviderStateMixin
     implements DragFlightObserver {
@@ -337,29 +328,25 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   /// The dragged item's measured size.
   Size _gapSize = Size.zero;
 
-  /// The item of this zone that is being dragged, and its flight.
+  /// The item of this zone that is being dragged, and its flight. It stays
+  /// out of the zone until the flight is over.
   T? _own;
   DragFlight? _ownFlight;
 
   _Pending<T>? _pending;
-  _DropGapState? _gap;
-  ({LandingRegistry registry, Object tag, LandingSite site})? _reservation;
-
-  /// Bumped on every drop, so that every slot that the drop moved flies.
-  int _drops = 0;
 
   /// The flow found by the last index lookup.
   _Flow? _flow;
 
-  Object _keyOf(T item) => widget.itemKey?.call(item) ?? item;
+  Object _idOf(T item) => widget.id?.call(item) ?? item;
+
+  bool _isSame(T a, T b) => _idOf(a) == _idOf(b);
 
   bool _contains(Object? data) {
     if (data is! T) return false;
-    final key = _keyOf(data);
-    return widget.items.any((item) => _keyOf(item) == key);
+    final id = _idOf(data);
+    return widget.items.any((item) => _idOf(item) == id);
   }
-
-  bool _isSame(T a, T b) => _keyOf(a) == _keyOf(b);
 
   @override
   void initState() {
@@ -385,7 +372,6 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   void dispose() {
     DragFlight.removeObserver(this);
     EdgeScroller.remove(_edgeScroll);
-    _unreserve();
     _ticker.dispose();
     super.dispose();
   }
@@ -404,16 +390,18 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     if (context == null || !context.mounted) return;
     final slot = context.findAncestorRenderObjectOfType<_RenderDropSlot>();
     if (slot == null || !identical(slot.zone, this) || slot.isGap) return;
-    final item = slot.item! as T;
+    final id = slot.id;
+    final item = widget.items.where((item) => _idOf(item) == id).firstOrNull;
+    if (item == null) return;
     setState(() {
       _own = item;
       _ownFlight = flight;
       // The item's slot becomes the gap, so nothing moves: the gap goes
       // after the shown items that came before it.
-      final shown = {for (final other in _shown()) _keyOf(other)};
+      final shown = {for (final other in _shown()) _idOf(other)};
       _gapIndex = widget.items
-          .takeWhile((other) => !_isSame(other, item))
-          .where((other) => shown.contains(_keyOf(other)))
+          .takeWhile((other) => _idOf(other) != id)
+          .where((other) => shown.contains(_idOf(other)))
           .length;
       _gapSize = flight.feedbackRect.size;
     });
@@ -424,6 +412,14 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
 
   @override
   void flightReleased(DragFlight flight) {
+    // A rejected item comes back, and the feedback lands on it.
+    if (flight.phase == MotionDragPhase.rejected) _releaseOwn(flight);
+  }
+
+  @override
+  void flightFinished(DragFlight flight) => _releaseOwn(flight);
+
+  void _releaseOwn(DragFlight flight) {
     if (!mounted || !identical(flight, _ownFlight)) return;
     setState(() {
       _own = null;
@@ -514,10 +510,14 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   }
 
   /// The shown items: [MotionDropZone.items] without the one that is
-  /// dragged from this zone or waits for its insert.
+  /// dragged from this zone, while no insert is pending, and without the
+  /// one whose insert is pending.
+  ///
+  /// While an insert is pending, a dragged item keeps its slot, hidden by
+  /// its draggable, since the zone has only the one gap.
   List<T> _shown() {
-    final own = _own;
     final pending = _pending?.item;
+    final own = pending == null ? _own : null;
     if (own == null && pending == null) return widget.items;
     return [
       for (final item in widget.items)
@@ -527,49 +527,56 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     ];
   }
 
-  /// Each laid-out slot with where layout puts it and where it was last
-  /// painted, in slot order. Measured once per update.
-  ///
-  /// Slots describe the last build, which can lag behind the zone's state:
-  /// right after an item is picked up, its slot is still laid out where the
-  /// gap is about to open. [_indexAt] places slots by their items, never by
-  /// their indices.
+  /// Each laid-out slot with where it is laid out and where it was last
+  /// painted, in global coordinates.
   List<_Measured> _measure() => [
     for (final slot in _slots)
-      if (slot.attached && slot.hasSize) slot.measure(),
-  ]..sort((a, b) => a.slot.index.compareTo(b.slot.index));
+      if (slot.attached && slot.hasSize)
+        (
+          slot: slot,
+          layout: slot.localToGlobal(Offset.zero) & slot.size,
+          painted: paintedGlobalRect(slot),
+        ),
+  ];
 
   /// The insertion index for [probe] among the shown items.
   ///
   /// The slots are grouped into lines by where they are laid out, and the
-  /// probe picks the nearest line. The index is the count of shown items
-  /// before that line, plus those in it whose painted center the probe has
-  /// passed. Past the gap, an item's center must be passed by a band, so the
-  /// gap holds still while the probe wobbles. Slots of items that aren't
-  /// shown, and the gap, only shape the lines.
-  int _indexAt(Offset probe, List<_Measured> slots) {
+  /// probe picks the nearest line. The index is the order of the line's
+  /// first shown item, plus the shown items in the line whose painted
+  /// center the probe has passed. Past the gap, an item's center must be
+  /// passed by a band, so the gap holds still while the probe wobbles.
+  ///
+  /// Order comes from the items, by id, never from the slots, which
+  /// describe the last build. The gap, and slots of items that aren't shown
+  /// any more, only shape the lines.
+  int _indexAt(Offset probe, List<_Measured> measured) {
     final shown = _shown();
-    final order = {for (final (i, item) in shown.indexed) _keyOf(item): i};
-    int? orderOf(_Measured m) =>
-        m.slot.isGap ? null : order[_keyOf(m.slot.item! as T)];
-    if (!slots.any((m) => orderOf(m) != null)) return 0;
+    final order = {for (final (i, item) in shown.indexed) _idOf(item): i};
+    int? orderOf(_Measured m) => m.slot.isGap ? null : order[m.slot.id];
+    if (!measured.any((m) => orderOf(m) != null)) return 0;
     final gap = _gapIndex;
-    final flow = _flow = _flowOf(slots);
+    final flow = _flow = _flowOf(measured);
 
-    // Lines: runs of consecutive slots that overlap across the flow.
+    // Lines: a column is one line; rows are runs of slots that overlap
+    // across the flow.
     final lines = <List<_Measured>>[];
-    _Measured? previous;
-    for (final m in slots) {
-      if (previous == null ||
-          m.slot.index != previous.slot.index + 1 ||
-          !_overlaps(
-            flow.crossSpan(previous.layout),
-            flow.crossSpan(m.layout),
-          )) {
-        lines.add([]);
+    if (flow.axis == Axis.vertical) {
+      lines.add(measured);
+    } else {
+      final sorted = [...measured]
+        ..sort((a, b) => a.layout.top.compareTo(b.layout.top));
+      (double, double)? span;
+      for (final m in sorted) {
+        final next = flow.crossSpan(m.layout);
+        if (span == null || !_overlaps(span, next)) {
+          lines.add([]);
+          span = next;
+        } else {
+          span = (math.min(span.$1, next.$1), math.max(span.$2, next.$2));
+        }
+        lines.last.add(m);
       }
-      lines.last.add(m);
-      previous = m;
     }
 
     // The line the probe is in, else the nearest one.
@@ -595,14 +602,13 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
       }
     }
 
-    // The shown items before the line: the order of its first item, else
-    // of the first item after it, else all of them. Items before the
-    // first laid-out slot, scrolled away, count too.
+    // The shown items before the line: the order of its first item, else of
+    // the first item after it, else all of them.
     var index = shown.length;
     for (final candidate in lines.skip(line)) {
-      final first = candidate.map(orderOf).nonNulls.firstOrNull;
-      if (first != null) {
-        index = first;
+      final orders = candidate.map(orderOf).nonNulls;
+      if (orders.isNotEmpty) {
+        index = orders.reduce(math.min);
         break;
       }
     }
@@ -622,38 +628,53 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     return index.clamp(0, shown.length);
   }
 
-  static bool _overlaps((double, double) a, (double, double) b) =>
-      math.min(a.$2, b.$2) - math.max(a.$1, b.$1) > 0.5;
-
-  /// How consecutive slots follow each other, from the first consecutive
-  /// pair, else the nearest [Scrollable]'s axis.
-  _Flow _flowOf(List<_Measured> slots) {
-    for (var i = 0; i + 1 < slots.length; i++) {
-      final a = slots[i];
-      final b = slots[i + 1];
-      if (b.slot.index != a.slot.index + 1) continue;
-      final ra = a.layout;
-      final rb = b.layout;
-      if (_overlaps((ra.top, ra.bottom), (rb.top, rb.bottom))) {
-        return _Flow(Axis.horizontal, rb.center.dx >= ra.center.dx ? 1 : -1);
-      }
-      if (_overlaps((ra.left, ra.right), (rb.left, rb.right))) {
-        return _Flow(Axis.vertical, rb.center.dy >= ra.center.dy ? 1 : -1);
-      }
+  /// How the items follow each other: down a column when they all share
+  /// the first one's columns, along rows when they share its rows or wrap,
+  /// and along the scrollable's axis when there is too little to tell. The
+  /// direction comes from a scrollable along that axis, else the reading
+  /// direction for rows.
+  _Flow _flowOf(List<_Measured> measured) {
+    final first = measured.first.layout;
+    var column = true;
+    var row = true;
+    for (final m in measured) {
+      final rect = m.layout;
+      column &= _overlaps((first.left, first.right), (rect.left, rect.right));
+      row &= _overlaps((first.top, first.bottom), (rect.top, rect.bottom));
     }
-    return _fallbackFlow(slots.isEmpty ? null : slots.first.slot.element);
+    final element = measured.first.slot.element;
+    final Axis axis;
+    if (column == row) {
+      // One slot, or slots stacked on each other: the layout can't tell.
+      axis = column ? _scrollAxis(element) : Axis.horizontal;
+    } else {
+      axis = column ? Axis.vertical : Axis.horizontal;
+    }
+    return _Flow(axis, _sign(element, axis));
   }
 
-  _Flow _fallbackFlow(BuildContext? context) {
-    final scrollable = context == null || !context.mounted
-        ? null
-        : Scrollable.maybeOf(context);
-    if (scrollable == null) return const _Flow(Axis.vertical, 1);
-    final direction = scrollable.axisDirection;
-    return _Flow(
-      axisDirectionToAxis(direction),
-      axisDirectionIsReversed(direction) ? -1 : 1,
-    );
+  Axis _scrollAxis(BuildContext element) {
+    if (!element.mounted) return Axis.vertical;
+    final scrollable = Scrollable.maybeOf(element);
+    return scrollable == null
+        ? Axis.vertical
+        : axisDirectionToAxis(scrollable.axisDirection);
+  }
+
+  double _sign(BuildContext element, Axis axis) {
+    if (!element.mounted) return 1;
+    for (
+      var scrollable = Scrollable.maybeOf(element);
+      scrollable != null;
+      scrollable = Scrollable.maybeOf(scrollable.context)
+    ) {
+      final direction = scrollable.axisDirection;
+      if (axisDirectionToAxis(direction) == axis) {
+        return axisDirectionIsReversed(direction) ? -1 : 1;
+      }
+    }
+    if (axis == Axis.vertical) return 1;
+    return Directionality.maybeOf(element) == TextDirection.rtl ? -1 : 1;
   }
 
   // Dropping.
@@ -661,6 +682,7 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   void _accept(DragTargetDetails<T> details) {
     final item = details.data;
     final probe = _probePoint();
+    final own = _own != null && _isSame(_own!, item);
     final index =
         (_gapIndex ?? (probe == null ? 0 : _indexAt(probe, _measure()))).clamp(
           0,
@@ -670,12 +692,17 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     _endHover();
     final result = widget.onInsert?.call(item, index);
     if (result is! Future<void>) {
-      setState(() => _drops++);
+      // The item is in its new place: the feedback lands on it.
+      setState(() {
+        if (own) {
+          _own = null;
+          _ownFlight = null;
+        }
+      });
       return;
     }
     final pending = _Pending(item, index, flight);
     setState(() => _pending = pending);
-    _syncReservation();
     result.then(
       (_) => _settle(pending, threw: false),
       onError: (Object error, StackTrace stack) {
@@ -701,10 +728,13 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
   /// takes its place.
   void _settle(_Pending<T> pending, {required bool threw}) {
     if (!mounted || !identical(_pending, pending)) return;
-    _unreserve();
+    final own = _own != null && _isSame(_own!, pending.item);
     setState(() {
       _pending = null;
-      _drops++;
+      if (own) {
+        _own = null;
+        _ownFlight = null;
+      }
     });
     final flight = pending.flight;
     if (flight == null) return;
@@ -721,36 +751,6 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     // item where it still is.
     flight.relocate();
   }
-
-  /// Reserves the gap as the pending drop's landing site, once both exist.
-  void _syncReservation() {
-    final flight = _pending?.flight;
-    final gap = _gap;
-    if (flight == null || gap == null || _reservation != null) return;
-    flight.registry.reserve(flight.tag, gap);
-    _reservation = (registry: flight.registry, tag: flight.tag, site: gap);
-    gap.landingChanged();
-  }
-
-  void _unreserve() {
-    final reservation = _reservation;
-    if (reservation == null) return;
-    _reservation = null;
-    reservation.registry.unreserve(reservation.tag, reservation.site);
-  }
-
-  void _attachGap(_DropGapState gap) {
-    _gap = gap;
-    _syncReservation();
-  }
-
-  void _detachGap(_DropGapState gap) {
-    if (!identical(_gap, gap)) return;
-    _gap = null;
-    _unreserve();
-  }
-
-  bool _isReserved(_DropGapState gap) => identical(_reservation?.site, gap);
 
   // Screen readers.
 
@@ -769,11 +769,11 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
         ) ??
         const DefaultWidgetsLocalizations();
     void to(int target) => onInsert(item, target);
-    final flow = _flow ?? _fallbackFlow(context);
-    final forward = flow.sign > 0;
+    final flow = _flow;
+    final forward = (flow?.sign ?? 1) > 0;
     final String back;
     final String next;
-    if (flow.axis == Axis.vertical) {
+    if ((flow?.axis ?? Axis.vertical) == Axis.vertical) {
       (back, next) = forward
           ? (strings.reorderItemUp, strings.reorderItemDown)
           : (strings.reorderItemDown, strings.reorderItemUp);
@@ -797,61 +797,57 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
 
   // Building.
 
-  Widget _reorder({
-    required Object key,
-    required int index,
-    required Widget child,
-  }) => MotionReorder(
-    key: _DropSlotKey(this, key),
-    flightKey: (index, _drops),
-    // A slot that moves in from another zone is a new element anyway; one
-    // that moves within the zone flies.
-    scope: this,
-    motion: widget.motion,
-    tickerRate: widget.tickerRate,
-    debugLabel: widget.debugLabel,
-    child: child,
-  );
-
-  Widget _buildItem(
-    MotionDropSlots<T> slots,
-    int index,
-    int itemIndex,
-    T item,
-    MotionDropItemBuilder<T> builder,
-  ) => _reorder(
-    key: _keyOf(item),
-    index: index,
-    child: _DropSlot(
-      zone: this,
-      index: index,
-      item: item,
-      isGap: false,
-      child: Builder(
-        builder: (context) => Semantics(
-          customSemanticsActions: _actions(
-            context,
-            item,
-            itemIndex,
-            widget.items.length,
+  Widget _buildItem(T item, int index) {
+    final id = _idOf(item);
+    return MotionLayoutItem(
+      key: _SlotKey(this, id),
+      id: id,
+      motion: widget.motion,
+      child: _DropSlot(
+        zone: this,
+        id: id,
+        isGap: false,
+        child: DraggableSlot(
+          item: item,
+          id: id,
+          child: Builder(
+            builder: (context) => Semantics(
+              customSemanticsActions: _actions(
+                context,
+                item,
+                widget.items.indexWhere((other) => _isSame(other, item)),
+                widget.items.length,
+              ),
+              child: widget.itemBuilder(context, item),
+            ),
           ),
-          child: builder(context, item),
         ),
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _buildGap(int index) => _reorder(
-    key: _gapToken,
-    index: index,
-    child: _DropSlot(
-      zone: this,
-      index: index,
-      item: null,
-      isGap: true,
-      child: _DropGap(zone: this, size: _gapSize),
-    ),
-  );
+  /// The gap. While an insert is pending, it stands in for the item: it has
+  /// the item's id and holds its landing until the item takes its place.
+  Widget _buildGap() {
+    final pending = _pending;
+    return LandingHold(
+      key: _SlotKey(this, _gapToken),
+      holds: pending != null,
+      child: MotionLayoutItem(
+        id: pending == null ? _gapToken : _idOf(pending.item),
+        motion: widget.motion,
+        child: _DropSlot(
+          zone: this,
+          id: null,
+          isGap: true,
+          child: _DropGap(
+            size: _gapSize,
+            placeholder: widget.placeholderBuilder,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -868,6 +864,7 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
       gap = null;
     }
     final slots = MotionDropSlots<T>._(this, shown, gap, _hover?.data);
+    final list = widget.builder(context, slots);
     return DragTarget<T>(
       onWillAcceptWithDetails: _willAccept,
       onMove: _move,
@@ -879,7 +876,14 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
           _wake();
           return false;
         },
-        child: widget.builder(context, slots),
+        child: MotionLayoutGroup.isIn(context)
+            ? list
+            : MotionLayoutGroup(
+                motion: widget.motion ?? MotionLayoutGroup.defaultMotion,
+                debugLabel: widget.debugLabel,
+                tickerRate: widget.tickerRate,
+                child: list,
+              ),
       ),
     );
   }
@@ -889,32 +893,24 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
 class _DropSlot extends SingleChildRenderObjectWidget {
   const _DropSlot({
     required this.zone,
-    required this.index,
-    required this.item,
+    required this.id,
     required this.isGap,
     super.child,
   });
 
   final _MotionDropZoneState<Object> zone;
-  final int index;
-  final Object? item;
+  final Object? id;
   final bool isGap;
 
   @override
-  _RenderDropSlot createRenderObject(BuildContext context) => _RenderDropSlot(
-    zone: zone,
-    index: index,
-    item: item,
-    isGap: isGap,
-    element: context,
-  );
+  _RenderDropSlot createRenderObject(BuildContext context) =>
+      _RenderDropSlot(zone: zone, id: id, isGap: isGap, element: context);
 
   @override
   void updateRenderObject(BuildContext context, _RenderDropSlot renderObject) {
     renderObject
       ..zone = zone
-      ..index = index
-      ..item = item
+      ..id = id
       ..isGap = isGap
       ..element = context;
   }
@@ -923,8 +919,7 @@ class _DropSlot extends SingleChildRenderObjectWidget {
 class _RenderDropSlot extends RenderProxyBox {
   _RenderDropSlot({
     required _MotionDropZoneState<Object> zone,
-    required this.index,
-    required this.item,
+    required this.id,
     required this.isGap,
     required this.element,
   }) : _zone = zone;
@@ -938,10 +933,8 @@ class _RenderDropSlot extends RenderProxyBox {
     if (attached) _zone._slots.add(this);
   }
 
-  /// The slot's index among all slots, the gap included.
-  int index;
-
-  Object? item;
+  /// The id of the slot's item, or null for the gap.
+  Object? id;
   bool isGap;
   BuildContext element;
 
@@ -956,108 +949,23 @@ class _RenderDropSlot extends RenderProxyBox {
     _zone._slots.remove(this);
     super.detach();
   }
-
-  /// Where layout puts the slot, and where it was last painted, including
-  /// its [MotionReorder]'s flight, both in global coordinates.
-  _Measured measure() {
-    final layout = localToGlobal(Offset.zero) & size;
-    return (
-      slot: this,
-      layout: layout,
-      painted: layout.shift(paintOffsetAbove(this)),
-    );
-  }
 }
 
-/// The gap: the placeholder, and the landing site of a pending insert.
-class _DropGap extends StatefulWidget {
-  const _DropGap({required this.zone, required this.size});
+/// The gap's placeholder, which fades in.
+class _DropGap extends StatelessWidget {
+  const _DropGap({required this.size, required this.placeholder});
 
-  final _MotionDropZoneState<Object> zone;
   final Size size;
+  final MotionDropPlaceholderBuilder? placeholder;
 
   @override
-  State<_DropGap> createState() => _DropGapState();
-}
-
-class _DropGapState extends State<_DropGap> implements LandingSite {
-  @override
-  final LayerLink landingLink = LayerLink();
-
-  @override
-  void initState() {
-    super.initState();
-    widget.zone._attachGap(this);
-  }
-
-  @override
-  void didUpdateWidget(_DropGap oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.zone, widget.zone)) {
-      oldWidget.zone._detachGap(this);
-      widget.zone._attachGap(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.zone._detachGap(this);
-    super.dispose();
-  }
-
-  @override
-  Rect? get globalRect {
-    if (!mounted) return null;
-    final box = context.findRenderObject();
-    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
-    return paintedGlobalRect(box);
-  }
-
-  // The gap shows nothing of the item, so nothing can take the landing over
-  // in the tree: it waits in the overlay until the item arrives.
-  @override
-  FlightReceiver? get flightReceiver => null;
-
-  @override
-  Rect? get visibleRect => mounted ? visibleRectOf(context) : null;
-
-  @override
-  bool get holdsLanding => true;
-
-  @override
-  void receiveVisuals(List<TrackValue<double>> values) {}
-
-  @override
-  void landingChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  bool grab(PointerDownEvent event, DragFlight flight) => false;
-
-  @override
-  void endGrab(DragFlight flight) {}
-
-  @override
-  Widget build(BuildContext context) {
-    final zone = widget.zone;
-    final size = widget.size;
-    final placeholder =
-        zone.widget.placeholderBuilder?.call(context, size) ??
-        SizedBox.fromSize(size: size);
-    return LeaderWhile(
-      link: zone._isReserved(this) ? landingLink : null,
-      child: SingleMotionBuilder(
-        value: 1,
-        from: 0,
-        motion: const CupertinoMotion.smooth(
-          duration: Duration(milliseconds: 200),
-        ),
-        debugLabel: 'MotionDropZone.placeholder',
-        builder: (context, opacity, child) =>
-            Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
-        child: placeholder,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SingleMotionBuilder(
+    value: 1,
+    from: 0,
+    motion: const CupertinoMotion.smooth(duration: Duration(milliseconds: 200)),
+    debugLabel: 'MotionDropZone.placeholder',
+    builder: (context, opacity, child) =>
+        Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
+    child: placeholder?.call(context, size) ?? SizedBox.fromSize(size: size),
+  );
 }
