@@ -40,10 +40,14 @@ Widget _app(Widget child, {TextDirection direction = TextDirection.ltr}) =>
       ),
     );
 
-/// An item that drags, with its own size.
+/// An item that drags, with its own size. While it is dragged it leaves
+/// the layout, and the gap opens in its place.
 Widget _card(String id, {Size size = _size}) => MotionDraggable<String>(
   data: id,
-  feedback: const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+  id: id,
+  feedback: (context, drag) =>
+      const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+  childWhenDragging: (context, size) => const SizedBox.shrink(),
   motions: {MotionDraggableTrack.handoffFade: const Motion.instant()},
   child: SizedBox.fromSize(
     key: ValueKey('child-$id'),
@@ -52,13 +56,64 @@ Widget _card(String id, {Size size = _size}) => MotionDraggable<String>(
   ),
 );
 
+/// A [MotionReorderable] of [items] that opens a gap in front of
+/// [MotionDrop.before], laid out by [layout].
+///
+/// [onInsert] gets the dropped id and its index, [gap] the gap's index
+/// among the items without the dragged one, or null while there is none.
+Widget _reorderable({
+  required List<String> items,
+  required Widget Function(String id) item,
+  required Widget Function(List<Widget> children) layout,
+  FutureOr<void> Function(String id, int index)? onInsert,
+  ValueChanged<int?>? gap,
+  Widget Function(Size? size)? placeholder,
+  MotionDragPoint point = MotionDragPoint.pointer,
+}) => MotionReorderable<String>(
+  items: items,
+  point: point,
+  onMove: onInsert == null
+      ? null
+      : (move) => onInsert(move.data as String, move.index),
+  builder: (context, drop) {
+    final order = [
+      for (final id in items)
+        if (id != drop?.item) id,
+    ];
+    gap?.call(
+      drop == null
+          ? null
+          : drop.before == null
+          ? order.length
+          : order.indexOf(drop.before!),
+    );
+    Widget room(MotionDrop<String> drop) => MotionDropGap(
+      key: const ValueKey('gap'),
+      child:
+          placeholder?.call(drop.size) ??
+          SizedBox.fromSize(size: drop.size ?? Size.zero),
+    );
+    return layout([
+      for (final id in items) ...[
+        if (drop != null && drop.before == id) room(drop),
+        MotionReorderableItem(
+          key: ValueKey('item-$id'),
+          item: id,
+          child: item(id),
+        ),
+      ],
+      if (drop != null && drop.before == null) room(drop),
+    ]);
+  },
+);
+
 /// Two zones: A at x 0 and B at x 400, each a Column of 100 x 40 cards in
 /// a 200 x 600 box. A drop inserts where the zone says.
 class _Board extends StatefulWidget {
   const _Board({
     this.a = const ['x'],
     this.onInsertB,
-    this.probe = MotionDragProbe.pointer,
+    this.probe = MotionDragPoint.pointer,
     this.placeholder,
   });
 
@@ -68,8 +123,8 @@ class _Board extends StatefulWidget {
   final FutureOr<void> Function(_BoardState board, String id, int index)?
   onInsertB;
 
-  final MotionDragProbe probe;
-  final MotionDropPlaceholderBuilder? placeholder;
+  final MotionDragPoint probe;
+  final Widget Function(Size? size)? placeholder;
 
   @override
   State<_Board> createState() => _BoardState();
@@ -96,10 +151,10 @@ class _BoardState extends State<_Board> {
   Widget _zone(String name, List<String> items) => SizedBox(
     width: 200,
     height: 600,
-    child: MotionDropZone<String>(
+    child: _reorderable(
       items: items,
-      probe: widget.probe,
-      placeholderBuilder: widget.placeholder,
+      point: widget.probe,
+      placeholder: widget.placeholder,
       onInsert: (id, index) {
         inserts.add((name, id, index));
         if (name == 'B' && widget.onInsertB != null) {
@@ -107,18 +162,12 @@ class _BoardState extends State<_Board> {
         }
         insert(items, id, index);
       },
-      itemBuilder: (context, id) => _card(id, size: sizes[id] ?? _size),
-      builder: (context, slots) {
-        if (name == 'A') {
-          gapA = slots.gapIndex;
-        } else {
-          gapB = slots.gapIndex;
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: slots.children,
-        );
-      },
+      item: (id) => _card(id, size: sizes[id] ?? _size),
+      gap: (index) => name == 'A' ? gapA = index : gapB = index,
+      layout: (children) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     ),
   );
 
@@ -161,7 +210,7 @@ _BoardState _board(WidgetTester tester) =>
     tester.state<_BoardState>(find.byType(_Board));
 
 void main() {
-  group('MotionDropZone hover', () {
+  group('MotionReorderable hover', () {
     testWidgets('opens a gap where the card is, and the cards after it fly', (
       tester,
     ) async {
@@ -343,12 +392,12 @@ void main() {
     });
   });
 
-  group('MotionDropZone probe', () {
+  group('MotionReorderable probe', () {
     // The card is grabbed 15 px from its top, so the pointer is 5 px above
     // the feedback's center.
     for (final (probe, gap) in [
-      (MotionDragProbe.feedbackCenter, 2),
-      (MotionDragProbe.pointer, 1),
+      (MotionDragPoint.feedbackCenter, 2),
+      (MotionDragPoint.pointer, 1),
     ]) {
       testWidgets('$probe places the gap by its point', (tester) async {
         await tester.pumpWidget(_app(_Board(probe: probe)));
@@ -367,7 +416,7 @@ void main() {
     }
   });
 
-  group('MotionDropZone drop', () {
+  group('MotionReorderable drop', () {
     testWidgets('the card takes the gap, and nothing else moves', (
       tester,
     ) async {
@@ -426,8 +475,7 @@ void main() {
       await tester.pumpWidget(
         _app(
           _Board(
-            placeholder: (context, size) =>
-                SizedBox(width: size.width, height: 4),
+            placeholder: (size) => SizedBox(width: size!.width, height: 4),
           ),
         ),
       );
@@ -448,7 +496,7 @@ void main() {
     });
   });
 
-  group('MotionDropZone own items', () {
+  group('MotionReorderable own items', () {
     testWidgets('picking one up changes nothing, and a drop reorders', (
       tester,
     ) async {
@@ -556,7 +604,7 @@ void main() {
     });
   });
 
-  group('MotionDropZone async insert', () {
+  group('MotionReorderable async insert', () {
     testWidgets('lands on the gap, then on the card once it arrives', (
       tester,
     ) async {
@@ -652,7 +700,7 @@ void main() {
     });
   });
 
-  group('MotionDropZone in a scrolling list', () {
+  group('MotionReorderable in a scrolling list', () {
     testWidgets('counts from the real index, and scrolls near the edge', (
       tester,
     ) async {
@@ -670,20 +718,20 @@ void main() {
               SizedBox(
                 width: 200,
                 height: 400,
-                child: MotionDropZone<String>(
+                child: _reorderable(
                   items: items,
-                  itemBuilder: (context, id) => SizedBox.fromSize(
+                  item: (id) => SizedBox.fromSize(
                     key: ValueKey('child-$id'),
                     size: _size,
                   ),
-                  builder: (context, slots) {
-                    gap = slots.gapIndex;
-                    return ListView.builder(
+                  gap: (index) => gap = index,
+                  layout: (children) => MotionDragToScroll(
+                    child: ListView.builder(
                       controller: controller,
-                      itemCount: slots.length,
-                      itemBuilder: (context, i) => slots[i],
-                    );
-                  },
+                      itemCount: children.length,
+                      itemBuilder: (context, i) => children[i],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -736,22 +784,20 @@ void main() {
             child: StatefulBuilder(
               builder: (context, set) {
                 setState = set;
-                return MotionDropZone<String>(
+                return _reorderable(
                   items: items,
                   onInsert: (id, index) => set(() {
                     items
                       ..remove(id)
                       ..insert(index, id);
                   }),
-                  itemBuilder: (context, id) => _card(id),
-                  builder: (context, slots) {
-                    gap = slots.gapIndex;
-                    return ListView.builder(
-                      controller: controller,
-                      itemCount: slots.length,
-                      itemBuilder: (context, i) => slots[i],
-                    );
-                  },
+                  item: _card,
+                  gap: (index) => gap = index,
+                  layout: (children) => ListView.builder(
+                    controller: controller,
+                    itemCount: children.length,
+                    itemBuilder: (context, i) => children[i],
+                  ),
                 );
               },
             ),
@@ -793,17 +839,17 @@ void main() {
     Widget zone(List<String> items) => SizedBox(
       width: 200,
       height: 600,
-      child: MotionDropZone<String>(
+      child: _reorderable(
         items: items,
         onInsert: (id, index) => setState(() {
           items
             ..remove(id)
             ..insert(index, id);
         }),
-        itemBuilder: (context, id) => _card(id),
-        builder: (context, slots) => Column(
+        item: _card,
+        layout: (children) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: slots.children,
+          children: children,
         ),
       ),
     );
@@ -839,17 +885,15 @@ void main() {
     expect(tester.getTopLeft(_child('a').first), const Offset(0, 40));
   });
 
-  group('MotionDropZone in a wrap', () {
+  group('MotionReorderable in a wrap', () {
     Widget wrap(List<String> items, {required ValueChanged<int?> gap}) =>
         SizedBox(
           width: 300,
-          child: MotionDropZone<String>(
+          child: _reorderable(
             items: items,
-            itemBuilder: (context, id) => _card(id),
-            builder: (context, slots) {
-              gap(slots.gapIndex);
-              return Wrap(children: slots.children);
-            },
+            item: _card,
+            gap: gap,
+            layout: (children) => Wrap(children: children),
           ),
         );
 
@@ -919,15 +963,12 @@ void main() {
             SizedBox(
               width: 200,
               height: 600,
-              child: MotionDropZone<String>(
+              child: _reorderable(
                 items: const ['b0', 'b1'],
                 onInsert: (id, index) => inserted = '$id@$index',
-                itemBuilder: (context, id) =>
-                    SizedBox.fromSize(key: ValueKey(id), size: _size),
-                builder: (context, slots) {
-                  gap = slots.gapIndex;
-                  return Column(children: slots.children);
-                },
+                item: (id) => SizedBox.fromSize(key: ValueKey(id), size: _size),
+                gap: (index) => gap = index,
+                layout: (children) => Column(children: children),
               ),
             ),
           ],
@@ -940,5 +981,240 @@ void main() {
     await gesture.up();
     await tester.pump();
     expect(inserted, 'x@1');
+  });
+
+  group('MotionReorderable drops', () {
+    testWidgets('a line between neighbors: nothing moves, and the move gets '
+        'the neighbors', (tester) async {
+      final items = ['a', 'b', 'c', 'd'];
+      MotionDrop<String>? seen;
+      MotionMove<String>? moved;
+      late StateSetter setState;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 200,
+                  child: MotionReorderable<String>(
+                    items: items,
+                    onMove: (move) => setState(() {
+                      moved = move;
+                      items
+                        ..remove(move.item)
+                        ..insert(move.index, move.item!);
+                    }),
+                    builder: (context, drop) {
+                      seen = drop;
+                      return Column(
+                        children: [
+                          for (final id in items)
+                            MotionReorderableItem(
+                              key: ValueKey(id),
+                              item: id,
+                              // The default keeps the dragged card's room.
+                              child: MotionDraggable<String>(
+                                data: id,
+                                id: id,
+                                child: SizedBox.fromSize(
+                                  key: ValueKey('child-$id'),
+                                  size: _size,
+                                  child: const ColoredBox(
+                                    color: Color(0xFF888888),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      final before = {for (final id in items) id: _layout(tester, id)};
+      final gesture = await _pickUp(tester, const Offset(50, 20));
+      // Between c (center 100) and d (center 140).
+      await _moveTo(
+        tester,
+        gesture,
+        const Offset(50, 20),
+        const Offset(50, 125),
+      );
+      expect(seen?.after, 'c');
+      expect(seen?.before, 'd');
+      for (final id in ['b', 'c', 'd']) {
+        expect(_painted(tester, id), before[id], reason: id);
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(moved?.after, 'c');
+      expect(moved?.before, 'd');
+      expect(moved?.index, 2);
+      expect(items, ['b', 'c', 'a', 'd']);
+    });
+
+    testWidgets('foreign data opens a gap of its own and becomes an item', (
+      tester,
+    ) async {
+      final items = ['a', 'b'];
+      MotionDrop<String>? seen;
+      late StateSetter setState;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // A draft that becomes the item 'new'.
+                  const MotionDraggable<int>(
+                    data: 7,
+                    id: 'new',
+                    child: SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: ColoredBox(color: Color(0xFF888888)),
+                    ),
+                  ),
+                  const SizedBox(width: 144),
+                  SizedBox(
+                    width: 200,
+                    height: 400,
+                    child: MotionReorderable<String>(
+                      items: items,
+                      onWillAccept: (data) => data is int,
+                      onMove: (move) =>
+                          setState(() => items.insert(move.index, 'new')),
+                      builder: (context, drop) {
+                        seen = drop;
+                        return Column(
+                          children: [
+                            for (final id in items) ...[
+                              if (drop != null && drop.before == id)
+                                const MotionDropGap(
+                                  // The new item's shape, not the draft's.
+                                  child: SizedBox(
+                                    key: ValueKey('ghost'),
+                                    width: 200,
+                                    height: 80,
+                                  ),
+                                ),
+                              MotionReorderableItem(
+                                key: ValueKey(id),
+                                item: id,
+                                child: SizedBox.fromSize(
+                                  key: ValueKey('child-$id'),
+                                  size: _size,
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      final gesture = await _pickUp(tester, const Offset(28, 28));
+      await _moveTo(
+        tester,
+        gesture,
+        const Offset(28, 28),
+        const Offset(250, 30),
+      );
+      expect(seen?.data, 7);
+      expect(seen?.item, isNull);
+      expect(seen?.before, 'b');
+      expect(tester.getSize(find.byKey(const ValueKey('ghost'))).height, 80);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(items, ['a', 'new', 'b']);
+    });
+
+    testWidgets('two sliver sections in one scroll view take drags between '
+        'them', (tester) async {
+      final sections = [
+        ['a0', 'a1'],
+        ['b0', 'b1'],
+      ];
+      late StateSetter setState;
+      Widget section(List<String> items) => MotionReorderable<String>.sliver(
+        items: items,
+        onMove: (move) => setState(() {
+          for (final other in sections) {
+            other.remove(move.item);
+          }
+          items.insert(move.index, move.item!);
+        }),
+        builder: (context, drop) => SliverList.list(
+          children: [
+            for (final id in items) ...[
+              if (drop != null && drop.before == id)
+                MotionDropGap(child: SizedBox.fromSize(size: _size)),
+              MotionReorderableItem(
+                key: ValueKey(id),
+                item: id,
+                child: _card(id),
+              ),
+            ],
+            if (drop != null && drop.before == null)
+              MotionDropGap(child: SizedBox.fromSize(size: _size)),
+          ],
+        ),
+      );
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, set) {
+              setState = set;
+              return Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 200,
+                  height: 600,
+                  child: MotionLayoutGroup(
+                    child: CustomScrollView(
+                      slivers: [
+                        section(sections[0]),
+                        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                        section(sections[1]),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      // a0 leaves its section, so b0 is at 80 and b1 at 120. Passing b0
+      // opens the gap before b1, which the pointer then rests in.
+      final gesture = await _pickUp(tester, const Offset(50, 20));
+      await _moveTo(
+        tester,
+        gesture,
+        const Offset(50, 20),
+        const Offset(50, 150),
+      );
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(sections, [
+        ['a1'],
+        ['b0', 'a0', 'b1'],
+      ]);
+      expect(_inOverlay(), isFalse);
+    });
   });
 }

@@ -515,5 +515,66 @@ void main() {
       FlutterError.onError = onError;
       expect(errors.map((e) => '${e.exception}'), contains(contains('id x')));
     });
+
+    testWidgets('a column without keys reuses its children, and they still '
+        'fly by id', (tester) async {
+      var ids = ['a', 'b', 'c'];
+      await _pumpHost(
+        tester,
+        (_) => MotionLayoutGroup(
+          child: Column(
+            children: [
+              for (final id in ids)
+                MotionLayoutItem(
+                  id: id,
+                  child: SizedBox.fromSize(
+                    key: ValueKey(id),
+                    size: _tile,
+                    child: const ColoredBox(color: Color(0xFF888888)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+      Offset painted(String id) => paintedGlobalRect(
+        tester.renderObject<RenderBox>(find.byKey(ValueKey(id))),
+      ).topLeft;
+      final before = painted('c');
+      _update(() => ids = ['c', 'a', 'b']);
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('c'))), Offset.zero);
+      expect(painted('c'), before);
+      await tester.pumpAndSettle();
+      expect(painted('c'), Offset.zero);
+    });
+
+    testWidgets('a neighbor that grows on its own pushes items along without '
+        'a flight', (tester) async {
+      var open = false;
+      await _pumpHost(
+        tester,
+        (_) => MotionLayoutGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MotionSize(
+                motion: const CupertinoMotion.smooth(),
+                child: SizedBox(width: 100, height: open ? 100 : 40),
+              ),
+              _item('a'),
+            ],
+          ),
+        ),
+      );
+      // Only the growing box rebuilds; the item doesn't.
+      _update(() => open = true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final midway = _layout(tester, 'a');
+      expect(midway.dy, inExclusiveRange(40, 100));
+      expect(_painted(tester, 'a'), midway);
+      await tester.pumpAndSettle();
+    });
   });
 }

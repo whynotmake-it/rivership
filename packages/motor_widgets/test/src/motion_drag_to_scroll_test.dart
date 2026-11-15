@@ -30,12 +30,13 @@ class _Card extends StatelessWidget {
 }
 
 /// The card at the top left, and a 200 x 400 list at x 200 of [count]
-/// items, each inside an edge scroll.
+/// items, inside a drag to scroll.
 Widget _list(
   ScrollController controller, {
   int count = 40,
-  MotionEdgeScrollSettings settings = const MotionEdgeScrollSettings(),
-  MotionDragProbe probe = MotionDragProbe.pointer,
+  double extent = 64,
+  bool outside = true,
+  MotionDragPoint point = MotionDragPoint.pointer,
 }) => _app(
   Row(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,13 +48,14 @@ Widget _list(
       SizedBox(
         width: 200,
         height: 400,
-        child: ListView.builder(
-          controller: controller,
-          itemCount: count,
-          itemBuilder: (context, i) => MotionEdgeScroll(
-            settings: settings,
-            probe: probe,
-            child: _box(),
+        child: MotionDragToScroll(
+          extent: extent,
+          outside: outside,
+          point: point,
+          child: ListView.builder(
+            controller: controller,
+            itemCount: count,
+            itemBuilder: (context, i) => _box(),
           ),
         ),
       ),
@@ -229,7 +231,7 @@ void main() {
     await tester.pumpWidget(
       _list(
         controller,
-        settings: const MotionEdgeScrollSettings(outside: false),
+        outside: false,
       ),
     );
     final gesture = await _dragTo(tester, const Offset(300, 395));
@@ -246,15 +248,15 @@ void main() {
     // The card is grabbed 15 px from its top, so its center is 5 px below
     // the pointer.
     for (final (probe, scrolls) in [
-      (MotionDragProbe.pointer, false),
-      (MotionDragProbe.feedbackCenter, true),
+      (MotionDragPoint.pointer, false),
+      (MotionDragPoint.feedbackCenter, true),
     ]) {
       testWidgets('$probe', (tester) async {
         await tester.pumpWidget(
           _list(
             controller,
-            probe: probe,
-            settings: const MotionEdgeScrollSettings(extent: 20),
+            point: probe,
+            extent: 20,
           ),
         );
         // The pointer at 378 is outside the band (380 to 400); the card's
@@ -288,9 +290,9 @@ void main() {
             SizedBox(
               width: 200,
               height: 400,
-              child: SingleChildScrollView(
-                controller: controller,
-                child: MotionEdgeScroll(
+              child: MotionDragToScroll(
+                child: SingleChildScrollView(
+                  controller: controller,
                   child: Column(
                     children: [for (var i = 0; i < 40; i++) _box()],
                   ),
@@ -324,23 +326,24 @@ void main() {
               SizedBox(
                 width: 200,
                 height: 400,
-                child: SingleChildScrollView(
-                  controller: controller,
-                  child: Column(
-                    children: [
-                      // Two items in a 400 px viewport: it can't scroll.
-                      SizedBox(
-                        height: 400,
-                        child: ListView(
-                          controller: inner,
-                          children: [
-                            for (var i = 0; i < 2; i++)
-                              MotionEdgeScroll(child: _box()),
-                          ],
+                child: MotionDragToScroll(
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    child: Column(
+                      children: [
+                        // Two items in a 400 px viewport: it can't scroll.
+                        SizedBox(
+                          height: 400,
+                          child: MotionDragToScroll(
+                            child: ListView(
+                              controller: inner,
+                              children: [for (var i = 0; i < 2; i++) _box()],
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 800),
-                    ],
+                        const SizedBox(height: 800),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -376,23 +379,26 @@ void main() {
             SizedBox(
               width: 400,
               height: 400,
-              child: SingleChildScrollView(
-                controller: controller,
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final lane in lanes)
-                      SizedBox(
-                        width: 300,
-                        height: 400,
-                        child: ListView.builder(
-                          controller: lane,
-                          itemCount: 40,
-                          itemBuilder: (context, i) =>
-                              MotionEdgeScroll(child: _box()),
+              child: MotionDragToScroll(
+                child: SingleChildScrollView(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final lane in lanes)
+                        SizedBox(
+                          width: 300,
+                          height: 400,
+                          child: MotionDragToScroll(
+                            child: ListView.builder(
+                              controller: lane,
+                              itemCount: 40,
+                              itemBuilder: (context, i) => _box(),
+                            ),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -429,17 +435,17 @@ void main() {
             SizedBox(
               width: 200,
               height: 400,
-              child: ListView(
-                controller: controller,
-                children: [
-                  MotionEdgeScroll(
-                    child: DragTarget<String>(
+              child: MotionDragToScroll(
+                child: ListView(
+                  controller: controller,
+                  children: [
+                    DragTarget<String>(
                       onAcceptWithDetails: (details) => accepted = details.data,
                       builder: (context, _, _) => _box(const Size(200, 200)),
                     ),
-                  ),
-                  for (var i = 0; i < 20; i++) _box(),
-                ],
+                    for (var i = 0; i < 20; i++) _box(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -450,5 +456,19 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(accepted, 'card');
+  });
+
+  testWidgets('a drag resting in the middle asks for no frames', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_list(controller));
+    final gesture = await _dragTo(tester, const Offset(300, 200));
+    // The drag's own velocity settles first.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(frame);
+    expect(controller.offset, 0);
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    await gesture.up();
+    await tester.pumpAndSettle();
   });
 }

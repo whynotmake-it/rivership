@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fixed_ticker/testing.dart';
 import 'package:flutter/gestures.dart';
@@ -94,11 +95,13 @@ class _BoardState extends State<_Board> {
       size: _itemSize,
       child: const ColoredBox(color: Color(0xFF888888)),
     );
-    const feedback = ColoredBox(key: _feedback, color: Color(0xFF000000));
+    Widget feedback(BuildContext context, MotionDragDetails drag) =>
+        const ColoredBox(key: _feedback, color: Color(0xFF000000));
     return widget.longPress
-        ? MotionLongPressDraggable<String>(
+        ? MotionDraggable<String>(
             key: ValueKey(id),
             data: id,
+            start: MotionDragStart.longPress,
             feedback: feedback,
             onDragStarted: widget.onDragStarted,
             onLanded: widget.onLanded,
@@ -109,9 +112,8 @@ class _BoardState extends State<_Board> {
             data: id,
             id: widget.tagOf?.call(id),
             axis: widget.axis,
-            feedback: feedback,
+            feedback: widget.feedbackBuilder ?? feedback,
             transitions: widget.transitions,
-            feedbackBuilder: widget.feedbackBuilder,
             onDragStarted: widget.onDragStarted,
             onLanded: widget.onLanded,
             onDragCompleted: () => accepted++,
@@ -231,7 +233,8 @@ class _ScrollBoardState extends State<_ScrollBoard> {
       transitions: widget.transitions,
       handoff: widget.handoff,
       motions: {MotionDraggableTrack.handoffFade: widget.handoffFade},
-      feedback: const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+      feedback: (context, drag) =>
+          const ColoredBox(key: _feedback, color: Color(0xFF000000)),
       child: SizedBox.fromSize(
         key: ValueKey('child-$id'),
         size: _itemSize,
@@ -530,9 +533,9 @@ void main() {
                 _ => const [],
               };
             },
-            feedbackBuilder: (context, drag, feedback) {
+            feedbackBuilder: (context, drag) {
               scales.add(drag.value(MotionDraggableTrack.scale));
-              return feedback;
+              return const ColoredBox(key: _feedback, color: Color(0xFF000000));
             },
           ),
         ),
@@ -559,9 +562,9 @@ void main() {
       await tester.pumpWidget(
         _app(
           _Board(
-            feedbackBuilder: (context, drag, feedback) {
+            feedbackBuilder: (context, drag) {
               velocities.add(drag.velocity);
-              return feedback;
+              return const ColoredBox(key: _feedback, color: Color(0xFF000000));
             },
           ),
         ),
@@ -1127,6 +1130,125 @@ void main() {
         MotionDragHandoff.never,
       );
       expect(inOverlay, everyElement(isTrue));
+    });
+  });
+
+  group('MotionDraggable in its place', () {
+    testWidgets('childWhenDragging gets the measured size, and the child '
+        'comes back after the drag', (tester) async {
+      Size? measured;
+      await tester.pumpWidget(
+        _app(
+          Align(
+            alignment: Alignment.topLeft,
+            child: MotionDraggable<String>(
+              data: 'x',
+              childWhenDragging: (context, size) {
+                measured = size;
+                return SizedBox(
+                  key: const ValueKey('ghost'),
+                  width: size.width,
+                );
+              },
+              child: SizedBox.fromSize(
+                key: const ValueKey('child-x'),
+                size: _itemSize,
+                child: const ColoredBox(color: Color(0xFF888888)),
+              ),
+            ),
+          ),
+        ),
+      );
+      final gesture = await _drag(tester, const Offset(0, 100));
+      expect(measured, _itemSize);
+      expect(tester.getSize(find.byKey(const ValueKey('ghost'))).height, 0);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('ghost')), findsNothing);
+      expect(_isShown(tester, 'x'), isTrue);
+    });
+
+    testWidgets('with handleOnly, only a handle starts the drag, and the '
+        'whole child flies', (tester) async {
+      var started = 0;
+      await tester.pumpWidget(
+        _app(
+          Align(
+            alignment: Alignment.topLeft,
+            child: MotionDraggable<String>(
+              data: 'x',
+              handleOnly: true,
+              onDragStarted: () => started++,
+              feedback: (context, drag) =>
+                  const ColoredBox(key: _feedback, color: Color(0xFF000000)),
+              child: const SizedBox(
+                width: 80,
+                height: 40,
+                child: Row(
+                  children: [
+                    Expanded(child: ColoredBox(color: Color(0xFF888888))),
+                    MotionDragHandle(
+                      child: SizedBox(
+                        width: 20,
+                        height: 40,
+                        child: ColoredBox(color: Color(0xFF444444)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      // On the body: no drag.
+      var gesture = await tester.startGesture(const Offset(20, 20));
+      await gesture.moveBy(const Offset(0, 60));
+      await tester.pump(frame);
+      expect(started, 0);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      // On the handle: the whole 80 x 40 child flies.
+      gesture = await tester.startGesture(const Offset(70, 20));
+      await gesture.moveBy(const Offset(0, 60));
+      await tester.pump(frame);
+      expect(started, 1);
+      expect(_feedbackRect(tester).size, const Size(80, 40));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('MotionDraggable morph', () {
+    testWidgets('springs to 1 after an accepted drop with a destination, and '
+        'stays 0 after a rejected one', (tester) async {
+      final morphs = <double>[];
+      await tester.pumpWidget(
+        _app(
+          _Board(
+            reorderB: true,
+            feedbackBuilder: (context, drag) {
+              morphs.add(drag.morph);
+              return const ColoredBox(key: _feedback, color: Color(0xFF000000));
+            },
+          ),
+        ),
+      );
+      // Rejected: dropped beside both columns.
+      var gesture = await _drag(tester, const Offset(240, 280));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(morphs.every((morph) => morph < 0.01), isTrue);
+      morphs.clear();
+      // Accepted into B, where the item lands.
+      gesture = await _drag(tester, const Offset(400, 280));
+      await gesture.up();
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(frame);
+      }
+      expect(morphs.first, lessThan(0.01));
+      expect(morphs.reduce(math.max), greaterThan(0.5));
+      await tester.pumpAndSettle();
     });
   });
 }

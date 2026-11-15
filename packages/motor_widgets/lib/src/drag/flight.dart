@@ -491,10 +491,14 @@ class DragFlight {
   void moveBy(Offset delta) {
     if (_done || phase != MotionDragPhase.dragging) return;
     _pointer += _restrict(delta);
-    _notifyMoved();
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null) {
+      _notifyMoved();
+      return;
+    }
     controller.set([MotionDraggableTrack.offset.value(_pointer - _anchor)]);
+    // Observers see the feedback where the pointer put it.
+    _notifyMoved();
     final estimate =
         controller
             .trackedVelocityEstimate(MotionDraggableTrack.offset)
@@ -775,13 +779,6 @@ class DragFlight {
     final size = controller.value(MotionDraggableTrack.size);
     if ((size.width - rect.width).abs() > 0.5 ||
         (size.height - rect.height).abs() > 0.5) {
-      return;
-    }
-    // A feedback of its own hands off once it has turned into what it
-    // lands on, so the item in the tree looks the same.
-    if (widget.feedback != null &&
-        phase == MotionDragPhase.accepted &&
-        controller.value(MotionDraggableTrack.morph) < 0.99) {
       return;
     }
     final offset = controller.value(MotionDraggableTrack.offset);

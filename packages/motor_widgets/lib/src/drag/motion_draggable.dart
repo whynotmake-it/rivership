@@ -135,8 +135,10 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
   /// a destination, and back to 0 when the drop has none or is rejected,
   /// on the motion that [MotionDraggable.motions] sets. A
   /// [MotionDraggable.feedback] reads it with [MotionDragDetails.morph] to
-  /// turn into the destination, such as a button into a card. The landing
-  /// stays in the overlay until it reaches 1.
+  /// turn into the destination, such as a button into a card. With
+  /// [MotionDragHandoff.never], the whole morph plays in the overlay before
+  /// the destination shows; otherwise the overlay copy fades out over the
+  /// destination once it hands off.
   static final morph = MotionDraggableTrack<double>._(
     MotionConverter.single,
     debugLabel: 'MotionDraggable.morph',
