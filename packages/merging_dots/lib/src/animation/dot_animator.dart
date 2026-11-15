@@ -185,6 +185,7 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
       final sequence = _sequence;
       _jump(state);
       _sequence = sequence;
+      _segmentStart = _elapsed;
       if (sequence != null) _ensureTicking();
       return;
     }
@@ -322,6 +323,17 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
 
   void _tick(Duration elapsed) {
     _elapsed = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    // A frame can pass several short keyframes; catch up on all of them.
+    for (var step = 0; step < 32 && _advance(); step++) {}
+  }
+
+  /// Applies the current segment at [_elapsed], and moves on to the next
+  /// keyframe if this one is over. Returns whether it moved on.
+  ///
+  /// A keyframe starts exactly when the previous one was due to end, not
+  /// at the frame that noticed, so short steps keep their timing instead of
+  /// each rounding up to the next frame.
+  bool _advance() {
     final t = _elapsed - _segmentStart;
 
     if (_settledAt == null) {
@@ -344,7 +356,7 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
     final sequence = _sequence;
     if (sequence == null) {
       if (settledAt != null) _ticker.stop();
-      return;
+      return false;
     }
     // A frame counts as reached once its motion's duration is over, even if
     // a spring is still settling, so loops flow on with their momentum.
@@ -352,17 +364,25 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
     final hold =
         sequence.frames[_frame].hold.inMicroseconds /
         Duration.microsecondsPerSecond;
-    if (t - arrivedAt < hold) return;
+    if (t - arrivedAt < hold) return false;
     final next = sequence.next(_frame, _direction);
     if (next == null) {
       _sequence = null;
       if (settledAt != null) _ticker.stop();
-      return;
+      return false;
     }
+    // Start the next keyframe from where this one stood when it was due to
+    // end, then let the caller apply it at the current time.
+    final boundary = _segmentStart + arrivedAt + hold;
+    if (_settledAt == null) _apply(boundary - _segmentStart);
+    final now = _elapsed;
+    _elapsed = boundary;
     final (frame, direction) = next;
     _frame = frame;
     _direction = direction;
     _enterFrame(_frame);
+    _elapsed = now;
+    return true;
   }
 
   void _apply(double t) {

@@ -128,13 +128,17 @@ void main() {
       ], motion: motion),
     );
     expect(frames, [0]);
+    // Frame 0 holds until 50 ms, frame 1 moves until 150 ms, then the loop
+    // moves back to frame 0 until 250 ms, exactly on time.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 60));
     expect(frames, [0, 1]);
-    await tester.pump(const Duration(milliseconds: 120));
-    expect(animator.values[3], 1);
+    await tester.pump(const Duration(milliseconds: 85));
+    expect(animator.values[3], closeTo(0.95, 0.01));
+    await tester.pump(const Duration(milliseconds: 10));
     expect(frames, [0, 1, 0]);
-    await tester.pump(const Duration(milliseconds: 120));
+    expect(animator.values[3], closeTo(0.95, 0.01));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(animator.values[0], 1);
 
     animator.pause();
@@ -179,5 +183,29 @@ void main() {
     animator.jumpTo(DotGrid(64, 64));
     // About 1ms per frame in a JIT test, pump included.
     expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+  });
+
+  testWidgets('short steps keep their timing', (tester) async {
+    final frames = <int>[];
+    final animator = DotAnimator<DotGrid>(
+      vsync: _Vsync(),
+      initial: DotGrid.parse('#...'),
+    )..onFrame = frames.add;
+    addTearDown(animator.dispose);
+    // Four 30 ms steps, filmed at 60 Hz: steps don't line up with frames.
+    animator.play(
+      DotSequence([
+        for (var i = 0; i < 4; i++)
+          DotKeyframe(DotGrid.generate(4, 1, (c, _) => c == i ? 1 : 0)),
+      ], motion: const Motion.linear(Duration(milliseconds: 30))),
+    );
+    await tester.pump();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    // 480 ms is 16 steps. Rounding each step up to a frame would only
+    // have made 15 (32 ms each), and fewer with slower frames.
+    expect(frames.length, inInclusiveRange(16, 17));
+    animator.jumpTo(DotGrid(4, 1));
   });
 }
