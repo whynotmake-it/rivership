@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
@@ -65,6 +66,125 @@ List<String> _topToBottom(WidgetTester tester, List<String> titles) =>
           .dy
           .compareTo(tester.getCenter(find.text(b)).dy),
     );
+
+/// The board's cards fully on screen, by their centers.
+List<Offset> _visibleCards(WidgetTester tester) => [
+  for (final element in find.byType(MotionReorder).evaluate())
+    if (element.renderObject case final RenderBox box
+        when box.attached && box.size.width < 320)
+      if (box.localToGlobal(Offset.zero) & box.size case final rect
+          when rect.top > 120 && rect.bottom < 600)
+        rect.center,
+];
+
+/// The lanes' card lists, left to right.
+List<ScrollPosition> _lanes(WidgetTester tester) {
+  final lanes = [
+    for (final state in tester.stateList<ScrollableState>(
+      find.byType(Scrollable),
+    ))
+      if (state.axisDirection == AxisDirection.down &&
+          (state.context.findRenderObject()! as RenderBox).size.width < 320)
+        state,
+  ];
+  double left(ScrollableState state) =>
+      (state.context.findRenderObject()! as RenderBox)
+          .localToGlobal(Offset.zero)
+          .dx;
+  lanes.sort((a, b) => left(a).compareTo(left(b)));
+  return [for (final lane in lanes) lane.position];
+}
+
+/// How far each card on screen is painted from its place, for those that
+/// are away from it.
+List<Offset> _flyingCards(WidgetTester tester) => [
+  for (final element in find.byType(MotionReorder).evaluate())
+    if (element.renderObject case final RenderBox box
+        when box.attached && box.size.width < 320)
+      if ((box.debugLayer as TransformLayer?)?.transform?.getTranslation()
+          case final t? when Offset(t.x, t.y).distance > 1)
+        Offset(t.x, t.y),
+];
+
+/// Shuffles, scrolls and moves cards at random, and after each step drops
+/// a card back where it was picked up, which must move no other card.
+Future<void> _shakeBoard(WidgetTester tester, int seed) async {
+  final random = math.Random(seed);
+  final shuffles = find.text('Shuffle');
+  final log = <String>[];
+  for (var step = 0; step < 40; step++) {
+    final lanes = _lanes(tester);
+    final cards = _visibleCards(tester);
+    switch (random.nextInt(4)) {
+      case 0:
+        final lane = random.nextInt(4);
+        log.add('shuffle lane $lane');
+        for (var i = 0; i <= random.nextInt(4); i++) {
+          await tester.tap(shuffles.at(lane), warnIfMissed: false);
+          await tester.pump(const Duration(milliseconds: 40));
+        }
+      case 1:
+        final lane = random.nextInt(lanes.length);
+        final position = lanes[lane];
+        final to = random.nextDouble() * position.maxScrollExtent;
+        log.add('scroll lane $lane to ${to.round()}');
+        position.jumpTo(to);
+        await tester.pump();
+      default:
+        if (cards.isEmpty) break;
+        final from = cards[random.nextInt(cards.length)];
+        final lane = random.nextInt(lanes.length);
+        final box =
+            lanes[lane].context.notificationContext!.findRenderObject()!
+                as RenderBox;
+        final rect = box.localToGlobal(Offset.zero) & box.size;
+        final to = Offset(
+          rect.center.dx,
+          rect.top + random.nextDouble() * rect.height,
+        );
+        log.add('drag $from to lane $lane at ${to.dy.round()}');
+        final gesture = await tester.startGesture(
+          from,
+          kind: PointerDeviceKind.mouse,
+        );
+        for (var i = 1; i <= 10; i++) {
+          await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.up();
+        // Sometimes the next step starts while it lands.
+        if (random.nextBool()) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+    }
+    if (random.nextInt(3) == 0) continue;
+    await tester.pumpAndSettle();
+
+    final settled = _visibleCards(tester);
+    if (settled.isEmpty) continue;
+    final at = settled[random.nextInt(settled.length)];
+    final gesture = await tester.startGesture(
+      at,
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(0, 6));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.moveBy(const Offset(0, -6));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final whileHeld = _flyingCards(tester);
+    await gesture.up();
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final afterDrop = _flyingCards(tester);
+    await tester.pumpAndSettle();
+    expect(whileHeld, isEmpty, reason: log.join('\n'));
+    // Only the dropped card may still be settling.
+    expect(afterDrop.length, lessThanOrEqualTo(1), reason: log.join('\n'));
+  }
+}
 
 void main() {
   testWidgets('Shuffle flies the cards of its column and they settle', (
@@ -218,4 +338,12 @@ void main() {
     expect(x('3'), lessThan(x('1')));
     expect(x('1'), lessThan(x('4')));
   });
+
+  for (final seed in [0, 3]) {
+    testWidgets('after random shuffles, scrolls and moves, a card dropped '
+        'where it was moves no other card (seed $seed)', (tester) async {
+      await _pumpPage(tester);
+      await _shakeBoard(tester, seed);
+    });
+  }
 }
