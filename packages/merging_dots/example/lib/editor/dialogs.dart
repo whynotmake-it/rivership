@@ -1,54 +1,15 @@
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:merging_dots/merging_dots.dart';
 import 'package:merging_dots_example/editor/code_export.dart';
 import 'package:merging_dots_example/editor/editor_controller.dart';
+import 'package:merging_dots_example/editor/icons.dart';
 import 'package:merging_dots_example/editor/project.dart';
 import 'package:merging_dots_example/editor/templates.dart';
 import 'package:merging_dots_example/editor/ui.dart';
 
-Future<void> _showSheet(BuildContext context, Widget child) {
-  return showCupertinoDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) => Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760, maxHeight: 720),
-          child: Panel(child: child),
-        ),
-      ),
-    ),
-  );
-}
-
-class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.title, this.trailing = const []});
-
-  final String title;
-  final List<Widget> trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(title, style: EditorText.title)),
-          ...trailing,
-          const SizedBox(width: 6),
-          ToolButton(
-            icon: CupertinoIcons.xmark,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A live view of the project's animation, at [size].
+/// A live view of a project's animation at [size].
 class ProjectPreview extends StatelessWidget {
   const ProjectPreview({required this.project, required this.size, super.key});
 
@@ -57,45 +18,44 @@ class ProjectPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: size,
-      child: switch (project.mode) {
-        DotMode.grid => DotGridView.sequence(
-          sequence: project.grid,
-          style: project.gridStyle,
-        ),
-        DotMode.cloud => DotCloudView.sequence(
-          sequence: project.cloud,
-          style: project.cloudStyle,
-        ),
-      },
+    return IconTheme.merge(
+      data: IconThemeData(color: CoilTheme.of(context).colors.foreground),
+      child: SizedBox.square(
+        dimension: size,
+        child: switch (project.mode) {
+          DotMode.grid => DotGridView.sequence(
+            sequence: project.grid,
+            style: project.gridStyle,
+          ),
+          DotMode.cloud => DotCloudView.sequence(
+            sequence: project.cloud,
+            style: project.cloudStyle,
+          ),
+        },
+      ),
     );
   }
 }
 
 /// Shows the project as Dart and JSON, ready to copy.
-Future<void> showExportSheet(BuildContext context, Project project) =>
-    _showSheet(context, _ExportSheet(project: project));
+Future<void> showExportDialog(BuildContext context, Project project) =>
+    showCoilDialog<void>(
+      context: context,
+      builder: (context) => _ExportDialog(project: project),
+    );
 
-class _ExportSheet extends StatefulWidget {
-  const _ExportSheet({required this.project});
+class _ExportDialog extends StatefulWidget {
+  const _ExportDialog({required this.project});
 
   final Project project;
 
   @override
-  State<_ExportSheet> createState() => _ExportSheetState();
+  State<_ExportDialog> createState() => _ExportDialogState();
 }
 
-class _ExportSheetState extends State<_ExportSheet> {
+class _ExportDialogState extends State<_ExportDialog> {
   var _format = 'dart';
   var _copied = false;
-  late final _codeText = TextEditingController(text: _code);
-
-  @override
-  void dispose() {
-    _codeText.dispose();
-    super.dispose();
-  }
 
   String get _code => _format == 'dart'
       ? CodeExport.dart(widget.project)
@@ -110,88 +70,92 @@ class _ExportSheetState extends State<_ExportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final hint = _format == 'dart'
-        ? 'Paste this into your app. It only needs the merging_dots package.'
-        : 'Load it with DotSequence.${widget.project.mode == DotMode.grid ? 'grid' : 'cloud'}FromJson, '
-              'and the style with Dot${widget.project.mode == DotMode.grid ? 'Grid' : 'Cloud'}Style.fromJson(json["style"]). '
-              'The editor can import it again too.';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SheetHeader(
-          title: 'Export "${widget.project.name}"',
-          trailing: [
-            Choice(
-              value: _format,
-              options: const {'dart': 'Dart', 'json': 'JSON'},
-              onChanged: (format) => setState(() {
-                _format = format;
-                _codeText.text = _code;
-              }),
-            ),
-            const SizedBox(width: 6),
-            ToolButton(
-              icon: _copied
-                  ? CupertinoIcons.check_mark
-                  : CupertinoIcons.doc_on_clipboard,
-              label: _copied ? 'Copied' : 'Copy',
-              prominent: true,
-              onPressed: _copy,
-            ),
-          ],
+    final grid = widget.project.mode == DotMode.grid;
+    final theme = CoilTheme.of(context);
+    return CoilDialog(
+      size: CoilDialogSize.lg,
+      title: Text('Export "${widget.project.name}"'),
+      description: Text(
+        _format == 'dart'
+            ? 'Paste this into your app. It only needs the merging_dots '
+                  'package.'
+            : 'Load it with DotSequence.${grid ? 'grid' : 'cloud'}FromJson '
+                  'and Dot${grid ? 'Grid' : 'Cloud'}Style.fromJson. The '
+                  'editor can import it again too.',
+      ),
+      onClose: () => Navigator.of(context).pop(),
+      actions: [
+        CoilButton(
+          leading: GlyphIcon(_copied ? Glyph.check : Glyph.copy),
+          onPressed: _copy,
+          child: Text(_copied ? 'Copied' : 'Copy'),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
               for (final size in const [16.0, 24.0, 48.0, 96.0]) ...[
                 ProjectPreview(project: widget.project, size: size),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
               ],
-              Expanded(child: Text(hint, style: EditorText.label)),
+              const Spacer(),
+              Segmented(
+                value: _format,
+                options: const {'dart': 'Dart', 'json': 'JSON'},
+                onChanged: (format) => setState(() => _format = format),
+              ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        Flexible(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          const SizedBox(height: 16),
+          Container(
+            height: 320,
             decoration: BoxDecoration(
-              color: EditorColors.canvas,
-              borderRadius: BorderRadius.circular(10),
+              color: theme.colors.muted,
+              borderRadius: BorderRadius.circular(
+                CoilTheme.radiiOf(context).item,
+              ),
             ),
-            child: CupertinoTextField(
-              controller: _codeText,
-              readOnly: true,
-              maxLines: null,
-              expands: true,
-              style: EditorText.code,
+            child: CoilScrollArea(
               padding: const EdgeInsets.all(16),
-              decoration: null,
+              child: Text(
+                _code,
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 12,
+                  height: 1.5,
+                  color: theme.colors.foreground,
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 /// Asks for JSON to open.
-Future<void> showImportSheet(
+Future<void> showImportDialog(
   BuildContext context,
   EditorController controller,
-) => _showSheet(context, _ImportSheet(controller: controller));
+) => showCoilDialog<void>(
+  context: context,
+  kind: CoilDialogKind.form,
+  builder: (context) => _ImportDialog(controller: controller),
+);
 
-class _ImportSheet extends StatefulWidget {
-  const _ImportSheet({required this.controller});
+class _ImportDialog extends StatefulWidget {
+  const _ImportDialog({required this.controller});
 
   final EditorController controller;
 
   @override
-  State<_ImportSheet> createState() => _ImportSheetState();
+  State<_ImportDialog> createState() => _ImportDialogState();
 }
 
-class _ImportSheetState extends State<_ImportSheet> {
+class _ImportDialogState extends State<_ImportDialog> {
   final _text = TextEditingController();
   String? _error;
 
@@ -212,115 +176,107 @@ class _ImportSheetState extends State<_ImportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SheetHeader(
-          title: 'Import JSON',
-          trailing: [
-            ToolButton(label: 'Open', prominent: true, onPressed: _import),
-          ],
+    final error = _error;
+    return CoilDialog(
+      size: CoilDialogSize.lg,
+      title: const Text('Import JSON'),
+      description: const Text(
+        'Paste a project or an animation exported from the editor.',
+      ),
+      actions: [
+        CoilButton(
+          variant: CoilButtonVariant.tertiary,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
         ),
-        Flexible(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: CupertinoTextField(
-              controller: _text,
-              maxLines: null,
-              minLines: 12,
-              autofocus: true,
-              placeholder: 'Paste JSON exported by the editor',
-              style: EditorText.code,
-              placeholderStyle: EditorText.code.copyWith(
-                color: EditorColors.textTertiary,
-              ),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: EditorColors.canvas,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ),
-        if (_error case final error?)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Text(
-              error,
-              style: EditorText.label.copyWith(color: const Color(0xFFFF5C39)),
-            ),
-          ),
+        CoilButton(onPressed: _import, child: const Text('Open')),
       ],
+      child: CoilField(
+        invalid: error != null,
+        error: error == null ? null : Text(error),
+        child: CoilInput.multiline(
+          controller: _text,
+          autofocus: true,
+          minLines: 8,
+          maxLines: 14,
+          placeholder: const Text('{"kind": "grid", ...}'),
+          invalid: error != null,
+        ),
+      ),
     );
   }
 }
 
 /// Saved projects and templates to open.
-Future<void> showLibrarySheet(
+Future<void> showLibraryDialog(
   BuildContext context,
   EditorController controller,
-) => _showSheet(context, _LibrarySheet(controller: controller));
+) => showCoilDialog<void>(
+  context: context,
+  builder: (context) => _LibraryDialog(controller: controller),
+);
 
-class _LibrarySheet extends StatelessWidget {
-  const _LibrarySheet({required this.controller});
+class _LibraryDialog extends StatelessWidget {
+  const _LibraryDialog({required this.controller});
 
   final EditorController controller;
 
   @override
   Widget build(BuildContext context) {
+    void open(Project project) {
+      controller.open(project);
+      Navigator.of(context).pop();
+    }
+
     return ListenableBuilder(
       listenable: controller,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SheetHeader(
-            title: 'Library',
-            trailing: [
-              ToolButton(
-                icon: CupertinoIcons.add,
-                label: 'New',
-                onPressed: () {
-                  controller.newProject();
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
+      builder: (context, _) => CoilDialog(
+        size: CoilDialogSize.xl,
+        title: const Text('Library'),
+        description: const Text(
+          'Start from a template, or open a project you saved.',
+        ),
+        onClose: () => Navigator.of(context).pop(),
+        actions: [
+          CoilButton(
+            variant: CoilButtonVariant.secondary,
+            leading: const GlyphIcon(Glyph.plus),
+            onPressed: () {
+              controller.newProject();
+              Navigator.of(context).pop();
+            },
+            child: const Text('New project'),
           ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        ],
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+          ),
+          child: CoilScrollArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('SAVED', style: EditorText.section),
-                const SizedBox(height: 10),
+                const RoleText.caption('Saved'),
+                const SizedBox(height: 8),
                 if (controller.library.isEmpty)
-                  const Text(
-                    'Nothing saved yet. Save a project from the top bar and it shows up here.',
-                    style: EditorText.label,
+                  const RoleText.body(
+                    'Nothing saved yet. Save a project and it shows up here.',
+                    muted: true,
                   )
                 else
                   _ProjectGrid(
                     projects: controller.library,
-                    onOpen: (project) {
-                      controller.open(project);
-                      Navigator.of(context).pop();
-                    },
+                    onOpen: open,
                     onDelete: controller.deleteFromLibrary,
                   ),
                 const SizedBox(height: 24),
-                const Text('TEMPLATES', style: EditorText.section),
-                const SizedBox(height: 10),
-                _ProjectGrid(
-                  projects: templates,
-                  onOpen: (project) {
-                    controller.open(project);
-                    Navigator.of(context).pop();
-                  },
-                ),
+                const RoleText.caption('Templates'),
+                const SizedBox(height: 8),
+                _ProjectGrid(projects: templates, onOpen: open),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -339,55 +295,59 @@ class _ProjectGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).container);
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: [
         for (final project in projects)
-          GestureDetector(
-            onTap: () => onOpen(project),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                width: 150,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: EditorColors.raised,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: EditorColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(child: ProjectPreview(project: project, size: 96)),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            project.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: EditorText.value,
-                          ),
-                        ),
-                        if (onDelete != null)
-                          GestureDetector(
-                            onTap: () => onDelete!(project),
-                            child: const Icon(
-                              CupertinoIcons.trash,
-                              size: 14,
-                              color: EditorColors.textTertiary,
+          Semantics(
+            button: true,
+            label: project.name,
+            child: GestureDetector(
+              onTap: () => onOpen(project),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  width: 156,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.muted,
+                    borderRadius: radius,
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: ProjectPreview(project: project, size: 96)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RoleText(
+                              project.name,
+                              weight: CoilWeight.semibold,
+                              maxLines: 1,
                             ),
                           ),
-                      ],
-                    ),
-                    Text(
-                      '${project.mode == DotMode.grid ? 'Grid' : 'Freeform'} · '
-                      '${project.frameCount} frame${project.frameCount == 1 ? '' : 's'}',
-                      style: EditorText.label,
-                    ),
-                  ],
+                          if (onDelete case final onDelete?)
+                            CoilButton.icon(
+                              variant: CoilButtonVariant.ghost,
+                              size: CoilSize.compact,
+                              semanticLabel: 'Delete ${project.name}',
+                              icon: const GlyphIcon(Glyph.clear),
+                              onPressed: () => onDelete(project),
+                            ),
+                        ],
+                      ),
+                      RoleText.caption(
+                        '${project.mode == DotMode.grid ? 'Grid' : 'Freeform'}'
+                        ' · ${project.frameCount} '
+                        'frame${project.frameCount == 1 ? '' : 's'}',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

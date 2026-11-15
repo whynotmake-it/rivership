@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:merging_dots/merging_dots.dart';
 
 /// Whether a project animates a grid or a freeform cloud.
@@ -16,14 +15,14 @@ class Project {
     required this.mode,
     required this.grid,
     required this.cloud,
-    this.gridStyle = const DotGridStyle(color: Color(0xFFF4F4F5)),
-    this.cloudStyle = const DotCloudStyle(color: Color(0xFFF4F4F5)),
+    this.gridStyle = const DotGridStyle.tiles(),
+    this.cloudStyle = const DotCloudStyle(),
   });
 
   factory Project.blank({String name = 'Untitled'}) => Project(
     name: name,
     mode: DotMode.grid,
-    grid: DotSequence([DotKeyframe(DotGrid(9, 9))]),
+    grid: DotSequence([DotKeyframe(DotGrid(7, 7))]),
     cloud: const DotSequence([
       DotKeyframe(DotCloud([Dot(50, 50, 14)])),
     ]),

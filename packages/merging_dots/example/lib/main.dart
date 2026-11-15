@@ -1,4 +1,5 @@
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:merging_dots/merging_dots.dart';
 import 'package:merging_dots_example/editor/editor_page.dart';
 import 'package:merging_dots_example/font_licenses.dart';
@@ -14,16 +15,23 @@ void main() {
   runApp(const MergingDotsApp());
 }
 
+/// The editor as a standalone app: a bare [WidgetsApp], since coil needs no
+/// Material or Cupertino shell. Without a `CoilTheme`, coil follows the
+/// platform's brightness.
 class MergingDotsApp extends StatelessWidget {
   const MergingDotsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return WidgetsApp(
       title: 'Merging Dots',
+      color: CoilColors.light.brand,
       debugShowCheckedModeBanner: false,
-      theme: CupertinoThemeData(brightness: Brightness.dark),
-      home: MergingDotsEditor(),
+      pageRouteBuilder: <T>(settings, builder) => PageRouteBuilder<T>(
+        settings: settings,
+        pageBuilder: (context, _, _) => builder(context),
+      ),
+      home: const MergingDotsEditor(),
     );
   }
 }

@@ -10,6 +10,29 @@ import 'package:merging_dots_example/editor/storage.dart';
 /// What a drag on the freeform canvas does.
 enum CloudTool { move, add }
 
+/// What a stroke on the grid does.
+enum GridTool {
+  /// Switches cells: the first cell of a stroke decides on or off.
+  flip,
+
+  /// Only adds ink.
+  draw,
+
+  /// Only removes ink.
+  erase,
+}
+
+/// Which mirror copies a grid stroke paints too.
+enum Symmetry {
+  off,
+  vertical,
+  horizontal,
+  both;
+
+  bool get mirrorsColumns => this == vertical || this == both;
+  bool get mirrorsRows => this == horizontal || this == both;
+}
+
 /// The editor's state: the open project, the selection and the library of
 /// saved projects.
 class EditorController extends ChangeNotifier {
@@ -36,6 +59,12 @@ class EditorController extends ChangeNotifier {
   final ValueNotifier<int> playingFrame = ValueNotifier(0);
 
   double _brush = 1;
+
+  GridTool _gridTool = GridTool.flip;
+  GridTool get gridTool => _gridTool;
+
+  Symmetry _symmetry = Symmetry.off;
+  Symmetry get symmetry => _symmetry;
 
   /// The value painting a grid cell sets. 0 erases.
   double get brush => _brush;
@@ -141,6 +170,16 @@ class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setGridTool(GridTool tool) {
+    _gridTool = tool;
+    notifyListeners();
+  }
+
+  void setSymmetry(Symmetry symmetry) {
+    _symmetry = symmetry;
+    notifyListeners();
+  }
+
   void setCloudTool(CloudTool tool) {
     _cloudTool = tool;
     notifyListeners();
@@ -176,9 +215,40 @@ class EditorController extends ChangeNotifier {
   /// Sets the cell at [column] and [row] of the edited frame. Call
   /// [checkpoint] before a stroke.
   void paintCell(int column, int row, double value) {
+    var grid = currentGrid;
+    final columns = {
+      column,
+      if (_symmetry.mirrorsColumns) grid.columns - 1 - column,
+    };
+    final rows = {row, if (_symmetry.mirrorsRows) grid.rows - 1 - row};
+    for (final c in columns) {
+      for (final r in rows) {
+        if (grid.valueAt(c, r) != value) grid = grid.withValue(c, r, value);
+      }
+    }
+    if (identical(grid, currentGrid)) return;
+    _setGridFrame(grid);
+  }
+
+  /// The value a stroke starting on [column] and [row] paints, from the
+  /// tool and the brush.
+  double strokeValue(int column, int row) {
+    final ink = _brush == 0 ? 1.0 : _brush;
+    return switch (_gridTool) {
+      GridTool.draw => ink,
+      GridTool.erase => 0,
+      GridTool.flip => currentGrid.valueAt(column, row) > 0 ? 0 : ink,
+    };
+  }
+
+  /// Grows or shrinks every frame of the grid by [delta] cells per side,
+  /// keeping the content centered.
+  void stepGridSize(int delta) {
     final grid = currentGrid;
-    if (grid.valueAt(column, row) == value) return;
-    _setGridFrame(grid.withValue(column, row, value));
+    final columns = (grid.columns + delta).clamp(2, 32);
+    final rows = (grid.rows + delta).clamp(2, 32);
+    if (columns == grid.columns && rows == grid.rows) return;
+    resizeGrid(columns, rows);
   }
 
   void clearFrame() {
