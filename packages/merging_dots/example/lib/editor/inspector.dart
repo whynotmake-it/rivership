@@ -154,7 +154,7 @@ class ToolsPanel extends StatelessWidget {
             onChanged: controller.setCloudTool,
           ),
           Text(
-            '${cloud.dots.length} / ${DotCloud.maxDots} dots. Added dots go '
+            '${cloud.dots.length} dots. Added dots go '
             'into every frame; moving and resizing only changes this one.',
             style: EditorText.label,
           ),
