@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merging_dots/merging_dots.dart';
-import 'package:merging_dots/src/presets/cloud_progress_loaders.dart';
 
 import 'review_helper.dart';
 

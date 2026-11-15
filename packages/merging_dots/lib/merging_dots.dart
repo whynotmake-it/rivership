@@ -17,6 +17,7 @@ export 'src/presets/cloud_progress_loaders.dart';
 export 'src/presets/dot_loader.dart';
 export 'src/presets/dot_loaders.dart';
 export 'src/presets/dot_presets.dart';
+export 'src/presets/goo_loaders.dart';
 export 'src/presets/grid_progress_loaders.dart';
 export 'src/presets/tiles_loaders.dart';
 export 'src/rendering/dot_shaders.dart';

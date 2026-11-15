@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merging_dots/src/presets/dot_loader.dart';
-import 'package:merging_dots/src/presets/tiles_loaders.dart';
+import 'package:merging_dots/merging_dots.dart';
 
 import 'review_helper.dart';
 
