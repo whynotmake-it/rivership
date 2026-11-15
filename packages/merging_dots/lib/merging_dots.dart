@@ -1,0 +1,20 @@
+/// Gooey, merging dots - on a grid or freeform, animated with motor and
+/// rendered by fragment shaders.
+library;
+
+export 'package:motor/motor.dart'
+    show CupertinoMotion, CurvedMotion, LinearMotion, LoopMode, Motion;
+
+export 'src/animation/dot_animator.dart';
+export 'src/animation/dot_sequence.dart';
+export 'src/animation/dot_stagger.dart';
+export 'src/animation/motion_json.dart';
+export 'src/model/dot_cloud.dart';
+export 'src/model/dot_grid.dart';
+export 'src/model/dot_state.dart';
+export 'src/presets/dot_presets.dart';
+export 'src/rendering/dot_shaders.dart';
+export 'src/rendering/dot_styles.dart';
+export 'src/rendering/render_dots.dart'
+    show RenderDotCloud, RenderDotGrid, kMaxGridValue;
+export 'src/widgets/dot_views.dart';
