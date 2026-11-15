@@ -9,11 +9,11 @@ import 'package:motor_widgets/src/drag/motion_draggable.dart';
 import 'package:motor_widgets/src/painted_position.dart';
 import 'package:motor_widgets/src/ticker_rate.dart';
 
-/// Animates its [MotionLayoutItem]s whenever their layout moves them.
+/// Animates its [MotionLayoutItem]s when their order changes.
 ///
-/// Each item has an [MotionLayoutItem.id]. When an item is laid out
-/// somewhere other than where it was in the previous frame, it flies from
-/// where it was painted to its new place on a spring:
+/// Each item has an [MotionLayoutItem.id]. When the widgets around an item
+/// are rebuilt and the item ends up in another place, it flies from where
+/// it was painted to its new place on a spring:
 ///
 /// ```dart
 /// MotionLayoutGroup(
@@ -26,27 +26,23 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// )
 /// ```
 ///
-/// A reorder, an insert above an item, a neighbor that grows, and a wrap
-/// that reflows all move items. An item is found by its id, not by its
-/// widget, so it flies even when its widget is rebuilt elsewhere, such as
-/// in another column of the same group, or by a lazy list.
+/// Reorders, inserts and removals around an item, and moves to another
+/// container of the same group, all fly. An item is found by its id, not by
+/// its widget, so it flies even when it is built anew, such as by a lazy
+/// list or in another column.
 ///
-/// ## What counts as a move
+/// ## What flies
 ///
-/// Positions are measured relative to the group, with the scroll offsets of
-/// the [Scrollable]s between the group and the item taken out, once per
-/// frame when the frame is composited. So:
+/// An item checks whether it moved when it is rebuilt or built anew,
+/// comparing where it was painted in the last frame with where it is laid
+/// out now. Nothing is checked in frames without a rebuild, so:
 ///
-/// * Scrolling never moves an item.
-/// * The group can move, for example in a page transition, and its items
-///   move with it.
-/// * An item that wasn't on screen in the previous frame, such as one in a
-///   list's cache extent, or one that was just built, appears in place.
-///
-/// Animated transforms between the group and an item, such as a
-/// [Transform] that scales a column in, count as moves: put the group
-/// inside them. Scrollables that don't move their content one-to-one with
-/// their offset, such as pinned sliver headers, aren't supported.
+/// * Scrolling never moves an item, and neither do animations elsewhere,
+///   such as a sticky header.
+/// * A neighbor that grows on its own, such as with a `MotionSize`, moves
+///   an item without a rebuild, so the item follows it frame by frame
+///   instead of flying.
+/// * An item that wasn't on screen in the last frame appears in place.
 ///
 /// A [MotionDraggable] lands on the item with its id, and hands the rest of
 /// its landing to the item's spring.
@@ -123,39 +119,12 @@ class MotionLayoutItem extends StatefulWidget {
   State<MotionLayoutItem> createState() => MotionLayoutItemState();
 }
 
-/// Where an item was in the last frame it was composited, in the group's
-/// content coordinates, and its flight.
-class _Record {
-  /// The frame this was recorded in, or -1 before the first.
-  int frame = -1;
-
-  /// The layout position.
-  Offset layout = Offset.zero;
-
-  /// The painted position: the layout position plus the flight.
-  Offset painted = Offset.zero;
-
-  /// The flight. Its value is the painted position, its target the layout
-  /// position.
-  MotionController<Offset>? controller;
-
-  bool get flying => controller?.isAnimating ?? false;
-
-  void dispose() {
-    controller?.dispose();
-    controller = null;
-  }
-}
-
 class _MotionLayoutGroupState extends State<MotionLayoutGroup>
     with FixedTickerProviderStateMixin, WidgetTickerRateMixin {
   final _records = <Object, _Record>{};
 
   /// The landing sites of the group's items: ids are unique within it.
   final _landings = LandingRegistry();
-
-  /// Counts the frames in which the group was composited.
-  int _frame = 0;
 
   /// The scrollables around the group, which move it with its items.
   List<ScrollableState> _outside = const [];
@@ -178,64 +147,42 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
     super.dispose();
   }
 
-  /// Starts a frame: forgets the items that weren't composited in the last
-  /// one, since where they were is out of date.
-  void _beginFrame() {
-    _frame++;
-    final cutoff = _frame - 1;
-    if (_records.values.every((record) => record.frame >= cutoff)) return;
-    _afterFrame(() {
-      _records.removeWhere((_, record) {
-        if (record.frame >= cutoff) return false;
-        record.dispose();
-        return true;
-      });
-    });
-  }
-
-  final _actions = <VoidCallback>[];
-
-  /// Runs [action] once this frame is done.
-  ///
-  /// Items find their flights while the frame is composited, and paint this
-  /// frame from what they find. Anything that acts, such as starting a
-  /// spring, waits until the frame is done.
-  void _afterFrame(VoidCallback action) {
-    _actions.add(action);
-    if (_actions.length > 1) return;
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      final actions = List.of(_actions);
-      _actions.clear();
-      if (!mounted) return;
-      for (final action in actions) {
-        action();
-      }
-    }, debugLabel: 'MotionLayoutGroup');
-  }
-
-  /// Flies [record] to [to], from [from] unless it is flying already, which
-  /// keeps its velocity.
-  void _fly(
-    _Record record,
-    Motion motion, {
-    required Offset to,
-    required Offset from,
-  }) {
-    final controller = _controllerFor(record, motion);
-    if (controller.isAnimating) {
-      controller.animateTo(to);
-    } else {
-      controller.animateTo(to, from: from);
-    }
-  }
-
   _Record _recordFor(Object id) => _records[id] ??= _Record();
 
-  /// The record of [id] if it was composited in the latest frame, read
-  /// between frames.
-  _Record? _lastFrameRecord(Object id) {
-    final record = _records[id];
-    return record != null && record.frame == _frame ? record : null;
+  /// Reports two items with [id] once this frame is done. While a lazy list
+  /// rebuilds, an item's new widget is built before its old one goes away.
+  void _checkDuplicates(Object id, _RenderItem item) {
+    assert(() {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !item.attached) return;
+        final record = _records[id];
+        final other = record?.owner;
+        if (other == null || identical(other, item) || !other.attached) {
+          return;
+        }
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: FlutterError(
+              'Two MotionLayoutItems in one MotionLayoutGroup have the id '
+              '$id.',
+            ),
+            library: 'motor_widgets',
+          ),
+        );
+      }, debugLabel: 'MotionLayoutGroup.duplicates');
+      return true;
+    }(), 'never fails: it only reports duplicate ids');
+  }
+
+  /// Forgets [id] once no item has it any more, after this frame.
+  void _release(Object id, _RenderItem owner) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      final record = _records[id];
+      if (record == null || !identical(record.owner, owner)) return;
+      if (owner.attached) return;
+      _records.remove(id);
+      record.dispose();
+    }, debugLabel: 'MotionLayoutGroup.release');
   }
 
   MotionController<Offset> _controllerFor(_Record record, Motion motion) {
@@ -243,10 +190,10 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
       motion: motion,
       vsync: this,
       converter: MotionConverter.offset,
-      initialValue: record.painted,
+      initialValue: Offset.zero,
       velocityTracking: const VelocityTracking.off(),
       debugLabel: widget.debugLabel ?? 'MotionLayoutItem',
-    );
+    )..addListener(() => record.owner?._flightTicked());
     if (controller.motion != motion) controller.motion = motion;
     return controller;
   }
@@ -254,6 +201,9 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
   @override
   Widget build(BuildContext context) {
     _outside = _scrollablesOf(context);
+    for (final scrollable in _outside) {
+      _ScrollHistory.of(scrollable.position);
+    }
     return LandingScope(
       registry: _landings,
       child: _GroupScope(
@@ -261,6 +211,27 @@ class _MotionLayoutGroupState extends State<MotionLayoutGroup>
         child: _GroupBox(state: this, child: widget.child),
       ),
     );
+  }
+}
+
+/// An item's flight, kept by id so that it carries over when the item is
+/// built anew.
+class _Record {
+  /// The render object that has the id now, or last had it.
+  _RenderItem? owner;
+
+  /// The flight. Its value is the painted position, its target the layout
+  /// position, both in the group's content coordinates.
+  MotionController<Offset>? controller;
+
+  /// The layout position the flight heads for.
+  Offset? target;
+
+  bool get flying => controller?.isAnimating ?? false;
+
+  void dispose() {
+    controller?.dispose();
+    controller = null;
   }
 }
 
@@ -297,8 +268,8 @@ class _GroupBox extends SingleChildRenderObjectWidget {
   }
 }
 
-/// The group's repaint boundary, whose layer its items measure themselves
-/// against, and the landing scope of a drop over it.
+/// The group's repaint boundary, whose coordinates its items measure
+/// themselves in, and the landing scope of a drop over it.
 class _RenderGroup extends RenderProxyBox implements LandingScopeBox {
   _RenderGroup(this.state);
 
@@ -330,13 +301,74 @@ class _RenderGroup extends RenderProxyBox implements LandingScopeBox {
 
 class _GroupLayer extends OffsetLayer {
   _MotionLayoutGroupState? state;
+}
 
-  @override
-  void addToScene(ui.SceneBuilder builder) {
-    final state = this.state;
-    if (state != null && state.mounted) state._beginFrame();
-    super.addToScene(builder);
+/// The scroll offset of a [ScrollPosition] as of the last composited frame.
+///
+/// An item that is rebuilt reads where it was painted from the last frame's
+/// layers, which show that frame's scroll offsets. A scroll since then has
+/// moved the position already, so the offsets of that frame are kept here.
+/// They are recorded after every frame, not from the position's listeners,
+/// which miss the corrections layout makes.
+final class _ScrollHistory {
+  _ScrollHistory._(this._position)
+    : composited = _position.hasPixels ? _position.pixels : 0 {
+    _all.add(WeakReference(this));
+    if (_recording) return;
+    _recording = true;
+    // Persistent callbacks run in the order they were added, so this one
+    // runs after the frame's layout, paint and compositing.
+    SchedulerBinding.instance.addPersistentFrameCallback((_) => _recordAll());
   }
+
+  factory _ScrollHistory.of(ScrollPosition position) =>
+      _histories[position] ??= _ScrollHistory._(position);
+
+  static final _histories = Expando<_ScrollHistory>('ScrollHistory');
+  static final _all = <WeakReference<_ScrollHistory>>[];
+  static bool _recording = false;
+
+  static void _recordAll() => _all.removeWhere((reference) {
+    final history = reference.target;
+    if (history == null) return true;
+    final position = history._position;
+    if (position.hasPixels) history.composited = position.pixels;
+    return false;
+  });
+
+  final ScrollPosition _position;
+
+  /// The pixels of the last composited frame.
+  double composited;
+}
+
+/// The offset that turns a position into content coordinates: the sum of
+/// [scrollables]' offsets along their axes, as of the last composited frame
+/// with [composited], else now.
+Offset _scrollOffset(
+  List<ScrollableState> scrollables, {
+  required bool composited,
+}) {
+  var dx = 0.0;
+  var dy = 0.0;
+  for (final scrollable in scrollables) {
+    final position = scrollable.position;
+    if (!position.hasPixels) continue;
+    final pixels = composited
+        ? _ScrollHistory.of(position).composited
+        : position.pixels;
+    switch (position.axisDirection) {
+      case AxisDirection.down:
+        dy += pixels;
+      case AxisDirection.up:
+        dy -= pixels;
+      case AxisDirection.right:
+        dx += pixels;
+      case AxisDirection.left:
+        dx -= pixels;
+    }
+  }
+  return Offset(dx, dy);
 }
 
 /// The state of a [MotionLayoutItem]: the landing site of a [MotionDraggable]
@@ -512,13 +544,14 @@ class _ItemBox extends SingleChildRenderObjectWidget {
   final List<ScrollableState> scrollables;
 
   @override
-  _RenderItem createRenderObject(BuildContext context) => _RenderItem()
-    ..group = group
-    ..id = id
-    ..enabled = enabled
-    ..landing = landing
-    ..motion = motion
-    ..scrollables = scrollables;
+  _RenderItem createRenderObject(BuildContext context) => _RenderItem(
+    group: group,
+    id: id,
+    enabled: enabled,
+    landing: landing,
+    motion: motion,
+    scrollables: scrollables,
+  );
 
   @override
   void updateRenderObject(BuildContext context, _RenderItem renderObject) {
@@ -528,158 +561,106 @@ class _ItemBox extends SingleChildRenderObjectWidget {
       ..enabled = enabled
       ..landing = landing
       ..motion = motion
-      ..scrollables = scrollables;
+      ..scrollables = scrollables
+      // Rebuilt: the widgets around it may have put it somewhere else.
+      ..rebuilt();
   }
 }
 
 /// Paints its child at the flight's offset from its layout position.
 ///
-/// It paints its child into an [_ItemLayer], which measures where the item
-/// is each time the frame is composited, when layout, paint offsets and
-/// scroll offsets are final, and compares that with the previous frame.
-/// Hit testing stays at the layout position.
+/// It is a repaint boundary, so its [_ItemLayer] keeps where it was painted
+/// in the last frame until it is painted again. When it is rebuilt, or
+/// built anew for an id another item had, it reads that position, before
+/// anything is laid out again. When it is painted next, it compares that
+/// with where it is laid out now and flies if they differ. Hit testing
+/// stays at the layout position.
 class _RenderItem extends RenderProxyBox
     implements PaintOffset, FlightReceiver {
-  late _MotionLayoutGroupState group;
-  late Object id;
-  late bool enabled;
+  _RenderItem({
+    required this.group,
+    required this.id,
+    required this.enabled,
+    required this.landing,
+    required this.motion,
+    required this.scrollables,
+  });
+
+  _MotionLayoutGroupState group;
+  Object id;
+  bool enabled;
 
   /// Whether a drag's landing flies to this item in the overlay. The item
   /// is hidden meanwhile and takes its place without flying: the landing
   /// is its flight.
-  late bool landing;
-  late Motion motion;
-  List<ScrollableState> scrollables = const [];
+  bool landing;
+  Motion motion;
+  List<ScrollableState> scrollables;
 
-  /// The flight's offset in the last composited frame.
+  /// Where it was painted in the last frame, in the group's content
+  /// coordinates, read when it was rebuilt, until it is painted.
+  Offset? _origin;
+
+  /// The flight's offset as last painted.
   Offset _visual = Offset.zero;
 
-  /// Where the child is painted in the item's layer, which is where its
-  /// parent layer is.
-  Offset _paintedAt = Offset.zero;
-
-  final _layer = LayerHandle<_ItemLayer>();
+  @override
+  bool get isRepaintBoundary => true;
 
   @override
-  bool get alwaysNeedsCompositing => true;
-
-  @override
-  void dispose() {
-    _layer.layer = null;
-    super.dispose();
+  OffsetLayer updateCompositedLayer({
+    required covariant _ItemLayer? oldLayer,
+  }) {
+    return (oldLayer ?? _ItemLayer())..visual = _resolve();
   }
 
   @override
   Offset get paintOffset => _visual;
 
   @override
-  bool get canReceiveFlight =>
-      enabled &&
-      attached &&
-      hasSize &&
-      group.mounted &&
-      group._lastFrameRecord(id) != null;
-
-  @override
-  Rect? get layoutRect =>
-      attached && hasSize ? localToGlobal(Offset.zero) & size : null;
-
-  @override
-  void receiveFlight({required Offset offset, required Offset velocity}) {
-    final record = group._lastFrameRecord(id);
-    if (record == null) return;
-    final controller = group._controllerFor(record, motion);
-    final flying = controller.isAnimating;
-    controller.animateTo(
-      record.layout,
-      from: record.painted + offset,
-      withVelocity: (flying ? controller.velocity : Offset.zero) + velocity,
-    );
-  }
-
-  /// The scroll offsets between the group and this item, along their axes.
-  Offset _scrollOffset() {
-    var dx = 0.0;
-    var dy = 0.0;
-    for (final scrollable in scrollables) {
-      final position = scrollable.position;
-      if (!position.hasPixels) continue;
-      final pixels = position.pixels;
-      switch (position.axisDirection) {
-        case AxisDirection.down:
-          dy += pixels;
-        case AxisDirection.up:
-          dy -= pixels;
-        case AxisDirection.right:
-          dx += pixels;
-        case AxisDirection.left:
-          dx -= pixels;
-      }
-    }
-    return Offset(dx, dy);
-  }
-
-  /// Finds where [layer] is in the group, starts, redirects or ends the
-  /// flight, records it for the next frame, and returns the flight's
-  /// offset. Runs while the frame is composited.
-  Offset _compose(_ItemLayer layer) {
-    final group = this.group;
-    if (!group.mounted) return Offset.zero;
-    final position = _positionInGroup(layer);
-    if (position == null) return Offset.zero;
-    final now = position + _scrollOffset();
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
     final record = group._recordFor(id);
-    final frame = group._frame;
-    if (record.frame == frame) {
-      assert(() {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: FlutterError(
-              'Two MotionLayoutItems in one MotionLayoutGroup have the id '
-              '$id.',
-            ),
-            library: 'motor_widgets',
-          ),
-        );
-        return true;
-      }(), 'never fails: it only reports duplicate ids');
-      return record.painted - now;
+    final previous = record.owner;
+    group._checkDuplicates(id, this);
+    // Built anew for an id that was on screen: it flies from there.
+    if (previous != null && !identical(previous, this)) {
+      _arm(previous._lastPainted());
     }
-    final controller = record.controller;
-    final flying = controller?.isAnimating ?? false;
-    final continues = record.frame == frame - 1;
-    final Offset painted;
-    if (!continues || !enabled || landing || !group.widget.enabled) {
-      // Where it was is out of date, or it shouldn't fly: it is where its
-      // layout puts it.
-      painted = now;
-      if (controller != null) {
-        group._afterFrame(() {
-          if (identical(record.controller, controller)) record.dispose();
-        });
-      }
-    } else if ((record.layout - now).distanceSquared > 1e-4) {
-      // It moved: this frame paints it where it was, and its spring starts,
-      // or redirects, from there once the frame is done.
-      painted = flying ? controller!.value : record.painted;
-      final motion = this.motion;
-      group._afterFrame(
-        () => group._fly(record, motion, to: now, from: painted),
-      );
-    } else {
-      painted = flying ? controller!.value : now;
-    }
-    record
-      ..frame = frame
-      ..layout = now
-      ..painted = painted;
-    return _visual = painted - now;
+    record.owner = this;
   }
 
-  /// Where the child is painted in its group's layer, without the flights
-  /// of the items around it, or null when [layer] isn't in the group's
-  /// layer tree.
-  Offset? _positionInGroup(_ItemLayer layer) {
+  @override
+  void detach() {
+    group._release(id, this);
+    super.detach();
+  }
+
+  /// Called when the item is rebuilt.
+  void rebuilt() {
+    if (!attached) return;
+    _arm(_lastPainted());
+  }
+
+  void _arm(Offset? origin) {
+    if (origin == null) return;
+    _origin = origin;
+    markNeedsCompositedLayerUpdate();
+    // If it isn't painted in this frame, such as in a list's cache extent,
+    // it doesn't fly: where it was is out of date by the next frame.
+    SchedulerBinding.instance.addPostFrameCallback((_) => _origin = null);
+  }
+
+  void _flightTicked() {
+    if (attached) markNeedsCompositedLayerUpdate();
+  }
+
+  /// Where this item was painted in the last frame, in content coordinates,
+  /// read from its layer, which still shows that frame. Null when it wasn't
+  /// painted then.
+  Offset? _lastPainted() {
+    final layer = this.layer;
+    if (layer is! _ItemLayer || !layer.attached) return null;
     final chain = <ContainerLayer>[];
     var node = layer.parent;
     while (node != null && node is! _GroupLayer) {
@@ -691,45 +672,114 @@ class _RenderItem extends RenderProxyBox
     for (var i = chain.length - 1; i >= 0; i--) {
       final parent = chain[i];
       final child = i == 0 ? layer : chain[i - 1];
-      // An item around this one flies it along, but that isn't a move of
-      // this item.
-      if (parent is! _ItemLayer) parent.applyTransform(child, transform);
+      if (parent is _ItemLayer) {
+        // An item around this one flies it along, but that isn't where
+        // this item is.
+        transform.translateByDouble(parent.offset.dx, parent.offset.dy, 0, 1);
+      } else {
+        parent.applyTransform(child, transform);
+      }
     }
-    return MatrixUtils.transformPoint(transform, _paintedAt);
+    return MatrixUtils.transformPoint(transform, layer.offset) +
+        layer.visual +
+        _scrollOffset(scrollables, composited: true);
+  }
+
+  /// Where layout puts it now, in content coordinates.
+  Offset _layoutPosition() =>
+      localToGlobal(Offset.zero, ancestor: _groupBox()) +
+      _scrollOffset(scrollables, composited: false);
+
+  RenderObject? _groupBox() {
+    final box = group.context.findRenderObject();
+    return box != null && box.attached ? box : null;
+  }
+
+  /// Starts, redirects or moves the flight, and returns its offset. Runs
+  /// while the item is painted, once layout is done.
+  Offset _resolve() {
+    final group = this.group;
+    if (!group.mounted || !hasSize) return _visual = Offset.zero;
+    final record = group._recordFor(id);
+    final target = _layoutPosition();
+    final origin = _origin;
+    _origin = null;
+    final flies = enabled && !landing && group.widget.enabled;
+    final previous = record.target;
+    if (!flies) {
+      record.controller?.stop(canceled: true);
+    } else if (origin != null && (origin - target).distanceSquared > 1e-4) {
+      final controller = group._controllerFor(record, motion);
+      if (controller.isAnimating) {
+        controller.animateTo(target);
+      } else {
+        controller.animateTo(target, from: origin);
+      }
+    } else if (record.flying &&
+        previous != null &&
+        (previous - target).distanceSquared > 1e-4) {
+      // Layout moved it while it flies, without a rebuild: both ends of
+      // the spring move along, so its motion is kept exactly.
+      final controller = record.controller!;
+      controller.animateTo(target, from: controller.value + target - previous);
+    }
+    record.target = target;
+    return _visual = record.flying
+        ? record.controller!.value - target
+        : Offset.zero;
+  }
+
+  @override
+  bool get canReceiveFlight =>
+      enabled && attached && hasSize && group.mounted && layer is _ItemLayer;
+
+  @override
+  Rect? get layoutRect =>
+      attached && hasSize ? localToGlobal(Offset.zero) & size : null;
+
+  @override
+  void receiveFlight({required Offset offset, required Offset velocity}) {
+    if (!group.mounted || !hasSize) return;
+    final record = group._recordFor(id);
+    final controller = group._controllerFor(record, motion);
+    final target = _layoutPosition();
+    final painted = controller.isAnimating
+        ? controller.value
+        : target + _visual;
+    final carried = controller.isAnimating ? controller.velocity : Offset.zero;
+    record.target = target;
+    controller.animateTo(
+      target,
+      from: painted + offset,
+      withVelocity: carried + velocity,
+    );
+    markNeedsCompositedLayerUpdate();
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
     final child = this.child;
-    if (child == null) {
-      _layer.layer = null;
-      return;
-    }
-    _paintedAt = offset;
-    context.pushLayer(
-      (_layer.layer ??= _ItemLayer())..item = this,
-      (context, offset) => context.paintChild(child, offset),
-      offset,
-    );
+    if (child != null) context.paintChild(child, offset);
   }
 }
 
-/// The layer of an item: it shifts the child by the flight's offset. Like a
-/// [FollowerLayer], it is added to every frame's scene, and finds its
-/// offset while it is.
-class _ItemLayer extends ContainerLayer {
-  _RenderItem? item;
+/// The layer of an item: its offset, shifted by the flight.
+class _ItemLayer extends OffsetLayer {
+  /// The flight's offset.
+  Offset get visual => _visual;
   Offset _visual = Offset.zero;
-
-  @override
-  bool get alwaysNeedsAddToScene => true;
+  set visual(Offset value) {
+    if (value == _visual) return;
+    _visual = value;
+    markNeedsAddToScene();
+  }
 
   @override
   void addToScene(ui.SceneBuilder builder) {
-    _visual = item?._compose(this) ?? Offset.zero;
+    final offset = this.offset + _visual;
     engineLayer = builder.pushOffset(
-      _visual.dx,
-      _visual.dy,
+      offset.dx,
+      offset.dy,
       oldLayer: engineLayer as ui.OffsetEngineLayer?,
     );
     addChildrenToScene(builder);
@@ -738,6 +788,7 @@ class _ItemLayer extends ContainerLayer {
 
   @override
   void applyTransform(Layer? child, Matrix4 transform) {
-    transform.translateByDouble(_visual.dx, _visual.dy, 0, 1);
+    final offset = this.offset + _visual;
+    transform.translateByDouble(offset.dx, offset.dy, 0, 1);
   }
 }
